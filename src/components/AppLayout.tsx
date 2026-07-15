@@ -9,6 +9,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [usernameInput, setUsernameInput] = useState('');
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [popup, setPopup] = useState<{show: boolean, type: 'error'|'confirm', title: string, message: string, onConfirm?: () => void} | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -32,10 +33,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           localStorage.setItem('keren_user_data', JSON.stringify(data.user));
           setUser(data.user);
         } else {
-          alert("Gagal Login: " + data.error);
+          setPopup({ show: true, type: 'error', title: 'Login Gagal', message: data.error });
         }
       } catch (err) {
-        alert("Terjadi kesalahan koneksi saat login.");
+        setPopup({ show: true, type: 'error', title: 'Koneksi Bermasalah', message: 'Terjadi kesalahan jaringan saat mencoba login. Silakan coba lagi.' });
       } finally {
         setLoading(false);
       }
@@ -95,11 +96,46 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-container">
+      {popup && popup.show && (
+        <div className={styles.popupOverlay}>
+          <div className={styles.popupCard}>
+            <div className={styles.popupIcon} style={{ background: popup.type === 'error' ? '#fee2e2' : '#fef3c7', color: popup.type === 'error' ? '#ef4444' : '#f59e0b' }}>
+              <i className={`fas ${popup.type === 'error' ? 'fa-times' : 'fa-exclamation-triangle'}`}></i>
+            </div>
+            <h3 className={styles.popupTitle}>{popup.title}</h3>
+            <p className={styles.popupMessage}>{popup.message}</p>
+            <div className={styles.popupActions}>
+              {popup.type === 'confirm' && (
+                <button className={styles.popupBtnCancel} onClick={() => setPopup(null)}>Batal</button>
+              )}
+              <button 
+                className={styles.popupBtnConfirm} 
+                style={{ background: popup.type === 'error' ? '#ef4444' : '#34908B' }}
+                onClick={() => {
+                  if (popup.onConfirm) popup.onConfirm();
+                  setPopup(null);
+                }}
+              >
+                {popup.type === 'error' ? 'Tutup' : 'Ya, Lanjutkan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Sidebar />
       <div className="main-content">
         <Header user={user} onLogout={() => {
-          localStorage.removeItem('keren_user_data');
-          setUser(null);
+          setPopup({
+            show: true,
+            type: 'confirm',
+            title: 'Konfirmasi Keluar',
+            message: 'Apakah Anda yakin ingin keluar dari sistem KEREN?',
+            onConfirm: () => {
+              localStorage.removeItem('keren_user_data');
+              setUser(null);
+            }
+          });
         }} />
         <main className="page-content">
           {children}

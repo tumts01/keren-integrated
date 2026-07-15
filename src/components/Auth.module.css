@@ -154,3 +154,96 @@
   color: #8e8e8e;
   text-align: center;
 }
+
+/* Custom Popup Styles */
+.popupOverlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.popupCard {
+  background: white;
+  width: 90%;
+  max-width: 360px;
+  border-radius: 20px;
+  padding: 30px 24px;
+  text-align: center;
+  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+  animation: scaleUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.popupIcon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  margin: 0 auto 20px;
+}
+
+.popupTitle {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin-bottom: 12px;
+}
+
+.popupMessage {
+  font-size: 0.95rem;
+  color: #64748b;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.popupActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.popupBtnConfirm, .popupBtnCancel {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.1s, opacity 0.2s;
+  flex: 1;
+}
+
+.popupBtnConfirm {
+  color: white;
+}
+
+.popupBtnConfirm:hover {
+  opacity: 0.9;
+  transform: scale(1.02);
+}
+
+.popupBtnCancel {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.popupBtnCancel:hover {
+  background: #e2e8f0;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
