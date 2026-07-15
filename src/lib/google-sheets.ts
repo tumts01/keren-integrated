@@ -3,11 +3,19 @@ import { JWT } from 'google-auth-library';
 import fs from 'fs';
 import path from 'path';
 
-// Load credentials from file
+// Load credentials from file or environment variable
 const getAuth = () => {
-  const credsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || './google-credentials.json';
-  const credsFile = fs.readFileSync(path.resolve(credsPath), 'utf8');
-  const credentials = JSON.parse(credsFile);
+  let credentials;
+  
+  if (process.env.GOOGLE_CREDENTIALS) {
+    // On Vercel, we read the JSON string directly from Env Variables
+    credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+  } else {
+    // Local fallback
+    const credsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || './google-credentials.json';
+    const credsFile = fs.readFileSync(path.resolve(credsPath), 'utf8');
+    credentials = JSON.parse(credsFile);
+  }
 
   return new JWT({
     email: credentials.client_email,
