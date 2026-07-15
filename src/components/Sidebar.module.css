@@ -4,59 +4,145 @@
   color: var(--text-sidebar);
   display: flex;
   flex-direction: column;
-  transition: width 0.3s;
-  box-shadow: var(--shadow-lg);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 10;
+  /* No right shadow to allow seamless blending with main content */
+  border-right: 1px solid rgba(0,0,0,0.05);
+}
+
+.collapsed {
+  width: 80px;
 }
 
 .brand {
-  padding: 24px 20px;
-  font-size: 1.25rem;
-  font-weight: 700;
+  height: 80px;
+  padding: 0 20px;
+  font-size: 1.5rem;
+  font-weight: 800;
   color: var(--text-sidebar);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+  overflow: hidden;
 }
 
-.brandIcon {
-  color: var(--gold);
-  font-size: 1.5rem;
+.brandLogo {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 .menu {
   flex: 1;
-  padding: 20px 0;
+  padding: 24px 0 24px 16px; /* Left padding, NO right padding for seamless blend */
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.menuItemWrapper {
+  position: relative;
 }
 
 .menuItem {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 24px;
-  font-size: 0.95rem;
-  color: var(--text-sidebar);
+  gap: 16px;
+  padding: 14px 20px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
   transition: all 0.2s;
-  border-left: 3px solid transparent;
+  border-radius: 30px 0 0 30px; /* Rounded left, flat right */
+  white-space: nowrap;
 }
 
-.menuItem:hover, .active {
-  background-color: rgba(255, 255, 255, 0.05);
-  color: var(--text-sidebar);
+.menuItem:hover:not(.active) {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
 }
 
 .active {
-  border-left-color: var(--gold);
-  background-color: rgba(255, 255, 255, 0.1);
-  font-weight: 500;
+  background-color: var(--bg-main);
+  color: var(--primary);
+  font-weight: 700;
+  box-shadow: -5px 0px 10px rgba(0,0,0,0.02);
+}
+
+/* Pseudo-elements for the curved "menyatu" folder tab effect */
+.active::before {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -20px;
+  width: 20px;
+  height: 20px;
+  background-color: transparent;
+  border-bottom-right-radius: 20px;
+  box-shadow: 10px 10px 0 10px var(--bg-main);
+  pointer-events: none;
+}
+
+.active::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -20px;
+  width: 20px;
+  height: 20px;
+  background-color: transparent;
+  border-top-right-radius: 20px;
+  box-shadow: 10px -10px 0 10px var(--bg-main);
+  pointer-events: none;
 }
 
 .menuIcon {
-  width: 20px;
+  width: 24px;
+  font-size: 1.1rem;
   text-align: center;
+  flex-shrink: 0;
   color: var(--gold);
+}
+
+.active .menuIcon {
+  color: var(--primary);
+}
+
+.menuText {
+  flex: 1;
+}
+
+.toggleWrapper {
+  padding: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.collapsed .toggleWrapper {
+  justify-content: center;
+}
+
+.toggleBtn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggleBtn:hover {
+  background: var(--gold);
+  color: var(--primary);
 }
