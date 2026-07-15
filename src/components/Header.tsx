@@ -1,11 +1,19 @@
 import styles from './Header.module.css';
 
 interface HeaderProps {
-  username: string;
+  user: {
+    nama: string;
+    username: string;
+    foto: string;
+    rule: string;
+  };
   onLogout: () => void;
 }
 
-export default function Header({ username, onLogout }: HeaderProps) {
+export default function Header({ user, onLogout }: HeaderProps) {
+  // Use first letter of Name (or Username) if no photo
+  const initial = user?.nama ? user.nama.charAt(0).toUpperCase() : (user?.username ? user.username.charAt(0).toUpperCase() : 'U');
+  
   return (
     <header className={styles.header}>
       <div className={styles.search}>
@@ -22,10 +30,14 @@ export default function Header({ username, onLogout }: HeaderProps) {
           <i className="far fa-bell"></i>
         </button>
         <div className={styles.profile}>
-          <div className={styles.avatar}>{username.charAt(0).toUpperCase()}</div>
+          {user?.foto ? (
+            <img src={user.foto} alt="Profile" className={styles.avatar} style={{ objectFit: 'cover' }} />
+          ) : (
+            <div className={styles.avatar}>{initial}</div>
+          )}
           <div className={styles.userInfo}>
-            <span className={styles.userName}>{username}</span>
-            <span className={styles.userRole}>Staf / Guru</span>
+            <span className={styles.userName}>{user?.nama || user?.username}</span>
+            <span className={styles.userRole}>{user?.rule || 'Staf'}</span>
           </div>
         </div>
         <button onClick={onLogout} className={styles.iconBtn} title="Keluar">

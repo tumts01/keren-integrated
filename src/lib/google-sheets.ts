@@ -37,3 +37,10 @@ export const getBontuDoc = async () => {
   await doc.loadInfo();
   return doc;
 };
+
+export const getIndukDoc = async () => {
+  const auth = getAuth();
+  const doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_INDUK_ID as string, auth);
+  await doc.loadInfo();
+  return doc;
+};

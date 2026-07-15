@@ -5,21 +5,40 @@ import Header from '@/components/Header';
 import styles from './Auth.module.css';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
   const [usernameInput, setUsernameInput] = useState('');
   const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    const storedUser = localStorage.getItem('keren_user');
-    if (storedUser) setUser(storedUser);
+    const storedUser = localStorage.getItem('keren_user_data');
+    if (storedUser) setUser(JSON.parse(storedUser));
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (usernameInput.trim().length > 2) {
-      localStorage.setItem('keren_user', usernameInput.trim());
-      setUser(usernameInput.trim());
+      setLoading(true);
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: usernameInput.trim() })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          localStorage.setItem('keren_user_data', JSON.stringify(data.user));
+          setUser(data.user);
+        } else {
+          alert("Gagal Login: " + data.error);
+        }
+      } catch (err) {
+        alert("Terjadi kesalahan koneksi saat login.");
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -60,8 +79,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 />
               </div>
 
-              <button type="submit" className={styles.loginBtn}>
-                Masuk Aplikasi
+              <button type="submit" className={styles.loginBtn} disabled={loading}>
+                {loading ? <i className="fas fa-spinner fa-spin"></i> : "Masuk Aplikasi"}
               </button>
             </form>
             
@@ -78,8 +97,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="app-container">
       <Sidebar />
       <div className="main-content">
-        <Header username={user} onLogout={() => {
-          localStorage.removeItem('keren_user');
+        <Header user={user} onLogout={() => {
+          localStorage.removeItem('keren_user_data');
           setUser(null);
         }} />
         <main className="page-content">
