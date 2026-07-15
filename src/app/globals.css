@@ -1,31 +1,31 @@
 @import '@fortawesome/fontawesome-free/css/all.min.css';
 
 :root {
-  /* Color Palette */
-  --bg-main: #f4f7f6;
-  --bg-sidebar: #1f2937;
+  /* Color Palette - Ceria & Colorful */
+  --bg-main: #f0fdf4; /* Mint green very light */
+  --bg-sidebar: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); /* Vibrant Indigo to Purple */
   --bg-card: #ffffff;
   
-  --text-main: #374151;
-  --text-muted: #6b7280;
-  --text-sidebar: #e5e7eb;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --text-sidebar: #ffffff;
   
-  --primary: #3b82f6;
-  --primary-hover: #2563eb;
-  --gold: #d4af37;
-  --gold-hover: #c5a028;
+  --primary: #ec4899; /* Vibrant Pink */
+  --primary-hover: #db2777;
+  --gold: #f59e0b; /* Bright Amber/Orange */
+  --gold-hover: #d97706;
   --success: #10b981;
   --danger: #ef4444;
   --warning: #f59e0b;
   
-  --border-color: #e5e7eb;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --border-color: #e2e8f0;
+  --shadow-sm: 0 4px 6px -1px rgba(99, 102, 241, 0.1);
+  --shadow-md: 0 10px 15px -3px rgba(99, 102, 241, 0.15), 0 4px 6px -2px rgba(99, 102, 241, 0.05);
+  --shadow-lg: 0 20px 25px -5px rgba(99, 102, 241, 0.2), 0 10px 10px -5px rgba(99, 102, 241, 0.04);
   
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.5rem; /* Very rounded corners for playful look */
 }
 
 * {
