@@ -16,6 +16,10 @@ export default function Sidebar() {
     { name: 'Presensi', path: '/presensi', icon: 'fa-calendar-check' },
     { name: 'Persuratan', path: '/persuratan', icon: 'fa-envelope-open-text' },
     { name: 'Data Prestasi', path: '/prestasi', icon: 'fa-trophy' },
+    { name: 'Bendahara', path: '/bendahara', icon: 'fa-wallet' },
+    { name: 'Pembayaran', path: '/pembayaran', icon: 'fa-money-bill-wave' },
+    { name: 'Arsip Foto', path: '/arsip-foto', icon: 'fa-images' },
+    { name: 'Pengumuman', path: '/pengumuman', icon: 'fa-bullhorn' },
     { name: 'Nota Bon', path: '/bon', icon: 'fa-file-invoice-dollar' }, // Tetap disimpan karena sudah kita buat
   ];
 
