@@ -7,7 +7,7 @@
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 10;
   /* No right shadow to allow seamless blending with main content */
-  border-right: 1px solid rgba(0,0,0,0.05);
+  border-right: none;
 }
 
 .collapsed {
