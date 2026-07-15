@@ -70,6 +70,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <main className="page-content">
           {children}
         </main>
+        <footer style={{
+          textAlign: 'center',
+          padding: '16px',
+          fontSize: '0.85rem',
+          color: 'var(--text-muted)',
+          borderTop: '1px solid var(--border-color)',
+          backgroundColor: 'var(--bg-card)',
+          marginTop: 'auto'
+        }}>
+          &copy; {new Date().getFullYear()} <strong>KEREN Integrated</strong> - MTs Almaarif 01 Singosari.<br/>
+          <span style={{ fontSize: '0.75rem', marginTop: '4px', display: 'inline-block' }}>
+            Developed with <i className="fas fa-heart" style={{ color: 'var(--danger)', margin: '0 2px' }}></i> by <strong>Aa' Icoll</strong>
+          </span>
+        </footer>
       </div>
     </div>
   );
