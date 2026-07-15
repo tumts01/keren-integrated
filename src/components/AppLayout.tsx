@@ -110,7 +110,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               )}
               <button 
                 className={styles.popupBtnConfirm} 
-                style={{ background: popup.type === 'error' ? '#ef4444' : '#34908B' }}
+                style={{ background: popup.type === 'error' ? '#ef4444' : '#237227' }}
                 onClick={() => {
                   if (popup.onConfirm) popup.onConfirm();
                   setPopup(null);

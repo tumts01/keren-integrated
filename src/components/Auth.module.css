@@ -108,7 +108,7 @@
 }
 
 .loginBtn {
-  background: #34908B;
+  background: #237227;
   color: white;
   border: none;
   border-radius: 8px;
@@ -125,7 +125,7 @@
 }
 
 .loginBtn:hover {
-  background: #6FBEB2;
+  background: #519A66;
 }
 
 .divider {

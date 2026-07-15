@@ -1,19 +1,19 @@
 @import '@fortawesome/fontawesome-free/css/all.min.css';
 
 :root {
-  /* Color Palette - Custom Theme */
-  --bg-main: #FDF4AF; /* Light yellow from palette */
-  --bg-sidebar: linear-gradient(135deg, #6FBEB2 0%, #34908B 100%); /* Medium to Dark Teal */
+  /* Color Palette - Custom Theme (Green/Orange) */
+  --bg-main: #FFD786; /* Light peach/yellow from palette */
+  --bg-sidebar: linear-gradient(135deg, #519A66 0%, #237227 100%); /* Medium to Dark Green */
   --bg-card: #ffffff;
   
   --text-main: #1e293b;
   --text-muted: #64748b;
-  --text-sidebar: #FDF4AF; /* Yellow from palette */
+  --text-sidebar: #FFD786; /* Light yellow from palette */
   
-  --primary: #34908B; /* Dark teal from palette */
-  --primary-hover: #6FBEB2; /* Medium teal from palette */
-  --gold: #A5E9DD; /* Light mint from palette */
-  --gold-hover: #6FBEB2;
+  --primary: #237227; /* Dark green from palette */
+  --primary-hover: #519A66; /* Medium green from palette */
+  --gold: #FFAA00; /* Vibrant Orange from palette */
+  --gold-hover: #e59900;
   --success: #10b981;
   --danger: #ef4444;
   --warning: #f59e0b;
