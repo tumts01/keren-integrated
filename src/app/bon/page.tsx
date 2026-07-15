@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import styles from './Bon.module.css';
 
 export default function BonPage() {
@@ -56,9 +57,9 @@ export default function BonPage() {
             onChange={(e) => setSearch(e.target.value)}
             className={styles.searchInput}
           />
-          <button className="btn btn-gold">
+          <Link href="/bon/tambah" className="btn btn-gold" style={{ textDecoration: 'none' }}>
             <i className="fas fa-plus"></i> Ajukan Bon Baru
-          </button>
+          </Link>
         </div>
       </div>
 
