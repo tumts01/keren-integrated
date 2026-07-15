@@ -1,19 +1,19 @@
 @import '@fortawesome/fontawesome-free/css/all.min.css';
 
 :root {
-  /* Color Palette - Ceria & Colorful */
-  --bg-main: #f0fdf4; /* Mint green very light */
-  --bg-sidebar: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); /* Vibrant Indigo to Purple */
+  /* Color Palette - Custom Theme */
+  --bg-main: #FDF4AF; /* Light yellow from palette */
+  --bg-sidebar: linear-gradient(135deg, #6FBEB2 0%, #34908B 100%); /* Medium to Dark Teal */
   --bg-card: #ffffff;
   
   --text-main: #1e293b;
   --text-muted: #64748b;
   --text-sidebar: #ffffff;
   
-  --primary: #ec4899; /* Vibrant Pink */
-  --primary-hover: #db2777;
-  --gold: #f59e0b; /* Bright Amber/Orange */
-  --gold-hover: #d97706;
+  --primary: #34908B; /* Dark teal from palette */
+  --primary-hover: #6FBEB2; /* Medium teal from palette */
+  --gold: #A5E9DD; /* Light mint from palette */
+  --gold-hover: #6FBEB2;
   --success: #10b981;
   --danger: #ef4444;
   --warning: #f59e0b;
