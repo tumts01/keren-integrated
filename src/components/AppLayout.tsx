@@ -29,12 +29,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
       <div className={styles.loginWrapper}>
         <div className={styles.leftSection}>
+          {/* Latar belakang foto sekolah */}
           <div className={styles.leftOverlay}>
-            <i className="fas fa-school" style={{ fontSize: '4rem', color: 'var(--gold)', marginBottom: '24px' }}></i>
-            <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '16px' }}>MTs Almaarif 01</h1>
-            <p style={{ fontSize: '1.2rem', maxWidth: '80%', lineHeight: 1.6 }}>
-              Selamat datang di portal administrasi digital masa depan. Kelola data sekolah dengan mudah, cepat, dan KEREN.
-            </p>
+            {/* Teks dihilangkan sesuai permintaan agar foto lebih menonjol */}
           </div>
         </div>
         
@@ -56,34 +53,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <div className={styles.inputGroup}>
                 <input 
                   type="text" 
-                  placeholder="Nomor ponsel, nama pengguna, atau email" 
+                  placeholder="Masukkan Username Anda..." 
                   value={usernameInput}
                   onChange={(e) => setUsernameInput(e.target.value)}
                   required 
                 />
               </div>
-              
-              <div className={styles.inputGroup}>
-                <input 
-                  type="password" 
-                  placeholder="Kata sandi (Kosongkan jika Guru/Staf)" 
-                />
-              </div>
 
               <button type="submit" className={styles.loginBtn}>
-                Login
+                Masuk Aplikasi
               </button>
             </form>
-
-            <div className={styles.divider}>Atau</div>
-            
-            <div style={{ color: '#385185', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', marginBottom: '16px' }}>
-              <i className="fab fa-google" style={{ marginRight: '8px' }}></i> Login dengan Google
-            </div>
-            
-            <div style={{ fontSize: '0.75rem', color: '#00376b', cursor: 'pointer' }}>
-              Lupa kata sandi?
-            </div>
             
             <div className={styles.footer}>
               &copy; {new Date().getFullYear()} KEREN Integrated from Aa' Icoll
