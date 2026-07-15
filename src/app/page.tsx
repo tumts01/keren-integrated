@@ -5,13 +5,16 @@ export default function Home() {
   return (
     <div className={styles.page}>
       <main className={styles.main}>
-        <div style={{ textAlign: 'center', maxWidth: '600px', margin: '0 auto', padding: '60px 20px' }}>
-          <i className="fas fa-school" style={{ fontSize: '4rem', color: 'var(--gold)', marginBottom: '24px' }}></i>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '16px' }}>
-            Selamat Datang di KEREN Integrated
+        <div style={{ textAlign: 'center', maxWidth: '700px', margin: '0 auto', padding: '60px 20px' }}>
+          <img src="/logo.png" alt="Logo Sekolah" style={{ width: '120px', height: '120px', objectFit: 'contain', marginBottom: '20px' }} />
+          <h1 style={{ fontSize: '3rem', fontWeight: 900, color: 'var(--text-main)', marginBottom: '8px', letterSpacing: '-1px' }}>
+            KEREN
           </h1>
-          <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)', marginBottom: '40px', lineHeight: 1.6 }}>
-            Sistem Informasi Manajemen Terpadu MTs Almaarif 01 Singosari. Kelola data Kesiswaan dan Anggaran Nota Bon dalam satu portal pintar.
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--primary)', marginBottom: '16px' }}>
+            Sistem Informasi Administrasi Digital MTs Almaarif 01 Singosari
+          </h2>
+          <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)', marginBottom: '40px', fontStyle: 'italic' }}>
+            "Administrasi Lebih Mudah, Cepat, dan KEREN"
           </p>
           
           <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>

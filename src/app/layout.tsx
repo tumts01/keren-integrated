@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "KEREN Integrated - MTs Almaarif 01",
-  description: "Sistem Informasi Anggaran & Kesiswaan",
+  title: "KEREN - MTs Almaarif 01",
+  description: "Sistem Informasi Administrasi Digital MTs Almaarif 01 Singosari. Administrasi Lebih Mudah, Cepat, dan KEREN",
 };
 
 export default function RootLayout({

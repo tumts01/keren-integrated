@@ -30,10 +30,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className={styles.loginContainer}>
         <div className={styles.loginCard}>
           <div className={styles.brand}>
-            <i className={`fas fa-school ${styles.brandIcon}`}></i>
-            <h2>KEREN Integrated</h2>
+            <img src="/logo.png" alt="Logo" style={{ width: '50px', height: '50px', objectFit: 'contain' }} />
+            <h2>KEREN</h2>
           </div>
-          <p className={styles.subtitle}>Sistem Informasi Anggaran & Kesiswaan</p>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '8px' }}>
+            Sistem Informasi Administrasi Digital<br/>MTs Almaarif 01 Singosari
+          </h3>
+          <p className={styles.subtitle} style={{ fontStyle: 'italic', fontSize: '0.85rem' }}>
+            "Administrasi Lebih Mudah, Cepat, dan KEREN"
+          </p>
           <form onSubmit={handleLogin} className={styles.form}>
             <div className={styles.inputGroup}>
               <i className="fas fa-user"></i>
