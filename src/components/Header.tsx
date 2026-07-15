@@ -14,6 +14,18 @@ export default function Header({ user, onLogout }: HeaderProps) {
   // Use first letter of Name (or Username) if no photo
   const initial = user?.nama ? user.nama.charAt(0).toUpperCase() : (user?.username ? user.username.charAt(0).toUpperCase() : 'U');
   
+  // Helper to convert Google Drive /view links to raw image links
+  const getImageUrl = (url: string) => {
+    if (!url) return '';
+    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (url.includes('drive.google.com') && match && match[1]) {
+      return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+    }
+    return url;
+  };
+
+  const fotoUrl = user?.foto ? getImageUrl(user.foto) : '';
+  
   return (
     <header className={styles.header}>
       <div className={styles.search}>
@@ -30,8 +42,8 @@ export default function Header({ user, onLogout }: HeaderProps) {
           <i className="far fa-bell"></i>
         </button>
         <div className={styles.profile}>
-          {user?.foto ? (
-            <img src={user.foto} alt="Profile" className={styles.avatar} style={{ objectFit: 'cover' }} />
+          {fotoUrl ? (
+            <img src={fotoUrl} alt="Profile" className={styles.avatar} style={{ objectFit: 'cover' }} />
           ) : (
             <div className={styles.avatar}>{initial}</div>
           )}
