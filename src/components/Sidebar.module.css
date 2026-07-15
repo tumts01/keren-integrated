@@ -1,0 +1,62 @@
+.sidebar {
+  width: 260px;
+  background-color: var(--bg-sidebar);
+  color: var(--text-sidebar);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s;
+  box-shadow: var(--shadow-lg);
+  z-index: 10;
+}
+
+.brand {
+  padding: 24px 20px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.brandIcon {
+  color: var(--gold);
+  font-size: 1.5rem;
+}
+
+.menu {
+  flex: 1;
+  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  font-size: 0.95rem;
+  color: var(--text-sidebar);
+  transition: all 0.2s;
+  border-left: 3px solid transparent;
+}
+
+.menuItem:hover, .active {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: white;
+}
+
+.active {
+  border-left-color: var(--gold);
+  background-color: rgba(255, 255, 255, 0.1);
+  font-weight: 500;
+}
+
+.menuIcon {
+  width: 20px;
+  text-align: center;
+  color: var(--gold);
+}

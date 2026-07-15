@@ -1,64 +1,32 @@
-import Image from "next/image";
 import styles from "./page.module.css";
+import Link from 'next/link';
 
 export default function Home() {
   return (
     <div className={styles.page}>
       <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
+        <div style={{ textAlign: 'center', maxWidth: '600px', margin: '0 auto', padding: '60px 20px' }}>
+          <i className="fas fa-school" style={{ fontSize: '4rem', color: 'var(--gold)', marginBottom: '24px' }}></i>
+          <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '16px' }}>
+            Selamat Datang di KEREN Integrated
+          </h1>
+          <p style={{ fontSize: '1.1rem', color: 'var(--text-muted)', marginBottom: '40px', lineHeight: 1.6 }}>
+            Sistem Informasi Manajemen Terpadu MTs Almaarif 01 Singosari. Kelola data Kesiswaan dan Anggaran Nota Bon dalam satu portal pintar.
           </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          
+          <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href="/siswa" className="card" style={{ textDecoration: 'none', width: '250px', textAlign: 'center' }}>
+              <i className="fas fa-users" style={{ fontSize: '2rem', color: 'var(--primary)', marginBottom: '16px' }}></i>
+              <h3 style={{ fontSize: '1.2rem', marginBottom: '8px', color: 'var(--text-main)' }}>Data Siswa</h3>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Lihat & Kelola Profil</p>
+            </Link>
+            
+            <Link href="/bon" className="card" style={{ textDecoration: 'none', width: '250px', textAlign: 'center' }}>
+              <i className="fas fa-file-invoice-dollar" style={{ fontSize: '2rem', color: 'var(--gold)', marginBottom: '16px' }}></i>
+              <h3 style={{ fontSize: '1.2rem', marginBottom: '8px', color: 'var(--text-main)' }}>Nota Bon</h3>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Pengajuan & Realisasi</p>
+            </Link>
+          </div>
         </div>
       </main>
     </div>
