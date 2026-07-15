@@ -27,33 +27,68 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (!user) {
     return (
-      <div className={styles.loginContainer}>
-        <div className={styles.loginCard}>
-          <div className={styles.brand}>
-            <img src="/logo.png" alt="Logo" style={{ width: '50px', height: '50px', objectFit: 'contain' }} />
-            <h2>KEREN</h2>
+      <div className={styles.loginWrapper}>
+        <div className={styles.leftSection}>
+          <div className={styles.leftOverlay}>
+            <i className="fas fa-school" style={{ fontSize: '4rem', color: 'var(--gold)', marginBottom: '24px' }}></i>
+            <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '16px' }}>MTs Almaarif 01</h1>
+            <p style={{ fontSize: '1.2rem', maxWidth: '80%', lineHeight: 1.6 }}>
+              Selamat datang di portal administrasi digital masa depan. Kelola data sekolah dengan mudah, cepat, dan KEREN.
+            </p>
           </div>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '8px' }}>
-            Sistem Informasi Administrasi Digital<br/>MTs Almaarif 01 Singosari
-          </h3>
-          <p className={styles.subtitle} style={{ fontStyle: 'italic', fontSize: '0.85rem' }}>
-            "Administrasi Lebih Mudah, Cepat, dan KEREN"
-          </p>
-          <form onSubmit={handleLogin} className={styles.form}>
-            <div className={styles.inputGroup}>
-              <i className="fas fa-user"></i>
-              <input 
-                type="text" 
-                placeholder="Masukkan Username Anda..." 
-                value={usernameInput}
-                onChange={(e) => setUsernameInput(e.target.value)}
-                required 
-              />
+        </div>
+        
+        <div className={styles.rightSection}>
+          <div className={styles.loginCard}>
+            <div className={styles.brand}>
+              <img src="/logo.png" alt="Logo" style={{ width: '64px', height: '64px', objectFit: 'contain' }} />
+              <h2>KEREN</h2>
             </div>
-            <button type="submit" className={styles.loginBtn}>
-              Masuk Aplikasi <i className="fas fa-arrow-right"></i>
-            </button>
-          </form>
+            
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '8px' }}>
+              Sistem Informasi Administrasi Digital
+            </h3>
+            <p style={{ fontStyle: 'italic', fontSize: '0.85rem', color: '#8e8e8e', marginBottom: '16px' }}>
+              "Administrasi Lebih Mudah, Cepat, dan KEREN"
+            </p>
+
+            <form onSubmit={handleLogin} className={styles.form}>
+              <div className={styles.inputGroup}>
+                <input 
+                  type="text" 
+                  placeholder="Nomor ponsel, nama pengguna, atau email" 
+                  value={usernameInput}
+                  onChange={(e) => setUsernameInput(e.target.value)}
+                  required 
+                />
+              </div>
+              
+              <div className={styles.inputGroup}>
+                <input 
+                  type="password" 
+                  placeholder="Kata sandi (Kosongkan jika Guru/Staf)" 
+                />
+              </div>
+
+              <button type="submit" className={styles.loginBtn}>
+                Login
+              </button>
+            </form>
+
+            <div className={styles.divider}>Atau</div>
+            
+            <div style={{ color: '#385185', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', marginBottom: '16px' }}>
+              <i className="fab fa-google" style={{ marginRight: '8px' }}></i> Login dengan Google
+            </div>
+            
+            <div style={{ fontSize: '0.75rem', color: '#00376b', cursor: 'pointer' }}>
+              Lupa kata sandi?
+            </div>
+            
+            <div className={styles.footer}>
+              &copy; {new Date().getFullYear()} KEREN Integrated from Aa' Icoll
+            </div>
+          </div>
         </div>
       </div>
     );
