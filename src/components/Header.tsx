@@ -1,3 +1,5 @@
+'use client';
+import { useState } from 'react';
 import styles from './Header.module.css';
 
 interface HeaderProps {
@@ -19,12 +21,14 @@ export default function Header({ user, onLogout }: HeaderProps) {
     if (!url) return '';
     const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
     if (url.includes('drive.google.com') && match && match[1]) {
-      return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+      // Menggunakan lh3.googleusercontent.com yang lebih stabil untuk gambar publik
+      return `https://lh3.googleusercontent.com/d/${match[1]}=w200-h200`;
     }
     return url;
   };
 
-  const fotoUrl = user?.foto ? getImageUrl(user.foto) : '';
+  const [imageError, setImageError] = useState(false);
+  const fotoUrl = user?.foto && !imageError ? getImageUrl(user.foto) : '';
   
   return (
     <header className={styles.header}>
@@ -43,7 +47,13 @@ export default function Header({ user, onLogout }: HeaderProps) {
         </button>
         <div className={styles.profile}>
           {fotoUrl ? (
-            <img src={fotoUrl} alt="Profile" className={styles.avatar} style={{ objectFit: 'cover' }} />
+            <img 
+              src={fotoUrl} 
+              alt="Profile" 
+              className={styles.avatar} 
+              style={{ objectFit: 'cover' }} 
+              onError={() => setImageError(true)}
+            />
           ) : (
             <div className={styles.avatar}>{initial}</div>
           )}
