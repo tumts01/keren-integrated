@@ -27,7 +27,12 @@ export default function Sidebar() {
     <aside className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}>
       <div className={styles.brand}>
         <img src="/logo.png" alt="Logo" className={styles.brandLogo} />
-        {!isCollapsed && <span>KEREN</span>}
+        {!isCollapsed && (
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--gold)', lineHeight: '1.2', letterSpacing: '0.5px' }}>Sistem Informasi Administrasi Digital</span>
+            <span style={{ fontSize: '0.95rem', fontWeight: 800, color: 'white', lineHeight: '1.2' }}>MTs Almaarif 01 Singosari</span>
+          </div>
+        )}
       </div>
       
       <nav className={styles.menu}>
