@@ -27,7 +27,7 @@ interface SuratMasuk {
 }
 
 export default function PersuratanPage() {
-  const [activeTab, setActiveTab] = useState<'keluar' | 'masuk'>('keluar');
+  const [activeTab, setActiveTab] = useState<'keluar' | 'masuk' | 'tagihan' | 'tugas'>('keluar');
   const [dataKeluar, setDataKeluar] = useState<SuratKeluar[]>([]);
   const [dataMasuk, setDataMasuk] = useState<SuratMasuk[]>([]);
   const [topikList, setTopikList] = useState<string[]>([]);
@@ -160,29 +160,39 @@ export default function PersuratanPage() {
   };
 
   const handleExportExcel = () => {
-    const dataToExport = activeTab === 'keluar' 
-      ? filteredKeluar.map(s => ({
-          'No': s.no,
-          'Tanggal': s.tanggal,
-          'Nama Surat': s.namaSurat,
-          'Yang Ditugaskan': s.yangDitugaskan,
-          'Topik': s.topik,
-          'PJ': s.pj,
-          'No Surat': s.noSurat,
-          'Status Arsip': s.fileScan ? 'Diarsipkan' : 'Belum Diarsipkan'
-        }))
-      : filteredMasuk.map(s => ({
-          'Tanggal': s.tanggal,
-          'Pengirim': s.pengirim,
-          'No Surat': s.noSurat,
-          'Perihal': s.perihal,
-          'Status Arsip': s.fileScan ? 'Diarsipkan' : 'Belum Diarsipkan'
-        }));
+    let dataToExport: any[] = [];
+    if (activeTab === 'keluar' || activeTab === 'tagihan') {
+      const source = activeTab === 'keluar' ? filteredKeluar : filteredTagihan;
+      dataToExport = source.map(s => ({
+        'No': s.no,
+        'Tanggal': s.tanggal,
+        'Nama Surat': s.namaSurat,
+        'Yang Ditugaskan': s.yangDitugaskan,
+        'Topik': s.topik,
+        'PJ': s.pj,
+        'No Surat': s.noSurat,
+        'Status Arsip': s.fileScan ? 'Diarsipkan' : 'Belum Diarsipkan'
+      }));
+    } else if (activeTab === 'masuk') {
+      dataToExport = filteredMasuk.map(s => ({
+        'Tanggal': s.tanggal,
+        'Pengirim': s.pengirim,
+        'No Surat': s.noSurat,
+        'Perihal': s.perihal,
+        'Status Arsip': s.fileScan ? 'Diarsipkan' : 'Belum Diarsipkan'
+      }));
+    } else if (activeTab === 'tugas') {
+      dataToExport = filteredTugas.map(t => ({
+        'Nama Guru': t.nama,
+        'Total Penugasan': t.total,
+        'Daftar Surat': t.surat.map(s => `${s.noSurat} - ${s.namaSurat}`).join(' || ')
+      }));
+    }
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, `Data Surat ${activeTab}`);
-    XLSX.writeFile(workbook, `Data_Surat_${activeTab}_${new Date().getTime()}.xlsx`);
+    XLSX.utils.book_append_sheet(workbook, worksheet, `Data ${activeTab}`);
+    XLSX.writeFile(workbook, `Data_Persuratan_${activeTab}_${new Date().getTime()}.xlsx`);
   };
 
   // Filter Data
@@ -199,12 +209,41 @@ export default function PersuratanPage() {
     s.noSurat.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const activeDataLength = activeTab === 'keluar' ? filteredKeluar.length : filteredMasuk.length;
+  const filteredTagihan = filteredKeluar.filter(s => !s.fileScan);
+
+  const tugasMap: Record<string, typeof filteredKeluar> = {};
+  filteredKeluar.forEach(s => {
+    if (s.yangDitugaskan) {
+      const persons = s.yangDitugaskan.split(',').map(p => p.trim()).filter(Boolean);
+      persons.forEach(p => {
+        if (!tugasMap[p]) tugasMap[p] = [];
+        tugasMap[p].push(s);
+      });
+    }
+  });
+  
+  const filteredTugas = Object.keys(tugasMap).map(nama => ({
+    nama,
+    total: tugasMap[nama].length,
+    surat: tugasMap[nama]
+  })).sort((a, b) => b.total - a.total);
+
+  const getActiveDataLength = () => {
+    if (activeTab === 'keluar') return filteredKeluar.length;
+    if (activeTab === 'masuk') return filteredMasuk.length;
+    if (activeTab === 'tagihan') return filteredTagihan.length;
+    if (activeTab === 'tugas') return filteredTugas.length;
+    return 0;
+  };
+
+  const activeDataLength = getActiveDataLength();
   const totalPages = Math.ceil(activeDataLength / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   
   const currentKeluar = filteredKeluar.slice(startIndex, startIndex + itemsPerPage);
   const currentMasuk = filteredMasuk.slice(startIndex, startIndex + itemsPerPage);
+  const currentTagihan = filteredTagihan.slice(startIndex, startIndex + itemsPerPage);
+  const currentTugas = filteredTugas.slice(startIndex, startIndex + itemsPerPage);
 
   // Statistics
   const totalKeluar = dataKeluar.length;
@@ -362,18 +401,30 @@ export default function PersuratanPage() {
         </div>
 
         {/* Tab Navigation */}
-        <div style={{ display: 'flex', gap: '8px', padding: '0 24px', background: 'white', borderBottom: '1px solid #e2e8f0' }}>
+        <div style={{ display: 'flex', gap: '8px', padding: '0 24px', background: 'white', borderBottom: '1px solid #e2e8f0', overflowX: 'auto' }}>
           <button 
-            style={{ padding: '16px 24px', border: 'none', background: 'transparent', fontWeight: 600, fontSize: '0.95rem', color: activeTab === 'keluar' ? 'var(--primary)' : '#64748b', borderBottom: activeTab === 'keluar' ? '3px solid var(--primary)' : '3px solid transparent', cursor: 'pointer', transition: 'all 0.2s' }}
+            style={{ padding: '16px 24px', border: 'none', background: 'transparent', fontWeight: 600, fontSize: '0.95rem', color: activeTab === 'keluar' ? 'var(--primary)' : '#64748b', borderBottom: activeTab === 'keluar' ? '3px solid var(--primary)' : '3px solid transparent', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
             onClick={() => setActiveTab('keluar')}
           >
             <i className="fas fa-paper-plane" style={{ marginRight: '8px' }}></i> Surat Keluar
           </button>
           <button 
-            style={{ padding: '16px 24px', border: 'none', background: 'transparent', fontWeight: 600, fontSize: '0.95rem', color: activeTab === 'masuk' ? 'var(--primary)' : '#64748b', borderBottom: activeTab === 'masuk' ? '3px solid var(--primary)' : '3px solid transparent', cursor: 'pointer', transition: 'all 0.2s' }}
+            style={{ padding: '16px 24px', border: 'none', background: 'transparent', fontWeight: 600, fontSize: '0.95rem', color: activeTab === 'masuk' ? 'var(--primary)' : '#64748b', borderBottom: activeTab === 'masuk' ? '3px solid var(--primary)' : '3px solid transparent', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
             onClick={() => setActiveTab('masuk')}
           >
             <i className="fas fa-inbox" style={{ marginRight: '8px' }}></i> Surat Masuk
+          </button>
+          <button 
+            style={{ padding: '16px 24px', border: 'none', background: 'transparent', fontWeight: 600, fontSize: '0.95rem', color: activeTab === 'tagihan' ? '#ef4444' : '#64748b', borderBottom: activeTab === 'tagihan' ? '3px solid #ef4444' : '3px solid transparent', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+            onClick={() => setActiveTab('tagihan')}
+          >
+            <i className="fas fa-exclamation-triangle" style={{ marginRight: '8px' }}></i> Tagihan Arsip
+          </button>
+          <button 
+            style={{ padding: '16px 24px', border: 'none', background: 'transparent', fontWeight: 600, fontSize: '0.95rem', color: activeTab === 'tugas' ? '#10b981' : '#64748b', borderBottom: activeTab === 'tugas' ? '3px solid #10b981' : '3px solid transparent', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+            onClick={() => setActiveTab('tugas')}
+          >
+            <i className="fas fa-users-cog" style={{ marginRight: '8px' }}></i> Delegasi Tugas
           </button>
         </div>
 
@@ -432,7 +483,7 @@ export default function PersuratanPage() {
           <div className={styles.tableContainer}>
             <table className={styles.table}>
               <thead>
-                {activeTab === 'keluar' ? (
+                {activeTab === 'keluar' || activeTab === 'tagihan' ? (
                   <tr>
                     <th style={{ width: '60px', textAlign: 'center' }}>No</th>
                     <th>Tanggal</th>
@@ -443,7 +494,7 @@ export default function PersuratanPage() {
                     <th>PJ</th>
                     <th style={{ textAlign: 'center' }}>Status / Arsip</th>
                   </tr>
-                ) : (
+                ) : activeTab === 'masuk' ? (
                   <tr>
                     <th>Tanggal Masuk</th>
                     <th>Pengirim</th>
@@ -451,12 +502,18 @@ export default function PersuratanPage() {
                     <th>Perihal</th>
                     <th style={{ textAlign: 'center' }}>Status / Arsip</th>
                   </tr>
+                ) : (
+                  <tr>
+                    <th>Nama Guru</th>
+                    <th style={{ textAlign: 'center' }}>Total Penugasan</th>
+                    <th>Daftar Surat Tugas</th>
+                  </tr>
                 )}
               </thead>
               <tbody>
-                {activeTab === 'keluar' ? (
-                  currentKeluar.length > 0 ? (
-                    currentKeluar.map(surat => (
+                {activeTab === 'keluar' || activeTab === 'tagihan' ? (
+                  (activeTab === 'keluar' ? currentKeluar : currentTagihan).length > 0 ? (
+                    (activeTab === 'keluar' ? currentKeluar : currentTagihan).map(surat => (
                       <tr key={surat.id}>
                         <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{surat.no}</td>
                         <td>{surat.tanggal}</td>
@@ -481,12 +538,12 @@ export default function PersuratanPage() {
                   ) : (
                     <tr>
                       <td colSpan={8} style={{ textAlign: 'center', padding: '40px' }}>
-                        <i className="fas fa-envelope-open" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
-                        Tidak ada surat keluar yang ditemukan.
+                        <i className="fas fa-check-circle" style={{ fontSize: '3rem', color: '#10b981', marginBottom: '16px', display: 'block' }}></i>
+                        {activeTab === 'tagihan' ? 'Mantap! Semua surat sudah diarsipkan.' : 'Tidak ada surat keluar yang ditemukan.'}
                       </td>
                     </tr>
                   )
-                ) : (
+                ) : activeTab === 'masuk' ? (
                   currentMasuk.length > 0 ? (
                     currentMasuk.map(surat => (
                       <tr key={surat.id}>
@@ -512,6 +569,35 @@ export default function PersuratanPage() {
                       <td colSpan={5} style={{ textAlign: 'center', padding: '40px' }}>
                         <i className="fas fa-inbox" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
                         Tidak ada surat masuk yang ditemukan.
+                      </td>
+                    </tr>
+                  )
+                ) : (
+                  currentTugas.length > 0 ? (
+                    currentTugas.map((tugas, idx) => (
+                      <tr key={idx}>
+                        <td style={{ fontWeight: 'bold', fontSize: '1.05rem', color: '#1e293b' }}>{tugas.nama}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span style={{ display: 'inline-block', background: 'var(--primary)', color: 'white', padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold' }}>
+                            {tugas.total}
+                          </span>
+                        </td>
+                        <td>
+                          <ul style={{ margin: 0, paddingLeft: '20px', color: '#475569', fontSize: '0.9rem' }}>
+                            {tugas.surat.map(s => (
+                              <li key={s.id} style={{ marginBottom: '4px' }}>
+                                <strong>{s.noSurat || 'Belum ada nomor'}</strong> - {s.namaSurat} ({s.tanggal})
+                              </li>
+                            ))}
+                          </ul>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={3} style={{ textAlign: 'center', padding: '40px' }}>
+                        <i className="fas fa-users" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
+                        Belum ada data penugasan guru.
                       </td>
                     </tr>
                   )
