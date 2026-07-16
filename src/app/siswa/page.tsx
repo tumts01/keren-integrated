@@ -69,8 +69,8 @@ export default function SiswaPage() {
 
   // Calculate Stats based on selected Tahun Ajaran (or all if 'Semua')
   const statsData = data.filter(s => selectedTahun === 'Semua' || s.tahunAjaran === selectedTahun);
-  const activeData = statsData.filter(s => s.status.toLowerCase().trim() === 'aktif');
-  const nonActiveData = statsData.filter(s => s.status.toLowerCase().trim() !== 'aktif' && s.status.trim() !== '');
+  const activeData = statsData.filter(s => ['aktif', 'lulus'].includes(s.status.toLowerCase().trim()));
+  const nonActiveData = statsData.filter(s => !['aktif', 'lulus'].includes(s.status.toLowerCase().trim()) && s.status.trim() !== '');
 
   const totalSiswa = activeData.length;
   const totalLaki = activeData.filter(s => s.jenisKelamin.toLowerCase().includes('laki')).length;
@@ -130,7 +130,7 @@ export default function SiswaPage() {
                 <div className={styles.infoGroup}>
                   <span className={styles.infoLabel}>Status</span>
                   <div className={styles.infoValue}>
-                    <span className={`${styles.badge} ${selectedSiswa.status.toLowerCase().includes('aktif') && !selectedSiswa.status.toLowerCase().includes('non') && !selectedSiswa.status.toLowerCase().includes('pindah') ? styles.badgeAktif : styles.badgeNon}`}>
+                    <span className={`${styles.badge} ${['aktif', 'lulus'].includes(selectedSiswa.status.toLowerCase().trim()) ? styles.badgeAktif : styles.badgeNon}`}>
                       {selectedSiswa.status || '-'}
                     </span>
                   </div>
@@ -288,7 +288,7 @@ export default function SiswaPage() {
                         </div>
                       </td>
                       <td>
-                        <span className={`${styles.badge} ${siswa.status.toLowerCase().trim() === 'aktif' ? styles.badgeAktif : styles.badgeNon}`}>
+                        <span className={`${styles.badge} ${['aktif', 'lulus'].includes(siswa.status.toLowerCase().trim()) ? styles.badgeAktif : styles.badgeNon}`}>
                           {siswa.status || 'Tidak Diketahui'}
                         </span>
                       </td>
