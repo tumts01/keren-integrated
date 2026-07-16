@@ -15,7 +15,7 @@ export async function GET() {
     // Helper untuk mengubah link gdrive menjadi raw image link
     const getImageUrl = (url: string) => {
       if (!url) return '';
-      const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
       if (url.includes('drive.google.com') && match && match[1]) {
         return `https://lh3.googleusercontent.com/d/${match[1]}=w200-h200`;
       }
@@ -25,7 +25,7 @@ export async function GET() {
     // Map data to array of objects
     const data = rows.map((row, index) => {
       const nama = row.get('NAMA') || '';
-      const rawFoto = row.get('LINK URL FOTO 1') || '';
+      const rawFoto = row.get('LINK FOTO TERBARU') || '';
       const foto = getImageUrl(rawFoto);
       
       const noHpAyah = row.get('NOMOR TELEPON AYAH KANDUNG') || '';
