@@ -25,7 +25,7 @@ export default function KelasPage() {
     const storedUser = localStorage.getItem('userApp');
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
-      setUserRole(parsedUser.role || '');
+      setUserRole(parsedUser.rule || parsedUser.role || '');
     }
     fetchData();
   }, []);
@@ -107,7 +107,7 @@ export default function KelasPage() {
                 <tr key={row.rombel}>
                   <td style={{ fontWeight: 600 }}>{row.rombel}</td>
                   <td>
-                    {userRole === 'admin' ? (
+                    {userRole.toLowerCase() === 'admin' ? (
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <input 
                           type="text"
