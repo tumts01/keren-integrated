@@ -13,14 +13,18 @@ export default function Sidebar() {
     { name: 'Data Guru & Staf', path: '/guru', icon: 'fa-chalkboard-teacher' },
     { name: 'Data Siswa', path: '/siswa', icon: 'fa-users' },
     { name: 'Data Kelas', path: '/kelas', icon: 'fa-chalkboard' },
+    { name: 'Mata Pelajaran', path: '/mata-pelajaran', icon: 'fa-book' },
+    { name: 'Nilai Siswa', path: '/nilai-siswa', icon: 'fa-star' },
     { name: 'Presensi', path: '/presensi', icon: 'fa-calendar-check' },
+    { name: 'Jurnal Kelas', path: '/jurnal', icon: 'fa-book-open' },
+    { name: 'Jadwal Mengajar', path: '/jadwal-mengajar', icon: 'fa-clock' },
     { name: 'Persuratan', path: '/persuratan', icon: 'fa-envelope-open-text' },
     { name: 'Data Prestasi', path: '/prestasi', icon: 'fa-trophy' },
     { name: 'Bendahara', path: '/bendahara', icon: 'fa-wallet' },
     { name: 'Pembayaran', path: '/pembayaran', icon: 'fa-money-bill-wave' },
     { name: 'Arsip Foto', path: '/arsip-foto', icon: 'fa-images' },
+    { name: 'Nota Bon', path: '/bon', icon: 'fa-file-invoice-dollar' },
     { name: 'Pengumuman', path: '/pengumuman', icon: 'fa-bullhorn' },
-    { name: 'Nota Bon', path: '/bon', icon: 'fa-file-invoice-dollar' }, // Tetap disimpan karena sudah kita buat
   ];
 
   return (
