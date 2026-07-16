@@ -28,7 +28,14 @@ export async function GET() {
         topik: row.get('TOPIK') || '',
         pj: row.get('PJ') || '',
         noSurat: row.get('NO. SURAT') || '',
-        fileScan: row.get('FILE/SCAN SURAT') || '',
+        fileScan: (() => {
+          const val = row.get('FILE/SCAN SURAT') || '';
+          // Ignore placeholder texts that are not actual links
+          if (val.toLowerCase().includes('klik disini') || !val.includes('http')) {
+            return '';
+          }
+          return val;
+        })(),
       };
     }).filter(item => item.noSurat || item.namaSurat); // Filter out empty rows
 
@@ -45,7 +52,13 @@ export async function GET() {
           pengirim: row.get('PENGIRIM') || row.get('ASAL SURAT') || '',
           noSurat: row.get('NO. SURAT') || row.get('NOMOR SURAT') || '',
           perihal: row.get('PERIHAL') || row.get('ISI RINGKAS') || row.get('NAMA SURAT') || '',
-          fileScan: row.get('FILE/SCAN SURAT') || row.get('FILE') || ''
+          fileScan: (() => {
+            const val = row.get('FILE/SCAN SURAT') || row.get('FILE') || '';
+            if (val.toLowerCase().includes('klik disini') || !val.includes('http')) {
+              return '';
+            }
+            return val;
+          })()
         };
       }).filter(item => item.noSurat || item.perihal);
     }
