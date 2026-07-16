@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import styles from './Siswa.module.css';
+import * as XLSX from 'xlsx';
 
 interface Siswa {
   id: number;
@@ -93,6 +94,36 @@ export default function SiswaPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, selectedTahun]);
+
+  const handleExportExcel = () => {
+    const dataToExport = filteredData.map((s, index) => ({
+      'No': index + 1,
+      'NISN': s.nisn,
+      'Nama': s.nama,
+      'Jenis Kelamin': s.jenisKelamin,
+      'Rombel/Kelas': s.rombel,
+      'Status': s.status,
+      'Tahun Ajaran': s.tahunAjaran,
+      'Domisili': s.domisili,
+      'Alamat': s.alamat,
+      'Nama Ayah': s.namaAyah,
+      'Nama Ibu': s.namaIbu,
+      'No. HP / WA': s.noHp
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Data Siswa');
+    
+    // Auto-size columns slightly
+    worksheet['!cols'] = [
+      { wch: 5 }, { wch: 15 }, { wch: 30 }, { wch: 15 }, 
+      { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 20 }, 
+      { wch: 40 }, { wch: 25 }, { wch: 25 }, { wch: 18 }
+    ];
+
+    XLSX.writeFile(workbook, `Data_Siswa_${selectedTahun === 'Semua' ? 'All' : selectedTahun}.xlsx`);
+  };
 
   return (
     <div className={styles.container}>
@@ -197,6 +228,9 @@ export default function SiswaPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          <button onClick={handleExportExcel} className="btn btn-gold" style={{ marginRight: '8px' }}>
+            <i className="fas fa-file-excel"></i> Export Excel
+          </button>
           <button className="btn btn-primary">
             <i className="fas fa-plus"></i> Tambah Siswa
           </button>
