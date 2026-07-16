@@ -35,6 +35,7 @@ export async function POST(request: Request) {
           username: userRow.get('Username') || '',
           foto: userRow.get('Foto') || '',
           rule: userRow.get('Rule') || 'Staf', // Default to Staf if empty
+          sudahGantiUsername: userRow.get('Sudah Ganti Username')?.toString().toLowerCase() === 'true' || false,
         }
       });
     } else {
