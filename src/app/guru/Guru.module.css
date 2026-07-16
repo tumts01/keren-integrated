@@ -241,6 +241,20 @@
   color: #1e293b;
 }
 
+.table th:first-child,
+.table td:first-child {
+  position: sticky;
+  left: 0;
+  background-color: white;
+  z-index: 2;
+  box-shadow: 2px 0 5px -2px rgba(0,0,0,0.05); /* Soft shadow for depth */
+}
+
+.table th:first-child {
+  background-color: #f8fafc;
+  z-index: 3;
+}
+
 .table tr:last-child td {
   border-bottom: none;
 }

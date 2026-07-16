@@ -5,6 +5,7 @@ import styles from './Guru.module.css';
 interface Guru {
   id: number;
   nama: string;
+  foto?: string;
   status: string;
   nip: string;
   pegId: string;
@@ -77,10 +78,13 @@ export default function GuruPage() {
             </div>
             <div className={styles.modalBody}>
               <div className={styles.modalPhotoFrame}>
-                {/* No photo available in DB GTK yet, using initial */}
-                <div style={{ fontSize: '4rem', fontWeight: 700, color: '#94a3b8' }}>
-                  {selectedGuru.nama.charAt(0).toUpperCase() || 'U'}
-                </div>
+                {selectedGuru.foto ? (
+                  <img src={selectedGuru.foto} alt="Profile" className={styles.modalPhoto} />
+                ) : (
+                  <div style={{ fontSize: '4rem', fontWeight: 700, color: '#94a3b8' }}>
+                    {selectedGuru.nama.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                )}
               </div>
               <div className={styles.modalInfo}>
                 <div className={`${styles.infoGroup} ${styles.infoFull}`}>
@@ -191,9 +195,13 @@ export default function GuruPage() {
                     <tr key={guru.id}>
                       <td style={{ minWidth: '250px' }}>
                         <div className={styles.profileCell}>
-                          <div className={styles.avatar}>
-                            {guru.nama.charAt(0).toUpperCase() || 'U'}
-                          </div>
+                          {guru.foto ? (
+                            <img src={guru.foto} alt="Profile" className={styles.avatar} style={{ objectFit: 'cover' }} />
+                          ) : (
+                            <div className={styles.avatar}>
+                              {guru.nama.charAt(0).toUpperCase() || 'U'}
+                            </div>
+                          )}
                           <div>
                             <span className={styles.nama}>{guru.nama || '-'}</span>
                           </div>

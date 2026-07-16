@@ -5,6 +5,7 @@ export async function GET() {
   try {
     const doc = await getIndukDoc();
     const sheet = doc.sheetsByTitle['db_GTK'];
+    const sheetUsers = doc.sheetsByTitle['Users']; // Ambil data users untuk foto
     
     if (!sheet) {
       return NextResponse.json({ success: false, error: 'Tab db_GTK tidak ditemukan' }, { status: 404 });
@@ -12,11 +13,39 @@ export async function GET() {
 
     const rows = await sheet.getRows();
     
+    // Buat pemetaan foto dari tab Users berdasarkan Nama
+    const userPhotos: Record<string, string> = {};
+    if (sheetUsers) {
+      const userRows = await sheetUsers.getRows();
+      userRows.forEach(uRow => {
+        const uNama = uRow.get('Nama');
+        const uFoto = uRow.get('Foto');
+        if (uNama && uFoto) {
+          userPhotos[uNama.trim().toLowerCase()] = uFoto;
+        }
+      });
+    }
+
+    // Helper untuk mengubah link gdrive menjadi raw image link
+    const getImageUrl = (url: string) => {
+      if (!url) return '';
+      const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (url.includes('drive.google.com') && match && match[1]) {
+        return `https://lh3.googleusercontent.com/d/${match[1]}=w200-h200`;
+      }
+      return url;
+    };
+
     // Map data to array of objects
     const data = rows.map((row, index) => {
+      const nama = row.get('Nama') || '';
+      const rawFoto = userPhotos[nama.trim().toLowerCase()] || '';
+      const foto = getImageUrl(rawFoto);
+
       return {
         id: index,
-        nama: row.get('Nama') || '',
+        nama,
+        foto,
         status: row.get('Status') || '',
         nip: row.get('NIP') || '',
         pegId: row.get('PEG ID') || '',
