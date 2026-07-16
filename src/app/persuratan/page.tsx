@@ -31,6 +31,7 @@ export default function PersuratanPage() {
   const [dataKeluar, setDataKeluar] = useState<SuratKeluar[]>([]);
   const [dataMasuk, setDataMasuk] = useState<SuratMasuk[]>([]);
   const [topikList, setTopikList] = useState<string[]>([]);
+  const [guruList, setGuruList] = useState<{ id: string, nama: string }[]>([]);
   
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,18 +49,24 @@ export default function PersuratanPage() {
   // Form Generate States
   const [formTanggal, setFormTanggal] = useState(new Date().toISOString().split('T')[0]);
   const [formNamaSurat, setFormNamaSurat] = useState('');
-  const [formDitugaskan, setFormDitugaskan] = useState('');
+  const [formDitugaskan, setFormDitugaskan] = useState<string[]>([]);
   const [formTopik, setFormTopik] = useState('');
   const [formPj, setFormPj] = useState('');
   const [generating, setGenerating] = useState(false);
+  const [searchGuru, setSearchGuru] = useState('');
+  const [searchPj, setSearchPj] = useState('');
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/persuratan');
-      const result = await res.json();
+      const [resPersuratan, resGuru] = await Promise.all([
+        fetch('/api/persuratan'),
+        fetch('/api/guru')
+      ]);
+      const result = await resPersuratan.json();
+      const guruResult = await resGuru.json();
+
       if (result.success) {
-        // Sort newest first based on rowNumber or ID
         const sortedKeluar = result.suratKeluar.sort((a: any, b: any) => b.rowNumber - a.rowNumber);
         const sortedMasuk = result.suratMasuk.sort((a: any, b: any) => b.rowNumber - a.rowNumber);
         
@@ -68,6 +75,10 @@ export default function PersuratanPage() {
         setTopikList(result.topikList);
       } else {
         setError(result.error);
+      }
+
+      if (guruResult.success) {
+        setGuruList(guruResult.data);
       }
     } catch (err) {
       setError('Gagal memuat data persuratan.');
@@ -92,7 +103,7 @@ export default function PersuratanPage() {
           payload: {
             tanggal: formTanggal,
             namaSurat: formNamaSurat,
-            yangDitugaskan: formDitugaskan,
+            yangDitugaskan: formDitugaskan.join(', '),
             topik: formTopik,
             pj: formPj
           }
@@ -104,9 +115,11 @@ export default function PersuratanPage() {
         setShowGenerateModal(false);
         // Reset form
         setFormNamaSurat('');
-        setFormDitugaskan('');
+        setFormDitugaskan([]);
         setFormTopik('');
         setFormPj('');
+        setSearchGuru('');
+        setSearchPj('');
         // Refresh data
         fetchData();
       } else {
@@ -346,13 +359,58 @@ export default function PersuratanPage() {
                   <label className={styles.infoLabel}>Nama Surat / Perihal</label>
                   <input type="text" className={styles.searchInput} value={formNamaSurat} onChange={e => setFormNamaSurat(e.target.value)} placeholder="Contoh: Surat Edaran Kegiatan..." required />
                 </div>
-                <div className={styles.infoGroup} style={{ marginBottom: '16px' }}>
+                <div className={styles.infoGroup} style={{ marginBottom: '16px', position: 'relative' }}>
                   <label className={styles.infoLabel}>Yang Ditugaskan / Kepada</label>
-                  <input type="text" className={styles.searchInput} value={formDitugaskan} onChange={e => setFormDitugaskan(e.target.value)} placeholder="Contoh: Budi, Siti" />
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: formDitugaskan.length > 0 ? '8px' : '0', border: '1px solid #cbd5e1', borderRadius: '8px', minHeight: '42px', alignItems: 'center' }}>
+                    {formDitugaskan.map((guru, idx) => (
+                      <span key={idx} style={{ background: 'var(--primary)', color: 'white', padding: '4px 10px', borderRadius: '16px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {guru}
+                        <i className="fas fa-times" style={{ cursor: 'pointer' }} onClick={() => setFormDitugaskan(prev => prev.filter(g => g !== guru))}></i>
+                      </span>
+                    ))}
+                    <input 
+                      type="text" 
+                      style={{ border: 'none', outline: 'none', flex: 1, minWidth: '150px', padding: formDitugaskan.length > 0 ? '4px' : '10px' }} 
+                      value={searchGuru} 
+                      onChange={e => setSearchGuru(e.target.value)} 
+                      placeholder={formDitugaskan.length === 0 ? "Ketik nama guru..." : ""}
+                    />
+                  </div>
+                  {searchGuru && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', maxHeight: '150px', overflowY: 'auto', zIndex: 10, boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                      {guruList.filter(g => g.nama.toLowerCase().includes(searchGuru.toLowerCase()) && !formDitugaskan.includes(g.nama)).map(g => (
+                        <div key={g.id} style={{ padding: '10px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }} onClick={() => {
+                          setFormDitugaskan(prev => [...prev, g.nama]);
+                          setSearchGuru('');
+                        }}>
+                          {g.nama}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className={styles.infoGroup} style={{ marginBottom: '24px' }}>
+                <div className={styles.infoGroup} style={{ marginBottom: '24px', position: 'relative' }}>
                   <label className={styles.infoLabel}>Penanggung Jawab (PJ)</label>
-                  <input type="text" className={styles.searchInput} value={formPj} onChange={e => setFormPj(e.target.value)} placeholder="Contoh: Kepala Madrasah" required />
+                  <input 
+                    type="text" 
+                    className={styles.searchInput} 
+                    value={formPj} 
+                    onChange={e => { setFormPj(e.target.value); setSearchPj(e.target.value); }} 
+                    placeholder="Contoh: Kepala Madrasah" 
+                    required 
+                  />
+                  {searchPj && guruList.filter(g => g.nama.toLowerCase().includes(searchPj.toLowerCase())).length > 0 && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', maxHeight: '150px', overflowY: 'auto', zIndex: 10, boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                      {guruList.filter(g => g.nama.toLowerCase().includes(searchPj.toLowerCase())).map(g => (
+                        <div key={g.id} style={{ padding: '10px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }} onClick={() => {
+                          setFormPj(g.nama);
+                          setSearchPj('');
+                        }}>
+                          {g.nama}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 
                 <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>

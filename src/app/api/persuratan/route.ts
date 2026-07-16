@@ -63,18 +63,16 @@ export async function GET() {
       }).filter(item => item.noSurat || item.perihal);
     }
 
-    let listTopik = [];
+    let listTopik: string[] = [];
     if (sheetKode) {
-      const rowsKode = await sheetKode.getRows();
-      listTopik = rowsKode.map(row => row.get('NAMA SURAT') || row.get('TOPIK') || row.get('KETERANGAN') || '').filter(Boolean);
-      // Wait, user formula: FILTER('KODE SURAT'!A:A;'KODE SURAT'!B:B=E2)
-      // This implies Col B is Topik, Col A is Kode.
-      // So we can extract the Topik list directly from Col B.
-      listTopik = rowsKode.map(row => {
-        const headers = sheetKode.headerValues;
-        const colBHeader = headers.length > 1 ? headers[1] : null;
-        return colBHeader ? row.get(colBHeader) : '';
-      }).filter(Boolean);
+      await sheetKode.loadCells('A1:B100');
+      for (let i = 2; i < 100; i++) {
+        const kodeVal = sheetKode.getCell(i, 0).value;
+        const topikVal = sheetKode.getCell(i, 1).value;
+        if (kodeVal && topikVal) {
+          listTopik.push(topikVal.toString().trim());
+        }
+      }
     }
 
     return NextResponse.json({ 
@@ -118,16 +116,14 @@ export async function POST(req: Request) {
       // Find KODE SURAT mapping
       const { tanggal, namaSurat, yangDitugaskan, topik, pj } = payload;
       
-      const rowsKode = await sheetKode.getRows();
-      const headers = sheetKode.headerValues;
-      const colAHeader = headers.length > 0 ? headers[0] : '';
-      const colBHeader = headers.length > 1 ? headers[1] : '';
-
       let kodeSurat = '';
-      if (colAHeader && colBHeader) {
-        const foundKode = rowsKode.find(row => row.get(colBHeader) === topik);
-        if (foundKode) {
-          kodeSurat = foundKode.get(colAHeader) || '';
+      await sheetKode.loadCells('A1:B100');
+      for (let i = 2; i < 100; i++) {
+        const kodeVal = sheetKode.getCell(i, 0).value;
+        const topikVal = sheetKode.getCell(i, 1).value;
+        if (kodeVal && topikVal && topikVal.toString().trim() === topik) {
+          kodeSurat = kodeVal.toString().trim();
+          break;
         }
       }
 

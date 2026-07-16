@@ -8,6 +8,8 @@ export default function Home() {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  const [tagihanList, setTagihanList] = useState<any[]>([]);
+
   useEffect(() => {
     const storedUser = localStorage.getItem('keren_user_data');
     if (storedUser) {
@@ -21,14 +23,33 @@ export default function Home() {
 
   const fetchProfile = async (nama: string) => {
     try {
-      const res = await fetch('/api/guru');
-      const data = await res.json();
+      const [resGuru, resSurat] = await Promise.all([
+        fetch('/api/guru'),
+        fetch('/api/persuratan')
+      ]);
+      const data = await resGuru.json();
+      const surat = await resSurat.json();
+      
+      let foundProfile = null;
       if (data.success) {
         const found = data.data.find((g: any) => g.nama.toLowerCase().trim() === nama.toLowerCase().trim());
         setProfile(found);
+        foundProfile = found;
+      }
+
+      if (surat.success && foundProfile) {
+        const myName = foundProfile.nama.toLowerCase();
+        const myTagihan = surat.suratKeluar.filter((s: any) => 
+          !s.fileScan && 
+          (
+            (s.pj && s.pj.toLowerCase().includes(myName)) || 
+            (s.yangDitugaskan && s.yangDitugaskan.toLowerCase().includes(myName))
+          )
+        );
+        setTagihanList(myTagihan);
       }
     } catch (err) {
-      console.error('Error fetching profile:', err);
+      console.error('Error fetching data:', err);
     } finally {
       setLoading(false);
     }
@@ -92,6 +113,39 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Box Tagihan Arsip */}
+      {tagihanList.length > 0 && (
+        <div style={{ background: '#fee2e2', border: '1px solid #fecaca', borderRadius: '12px', padding: '20px', marginBottom: '24px', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: '-10px', right: '-10px', opacity: 0.1 }}>
+            <i className="fas fa-exclamation-triangle" style={{ fontSize: '8rem', color: '#ef4444' }}></i>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', position: 'relative', zIndex: 1 }}>
+            <div style={{ background: '#ef4444', color: 'white', width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', flexShrink: 0 }}>
+              <i className="fas fa-bell"></i>
+            </div>
+            <div>
+              <h3 style={{ margin: '0 0 4px 0', color: '#991b1b', fontSize: '1.2rem', fontWeight: 700 }}>Perhatian! Ada Tagihan Arsip Surat</h3>
+              <p style={{ margin: '0 0 12px 0', color: '#b91c1c', fontSize: '0.95rem' }}>Anda ditugaskan atau menjadi PJ pada <strong>{tagihanList.length} surat</strong> yang arsip PDF-nya belum diunggah.</p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {tagihanList.slice(0, 3).map(s => (
+                  <span key={s.id} style={{ background: 'white', color: '#7f1d1d', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', border: '1px solid #fca5a5', fontWeight: 600 }}>
+                    {s.noSurat || 'Nomor Surat Kosong'}
+                  </span>
+                ))}
+                {tagihanList.length > 3 && (
+                  <span style={{ background: 'transparent', color: '#991b1b', padding: '4px 8px', fontSize: '0.85rem', fontWeight: 600 }}>
+                    +{tagihanList.length - 3} lainnya...
+                  </span>
+                )}
+              </div>
+              <a href="/persuratan" style={{ display: 'inline-block', marginTop: '16px', background: '#dc2626', color: 'white', padding: '8px 16px', borderRadius: '8px', textDecoration: 'none', fontWeight: 600, fontSize: '0.9rem' }}>
+                Buka Menu Persuratan <i className="fas fa-arrow-right" style={{ marginLeft: '4px' }}></i>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Detail Data Grid */}
       <div className={styles.detailsGrid}>
