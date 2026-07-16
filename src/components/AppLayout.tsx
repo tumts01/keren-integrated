@@ -146,7 +146,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <div className={styles.popupActions}>
                 <button className={styles.popupBtnCancel} onClick={() => setShowLupaPassword(false)}>Kembali</button>
                 <a 
-                  href="https://wa.me/6281234567890?text=Halo%20Aa'%20Icoll,%20saya%20lupa%20akses%20login%20KEREN%20saya.%20Mohon%20bantuannya." 
+                  href="https://wa.me/628970434000?text=Halo%20Aa'%20Icoll,%20saya%20lupa%20akses%20login%20KEREN%20saya.%20Mohon%20bantuannya." 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className={styles.popupBtnConfirm}

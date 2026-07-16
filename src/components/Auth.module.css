@@ -128,6 +128,24 @@
   background: #519A66;
 }
 
+.forgotBtn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 8px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  margin-top: 4px;
+}
+
+.forgotBtn:hover {
+  color: #237227;
+  text-decoration: underline;
+}
+
 .divider {
   display: flex;
   align-items: center;
