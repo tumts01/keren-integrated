@@ -27,7 +27,7 @@ export default function SiswaPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedSiswa, setSelectedSiswa] = useState<Siswa | null>(null);
   const [selectedTahun, setSelectedTahun] = useState<string>('Semua');
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -326,8 +326,24 @@ export default function SiswaPage() {
           
           {totalPages > 1 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', borderBottomLeftRadius: '16px', borderBottomRightRadius: '16px' }}>
-              <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredData.length)} dari {filteredData.length} data
+              <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <select 
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1', outline: 'none', background: 'white', color: '#475569', cursor: 'pointer' }}
+                >
+                  <option value={10}>10 Baris</option>
+                  <option value={25}>25 Baris</option>
+                  <option value={50}>50 Baris</option>
+                  <option value={75}>75 Baris</option>
+                  <option value={100}>100 Baris</option>
+                </select>
+                <span>
+                  Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredData.length)} dari {filteredData.length} data
+                </span>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button 
