@@ -69,13 +69,16 @@ export default function SiswaPage() {
 
   // Calculate Stats based on selected Tahun Ajaran (or all if 'Semua')
   const statsData = data.filter(s => selectedTahun === 'Semua' || s.tahunAjaran === selectedTahun);
-  const totalSiswa = statsData.length;
-  const totalLaki = statsData.filter(s => s.jenisKelamin.toLowerCase().includes('laki')).length;
-  const totalPr = statsData.filter(s => s.jenisKelamin.toLowerCase().includes('perempuan')).length;
+  const activeData = statsData.filter(s => s.status.toLowerCase().includes('aktif'));
+  const nonActiveData = statsData.filter(s => !s.status.toLowerCase().includes('aktif'));
 
-  const totalKelas7 = statsData.filter(s => s.rombel.startsWith('7')).length;
-  const totalKelas8 = statsData.filter(s => s.rombel.startsWith('8')).length;
-  const totalKelas9 = statsData.filter(s => s.rombel.startsWith('9')).length;
+  const totalSiswa = activeData.length;
+  const totalLaki = activeData.filter(s => s.jenisKelamin.toLowerCase().includes('laki')).length;
+  const totalPr = activeData.filter(s => s.jenisKelamin.toLowerCase().includes('perempuan')).length;
+
+  const totalKelas7Non = nonActiveData.filter(s => s.rombel.startsWith('7')).length;
+  const totalKelas8Non = nonActiveData.filter(s => s.rombel.startsWith('8')).length;
+  const totalKelas9Non = nonActiveData.filter(s => s.rombel.startsWith('9')).length;
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -201,10 +204,10 @@ export default function SiswaPage() {
               <i className="fas fa-user-graduate"></i>
             </div>
             <div className={styles.statInfo}>
-              <span className={styles.statLabel}>Total Siswa</span>
+              <span className={styles.statLabel}>Total Siswa Aktif</span>
               <span className={styles.statValue}>{totalSiswa}</span>
               <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px', fontWeight: 500 }}>
-                Kls 7: {totalKelas7} &bull; Kls 8: {totalKelas8} &bull; Kls 9: {totalKelas9}
+                Non-Aktif Kls 7: {totalKelas7Non} &bull; Kls 8: {totalKelas8Non} &bull; Kls 9: {totalKelas9Non}
               </div>
             </div>
           </div>

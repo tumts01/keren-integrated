@@ -42,7 +42,7 @@ export async function GET() {
         foto,
         jenisKelamin: row.get('JENIS KELAMIN') || '',
         rombel: row.get('ROMBEL') || '',
-        status: row.get('STATUS') || '',
+        status: row.get('STATUS SISWA') || '',
         domisili: row.get('DOMISILI') || '',
         alamat: row.get('ALAMAT AYAH KANDUNG') || '',
         namaAyah: row.get('NAMA AYAH KANDUNG') || '',
