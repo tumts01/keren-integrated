@@ -55,6 +55,7 @@ export default function PersuratanPage() {
   const [generating, setGenerating] = useState(false);
   const [searchGuru, setSearchGuru] = useState('');
   const [searchPj, setSearchPj] = useState('');
+  const [searchTopik, setSearchTopik] = useState('');
 
   const fetchData = async () => {
     setLoading(true);
@@ -120,6 +121,7 @@ export default function PersuratanPage() {
         setFormPj('');
         setSearchGuru('');
         setSearchPj('');
+        setSearchTopik('');
         // Refresh data
         fetchData();
       } else {
@@ -345,14 +347,28 @@ export default function PersuratanPage() {
                     <label className={styles.infoLabel}>Tanggal</label>
                     <input type="date" className={styles.searchInput} value={formTanggal} onChange={e => setFormTanggal(e.target.value)} required />
                   </div>
-                  <div className={styles.infoGroup}>
+                  <div className={styles.infoGroup} style={{ position: 'relative' }}>
                     <label className={styles.infoLabel}>Topik (Kode Surat)</label>
-                    <select className={styles.searchInput} value={formTopik} onChange={e => setFormTopik(e.target.value)} required>
-                      <option value="">-- Pilih Topik --</option>
-                      {topikList.map((topik, i) => (
-                        <option key={i} value={topik}>{topik}</option>
-                      ))}
-                    </select>
+                    <input 
+                      type="text" 
+                      className={styles.searchInput} 
+                      value={formTopik} 
+                      onChange={e => { setFormTopik(e.target.value); setSearchTopik(e.target.value); }} 
+                      placeholder="Ketik topik surat..." 
+                      required 
+                    />
+                    {searchTopik && topikList.filter(t => t.toLowerCase().includes(searchTopik.toLowerCase())).length > 0 && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', maxHeight: '150px', overflowY: 'auto', zIndex: 10, boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                        {topikList.filter(t => t.toLowerCase().includes(searchTopik.toLowerCase())).map((t, i) => (
+                          <div key={i} style={{ padding: '10px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }} onClick={() => {
+                            setFormTopik(t);
+                            setSearchTopik('');
+                          }}>
+                            {t}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className={styles.infoGroup} style={{ marginBottom: '16px' }}>
