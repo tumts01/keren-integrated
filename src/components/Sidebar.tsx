@@ -56,7 +56,7 @@ export default function Sidebar() {
           onClick={() => setIsCollapsed(!isCollapsed)}
           title={isCollapsed ? "Buka Sidebar" : "Sembunyikan Sidebar"}
         >
-          <i className={`fas ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-left'}`}></i>
+          <i className={`fas ${isCollapsed ? 'fa-bars' : 'fa-chevron-left'}`}></i>
         </button>
       </div>
       
