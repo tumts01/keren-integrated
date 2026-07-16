@@ -32,14 +32,8 @@ export default function Header({ user, onLogout }: HeaderProps) {
   
   return (
     <header className={styles.header}>
-      <div className={styles.search}>
-        <i className={`fas fa-search ${styles.searchIcon}`}></i>
-        <input 
-          type="text" 
-          placeholder="Cari data siswa, no BON..." 
-          className={styles.searchInput} 
-        />
-      </div>
+      {/* Search dihapus sesuai permintaan */}
+      <div style={{ flex: 1 }}></div>
 
       <div className={styles.actions}>
         <button className={styles.iconBtn}>

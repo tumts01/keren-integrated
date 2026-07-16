@@ -56,6 +56,12 @@ export default function GuruPage() {
     g.jabatan.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Kalkulasi Rekapan Data
+  const totalGuru = data.filter(g => g.jabatan.toLowerCase().includes('guru') || g.jabatan.toLowerCase().includes('kepala')).length;
+  const totalTendik = data.length - totalGuru;
+  const totalLaki = data.filter(g => g.jenisKelamin.toLowerCase().includes('laki')).length;
+  const totalPr = data.filter(g => g.jenisKelamin.toLowerCase().includes('perempuan')).length;
+
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentData = filteredData.slice(startIndex, startIndex + itemsPerPage);
@@ -153,6 +159,47 @@ export default function GuruPage() {
           </button>
         </div>
       </div>
+
+      {!loading && !error && (
+        <div className={styles.statsGrid}>
+          <div className={styles.statCard} style={{ borderLeftColor: '#3b82f6' }}>
+            <div className={styles.statIcon} style={{ color: '#3b82f6', background: '#eff6ff' }}>
+              <i className="fas fa-chalkboard-teacher"></i>
+            </div>
+            <div className={styles.statInfo}>
+              <span className={styles.statLabel}>Total Guru</span>
+              <span className={styles.statValue}>{totalGuru}</span>
+            </div>
+          </div>
+          <div className={styles.statCard} style={{ borderLeftColor: '#f59e0b' }}>
+            <div className={styles.statIcon} style={{ color: '#f59e0b', background: '#fef3c7' }}>
+              <i className="fas fa-user-tie"></i>
+            </div>
+            <div className={styles.statInfo}>
+              <span className={styles.statLabel}>Tenaga Kependidikan</span>
+              <span className={styles.statValue}>{totalTendik}</span>
+            </div>
+          </div>
+          <div className={styles.statCard} style={{ borderLeftColor: '#10b981' }}>
+            <div className={styles.statIcon} style={{ color: '#10b981', background: '#dcfce7' }}>
+              <i className="fas fa-male"></i>
+            </div>
+            <div className={styles.statInfo}>
+              <span className={styles.statLabel}>Laki-laki</span>
+              <span className={styles.statValue}>{totalLaki}</span>
+            </div>
+          </div>
+          <div className={styles.statCard} style={{ borderLeftColor: '#ec4899' }}>
+            <div className={styles.statIcon} style={{ color: '#ec4899', background: '#fce7f3' }}>
+              <i className="fas fa-female"></i>
+            </div>
+            <div className={styles.statInfo}>
+              <span className={styles.statLabel}>Perempuan</span>
+              <span className={styles.statValue}>{totalPr}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className={styles.card}>
         {loading ? (
