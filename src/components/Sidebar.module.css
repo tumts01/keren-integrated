@@ -123,32 +123,48 @@
   flex: 1;
 }
 
-.toggleWrapper {
-  padding: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  display: flex;
-  justify-content: flex-end;
-}
-
-.collapsed .toggleWrapper {
-  justify-content: center;
-}
-
-.toggleBtn {
+.toggleBtnTop {
   background: rgba(255, 255, 255, 0.1);
   border: none;
   color: white;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
+  flex-shrink: 0;
 }
 
-.toggleBtn:hover {
+.toggleBtnTop:hover {
   background: var(--gold);
   color: var(--primary);
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: absolute;
+    height: 100%;
+    left: 0;
+    top: 0;
+    box-shadow: 5px 0 15px rgba(0,0,0,0.2);
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 1000;
+  }
+  .collapsed {
+    left: -260px;
+    width: 260px; /* Keep full width, just move it off-screen */
+  }
+  .collapsed .toggleBtnTop {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    width: 44px;
+    height: 44px;
+    background: var(--primary);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    z-index: 1001;
+  }
 }

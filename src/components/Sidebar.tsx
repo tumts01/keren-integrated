@@ -46,11 +46,18 @@ export default function Sidebar() {
       <div className={styles.brand}>
         <img src="/logo.png" alt="Logo" className={styles.brandLogo} />
         {!isCollapsed && (
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', whiteSpace: 'normal', paddingRight: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', whiteSpace: 'normal', paddingRight: '4px', flex: 1 }}>
             <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--gold)', lineHeight: '1.2', letterSpacing: '0.3px', marginBottom: '2px' }}>Sistem Informasi Administrasi Digital</span>
             <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'white', lineHeight: '1.2' }}>MTs Almaarif 01 Singosari</span>
           </div>
         )}
+        <button 
+          className={styles.toggleBtnTop} 
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          title={isCollapsed ? "Buka Sidebar" : "Sembunyikan Sidebar"}
+        >
+          <i className={`fas ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-left'}`}></i>
+        </button>
       </div>
       
       <nav className={styles.menu} ref={menuRef}>
@@ -71,15 +78,6 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className={styles.toggleWrapper}>
-        <button 
-          className={styles.toggleBtn} 
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          title={isCollapsed ? "Buka Sidebar" : "Sembunyikan Sidebar"}
-        >
-          <i className={`fas ${isCollapsed ? 'fa-chevron-right' : 'fa-chevron-left'}`}></i>
-        </button>
-      </div>
     </aside>
   );
 }
