@@ -47,7 +47,7 @@ export async function GET() {
         nama,
         foto,
         status: row.get('Status') || '',
-        nip: row.get('NIP') || '',
+        nip: row.get('Nomor Induk Pegawai') || '',
         pegId: row.get('PEG ID') || '',
         passEmisHijau: row.get('Pass EMIS Hijau') || '',
         passEmisDev: row.get('Pass EMIS DEV') || '',

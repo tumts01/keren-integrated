@@ -92,7 +92,7 @@ export default function GuruPage() {
                   <div className={styles.infoValue}>{selectedGuru.nama || '-'}</div>
                 </div>
                 <div className={styles.infoGroup}>
-                  <span className={styles.infoLabel}>NIP</span>
+                  <span className={styles.infoLabel}>Nomor Induk Pegawai</span>
                   <div className={styles.infoValue}>{selectedGuru.nip || '-'}</div>
                 </div>
                 <div className={styles.infoGroup}>
@@ -173,7 +173,7 @@ export default function GuruPage() {
                 <tr>
                   <th>Profil (Nama)</th>
                   <th>Status</th>
-                  <th>NIP</th>
+                  <th>Nomor Induk Pegawai</th>
                   <th>PEG ID</th>
                   <th>Jabatan</th>
                   <th>Jenis Kelamin</th>
