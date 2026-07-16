@@ -152,7 +152,8 @@ export default function KelasPage() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
+      <div className={styles.stickyTop}>
+        <div className={styles.header}>
         <div className={styles.title}>
           <div className={styles.titleIcon}>
             <i className="fas fa-school"></i>
@@ -185,6 +186,7 @@ export default function KelasPage() {
           </div>
         </div>
       )}
+      </div>
 
       {loading ? (
         <div className={styles.card}>

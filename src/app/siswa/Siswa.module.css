@@ -6,14 +6,24 @@
   gap: 24px;
 }
 
-/* Stats Cards */
-.statsGrid {
+.stickyTop {
   position: sticky;
-  top: 0;
+  top: -24px;
   z-index: 20;
   background-color: var(--bg-main);
-  padding: 10px 0;
-  margin: -10px 0 14px 0;
+  padding-top: 24px;
+  padding-bottom: 16px;
+  margin-left: -24px;
+  margin-right: -24px;
+  padding-left: 24px;
+  padding-right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Stats Cards */
+.statsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;

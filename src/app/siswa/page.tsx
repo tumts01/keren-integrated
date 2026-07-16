@@ -167,7 +167,8 @@ export default function SiswaPage() {
         </div>
       )}
 
-      <div className={styles.header}>
+      <div className={styles.stickyTop}>
+        <div className={styles.header}>
         <div className={styles.title}>
           <div className={styles.titleIcon}>
             <i className="fas fa-users"></i>
@@ -238,6 +239,7 @@ export default function SiswaPage() {
           </div>
         </div>
       )}
+      </div>
 
       <div className={styles.card}>
         {loading ? (
