@@ -42,6 +42,13 @@
   gap: 8px;
   overflow-y: auto;
   overflow-x: hidden;
+  /* Hide scrollbar for seamless visual connection on Windows */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.menu::-webkit-scrollbar {
+  display: none;
 }
 
 .menuItemWrapper {
