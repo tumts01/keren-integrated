@@ -27,6 +27,7 @@ export async function GET() {
     const rombelStats: Record<string, {
       rombel: string,
       tingkat: string,
+      tahunAjaran: string,
       lakiAktif: number,
       perempuanAktif: number,
       totalAktif: number
@@ -34,21 +35,25 @@ export async function GET() {
 
     rowsSiswa.forEach(r => {
       const rombel = (r.get('ROMBEL') || '').trim().toUpperCase();
+      const tahunAjaran = (r.get('TAHUN AJARAN') || '').trim();
       const status = (r.get('STATUS SISWA') || '').toLowerCase().trim();
       const jk = (r.get('JENIS KELAMIN') || '').toLowerCase();
       
-      if (!rombel) return;
+      if (!rombel || !tahunAjaran) return;
+      
+      const key = `${tahunAjaran}__${rombel}`;
       
       // Init rombel if not exists
-      if (!rombelStats[rombel]) {
+      if (!rombelStats[key]) {
         let tingkat = 'Lainnya';
         if (rombel.startsWith('7')) tingkat = '7';
         else if (rombel.startsWith('8')) tingkat = '8';
         else if (rombel.startsWith('9')) tingkat = '9';
 
-        rombelStats[rombel] = {
+        rombelStats[key] = {
           rombel,
           tingkat,
+          tahunAjaran,
           lakiAktif: 0,
           perempuanAktif: 0,
           totalAktif: 0
@@ -58,9 +63,9 @@ export async function GET() {
       // Check active
       const isAktif = ['aktif', 'lulus'].includes(status);
       if (isAktif) {
-        rombelStats[rombel].totalAktif++;
-        if (jk.includes('laki')) rombelStats[rombel].lakiAktif++;
-        if (jk.includes('perempuan')) rombelStats[rombel].perempuanAktif++;
+        rombelStats[key].totalAktif++;
+        if (jk.includes('laki')) rombelStats[key].lakiAktif++;
+        if (jk.includes('perempuan')) rombelStats[key].perempuanAktif++;
       }
     });
 

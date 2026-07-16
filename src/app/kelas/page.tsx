@@ -5,6 +5,7 @@ import styles from './Kelas.module.css';
 interface RombelStat {
   rombel: string;
   tingkat: string;
+  tahunAjaran: string;
   lakiAktif: number;
   perempuanAktif: number;
   totalAktif: number;
@@ -16,8 +17,16 @@ export default function KelasPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [savingMap, setSavingMap] = useState<Record<string, boolean>>({});
+  const [selectedTahun, setSelectedTahun] = useState<string>('Semua');
+  const [userRole, setUserRole] = useState<string>('');
 
   useEffect(() => {
+    // Ambil data user dari localStorage untuk cek role admin
+    const storedUser = localStorage.getItem('userApp');
+    if (storedUser) {
+      const parsedUser = JSON.parse(storedUser);
+      setUserRole(parsedUser.role || '');
+    }
     fetchData();
   }, []);
 
@@ -27,6 +36,13 @@ export default function KelasPage() {
       const result = await res.json();
       if (result.success) {
         setData(result.data);
+        
+        // Auto select tahun ajaran terbaru
+        const tahunList = Array.from(new Set(result.data.map((s: RombelStat) => s.tahunAjaran).filter(Boolean))) as string[];
+        if (tahunList.length > 0) {
+          tahunList.sort((a, b) => b.localeCompare(a));
+          setSelectedTahun(tahunList[0]);
+        }
       } else {
         setError(result.error);
       }
@@ -62,8 +78,10 @@ export default function KelasPage() {
     }
   };
 
+  const filteredData = data.filter(r => selectedTahun === 'Semua' || r.tahunAjaran === selectedTahun);
+
   const renderTable = (tingkat: string, title: string) => {
-    const tableData = data.filter(r => r.tingkat === tingkat);
+    const tableData = filteredData.filter(r => r.tingkat === tingkat);
     if (tableData.length === 0) return null;
 
     const totalLaki = tableData.reduce((acc, curr) => acc + curr.lakiAktif, 0);
@@ -89,23 +107,27 @@ export default function KelasPage() {
                 <tr key={row.rombel}>
                   <td style={{ fontWeight: 600 }}>{row.rombel}</td>
                   <td>
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <input 
-                        type="text"
-                        className={styles.inputWali}
-                        value={row.waliKelas}
-                        onChange={(e) => handleWaliChange(row.rombel, e.target.value)}
-                        placeholder="Ketik nama wali kelas..."
-                      />
-                      <button 
-                        className={styles.saveBtn}
-                        onClick={() => handleSaveWali(row.rombel, row.waliKelas)}
-                        disabled={savingMap[row.rombel]}
-                      >
-                        {savingMap[row.rombel] ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>}
-                        Simpan
-                      </button>
-                    </div>
+                    {userRole === 'admin' ? (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input 
+                          type="text"
+                          className={styles.inputWali}
+                          value={row.waliKelas}
+                          onChange={(e) => handleWaliChange(row.rombel, e.target.value)}
+                          placeholder="Ketik nama wali kelas..."
+                        />
+                        <button 
+                          className={styles.saveBtn}
+                          onClick={() => handleSaveWali(row.rombel, row.waliKelas)}
+                          disabled={savingMap[row.rombel]}
+                        >
+                          {savingMap[row.rombel] ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>}
+                          Simpan
+                        </button>
+                      </div>
+                    ) : (
+                      <span style={{ fontWeight: 500 }}>{row.waliKelas || '-'}</span>
+                    )}
                   </td>
                   <td style={{ textAlign: 'center' }}>{row.lakiAktif}</td>
                   <td style={{ textAlign: 'center' }}>{row.perempuanAktif}</td>
@@ -125,7 +147,8 @@ export default function KelasPage() {
     );
   };
 
-  const grandTotalSiswa = data.reduce((acc, curr) => acc + curr.totalAktif, 0);
+  const uniqueTahun = Array.from(new Set(data.map(r => r.tahunAjaran).filter(Boolean))).sort((a, b) => b.localeCompare(a));
+  const grandTotalSiswa = filteredData.reduce((acc, curr) => acc + curr.totalAktif, 0);
 
   return (
     <div className={styles.container}>
@@ -136,6 +159,18 @@ export default function KelasPage() {
           </div>
           Data Kelas & Rombel
         </div>
+        {!loading && !error && (
+          <select 
+            className={styles.filterSelect}
+            value={selectedTahun}
+            onChange={(e) => setSelectedTahun(e.target.value)}
+          >
+            <option value="Semua">Semua Tahun Ajaran</option>
+            {uniqueTahun.map(tahun => (
+              <option key={tahun} value={tahun}>{tahun}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       {!loading && !error && (
