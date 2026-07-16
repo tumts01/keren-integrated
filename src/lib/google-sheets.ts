@@ -44,3 +44,10 @@ export const getIndukDoc = async () => {
   await doc.loadInfo();
   return doc;
 };
+
+export const getPersuratanDoc = async () => {
+  const auth = getAuth();
+  const doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_PERSURATAN_ID as string, auth);
+  await doc.loadInfo();
+  return doc;
+};
