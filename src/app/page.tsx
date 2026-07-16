@@ -59,8 +59,8 @@ export default function Home() {
       {/* Kartu Sambutan */}
       <div className={styles.welcomeCard}>
         <div className={styles.welcomeContent}>
-          <h1 className={styles.welcomeTitle}>Halo, {profile.nama.split(' ')[0]}! 👋</h1>
-          <p className={styles.welcomeSubtitle}>Awali harimu dengan Bismillah <i className="fas fa-praying-hands" style={{ marginLeft: '4px' }}></i></p>
+          <h1 className={styles.welcomeTitle}>Awali harimu dengan Bismillah <i className="fas fa-praying-hands" style={{ marginLeft: '4px' }}></i></h1>
+          <p className={styles.welcomeSubtitle}>Selamat datang kembali di KEREN. Semoga harimu menyenangkan!</p>
         </div>
         <i className="fas fa-sun" style={{ fontSize: '8rem', color: 'rgba(255,255,255,0.2)', position: 'absolute', right: '-20px', bottom: '-20px' }}></i>
       </div>
