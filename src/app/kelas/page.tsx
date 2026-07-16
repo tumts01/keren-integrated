@@ -17,7 +17,7 @@ export default function KelasPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [savingMap, setSavingMap] = useState<Record<string, boolean>>({});
-  const [selectedTahun, setSelectedTahun] = useState<string>('Semua');
+  const [selectedTahun, setSelectedTahun] = useState<string>('');
   const [userRole, setUserRole] = useState<string>('');
 
   useEffect(() => {
@@ -78,7 +78,7 @@ export default function KelasPage() {
     }
   };
 
-  const filteredData = data.filter(r => selectedTahun === 'Semua' || r.tahunAjaran === selectedTahun);
+  const filteredData = data.filter(r => r.tahunAjaran === selectedTahun);
 
   const renderTable = (tingkat: string, title: string) => {
     const tableData = filteredData.filter(r => r.tingkat === tingkat);
@@ -165,7 +165,6 @@ export default function KelasPage() {
             value={selectedTahun}
             onChange={(e) => setSelectedTahun(e.target.value)}
           >
-            <option value="Semua">Semua Tahun Ajaran</option>
             {uniqueTahun.map(tahun => (
               <option key={tahun} value={tahun}>{tahun}</option>
             ))}
