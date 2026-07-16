@@ -2,134 +2,338 @@
 import { useState, useEffect } from 'react';
 import styles from './Siswa.module.css';
 
-export default function SiswaPage() {
-  const [data, setData] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [meta, setMeta] = useState({ total: 0, totalPages: 1 });
+interface Siswa {
+  id: number;
+  no: string;
+  nisn: string;
+  nama: string;
+  foto?: string;
+  jenisKelamin: string;
+  rombel: string;
+  status: string;
+  domisili: string;
+  alamat: string;
+  namaAyah: string;
+  namaIbu: string;
+  noHp: string;
+  tahunAjaran: string;
+}
 
-  const fetchData = async (p = 1, s = '') => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/siswa?page=${p}&limit=20&search=${s}`);
-      const json = await res.json();
-      if (json.data) {
-        setData(json.data);
-        setMeta(json.meta);
-      }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+export default function SiswaPage() {
+  const [data, setData] = useState<Siswa[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedSiswa, setSelectedSiswa] = useState<Siswa | null>(null);
+  const [selectedTahun, setSelectedTahun] = useState<string>('Semua');
+  const itemsPerPage = 10;
 
   useEffect(() => {
-    // Debounce search
-    const timer = setTimeout(() => {
-      setPage(1);
-      fetchData(1, search);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [search]);
+    const fetchData = async () => {
+      try {
+        const res = await fetch('/api/siswa');
+        const result = await res.json();
+        if (result.success) {
+          setData(result.data);
+          
+          // Set default tahun ajaran to the most recent/common one if any exist
+          const tahunList = Array.from(new Set(result.data.map((s: Siswa) => s.tahunAjaran).filter(Boolean))) as string[];
+          if (tahunList.length > 0) {
+            // Sort to try and get the latest
+            tahunList.sort((a, b) => b.localeCompare(a));
+            setSelectedTahun(tahunList[0]);
+          }
+        } else {
+          setError(result.error);
+        }
+      } catch (err) {
+        setError('Gagal memuat data. Periksa koneksi internet Anda.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
-  const handlePrev = () => {
-    if (page > 1) {
-      setPage(page - 1);
-      fetchData(page - 1, search);
-    }
-  };
+  const uniqueTahun = Array.from(new Set(data.map(s => s.tahunAjaran).filter(Boolean))).sort((a, b) => b.localeCompare(a));
 
-  const handleNext = () => {
-    if (page < meta.totalPages) {
-      setPage(page + 1);
-      fetchData(page + 1, search);
-    }
-  };
+  // Filter based on Tahun Ajaran and Search Term
+  const filteredData = data.filter(s => {
+    const matchTahun = selectedTahun === 'Semua' || s.tahunAjaran === selectedTahun;
+    const matchSearch = s.nama.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                        s.nisn.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        s.rombel.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchTahun && matchSearch;
+  });
+
+  // Calculate Stats based on selected Tahun Ajaran (or all if 'Semua')
+  const statsData = data.filter(s => selectedTahun === 'Semua' || s.tahunAjaran === selectedTahun);
+  const totalSiswa = statsData.length;
+  const totalLaki = statsData.filter(s => s.jenisKelamin.toLowerCase().includes('laki')).length;
+  const totalPr = statsData.filter(s => s.jenisKelamin.toLowerCase().includes('perempuan')).length;
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentData = filteredData.slice(startIndex, startIndex + itemsPerPage);
+
+  // Reset page to 1 when search or filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedTahun]);
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <div>
-          <h1 className={styles.title}>Data Siswa Terpadu</h1>
-          <p className={styles.subtitle}>Kelola dan pantau data profil seluruh siswa secara real-time dari Google Sheets.</p>
+      {selectedSiswa && (
+        <div className={styles.modalOverlay} onClick={() => setSelectedSiswa(null)}>
+          <div className={styles.modalCard} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2><i className="fas fa-id-card"></i> Detail Siswa</h2>
+              <button className={styles.closeBtn} onClick={() => setSelectedSiswa(null)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <div className={styles.modalPhotoFrame}>
+                {selectedSiswa.foto ? (
+                  <img src={selectedSiswa.foto} alt="Profile" className={styles.modalPhoto} />
+                ) : (
+                  <div style={{ fontSize: '4rem', fontWeight: 700, color: '#94a3b8' }}>
+                    {selectedSiswa.nama.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                )}
+              </div>
+              <div className={styles.modalInfo}>
+                <div className={`${styles.infoGroup} ${styles.infoFull}`}>
+                  <span className={styles.infoLabel}>Nama Lengkap</span>
+                  <div className={styles.infoValue}>{selectedSiswa.nama || '-'}</div>
+                </div>
+                <div className={styles.infoGroup}>
+                  <span className={styles.infoLabel}>NISN</span>
+                  <div className={styles.infoValue}>{selectedSiswa.nisn || '-'}</div>
+                </div>
+                <div className={styles.infoGroup}>
+                  <span className={styles.infoLabel}>Rombel / Kelas</span>
+                  <div className={styles.infoValue}>{selectedSiswa.rombel || '-'}</div>
+                </div>
+                <div className={styles.infoGroup}>
+                  <span className={styles.infoLabel}>Status</span>
+                  <div className={styles.infoValue}>
+                    <span className={`${styles.badge} ${selectedSiswa.status.toLowerCase().includes('aktif') && !selectedSiswa.status.toLowerCase().includes('non') && !selectedSiswa.status.toLowerCase().includes('pindah') ? styles.badgeAktif : styles.badgeNon}`}>
+                      {selectedSiswa.status || '-'}
+                    </span>
+                  </div>
+                </div>
+                <div className={styles.infoGroup}>
+                  <span className={styles.infoLabel}>Jenis Kelamin</span>
+                  <div className={styles.infoValue}>{selectedSiswa.jenisKelamin || '-'}</div>
+                </div>
+                <div className={styles.infoGroup}>
+                  <span className={styles.infoLabel}>No. HP / WA (Ortu)</span>
+                  <div className={styles.infoValue}><i className="fab fa-whatsapp" style={{ color: '#22c55e', marginRight: '6px' }}></i> {selectedSiswa.noHp || '-'}</div>
+                </div>
+                <div className={`${styles.infoGroup} ${styles.infoFull}`}>
+                  <span className={styles.infoLabel}>Nama Orang Tua</span>
+                  <div className={styles.infoValue}>
+                    Ayah: {selectedSiswa.namaAyah || '-'} <br/>
+                    Ibu: {selectedSiswa.namaIbu || '-'}
+                  </div>
+                </div>
+                <div className={`${styles.infoGroup} ${styles.infoFull}`}>
+                  <span className={styles.infoLabel}>Domisili & Alamat</span>
+                  <div className={styles.infoValue}>
+                    <strong>{selectedSiswa.domisili || '-'}</strong> - {selectedSiswa.alamat || '-'}
+                  </div>
+                </div>
+                <div className={styles.infoGroup}>
+                  <span className={styles.infoLabel}>Tahun Ajaran</span>
+                  <div className={styles.infoValue}>{selectedSiswa.tahunAjaran || '-'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className={styles.controls}>
-          <input 
-            type="text" 
-            placeholder="Cari Nama / NISN..." 
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className={styles.searchInput}
-          />
-          <button className="btn btn-primary" onClick={() => fetchData(page, search)}>
-            <i className="fas fa-sync-alt"></i> Refresh
+      )}
+
+      <div className={styles.header}>
+        <div className={styles.title}>
+          <div className={styles.titleIcon}>
+            <i className="fas fa-users"></i>
+          </div>
+          Data Siswa
+        </div>
+        
+        <div className={styles.actions}>
+          <select 
+            className={styles.filterSelect}
+            value={selectedTahun}
+            onChange={(e) => setSelectedTahun(e.target.value)}
+          >
+            <option value="Semua">Semua Tahun Ajaran</option>
+            {uniqueTahun.map(tahun => (
+              <option key={tahun} value={tahun}>{tahun}</option>
+            ))}
+          </select>
+          <div className={styles.searchBox}>
+            <i className={`fas fa-search ${styles.searchIcon}`}></i>
+            <input 
+              type="text" 
+              placeholder="Cari nama, NISN, atau kelas..." 
+              className={styles.searchInput}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <button className="btn btn-primary">
+            <i className="fas fa-plus"></i> Tambah Siswa
           </button>
         </div>
       </div>
 
-      <div className="card">
-        <div className={styles.tableContainer}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>No</th>
-                <th>NISN</th>
-                <th>Nama Siswa</th>
-                <th>Rombel (Kelas)</th>
-                <th>KIP / KPS</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '40px' }}>
-                    <i className="fas fa-spinner fa-spin fa-2x" style={{ color: 'var(--primary)' }}></i>
-                    <p style={{ marginTop: '12px', color: 'var(--text-muted)' }}>Memuat data siswa...</p>
-                  </td>
-                </tr>
-              ) : data.length === 0 ? (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                    Tidak ada data siswa ditemukan.
-                  </td>
-                </tr>
-              ) : (
-                data.map((item, idx) => (
-                  <tr key={idx}>
-                    <td>{(page - 1) * 20 + idx + 1}</td>
-                    <td>{item['NISN'] || '-'}</td>
-                    <td style={{ fontWeight: 500 }}>{item['NAMA'] || item['Nama'] || item['NAMA SISWA'] || '-'}</td>
-                    <td>{item['ROMBEL'] || item['Rombel'] || '-'}</td>
-                    <td>
-                      {item['KIP'] === 'YA' ? (
-                        <span style={{ background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600 }}>KIP</span>
-                      ) : '-'}
-                    </td>
-                    <td>Aktif</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        
-        {!loading && (
-          <div className={styles.pagination}>
-            <div className={styles.pageInfo}>
-              Menampilkan {data.length} dari {meta.total} siswa (Halaman {page} dari {meta.totalPages})
+      {!loading && !error && (
+        <div className={styles.statsGrid}>
+          <div className={styles.statCard} style={{ borderLeftColor: '#3b82f6' }}>
+            <div className={styles.statIcon} style={{ color: '#3b82f6', background: '#eff6ff' }}>
+              <i className="fas fa-user-graduate"></i>
             </div>
-            <div className={styles.pageControls}>
-              <button className={styles.pageBtn} onClick={handlePrev} disabled={page <= 1}>
-                <i className="fas fa-chevron-left"></i> Sebelumnya
-              </button>
-              <button className={styles.pageBtn} onClick={handleNext} disabled={page >= meta.totalPages}>
-                Selanjutnya <i className="fas fa-chevron-right"></i>
-              </button>
+            <div className={styles.statInfo}>
+              <span className={styles.statLabel}>Total Siswa</span>
+              <span className={styles.statValue}>{totalSiswa}</span>
             </div>
           </div>
+          <div className={styles.statCard} style={{ borderLeftColor: '#10b981' }}>
+            <div className={styles.statIcon} style={{ color: '#10b981', background: '#dcfce7' }}>
+              <i className="fas fa-male"></i>
+            </div>
+            <div className={styles.statInfo}>
+              <span className={styles.statLabel}>Laki-laki</span>
+              <span className={styles.statValue}>{totalLaki}</span>
+            </div>
+          </div>
+          <div className={styles.statCard} style={{ borderLeftColor: '#ec4899' }}>
+            <div className={styles.statIcon} style={{ color: '#ec4899', background: '#fce7f3' }}>
+              <i className="fas fa-female"></i>
+            </div>
+            <div className={styles.statInfo}>
+              <span className={styles.statLabel}>Perempuan</span>
+              <span className={styles.statValue}>{totalPr}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className={styles.card}>
+        {loading ? (
+          <div className={styles.loading}>
+            <i className={`fas fa-circle-notch ${styles.spinner}`}></i>
+            <p>Memuat Data Siswa dari Spreadsheet...</p>
+          </div>
+        ) : error ? (
+          <div className={styles.loading} style={{ color: 'var(--danger)' }}>
+            <i className="fas fa-exclamation-triangle" style={{ fontSize: '2rem' }}></i>
+            <p>{error}</p>
+          </div>
+        ) : (
+          <>
+          <div className={styles.tableContainer}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Profil (Nama)</th>
+                  <th>Status</th>
+                  <th>NO</th>
+                  <th>NISN</th>
+                  <th>Jenis Kelamin</th>
+                  <th>Rombel</th>
+                  <th>Domisili</th>
+                  <th>Alamat</th>
+                  <th>Nama Ayah</th>
+                  <th>Nama Ibu</th>
+                  <th>No. WA</th>
+                  <th>Tahun Ajaran</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {currentData.length > 0 ? (
+                  currentData.map(siswa => (
+                    <tr key={siswa.id}>
+                      <td style={{ minWidth: '250px' }}>
+                        <div className={styles.profileCell}>
+                          {siswa.foto ? (
+                            <img src={siswa.foto} alt="Profile" className={styles.avatar} style={{ objectFit: 'cover' }} />
+                          ) : (
+                            <div className={styles.avatar}>
+                              {siswa.nama.charAt(0).toUpperCase() || 'U'}
+                            </div>
+                          )}
+                          <div>
+                            <span className={styles.nama}>{siswa.nama || '-'}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`${styles.badge} ${siswa.status.toLowerCase().includes('aktif') && !siswa.status.toLowerCase().includes('non') && !siswa.status.toLowerCase().includes('pindah') ? styles.badgeAktif : styles.badgeNon}`}>
+                          {siswa.status || 'Tidak Diketahui'}
+                        </span>
+                      </td>
+                      <td>{siswa.no || '-'}</td>
+                      <td>{siswa.nisn || '-'}</td>
+                      <td>{siswa.jenisKelamin || '-'}</td>
+                      <td>{siswa.rombel || '-'}</td>
+                      <td>{siswa.domisili || '-'}</td>
+                      <td>{siswa.alamat || '-'}</td>
+                      <td>{siswa.namaAyah || '-'}</td>
+                      <td>{siswa.namaIbu || '-'}</td>
+                      <td>{siswa.noHp || '-'}</td>
+                      <td>{siswa.tahunAjaran || '-'}</td>
+                      <td>
+                        <button 
+                          className="btn btn-primary" 
+                          style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                          onClick={() => setSelectedSiswa(siswa)}
+                        >
+                          Detail
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={13} style={{ textAlign: 'center', padding: '40px' }}>
+                      <i className="fas fa-folder-open" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
+                      Tidak ada data siswa yang ditemukan.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', borderBottomLeftRadius: '16px', borderBottomRightRadius: '16px' }}>
+              <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                Menampilkan {startIndex + 1} - {Math.min(startIndex + itemsPerPage, filteredData.length)} dari {filteredData.length} data
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+                  disabled={currentPage === 1}
+                  style={{ padding: '6px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', background: currentPage === 1 ? '#f1f5f9' : 'white', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', color: '#475569' }}
+                >
+                  Sebelumnya
+                </button>
+                <button 
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
+                  disabled={currentPage === totalPages}
+                  style={{ padding: '6px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', background: currentPage === totalPages ? '#f1f5f9' : 'white', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', color: '#475569' }}
+                >
+                  Selanjutnya
+                </button>
+              </div>
+            </div>
+          )}
+        </>
         )}
       </div>
     </div>

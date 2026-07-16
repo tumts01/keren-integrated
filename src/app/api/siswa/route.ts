@@ -1,45 +1,60 @@
 import { NextResponse } from 'next/server';
-import { getSiswaDoc } from '@/lib/google-sheets';
+import { getIndukDoc } from '@/lib/google-sheets';
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const search = (searchParams.get('search') || '').toLowerCase();
-
-    const doc = await getSiswaDoc();
-    const sheet = doc.sheetsByIndex[0]; // Assuming first sheet contains Data Siswa
-    const rows = await sheet.getRows();
-
-    let data = rows.map(row => row.toObject());
-
-    // Basic search by NAMA or NISN
-    if (search) {
-      data = data.filter(item => {
-        const name = (item['NAMA'] || item['Nama'] || item['NAMA SISWA'] || '').toLowerCase();
-        const nisn = (item['NISN'] || '').toLowerCase();
-        return name.includes(search) || nisn.includes(search);
-      });
+    const doc = await getIndukDoc();
+    const sheet = doc.sheetsByTitle['DATABASE'];
+    
+    if (!sheet) {
+      return NextResponse.json({ success: false, error: 'Tab DATABASE tidak ditemukan' }, { status: 404 });
     }
 
-    const total = data.length;
-    const totalPages = Math.ceil(total / limit);
-    const offset = (page - 1) * limit;
-    const paginatedData = data.slice(offset, offset + limit);
-
-    return NextResponse.json({
-      data: paginatedData,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages
+    const rows = await sheet.getRows();
+    
+    // Helper untuk mengubah link gdrive menjadi raw image link
+    const getImageUrl = (url: string) => {
+      if (!url) return '';
+      const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (url.includes('drive.google.com') && match && match[1]) {
+        return `https://lh3.googleusercontent.com/d/${match[1]}=w200-h200`;
       }
+      return url;
+    };
+
+    // Map data to array of objects
+    const data = rows.map((row, index) => {
+      const nama = row.get('NAMA') || '';
+      const rawFoto = row.get('LINK URL FOTO 1') || '';
+      const foto = getImageUrl(rawFoto);
+      
+      const noHpAyah = row.get('NOMOR TELEPON AYAH KANDUNG') || '';
+      const noHpIbu = row.get('NOMOR TELEPON IBU KANDUNG') || '';
+      let noHp = noHpAyah;
+      if (!noHp && noHpIbu) noHp = noHpIbu;
+      else if (noHp && noHpIbu && noHp !== noHpIbu) noHp += ` / ${noHpIbu}`;
+
+      return {
+        id: index,
+        no: row.get('NO') || (index + 1).toString(),
+        nisn: row.get('NISN') || '',
+        nama,
+        foto,
+        jenisKelamin: row.get('JENIS KELAMIN') || '',
+        rombel: row.get('ROMBEL') || '',
+        status: row.get('STATUS') || '',
+        domisili: row.get('DOMISILI') || '',
+        alamat: row.get('ALAMAT') || '',
+        namaAyah: row.get('NAMA AYAH KANDUNG') || '',
+        namaIbu: row.get('NAMA IBU KANDUNG') || '',
+        noHp,
+        tahunAjaran: row.get('TAHUN AJARAN') || ''
+      };
     });
 
+    return NextResponse.json({ success: true, data });
   } catch (error: any) {
-    console.error('Error fetching Siswa Data:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Fetch Siswa Error:', error);
+    return NextResponse.json({ success: false, error: 'Gagal mengambil data dari Database' }, { status: 500 });
   }
 }
