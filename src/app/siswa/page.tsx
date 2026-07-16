@@ -69,12 +69,16 @@ export default function SiswaPage() {
 
   // Calculate Stats based on selected Tahun Ajaran (or all if 'Semua')
   const statsData = data.filter(s => selectedTahun === 'Semua' || s.tahunAjaran === selectedTahun);
-  const activeData = statsData.filter(s => s.status.toLowerCase().includes('aktif'));
-  const nonActiveData = statsData.filter(s => !s.status.toLowerCase().includes('aktif'));
+  const activeData = statsData.filter(s => s.status.toLowerCase().trim() === 'aktif');
+  const nonActiveData = statsData.filter(s => s.status.toLowerCase().trim() !== 'aktif' && s.status.trim() !== '');
 
   const totalSiswa = activeData.length;
   const totalLaki = activeData.filter(s => s.jenisKelamin.toLowerCase().includes('laki')).length;
   const totalPr = activeData.filter(s => s.jenisKelamin.toLowerCase().includes('perempuan')).length;
+
+  const totalKelas7Aktif = activeData.filter(s => s.rombel.startsWith('7')).length;
+  const totalKelas8Aktif = activeData.filter(s => s.rombel.startsWith('8')).length;
+  const totalKelas9Aktif = activeData.filter(s => s.rombel.startsWith('9')).length;
 
   const totalKelas7Non = nonActiveData.filter(s => s.rombel.startsWith('7')).length;
   const totalKelas8Non = nonActiveData.filter(s => s.rombel.startsWith('8')).length;
@@ -207,7 +211,9 @@ export default function SiswaPage() {
               <span className={styles.statLabel}>Total Siswa Aktif</span>
               <span className={styles.statValue}>{totalSiswa}</span>
               <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px', fontWeight: 500 }}>
-                Non-Aktif Kls 7: {totalKelas7Non} &bull; Kls 8: {totalKelas8Non} &bull; Kls 9: {totalKelas9Non}
+                Kls 7: {totalKelas7Aktif} Aktif ({totalKelas7Non} Non) <br/>
+                Kls 8: {totalKelas8Aktif} Aktif ({totalKelas8Non} Non) <br/>
+                Kls 9: {totalKelas9Aktif} Aktif ({totalKelas9Non} Non)
               </div>
             </div>
           </div>
@@ -251,7 +257,6 @@ export default function SiswaPage() {
                 <tr>
                   <th>Profil (Nama)</th>
                   <th>Status</th>
-                  <th>NO</th>
                   <th>NISN</th>
                   <th>Jenis Kelamin</th>
                   <th>Rombel</th>
@@ -283,11 +288,10 @@ export default function SiswaPage() {
                         </div>
                       </td>
                       <td>
-                        <span className={`${styles.badge} ${siswa.status.toLowerCase().includes('aktif') && !siswa.status.toLowerCase().includes('non') && !siswa.status.toLowerCase().includes('pindah') ? styles.badgeAktif : styles.badgeNon}`}>
+                        <span className={`${styles.badge} ${siswa.status.toLowerCase().trim() === 'aktif' ? styles.badgeAktif : styles.badgeNon}`}>
                           {siswa.status || 'Tidak Diketahui'}
                         </span>
                       </td>
-                      <td>{siswa.no || '-'}</td>
                       <td>{siswa.nisn || '-'}</td>
                       <td>{siswa.jenisKelamin || '-'}</td>
                       <td>{siswa.rombel || '-'}</td>
@@ -310,7 +314,7 @@ export default function SiswaPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={13} style={{ textAlign: 'center', padding: '40px' }}>
+                    <td colSpan={12} style={{ textAlign: 'center', padding: '40px' }}>
                       <i className="fas fa-folder-open" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
                       Tidak ada data siswa yang ditemukan.
                     </td>
