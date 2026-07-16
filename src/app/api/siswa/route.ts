@@ -44,7 +44,7 @@ export async function GET() {
         rombel: row.get('ROMBEL') || '',
         status: row.get('STATUS') || '',
         domisili: row.get('DOMISILI') || '',
-        alamat: row.get('ALAMAT') || '',
+        alamat: row.get('ALAMAT AYAH KANDUNG') || '',
         namaAyah: row.get('NAMA AYAH KANDUNG') || '',
         namaIbu: row.get('NAMA IBU KANDUNG') || '',
         noHp,

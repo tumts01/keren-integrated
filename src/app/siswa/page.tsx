@@ -73,6 +73,10 @@ export default function SiswaPage() {
   const totalLaki = statsData.filter(s => s.jenisKelamin.toLowerCase().includes('laki')).length;
   const totalPr = statsData.filter(s => s.jenisKelamin.toLowerCase().includes('perempuan')).length;
 
+  const totalKelas7 = statsData.filter(s => s.rombel.startsWith('7')).length;
+  const totalKelas8 = statsData.filter(s => s.rombel.startsWith('8')).length;
+  const totalKelas9 = statsData.filter(s => s.rombel.startsWith('9')).length;
+
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentData = filteredData.slice(startIndex, startIndex + itemsPerPage);
@@ -199,6 +203,9 @@ export default function SiswaPage() {
             <div className={styles.statInfo}>
               <span className={styles.statLabel}>Total Siswa</span>
               <span className={styles.statValue}>{totalSiswa}</span>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px', fontWeight: 500 }}>
+                Kls 7: {totalKelas7} &bull; Kls 8: {totalKelas8} &bull; Kls 9: {totalKelas9}
+              </div>
             </div>
           </div>
           <div className={styles.statCard} style={{ borderLeftColor: '#10b981' }}>
