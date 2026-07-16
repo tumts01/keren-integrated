@@ -27,6 +27,7 @@ export default function GuruPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedGuru, setSelectedGuru] = useState<Guru | null>(null);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -65,6 +66,65 @@ export default function GuruPage() {
 
   return (
     <div className={styles.container}>
+      {selectedGuru && (
+        <div className={styles.modalOverlay} onClick={() => setSelectedGuru(null)}>
+          <div className={styles.modalCard} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2><i className="fas fa-id-card"></i> Detail Guru / Staf</h2>
+              <button className={styles.closeBtn} onClick={() => setSelectedGuru(null)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <div className={styles.modalPhotoFrame}>
+                {/* No photo available in DB GTK yet, using initial */}
+                <div style={{ fontSize: '4rem', fontWeight: 700, color: '#94a3b8' }}>
+                  {selectedGuru.nama.charAt(0).toUpperCase() || 'U'}
+                </div>
+              </div>
+              <div className={styles.modalInfo}>
+                <div className={`${styles.infoGroup} ${styles.infoFull}`}>
+                  <span className={styles.infoLabel}>Nama Lengkap</span>
+                  <div className={styles.infoValue}>{selectedGuru.nama || '-'}</div>
+                </div>
+                <div className={styles.infoGroup}>
+                  <span className={styles.infoLabel}>NIP</span>
+                  <div className={styles.infoValue}>{selectedGuru.nip || '-'}</div>
+                </div>
+                <div className={styles.infoGroup}>
+                  <span className={styles.infoLabel}>Jabatan</span>
+                  <div className={styles.infoValue}>{selectedGuru.jabatan || '-'}</div>
+                </div>
+                <div className={styles.infoGroup}>
+                  <span className={styles.infoLabel}>Status</span>
+                  <div className={styles.infoValue}>
+                    <span className={`${styles.badge} ${selectedGuru.status.toLowerCase().includes('aktif') && !selectedGuru.status.toLowerCase().includes('non') ? styles.badgeAktif : styles.badgeNon}`}>
+                      {selectedGuru.status || '-'}
+                    </span>
+                  </div>
+                </div>
+                <div className={styles.infoGroup}>
+                  <span className={styles.infoLabel}>No. HP / WA</span>
+                  <div className={styles.infoValue}><i className="fab fa-whatsapp" style={{ color: '#22c55e', marginRight: '6px' }}></i> {selectedGuru.noHp || '-'}</div>
+                </div>
+                <div className={`${styles.infoGroup} ${styles.infoFull}`}>
+                  <span className={styles.infoLabel}>Alamat Lengkap</span>
+                  <div className={styles.infoValue}>{selectedGuru.alamat || '-'}</div>
+                </div>
+                <div className={styles.infoGroup}>
+                  <span className={styles.infoLabel}>Tempat, Tgl Lahir</span>
+                  <div className={styles.infoValue}>{selectedGuru.tempatLahir || '-'}, {selectedGuru.tanggalLahir || '-'}</div>
+                </div>
+                <div className={styles.infoGroup}>
+                  <span className={styles.infoLabel}>Email</span>
+                  <div className={styles.infoValue}>{selectedGuru.email || '-'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className={styles.header}>
         <div className={styles.title}>
           <div className={styles.titleIcon}>
@@ -158,7 +218,13 @@ export default function GuruPage() {
                       <td>{guru.passEmisHijau || '-'}</td>
                       <td>{guru.passEmisDev || '-'}</td>
                       <td>
-                        <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '0.8rem' }}>Detail</button>
+                        <button 
+                          className="btn btn-primary" 
+                          style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                          onClick={() => setSelectedGuru(guru)}
+                        >
+                          Detail
+                        </button>
                       </td>
                     </tr>
                   ))
