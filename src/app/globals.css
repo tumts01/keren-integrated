@@ -112,3 +112,19 @@ a {
 .btn-gold:hover {
   background: var(--gold-hover);
 }
+
+/* --- Mobile Responsiveness --- */
+@media (max-width: 768px) {
+  html {
+    font-size: 14px; /* Shrink all rem-based sizes by ~12.5% to fit better on mobile */
+  }
+  
+  .page-content {
+    padding: 12px 10px;
+  }
+  
+  .card {
+    padding: 16px;
+    border-radius: var(--radius-md);
+  }
+}
