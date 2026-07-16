@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import styles from './Sidebar.module.css';
@@ -7,6 +7,17 @@ import styles from './Sidebar.module.css';
 export default function Sidebar() {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Automatically scroll the active menu item into view
+    if (menuRef.current) {
+      const activeItem = menuRef.current.querySelector(`.${styles.active}`);
+      if (activeItem) {
+        activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }, [pathname]);
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: 'fa-chart-pie' },
@@ -42,7 +53,7 @@ export default function Sidebar() {
         )}
       </div>
       
-      <nav className={styles.menu}>
+      <nav className={styles.menu} ref={menuRef}>
         {navItems.map((item) => {
           const isActive = pathname === item.path;
           return (
