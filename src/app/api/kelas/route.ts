@@ -34,39 +34,61 @@ export async function GET() {
     }> = {};
 
     rowsSiswa.forEach(r => {
-      const rombel = (r.get('ROMBEL') || '').trim().toUpperCase();
-      const tahunAjaran = (r.get('TAHUN AJARAN') || '').trim();
       const status = (r.get('STATUS SISWA') || '').toLowerCase().trim();
       const jk = (r.get('JENIS KELAMIN') || '').toLowerCase();
       
-      if (!rombel || !tahunAjaran) return;
-      
-      const key = `${tahunAjaran}__${rombel}`;
-      
-      // Init rombel if not exists
-      if (!rombelStats[key]) {
-        let tingkat = 'Lainnya';
-        if (rombel.startsWith('7')) tingkat = '7';
-        else if (rombel.startsWith('8')) tingkat = '8';
-        else if (rombel.startsWith('9')) tingkat = '9';
+      const records = [];
+      const ta7 = (r.get('TA KELAS 7') || '').trim();
+      const rombel7 = (r.get('ROMBEL KELAS 7') || '').trim();
+      if (ta7 && rombel7) records.push({ ta: ta7, rombel: rombel7 });
 
-        rombelStats[key] = {
-          rombel,
-          tingkat,
-          tahunAjaran,
-          lakiAktif: 0,
-          perempuanAktif: 0,
-          totalAktif: 0
-        };
+      const ta8 = (r.get('TA KELAS 8') || '').trim();
+      const rombel8 = (r.get('ROMBEL KELAS 8') || '').trim();
+      if (ta8 && rombel8) records.push({ ta: ta8, rombel: rombel8 });
+
+      const ta9 = (r.get('TA KELAS 9') || '').trim();
+      const rombel9 = (r.get('ROMBEL KELAS 9') || '').trim();
+      if (ta9 && rombel9) records.push({ ta: ta9, rombel: rombel9 });
+
+      if (records.length === 0) {
+        const taMain = (r.get('TAHUN AJARAN') || '').trim();
+        const rombelMain = (r.get('ROMBEL') || '').trim();
+        if (taMain && rombelMain) records.push({ ta: taMain, rombel: rombelMain });
       }
 
-      // Check active
-      const isAktif = ['aktif', 'lulus'].includes(status);
-      if (isAktif) {
-        rombelStats[key].totalAktif++;
-        if (jk.includes('laki')) rombelStats[key].lakiAktif++;
-        if (jk.includes('perempuan')) rombelStats[key].perempuanAktif++;
-      }
+      records.forEach(rec => {
+        const rombel = rec.rombel.toUpperCase();
+        const tahunAjaran = rec.ta;
+        
+        if (!rombel || !tahunAjaran) return;
+        
+        const key = `${tahunAjaran}__${rombel}`;
+        
+        // Init rombel if not exists
+        if (!rombelStats[key]) {
+          let tingkat = 'Lainnya';
+          if (rombel.startsWith('7')) tingkat = '7';
+          else if (rombel.startsWith('8')) tingkat = '8';
+          else if (rombel.startsWith('9')) tingkat = '9';
+
+          rombelStats[key] = {
+            rombel,
+            tingkat,
+            tahunAjaran,
+            lakiAktif: 0,
+            perempuanAktif: 0,
+            totalAktif: 0
+          };
+        }
+
+        // Check active
+        const isAktif = ['aktif', 'lulus'].includes(status);
+        if (isAktif) {
+          rombelStats[key].totalAktif++;
+          if (jk.includes('laki')) rombelStats[key].lakiAktif++;
+          if (jk.includes('perempuan')) rombelStats[key].perempuanAktif++;
+        }
+      });
     });
 
     // Format to array and attach Wali Kelas

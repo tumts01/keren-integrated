@@ -17,6 +17,7 @@ interface Siswa {
   namaIbu: string;
   noHp: string;
   tahunAjaran: string;
+  isLatest: boolean;
 }
 
 export default function SiswaPage() {
@@ -60,15 +61,15 @@ export default function SiswaPage() {
 
   // Filter based on Tahun Ajaran and Search Term
   const filteredData = data.filter(s => {
-    const matchTahun = selectedTahun === 'Semua' || s.tahunAjaran === selectedTahun;
     const matchSearch = s.nama.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                        s.nisn.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        s.nisn.includes(searchTerm) || 
                         s.rombel.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchTahun && matchSearch;
+    const matchTahun = selectedTahun === 'Semua' ? s.isLatest : s.tahunAjaran === selectedTahun;
+    return matchSearch && matchTahun;
   });
 
   // Calculate Stats based on selected Tahun Ajaran (or all if 'Semua')
-  const statsData = data.filter(s => selectedTahun === 'Semua' || s.tahunAjaran === selectedTahun);
+  const statsData = data.filter(s => selectedTahun === 'Semua' ? s.isLatest : s.tahunAjaran === selectedTahun);
   const activeData = statsData.filter(s => ['aktif', 'lulus'].includes(s.status.toLowerCase().trim()));
   const nonActiveData = statsData.filter(s => !['aktif', 'lulus'].includes(s.status.toLowerCase().trim()) && s.status.trim() !== '');
 
