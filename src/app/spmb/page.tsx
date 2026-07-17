@@ -41,12 +41,16 @@ export default function SpmbPage() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const uploadToDrive = async (file: File): Promise<string> => {
+  const uploadToDrive = async (file: File, newName: string): Promise<string> => {
+    // Ambil ekstensi file asli (misal: pdf, jpg, png)
+    const ext = file.name.split('.').pop();
+    // Buat file baru dengan nama yang sudah direname dan ekstensi aslinya
+    const renamedFile = new File([file], `${newName}.${ext}`, { type: file.type });
+
     const uploadFormData = new FormData();
-    uploadFormData.append('file', file);
+    uploadFormData.append('file', renamedFile);
     
     // We will hit our local API which will then hit the Google Apps Script
-    // But since the local API expects 'folderId' and type 'spmb', let's set it up.
     uploadFormData.append('type', 'spmb');
 
     const res = await fetch('/api/spmb/upload', {
@@ -66,13 +70,21 @@ export default function SpmbPage() {
       return;
     }
 
+    if (!formData.namaLengkap) {
+      showToast('Nama Lengkap wajib diisi terlebih dahulu!', 'error');
+      return;
+    }
+
     setLoading(true);
     try {
-      // 1. Upload KK
-      const linkKk = await uploadToDrive(fileKk);
+      // Format nama untuk file: hilangkan spasi ganda, ganti spasi dengan underscore
+      const safeName = formData.namaLengkap.trim().replace(/\s+/g, '_');
+
+      // 1. Upload KK dengan rename otomatis
+      const linkKk = await uploadToDrive(fileKk, `KK_${safeName}`);
       
-      // 2. Upload Akta
-      const linkAkta = await uploadToDrive(fileAkta);
+      // 2. Upload Akta dengan rename otomatis
+      const linkAkta = await uploadToDrive(fileAkta, `AKTA_${safeName}`);
 
       // 3. Save to Database
       const tempatTanggalLahir = `${formData.tempatLahir}, ${formData.tanggalLahir}`;
