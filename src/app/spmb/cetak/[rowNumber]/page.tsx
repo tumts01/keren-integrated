@@ -104,16 +104,8 @@ export default function CetakSpmb() {
         <div className={styles.cardWrapper} id="print-area">
           <div className={styles.card}>
             
-            {/* Kop Surat */}
-            <div className={styles.kop}>
-              {/* Logo Sekolah */}
-              <img src="/logo.png" alt="Logo Sekolah" />
-              <div className={styles.kopText}>
-                <h2>YAYASAN PENDIDIKAN ALMAARIF SINGOSARI</h2>
-                <h1>MTs ALMAARIF 01 SINGOSARI</h1>
-                <p>Jl. Masjid No. 22 Singosari - Malang, Jawa Timur</p>
-              </div>
-            </div>
+            {/* Kop Surat Image */}
+            <img src="/kop_surat_ mts.png" alt="Kop Surat" className={styles.kopImage} />
 
             <div className={styles.title}>
               KARTU BUKTI PENDAFTARAN SPMB<br/>
