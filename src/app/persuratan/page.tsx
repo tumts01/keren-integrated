@@ -69,7 +69,17 @@ export default function PersuratanPage() {
   // Generate Surat state
   const [generateJenis, setGenerateJenis] = useState('Surat Keterangan Aktif Siswa');
   const [generateNomor, setGenerateNomor] = useState('');
-  const [generateSiswa, setGenerateSiswa] = useState<any>(null);
+  const [generateSiswa, setGenerateSiswa] = useState<any>(null); // For Keterangan Aktif
+  const [generateSiswaList, setGenerateSiswaList] = useState<any[]>([]); // For Permohonan Izin
+  
+  // New States for Surat Permohonan Izin
+  const [generateTujuan, setGenerateTujuan] = useState('');
+  const [generateKegiatan, setGenerateKegiatan] = useState('');
+  const [generateKonteks, setGenerateKonteks] = useState('');
+  const [generateHariTanggal, setGenerateHariTanggal] = useState('');
+  const [generateWaktu, setGenerateWaktu] = useState('');
+  const [generateTempat, setGenerateTempat] = useState('');
+
   const [generateTanggal, setGenerateTanggal] = useState(
     new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })
   );
@@ -650,39 +660,130 @@ export default function PersuratanPage() {
                   <select 
                     className={styles.searchInput} 
                     value={generateJenis}
-                    onChange={(e) => setGenerateJenis(e.target.value)}
+                    onChange={(e) => {
+                      setGenerateJenis(e.target.value);
+                      setSearchSiswaTerm('');
+                      setGenerateSiswa(null);
+                      setGenerateSiswaList([]);
+                    }}
                   >
                     <option value="Surat Keterangan Aktif Siswa">Surat Keterangan Aktif Siswa</option>
+                    <option value="Surat Permohonan Izin">Surat Permohonan Izin</option>
                   </select>
                 </div>
+
+                {generateJenis === 'Surat Permohonan Izin' && (
+                  <div className={styles.infoGroup}>
+                    <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Tujuan Surat (Kepada Yth) <span style={{ color: 'red' }}>*</span></label>
+                    <textarea 
+                      className={styles.searchInput}
+                      style={{ resize: 'vertical', minHeight: '80px', padding: '10px 14px' }}
+                      placeholder="Contoh:&#10;Bapak Pengasuh PP. Al-Hikmah&#10;Bapak Pengasuh PP. An-Naslihah"
+                      value={generateTujuan}
+                      onChange={(e) => setGenerateTujuan(e.target.value)}
+                    />
+                  </div>
+                )}
 
                 <div className={styles.infoGroup}>
                   <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Nomor Surat <span style={{ color: 'red' }}>*</span></label>
                   <input 
                     type="text" 
                     className={styles.searchInput}
-                    placeholder="Contoh: 115/YPA/MTs-01.A.1/VI/2026"
+                    placeholder={generateJenis === 'Surat Keterangan Aktif Siswa' ? "Contoh: 115/YPA/MTs-01.A.1/VI/2026" : "Contoh: 309/YPA/MTs-01.A.8/VII/2026"}
                     value={generateNomor}
                     onChange={(e) => setGenerateNomor(e.target.value)}
                   />
                 </div>
 
+                {generateJenis === 'Surat Permohonan Izin' && (
+                  <>
+                    <div className={styles.infoGroup}>
+                      <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Konteks / Nama Kegiatan <span style={{ color: 'red' }}>*</span></label>
+                      <input 
+                        type="text" 
+                        className={styles.searchInput}
+                        placeholder="Contoh: MATAMUDA Tahun Ajaran 2026/2027"
+                        value={generateKonteks}
+                        onChange={(e) => setGenerateKonteks(e.target.value)}
+                      />
+                    </div>
+                    <div className={styles.infoGroup}>
+                      <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Kegiatan yang Diikuti <span style={{ color: 'red' }}>*</span></label>
+                      <input 
+                        type="text" 
+                        className={styles.searchInput}
+                        placeholder="Contoh: Latihan PBB dan Tampilan Matamuda"
+                        value={generateKegiatan}
+                        onChange={(e) => setGenerateKegiatan(e.target.value)}
+                      />
+                    </div>
+                    <div className={styles.infoGroup}>
+                      <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Hari, Tanggal Pelaksanaan <span style={{ color: 'red' }}>*</span></label>
+                      <input 
+                        type="text" 
+                        className={styles.searchInput}
+                        placeholder="Contoh: Selasa - Jumat, 14-17 Juli 2026"
+                        value={generateHariTanggal}
+                        onChange={(e) => setGenerateHariTanggal(e.target.value)}
+                      />
+                    </div>
+                    <div className={styles.infoGroup}>
+                      <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Waktu Pelaksanaan <span style={{ color: 'red' }}>*</span></label>
+                      <input 
+                        type="text" 
+                        className={styles.searchInput}
+                        placeholder="Contoh: Pukul 12.00 - 15.30 WIB"
+                        value={generateWaktu}
+                        onChange={(e) => setGenerateWaktu(e.target.value)}
+                      />
+                    </div>
+                    <div className={styles.infoGroup}>
+                      <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Tempat Pelaksanaan <span style={{ color: 'red' }}>*</span></label>
+                      <input 
+                        type="text" 
+                        className={styles.searchInput}
+                        placeholder="Contoh: MTs Almaarif 01 Singosari"
+                        value={generateTempat}
+                        onChange={(e) => setGenerateTempat(e.target.value)}
+                      />
+                    </div>
+                  </>
+                )}
+
                 <div className={styles.infoGroup} style={{ position: 'relative' }}>
                   <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Pilih Siswa <span style={{ color: 'red' }}>*</span></label>
+                  
+                  {generateJenis === 'Surat Permohonan Izin' && generateSiswaList.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
+                      {generateSiswaList.map((siswa, idx) => (
+                        <div key={siswa.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{idx + 1}. {siswa.nama}</div>
+                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{siswa.rombel} ({siswa.domisili})</div>
+                          </div>
+                          <button className="btn btn-sm btn-danger" onClick={() => setGenerateSiswaList(prev => prev.filter(s => s.id !== siswa.id))}>
+                            <i className="fas fa-times"></i>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <input 
                     type="text" 
                     className={styles.searchInput}
-                    placeholder="Ketik minimal 3 huruf nama siswa..."
+                    placeholder={generateJenis === 'Surat Keterangan Aktif Siswa' ? "Ketik minimal 3 huruf nama siswa..." : "Cari dan klik siswa untuk ditambahkan..."}
                     value={searchSiswaTerm}
                     onChange={(e) => {
                       setSearchSiswaTerm(e.target.value);
-                      if (!generateSiswa || e.target.value !== generateSiswa.nama) {
+                      if (generateJenis === 'Surat Keterangan Aktif Siswa' && (!generateSiswa || e.target.value !== generateSiswa.nama)) {
                         setGenerateSiswa(null);
                       }
                     }}
                   />
                   {isSearchingSiswa && (
-                    <div style={{ position: 'absolute', right: '16px', top: '38px', color: '#64748b' }}>
+                    <div style={{ position: 'absolute', right: '16px', top: (generateJenis === 'Surat Permohonan Izin' && generateSiswaList.length > 0) ? 'auto' : '38px', bottom: (generateJenis === 'Surat Permohonan Izin' && generateSiswaList.length > 0) ? '12px' : 'auto', color: '#64748b' }}>
                       <i className="fas fa-spinner fa-spin"></i>
                     </div>
                   )}
@@ -693,13 +794,20 @@ export default function PersuratanPage() {
                           key={siswa.id} 
                           style={{ padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
                           onClick={() => {
-                            setGenerateSiswa(siswa);
-                            setSearchSiswaTerm(siswa.nama);
+                            if (generateJenis === 'Surat Keterangan Aktif Siswa') {
+                              setGenerateSiswa(siswa);
+                              setSearchSiswaTerm(siswa.nama);
+                            } else {
+                              if (!generateSiswaList.find(s => s.id === siswa.id)) {
+                                setGenerateSiswaList(prev => [...prev, siswa]);
+                              }
+                              setSearchSiswaTerm('');
+                            }
                             setShowSiswaDropdown(false);
                           }}
                         >
                           <div style={{ fontWeight: 600, color: '#1e293b' }}>{siswa.nama}</div>
-                          <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Kelas {siswa.rombel} • NIS: {siswa.nis}</div>
+                          <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Kelas {siswa.rombel} • NIS: {siswa.nis} • {siswa.domisili}</div>
                         </div>
                       ))}
                     </div>
@@ -722,7 +830,7 @@ export default function PersuratanPage() {
                     className="btn btn-primary" 
                     style={{ width: '100%', padding: '12px' }}
                     onClick={() => window.print()}
-                    disabled={!generateNomor || !generateSiswa || !generateTanggal}
+                    disabled={!generateNomor || !generateTanggal || (generateJenis === 'Surat Keterangan Aktif Siswa' ? !generateSiswa : (generateSiswaList.length === 0 || !generateTujuan || !generateKegiatan || !generateKonteks))}
                   >
                     <i className="fas fa-print"></i> Generate & Cetak Surat
                   </button>
@@ -900,58 +1008,119 @@ export default function PersuratanPage() {
         )}
 
         {/* Print Template - Hidden on screen, shown on print */}
-        {activeTab === 'generate' && generateSiswa && (
+        {activeTab === 'generate' && ((generateJenis === 'Surat Keterangan Aktif Siswa' && generateSiswa) || (generateJenis === 'Surat Permohonan Izin' && generateSiswaList.length > 0)) && (
           <div className={styles.printOnly}>
             <div className={styles.kopSurat}>
               <img src="/kop_surat_mts.png" alt="Kop Surat MTs Almaarif 01" />
             </div>
 
-            <div className={styles.suratJudul}>
-              <h3 style={{ textDecoration: 'underline', margin: '0 0 5px 0', fontSize: '14pt' }}>SURAT KETERANGAN</h3>
-              <p style={{ margin: 0 }}>{generateNomor || '.../YPA/MTs-01.A.1/VI/2026'}</p>
-            </div>
+            {generateJenis === 'Surat Keterangan Aktif Siswa' ? (
+              <>
+                <div className={styles.suratJudul}>
+                  <h3 style={{ textDecoration: 'underline', margin: '0 0 5px 0', fontSize: '14pt' }}>SURAT KETERANGAN</h3>
+                  <p style={{ margin: 0 }}>{generateNomor || '.../YPA/MTs-01.A.1/VI/2026'}</p>
+                </div>
 
-            <div className={styles.suratIsi}>
-              <p>Yang bertanda tangan di bawah ini:</p>
-              
-              <table className={styles.suratTable}>
-                <tbody>
-                  <tr><td style={{ width: '150px' }}>Nama</td><td style={{ width: '20px' }}>:</td><td><strong>DWI RETNO PALUPI, M.Pd.</strong></td></tr>
-                  <tr><td>NIP</td><td>:</td><td>19770424 2005012003</td></tr>
-                  <tr><td>Jabatan</td><td>:</td><td>Kepala Madrasah Tsanawiyah Almaarif 01 Singosari</td></tr>
-                  <tr><td>Sekolah</td><td>:</td><td>MTs. Almaarif 01 Singosari</td></tr>
-                  <tr><td>Alamat</td><td>:</td><td>Jl. Masjid No. 33 Singosari Malang</td></tr>
-                </tbody>
-              </table>
+                <div className={styles.suratIsi}>
+                  <p>Yang bertanda tangan di bawah ini:</p>
+                  
+                  <table className={styles.suratTable}>
+                    <tbody>
+                      <tr><td style={{ width: '150px' }}>Nama</td><td style={{ width: '20px' }}>:</td><td><strong>DWI RETNO PALUPI, M.Pd.</strong></td></tr>
+                      <tr><td>NIP</td><td>:</td><td>19770424 2005012003</td></tr>
+                      <tr><td>Jabatan</td><td>:</td><td>Kepala Madrasah Tsanawiyah Almaarif 01 Singosari</td></tr>
+                      <tr><td>Sekolah</td><td>:</td><td>MTs. Almaarif 01 Singosari</td></tr>
+                      <tr><td>Alamat</td><td>:</td><td>Jl. Masjid No. 33 Singosari Malang</td></tr>
+                    </tbody>
+                  </table>
 
-              <p style={{ marginTop: '20px' }}>Menerangkan dengan sebenarnya:</p>
+                  <p style={{ marginTop: '20px' }}>Menerangkan dengan sebenarnya:</p>
 
-              <table className={styles.suratTable}>
-                <tbody>
-                  <tr><td style={{ width: '150px' }}>Nama</td><td style={{ width: '20px' }}>:</td><td><strong>{generateSiswa.nama}</strong></td></tr>
-                  <tr><td>NIS</td><td>:</td><td>{generateSiswa.nis || '-'}</td></tr>
-                  <tr><td>Kelas</td><td>:</td><td>{generateSiswa.rombel}</td></tr>
-                  <tr><td>NISN</td><td>:</td><td><strong>{generateSiswa.nisn || '-'}</strong></td></tr>
-                  <tr><td>TTL</td><td>:</td><td>{generateSiswa.tempatLahir}, {generateSiswa.tanggalLahir}</td></tr>
-                  <tr><td>Nama Ayah</td><td>:</td><td>{generateSiswa.namaAyah}</td></tr>
-                  <tr><td style={{ verticalAlign: 'top' }}>Alamat</td><td style={{ verticalAlign: 'top' }}>:</td><td>{generateSiswa.alamat}</td></tr>
-                </tbody>
-              </table>
+                  <table className={styles.suratTable}>
+                    <tbody>
+                      <tr><td style={{ width: '150px' }}>Nama</td><td style={{ width: '20px' }}>:</td><td><strong>{generateSiswa.nama}</strong></td></tr>
+                      <tr><td>NIS</td><td>:</td><td>{generateSiswa.nis || '-'}</td></tr>
+                      <tr><td>Kelas</td><td>:</td><td>{generateSiswa.rombel}</td></tr>
+                      <tr><td>NISN</td><td>:</td><td><strong>{generateSiswa.nisn || '-'}</strong></td></tr>
+                      <tr><td>TTL</td><td>:</td><td>{generateSiswa.tempatLahir}, {generateSiswa.tanggalLahir}</td></tr>
+                      <tr><td>Nama Ayah</td><td>:</td><td>{generateSiswa.namaAyah}</td></tr>
+                      <tr><td style={{ verticalAlign: 'top' }}>Alamat</td><td style={{ verticalAlign: 'top' }}>:</td><td>{generateSiswa.alamat}</td></tr>
+                    </tbody>
+                  </table>
 
-              <p style={{ marginTop: '20px', lineHeight: '1.5' }}>
-                Bahwa anak tersebut di atas adalah benar-benar Siswa Aktif MTs Almaarif 01 Singosari Malang pada Tahun Ajaran {generateSiswa.tahunAjaran}.
-              </p>
+                  <p style={{ marginTop: '20px', lineHeight: '1.5' }}>
+                    Bahwa anak tersebut di atas adalah benar-benar Siswa Aktif MTs Almaarif 01 Singosari Malang pada Tahun Ajaran {generateSiswa.tahunAjaran}.
+                  </p>
 
-              <p style={{ marginTop: '20px', lineHeight: '1.5' }}>
-                Demikian surat keterangan ini dibuat dengan sebenar-benarnya.<br/>
-                Atas perhatian Bapak/Ibu disampaikan terima kasih.
-              </p>
-            </div>
+                  <p style={{ marginTop: '20px', lineHeight: '1.5' }}>
+                    Demikian surat keterangan ini dibuat dengan sebenar-benarnya.<br/>
+                    Atas perhatian Bapak/Ibu disampaikan terima kasih.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: '11pt', marginTop: '10px' }}>
+                  <table style={{ border: 'none', borderCollapse: 'collapse', width: '100%', marginBottom: '15px' }}>
+                    <tbody>
+                      <tr><td style={{ width: '70px', padding: 0 }}>Nomor</td><td style={{ width: '15px', padding: 0 }}>:</td><td style={{ padding: 0 }}>{generateNomor}</td></tr>
+                      <tr><td style={{ padding: 0 }}>Lamp</td><td style={{ padding: 0 }}>:</td><td style={{ padding: 0 }}>-</td></tr>
+                      <tr><td style={{ padding: 0 }}>Perihal</td><td style={{ padding: 0 }}>:</td><td style={{ padding: 0 }}><strong>Permohonan Izin</strong></td></tr>
+                    </tbody>
+                  </table>
+
+                  <p style={{ margin: '0 0 5px 0' }}>Kepada Yth. Bapak/Ibu:</p>
+                  <div style={{ fontWeight: 'bold', marginBottom: '20px', lineHeight: '1.2' }}>
+                    {generateTujuan.split('\n').map((baris, i) => (
+                      <div key={i}>{baris}</div>
+                    ))}
+                  </div>
+                  
+                  <p style={{ marginBottom: '15px' }}>di tempat</p>
+                  
+                  <p style={{ fontStyle: 'italic', marginBottom: '15px' }}>Assalamu'alaikum Wr. Wb.</p>
+                  
+                  <p style={{ marginBottom: '15px', textAlign: 'justify', lineHeight: '1.3' }}>
+                    Salam silaturrahim teriring doa semoga rahmat, hidayah serta inayah Allah selalu menyertai kita dalam beraktifitas sehari-hari, amin.
+                  </p>
+                  
+                  <p style={{ marginBottom: '15px', textAlign: 'justify', lineHeight: '1.3' }}>
+                    Kami sampaikan sehubungan dengan adanya kegiatan {generateKonteks || 'MATAMUDA Tahun Ajaran 2026/2027'}, kami memohon izin kepada Pengasuh Pondok Pesantren agar santri berikut:
+                  </p>
+
+                  <ol style={{ marginLeft: '10px', marginBottom: '15px' }}>
+                    {generateSiswaList.map((siswa, i) => (
+                      <li key={i} style={{ marginBottom: '4px' }}>
+                        {siswa.nama} &nbsp;&nbsp;&nbsp; {siswa.rombel} &nbsp;&nbsp;&nbsp; {siswa.domisili ? `(${siswa.domisili})` : ''}
+                      </li>
+                    ))}
+                  </ol>
+
+                  <p style={{ marginBottom: '15px', textAlign: 'justify', lineHeight: '1.3' }}>
+                    diberikan izin untuk mengikuti {generateKegiatan} dengan jadwal sebagai berikut:
+                  </p>
+
+                  <table style={{ border: 'none', borderCollapse: 'collapse', width: '100%', marginBottom: '15px', marginLeft: '20px' }}>
+                    <tbody>
+                      <tr><td style={{ width: '100px', padding: '2px 0' }}>Hari, Tanggal</td><td style={{ width: '15px', padding: '2px 0' }}>:</td><td style={{ padding: '2px 0' }}>{generateHariTanggal}</td></tr>
+                      <tr><td style={{ padding: '2px 0' }}>Waktu</td><td style={{ padding: '2px 0' }}>:</td><td style={{ padding: '2px 0' }}>{generateWaktu}</td></tr>
+                      <tr><td style={{ padding: '2px 0' }}>Tempat</td><td style={{ padding: '2px 0' }}>:</td><td style={{ padding: '2px 0' }}>{generateTempat}</td></tr>
+                    </tbody>
+                  </table>
+
+                  <p style={{ marginBottom: '20px', textAlign: 'justify', lineHeight: '1.3' }}>
+                    Demikian permohonan ini kami sampaikan. Besar harapan kami agar santri tersebut dapat diberikan izin untuk mengikuti kegiatan dimaksud. Atas perhatian, kebijaksanaan, dan kerja sama Bapak/Ibu Pengasuh, kami ucapkan terima kasih.
+                  </p>
+
+                  <p style={{ fontStyle: 'italic', marginBottom: '20px' }}>Wassalamu'alaikum Wr. Wb.</p>
+                </div>
+              </>
+            )}
 
             <div className={styles.suratTtd}>
               <p style={{ margin: '0 0 5px 0' }}>Singosari, {generateTanggal}</p>
-              <p style={{ margin: '0 0 80px 0' }}>Kepala Madrasah,</p>
-              <p style={{ margin: 0, fontWeight: 'bold' }}>DWI RETNO PALUPI, M.Pd.</p>
+              <p style={{ margin: '0 0 60px 0' }}>Kepala Madrasah,</p>
+              <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>DWI RETNO PALUPI, M.Pd.</p>
             </div>
           </div>
         )}
