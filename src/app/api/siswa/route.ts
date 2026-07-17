@@ -40,6 +40,7 @@ export async function GET() {
 
       const baseStudent = {
         id: index,
+        nis: row.get('ID SISWA') || '',
         nisn: row.get('NISN') || '',
         nik: row.get('NIK') || '',
         tempatLahir: (row.get('TEMPAT, TANGGAL LAHIR') || '').split(',')[0]?.trim() || '',

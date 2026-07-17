@@ -66,6 +66,51 @@ export default function PersuratanPage() {
   const [searchPj, setSearchPj] = useState('');
   const [searchTopik, setSearchTopik] = useState('');
 
+  // Generate Surat state
+  const [generateJenis, setGenerateJenis] = useState('Surat Keterangan Aktif Siswa');
+  const [generateNomor, setGenerateNomor] = useState('');
+  const [generateSiswa, setGenerateSiswa] = useState<any>(null);
+  const [generateTanggal, setGenerateTanggal] = useState(
+    new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })
+  );
+  
+  const [searchSiswaTerm, setSearchSiswaTerm] = useState('');
+  const [siswaOptions, setSiswaOptions] = useState<any[]>([]);
+  const [isSearchingSiswa, setIsSearchingSiswa] = useState(false);
+  const [showSiswaDropdown, setShowSiswaDropdown] = useState(false);
+
+  // Debounced search for Siswa
+  useEffect(() => {
+    if (!searchSiswaTerm || searchSiswaTerm.length < 3) {
+      setSiswaOptions([]);
+      setShowSiswaDropdown(false);
+      return;
+    }
+
+    const searchSiswa = async () => {
+      setIsSearchingSiswa(true);
+      try {
+        const res = await fetch('/api/siswa');
+        const json = await res.json();
+        if (json.success) {
+          const latestStudents = json.data.filter((s: any) => s.isLatest);
+          const filtered = latestStudents.filter((s: any) => 
+            s.nama.toLowerCase().includes(searchSiswaTerm.toLowerCase())
+          ).slice(0, 5); // Max 5 results
+          setSiswaOptions(filtered);
+          setShowSiswaDropdown(true);
+        }
+      } catch (error) {
+        console.error('Error searching siswa:', error);
+      } finally {
+        setIsSearchingSiswa(false);
+      }
+    };
+
+    const delay = setTimeout(searchSiswa, 500);
+    return () => clearTimeout(delay);
+  }, [searchSiswaTerm]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -535,6 +580,12 @@ export default function PersuratanPage() {
           >
             <i className="fas fa-users-cog" style={{ marginRight: '8px' }}></i> Delegasi Tugas
           </button>
+          <button 
+            style={{ padding: '16px 24px', border: 'none', background: 'transparent', fontWeight: 600, fontSize: '0.95rem', color: activeTab === 'generate' ? '#8b5cf6' : '#64748b', borderBottom: activeTab === 'generate' ? '3px solid #8b5cf6' : '3px solid transparent', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+            onClick={() => setActiveTab('generate')}
+          >
+            <i className="fas fa-print" style={{ marginRight: '8px' }}></i> Generate Surat
+          </button>
         </div>
 
         {/* Dashboard Analytics for Surat Keluar */}
@@ -589,6 +640,96 @@ export default function PersuratanPage() {
           </div>
         ) : (
           <>
+          {activeTab === 'generate' ? (
+            <div className={styles.generateContainer} style={{ padding: '24px' }}>
+              <h3 style={{ marginBottom: '20px', color: '#1e293b' }}><i className="fas fa-print" style={{ marginRight: '8px' }}></i> Form Generate Surat</h3>
+              
+              <div style={{ display: 'grid', gap: '20px', maxWidth: '600px' }}>
+                <div className={styles.formGroup}>
+                  <label>Jenis Surat <span style={{ color: 'red' }}>*</span></label>
+                  <select 
+                    className={styles.input} 
+                    value={generateJenis}
+                    onChange={(e) => setGenerateJenis(e.target.value)}
+                  >
+                    <option value="Surat Keterangan Aktif Siswa">Surat Keterangan Aktif Siswa</option>
+                  </select>
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label>Nomor Surat <span style={{ color: 'red' }}>*</span></label>
+                  <input 
+                    type="text" 
+                    className={styles.input}
+                    placeholder="Contoh: 115/YPA/MTs-01.A.1/VI/2026"
+                    value={generateNomor}
+                    onChange={(e) => setGenerateNomor(e.target.value)}
+                  />
+                </div>
+
+                <div className={styles.formGroup} style={{ position: 'relative' }}>
+                  <label>Pilih Siswa <span style={{ color: 'red' }}>*</span></label>
+                  <input 
+                    type="text" 
+                    className={styles.input}
+                    placeholder="Ketik minimal 3 huruf nama siswa..."
+                    value={searchSiswaTerm}
+                    onChange={(e) => {
+                      setSearchSiswaTerm(e.target.value);
+                      if (!generateSiswa || e.target.value !== generateSiswa.nama) {
+                        setGenerateSiswa(null);
+                      }
+                    }}
+                  />
+                  {isSearchingSiswa && (
+                    <div style={{ position: 'absolute', right: '12px', top: '38px', color: '#64748b' }}>
+                      <i className="fas fa-spinner fa-spin"></i>
+                    </div>
+                  )}
+                  {showSiswaDropdown && siswaOptions.length > 0 && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', marginTop: '4px', zIndex: 10, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                      {siswaOptions.map(siswa => (
+                        <div 
+                          key={siswa.id} 
+                          style={{ padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
+                          onClick={() => {
+                            setGenerateSiswa(siswa);
+                            setSearchSiswaTerm(siswa.nama);
+                            setShowSiswaDropdown(false);
+                          }}
+                        >
+                          <div style={{ fontWeight: 600, color: '#1e293b' }}>{siswa.nama}</div>
+                          <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Kelas {siswa.rombel} • NIS: {siswa.nis}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label>Tanggal Surat <span style={{ color: 'red' }}>*</span></label>
+                  <input 
+                    type="text" 
+                    className={styles.input}
+                    placeholder="Contoh: 17 Juli 2026"
+                    value={generateTanggal}
+                    onChange={(e) => setGenerateTanggal(e.target.value)}
+                  />
+                </div>
+
+                <div style={{ marginTop: '10px' }}>
+                  <button 
+                    className="btn btn-primary" 
+                    style={{ width: '100%', padding: '12px' }}
+                    onClick={() => window.print()}
+                    disabled={!generateNomor || !generateSiswa || !generateTanggal}
+                  >
+                    <i className="fas fa-print"></i> Generate & Cetak Surat
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
           <div className={styles.tableContainer}>
             <table className={styles.table}>
               <thead>
@@ -752,7 +893,79 @@ export default function PersuratanPage() {
               </div>
             </div>
           )}
+          )}
         </>
+        )}
+
+        {/* Print Template - Hidden on screen, shown on print */}
+        {activeTab === 'generate' && generateSiswa && (
+          <div className={styles.printOnly}>
+            <div className={styles.kopSurat}>
+              <img src="/logo.png" alt="Logo" className={styles.kopLogo} />
+              <div className={styles.kopText}>
+                <h4 style={{ margin: 0, fontSize: '14pt', fontWeight: 'bold' }}>YAYASAN PENDIDIKAN ALMAARIF SINGOSARI</h4>
+                <p style={{ margin: 0, fontSize: '9pt' }}>SK Kemenkumham No. AHU-0003189.AH.01.04 Tahun 2015 – Jo Akta Notaris E. H. Widjaja, SH. No. 77 Tahun 1978</p>
+                <h2 style={{ margin: 0, fontSize: '18pt', fontWeight: 'bold' }}>MADRASAH TSANAWIYAH ALMAARIF 01</h2>
+                <p style={{ margin: 0, fontSize: '11pt', fontWeight: 'bold' }}>TERAKREDITASI " A "</p>
+                <p style={{ margin: 0, fontSize: '11pt' }}>Jl. Masjid No. 33 Telp. ( 0341 ) 458355 Singosari Malang</p>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10pt', fontWeight: 'bold', marginTop: '5px' }}>
+              <div>NSM : 121235070115<br/>NPSN : 20581318</div>
+              <div style={{ textAlign: 'right' }}>Web : <span style={{ color: 'blue', textDecoration: 'underline' }}>www.mtsalmaarif01-sgs.sch.id</span><br/>Email : <span style={{ color: 'blue', textDecoration: 'underline' }}>admin@mtsalmaarif01-sgs.sch.id</span></div>
+            </div>
+
+            <hr className={styles.kopGaris} />
+
+            <div className={styles.suratJudul}>
+              <h3 style={{ textDecoration: 'underline', margin: '0 0 5px 0', fontSize: '14pt' }}>SURAT KETERANGAN</h3>
+              <p style={{ margin: 0 }}>{generateNomor || '.../YPA/MTs-01.A.1/VI/2026'}</p>
+            </div>
+
+            <div className={styles.suratIsi}>
+              <p>Yang bertanda tangan di bawah ini:</p>
+              
+              <table className={styles.suratTable}>
+                <tbody>
+                  <tr><td style={{ width: '150px' }}>Nama</td><td style={{ width: '20px' }}>:</td><td><strong>DWI RETNO PALUPI, M.Pd.</strong></td></tr>
+                  <tr><td>NIP</td><td>:</td><td>19770424 2005012003</td></tr>
+                  <tr><td>Jabatan</td><td>:</td><td>Kepala Madrasah Tsanawiyah Almaarif 01 Singosari</td></tr>
+                  <tr><td>Sekolah</td><td>:</td><td>MTs. Almaarif 01 Singosari</td></tr>
+                  <tr><td>Alamat</td><td>:</td><td>Jl. Masjid No. 33 Singosari Malang</td></tr>
+                </tbody>
+              </table>
+
+              <p style={{ marginTop: '20px' }}>Menerangkan dengan sebenarnya:</p>
+
+              <table className={styles.suratTable}>
+                <tbody>
+                  <tr><td style={{ width: '150px' }}>Nama</td><td style={{ width: '20px' }}>:</td><td><strong>{generateSiswa.nama}</strong></td></tr>
+                  <tr><td>NIS</td><td>:</td><td>{generateSiswa.nis || '-'}</td></tr>
+                  <tr><td>Kelas</td><td>:</td><td>{generateSiswa.rombel}</td></tr>
+                  <tr><td>NISN</td><td>:</td><td><strong>{generateSiswa.nisn || '-'}</strong></td></tr>
+                  <tr><td>TTL</td><td>:</td><td>{generateSiswa.tempatLahir}, {generateSiswa.tanggalLahir}</td></tr>
+                  <tr><td>Nama Ayah</td><td>:</td><td>{generateSiswa.namaAyah}</td></tr>
+                  <tr><td style={{ verticalAlign: 'top' }}>Alamat</td><td style={{ verticalAlign: 'top' }}>:</td><td>{generateSiswa.alamat}</td></tr>
+                </tbody>
+              </table>
+
+              <p style={{ marginTop: '20px', lineHeight: '1.5' }}>
+                Bahwa anak tersebut di atas adalah benar-benar Siswa Aktif MTs Almaarif 01 Singosari Malang pada Tahun Ajaran {generateSiswa.tahunAjaran}.
+              </p>
+
+              <p style={{ marginTop: '20px', lineHeight: '1.5' }}>
+                Demikian surat keterangan ini dibuat dengan sebenar-benarnya.<br/>
+                Atas perhatian Bapak/Ibu disampaikan terima kasih.
+              </p>
+            </div>
+
+            <div className={styles.suratTtd}>
+              <p style={{ margin: '0 0 5px 0' }}>Singosari, {generateTanggal}</p>
+              <p style={{ margin: '0 0 80px 0' }}>Kepala Madrasah,</p>
+              <p style={{ margin: 0, fontWeight: 'bold' }}>DWI RETNO PALUPI, M.Pd.</p>
+            </div>
+          </div>
         )}
       </div>
     </div>

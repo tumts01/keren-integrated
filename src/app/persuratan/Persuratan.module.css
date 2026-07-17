@@ -467,3 +467,94 @@
     transform: translateY(0);
   }
 }
+
+/* --- PRINT STYLES FOR GENERATE SURAT --- */
+.printOnly {
+  display: none;
+  font-family: 'Times New Roman', Times, serif;
+  color: black;
+}
+
+@media print {
+  /* Sembunyikan elemen dashboard (sidebar, header, dsb) saat diprint */
+  body * {
+    visibility: hidden;
+  }
+  
+  /* Tampilkan komponen print template secara penuh di halaman cetak */
+  .printOnly, .printOnly * {
+    visibility: visible !important;
+  }
+  
+  .printOnly {
+    display: block;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 20px 40px; /* Margin kertas */
+  }
+
+  @page {
+    size: A4;
+    margin: 20mm;
+  }
+}
+
+.kopSurat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 20px;
+}
+
+.kopLogo {
+  width: 100px;
+  height: auto;
+}
+
+.kopText {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.kopGaris {
+  border: none;
+  border-top: 3px solid black;
+  border-bottom: 1px solid black;
+  height: 2px;
+  margin: 10px 0 20px 0;
+}
+
+.suratJudul {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.suratIsi {
+  font-size: 12pt;
+  line-height: 1.5;
+  text-align: justify;
+}
+
+.suratTable {
+  width: 100%;
+  margin: 10px 0;
+  border-collapse: collapse;
+}
+
+.suratTable td {
+  padding: 4px 0;
+  font-size: 12pt;
+  vertical-align: top;
+}
+
+.suratTtd {
+  margin-top: 40px;
+  float: right;
+  text-align: left;
+  width: 300px;
+  font-size: 12pt;
+}
