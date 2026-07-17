@@ -266,7 +266,7 @@ export default function Sidebar() {
                                   fontSize: '0.85rem',
                                   padding: '8px 12px',
                                   borderRadius: '8px',
-                                  color: isSubActive ? 'var(--primary)' : '#64748b',
+                                  color: isSubActive ? 'var(--primary)' : 'rgba(255, 255, 255, 0.7)',
                                   backgroundColor: isSubActive ? '#f0fdf4' : 'transparent',
                                   display: 'flex',
                                   alignItems: 'center',
