@@ -63,12 +63,37 @@ export default function Sidebar() {
   ];
 
   const [openCategories, setOpenCategories] = useState<string[]>(['Utama', 'Akademik & KBM', 'Administrasi', 'Keuangan']);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    
+    // Load state from localStorage on mount
+    const savedCategories = localStorage.getItem('sidebar_open_categories');
+    if (savedCategories) {
+      try {
+        setOpenCategories(JSON.parse(savedCategories));
+      } catch(e){}
+    }
+
+    const savedCollapse = localStorage.getItem('sidebar_is_collapsed');
+    if (savedCollapse !== null) {
+      // Only apply saved collapse state on desktop, mobile is always collapsed initially
+      if (window.innerWidth > 768) {
+        setIsCollapsed(savedCollapse === 'true');
+      }
+    }
+  }, []);
 
   useEffect(() => {
     // If a path matches, ensure its category is open
     const activeCategory = menuCategories.find(cat => cat.items.some(item => item.path === pathname));
     if (activeCategory && !openCategories.includes(activeCategory.title)) {
-      setOpenCategories(prev => [...prev, activeCategory.title]);
+      setOpenCategories(prev => {
+        const newCats = [...prev, activeCategory.title];
+        if (isClient) localStorage.setItem('sidebar_open_categories', JSON.stringify(newCats));
+        return newCats;
+      });
     }
     
     // Automatically scroll the active menu item into view
@@ -78,12 +103,22 @@ export default function Sidebar() {
         activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     }
-  }, [pathname]);
+  }, [pathname, isClient]);
 
   const toggleCategory = (title: string) => {
-    setOpenCategories(prev => 
-      prev.includes(title) ? prev.filter(t => t !== title) : [...prev, title]
-    );
+    setOpenCategories(prev => {
+      const newCats = prev.includes(title) ? prev.filter(t => t !== title) : [...prev, title];
+      if (isClient) localStorage.setItem('sidebar_open_categories', JSON.stringify(newCats));
+      return newCats;
+    });
+  };
+
+  const handleToggleSidebar = () => {
+    const newVal = !isCollapsed;
+    setIsCollapsed(newVal);
+    if (isClient && window.innerWidth > 768) {
+      localStorage.setItem('sidebar_is_collapsed', String(newVal));
+    }
   };
 
   return (
@@ -97,7 +132,7 @@ export default function Sidebar() {
       <aside className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}>
         <button 
           className={styles.toggleBtnTop} 
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={handleToggleSidebar}
           title={isCollapsed ? "Buka Sidebar" : "Sembunyikan Sidebar"}
         >
           <i className={`fas ${isCollapsed ? 'fa-bars' : 'fa-chevron-left'}`}></i>
