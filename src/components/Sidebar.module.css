@@ -61,8 +61,8 @@
 }
 
 .categoryTitle {
-  padding: 0 20px 8px 20px;
-  font-size: 0.75rem;
+  padding: 0 20px 6px 20px;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 1px;
   font-weight: 700;
@@ -86,7 +86,7 @@
   transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .categoryItems.open {
@@ -96,7 +96,7 @@
 .categorySeparator {
   height: 1px;
   background: rgba(255, 255, 255, 0.1);
-  margin: 16px 16px 16px 8px;
+  margin: 12px 16px 12px 8px;
 }
 
 .menuItemWrapper {
@@ -106,9 +106,9 @@
 .menuItem {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 14px 20px;
-  font-size: 1rem;
+  gap: 14px;
+  padding: 10px 20px;
+  font-size: 0.85rem;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.8);
   transition: all 0.2s;
@@ -157,7 +157,7 @@
 
 .menuIcon {
   width: 24px;
-  font-size: 1.1rem;
+  font-size: 1rem;
   text-align: center;
   flex-shrink: 0;
   color: var(--gold);
