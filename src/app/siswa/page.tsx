@@ -7,6 +7,9 @@ interface Siswa {
   id: number;
   no: string;
   nisn: string;
+  nik: string;
+  tempatLahir: string;
+  tanggalLahir: string;
   nama: string;
   foto?: string;
   jenisKelamin: string;
@@ -295,6 +298,9 @@ export default function SiswaPage() {
                   <th>Profil (Nama)</th>
                   <th>Status</th>
                   <th>NISN</th>
+                  <th>NIK</th>
+                  <th>Tempat Lahir</th>
+                  <th>Tanggal Lahir</th>
                   <th>Jenis Kelamin</th>
                   <th>Rombel</th>
                   <th>Domisili</th>
@@ -330,6 +336,9 @@ export default function SiswaPage() {
                         </span>
                       </td>
                       <td>{siswa.nisn || '-'}</td>
+                      <td>{siswa.nik || '-'}</td>
+                      <td>{siswa.tempatLahir || '-'}</td>
+                      <td>{siswa.tanggalLahir || '-'}</td>
                       <td>{siswa.jenisKelamin || '-'}</td>
                       <td>{siswa.rombel || '-'}</td>
                       <td>{siswa.domisili || '-'}</td>
@@ -351,7 +360,7 @@ export default function SiswaPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={12} style={{ textAlign: 'center', padding: '40px' }}>
+                    <td colSpan={15} style={{ textAlign: 'center', padding: '40px' }}>
                       <i className="fas fa-folder-open" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
                       Tidak ada data siswa yang ditemukan.
                     </td>

@@ -41,6 +41,9 @@ export async function GET() {
       const baseStudent = {
         id: index,
         nisn: row.get('NISN') || '',
+        nik: row.get('NIK') || '',
+        tempatLahir: row.get('TEMPAT LAHIR') || '',
+        tanggalLahir: row.get('TANGGAL LAHIR') || '',
         nama,
         foto,
         jenisKelamin: row.get('JENIS KELAMIN') || '',
