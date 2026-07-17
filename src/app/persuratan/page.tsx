@@ -903,22 +903,8 @@ export default function PersuratanPage() {
         {activeTab === 'generate' && generateSiswa && (
           <div className={styles.printOnly}>
             <div className={styles.kopSurat}>
-              <img src="/logo.png" alt="Logo" className={styles.kopLogo} />
-              <div className={styles.kopText}>
-                <h4 style={{ margin: 0, fontSize: '14pt', fontWeight: 'bold' }}>YAYASAN PENDIDIKAN ALMAARIF SINGOSARI</h4>
-                <p style={{ margin: 0, fontSize: '9pt' }}>SK Kemenkumham No. AHU-0003189.AH.01.04 Tahun 2015 – Jo Akta Notaris E. H. Widjaja, SH. No. 77 Tahun 1978</p>
-                <h2 style={{ margin: 0, fontSize: '18pt', fontWeight: 'bold' }}>MADRASAH TSANAWIYAH ALMAARIF 01</h2>
-                <p style={{ margin: 0, fontSize: '11pt', fontWeight: 'bold' }}>TERAKREDITASI " A "</p>
-                <p style={{ margin: 0, fontSize: '11pt' }}>Jl. Masjid No. 33 Telp. ( 0341 ) 458355 Singosari Malang</p>
-              </div>
+              <img src="/kop_surat_mts.png" alt="Kop Surat MTs Almaarif 01" />
             </div>
-            
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10pt', fontWeight: 'bold', marginTop: '5px' }}>
-              <div>NSM : 121235070115<br/>NPSN : 20581318</div>
-              <div style={{ textAlign: 'right' }}>Web : <span style={{ color: 'blue', textDecoration: 'underline' }}>www.mtsalmaarif01-sgs.sch.id</span><br/>Email : <span style={{ color: 'blue', textDecoration: 'underline' }}>admin@mtsalmaarif01-sgs.sch.id</span></div>
-            </div>
-
-            <hr className={styles.kopGaris} />
 
             <div className={styles.suratJudul}>
               <h3 style={{ textDecoration: 'underline', margin: '0 0 5px 0', fontSize: '14pt' }}>SURAT KETERANGAN</h3>
