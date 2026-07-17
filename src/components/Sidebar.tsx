@@ -61,6 +61,30 @@ export default function Sidebar() {
     }
   ];
 
+  const [openCategories, setOpenCategories] = useState<string[]>(['Utama', 'Akademik & KBM', 'Administrasi', 'Keuangan']);
+
+  useEffect(() => {
+    // If a path matches, ensure its category is open
+    const activeCategory = menuCategories.find(cat => cat.items.some(item => item.path === pathname));
+    if (activeCategory && !openCategories.includes(activeCategory.title)) {
+      setOpenCategories(prev => [...prev, activeCategory.title]);
+    }
+    
+    // Automatically scroll the active menu item into view
+    if (menuRef.current) {
+      const activeItem = menuRef.current.querySelector(`.${styles.active}`);
+      if (activeItem) {
+        activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }, [pathname]);
+
+  const toggleCategory = (title: string) => {
+    setOpenCategories(prev => 
+      prev.includes(title) ? prev.filter(t => t !== title) : [...prev, title]
+    );
+  };
+
   return (
     <aside className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}>
       <div className={styles.brand}>
@@ -81,26 +105,43 @@ export default function Sidebar() {
       </div>
       
       <nav className={styles.menu} ref={menuRef}>
-        {menuCategories.map((cat, idx) => (
-          <div key={idx} className={styles.categoryGroup}>
-            {!isCollapsed && <div className={styles.categoryTitle}>{cat.title}</div>}
-            {cat.items.map((item) => {
-              const isActive = pathname === item.path;
-              return (
-                <div key={item.path} className={styles.menuItemWrapper}>
-                  <Link 
-                    href={item.path}
-                    className={`${styles.menuItem} ${isActive ? styles.active : ''}`}
-                    title={isCollapsed ? item.name : ''}
-                  >
-                    <i className={`fas ${item.icon} ${styles.menuIcon}`}></i>
-                    {!isCollapsed && <span className={styles.menuText}>{item.name}</span>}
-                  </Link>
+        {menuCategories.map((cat, idx) => {
+          const isOpen = openCategories.includes(cat.title);
+          return (
+            <div key={idx} className={styles.categoryGroup}>
+              {!isCollapsed ? (
+                <div 
+                  className={styles.categoryTitle} 
+                  onClick={() => toggleCategory(cat.title)}
+                >
+                  <span>{cat.title}</span>
+                  <i className={`fas fa-chevron-${isOpen ? 'up' : 'down'}`} style={{ fontSize: '0.7rem', transition: 'transform 0.2s' }}></i>
                 </div>
-              );
-            })}
-          </div>
-        ))}
+              ) : (
+                <div className={styles.categorySeparator}></div>
+              )}
+              
+              {/* Only show items if sidebar is collapsed OR category is open */}
+              <div className={`${styles.categoryItems} ${isOpen || isCollapsed ? styles.open : ''}`}>
+                {cat.items.map((item) => {
+                  const isActive = pathname === item.path;
+                  return (
+                    <div key={item.path} className={styles.menuItemWrapper}>
+                      <Link 
+                        href={item.path}
+                        className={`${styles.menuItem} ${isActive ? styles.active : ''}`}
+                        title={isCollapsed ? item.name : ''}
+                      >
+                        <i className={`fas ${item.icon} ${styles.menuIcon}`}></i>
+                        {!isCollapsed && <span className={styles.menuText}>{item.name}</span>}
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </nav>
 
     </aside>
