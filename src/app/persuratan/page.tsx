@@ -1085,16 +1085,21 @@ export default function PersuratanPage() {
                   </p>
                   
                   <p style={{ marginBottom: '15px', textAlign: 'justify', lineHeight: '1.3' }}>
-                    Kami sampaikan sehubungan dengan adanya kegiatan {generateKonteks || 'MATAMUDA Tahun Ajaran 2026/2027'}, kami memohon izin kepada Pengasuh Pondok Pesantren agar santri berikut:
+                    Kami sampaikan sehubungan dengan adanya kegiatan {generateKonteks || 'MATAMUDA Tahun Ajaran 2026/2027'}, kami memohon izin agar nama-nama berikut:
                   </p>
 
-                  <ol style={{ marginLeft: '10px', marginBottom: '15px' }}>
-                    {generateSiswaList.map((siswa, i) => (
-                      <li key={i} style={{ marginBottom: '4px' }}>
-                        {siswa.nama} &nbsp;&nbsp;&nbsp; {siswa.rombel} &nbsp;&nbsp;&nbsp; {siswa.domisili ? `(${siswa.domisili})` : ''}
-                      </li>
-                    ))}
-                  </ol>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '15px', border: 'none' }}>
+                    <tbody>
+                      {generateSiswaList.map((siswa, i) => (
+                        <tr key={i}>
+                          <td style={{ width: '30px', verticalAlign: 'top', padding: '2px 0' }}>{i + 1}.</td>
+                          <td style={{ verticalAlign: 'top', padding: '2px 0' }}>{siswa.nama}</td>
+                          <td style={{ width: '60px', verticalAlign: 'top', padding: '2px 0', textAlign: 'center' }}>{siswa.rombel}</td>
+                          <td style={{ verticalAlign: 'top', padding: '2px 0' }}>{siswa.domisili ? `(${siswa.domisili})` : ''}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
 
                   <p style={{ marginBottom: '15px', textAlign: 'justify', lineHeight: '1.3' }}>
                     diberikan izin untuk mengikuti {generateKegiatan} dengan jadwal sebagai berikut:
@@ -1109,7 +1114,7 @@ export default function PersuratanPage() {
                   </table>
 
                   <p style={{ marginBottom: '20px', textAlign: 'justify', lineHeight: '1.3' }}>
-                    Demikian permohonan ini kami sampaikan. Besar harapan kami agar santri tersebut dapat diberikan izin untuk mengikuti kegiatan dimaksud. Atas perhatian, kebijaksanaan, dan kerja sama Bapak/Ibu Pengasuh, kami ucapkan terima kasih.
+                    Demikian permohonan ini kami sampaikan. Besar harapan kami agar murid tersebut dapat diberikan izin untuk mengikuti kegiatan dimaksud. Atas perhatian, kebijaksanaan, dan kerja sama Bapak/Ibu Pengasuh, kami ucapkan terima kasih.
                   </p>
 
                   <p style={{ fontStyle: 'italic', marginBottom: '20px' }}>Wassalamu'alaikum Wr. Wb.</p>
