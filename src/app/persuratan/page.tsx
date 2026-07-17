@@ -81,7 +81,7 @@ export default function PersuratanPage() {
 
   // Debounced search for Siswa
   useEffect(() => {
-    if (!searchSiswaTerm || searchSiswaTerm.length < 3) {
+    if (!searchSiswaTerm || searchSiswaTerm.length < 3 || (generateSiswa && generateSiswa.nama === searchSiswaTerm)) {
       setSiswaOptions([]);
       setShowSiswaDropdown(false);
       return;
@@ -109,7 +109,7 @@ export default function PersuratanPage() {
 
     const delay = setTimeout(searchSiswa, 500);
     return () => clearTimeout(delay);
-  }, [searchSiswaTerm]);
+  }, [searchSiswaTerm, generateSiswa]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -645,10 +645,10 @@ export default function PersuratanPage() {
               <h3 style={{ marginBottom: '20px', color: '#1e293b' }}><i className="fas fa-print" style={{ marginRight: '8px' }}></i> Form Generate Surat</h3>
               
               <div style={{ display: 'grid', gap: '20px', maxWidth: '600px' }}>
-                <div className={styles.formGroup}>
-                  <label>Jenis Surat <span style={{ color: 'red' }}>*</span></label>
+                <div className={styles.infoGroup}>
+                  <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Jenis Surat <span style={{ color: 'red' }}>*</span></label>
                   <select 
-                    className={styles.input} 
+                    className={styles.searchInput} 
                     value={generateJenis}
                     onChange={(e) => setGenerateJenis(e.target.value)}
                   >
@@ -656,22 +656,22 @@ export default function PersuratanPage() {
                   </select>
                 </div>
 
-                <div className={styles.formGroup}>
-                  <label>Nomor Surat <span style={{ color: 'red' }}>*</span></label>
+                <div className={styles.infoGroup}>
+                  <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Nomor Surat <span style={{ color: 'red' }}>*</span></label>
                   <input 
                     type="text" 
-                    className={styles.input}
+                    className={styles.searchInput}
                     placeholder="Contoh: 115/YPA/MTs-01.A.1/VI/2026"
                     value={generateNomor}
                     onChange={(e) => setGenerateNomor(e.target.value)}
                   />
                 </div>
 
-                <div className={styles.formGroup} style={{ position: 'relative' }}>
-                  <label>Pilih Siswa <span style={{ color: 'red' }}>*</span></label>
+                <div className={styles.infoGroup} style={{ position: 'relative' }}>
+                  <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Pilih Siswa <span style={{ color: 'red' }}>*</span></label>
                   <input 
                     type="text" 
-                    className={styles.input}
+                    className={styles.searchInput}
                     placeholder="Ketik minimal 3 huruf nama siswa..."
                     value={searchSiswaTerm}
                     onChange={(e) => {
@@ -682,12 +682,12 @@ export default function PersuratanPage() {
                     }}
                   />
                   {isSearchingSiswa && (
-                    <div style={{ position: 'absolute', right: '12px', top: '38px', color: '#64748b' }}>
+                    <div style={{ position: 'absolute', right: '16px', top: '38px', color: '#64748b' }}>
                       <i className="fas fa-spinner fa-spin"></i>
                     </div>
                   )}
                   {showSiswaDropdown && siswaOptions.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', marginTop: '4px', zIndex: 10, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', marginTop: '4px', zIndex: 10, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
                       {siswaOptions.map(siswa => (
                         <div 
                           key={siswa.id} 
@@ -706,11 +706,11 @@ export default function PersuratanPage() {
                   )}
                 </div>
 
-                <div className={styles.formGroup}>
-                  <label>Tanggal Surat <span style={{ color: 'red' }}>*</span></label>
+                <div className={styles.infoGroup}>
+                  <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Tanggal Surat <span style={{ color: 'red' }}>*</span></label>
                   <input 
                     type="text" 
-                    className={styles.input}
+                    className={styles.searchInput}
                     placeholder="Contoh: 17 Juli 2026"
                     value={generateTanggal}
                     onChange={(e) => setGenerateTanggal(e.target.value)}
