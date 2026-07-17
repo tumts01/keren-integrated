@@ -47,7 +47,15 @@ export default function Sidebar() {
         { name: 'Persuratan', path: '/persuratan', icon: 'fa-envelope-open-text' },
         { name: 'Loker Digital', path: '/loker-digital', icon: 'fa-folder-open' },
         { name: 'Buku Tamu', path: '/buku-tamu', icon: 'fa-address-book' },
-        { name: 'SPMB', path: '/spmb', icon: 'fa-user-graduate' },
+        { 
+          name: 'SPMB', 
+          path: '/spmb', 
+          icon: 'fa-user-graduate',
+          subItems: [
+            { name: 'Formulir Daftar', path: '/spmb' },
+            { name: 'Rekap Pendaftar', path: '/spmb/rekap' }
+          ]
+        },
         { name: 'Data Prestasi', path: '/prestasi', icon: 'fa-trophy' },
         { name: 'Arsip Foto', path: '/arsip-foto', icon: 'fa-images' },
       ]
@@ -63,6 +71,7 @@ export default function Sidebar() {
   ];
 
   const [openCategories, setOpenCategories] = useState<string[]>(['Utama', 'Akademik & KBM', 'Administrasi', 'Keuangan']);
+  const [openSubmenus, setOpenSubmenus] = useState<string[]>(['SPMB']); // For submenus like SPMB
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -73,6 +82,13 @@ export default function Sidebar() {
     if (savedCategories) {
       try {
         setOpenCategories(JSON.parse(savedCategories));
+      } catch(e){}
+    }
+
+    const savedSubmenus = localStorage.getItem('sidebar_open_submenus');
+    if (savedSubmenus) {
+      try {
+        setOpenSubmenus(JSON.parse(savedSubmenus));
       } catch(e){}
     }
 
@@ -87,7 +103,11 @@ export default function Sidebar() {
 
   useEffect(() => {
     // If a path matches, ensure its category is open
-    const activeCategory = menuCategories.find(cat => cat.items.some(item => item.path === pathname));
+    const activeCategory = menuCategories.find(cat => 
+      cat.items.some(item => 
+        item.path === pathname || (item.subItems && item.subItems.some(sub => sub.path === pathname))
+      )
+    );
     if (activeCategory && !openCategories.includes(activeCategory.title)) {
       setOpenCategories(prev => {
         const newCats = [...prev, activeCategory.title];
@@ -95,6 +115,21 @@ export default function Sidebar() {
         return newCats;
       });
     }
+
+    // Auto open submenu if active
+    menuCategories.forEach(cat => {
+      cat.items.forEach(item => {
+        if (item.subItems && item.subItems.some(sub => sub.path === pathname)) {
+          if (!openSubmenus.includes(item.name)) {
+            setOpenSubmenus(prev => {
+              const newSubs = [...prev, item.name];
+              if (isClient) localStorage.setItem('sidebar_open_submenus', JSON.stringify(newSubs));
+              return newSubs;
+            });
+          }
+        }
+      });
+    });
     
     // Automatically scroll the active menu item into view
     if (menuRef.current) {
@@ -110,6 +145,15 @@ export default function Sidebar() {
       const newCats = prev.includes(title) ? prev.filter(t => t !== title) : [...prev, title];
       if (isClient) localStorage.setItem('sidebar_open_categories', JSON.stringify(newCats));
       return newCats;
+    });
+  };
+
+  const toggleSubmenu = (name: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    setOpenSubmenus(prev => {
+      const newSubs = prev.includes(name) ? prev.filter(t => t !== name) : [...prev, name];
+      if (isClient) localStorage.setItem('sidebar_open_submenus', JSON.stringify(newSubs));
+      return newSubs;
     });
   };
 
@@ -168,20 +212,76 @@ export default function Sidebar() {
               {/* Only show items if sidebar is collapsed OR category is open */}
               <div className={`${styles.categoryItems} ${isOpen || isCollapsed ? styles.open : ''}`}>
                 {cat.items.map((item) => {
-                  const isActive = pathname === item.path;
+                  const hasSub = !!item.subItems;
+                  const isSubOpen = openSubmenus.includes(item.name);
+                  // Item is active if pathname matches its path exactly, or if no subitems. If it has subitems, we rely on subitems to show active state, but maybe highlight parent too
+                  const isParentActive = pathname === item.path || (hasSub && item.subItems!.some(sub => pathname === sub.path));
+                  
                   return (
                     <div key={item.path} className={styles.menuItemWrapper}>
                       <Link 
-                        href={item.path}
-                        className={`${styles.menuItem} ${isActive ? styles.active : ''}`}
+                        href={hasSub ? '#' : item.path}
+                        className={`${styles.menuItem} ${isParentActive && !hasSub ? styles.active : ''} ${hasSub ? styles.hasSubmenu : ''}`}
                         title={isCollapsed ? item.name : ''}
-                        onClick={() => {
-                          if (window.innerWidth <= 768) setIsCollapsed(true);
+                        onClick={(e) => {
+                          if (hasSub) {
+                            toggleSubmenu(item.name, e);
+                          } else {
+                            if (window.innerWidth <= 768) setIsCollapsed(true);
+                          }
                         }}
                       >
-                        <i className={`fas ${item.icon} ${styles.menuIcon}`}></i>
-                        {!isCollapsed && <span className={styles.menuText}>{item.name}</span>}
+                        <div style={{display:'flex', alignItems:'center', gap: '12px'}}>
+                          <i className={`fas ${item.icon} ${styles.menuIcon}`}></i>
+                          {!isCollapsed && <span className={styles.menuText}>{item.name}</span>}
+                        </div>
+                        {!isCollapsed && hasSub && (
+                          <i className={`fas fa-chevron-${isSubOpen ? 'up' : 'down'}`} style={{ fontSize: '0.7rem', opacity: 0.7 }}></i>
+                        )}
                       </Link>
+                      
+                      {/* Submenu rendering */}
+                      {!isCollapsed && hasSub && (
+                        <div className={`${styles.submenuContainer} ${isSubOpen ? styles.submenuOpen : ''}`} style={{
+                          maxHeight: isSubOpen ? '200px' : '0',
+                          overflow: 'hidden',
+                          transition: 'max-height 0.3s ease',
+                          paddingLeft: '32px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '4px',
+                          marginTop: isSubOpen ? '4px' : '0'
+                        }}>
+                          {item.subItems!.map(sub => {
+                            const isSubActive = pathname === sub.path;
+                            return (
+                              <Link 
+                                key={sub.path} 
+                                href={sub.path}
+                                className={`${styles.subMenuItem} ${isSubActive ? styles.active : ''}`}
+                                onClick={() => {
+                                  if (window.innerWidth <= 768) setIsCollapsed(true);
+                                }}
+                                style={{
+                                  fontSize: '0.85rem',
+                                  padding: '8px 12px',
+                                  borderRadius: '8px',
+                                  color: isSubActive ? 'var(--primary)' : '#64748b',
+                                  backgroundColor: isSubActive ? '#f0fdf4' : 'transparent',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  textDecoration: 'none',
+                                  fontWeight: isSubActive ? 600 : 500
+                                }}
+                              >
+                                <i className={`fas ${isSubActive ? 'fa-dot-circle' : 'fa-circle'}`} style={{fontSize: '0.4rem'}}></i>
+                                {sub.name}
+                              </Link>
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

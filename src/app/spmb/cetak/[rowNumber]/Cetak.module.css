@@ -1,0 +1,139 @@
+.printContainer {
+  background: white;
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.card {
+  width: 210mm;
+  min-height: 297mm;
+  background: white;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  padding: 20mm;
+  font-family: 'Times New Roman', Times, serif;
+  position: relative;
+}
+
+.kop {
+  display: flex;
+  align-items: center;
+  border-bottom: 3px solid black;
+  padding-bottom: 15px;
+  margin-bottom: 20px;
+}
+
+.kop img {
+  width: 80px;
+  height: auto;
+  margin-right: 20px;
+}
+
+.kopText {
+  flex: 1;
+  text-align: center;
+}
+
+.kopText h2 {
+  font-size: 16pt;
+  margin: 0;
+  font-weight: bold;
+}
+
+.kopText h1 {
+  font-size: 20pt;
+  margin: 5px 0;
+  font-weight: bold;
+}
+
+.kopText p {
+  font-size: 11pt;
+  margin: 0;
+}
+
+.title {
+  text-align: center;
+  font-size: 16pt;
+  font-weight: bold;
+  text-decoration: underline;
+  margin: 25px 0 30px 0;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12pt;
+  line-height: 1.5;
+}
+
+.table td {
+  padding: 8px;
+  vertical-align: top;
+}
+
+.table td:first-child {
+  width: 35%;
+  font-weight: bold;
+}
+
+.table td:nth-child(2) {
+  width: 2%;
+}
+
+.table td:last-child {
+  width: 63%;
+}
+
+.footer {
+  margin-top: 50px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.signature {
+  text-align: center;
+  width: 250px;
+  font-size: 12pt;
+}
+
+.signature p {
+  margin: 5px 0;
+}
+
+.signatureSpace {
+  height: 80px;
+}
+
+.loading {
+  text-align: center;
+  padding: 50px;
+  font-family: sans-serif;
+  color: #64748b;
+}
+
+/* Print Specific Styles */
+@media print {
+  body {
+    background: white;
+    margin: 0;
+  }
+  
+  .printContainer {
+    padding: 0;
+    display: block;
+  }
+
+  .card {
+    box-shadow: none;
+    width: 100%;
+    margin: 0;
+    padding: 10mm;
+  }
+
+  @page {
+    size: A4;
+    margin: 1cm;
+  }
+}
