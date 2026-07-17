@@ -81,15 +81,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (!mounted) return null; // Prevent hydration mismatch
 
-  const isPublicSpmb = pathname === '/spmb';
-  if (isPublicSpmb) {
-    return (
-      <div style={{ padding: '40px 20px', minHeight: '100vh', background: '#f8fafc', width: '100%' }}>
-        {children}
-      </div>
-    );
-  }
-
   if (!user) {
     return (
       <div className={styles.loginWrapper}>
