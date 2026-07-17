@@ -24,7 +24,7 @@ export async function GET() {
         no: row.get('NO') || '',
         tanggal: row.get('TANGGAL') || '',
         namaSurat: row.get('NAMA SURAT') || '',
-        yangDitugaskan: row.get('NAMA KORBAN') || row.get('YANG DITUGASKAN') || '', // Handle both column names just in case
+        yangDitugaskan: row.get('yang Ditugaskan') || row.get('YANG DITUGASKAN') || row.get('NAMA KORBAN') || '', // Handle variations in column names
         topik: row.get('TOPIK') || '',
         pj: row.get('PJ') || '',
         noSurat: row.get('NO. SURAT') || '',
@@ -153,8 +153,9 @@ export async function POST(req: Request) {
         'NO': nextNo,
         'TANGGAL': formattedDate,
         'NAMA SURAT': namaSurat,
-        'NAMA KORBAN': yangDitugaskan, // User's custom column name
-        'YANG DITUGASKAN': yangDitugaskan, // Try both just in case the header was renamed
+        'NAMA KORBAN': yangDitugaskan, // User's custom column name (old)
+        'YANG DITUGASKAN': yangDitugaskan, // Try uppercase
+        'yang Ditugaskan': yangDitugaskan, // Try exact match from user's sheet
         'TOPIK': topik,
         'PJ': pj,
         'NO. SURAT': noSurat,
