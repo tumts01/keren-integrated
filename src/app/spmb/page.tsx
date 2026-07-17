@@ -11,6 +11,17 @@ export default function SpmbPage() {
     setTimeout(() => setToast(null), 4000);
   };
 
+  // Hitung Tahun Ajaran Otomatis
+  const today = new Date();
+  const currentYear = today.getFullYear();
+  const month = today.getMonth(); // 0-indexed
+  let spmbYear = '';
+  if (month >= 6) {
+    spmbYear = `${currentYear + 1}/${currentYear + 2}`;
+  } else {
+    spmbYear = `${currentYear}/${currentYear + 1}`;
+  }
+
   // Form States
   const [formData, setFormData] = useState({
     jalurPendaftaran: 'Reguler',
@@ -165,6 +176,7 @@ export default function SpmbPage() {
       )}
 
       <div className={styles.header}>
+        <img src="/logo.png" alt="Logo MTs Almaarif" style={{ width: '80px', height: 'auto', marginBottom: '16px' }} />
         <div className={styles.title}>
           <div className={styles.titleIcon}>
             <i className="fas fa-user-graduate"></i>
@@ -172,7 +184,8 @@ export default function SpmbPage() {
           Pendaftaran SPMB Online
         </div>
         <p className={styles.subtitle}>
-          Seleksi Penerimaan Murid Baru MTs Almaarif 01 Singosari Tahun Ajaran 2026/2027
+          Seleksi Penerimaan Murid Baru MTs Almaarif 01 Singosari<br />
+          <strong>Tahun Ajaran {spmbYear}</strong>
         </p>
       </div>
 

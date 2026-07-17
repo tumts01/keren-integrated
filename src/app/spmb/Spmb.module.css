@@ -38,10 +38,11 @@
 }
 
 .subtitle {
-  font-size: 0.95rem;
-  opacity: 0.9;
+  font-size: 1.15rem;
+  opacity: 1;
   max-width: 600px;
   margin: 0 auto;
+  line-height: 1.5;
 }
 
 .card {
