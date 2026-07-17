@@ -8,6 +8,7 @@
   z-index: 10;
   /* No right shadow to allow seamless blending with main content */
   border-right: none;
+  position: relative;
 }
 
 .collapsed {
