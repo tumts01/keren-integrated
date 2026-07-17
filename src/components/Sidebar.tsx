@@ -66,7 +66,9 @@ export default function Sidebar() {
       items: [
         { name: 'Bendahara', path: '/bendahara', icon: 'fa-wallet' },
         { name: 'Pembayaran', path: '/pembayaran', icon: 'fa-money-bill-wave' },
-        { name: 'Nota Bon', path: '/bon', icon: 'fa-file-invoice-dollar' },
+        ...(userRole.toLowerCase() === 'admin' || userRole.toLowerCase() === 'pimpinan' 
+          ? [{ name: 'Nota Bon', path: '/bon', icon: 'fa-file-invoice-dollar' }]
+          : [])
       ]
     }
   ];
@@ -74,6 +76,7 @@ export default function Sidebar() {
   const [openCategories, setOpenCategories] = useState<string[]>(['Utama', 'Akademik & KBM', 'Administrasi', 'Keuangan']);
   const [openSubmenus, setOpenSubmenus] = useState<string[]>(['SPMB']); // For submenus like SPMB
   const [isClient, setIsClient] = useState(false);
+  const [userRole, setUserRole] = useState<string>('');
 
   useEffect(() => {
     setIsClient(true);
@@ -90,6 +93,14 @@ export default function Sidebar() {
     if (savedSubmenus) {
       try {
         setOpenSubmenus(JSON.parse(savedSubmenus));
+      } catch(e){}
+    }
+
+    const storedUser = localStorage.getItem('userApp');
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUserRole(parsedUser.rule || parsedUser.role || '');
       } catch(e){}
     }
 

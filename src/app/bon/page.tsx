@@ -7,6 +7,17 @@ export default function BonPage() {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [userRole, setUserRole] = useState<string>('');
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('userApp');
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUserRole(parsedUser.rule || parsedUser.role || '');
+      } catch (e) {}
+    }
+  }, []);
 
   const fetchData = async (s = '') => {
     setLoading(true);
@@ -34,6 +45,19 @@ export default function BonPage() {
     if (!angka) return 'Rp0';
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(Number(angka));
   };
+
+  if (userRole && userRole.toLowerCase() !== 'admin' && userRole.toLowerCase() !== 'pimpinan') {
+    return (
+      <div className={styles.container} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
+        <i className="fas fa-lock" style={{ fontSize: '4rem', color: '#94a3b8', marginBottom: '24px' }}></i>
+        <h2 style={{ color: '#334155', marginBottom: '12px' }}>Akses Ditolak</h2>
+        <p style={{ color: '#64748b', marginBottom: '24px', textAlign: 'center' }}>Maaf, halaman ini hanya dapat diakses oleh Admin atau Pimpinan.</p>
+        <Link href="/" className="btn btn-primary">
+          Kembali ke Dashboard
+        </Link>
+      </div>
+    );
+  }
 
   const getStatusBadge = (status: string) => {
     const s = (status || '').toLowerCase();

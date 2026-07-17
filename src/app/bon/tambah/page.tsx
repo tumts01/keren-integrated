@@ -1,17 +1,27 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import styles from './AddBon.module.css';
 
 export default function AddBonPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [nama, setNama] = useState('');
+  const [userRole, setUserRole] = useState<string>('');
   
   // Ambil nama user otomatis
   useEffect(() => {
     const user = localStorage.getItem('keren_user');
     if (user) setNama(user);
+
+    const storedUser = localStorage.getItem('userApp');
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUserRole(parsedUser.rule || parsedUser.role || '');
+      } catch (e) {}
+    }
   }, []);
 
   const [keperluan, setKeperluan] = useState('');
@@ -72,6 +82,19 @@ export default function AddBonPage() {
       setLoading(false);
     }
   };
+
+  if (userRole && userRole.toLowerCase() !== 'admin' && userRole.toLowerCase() !== 'pimpinan') {
+    return (
+      <div className={styles.container} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh' }}>
+        <i className="fas fa-lock" style={{ fontSize: '4rem', color: '#94a3b8', marginBottom: '24px' }}></i>
+        <h2 style={{ color: '#334155', marginBottom: '12px' }}>Akses Ditolak</h2>
+        <p style={{ color: '#64748b', marginBottom: '24px', textAlign: 'center' }}>Maaf, halaman ini hanya dapat diakses oleh Admin atau Pimpinan.</p>
+        <Link href="/" className="btn btn-primary">
+          Kembali ke Dashboard
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>
