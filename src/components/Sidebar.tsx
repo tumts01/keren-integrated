@@ -45,6 +45,7 @@ export default function Sidebar() {
       title: 'Administrasi',
       items: [
         { name: 'Persuratan', path: '/persuratan', icon: 'fa-envelope-open-text' },
+        { name: 'Loker Digital', path: '/loker-digital', icon: 'fa-folder-open' },
         { name: 'Buku Tamu', path: '/buku-tamu', icon: 'fa-address-book' },
         { name: 'SPMB', path: '/spmb', icon: 'fa-user-graduate' },
         { name: 'Data Prestasi', path: '/prestasi', icon: 'fa-trophy' },

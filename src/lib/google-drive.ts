@@ -67,3 +67,26 @@ export const uploadFileToDrive = async (
     throw error;
   }
 };
+
+/**
+ * Retrieves a list of folders inside a specific Google Drive folder.
+ * @param parentId The parent Google Drive folder ID
+ * @returns Array of folders with id, name, and webViewLink
+ */
+export const getFoldersInDrive = async (parentId: string) => {
+  const drive = getDriveAuth();
+  
+  try {
+    const res = await drive.files.list({
+      q: `'${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields: 'files(id, name, webViewLink)',
+      pageSize: 1000,
+      orderBy: 'name',
+    });
+    
+    return res.data.files || [];
+  } catch (error) {
+    console.error('Error fetching folders from Drive:', error);
+    throw error;
+  }
+};
