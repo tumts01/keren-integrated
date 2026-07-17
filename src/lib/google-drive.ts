@@ -36,34 +36,48 @@ export const uploadFileToDrive = async (
   mimeType: string,
   folderId: string
 ) => {
-  const drive = getDriveAuth();
-  
-  // Convert Buffer to Readable Stream
-  const stream = new Readable();
-  stream.push(fileBuffer);
-  stream.push(null);
+  const gasUrl = process.env.GOOGLE_APPS_SCRIPT_UPLOAD_URL;
+  if (!gasUrl) {
+    throw new Error('GOOGLE_APPS_SCRIPT_UPLOAD_URL belum dikonfigurasi di .env.local');
+  }
 
-  const fileMetadata = {
-    name: fileName,
-    parents: [folderId],
-  };
+  // Convert buffer to base64
+  const base64Data = fileBuffer.toString('base64');
 
-  const media = {
-    mimeType: mimeType,
-    body: stream,
-  };
+  // Use URLSearchParams to send as x-www-form-urlencoded
+  const params = new URLSearchParams();
+  params.append('fileData', base64Data);
+  params.append('fileName', fileName);
+  params.append('mimeType', mimeType);
+  params.append('folderId', folderId);
 
   try {
-    const res = await drive.files.create({
-      requestBody: fileMetadata,
-      media: media,
-      fields: 'id, webViewLink, webContentLink',
+    const response = await fetch(gasUrl, {
+      method: 'POST',
+      body: params,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
     });
-    
-    // We can also set permissions to Anyone with a link, but we assume the folder is already shared properly
-    return res.data;
+
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.error || 'Unknown Error from GAS');
+    }
+
+    const url = result.url;
+    let fileId = '';
+    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      fileId = match[1];
+    }
+
+    return { 
+      webViewLink: url,
+      id: fileId 
+    };
   } catch (error) {
-    console.error('Error uploading to Drive:', error);
+    console.error('Error uploading to GAS:', error);
     throw error;
   }
 };
