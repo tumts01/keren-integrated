@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import styles from './Auth.module.css';
@@ -13,6 +14,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [newUsername, setNewUsername] = useState('');
   const [updateLoading, setUpdateLoading] = useState(false);
   const [popup, setPopup] = useState<{show: boolean, type: 'error'|'confirm'|'success', title: string, message: string, onConfirm?: () => void} | null>(null);
+
+  const pathname = usePathname();
 
   useEffect(() => {
     setMounted(true);
@@ -161,6 +164,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         )}
       </div>
     );
+  }
+
+  const isPrintPage = pathname?.includes('/cetak/');
+  if (isPrintPage) {
+    return <>{children}</>;
   }
 
   return (

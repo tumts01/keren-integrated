@@ -108,12 +108,17 @@
 }
 
 .btnPrint {
-  background: #eff6ff;
-  color: #2563eb;
+  background: linear-gradient(135deg, var(--primary) 0%, #15803d 100%);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.2);
+  display: inline-flex;
 }
 .btnPrint:hover {
-  background: #2563eb;
-  color: white;
+  background: linear-gradient(135deg, #15803d 0%, #16a34a 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(22, 163, 74, 0.3);
 }
 
 .loadingState, .emptyState {
