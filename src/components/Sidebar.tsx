@@ -19,26 +19,46 @@ export default function Sidebar() {
     }
   }, [pathname]);
 
-  const navItems = [
-    { name: 'Dashboard', path: '/', icon: 'fa-chart-pie' },
-    { name: 'Data Guru & Staf', path: '/guru', icon: 'fa-chalkboard-teacher' },
-    { name: 'Data Siswa', path: '/siswa', icon: 'fa-users' },
-    { name: 'Data Kelas', path: '/kelas', icon: 'fa-chalkboard' },
-    { name: 'Mata Pelajaran', path: '/mata-pelajaran', icon: 'fa-book' },
-    { name: 'Nilai Siswa', path: '/nilai-siswa', icon: 'fa-star' },
-    { name: 'Presensi', path: '/presensi', icon: 'fa-calendar-check' },
-    { name: 'Jurnal Kelas', path: '/jurnal', icon: 'fa-book-open' },
-    { name: 'Jadwal Mengajar', path: '/jadwal-mengajar', icon: 'fa-clock' },
-    { name: 'Pengembalian Rapor', path: '/pengembalian-rapor', icon: 'fa-file-signature' },
-    { name: 'Persuratan', path: '/persuratan', icon: 'fa-envelope-open-text' },
-    { name: 'Buku Tamu', path: '/buku-tamu', icon: 'fa-address-book' },
-    { name: 'SPMB', path: '/spmb', icon: 'fa-user-graduate' },
-    { name: 'Data Prestasi', path: '/prestasi', icon: 'fa-trophy' },
-    { name: 'Bendahara', path: '/bendahara', icon: 'fa-wallet' },
-    { name: 'Pembayaran', path: '/pembayaran', icon: 'fa-money-bill-wave' },
-    { name: 'Arsip Foto', path: '/arsip-foto', icon: 'fa-images' },
-    { name: 'Nota Bon', path: '/bon', icon: 'fa-file-invoice-dollar' },
-    { name: 'Pengumuman', path: '/pengumuman', icon: 'fa-bullhorn' },
+  const menuCategories = [
+    {
+      title: 'Utama',
+      items: [
+        { name: 'Dashboard', path: '/', icon: 'fa-chart-pie' },
+        { name: 'Pengumuman', path: '/pengumuman', icon: 'fa-bullhorn' },
+      ]
+    },
+    {
+      title: 'Akademik & KBM',
+      items: [
+        { name: 'Data Guru & Staf', path: '/guru', icon: 'fa-chalkboard-teacher' },
+        { name: 'Data Siswa', path: '/siswa', icon: 'fa-users' },
+        { name: 'Data Kelas', path: '/kelas', icon: 'fa-chalkboard' },
+        { name: 'Mata Pelajaran', path: '/mata-pelajaran', icon: 'fa-book' },
+        { name: 'Jadwal Mengajar', path: '/jadwal-mengajar', icon: 'fa-clock' },
+        { name: 'Jurnal Kelas', path: '/jurnal', icon: 'fa-book-open' },
+        { name: 'Presensi', path: '/presensi', icon: 'fa-calendar-check' },
+        { name: 'Nilai Siswa', path: '/nilai-siswa', icon: 'fa-star' },
+        { name: 'Pengembalian Rapor', path: '/pengembalian-rapor', icon: 'fa-file-signature' },
+      ]
+    },
+    {
+      title: 'Administrasi',
+      items: [
+        { name: 'Persuratan', path: '/persuratan', icon: 'fa-envelope-open-text' },
+        { name: 'Buku Tamu', path: '/buku-tamu', icon: 'fa-address-book' },
+        { name: 'SPMB', path: '/spmb', icon: 'fa-user-graduate' },
+        { name: 'Data Prestasi', path: '/prestasi', icon: 'fa-trophy' },
+        { name: 'Arsip Foto', path: '/arsip-foto', icon: 'fa-images' },
+      ]
+    },
+    {
+      title: 'Keuangan',
+      items: [
+        { name: 'Bendahara', path: '/bendahara', icon: 'fa-wallet' },
+        { name: 'Pembayaran', path: '/pembayaran', icon: 'fa-money-bill-wave' },
+        { name: 'Nota Bon', path: '/bon', icon: 'fa-file-invoice-dollar' },
+      ]
+    }
   ];
 
   return (
@@ -61,21 +81,26 @@ export default function Sidebar() {
       </div>
       
       <nav className={styles.menu} ref={menuRef}>
-        {navItems.map((item) => {
-          const isActive = pathname === item.path;
-          return (
-            <div key={item.path} className={styles.menuItemWrapper}>
-              <Link 
-                href={item.path}
-                className={`${styles.menuItem} ${isActive ? styles.active : ''}`}
-                title={isCollapsed ? item.name : ''}
-              >
-                <i className={`fas ${item.icon} ${styles.menuIcon}`}></i>
-                {!isCollapsed && <span className={styles.menuText}>{item.name}</span>}
-              </Link>
-            </div>
-          );
-        })}
+        {menuCategories.map((cat, idx) => (
+          <div key={idx} className={styles.categoryGroup}>
+            {!isCollapsed && <div className={styles.categoryTitle}>{cat.title}</div>}
+            {cat.items.map((item) => {
+              const isActive = pathname === item.path;
+              return (
+                <div key={item.path} className={styles.menuItemWrapper}>
+                  <Link 
+                    href={item.path}
+                    className={`${styles.menuItem} ${isActive ? styles.active : ''}`}
+                    title={isCollapsed ? item.name : ''}
+                  >
+                    <i className={`fas ${item.icon} ${styles.menuIcon}`}></i>
+                    {!isCollapsed && <span className={styles.menuText}>{item.name}</span>}
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
     </aside>

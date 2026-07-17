@@ -51,6 +51,24 @@
   display: none;
 }
 
+.categoryGroup {
+  margin-bottom: 16px;
+}
+
+.categoryGroup:last-child {
+  margin-bottom: 0;
+}
+
+.categoryTitle {
+  padding: 0 20px 8px 20px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 8px;
+}
+
 .menuItemWrapper {
   position: relative;
 }
