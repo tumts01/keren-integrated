@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import styles from './Kelas.module.css';
 
 interface RombelStat {
@@ -150,6 +151,24 @@ export default function KelasPage() {
   const uniqueTahun = Array.from(new Set(data.map(r => r.tahunAjaran).filter(Boolean))).sort((a, b) => b.localeCompare(a));
   const grandTotalSiswa = filteredData.reduce((acc, curr) => acc + curr.totalAktif, 0);
 
+  const handleExportExcel = () => {
+    const dataToExport = filteredData.map((r, index) => ({
+      'No': index + 1,
+      'Tingkat': r.tingkat,
+      'Kelas/Rombel': r.rombel,
+      'Wali Kelas': r.waliKelas,
+      'Laki-laki Aktif': r.lakiAktif,
+      'Perempuan Aktif': r.perempuanAktif,
+      'Total Siswa Aktif': r.totalAktif,
+      'Tahun Ajaran': r.tahunAjaran,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Data Kelas');
+    XLSX.writeFile(workbook, `Data_Kelas_${selectedTahun.replace(/\//g, '-')}.xlsx`);
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.stickyTop}>
@@ -161,15 +180,20 @@ export default function KelasPage() {
           Data Kelas & Rombel
         </div>
         {!loading && !error && (
-          <select 
-            className={styles.filterSelect}
-            value={selectedTahun}
-            onChange={(e) => setSelectedTahun(e.target.value)}
-          >
-            {uniqueTahun.map(tahun => (
-              <option key={tahun} value={tahun}>{tahun}</option>
-            ))}
-          </select>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <select 
+              className={styles.filterSelect}
+              value={selectedTahun}
+              onChange={(e) => setSelectedTahun(e.target.value)}
+            >
+              {uniqueTahun.map(tahun => (
+                <option key={tahun} value={tahun}>{tahun}</option>
+              ))}
+            </select>
+            <button onClick={handleExportExcel} className="btn btn-gold" style={{ height: '42px', padding: '0 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <i className="fas fa-file-excel"></i> Export Excel
+            </button>
+          </div>
         )}
       </div>
 
