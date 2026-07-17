@@ -171,8 +171,8 @@
 }
 
 .toggleBtnTop {
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
+  background: var(--bg-sidebar);
+  border: 1px solid rgba(255,255,255,0.1);
   color: white;
   width: 32px;
   height: 32px;
@@ -183,14 +183,36 @@
   cursor: pointer;
   transition: all 0.2s;
   flex-shrink: 0;
+  position: absolute;
+  top: 24px;
+  right: -16px;
+  z-index: 20;
 }
 
 .toggleBtnTop:hover {
   background: var(--gold);
   color: var(--primary);
+  transform: scale(1.1);
+}
+
+.mobileOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 999;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
 }
 
 @media (max-width: 768px) {
+  .mobileOverlay.show {
+    display: block;
+    opacity: 1;
+    pointer-events: auto;
+  }
+  
   .sidebar {
     position: absolute;
     height: 100%;

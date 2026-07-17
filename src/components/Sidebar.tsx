@@ -86,15 +86,14 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}>
-      <div className={styles.brand}>
-        <img src="/logo.png" alt="Logo" className={styles.brandLogo} />
-        {!isCollapsed && (
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', whiteSpace: 'normal', paddingRight: '4px', flex: 1 }}>
-            <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--gold)', lineHeight: '1.2', letterSpacing: '0.3px', marginBottom: '2px' }}>Sistem Informasi Administrasi Digital</span>
-            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'white', lineHeight: '1.2' }}>MTs Almaarif 01 Singosari</span>
-          </div>
-        )}
+    <>
+      {/* Mobile Overlay */}
+      <div 
+        className={`${styles.mobileOverlay} ${!isCollapsed ? styles.show : ''}`} 
+        onClick={() => setIsCollapsed(true)}
+      ></div>
+
+      <aside className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}>
         <button 
           className={styles.toggleBtnTop} 
           onClick={() => setIsCollapsed(!isCollapsed)}
@@ -102,7 +101,16 @@ export default function Sidebar() {
         >
           <i className={`fas ${isCollapsed ? 'fa-bars' : 'fa-chevron-left'}`}></i>
         </button>
-      </div>
+
+        <div className={styles.brand}>
+          <img src="/logo.png" alt="Logo" className={styles.brandLogo} />
+          {!isCollapsed && (
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', whiteSpace: 'normal', paddingRight: '4px', flex: 1 }}>
+              <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--gold)', lineHeight: '1.2', letterSpacing: '0.3px', marginBottom: '2px' }}>Sistem Informasi Administrasi Digital</span>
+              <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'white', lineHeight: '1.2' }}>MTs Almaarif 01 Singosari</span>
+            </div>
+          )}
+        </div>
       
       <nav className={styles.menu} ref={menuRef}>
         {menuCategories.map((cat, idx) => {
@@ -131,6 +139,9 @@ export default function Sidebar() {
                         href={item.path}
                         className={`${styles.menuItem} ${isActive ? styles.active : ''}`}
                         title={isCollapsed ? item.name : ''}
+                        onClick={() => {
+                          if (window.innerWidth <= 768) setIsCollapsed(true);
+                        }}
                       >
                         <i className={`fas ${item.icon} ${styles.menuIcon}`}></i>
                         {!isCollapsed && <span className={styles.menuText}>{item.name}</span>}
@@ -145,5 +156,6 @@ export default function Sidebar() {
       </nav>
 
     </aside>
+    </>
   );
 }
