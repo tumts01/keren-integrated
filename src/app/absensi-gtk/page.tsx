@@ -124,10 +124,14 @@ export default function AbsensiGTK() {
   const handleSaveLibur = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // transform YYYY-MM-DD from type="date" to DD/MM/YYYY expected by backend
+      const parts = liburTanggal.split('-');
+      const formattedTanggal = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : liburTanggal;
+
       const res = await fetch('/api/absensi/libur', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tanggal: liburTanggal, keterangan: liburKeterangan })
+        body: JSON.stringify({ tanggal: formattedTanggal, keterangan: liburKeterangan })
       });
       const data = await res.json();
       if (data.success) {
@@ -350,11 +354,10 @@ export default function AbsensiGTK() {
             <h3 style={{ margin: '0 0 20px 0' }}>Pengaturan Hari Libur</h3>
             <form onSubmit={handleSaveLibur}>
               <div className={styles.formGroup}>
-                <label className={styles.label}>Tanggal (DD/MM/YYYY)</label>
+                <label className={styles.label}>Tanggal Libur</label>
                 <input 
-                  type="text" 
+                  type="date" 
                   className={styles.input} 
-                  placeholder="Contoh: 17/08/2026"
                   value={liburTanggal}
                   onChange={e => setLiburTanggal(e.target.value)}
                   required

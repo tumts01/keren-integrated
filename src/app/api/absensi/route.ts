@@ -23,11 +23,13 @@ export async function GET(request: Request) {
     }
 
     const doc = await getIndukDoc();
-    
-    // Ensure sheet exists or create it
+    const expectedHeaders = ['Nama', 'tanggal', 'jam_masuk', 'jam_pulang', 'status'];
     let sheet = doc.sheetsByTitle['Absen_GTK'];
     if (!sheet) {
-      sheet = await doc.addSheet({ headerValues: ['Nama', 'tanggal', 'jam_masuk', 'jam_pulang', 'status'], title: 'Absen_GTK' });
+      sheet = await doc.addSheet({ headerValues: expectedHeaders, title: 'Absen_GTK' });
+    } else {
+      try { await sheet.loadHeaderRow(); } catch(e) {}
+      await sheet.setHeaderRow(expectedHeaders);
     }
 
     const rows = await sheet.getRows();
@@ -64,9 +66,13 @@ export async function GET(request: Request) {
     // Also get holidays if requested
     let holidays: any[] = [];
     if (bulan && tahun) {
+      const liburExpectedHeaders = ['tanggal', 'keterangan'];
       let liburSheet = doc.sheetsByTitle['Libur_GTK'];
       if (!liburSheet) {
-        liburSheet = await doc.addSheet({ headerValues: ['tanggal', 'keterangan'], title: 'Libur_GTK' });
+        liburSheet = await doc.addSheet({ headerValues: liburExpectedHeaders, title: 'Libur_GTK' });
+      } else {
+        try { await liburSheet.loadHeaderRow(); } catch(e) {}
+        await liburSheet.setHeaderRow(liburExpectedHeaders);
       }
       const liburRows = await liburSheet.getRows();
       holidays = liburRows.map(r => ({
@@ -101,9 +107,13 @@ export async function POST(request: Request) {
     }
 
     const doc = await getIndukDoc();
+    const expectedHeaders = ['Nama', 'tanggal', 'jam_masuk', 'jam_pulang', 'status'];
     let sheet = doc.sheetsByTitle['Absen_GTK'];
     if (!sheet) {
-      sheet = await doc.addSheet({ headerValues: ['Nama', 'tanggal', 'jam_masuk', 'jam_pulang', 'status'], title: 'Absen_GTK' });
+      sheet = await doc.addSheet({ headerValues: expectedHeaders, title: 'Absen_GTK' });
+    } else {
+      try { await sheet.loadHeaderRow(); } catch(e) {}
+      await sheet.setHeaderRow(expectedHeaders);
     }
 
     const rows = await sheet.getRows();

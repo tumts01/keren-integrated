@@ -10,9 +10,13 @@ export async function POST(request: Request) {
     }
 
     const doc = await getIndukDoc();
+    const liburExpectedHeaders = ['tanggal', 'keterangan'];
     let sheet = doc.sheetsByTitle['Libur_GTK'];
     if (!sheet) {
-      sheet = await doc.addSheet({ headerValues: ['tanggal', 'keterangan'], title: 'Libur_GTK' });
+      sheet = await doc.addSheet({ headerValues: liburExpectedHeaders, title: 'Libur_GTK' });
+    } else {
+      try { await sheet.loadHeaderRow(); } catch(e) {}
+      await sheet.setHeaderRow(liburExpectedHeaders);
     }
 
     const rows = await sheet.getRows();
