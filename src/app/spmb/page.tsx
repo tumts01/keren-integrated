@@ -241,7 +241,7 @@ export default function SpmbPage() {
                 <option value="Konghucu">Konghucu</option>
               </select>
             </div>
-            <div className={styles.formGroupFull}>
+            <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
               <label className={styles.label}>Alamat Lengkap (Tempat Tinggal) <span>*</span></label>
               <textarea name="alamatLengkap" className={styles.textarea} placeholder="Jalan, RT/RW, Desa/Kelurahan, Kecamatan, Kabupaten" value={formData.alamatLengkap} onChange={handleInputChange} required></textarea>
             </div>
@@ -259,7 +259,7 @@ export default function SpmbPage() {
               <label className={styles.label}>Alamat Sekolah Asal <span>*</span></label>
               <input type="text" name="alamatSekolahAsal" className={styles.input} placeholder="Contoh: Singosari, Kab. Malang" value={formData.alamatSekolahAsal} onChange={handleInputChange} required />
             </div>
-            <div className={styles.formGroupFull}>
+            <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
               <label className={styles.label}>Prestasi (Jika Ada)</label>
               <input type="text" name="prestasi" className={styles.input} placeholder="Tuliskan prestasi yang pernah diraih (Contoh: Juara 1 Lomba Puisi Tingkat Kabupaten)" value={formData.prestasi} onChange={handleInputChange} />
             </div>
