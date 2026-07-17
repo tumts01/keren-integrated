@@ -32,6 +32,7 @@ export default function SiswaPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedSiswa, setSelectedSiswa] = useState<Siswa | null>(null);
   const [selectedTahun, setSelectedTahun] = useState<string>('Semua');
+  const [selectedTingkat, setSelectedTingkat] = useState<string>('Semua');
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   useEffect(() => {
@@ -63,13 +64,14 @@ export default function SiswaPage() {
 
   const uniqueTahun = Array.from(new Set(data.map(s => s.tahunAjaran).filter(Boolean))).sort((a, b) => b.localeCompare(a));
 
-  // Filter based on Tahun Ajaran and Search Term
+  // Filter based on Tahun Ajaran, Tingkat, and Search Term
   const filteredData = data.filter(s => {
     const matchSearch = s.nama.toLowerCase().includes(searchTerm.toLowerCase()) || 
                         s.nisn.includes(searchTerm) || 
                         s.rombel.toLowerCase().includes(searchTerm.toLowerCase());
     const matchTahun = selectedTahun === 'Semua' ? s.isLatest : s.tahunAjaran === selectedTahun;
-    return matchSearch && matchTahun;
+    const matchTingkat = selectedTingkat === 'Semua' ? true : s.rombel.startsWith(selectedTingkat);
+    return matchSearch && matchTahun && matchTingkat;
   });
 
   // Calculate Stats based on selected Tahun Ajaran (or all if 'Semua')
@@ -96,7 +98,7 @@ export default function SiswaPage() {
   // Reset page to 1 when search or filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedTahun]);
+  }, [searchTerm, selectedTahun, selectedTingkat]);
 
   const handleExportExcel = () => {
     const dataToExport = filteredData.map((s, index) => ({
@@ -220,6 +222,16 @@ export default function SiswaPage() {
             {uniqueTahun.map(tahun => (
               <option key={tahun} value={tahun}>{tahun}</option>
             ))}
+          </select>
+          <select 
+            className={styles.filterSelect}
+            value={selectedTingkat}
+            onChange={(e) => setSelectedTingkat(e.target.value)}
+          >
+            <option value="Semua">Semua Tingkat</option>
+            <option value="7">Tingkat 7</option>
+            <option value="8">Tingkat 8</option>
+            <option value="9">Tingkat 9</option>
           </select>
           <div className={styles.searchBox}>
             <i className={`fas fa-search ${styles.searchIcon}`}></i>

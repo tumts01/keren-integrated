@@ -153,6 +153,8 @@
 
 .tableContainer {
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: calc(100vh - 300px);
 }
 
 .table {
@@ -169,6 +171,9 @@
   color: #64748b;
   border-bottom: 1px solid #e2e8f0;
   white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .table td {
@@ -189,7 +194,7 @@
 
 .table th:first-child {
   background-color: #f8fafc;
-  z-index: 3;
+  z-index: 11;
 }
 
 .table tr:last-child td {
