@@ -1,8 +1,11 @@
 'use client';
 import { useState, useRef } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import styles from './Spmb.module.css';
 
 export default function SpmbPage() {
+  const router = useRouter();
+  const pathname = usePathname();
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
@@ -174,6 +177,22 @@ export default function SpmbPage() {
           </div>
         </div>
       )}
+
+      {/* Tab Navigation */}
+      <div style={{ display: 'flex', gap: '8px', padding: '0 24px', background: 'white', borderBottom: '1px solid #e2e8f0', overflowX: 'auto', marginBottom: '20px', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+        <button 
+          style={{ padding: '16px 24px', border: 'none', background: 'transparent', fontWeight: 600, fontSize: '0.95rem', color: pathname === '/spmb' ? 'var(--primary)' : '#64748b', borderBottom: pathname === '/spmb' ? '3px solid var(--primary)' : '3px solid transparent', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+          onClick={() => router.push('/spmb')}
+        >
+          <i className="fas fa-file-alt" style={{ marginRight: '8px' }}></i> Formulir Daftar
+        </button>
+        <button 
+          style={{ padding: '16px 24px', border: 'none', background: 'transparent', fontWeight: 600, fontSize: '0.95rem', color: pathname === '/spmb/rekap' ? 'var(--primary)' : '#64748b', borderBottom: pathname === '/spmb/rekap' ? '3px solid var(--primary)' : '3px solid transparent', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap' }}
+          onClick={() => router.push('/spmb/rekap')}
+        >
+          <i className="fas fa-list" style={{ marginRight: '8px' }}></i> Rekap Pendaftar
+        </button>
+      </div>
 
       <div className={styles.header}>
         <img src="/logo.png" alt="Logo MTs Almaarif" style={{ width: '80px', height: 'auto', marginBottom: '16px' }} />

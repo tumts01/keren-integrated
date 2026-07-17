@@ -4,6 +4,18 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import styles from './Sidebar.module.css';
 
+type MenuItem = {
+  name: string;
+  path: string;
+  icon: string;
+  subItems?: { name: string; path: string }[];
+};
+
+type MenuCategory = {
+  title: string;
+  items: MenuItem[];
+};
+
 export default function Sidebar() {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -20,7 +32,7 @@ export default function Sidebar() {
     }
   }, [pathname]);
 
-  const menuCategories = [
+  const menuCategories: MenuCategory[] = [
     {
       title: 'Utama',
       items: [
@@ -49,15 +61,7 @@ export default function Sidebar() {
         { name: 'Persuratan', path: '/persuratan', icon: 'fa-envelope-open-text' },
         { name: 'Loker Digital', path: '/loker-digital', icon: 'fa-folder-open' },
         { name: 'Buku Tamu', path: '/buku-tamu', icon: 'fa-address-book' },
-        { 
-          name: 'SPMB', 
-          path: '/spmb', 
-          icon: 'fa-user-graduate',
-          subItems: [
-            { name: 'Formulir Daftar', path: '/spmb' },
-            { name: 'Rekap Pendaftar', path: '/spmb/rekap' }
-          ]
-        },
+        { name: 'SPMB', path: '/spmb', icon: 'fa-user-graduate' },
         { name: 'Data Prestasi', path: '/prestasi', icon: 'fa-trophy' },
         { name: 'Arsip Foto', path: '/arsip-foto', icon: 'fa-images' },
       ]
