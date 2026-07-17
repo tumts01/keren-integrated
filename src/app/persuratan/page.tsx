@@ -27,7 +27,7 @@ interface SuratMasuk {
 }
 
 export default function PersuratanPage() {
-  const [activeTab, setActiveTab] = useState<'keluar' | 'masuk' | 'tagihan' | 'tugas'>('keluar');
+  const [activeTab, setActiveTab] = useState<'keluar' | 'masuk' | 'tagihan' | 'tugas' | 'generate'>('keluar');
   const [dataKeluar, setDataKeluar] = useState<SuratKeluar[]>([]);
   const [dataMasuk, setDataMasuk] = useState<SuratMasuk[]>([]);
   const [topikList, setTopikList] = useState<string[]>([]);
@@ -730,8 +730,9 @@ export default function PersuratanPage() {
               </div>
             </div>
           ) : (
-          <div className={styles.tableContainer}>
-            <table className={styles.table}>
+            <>
+            <div className={styles.tableContainer}>
+              <table className={styles.table}>
               <thead>
                 {activeTab === 'keluar' || activeTab === 'tagihan' ? (
                   <tr>
@@ -893,6 +894,7 @@ export default function PersuratanPage() {
               </div>
             </div>
           )}
+          </>
           )}
         </>
         )}
