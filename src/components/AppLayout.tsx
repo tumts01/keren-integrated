@@ -14,6 +14,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [newUsername, setNewUsername] = useState('');
   const [updateLoading, setUpdateLoading] = useState(false);
   const [popup, setPopup] = useState<{show: boolean, type: 'error'|'confirm'|'success', title: string, message: string, onConfirm?: () => void} | null>(null);
+  
+  // PWA Install Prompt State
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
   const pathname = usePathname();
 
@@ -21,7 +24,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setMounted(true);
     const storedUser = localStorage.getItem('keren_user_data');
     if (storedUser) setUser(JSON.parse(storedUser));
+
+    // Capture PWA install prompt
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
   }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,6 +184,35 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </div>
+
+        {/* Floating Install Button on Login Page */}
+        {deferredPrompt && (
+          <button 
+            onClick={handleInstallClick}
+            style={{
+              position: 'fixed',
+              bottom: '24px',
+              right: '24px',
+              background: '#2563eb',
+              color: 'white',
+              border: 'none',
+              padding: '12px 20px',
+              borderRadius: '50px',
+              boxShadow: '0 10px 15px -3px rgba(37, 99, 235, 0.4)',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              zIndex: 9999,
+              transition: 'transform 0.2s'
+            }}
+            onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            <i className="fas fa-download"></i> Install Aplikasi
+          </button>
+        )}
         
         {/* Lupa Password Modal */}
         {showLupaPassword && (
@@ -296,6 +349,35 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </span>
         </footer>
       </div>
+
+      {/* Floating Install Button */}
+      {deferredPrompt && (
+        <button 
+          onClick={handleInstallClick}
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            background: '#2563eb',
+            color: 'white',
+            border: 'none',
+            padding: '12px 20px',
+            borderRadius: '50px',
+            boxShadow: '0 10px 15px -3px rgba(37, 99, 235, 0.4)',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            zIndex: 9999,
+            transition: 'transform 0.2s'
+          }}
+          onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
+          onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          <i className="fas fa-download"></i> Install Aplikasi
+        </button>
+      )}
     </div>
   );
 }
