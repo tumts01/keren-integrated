@@ -96,7 +96,7 @@ export default function PersuratanPage() {
           const latestStudents = json.data.filter((s: any) => s.isLatest);
           const filtered = latestStudents.filter((s: any) => 
             s.nama.toLowerCase().includes(searchSiswaTerm.toLowerCase())
-          ).slice(0, 5); // Max 5 results
+          ).slice(0, 50); // Max 50 results
           setSiswaOptions(filtered);
           setShowSiswaDropdown(true);
         }
@@ -687,7 +687,7 @@ export default function PersuratanPage() {
                     </div>
                   )}
                   {showSiswaDropdown && siswaOptions.length > 0 && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', marginTop: '4px', zIndex: 10, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', marginTop: '4px', zIndex: 10, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', maxHeight: '250px', overflowY: 'auto' }}>
                       {siswaOptions.map(siswa => (
                         <div 
                           key={siswa.id} 
