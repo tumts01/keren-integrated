@@ -113,7 +113,7 @@ export default function PersuratanPage() {
           payload: {
             tanggal: formTanggal,
             namaSurat: formNamaSurat,
-            yangDitugaskan: formSasaran === 'Siswa' ? 'Siswa' : formDitugaskan.join(', '),
+            yangDitugaskan: formSasaran === 'Siswa' ? 'Siswa' : formDitugaskan.join('; '),
             topik: formTopik,
             pj: formPj
           }
@@ -239,7 +239,7 @@ export default function PersuratanPage() {
   const tugasMap: Record<string, typeof filteredKeluar> = {};
   filteredKeluar.forEach(s => {
     if (s.yangDitugaskan) {
-      const persons = s.yangDitugaskan.split(',').map(p => p.trim()).filter(Boolean);
+      const persons = s.yangDitugaskan.split(';').map(p => p.trim()).filter(Boolean);
       persons.forEach(p => {
         if (!tugasMap[p]) tugasMap[p] = [];
         tugasMap[p].push(s);
@@ -278,8 +278,8 @@ export default function PersuratanPage() {
   const guruCounts: Record<string, number> = {};
   dataKeluar.forEach(s => {
     if (s.yangDitugaskan) {
-      // Split by comma if multiple people
-      const persons = s.yangDitugaskan.split(',').map(p => p.trim()).filter(Boolean);
+      // Split by semicolon if multiple people
+      const persons = s.yangDitugaskan.split(';').map(p => p.trim()).filter(Boolean);
       persons.forEach(p => {
         guruCounts[p] = (guruCounts[p] || 0) + 1;
       });
