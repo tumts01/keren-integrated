@@ -132,7 +132,7 @@ export default function AddBonPage() {
             <select className={styles.input} value={nama} onChange={e => setNama(e.target.value)} required>
               <option value="" disabled>Pilih Nama Pemohon</option>
               {availableUsers.map((u, i) => (
-                <option key={i} value={u.nama}>{u.nama} ({u.rule})</option>
+                <option key={i} value={u.nama}>{u.nama}</option>
               ))}
             </select>
           </div>
