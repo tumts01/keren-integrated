@@ -438,7 +438,7 @@ export default function AbsensiGTK() {
           </table>
 
           <div className={styles.printTtd}>
-            <p>Singosari, {new Date(rekapTahun, rekapBulan, 0).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            <p>Singosari, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
             <p style={{ marginBottom: '60px' }}>Mengetahui,<br/>Kepala Madrasah</p>
             <p style={{ fontWeight: 'bold', textDecoration: 'underline' }}>DWI RETNO PALUPI, M.Pd.</p>
           </div>

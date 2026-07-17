@@ -229,40 +229,41 @@
     top: 0;
     width: 100%;
     background: white !important;
+    font-size: 10pt;
   }
 
   .printHeader {
     text-align: center;
     background: #10b981 !important; /* Hijau */
     color: white !important;
-    padding: 10px;
+    padding: 8px;
     font-weight: bold;
-    font-size: 16pt;
+    font-size: 14pt;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
   }
   
   .printInfoTable {
     width: 100%;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
   }
   
   .printInfoTable td {
-    padding: 4px;
+    padding: 2px;
     font-weight: bold;
   }
 
   .printLogo {
-    width: 100px;
-    height: 100px;
+    width: 80px;
+    height: 80px;
     object-fit: contain;
   }
 
   .printRecapTable {
     width: 100%;
     border-collapse: collapse;
-    margin-bottom: 40px;
+    margin-bottom: 30px;
   }
 
   .printRecapTable th {
@@ -270,7 +271,7 @@
     color: white !important;
     font-weight: bold;
     text-align: center;
-    padding: 8px;
+    padding: 6px;
     border: 1px solid white;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -281,7 +282,7 @@
   }
 
   .printRecapTable td {
-    padding: 8px;
+    padding: 5px;
     text-align: center;
     border-bottom: 1px solid #e2e8f0;
   }
@@ -296,7 +297,7 @@
     background: #f1f5f9 !important;
     font-weight: bold;
     text-align: center;
-    padding: 8px;
+    padding: 6px;
     border-bottom: 1px solid #e2e8f0;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
