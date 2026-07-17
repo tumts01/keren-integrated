@@ -25,6 +25,7 @@ export default function Sidebar() {
       items: [
         { name: 'Dashboard', path: '/', icon: 'fa-chart-pie' },
         { name: 'Pengumuman', path: '/pengumuman', icon: 'fa-bullhorn' },
+        { name: 'Absensi GTK', path: '/absensi-gtk', icon: 'fa-user-check' },
       ]
     },
     {
