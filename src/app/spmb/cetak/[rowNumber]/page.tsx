@@ -163,11 +163,15 @@ export default function CetakSpmb() {
             </table>
 
             <div className={styles.footer}>
+              <div className={styles.footerLogos}>
+                <img src="/keren.png" alt="Sistem KEREN" />
+                <img src="/Ramah_Anak.png" alt="Madrasah Ramah Anak" />
+                <img src="/Madrasah_Adiwiyata.png" alt="Madrasah Adiwiyata" />
+              </div>
               <div className={styles.signature}>
                 <p>Singosari, {tanggalCetak}</p>
                 <p>Panitia SPMB,</p>
                 <div className={styles.signatureSpace}></div>
-                <p>_______________________</p>
               </div>
             </div>
 
