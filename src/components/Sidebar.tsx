@@ -258,7 +258,7 @@ export default function Sidebar() {
                               <Link 
                                 key={sub.path} 
                                 href={sub.path}
-                                className={`${styles.subMenuItem} ${isSubActive ? styles.active : ''}`}
+                                className={styles.subMenuItem}
                                 onClick={() => {
                                   if (window.innerWidth <= 768) setIsCollapsed(true);
                                 }}

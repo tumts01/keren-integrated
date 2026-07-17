@@ -49,7 +49,14 @@ export default function RekapSpmb() {
           <div className={styles.titleIcon}>
             <i className="fas fa-list-alt"></i>
           </div>
-          Rekap Pendaftar SPMB
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span>Rekap Pendaftar SPMB</span>
+            {!loading && !error && data && (
+              <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: '500', marginTop: '2px' }}>
+                Total: {data.length} Pendaftar
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
