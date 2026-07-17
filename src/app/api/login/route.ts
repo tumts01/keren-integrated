@@ -27,6 +27,23 @@ export async function POST(request: Request) {
     });
 
     if (userRow) {
+      // Attempt to log last login time
+      try {
+        const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
+        
+        // Ensure the header exists
+        await sheet.loadHeaderRow();
+        if (!sheet.headerValues.includes('Terakhir Login')) {
+          const newHeaders = [...sheet.headerValues, 'Terakhir Login'];
+          await sheet.setHeaderRow(newHeaders);
+        }
+        
+        userRow.set('Terakhir Login', timestamp);
+        await userRow.save();
+      } catch (logError) {
+        console.error('Failed to log last login time:', logError);
+      }
+
       // Login Success
       return NextResponse.json({
         success: true,
