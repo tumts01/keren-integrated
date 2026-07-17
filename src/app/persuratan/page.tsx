@@ -57,6 +57,7 @@ export default function PersuratanPage() {
   // Form Generate States
   const [formTanggal, setFormTanggal] = useState(new Date().toISOString().split('T')[0]);
   const [formNamaSurat, setFormNamaSurat] = useState('');
+  const [formSasaran, setFormSasaran] = useState<'Guru' | 'Siswa'>('Guru');
   const [formDitugaskan, setFormDitugaskan] = useState<string[]>([]);
   const [formTopik, setFormTopik] = useState('');
   const [formPj, setFormPj] = useState('');
@@ -112,7 +113,7 @@ export default function PersuratanPage() {
           payload: {
             tanggal: formTanggal,
             namaSurat: formNamaSurat,
-            yangDitugaskan: formDitugaskan.join(', '),
+            yangDitugaskan: formSasaran === 'Siswa' ? 'Siswa' : formDitugaskan.join(', '),
             topik: formTopik,
             pj: formPj
           }
@@ -124,6 +125,7 @@ export default function PersuratanPage() {
         setShowGenerateModal(false);
         // Reset form
         setFormNamaSurat('');
+        setFormSasaran('Guru');
         setFormDitugaskan([]);
         setFormTopik('');
         setFormPj('');
@@ -393,36 +395,51 @@ export default function PersuratanPage() {
                   <label className={styles.infoLabel}>Nama Surat / Perihal</label>
                   <input type="text" className={styles.searchInput} value={formNamaSurat} onChange={e => setFormNamaSurat(e.target.value)} placeholder="Contoh: Surat Edaran Kegiatan..." required />
                 </div>
-                <div className={styles.infoGroup} style={{ marginBottom: '16px', position: 'relative' }}>
-                  <label className={styles.infoLabel}>Yang Ditugaskan / Kepada</label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: formDitugaskan.length > 0 ? '8px' : '0', border: '1px solid #cbd5e1', borderRadius: '8px', minHeight: '42px', alignItems: 'center' }}>
-                    {formDitugaskan.map((guru, idx) => (
-                      <span key={idx} style={{ background: 'var(--primary)', color: 'white', padding: '4px 10px', borderRadius: '16px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {guru}
-                        <i className="fas fa-times" style={{ cursor: 'pointer' }} onClick={() => setFormDitugaskan(prev => prev.filter(g => g !== guru))}></i>
-                      </span>
-                    ))}
-                    <input 
-                      type="text" 
-                      style={{ border: 'none', outline: 'none', flex: 1, minWidth: '150px', padding: formDitugaskan.length > 0 ? '4px' : '10px' }} 
-                      value={searchGuru} 
-                      onChange={e => setSearchGuru(e.target.value)} 
-                      placeholder={formDitugaskan.length === 0 ? "Ketik nama guru..." : ""}
-                    />
+                <div className={styles.infoGroup} style={{ marginBottom: '16px' }}>
+                  <label className={styles.infoLabel}>Sasaran Surat</label>
+                  <div style={{ display: 'flex', gap: '16px', fontSize: '0.9rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                      <input type="radio" name="sasaran" value="Guru" checked={formSasaran === 'Guru'} onChange={() => setFormSasaran('Guru')} />
+                      Surat untuk Guru / Staf
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                      <input type="radio" name="sasaran" value="Siswa" checked={formSasaran === 'Siswa'} onChange={() => setFormSasaran('Siswa')} />
+                      Surat untuk Siswa / Eksternal
+                    </label>
                   </div>
-                  {searchGuru && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', maxHeight: '150px', overflowY: 'auto', zIndex: 10, boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-                      {guruList.filter(g => g.nama.toLowerCase().includes(searchGuru.toLowerCase()) && !formDitugaskan.includes(g.nama)).map(g => (
-                        <div key={g.id} style={{ padding: '10px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }} onClick={() => {
-                          setFormDitugaskan(prev => [...prev, g.nama]);
-                          setSearchGuru('');
-                        }}>
-                          {g.nama}
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
+                {formSasaran === 'Guru' && (
+                  <div className={styles.infoGroup} style={{ marginBottom: '16px', position: 'relative' }}>
+                    <label className={styles.infoLabel}>Yang Ditugaskan / Kepada</label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: formDitugaskan.length > 0 ? '8px' : '0', border: '1px solid #cbd5e1', borderRadius: '8px', minHeight: '42px', alignItems: 'center' }}>
+                      {formDitugaskan.map((guru, idx) => (
+                        <span key={idx} style={{ background: 'var(--primary)', color: 'white', padding: '4px 10px', borderRadius: '16px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {guru}
+                          <i className="fas fa-times" style={{ cursor: 'pointer' }} onClick={() => setFormDitugaskan(prev => prev.filter(g => g !== guru))}></i>
+                        </span>
+                      ))}
+                      <input 
+                        type="text" 
+                        style={{ border: 'none', outline: 'none', flex: 1, minWidth: '150px', padding: formDitugaskan.length > 0 ? '4px' : '10px' }} 
+                        value={searchGuru} 
+                        onChange={e => setSearchGuru(e.target.value)} 
+                        placeholder={formDitugaskan.length === 0 ? "Ketik nama guru..." : ""}
+                      />
+                    </div>
+                    {searchGuru && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', maxHeight: '150px', overflowY: 'auto', zIndex: 10, boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                        {guruList.filter(g => g.nama.toLowerCase().includes(searchGuru.toLowerCase()) && !formDitugaskan.includes(g.nama)).map(g => (
+                          <div key={g.id} style={{ padding: '10px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }} onClick={() => {
+                            setFormDitugaskan(prev => [...prev, g.nama]);
+                            setSearchGuru('');
+                          }}>
+                            {g.nama}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className={styles.infoGroup} style={{ marginBottom: '24px', position: 'relative' }}>
                   <label className={styles.infoLabel}>Penanggung Jawab (PJ)</label>
                   <input 
