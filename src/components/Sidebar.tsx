@@ -7,6 +7,7 @@ import styles from './Sidebar.module.css';
 export default function Sidebar() {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [userRole, setUserRole] = useState<string>('');
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -76,7 +77,6 @@ export default function Sidebar() {
   const [openCategories, setOpenCategories] = useState<string[]>(['Utama', 'Akademik & KBM', 'Administrasi', 'Keuangan']);
   const [openSubmenus, setOpenSubmenus] = useState<string[]>(['SPMB']); // For submenus like SPMB
   const [isClient, setIsClient] = useState(false);
-  const [userRole, setUserRole] = useState<string>('');
 
   useEffect(() => {
     setIsClient(true);

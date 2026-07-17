@@ -9,6 +9,7 @@ export default function AddBonPage() {
   const [loading, setLoading] = useState(false);
   const [nama, setNama] = useState('');
   const [userRole, setUserRole] = useState<string>('');
+  const [availableUsers, setAvailableUsers] = useState<any[]>([]);
   
   // Ambil nama user otomatis
   useEffect(() => {
@@ -22,6 +23,24 @@ export default function AddBonPage() {
         setUserRole(parsedUser.rule || parsedUser.role || '');
       } catch (e) {}
     }
+
+    // Fetch users for dropdown
+    const fetchUsers = async () => {
+      try {
+        const res = await fetch('/api/user');
+        const json = await res.json();
+        if (json.success && json.data) {
+          const filtered = json.data.filter((u: any) => {
+            const role = (u.rule || '').toLowerCase();
+            return role === 'admin' || role === 'pimpinan';
+          });
+          setAvailableUsers(filtered);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    fetchUsers();
   }, []);
 
   const [keperluan, setKeperluan] = useState('');
@@ -110,7 +129,12 @@ export default function AddBonPage() {
           
           <div className={styles.formGroup}>
             <label>Nama Pemohon</label>
-            <input type="text" className={styles.input} value={nama} onChange={e => setNama(e.target.value)} required />
+            <select className={styles.input} value={nama} onChange={e => setNama(e.target.value)} required>
+              <option value="" disabled>Pilih Nama Pemohon</option>
+              {availableUsers.map((u, i) => (
+                <option key={i} value={u.nama}>{u.nama} ({u.rule})</option>
+              ))}
+            </select>
           </div>
 
           <div className={styles.formGroup}>
