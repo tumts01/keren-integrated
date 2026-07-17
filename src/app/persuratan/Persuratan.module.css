@@ -477,14 +477,21 @@
 }
 
 @media print {
+  html, body {
+    background-color: white !important;
+  }
+
   /* Sembunyikan elemen dashboard (sidebar, header, dsb) saat diprint */
   body * {
     visibility: hidden;
+    background: transparent !important;
   }
   
   /* Tampilkan komponen print template secara penuh di halaman cetak */
   .printOnly, .printOnly * {
     visibility: visible !important;
+    background: white !important;
+    color: black !important;
   }
   
   .printOnly {
@@ -493,7 +500,8 @@
     left: 0;
     top: 0;
     width: 100%;
-    padding: 0; /* Padding diatur via margin page */
+    min-height: 100vh;
+    padding: 0;
     background: white !important;
   }
 
