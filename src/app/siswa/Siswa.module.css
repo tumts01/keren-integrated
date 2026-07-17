@@ -4,11 +4,10 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+  height: calc(100vh - 40px);
 }
 
 .stickyTop {
-  position: sticky;
-  top: -24px;
   z-index: 20;
   background-color: var(--bg-main);
   padding-top: 24px;
@@ -148,13 +147,16 @@
   background: white;
   border-radius: 16px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .tableContainer {
   overflow-x: auto;
   overflow-y: auto;
-  max-height: calc(100vh - 300px);
+  flex: 1;
 }
 
 .table {
