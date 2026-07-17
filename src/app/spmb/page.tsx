@@ -37,7 +37,9 @@ export default function SpmbPage() {
     asalSekolah: '',
     alamatSekolahAsal: '',
     namaAyah: '',
+    pekerjaanAyah: '',
     namaIbu: '',
+    pekerjaanIbu: '',
     nomorWaAyah: '',
     nomorWaIbu: '',
     alamatLengkap: '',
@@ -113,7 +115,9 @@ export default function SpmbPage() {
         asalSekolah: formData.asalSekolah,
         alamatSekolahAsal: formData.alamatSekolahAsal,
         namaAyah: formData.namaAyah,
+        pekerjaanAyah: formData.pekerjaanAyah,
         namaIbu: formData.namaIbu,
+        pekerjaanIbu: formData.pekerjaanIbu,
         nomorWaAyah: formData.nomorWaAyah,
         nomorWaIbu: formData.nomorWaIbu,
         alamatLengkap: formData.alamatLengkap,
@@ -145,7 +149,9 @@ export default function SpmbPage() {
           asalSekolah: '',
           alamatSekolahAsal: '',
           namaAyah: '',
+          pekerjaanAyah: '',
           namaIbu: '',
+          pekerjaanIbu: '',
           nomorWaAyah: '',
           nomorWaIbu: '',
           alamatLengkap: '',
@@ -306,12 +312,20 @@ export default function SpmbPage() {
               <input type="text" name="namaAyah" className={styles.input} value={formData.namaAyah} onChange={handleInputChange} required />
             </div>
             <div className={styles.formGroup}>
+              <label className={styles.label}>Pekerjaan Ayah <span>*</span></label>
+              <input type="text" name="pekerjaanAyah" className={styles.input} value={formData.pekerjaanAyah} onChange={handleInputChange} required />
+            </div>
+            <div className={styles.formGroup}>
               <label className={styles.label}>Nomor WA Ayah <span>*</span></label>
               <input type="tel" name="nomorWaAyah" className={styles.input} placeholder="Contoh: 081234567890" value={formData.nomorWaAyah} onChange={handleInputChange} required />
             </div>
             <div className={styles.formGroup}>
               <label className={styles.label}>Nama Ibu <span>*</span></label>
               <input type="text" name="namaIbu" className={styles.input} value={formData.namaIbu} onChange={handleInputChange} required />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Pekerjaan Ibu <span>*</span></label>
+              <input type="text" name="pekerjaanIbu" className={styles.input} value={formData.pekerjaanIbu} onChange={handleInputChange} required />
             </div>
             <div className={styles.formGroup}>
               <label className={styles.label}>Nomor WA Ibu <span>*</span></label>
