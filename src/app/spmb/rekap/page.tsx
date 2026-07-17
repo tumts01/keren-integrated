@@ -118,9 +118,9 @@ export default function RekapSpmb() {
                       </div>
                     </td>
                     <td>
-                      <Link href={`/spmb/cetak/${item.rowNumber}`} target="_blank" className={styles.btnPrint}>
+                      <button onClick={() => openViewer(`/spmb/cetak/${item.rowNumber}`, `Cetak Kartu - ${item.namaLengkap}`)} className={styles.btnPrint}>
                         <i className="fas fa-print"></i> Cetak Kartu
-                      </Link>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -133,7 +133,7 @@ export default function RekapSpmb() {
       {/* Document Viewer Modal */}
       {viewerUrl && (
         <div className={styles.modalOverlay} onClick={closeViewer}>
-          <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+          <div className={styles.modalContent} style={{ maxWidth: viewerUrl.includes('/cetak') ? '800px' : '1000px' }} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <div className={styles.modalTitle}>{viewerTitle}</div>
               <button className={styles.closeBtn} onClick={closeViewer}>
@@ -142,9 +142,9 @@ export default function RekapSpmb() {
             </div>
             <div className={styles.modalBody}>
               <iframe 
-                src={viewerUrl.replace('/view?usp=drivesdk', '/preview')} 
+                src={viewerUrl.includes('/cetak') ? viewerUrl : viewerUrl.replace('/view?usp=drivesdk', '/preview')} 
                 className={styles.iframe}
-                allow="autoplay"
+                allow="autoplay; clipboard-write"
               ></iframe>
             </div>
           </div>
