@@ -46,6 +46,14 @@ export default function PersuratanPage() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Custom Toast State
+  const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500);
+  };
+
   // Form Generate States
   const [formTanggal, setFormTanggal] = useState(new Date().toISOString().split('T')[0]);
   const [formNamaSurat, setFormNamaSurat] = useState('');
@@ -112,7 +120,7 @@ export default function PersuratanPage() {
       });
       const result = await res.json();
       if (result.success) {
-        alert(`Nomor Surat berhasil dibuat: ${result.noSurat}`);
+        showToast(`Nomor Surat berhasil dibuat: ${result.noSurat}`, 'success');
         setShowGenerateModal(false);
         // Reset form
         setFormNamaSurat('');
@@ -125,10 +133,10 @@ export default function PersuratanPage() {
         // Refresh data
         fetchData();
       } else {
-        alert(`Gagal: ${result.error}`);
+        showToast(`Gagal: ${result.error}`, 'error');
       }
     } catch (err) {
-      alert('Terjadi kesalahan saat membuat nomor surat.');
+      showToast('Terjadi kesalahan saat membuat nomor surat.', 'error');
     } finally {
       setGenerating(false);
     }
@@ -143,7 +151,7 @@ export default function PersuratanPage() {
     e.preventDefault();
     if (!uploadTarget) return;
     if (!fileInputRef.current?.files?.[0]) {
-      alert("Silakan pilih file terlebih dahulu");
+      showToast("Silakan pilih file terlebih dahulu", 'error');
       return;
     }
 
@@ -160,15 +168,15 @@ export default function PersuratanPage() {
       });
       const result = await res.json();
       if (result.success) {
-        alert('File berhasil diarsipkan ke Google Drive!');
+        showToast('File berhasil diarsipkan ke Google Drive!', 'success');
         setShowUploadModal(false);
         setUploadTarget(null);
         fetchData();
       } else {
-        alert(`Gagal upload: ${result.error}`);
+        showToast(`Gagal upload: ${result.error}`, 'error');
       }
     } catch (error) {
-      alert('Terjadi kesalahan sistem saat upload file.');
+      showToast('Terjadi kesalahan sistem saat upload file.', 'error');
     } finally {
       setUploading(false);
     }
@@ -284,6 +292,16 @@ export default function PersuratanPage() {
 
   return (
     <div className={styles.container}>
+      {/* Toast Notification */}
+      {toast && (
+        <div className={styles.toastContainer}>
+          <div className={`${styles.toast} ${styles[toast.type]}`}>
+            <i className={`fas ${toast.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} ${styles.toastIcon}`}></i>
+            {toast.message}
+          </div>
+        </div>
+      )}
+
       {/* Upload Modal */}
       {showUploadModal && (
         <div className={styles.modalOverlay} onClick={() => !uploading && setShowUploadModal(false)}>
