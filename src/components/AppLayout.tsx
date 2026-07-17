@@ -84,6 +84,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!user) {
     return (
       <div className={styles.loginWrapper}>
+        {popup && popup.show && (
+          <div className={styles.popupOverlay} style={{ zIndex: 9999 }}>
+            <div className={styles.popupCard}>
+              <div className={styles.popupIcon} style={{ background: popup.type === 'error' ? '#fee2e2' : popup.type === 'success' ? '#dcfce7' : '#fef3c7', color: popup.type === 'error' ? '#ef4444' : popup.type === 'success' ? '#16a34a' : '#f59e0b' }}>
+                <i className={`fas ${popup.type === 'error' ? 'fa-times' : popup.type === 'success' ? 'fa-check' : 'fa-exclamation-triangle'}`}></i>
+              </div>
+              <h3 className={styles.popupTitle}>{popup.title}</h3>
+              <p className={styles.popupMessage}>{popup.message}</p>
+              <div className={styles.popupActions}>
+                {popup.type === 'confirm' && (
+                  <button className={styles.popupBtnCancel} onClick={() => setPopup(null)}>Batal</button>
+                )}
+                <button 
+                  className={styles.popupBtnConfirm} 
+                  style={{ background: popup.type === 'error' ? '#ef4444' : popup.type === 'success' ? '#16a34a' : '#237227' }}
+                  onClick={() => {
+                    if (popup.onConfirm) popup.onConfirm();
+                    setPopup(null);
+                  }}
+                >
+                  {popup.type === 'error' || popup.type === 'success' ? 'Tutup' : 'Ya, Lanjutkan'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className={styles.leftSection}>
           {/* Latar belakang foto sekolah */}
           <div className={styles.leftOverlay}>
