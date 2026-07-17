@@ -10,6 +10,17 @@ export default function LokerDigital() {
   const [needsConfig, setNeedsConfig] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [uploadingFolderId, setUploadingFolderId] = useState<string | null>(null);
+  
+  // Custom Toast State
+  const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+  
+  // Custom Modal State
+  const [modalFolder, setModalFolder] = useState<{id: string, name: string} | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3500); // Hilang setelah 3.5 detik
+  };
 
   useEffect(() => {
     fetchLokerData();
@@ -57,12 +68,12 @@ export default function LokerDigital() {
       const json = await res.json();
       
       if (json.success) {
-        alert('File berhasil diunggah ke Google Drive!');
+        showToast('File berhasil diunggah ke Loker Digital!', 'success');
       } else {
-        alert('Gagal mengunggah: ' + json.error);
+        showToast('Gagal mengunggah: ' + json.error, 'error');
       }
     } catch (err) {
-      alert('Terjadi kesalahan saat mengunggah file.');
+      showToast('Terjadi kesalahan sistem saat mengunggah file.', 'error');
     } finally {
       setUploadingFolderId(null);
       // Reset input
@@ -76,6 +87,40 @@ export default function LokerDigital() {
 
   return (
     <div className={styles.container}>
+      {/* Toast Notification */}
+      {toast && (
+        <div className={styles.toastContainer}>
+          <div className={`${styles.toast} ${styles[toast.type]}`}>
+            <i className={`fas ${toast.type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} ${styles.toastIcon}`}></i>
+            {toast.message}
+          </div>
+        </div>
+      )}
+
+      {/* Modal Iframe Folder */}
+      {modalFolder && (
+        <div className={styles.modalOverlay} onClick={() => setModalFolder(null)}>
+          <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <div className={styles.modalTitle}>
+                <i className="fas fa-folder-open" style={{color: 'var(--primary)'}}></i>
+                Loker: {modalFolder.name}
+              </div>
+              <button className={styles.modalClose} onClick={() => setModalFolder(null)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <iframe 
+                src={`https://drive.google.com/embeddedfolderview?id=${modalFolder.id}#grid`}
+                className={styles.iframe}
+                allow="autoplay"
+              ></iframe>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className={styles.header}>
         <div className={styles.title}>
           <div className={styles.titleIcon}>
@@ -138,14 +183,12 @@ export default function LokerDigital() {
 
               <div className={styles.actions}>
                 {guru.lokerFolder ? (
-                  <a 
-                    href={guru.lokerFolder.webViewLink} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
+                  <button 
+                    onClick={() => setModalFolder({ id: guru.lokerFolder.id, name: guru.nama })}
                     className={`${styles.btnLoker} ${styles.active}`}
                   >
                     <i className="fas fa-external-link-alt"></i> Buka Loker
-                  </a>
+                  </button>
                 ) : (
                   <button className={styles.btnLoker} disabled>
                     <i className="fas fa-folder-minus"></i> Loker Kosong
