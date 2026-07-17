@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import * as XLSX from 'xlsx';
 import styles from './Guru.module.css';
 
 interface Guru {
@@ -70,6 +71,32 @@ export default function GuruPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm]);
+
+  const handleExportExcel = () => {
+    const dataToExport = filteredData.map((g, index) => ({
+      'No': index + 1,
+      'Nama Lengkap': g.nama,
+      'Status': g.status,
+      'NIP': g.nip,
+      'Peg ID': g.pegId,
+      'Pass Emis (Hijau)': g.passEmisHijau,
+      'Pass Emis (Dev)': g.passEmisDev,
+      'Jenis Kelamin': g.jenisKelamin,
+      'Jabatan': g.jabatan,
+      'Tempat Lahir': g.tempatLahir,
+      'Tanggal Lahir': g.tanggalLahir,
+      'NIK': g.nik,
+      'No. HP': g.noHp,
+      'Alamat': g.alamat,
+      'Tanggal SK': g.tanggalSk,
+      'Email': g.email,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Data Guru');
+    XLSX.writeFile(workbook, `Data_Guru_dan_Staf.xlsx`);
+  };
 
   return (
     <div className={styles.container}>
@@ -145,17 +172,20 @@ export default function GuruPage() {
         </div>
         
         <div className={styles.actions}>
-          <div className={styles.searchBox}>
-            <i className={`fas fa-search ${styles.searchIcon}`}></i>
-            <input 
-              type="text" 
-              placeholder="Cari nama, NIP, atau jabatan..." 
-              className={styles.searchInput}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <button className="btn btn-primary">
+            <div className={styles.searchBox}>
+              <i className={`fas fa-search ${styles.searchIcon}`}></i>
+              <input 
+                type="text" 
+                placeholder="Cari nama, NIP, atau jabatan..." 
+                className={styles.searchInput}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <button onClick={handleExportExcel} className="btn btn-gold" style={{ marginRight: '8px' }}>
+              <i className="fas fa-file-excel"></i> Export Excel
+            </button>
+            <button className="btn btn-primary">
             <i className="fas fa-plus"></i> Tambah Data
           </button>
         </div>
