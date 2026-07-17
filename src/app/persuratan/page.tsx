@@ -194,7 +194,7 @@ export default function PersuratanPage() {
         'Nama Surat': s.namaSurat,
         'Yang Ditugaskan': s.yangDitugaskan,
         'Topik': s.topik,
-        'PJ': s.pj,
+        'Pembuat Surat': s.pj,
         'No Surat': s.noSurat,
         'Status Arsip': s.fileScan ? 'Diarsipkan' : 'Belum Diarsipkan'
       }));
@@ -441,13 +441,13 @@ export default function PersuratanPage() {
                   </div>
                 )}
                 <div className={styles.infoGroup} style={{ marginBottom: '24px', position: 'relative' }}>
-                  <label className={styles.infoLabel}>Penanggung Jawab (PJ)</label>
+                  <label className={styles.infoLabel}>Nama Pembuat Surat</label>
                   <input 
                     type="text" 
                     className={styles.searchInput} 
                     value={formPj} 
                     onChange={e => { setFormPj(e.target.value); setSearchPj(e.target.value); }} 
-                    placeholder="Contoh: Kepala Madrasah" 
+                    placeholder="Contoh: Ahmad, S.Pd" 
                     required 
                   />
                   {searchPj && guruList.filter(g => g.nama.toLowerCase().includes(searchPj.toLowerCase())).length > 0 && (
@@ -600,7 +600,7 @@ export default function PersuratanPage() {
                     <th>Nama Surat</th>
                     <th>Yang Ditugaskan</th>
                     <th>Topik</th>
-                    <th>PJ</th>
+                    <th>Pembuat Surat</th>
                     <th style={{ textAlign: 'center' }}>Status / Arsip</th>
                   </tr>
                 ) : activeTab === 'masuk' ? (
