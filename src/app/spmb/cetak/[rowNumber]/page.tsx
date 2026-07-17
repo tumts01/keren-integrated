@@ -64,10 +64,10 @@ export default function CetakSpmb() {
     setIsGeneratingPdf(true);
     const element = document.getElementById('print-area');
     const opt = {
-      margin:       [10, 10, 10, 10], // top, left, bottom, right
+      margin:       [0, 0, 0, 0], // Set to 0 to prevent cutoff, the CSS handles padding
       filename:     `Kartu_SPMB_${data.namaLengkap.replace(/\s+/g, '_')}_${data.nisn}.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true },
+      image:        { type: 'jpeg', quality: 1.0 },
+      html2canvas:  { scale: 2, useCORS: true, windowWidth: 794 }, // 794px is roughly 210mm at 96dpi
       jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
