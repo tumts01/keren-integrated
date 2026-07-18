@@ -10,6 +10,7 @@ export default function PresensiPage() {
   const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
   const [selectedKelas, setSelectedKelas] = useState('');
   const [selectedMapel, setSelectedMapel] = useState('');
+  const [selectedJam, setSelectedJam] = useState<number[]>([]);
   
   // Dummy/Mock data states for template
   const [kelasList, setKelasList] = useState<any[]>([]);
@@ -66,11 +67,59 @@ export default function PresensiPage() {
     }
   }, [selectedKelas]);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handlePresensiChange = (nisn: string, status: string) => {
     setPresensi(prev => ({
       ...prev,
       [nisn]: status
     }));
+  };
+
+  const toggleJam = (jam: number) => {
+    setSelectedJam(prev => 
+      prev.includes(jam) ? prev.filter(j => j !== jam) : [...prev, jam].sort((a,b) => a-b)
+    );
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedKelas || !selectedMapel) {
+      alert('Mohon pilih Kelas dan Mata Pelajaran terlebih dahulu!');
+      return;
+    }
+    if (selectedJam.length === 0) {
+      alert('Mohon pilih Jam Ke!');
+      return;
+    }
+
+    if (!confirm(`Simpan presensi untuk kelas ${selectedKelas}?`)) return;
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/presensi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tanggal,
+          jamKe: selectedJam.join(', '),
+          kelas: selectedKelas,
+          mapel: selectedMapel,
+          presensi,
+          siswaList
+        })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        alert(`Berhasil menyimpan presensi! ${data.totalSaved > 0 ? (data.totalSaved + ' data S/I/A tercatat.') : 'Semua siswa Hadir (tidak ada data absen ke sheet).'}`);
+      } else {
+        alert('Gagal menyimpan: ' + (data.error || 'Terjadi kesalahan'));
+      }
+    } catch (e: any) {
+      alert('Error: ' + e.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -143,6 +192,21 @@ export default function PresensiPage() {
                     <option key={kelas} value={kelas}>{kelas}</option>
                   ))}
                 </select>
+              </div>
+
+              <div className={styles.filterGroup}>
+                <label>Jam Ke</label>
+                <div className={styles.jamPills}>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(jam => (
+                    <button
+                      key={jam}
+                      className={`${styles.jamPill} ${selectedJam.includes(jam) ? styles.jamPillActive : ''}`}
+                      onClick={() => toggleJam(jam)}
+                    >
+                      {jam}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className={styles.filterGroup}>
@@ -224,9 +288,14 @@ export default function PresensiPage() {
                   </tbody>
                 </table>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
-                  <button className={styles.submitBtn}>
-                    <i className="fas fa-save" style={{ marginRight: '8px' }}></i>
-                    Simpan Presensi
+                  <button 
+                    className={styles.submitBtn} 
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                    style={{ opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
+                  >
+                    <i className={isSubmitting ? "fas fa-spinner fa-spin" : "fas fa-save"} style={{ marginRight: '8px' }}></i>
+                    {isSubmitting ? 'Menyimpan...' : 'Simpan Presensi'}
                   </button>
                 </div>
               </div>

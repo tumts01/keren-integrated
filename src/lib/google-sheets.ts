@@ -51,3 +51,10 @@ export const getPersuratanDoc = async () => {
   await doc.loadInfo();
   return doc;
 };
+
+export const getPresensiDoc = async () => {
+  const auth = getAuth();
+  const doc = new GoogleSpreadsheet(process.env.GOOGLE_SHEET_PRESENSI_ID as string, auth);
+  await doc.loadInfo();
+  return doc;
+};

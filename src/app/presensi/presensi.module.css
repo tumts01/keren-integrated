@@ -136,6 +136,41 @@
   border-color: var(--primary);
 }
 
+.jamPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.jamPill {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: white;
+  color: #475569;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.jamPill:hover {
+  background: #f1f5f9;
+}
+
+.jamPillActive {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.jamPillActive:hover {
+  background: #0ea5e9;
+}
+
 .studentList {
   width: 100%;
 }
