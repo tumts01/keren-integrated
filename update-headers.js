@@ -14,7 +14,7 @@ async function main() {
   await doc.loadInfo();
   
   const sheet = doc.sheetsByTitle['PRESENSI SISWA'];
-  const headers = ['ID', 'TIMESTAMP', 'TANGGAL', 'TAHUN AJARAN', 'KELAS', 'JAM KE', 'MAPEL', 'NAMA SISWA', 'NISN', 'KEHADIRAN'];
+  const headers = ['ID', 'TIMESTAMP', 'TANGGAL', 'TAHUN AJARAN', 'KELAS', 'JAM KE', 'MAPEL', 'GURU PENGINPUT', 'NAMA SISWA', 'NISN', 'KEHADIRAN'];
   await sheet.setHeaderRow(headers);
   console.log('Headers updated successfully!');
 }

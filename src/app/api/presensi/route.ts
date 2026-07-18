@@ -5,7 +5,7 @@ import crypto from 'crypto';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { tanggal, jamKe, kelas, mapel, tahunAjaran, presensi, siswaList } = body;
+    const { tanggal, jamKe, kelas, mapel, guru, tahunAjaran, presensi, siswaList } = body;
 
     if (!tanggal || !jamKe || !kelas || !mapel || !presensi || !siswaList) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
@@ -36,6 +36,7 @@ export async function POST(request: Request) {
           'KELAS': kelas,
           'JAM KE': jamKe,
           'MAPEL': mapel,
+          'GURU PENGINPUT': guru || 'Unknown',
           'NAMA SISWA': siswa.nama,
           'NISN': siswa.nisn,
           'KEHADIRAN': status

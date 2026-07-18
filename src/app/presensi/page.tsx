@@ -14,13 +14,12 @@ export default function PresensiPage() {
   
   // Dummy/Mock data states for template
   const [kelasList, setKelasList] = useState<any[]>([]);
-  const [mapelList, setMapelList] = useState<string[]>(['Matematika', 'Bahasa Indonesia', 'IPA', 'IPS', 'Bahasa Inggris', 'PJOK', 'PAI']);
+  const [mapelList, setMapelList] = useState<string[]>([]);
   const [siswaList, setSiswaList] = useState<any[]>([]);
   const [presensi, setPresensi] = useState<Record<string, string>>({}); // { nisn: 'H' | 'S' | 'I' | 'A' }
 
-  // Load classes and mapel (Mock for now, waiting for actual backend logic)
+  // Load classes and mapel
   useEffect(() => {
-    // In actual implementation, fetch from /api/kelas and /api/jadwal/mapel
     fetch('/api/kelas').then(res => res.json()).then(data => {
       if (data.success) {
         // Unique kelas list, filter out invalid names like '-' or '7'
@@ -30,6 +29,12 @@ export default function PresensiPage() {
         // Sort properly (7A, 7B, 8A, etc.)
         uniqueKelas.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
         setKelasList(uniqueKelas);
+      }
+    }).catch(err => console.error(err));
+
+    fetch('/api/jadwal/mapel').then(res => res.json()).then(data => {
+      if (data.success && data.data) {
+        setMapelList(data.data.map((m: any) => m.namaMapel));
       }
     }).catch(err => console.error(err));
   }, []);
@@ -95,6 +100,7 @@ export default function PresensiPage() {
     if (!confirm(`Simpan presensi untuk kelas ${selectedKelas}?`)) return;
 
     setIsSubmitting(true);
+    const guru = localStorage.getItem('username') || 'Unknown';
     try {
       const res = await fetch('/api/presensi', {
         method: 'POST',
@@ -104,6 +110,7 @@ export default function PresensiPage() {
           jamKe: selectedJam.join(', '),
           kelas: selectedKelas,
           mapel: selectedMapel,
+          guru,
           presensi,
           siswaList
         })
