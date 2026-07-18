@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     const rowsToAdd = [];
     
     for (const siswa of siswaList) {
-      const status = presensi[siswa.nisn] || 'H';
+      const status = presensi[siswa.id] || 'H';
       if (status !== 'H') {
         rowsToAdd.push({
           'ID': `${batchId}-${siswa.nisn}`,

@@ -57,7 +57,7 @@ export default function PresensiPage() {
             // Otomatis set 'H' (Hadir) untuk semua siswa
             const defaultPresensi: Record<string, string> = {};
             filtered.forEach((s: any) => {
-              defaultPresensi[s.nisn] = 'H';
+              defaultPresensi[s.id] = 'H';
             });
             setPresensi(defaultPresensi);
           } else {
@@ -243,48 +243,48 @@ export default function PresensiPage() {
                   </thead>
                   <tbody>
                     {siswaList.map((siswa, idx) => (
-                      <tr key={siswa.nisn || siswa.id}>
+                      <tr key={siswa.id}>
                         <td>{idx + 1}</td>
                         <td style={{ fontWeight: 500 }}>{siswa.nama}</td>
                         <td>
                           <div className={styles.radioGroup}>
-                            <label className={`${styles.radioLabel} ${presensi[siswa.nisn] === 'H' ? styles.radioCheckedH : ''}`}>
+                            <label className={`${styles.radioLabel} ${presensi[siswa.id] === 'H' ? styles.radioCheckedH : ''}`}>
                               <input 
                                 type="radio" 
-                                name={`presensi_${siswa.nisn}`} 
+                                name={`presensi_${siswa.id}`} 
                                 value="H" 
-                                checked={presensi[siswa.nisn] === 'H'}
-                                onChange={() => handlePresensiChange(siswa.nisn, 'H')}
+                                checked={presensi[siswa.id] === 'H'}
+                                onChange={() => handlePresensiChange(siswa.id, 'H')}
                               />
                               H
                             </label>
-                            <label className={`${styles.radioLabel} ${presensi[siswa.nisn] === 'S' ? styles.radioCheckedS : ''}`}>
+                            <label className={`${styles.radioLabel} ${presensi[siswa.id] === 'S' ? styles.radioCheckedS : ''}`}>
                               <input 
                                 type="radio" 
-                                name={`presensi_${siswa.nisn}`} 
+                                name={`presensi_${siswa.id}`} 
                                 value="S" 
-                                checked={presensi[siswa.nisn] === 'S'}
-                                onChange={() => handlePresensiChange(siswa.nisn, 'S')}
+                                checked={presensi[siswa.id] === 'S'}
+                                onChange={() => handlePresensiChange(siswa.id, 'S')}
                               />
                               S
                             </label>
-                            <label className={`${styles.radioLabel} ${presensi[siswa.nisn] === 'I' ? styles.radioCheckedI : ''}`}>
+                            <label className={`${styles.radioLabel} ${presensi[siswa.id] === 'I' ? styles.radioCheckedI : ''}`}>
                               <input 
                                 type="radio" 
-                                name={`presensi_${siswa.nisn}`} 
+                                name={`presensi_${siswa.id}`} 
                                 value="I" 
-                                checked={presensi[siswa.nisn] === 'I'}
-                                onChange={() => handlePresensiChange(siswa.nisn, 'I')}
+                                checked={presensi[siswa.id] === 'I'}
+                                onChange={() => handlePresensiChange(siswa.id, 'I')}
                               />
                               I
                             </label>
-                            <label className={`${styles.radioLabel} ${presensi[siswa.nisn] === 'A' ? styles.radioCheckedA : ''}`}>
+                            <label className={`${styles.radioLabel} ${presensi[siswa.id] === 'A' ? styles.radioCheckedA : ''}`}>
                               <input 
                                 type="radio" 
-                                name={`presensi_${siswa.nisn}`} 
+                                name={`presensi_${siswa.id}`} 
                                 value="A" 
-                                checked={presensi[siswa.nisn] === 'A'}
-                                onChange={() => handlePresensiChange(siswa.nisn, 'A')}
+                                checked={presensi[siswa.id] === 'A'}
+                                onChange={() => handlePresensiChange(siswa.id, 'A')}
                               />
                               A
                             </label>
