@@ -100,7 +100,7 @@ export default function Sidebar() {
       } catch(e){}
     }
 
-    const storedUser = localStorage.getItem('userApp');
+    const storedUser = localStorage.getItem('keren_user_data');
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
