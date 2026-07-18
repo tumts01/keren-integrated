@@ -505,7 +505,8 @@ export default function PersuratanPage() {
                 </div>
                 {formSasaran === 'Guru' && (
                   <div className={styles.infoGroup} style={{ marginBottom: '16px', position: 'relative' }}>
-                    <label className={styles.infoLabel}>Yang Ditugaskan / Kepada</label>
+                    <label className={styles.infoLabel} style={{ marginBottom: '4px' }}>Yang Ditugaskan / Kepada</label>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '8px', textTransform: 'none', letterSpacing: 'normal' }}>(Ketik "Terlampir" jika delegasi lebih dari 10 orang)</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: formDitugaskan.length > 0 ? '8px' : '0', border: '1px solid #cbd5e1', borderRadius: '8px', minHeight: '42px', alignItems: 'center' }}>
                       {formDitugaskan.map((guru, idx) => (
                         <span key={idx} style={{ background: 'var(--primary)', color: 'white', padding: '4px 10px', borderRadius: '16px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
