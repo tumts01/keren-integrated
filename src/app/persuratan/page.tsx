@@ -79,6 +79,13 @@ export default function PersuratanPage() {
   const [generateHariTanggal, setGenerateHariTanggal] = useState('');
   const [generateWaktu, setGenerateWaktu] = useState('');
   const [generateTempat, setGenerateTempat] = useState('');
+  
+  // New States for Surat Tugas
+  const [generateGuruTugas, setGenerateGuruTugas] = useState<{guru: any, tugas: string}[]>([]);
+  const [searchGuruTerm, setSearchGuruTerm] = useState('');
+  const [guruOptions, setGuruOptions] = useState<any[]>([]);
+  const [isSearchingGuru, setIsSearchingGuru] = useState(false);
+  const [showGuruDropdown, setShowGuruDropdown] = useState(false);
 
   const [generateTanggal, setGenerateTanggal] = useState(
     new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -120,6 +127,33 @@ export default function PersuratanPage() {
     const delay = setTimeout(searchSiswa, 500);
     return () => clearTimeout(delay);
   }, [searchSiswaTerm, generateSiswa]);
+
+  // Debounced search for Guru in Surat Tugas
+  useEffect(() => {
+    if (!searchGuruTerm || searchGuruTerm.length < 3) {
+      setGuruOptions([]);
+      setShowGuruDropdown(false);
+      return;
+    }
+
+    const searchGuruAction = async () => {
+      setIsSearchingGuru(true);
+      try {
+        const filtered = guruList.filter((g: any) => 
+          g.nama.toLowerCase().includes(searchGuruTerm.toLowerCase())
+        ).slice(0, 50);
+        setGuruOptions(filtered);
+        setShowGuruDropdown(true);
+      } catch (error) {
+        console.error('Error searching guru:', error);
+      } finally {
+        setIsSearchingGuru(false);
+      }
+    };
+
+    const delay = setTimeout(searchGuruAction, 500);
+    return () => clearTimeout(delay);
+  }, [searchGuruTerm, guruList]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -665,10 +699,13 @@ export default function PersuratanPage() {
                       setSearchSiswaTerm('');
                       setGenerateSiswa(null);
                       setGenerateSiswaList([]);
+                      setGenerateGuruTugas([]);
+                      setSearchGuruTerm('');
                     }}
                   >
                     <option value="Surat Keterangan Aktif Siswa">Surat Keterangan Aktif Siswa</option>
                     <option value="Surat Permohonan Izin">Surat Permohonan Izin</option>
+                    <option value="Surat Tugas">Surat Tugas</option>
                   </select>
                 </div>
 
@@ -696,48 +733,52 @@ export default function PersuratanPage() {
                   />
                 </div>
 
-                {generateJenis === 'Surat Permohonan Izin' && (
+                {(generateJenis === 'Surat Permohonan Izin' || generateJenis === 'Surat Tugas') && (
                   <>
                     <div className={styles.infoGroup}>
-                      <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Konteks / Nama Kegiatan <span style={{ color: 'red' }}>*</span></label>
+                      <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>{generateJenis === 'Surat Tugas' ? 'Konteks / Nama Tugas' : 'Konteks / Nama Kegiatan'} <span style={{ color: 'red' }}>*</span></label>
                       <input 
                         type="text" 
                         className={styles.searchInput}
-                        placeholder="Contoh: MATAMUDA Tahun Ajaran 2026/2027"
+                        placeholder={generateJenis === 'Surat Tugas' ? "Contoh: Bimtek Fasilitas Daerah satuan pendidikan ramah anak" : "Contoh: MATAMUDA Tahun Ajaran 2026/2027"}
                         value={generateKonteks}
                         onChange={(e) => setGenerateKonteks(e.target.value)}
                       />
                     </div>
-                    <div className={styles.infoGroup}>
-                      <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Kegiatan yang Diikuti <span style={{ color: 'red' }}>*</span></label>
-                      <input 
-                        type="text" 
-                        className={styles.searchInput}
-                        placeholder="Contoh: Latihan PBB dan Tampilan Matamuda"
-                        value={generateKegiatan}
-                        onChange={(e) => setGenerateKegiatan(e.target.value)}
-                      />
-                    </div>
+                    {generateJenis === 'Surat Permohonan Izin' && (
+                      <div className={styles.infoGroup}>
+                        <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Kegiatan yang Diikuti <span style={{ color: 'red' }}>*</span></label>
+                        <input 
+                          type="text" 
+                          className={styles.searchInput}
+                          placeholder="Contoh: Latihan PBB dan Tampilan Matamuda"
+                          value={generateKegiatan}
+                          onChange={(e) => setGenerateKegiatan(e.target.value)}
+                        />
+                      </div>
+                    )}
                     <div className={styles.infoGroup}>
                       <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Hari, Tanggal Pelaksanaan <span style={{ color: 'red' }}>*</span></label>
                       <input 
                         type="text" 
                         className={styles.searchInput}
-                        placeholder="Contoh: Selasa - Jumat, 14-17 Juli 2026"
+                        placeholder={generateJenis === 'Surat Tugas' ? "Contoh: 30 Juni 2026 - 02 Juli 2026" : "Contoh: Selasa - Jumat, 14-17 Juli 2026"}
                         value={generateHariTanggal}
                         onChange={(e) => setGenerateHariTanggal(e.target.value)}
                       />
                     </div>
-                    <div className={styles.infoGroup}>
-                      <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Waktu Pelaksanaan <span style={{ color: 'red' }}>*</span></label>
-                      <input 
-                        type="text" 
-                        className={styles.searchInput}
-                        placeholder="Contoh: Pukul 12.00 - 15.30 WIB"
-                        value={generateWaktu}
-                        onChange={(e) => setGenerateWaktu(e.target.value)}
-                      />
-                    </div>
+                    {generateJenis === 'Surat Permohonan Izin' && (
+                      <div className={styles.infoGroup}>
+                        <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Waktu Pelaksanaan <span style={{ color: 'red' }}>*</span></label>
+                        <input 
+                          type="text" 
+                          className={styles.searchInput}
+                          placeholder="Contoh: Pukul 12.00 - 15.30 WIB"
+                          value={generateWaktu}
+                          onChange={(e) => setGenerateWaktu(e.target.value)}
+                        />
+                      </div>
+                    )}
                     <div className={styles.infoGroup}>
                       <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Tempat Pelaksanaan <span style={{ color: 'red' }}>*</span></label>
                       <input 
@@ -814,6 +855,70 @@ export default function PersuratanPage() {
                   )}
                 </div>
 
+                {generateJenis === 'Surat Tugas' && (
+                  <div className={styles.infoGroup} style={{ position: 'relative' }}>
+                    <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Pilih Guru yang Ditugaskan <span style={{ color: 'red' }}>*</span></label>
+                    
+                    {generateGuruTugas.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
+                        {generateGuruTugas.map((item, idx) => (
+                          <div key={item.guru.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', gap: '10px' }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{idx + 1}. {item.guru.nama}</div>
+                              <input 
+                                type="text"
+                                style={{ width: '100%', padding: '4px 8px', marginTop: '4px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.8rem' }}
+                                placeholder="Tugas sebagai (contoh: KEPALA MADRASAH, PESERTA)"
+                                value={item.tugas}
+                                onChange={(e) => {
+                                  const newGuru = [...generateGuruTugas];
+                                  newGuru[idx].tugas = e.target.value;
+                                  setGenerateGuruTugas(newGuru);
+                                }}
+                              />
+                            </div>
+                            <button className="btn btn-sm btn-danger" onClick={() => setGenerateGuruTugas(prev => prev.filter((_, i) => i !== idx))}>
+                              <i className="fas fa-times"></i>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <input 
+                      type="text" 
+                      className={styles.searchInput}
+                      placeholder="Cari dan klik guru untuk ditambahkan..."
+                      value={searchGuruTerm}
+                      onChange={(e) => setSearchGuruTerm(e.target.value)}
+                    />
+                    {isSearchingGuru && (
+                      <div style={{ position: 'absolute', right: '16px', top: (generateGuruTugas.length > 0) ? 'auto' : '38px', bottom: (generateGuruTugas.length > 0) ? '12px' : 'auto', color: '#64748b' }}>
+                        <i className="fas fa-spinner fa-spin"></i>
+                      </div>
+                    )}
+                    {showGuruDropdown && guruOptions.length > 0 && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', marginTop: '4px', zIndex: 10, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', maxHeight: '250px', overflowY: 'auto' }}>
+                        {guruOptions.map(guru => (
+                          <div 
+                            key={guru.id} 
+                            style={{ padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
+                            onClick={() => {
+                              if (!generateGuruTugas.find(g => g.guru.id === guru.id)) {
+                                setGenerateGuruTugas(prev => [...prev, { guru: guru, tugas: '' }]);
+                              }
+                              setSearchGuruTerm('');
+                              setShowGuruDropdown(false);
+                            }}
+                          >
+                            <div style={{ fontWeight: 600, color: '#1e293b' }}>{guru.nama}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className={styles.infoGroup}>
                   <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Tanggal Surat <span style={{ color: 'red' }}>*</span></label>
                   <input 
@@ -830,7 +935,7 @@ export default function PersuratanPage() {
                     className="btn btn-primary" 
                     style={{ width: '100%', padding: '12px' }}
                     onClick={() => window.print()}
-                    disabled={!generateNomor || !generateTanggal || (generateJenis === 'Surat Keterangan Aktif Siswa' ? !generateSiswa : (generateSiswaList.length === 0 || !generateTujuan || !generateKegiatan || !generateKonteks))}
+                    disabled={!generateNomor || !generateTanggal || (generateJenis === 'Surat Keterangan Aktif Siswa' ? !generateSiswa : (generateJenis === 'Surat Permohonan Izin' ? (generateSiswaList.length === 0 || !generateTujuan || !generateKegiatan || !generateKonteks) : (generateGuruTugas.length === 0 || !generateKonteks || !generateHariTanggal || !generateTempat)))}
                   >
                     <i className="fas fa-print"></i> Generate & Cetak Surat
                   </button>
@@ -1008,7 +1113,7 @@ export default function PersuratanPage() {
         )}
 
         {/* Print Template - Hidden on screen, shown on print */}
-        {activeTab === 'generate' && ((generateJenis === 'Surat Keterangan Aktif Siswa' && generateSiswa) || (generateJenis === 'Surat Permohonan Izin' && generateSiswaList.length > 0)) && (
+        {activeTab === 'generate' && ((generateJenis === 'Surat Keterangan Aktif Siswa' && generateSiswa) || (generateJenis === 'Surat Permohonan Izin' && generateSiswaList.length > 0) || (generateJenis === 'Surat Tugas' && generateGuruTugas.length > 0)) && (
           <div className={styles.printOnly}>
             <div className={styles.kopSurat}>
               <img src="/kop_surat_mts.png" alt="Kop Surat MTs Almaarif 01" />
@@ -1058,7 +1163,7 @@ export default function PersuratanPage() {
                   </p>
                 </div>
               </>
-            ) : (
+            ) : generateJenis === 'Surat Permohonan Izin' ? (
               <>
                 <div style={{ fontSize: '11pt', marginTop: '10px' }}>
                   <table style={{ border: 'none', borderCollapse: 'collapse', width: '100%', marginBottom: '15px' }}>
@@ -1118,6 +1223,51 @@ export default function PersuratanPage() {
                   </p>
 
                   <p style={{ fontStyle: 'italic', marginBottom: '20px' }}>Wassalamu'alaikum Wr. Wb.</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ textAlign: 'center', marginBottom: '30px', marginTop: '10px' }}>
+                  <h3 style={{ textDecoration: 'underline', margin: '0 0 5px 0', fontSize: '14pt', letterSpacing: '1px' }}>S U R A T  T U G A S</h3>
+                  <p style={{ margin: 0, fontSize: '11pt' }}>Nomor: {generateNomor}</p>
+                </div>
+                <div style={{ fontSize: '11pt' }}>
+                  <p style={{ margin: '0 0 10px 0' }}>Yang bertanda tangan di bawah ini:</p>
+                  <table style={{ border: 'none', borderCollapse: 'collapse', width: '100%', marginBottom: '20px' }}>
+                    <tbody>
+                      <tr><td style={{ width: '100px', padding: '4px 0' }}>Nama</td><td style={{ width: '20px', padding: '4px 0' }}>:</td><td style={{ padding: '4px 0' }}>Dwi Retno Palupi, M.Pd.</td></tr>
+                      <tr><td style={{ padding: '4px 0' }}>Jabatan</td><td style={{ padding: '4px 0' }}>:</td><td style={{ padding: '4px 0' }}>Kepala Madrasah Tsanawiyah Almaarif 01 Singosari</td></tr>
+                    </tbody>
+                  </table>
+                  <p style={{ margin: '0 0 15px 0' }}>Menugaskan kepada nama-nama berikut:</p>
+                  
+                  <div style={{ padding: '0 20px', marginBottom: '20px' }}>
+                    <table style={{ width: '100%', border: '1px solid black', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ border: '1px solid black', padding: '8px', width: '50px', textAlign: 'center' }}>NO</th>
+                          <th style={{ border: '1px solid black', padding: '8px', textAlign: 'center' }}>NAMA</th>
+                          <th style={{ border: '1px solid black', padding: '8px', textAlign: 'center' }}>TUGAS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {generateGuruTugas.map((item, i) => (
+                          <tr key={i}>
+                            <td style={{ border: '1px solid black', padding: '8px', textAlign: 'center' }}>{i + 1}</td>
+                            <td style={{ border: '1px solid black', padding: '8px' }}>{item.guru.nama}</td>
+                            <td style={{ border: '1px solid black', padding: '8px', textAlign: 'center', textTransform: 'uppercase' }}>{item.tugas}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <p style={{ margin: '0 0 20px 0', lineHeight: '1.5', textAlign: 'justify' }}>
+                    Untuk mengikuti {generateKonteks} pada tanggal {generateHariTanggal} yang bertempat di {generateTempat}.
+                  </p>
+                  <p style={{ margin: '0 0 30px 0', lineHeight: '1.5', textAlign: 'justify' }}>
+                    Demikian surat tugas ini dibuat untuk dilaksanakan dengan penuh tanggung jawab. Atas perhatian dan kerja samanya diucapkan terima kasih.
+                  </p>
                 </div>
               </>
             )}
