@@ -84,7 +84,7 @@ export async function GET(request: Request) {
        return NextResponse.json({ message: 'Tidak ada nomor HP valid untuk dikirimi' });
     }
 
-    const message = `Halo Bapak/Ibu Guru & Staf,\n\nIni adalah pengingat otomatis dari Sistem Sekolah.\nPantauan kami menunjukkan Anda *belum melakukan Absensi Masuk (Check In)* pada hari ini (${todayStr}) pukul ${dateWIB.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})} WIB.\n\nMohon segera melakukan absensi melalui portal/aplikasi presensi agar data kehadiran Anda tercatat. Terima kasih dan selamat beraktivitas! 🏫✨`;
+    const message = `Halo Bapak/Ibu Guru & Staf yang KEREN,\n\nIni adalah pengingat otomatis dari Sistem Madrasah. Pantauan kami menunjukkan Anda *belum melakukan Absensi Masuk (Check In)* pada hari ini (${todayStr}) pukul ${dateWIB.toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'})} WIB.\n\nMohon segera melakukan absensi melalui Keren Apps pada menu Absensi GTK agar data kehadiran Anda tercatat. Terima kasih dan selamat beraktivitas! 🏫✨`;
 
     const response = await fetch('https://api.fonnte.com/send', {
       method: 'POST',
