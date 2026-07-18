@@ -74,11 +74,12 @@ export default function PresensiPage() {
   }, [selectedKelas]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [materi, setMateri] = useState('');
 
-  const handlePresensiChange = (nisn: string, status: string) => {
+  const handlePresensiChange = (id: string, status: string) => {
     setPresensi(prev => ({
       ...prev,
-      [nisn]: status
+      [id]: status
     }));
   };
 
@@ -143,6 +144,77 @@ export default function PresensiPage() {
           title: 'Berhasil!',
           text: `Berhasil menyimpan presensi! ${data.totalSaved > 0 ? (data.totalSaved + ' data S/I/A tercatat.') : 'Semua siswa Hadir (tidak ada data absen ke sheet).'}`
         });
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Gagal',
+          text: 'Gagal menyimpan: ' + (data.error || 'Terjadi kesalahan')
+        });
+      }
+    } catch (error: any) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Terjadi kesalahan sistem: ' + error.message
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleJurnalSubmit = async () => {
+    if (!selectedKelas || !selectedMapel) {
+      Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Mohon pilih Kelas dan Mata Pelajaran terlebih dahulu!' });
+      return;
+    }
+    if (selectedJam.length === 0) {
+      Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Mohon pilih Jam Ke!' });
+      return;
+    }
+    if (!materi.trim()) {
+      Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Mohon isi Materi yang diajarkan!' });
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: 'Konfirmasi',
+      text: `Simpan jurnal mengajar untuk kelas ${selectedKelas}?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Ya, Simpan!',
+      cancelButtonText: 'Batal'
+    });
+
+    if (!result.isConfirmed) return;
+
+    setIsSubmitting(true);
+    const guru = localStorage.getItem('username') || 'Unknown';
+    try {
+      const res = await fetch('/api/jurnal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tanggal,
+          jamKe: selectedJam.join(', '),
+          kelas: selectedKelas,
+          mapel: selectedMapel,
+          guru,
+          materi,
+          tahunAjaran: new Date().getFullYear().toString() + '/' + (new Date().getFullYear() + 1).toString()
+        })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Berhasil!',
+          text: 'Jurnal mengajar berhasil disimpan.'
+        });
+        setMateri('');
+        setSelectedJam([]);
       } else {
         Swal.fire({
           icon: 'error',
@@ -350,7 +422,93 @@ export default function PresensiPage() {
         {activeTab === 'jurnal' && (
           <div className={styles.card}>
             <h2>Jurnal Mengajar</h2>
-            <p className={styles.placeholderText}>Modul pengisian jurnal mengajar akan segera hadir. Menunggu konfigurasi spreadsheet.</p>
+            
+            <div className={styles.filterSection}>
+              <div className={styles.filterGroup}>
+                <label>Tanggal</label>
+                <input 
+                  type="date" 
+                  value={tanggal} 
+                  onChange={(e) => setTanggal(e.target.value)}
+                  className={styles.inputField}
+                />
+              </div>
+              
+              <div className={styles.filterGroup}>
+                <label>Mata Pelajaran</label>
+                <select 
+                  value={selectedMapel} 
+                  onChange={(e) => setSelectedMapel(e.target.value)}
+                  className={styles.inputField}
+                >
+                  <option value="">-- Pilih Mapel --</option>
+                  {mapelList.map((m, i) => (
+                    <option key={i} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.filterGroup}>
+                <label>Kelas</label>
+                <select 
+                  value={selectedKelas} 
+                  onChange={(e) => setSelectedKelas(e.target.value)}
+                  className={styles.inputField}
+                >
+                  <option value="">-- Pilih Kelas --</option>
+                  {kelasList.map(k => (
+                    <option key={k} value={k}>{k}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className={styles.filterGroup} style={{ flex: '1 1 100%' }}>
+                <label>Jam Ke (Bisa pilih lebih dari satu)</label>
+                <div className={styles.jamPills}>
+                  {[1,2,3,4,5,6,7,8,9,10].map(jam => (
+                    <button
+                      key={jam}
+                      type="button"
+                      onClick={() => toggleJam(jam)}
+                      className={`${styles.jamPill} ${selectedJam.includes(jam) ? styles.jamPillActive : ''}`}
+                    >
+                      {jam}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {selectedKelas ? (
+              <div style={{ marginTop: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: '#334155' }}>
+                  Materi Pembelajaran
+                </label>
+                <textarea 
+                  className={styles.inputField}
+                  style={{ width: '100%', height: '120px', resize: 'vertical' }}
+                  placeholder="Tuliskan materi yang diajarkan pada sesi ini..."
+                  value={materi}
+                  onChange={(e) => setMateri(e.target.value)}
+                />
+                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button 
+                    className={styles.btnSave} 
+                    onClick={handleJurnalSubmit} 
+                    disabled={isSubmitting}
+                    style={{ opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
+                  >
+                    <i className={isSubmitting ? "fas fa-spinner fa-spin" : "fas fa-save"} style={{ marginRight: '8px' }}></i>
+                    {isSubmitting ? 'Menyimpan...' : 'Simpan Jurnal'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className={styles.emptyState}>
+                <i className="fas fa-book-open"></i>
+                <p>Silakan pilih kelas terlebih dahulu untuk mengisi materi jurnal.</p>
+              </div>
+            )}
           </div>
         )}
 
