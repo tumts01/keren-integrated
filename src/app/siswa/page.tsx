@@ -5,7 +5,7 @@ import * as XLSX from 'xlsx';
 
 interface Siswa {
   id: number;
-  no: string;
+  nis: string;
   nisn: string;
   nik: string;
   tempatLahir: string;
@@ -19,6 +19,8 @@ interface Siswa {
   alamat: string;
   namaAyah: string;
   namaIbu: string;
+  pekerjaanAyah: string;
+  pekerjaanIbu: string;
   noHp: string;
   tahunAjaran: string;
   isLatest: boolean;
@@ -103,16 +105,21 @@ export default function SiswaPage() {
   const handleExportExcel = () => {
     const dataToExport = filteredData.map((s, index) => ({
       'No': index + 1,
+      'NIS': s.nis,
       'NISN': s.nisn,
-      'Nama': s.nama,
+      'Nama Lengkap': s.nama,
       'Jenis Kelamin': s.jenisKelamin,
+      'Tempat Lahir': s.tempatLahir,
+      'Tanggal Lahir': s.tanggalLahir,
       'Rombel/Kelas': s.rombel,
       'Status': s.status,
       'Tahun Ajaran': s.tahunAjaran,
       'Domisili': s.domisili,
       'Alamat': s.alamat,
       'Nama Ayah': s.namaAyah,
+      'Pekerjaan Ayah': s.pekerjaanAyah,
       'Nama Ibu': s.namaIbu,
+      'Pekerjaan Ibu': s.pekerjaanIbu,
       'No. HP / WA': s.noHp
     }));
 
@@ -122,9 +129,10 @@ export default function SiswaPage() {
     
     // Auto-size columns slightly
     worksheet['!cols'] = [
-      { wch: 5 }, { wch: 15 }, { wch: 30 }, { wch: 15 }, 
-      { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 20 }, 
-      { wch: 40 }, { wch: 25 }, { wch: 25 }, { wch: 18 }
+      { wch: 5 }, { wch: 15 }, { wch: 15 }, { wch: 35 }, 
+      { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 12 }, 
+      { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 40 }, 
+      { wch: 25 }, { wch: 20 }, { wch: 25 }, { wch: 20 }, { wch: 18 }
     ];
 
     XLSX.writeFile(workbook, `Data_Siswa_${selectedTahun === 'Semua' ? 'All' : selectedTahun}.xlsx`);

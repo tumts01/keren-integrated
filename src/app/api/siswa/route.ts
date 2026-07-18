@@ -53,6 +53,8 @@ export async function GET() {
         alamat: row.get('ALAMAT AYAH KANDUNG') || '',
         namaAyah: row.get('NAMA AYAH KANDUNG') || '',
         namaIbu: row.get('NAMA IBU KANDUNG') || '',
+        pekerjaanAyah: row.get('PEKERJAAN AYAH KANDUNG') || '',
+        pekerjaanIbu: row.get('PEKERJAAN IBU KANDUNG') || '',
         noHp,
       };
 
