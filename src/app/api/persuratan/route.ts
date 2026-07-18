@@ -109,20 +109,31 @@ export async function POST(req: Request) {
         await sheetKeluar.setHeaderRow([...sheetKeluar.headerValues, 'BATAS WAKTU TUGAS']);
       }
 
-      // Load all rows to find the next NO
+      const { tanggal, namaSurat, yangDitugaskan, topik, pj, batasWaktu } = payload;
+      
+      // Parse Date for Roman Month and Year
+      // Assume tanggal is YYYY-MM-DD
+      const dateObj = new Date(tanggal);
+      const romanMonths = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
+      const romanMonth = romanMonths[dateObj.getMonth()];
+      const year = dateObj.getFullYear();
+
+      // Load all rows to find the next NO for the given year
       const rowsKeluar = await sheetKeluar.getRows();
       let maxNo = 0;
       rowsKeluar.forEach(row => {
-        const currentNo = parseInt(row.get('NO'), 10);
-        if (!isNaN(currentNo) && currentNo > maxNo) {
-          maxNo = currentNo;
+        const rowTanggal = row.get('TANGGAL') || '';
+        // Only count numbers from the same year
+        if (rowTanggal.endsWith(year.toString())) {
+          const currentNo = parseInt(row.get('NO'), 10);
+          if (!isNaN(currentNo) && currentNo > maxNo) {
+            maxNo = currentNo;
+          }
         }
       });
       const nextNo = maxNo + 1;
 
       // Find KODE SURAT mapping
-      const { tanggal, namaSurat, yangDitugaskan, topik, pj, batasWaktu } = payload;
-      
       let kodeSurat = '';
       await sheetKode.loadCells('A1:B100');
       for (let i = 2; i < 100; i++) {
@@ -137,13 +148,6 @@ export async function POST(req: Request) {
       if (!kodeSurat) {
         return NextResponse.json({ success: false, error: `Kode surat tidak ditemukan untuk topik: ${topik}` }, { status: 400 });
       }
-
-      // Parse Date for Roman Month and Year
-      // Assume tanggal is YYYY-MM-DD
-      const dateObj = new Date(tanggal);
-      const romanMonths = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
-      const romanMonth = romanMonths[dateObj.getMonth()];
-      const year = dateObj.getFullYear();
 
       // Format NO with leading zeros: 000
       const formattedNo = String(nextNo).padStart(3, '0');
