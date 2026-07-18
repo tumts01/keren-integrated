@@ -24,7 +24,6 @@ const MENU_ITEMS = [
   { name: 'Presensi Siswa', path: '/presensi', icon: 'fa-calendar-check' },
   { name: 'Mata Pelajaran', path: '/mata-pelajaran', icon: 'fa-book' },
   { name: 'Jadwal Mengajar', path: '/jadwal-mengajar', icon: 'fa-clock' },
-  { name: 'Jurnal Kelas', path: '/jurnal', icon: 'fa-book-open' },
   { name: 'Nilai Siswa', path: '/nilai-siswa', icon: 'fa-star' },
   { name: 'Pengembalian Rapor', path: '/pengembalian-rapor', icon: 'fa-file-signature' },
   { name: 'Persuratan', path: '/persuratan', icon: 'fa-envelope-open-text' },
