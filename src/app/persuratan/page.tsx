@@ -864,7 +864,8 @@ export default function PersuratanPage() {
 
                 {generateJenis === 'Surat Tugas' && (
                   <div className={styles.infoGroup} style={{ position: 'relative' }}>
-                    <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Pilih Guru yang Ditugaskan <span style={{ color: 'red' }}>*</span></label>
+                    <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem', display: 'block', marginBottom: '4px' }}>Pilih Guru yang Ditugaskan <span style={{ color: 'red' }}>*</span></label>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '8px' }}>(Ketik "Terlampir" jika delegasi lebih dari 10 orang)</div>
                     
                     {generateGuruTugas.length > 0 && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
