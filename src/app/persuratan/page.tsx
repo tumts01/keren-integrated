@@ -314,7 +314,8 @@ export default function PersuratanPage() {
     s.namaSurat.toLowerCase().includes(searchTerm.toLowerCase()) || 
     s.yangDitugaskan.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.noSurat.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.topik.toLowerCase().includes(searchTerm.toLowerCase())
+    s.topik.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (s.pj || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const filteredMasuk = dataMasuk.filter(s => 
