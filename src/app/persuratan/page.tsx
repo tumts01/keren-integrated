@@ -414,7 +414,7 @@ export default function PersuratanPage() {
                   <input 
                     type="file" 
                     ref={fileInputRef}
-                    accept=".pdf,image/*"
+                    accept=".pdf,image/*,.doc,.docx"
                     style={{ 
                       width: '100%', 
                       padding: '10px', 
