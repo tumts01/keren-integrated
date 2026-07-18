@@ -22,8 +22,10 @@ export default function PresensiPage() {
     // In actual implementation, fetch from /api/kelas and /api/jadwal/mapel
     fetch('/api/kelas').then(res => res.json()).then(data => {
       if (data.success) {
-        // Unique kelas list
-        const uniqueKelas = Array.from(new Set(data.data.map((k: any) => k.rombel))) as string[];
+        // Unique kelas list, filter out invalid names like '-' or '7'
+        const uniqueKelas = Array.from(new Set(data.data.map((k: any) => k.rombel)))
+          .filter((k: any) => k && k.length >= 2 && k !== '-') as string[];
+        
         // Sort properly (7A, 7B, 8A, etc.)
         uniqueKelas.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
         setKelasList(uniqueKelas);
@@ -46,13 +48,21 @@ export default function PresensiPage() {
           
           if (filtered.length > 0) {
             setSiswaList(filtered);
+            // Otomatis set 'H' (Hadir) untuk semua siswa
+            const defaultPresensi: Record<string, string> = {};
+            filtered.forEach((s: any) => {
+              defaultPresensi[s.nisn] = 'H';
+            });
+            setPresensi(defaultPresensi);
           } else {
              setSiswaList([]);
+             setPresensi({});
           }
         }
       });
     } else {
       setSiswaList([]);
+      setPresensi({});
     }
   }, [selectedKelas]);
 
