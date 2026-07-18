@@ -792,8 +792,9 @@ export default function PersuratanPage() {
                   </>
                 )}
 
-                <div className={styles.infoGroup} style={{ position: 'relative' }}>
-                  <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Pilih Siswa <span style={{ color: 'red' }}>*</span></label>
+                {generateJenis !== 'Surat Tugas' && (
+                  <div className={styles.infoGroup} style={{ position: 'relative' }}>
+                    <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Pilih Siswa <span style={{ color: 'red' }}>*</span></label>
                   
                   {generateJenis === 'Surat Permohonan Izin' && generateSiswaList.length > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
@@ -853,7 +854,8 @@ export default function PersuratanPage() {
                       ))}
                     </div>
                   )}
-                </div>
+                  </div>
+                )}
 
                 {generateJenis === 'Surat Tugas' && (
                   <div className={styles.infoGroup} style={{ position: 'relative' }}>
@@ -868,7 +870,7 @@ export default function PersuratanPage() {
                               <input 
                                 type="text"
                                 style={{ width: '100%', padding: '4px 8px', marginTop: '4px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.8rem' }}
-                                placeholder="Tugas sebagai (contoh: KEPALA MADRASAH, PESERTA)"
+                                placeholder="Tugas sebagai (contoh: Ketua/Perlengkapan/Dokumentasi)"
                                 value={item.tugas}
                                 onChange={(e) => {
                                   const newGuru = [...generateGuruTugas];
