@@ -137,7 +137,7 @@
 }
 
 .studentList {
-  overflow-x: auto;
+  width: 100%;
 }
 
 .table {
@@ -153,6 +153,9 @@
   font-weight: 600;
   text-align: left;
   border-bottom: 2px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .table td {

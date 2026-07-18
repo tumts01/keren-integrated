@@ -22,7 +22,11 @@ export default function PresensiPage() {
     // In actual implementation, fetch from /api/kelas and /api/jadwal/mapel
     fetch('/api/kelas').then(res => res.json()).then(data => {
       if (data.success) {
-        setKelasList(data.data.map((k: any) => k.rombel));
+        // Unique kelas list
+        const uniqueKelas = Array.from(new Set(data.data.map((k: any) => k.rombel))) as string[];
+        // Sort properly (7A, 7B, 8A, etc.)
+        uniqueKelas.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        setKelasList(uniqueKelas);
       }
     }).catch(err => console.error(err));
   }, []);
@@ -33,20 +37,17 @@ export default function PresensiPage() {
       // In actual implementation, fetch from /api/siswa and filter by selectedKelas
       fetch('/api/siswa').then(res => res.json()).then(data => {
         if (data.success) {
-          // Find students in the selected class (dummy filter based on our API knowledge)
-          const filtered = data.data.filter((s: any) => s.rombel === selectedKelas && s.isLatest);
-          // If the API doesn't support direct class filtering properly, just use dummy data for template if empty
+          // Find students in the selected class that are active and in the latest academic year
+          const filtered = data.data.filter((s: any) => 
+            s.rombel === selectedKelas && 
+            s.isLatest && 
+            (s.status || '').toLowerCase().trim() === 'aktif'
+          );
+          
           if (filtered.length > 0) {
             setSiswaList(filtered);
           } else {
-             // Mock 5 students if API filter fails for this template
-             setSiswaList([
-               { id: 1, nisn: '101', nama: 'Ahmad Mubarok' },
-               { id: 2, nisn: '102', nama: 'Budi Santoso' },
-               { id: 3, nisn: '103', nama: 'Citra Kirana' },
-               { id: 4, nisn: '104', nama: 'Deni Cagur' },
-               { id: 5, nisn: '105', nama: 'Eka Saputra' },
-             ]);
+             setSiswaList([]);
           }
         }
       });
