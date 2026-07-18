@@ -142,6 +142,10 @@ export default function PersuratanPage() {
         const filtered = guruList.filter((g: any) => 
           g.nama.toLowerCase().includes(searchGuruTerm.toLowerCase())
         ).slice(0, 50);
+        
+        if ("nama terlampir".includes(searchGuruTerm.toLowerCase())) {
+          filtered.push({ id: 'terlampir', nama: 'Nama Terlampir' });
+        }
         setGuruOptions(filtered);
         setShowGuruDropdown(true);
       } catch (error) {
