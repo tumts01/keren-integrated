@@ -215,6 +215,7 @@ export default function PersuratanPage() {
       const result = await res.json();
       if (result.success) {
         showToast(`Nomor Surat berhasil dibuat: ${result.noSurat}`, 'success');
+        alert(`Berhasil! Nomor surat Anda adalah:\n\n${result.noSurat}`);
         setShowGenerateModal(false);
         // Reset form
         setFormNamaSurat('');
@@ -333,7 +334,7 @@ export default function PersuratanPage() {
   const tugasMap: Record<string, typeof filteredKeluar> = {};
   filteredKeluar.forEach(s => {
     if (s.yangDitugaskan) {
-      const persons = s.yangDitugaskan.split(';').map(p => p.trim()).filter(Boolean);
+      const persons = s.yangDitugaskan.split(';').map(p => p.trim()).filter(Boolean).filter(p => p.toLowerCase() !== 'nama terlampir');
       persons.forEach(p => {
         if (!tugasMap[p]) tugasMap[p] = [];
         tugasMap[p].push(s);
@@ -522,9 +523,16 @@ export default function PersuratanPage() {
                     </div>
                     {searchGuru && (
                       <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', maxHeight: '150px', overflowY: 'auto', zIndex: 10, boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-                        {guruList.filter(g => g.nama.toLowerCase().includes(searchGuru.toLowerCase()) && !formDitugaskan.includes(g.nama)).map(g => (
+                        {[...guruList, { id: 'terlampir', nama: 'Nama Terlampir' }].filter(g => g.nama.toLowerCase().includes(searchGuru.toLowerCase()) && !formDitugaskan.includes(g.nama)).map(g => (
                           <div key={g.id} style={{ padding: '10px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }} onClick={() => {
-                            setFormDitugaskan(prev => [...prev, g.nama]);
+                            if (g.id === 'terlampir') {
+                              setFormDitugaskan(['Nama Terlampir']);
+                            } else {
+                              setFormDitugaskan(prev => {
+                                const prevFiltered = prev.filter(p => p !== 'Nama Terlampir');
+                                return [...prevFiltered, g.nama];
+                              });
+                            }
                             setSearchGuru('');
                           }}>
                             {g.nama}
@@ -872,18 +880,20 @@ export default function PersuratanPage() {
                         {generateGuruTugas.map((item, idx) => (
                           <div key={item.guru.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', gap: '10px' }}>
                             <div style={{ flex: 1 }}>
-                              <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{idx + 1}. {item.guru.nama}</div>
-                              <input 
-                                type="text"
-                                style={{ width: '100%', padding: '4px 8px', marginTop: '4px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.8rem' }}
-                                placeholder="Tugas sebagai (contoh: Ketua/Perlengkapan/Dokumentasi)"
-                                value={item.tugas}
-                                onChange={(e) => {
-                                  const newGuru = [...generateGuruTugas];
-                                  newGuru[idx].tugas = e.target.value;
-                                  setGenerateGuruTugas(newGuru);
-                                }}
-                              />
+                              <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{item.guru.id === 'terlampir' ? item.guru.nama : `${idx + 1}. ${item.guru.nama}`}</div>
+                              {item.guru.id !== 'terlampir' && (
+                                <input 
+                                  type="text"
+                                  style={{ width: '100%', padding: '4px 8px', marginTop: '4px', border: '1px solid #cbd5e1', borderRadius: '4px', fontSize: '0.8rem' }}
+                                  placeholder="Tugas sebagai (contoh: Ketua/Perlengkapan/Dokumentasi)"
+                                  value={item.tugas}
+                                  onChange={(e) => {
+                                    const newGuru = [...generateGuruTugas];
+                                    newGuru[idx].tugas = e.target.value;
+                                    setGenerateGuruTugas(newGuru);
+                                  }}
+                                />
+                              )}
                             </div>
                             <button className="btn btn-sm btn-danger" onClick={() => setGenerateGuruTugas(prev => prev.filter((_, i) => i !== idx))}>
                               <i className="fas fa-times"></i>
@@ -893,36 +903,42 @@ export default function PersuratanPage() {
                       </div>
                     )}
 
-                    <input 
-                      type="text" 
-                      className={styles.searchInput}
-                      placeholder="Cari dan klik guru untuk ditambahkan..."
-                      value={searchGuruTerm}
-                      onChange={(e) => setSearchGuruTerm(e.target.value)}
-                    />
-                    {isSearchingGuru && (
-                      <div style={{ position: 'absolute', right: '16px', top: (generateGuruTugas.length > 0) ? 'auto' : '38px', bottom: (generateGuruTugas.length > 0) ? '12px' : 'auto', color: '#64748b' }}>
-                        <i className="fas fa-spinner fa-spin"></i>
-                      </div>
-                    )}
-                    {showGuruDropdown && guruOptions.length > 0 && (
-                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', marginTop: '4px', zIndex: 10, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', maxHeight: '250px', overflowY: 'auto' }}>
-                        {guruOptions.map(guru => (
-                          <div 
-                            key={guru.id} 
-                            style={{ padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
-                            onClick={() => {
-                              if (!generateGuruTugas.find(g => g.guru.id === guru.id)) {
-                                setGenerateGuruTugas(prev => [...prev, { guru: guru, tugas: '' }]);
-                              }
-                              setSearchGuruTerm('');
-                              setShowGuruDropdown(false);
-                            }}
-                          >
-                            <div style={{ fontWeight: 600, color: '#1e293b' }}>{guru.nama}</div>
+                    {!generateGuruTugas.some(g => g.guru.id === 'terlampir') && (
+                      <>
+                        <input 
+                          type="text" 
+                          className={styles.searchInput}
+                          placeholder="Cari dan klik guru untuk ditambahkan..."
+                          value={searchGuruTerm}
+                          onChange={(e) => setSearchGuruTerm(e.target.value)}
+                        />
+                        {isSearchingGuru && (
+                          <div style={{ position: 'absolute', right: '16px', top: (generateGuruTugas.length > 0) ? 'auto' : '38px', bottom: (generateGuruTugas.length > 0) ? '12px' : 'auto', color: '#64748b' }}>
+                            <i className="fas fa-spinner fa-spin"></i>
                           </div>
-                        ))}
-                      </div>
+                        )}
+                        {showGuruDropdown && guruOptions.length > 0 && (
+                          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', marginTop: '4px', zIndex: 10, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', maxHeight: '250px', overflowY: 'auto' }}>
+                            {guruOptions.map(guru => (
+                              <div 
+                                key={guru.id} 
+                                style={{ padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
+                                onClick={() => {
+                                  if (guru.id === 'terlampir') {
+                                    setGenerateGuruTugas([{ guru: guru, tugas: '-' }]);
+                                  } else if (!generateGuruTugas.find(g => g.guru.id === guru.id)) {
+                                    setGenerateGuruTugas(prev => [...prev, { guru: guru, tugas: '' }]);
+                                  }
+                                  setSearchGuruTerm('');
+                                  setShowGuruDropdown(false);
+                                }}
+                              >
+                                <div style={{ fontWeight: 600, color: '#1e293b' }}>{guru.nama}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 )}
@@ -1247,28 +1263,34 @@ export default function PersuratanPage() {
                       <tr><td style={{ padding: '4px 0' }}>Jabatan</td><td style={{ padding: '4px 0' }}>:</td><td style={{ padding: '4px 0' }}>Kepala Madrasah Tsanawiyah Almaarif 01 Singosari</td></tr>
                     </tbody>
                   </table>
-                  <p style={{ margin: '0 0 15px 0' }}>Menugaskan kepada nama-nama berikut:</p>
+                  <p>Memberi tugas kepada:</p>
                   
-                  <div style={{ padding: '0 20px', marginBottom: '20px' }}>
-                    <table style={{ width: '100%', border: '1px solid black', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr>
-                          <th style={{ border: '1px solid black', padding: '8px', width: '50px', textAlign: 'center' }}>NO</th>
-                          <th style={{ border: '1px solid black', padding: '8px', textAlign: 'center' }}>NAMA</th>
-                          <th style={{ border: '1px solid black', padding: '8px', textAlign: 'center' }}>TUGAS</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {generateGuruTugas.map((item, i) => (
-                          <tr key={i}>
-                            <td style={{ border: '1px solid black', padding: '8px', textAlign: 'center' }}>{i + 1}</td>
-                            <td style={{ border: '1px solid black', padding: '8px' }}>{item.guru.nama}</td>
-                            <td style={{ border: '1px solid black', padding: '8px', textAlign: 'center', textTransform: 'uppercase' }}>{item.tugas}</td>
+                  {generateGuruTugas.some(g => g.guru.id === 'terlampir') ? (
+                    <div style={{ padding: '0 20px', fontWeight: 'bold', margin: '20px 0' }}>
+                      nama-nama terlampir
+                    </div>
+                  ) : (
+                    <div style={{ padding: '0 20px' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ border: '1px solid black', padding: '8px', width: '50px' }}>NO</th>
+                            <th style={{ border: '1px solid black', padding: '8px' }}>NAMA</th>
+                            <th style={{ border: '1px solid black', padding: '8px', width: '150px' }}>JABATAN</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {generateGuruTugas.map((item, i) => (
+                            <tr key={i}>
+                              <td style={{ border: '1px solid black', padding: '8px', textAlign: 'center' }}>{i + 1}</td>
+                              <td style={{ border: '1px solid black', padding: '8px' }}>{item.guru.nama}</td>
+                              <td style={{ border: '1px solid black', padding: '8px', textAlign: 'center', textTransform: 'uppercase' }}>{item.tugas}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
 
                   <p style={{ margin: '0 0 20px 0', lineHeight: '1.5', textAlign: 'justify' }}>
                     Untuk mengikuti {generateKonteks} pada tanggal {generateHariTanggal} yang bertempat di {generateTempat}.
