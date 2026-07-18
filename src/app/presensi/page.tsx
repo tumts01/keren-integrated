@@ -493,7 +493,7 @@ export default function PresensiPage() {
                 />
                 <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
                   <button 
-                    className={styles.btnSave} 
+                    className={styles.submitBtn} 
                     onClick={handleJurnalSubmit} 
                     disabled={isSubmitting}
                     style={{ opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
