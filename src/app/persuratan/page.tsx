@@ -374,7 +374,7 @@ export default function PersuratanPage() {
   dataKeluar.forEach(s => {
     if (s.yangDitugaskan) {
       // Split by semicolon if multiple people
-      const persons = s.yangDitugaskan.split(';').map(p => p.trim()).filter(Boolean);
+      const persons = s.yangDitugaskan.split(';').map(p => p.trim()).filter(Boolean).filter(p => p.toLowerCase() !== 'nama terlampir');
       persons.forEach(p => {
         guruCounts[p] = (guruCounts[p] || 0) + 1;
       });
