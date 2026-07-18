@@ -1230,7 +1230,7 @@ export default function PersuratanPage() {
             ) : (
               <>
                 <div style={{ textAlign: 'center', marginBottom: '30px', marginTop: '10px' }}>
-                  <h3 style={{ textDecoration: 'underline', margin: '0 0 5px 0', fontSize: '14pt', letterSpacing: '1px' }}>S U R A T  T U G A S</h3>
+                  <h3 style={{ textDecoration: 'underline', margin: '0 0 5px 0', fontSize: '14pt', letterSpacing: '1px' }}>S U R A T &nbsp;&nbsp; T U G A S</h3>
                   <p style={{ margin: 0, fontSize: '11pt' }}>Nomor: {generateNomor}</p>
                 </div>
                 <div style={{ fontSize: '11pt' }}>
@@ -1276,7 +1276,7 @@ export default function PersuratanPage() {
 
             <div className={styles.suratTtd}>
               <p style={{ margin: '0 0 5px 0' }}>Singosari, {generateTanggal}</p>
-              <p style={{ margin: '0 0 60px 0' }}>Kepala Madrasah,</p>
+              <p style={{ margin: '0 0 90px 0' }}>Kepala Madrasah,</p>
               <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>DWI RETNO PALUPI, M.Pd.</p>
             </div>
           </div>
