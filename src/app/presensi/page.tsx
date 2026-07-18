@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
 import styles from './presensi.module.css';
 
 export default function PresensiPage() {
@@ -89,15 +90,34 @@ export default function PresensiPage() {
 
   const handleSubmit = async () => {
     if (!selectedKelas || !selectedMapel) {
-      alert('Mohon pilih Kelas dan Mata Pelajaran terlebih dahulu!');
+      Swal.fire({
+        icon: 'warning',
+        title: 'Oops...',
+        text: 'Mohon pilih Kelas dan Mata Pelajaran terlebih dahulu!'
+      });
       return;
     }
     if (selectedJam.length === 0) {
-      alert('Mohon pilih Jam Ke!');
+      Swal.fire({
+        icon: 'warning',
+        title: 'Oops...',
+        text: 'Mohon pilih Jam Ke!'
+      });
       return;
     }
 
-    if (!confirm(`Simpan presensi untuk kelas ${selectedKelas}?`)) return;
+    const result = await Swal.fire({
+      title: 'Konfirmasi',
+      text: `Simpan presensi untuk kelas ${selectedKelas}?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Ya, Simpan!',
+      cancelButtonText: 'Batal'
+    });
+
+    if (!result.isConfirmed) return;
 
     setIsSubmitting(true);
     const guru = localStorage.getItem('username') || 'Unknown';
@@ -118,12 +138,24 @@ export default function PresensiPage() {
       const data = await res.json();
       
       if (data.success) {
-        alert(`Berhasil menyimpan presensi! ${data.totalSaved > 0 ? (data.totalSaved + ' data S/I/A tercatat.') : 'Semua siswa Hadir (tidak ada data absen ke sheet).'}`);
+        Swal.fire({
+          icon: 'success',
+          title: 'Berhasil!',
+          text: `Berhasil menyimpan presensi! ${data.totalSaved > 0 ? (data.totalSaved + ' data S/I/A tercatat.') : 'Semua siswa Hadir (tidak ada data absen ke sheet).'}`
+        });
       } else {
-        alert('Gagal menyimpan: ' + (data.error || 'Terjadi kesalahan'));
+        Swal.fire({
+          icon: 'error',
+          title: 'Gagal',
+          text: 'Gagal menyimpan: ' + (data.error || 'Terjadi kesalahan')
+        });
       }
-    } catch (e: any) {
-      alert('Error: ' + e.message);
+    } catch (error: any) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Terjadi kesalahan sistem: ' + error.message
+      });
     } finally {
       setIsSubmitting(false);
     }
