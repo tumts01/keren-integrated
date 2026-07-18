@@ -14,6 +14,7 @@ interface SuratKeluar {
   pj: string;
   noSurat: string;
   fileScan: string;
+  batasWaktu?: string;
 }
 
 interface SuratMasuk {
@@ -61,6 +62,7 @@ export default function PersuratanPage() {
   const [formDitugaskan, setFormDitugaskan] = useState<string[]>([]);
   const [formTopik, setFormTopik] = useState('');
   const [formPj, setFormPj] = useState('');
+  const [formBatasWaktu, setFormBatasWaktu] = useState('');
   const [generating, setGenerating] = useState(false);
   const [searchGuru, setSearchGuru] = useState('');
   const [searchPj, setSearchPj] = useState('');
@@ -208,7 +210,8 @@ export default function PersuratanPage() {
             namaSurat: formNamaSurat,
             yangDitugaskan: formSasaran === 'Siswa' ? 'Siswa' : formDitugaskan.join('; '),
             topik: formTopik,
-            pj: formPj
+            pj: formPj,
+            batasWaktu: formBatasWaktu
           }
         })
       });
@@ -223,6 +226,7 @@ export default function PersuratanPage() {
         setFormDitugaskan([]);
         setFormTopik('');
         setFormPj('');
+        setFormBatasWaktu('');
         setSearchGuru('');
         setSearchPj('');
         setSearchTopik('');
@@ -371,13 +375,29 @@ export default function PersuratanPage() {
   
   // Calculate who has the most assignments (Rekap Guru Ditugaskan)
   const guruCounts: Record<string, number> = {};
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   dataKeluar.forEach(s => {
     if (s.yangDitugaskan) {
-      // Split by semicolon if multiple people
-      const persons = s.yangDitugaskan.split(';').map(p => p.trim()).filter(Boolean).filter(p => p.toLowerCase() !== 'nama terlampir');
-      persons.forEach(p => {
-        guruCounts[p] = (guruCounts[p] || 0) + 1;
-      });
+      let isExpired = false;
+      if (s.batasWaktu) {
+        const parts = s.batasWaktu.split('/'); // DD/MM/YYYY
+        if (parts.length === 3) {
+          const batasDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+          if (batasDate < today) {
+            isExpired = true;
+          }
+        }
+      }
+
+      if (!isExpired) {
+        // Split by semicolon if multiple people
+        const persons = s.yangDitugaskan.split(';').map(p => p.trim()).filter(Boolean).filter(p => p.toLowerCase() !== 'nama terlampir');
+        persons.forEach(p => {
+          guruCounts[p] = (guruCounts[p] || 0) + 1;
+        });
+      }
     }
   });
   const topGuru = Object.entries(guruCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
@@ -461,6 +481,15 @@ export default function PersuratanPage() {
                   <div className={styles.infoGroup}>
                     <label className={styles.infoLabel}>Tanggal</label>
                     <input type="date" className={styles.searchInput} value={formTanggal} onChange={e => setFormTanggal(e.target.value)} required />
+                  </div>
+                  <div className={styles.infoGroup}>
+                    <label className={styles.infoLabel}>Tanggal Akhir Tugas</label>
+                    <input 
+                      type="date" 
+                      className={styles.searchInput} 
+                      value={formBatasWaktu} 
+                      onChange={e => setFormBatasWaktu(e.target.value)} 
+                    />
                   </div>
                   <div className={styles.infoGroup} style={{ position: 'relative' }}>
                     <label className={styles.infoLabel}>Topik (Kode Surat)</label>

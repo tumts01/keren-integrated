@@ -28,6 +28,7 @@ export async function GET() {
         topik: row.get('TOPIK') || '',
         pj: row.get('PJ') || '',
         noSurat: row.get('NO. SURAT') || '',
+        batasWaktu: row.get('BATAS WAKTU TUGAS') || '',
         fileScan: (() => {
           const val = row.get('FILE/SCAN SURAT') || '';
           // Ignore placeholder texts that are not actual links
@@ -101,6 +102,12 @@ export async function POST(req: Request) {
       if (!sheetKeluar || !sheetKode) {
         return NextResponse.json({ success: false, error: 'Tab NO SURAT KELUAR atau KODE SURAT tidak ditemukan' }, { status: 404 });
       }
+      
+      // Auto-add column BATAS WAKTU TUGAS if missing
+      await sheetKeluar.loadHeaderRow();
+      if (!sheetKeluar.headerValues.includes('BATAS WAKTU TUGAS')) {
+        await sheetKeluar.setHeaderRow([...sheetKeluar.headerValues, 'BATAS WAKTU TUGAS']);
+      }
 
       // Load all rows to find the next NO
       const rowsKeluar = await sheetKeluar.getRows();
@@ -114,7 +121,7 @@ export async function POST(req: Request) {
       const nextNo = maxNo + 1;
 
       // Find KODE SURAT mapping
-      const { tanggal, namaSurat, yangDitugaskan, topik, pj } = payload;
+      const { tanggal, namaSurat, yangDitugaskan, topik, pj, batasWaktu } = payload;
       
       let kodeSurat = '';
       await sheetKode.loadCells('A1:B100');
@@ -147,6 +154,13 @@ export async function POST(req: Request) {
 
       // Date format for sheets: DD/MM/YYYY
       const formattedDate = `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${year}`;
+      
+      // Date format for batas waktu
+      let formattedBatasWaktu = '';
+      if (batasWaktu) {
+        const batasObj = new Date(batasWaktu);
+        formattedBatasWaktu = `${String(batasObj.getDate()).padStart(2, '0')}/${String(batasObj.getMonth() + 1).padStart(2, '0')}/${batasObj.getFullYear()}`;
+      }
 
       // Add Row to Spreadsheet
       await sheetKeluar.addRow({
@@ -159,6 +173,7 @@ export async function POST(req: Request) {
         'TOPIK': topik,
         'PJ': pj,
         'NO. SURAT': noSurat,
+        'BATAS WAKTU TUGAS': formattedBatasWaktu,
         'FILE/SCAN SURAT': ''
       });
 
