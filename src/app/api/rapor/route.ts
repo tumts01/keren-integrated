@@ -52,52 +52,57 @@ export async function GET() {
     let returnedNis = new Set();
     
     if (sheetBalekno) {
-       const rowsBalekno = await sheetBalekno.getRows();
-       
-       for (const row of rowsBalekno) {
-         const namaKolom = row.get('NAMA') || '';
-         const tglVal = row.get('TANGGAL');
+       try {
+         await sheetBalekno.loadHeaderRow(2); // The header is on row 2
+         const rowsBalekno = await sheetBalekno.getRows({ offset: 0 }); // Fetch rows after header
          
-         if (!namaKolom) continue;
-         
-         // Extract NIS (first token)
-         const nis = namaKolom.split(' ')[0];
-         
-         // Validate Date
-         let isValidDate = true;
-         if (startDate || endDate) {
-           let jsDate: Date | null = null;
-           try {
-             if (!isNaN(Number(tglVal))) {
-               jsDate = excelDateToJSDate(Number(tglVal));
-             } else if (typeof tglVal === 'string') {
-               const datePart = tglVal.split(' ')[0];
-               const parts = datePart.split(/[\/\-]/);
-               if (parts.length === 3 && parts[2].length === 4) {
-                 // Convert DD/MM/YYYY to YYYY-MM-DD
-                 jsDate = new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}T12:00:00Z`);
-               } else {
-                 jsDate = new Date(tglVal);
+         for (const row of rowsBalekno) {
+           const namaKolom = row.get('NAMA') || '';
+           const tglVal = row.get('TANGGAL');
+           
+           if (!namaKolom) continue;
+           
+           // Extract NIS (first token)
+           const nis = namaKolom.split(' ')[0];
+           
+           // Validate Date
+           let isValidDate = true;
+           if (startDate || endDate) {
+             let jsDate: Date | null = null;
+             try {
+               if (!isNaN(Number(tglVal))) {
+                 jsDate = excelDateToJSDate(Number(tglVal));
+               } else if (typeof tglVal === 'string') {
+                 const datePart = tglVal.split(' ')[0];
+                 const parts = datePart.split(/[\/\-]/);
+                 if (parts.length === 3 && parts[2].length === 4) {
+                   // Convert DD/MM/YYYY to YYYY-MM-DD
+                   jsDate = new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}T12:00:00Z`);
+                 } else {
+                   jsDate = new Date(tglVal);
+                 }
                }
-             }
-             
-             if (jsDate && !isNaN(jsDate.getTime())) {
-               const yyyy = jsDate.getUTCFullYear();
-               const mm = String(jsDate.getUTCMonth() + 1).padStart(2, '0');
-               const dd = String(jsDate.getUTCDate()).padStart(2, '0');
-               const yyyymmdd = `${yyyy}-${mm}-${dd}`;
                
-               if (startDate && yyyymmdd < startDate) isValidDate = false;
-               if (endDate && yyyymmdd > endDate) isValidDate = false;
+               if (jsDate && !isNaN(jsDate.getTime())) {
+                 const yyyy = jsDate.getUTCFullYear();
+                 const mm = String(jsDate.getUTCMonth() + 1).padStart(2, '0');
+                 const dd = String(jsDate.getUTCDate()).padStart(2, '0');
+                 const yyyymmdd = `${yyyy}-${mm}-${dd}`;
+                 
+                 if (startDate && yyyymmdd < startDate) isValidDate = false;
+                 if (endDate && yyyymmdd > endDate) isValidDate = false;
+               }
+             } catch (e) {
+               console.error("Date parsing error for", tglVal, e);
              }
-           } catch (e) {
-             console.error("Date parsing error for", tglVal, e);
+           }
+           
+           if (isValidDate) {
+             returnedNis.add(nis);
            }
          }
-         
-         if (isValidDate) {
-           returnedNis.add(nis);
-         }
+       } catch (e) {
+         console.error('Error fetching Balekno rows:', e);
        }
     }
 
@@ -149,6 +154,8 @@ export async function POST(request: Request) {
     const raporDoc = await getRaporDoc();
     const sheetBalekno = raporDoc.sheetsByTitle['BALEKNO'];
     if (!sheetBalekno) throw new Error('Tab BALEKNO tidak ditemukan');
+
+    await sheetBalekno.loadHeaderRow(2); // The header is on row 2
 
     // Excel format date (approx) or just local date string. Let's use local date string to be safe.
     // Wait, the existing data uses serial number. Actually, Google Sheets accepts normal date strings.
