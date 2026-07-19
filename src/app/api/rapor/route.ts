@@ -53,14 +53,15 @@ export async function GET() {
     
     if (sheetBalekno) {
        try {
-         await sheetBalekno.loadHeaderRow(1); // The header is on row 1
-         const rowsBalekno = await sheetBalekno.getRows({ offset: 0 }); // Fetch rows after header
+         // Use loadCells instead of getRows to bypass header mapping issues
+         await sheetBalekno.loadCells(`B1:C${sheetBalekno.rowCount}`);
          
-         for (const row of rowsBalekno) {
-           const namaKolom = row.get('NAMA') || '';
-           const tglVal = row.get('TANGGAL');
+         for (let r = 0; r < sheetBalekno.rowCount; r++) {
+           const namaKolom = sheetBalekno.getCell(r, 1).value; // Column B
+           const tglVal = sheetBalekno.getCell(r, 2).value;    // Column C
            
-           if (!namaKolom) continue;
+           if (!namaKolom || typeof namaKolom !== 'string') continue;
+           if (namaKolom.trim().toUpperCase() === 'NAMA') continue;
            
            // Extract NIS (first token)
            const nis = namaKolom.split(' ')[0];
@@ -73,13 +74,15 @@ export async function GET() {
                if (!isNaN(Number(tglVal))) {
                  jsDate = excelDateToJSDate(Number(tglVal));
                } else if (typeof tglVal === 'string') {
-                 const datePart = tglVal.split(' ')[0];
+                 // Clean up comma e.g. "19/7/2026, 11:14:00"
+                 const cleanTgl = tglVal.replace(',', '');
+                 const datePart = cleanTgl.split(' ')[0];
                  const parts = datePart.split(/[\/\-]/);
                  if (parts.length === 3 && parts[2].length === 4) {
                    // Convert DD/MM/YYYY to YYYY-MM-DD
                    jsDate = new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}T12:00:00Z`);
                  } else {
-                   jsDate = new Date(tglVal);
+                   jsDate = new Date(cleanTgl);
                  }
                }
                
@@ -155,16 +158,10 @@ export async function POST(request: Request) {
     const sheetBalekno = raporDoc.sheetsByTitle['BALEKNO'];
     if (!sheetBalekno) throw new Error('Tab BALEKNO tidak ditemukan');
 
-    await sheetBalekno.loadHeaderRow(1); // The header is on row 1
-
-    // Excel format date (approx) or just local date string. Let's use local date string to be safe.
-    // Wait, the existing data uses serial number. Actually, Google Sheets accepts normal date strings.
     const dateStr = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
     
-    await sheetBalekno.addRow({
-      'NAMA': `${nis} ${nama} ${kelas}`,
-      'TANGGAL': dateStr
-    });
+    // Add raw array [NO, NAMA, TANGGAL] to avoid header issues
+    await sheetBalekno.addRow(['', `${nis} ${nama} ${kelas}`, dateStr]);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
