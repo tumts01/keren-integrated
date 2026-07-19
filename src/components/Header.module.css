@@ -183,3 +183,85 @@
   font-size: 0.75rem;
   color: var(--text-muted);
 }
+
+/* ===== MOBILE RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .header {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  /* Shrink search to fill available space */
+  .searchContainer {
+    flex: 1;
+    margin: 0 8px;
+    min-width: 0;
+  }
+
+  .searchInput {
+    padding: 8px 12px 8px 36px;
+    font-size: 0.85rem;
+    border-radius: 14px;
+  }
+
+  .searchIcon {
+    left: 10px;
+    font-size: 0.8rem;
+  }
+
+  /* Tighten right-side actions */
+  .actions {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  /* Hide name/role text, show only avatar */
+  .userInfo {
+    display: none;
+  }
+
+  /* Smaller icon buttons */
+  .iconBtn {
+    padding: 6px;
+    font-size: 1rem;
+  }
+
+  /* Tighter profile wrapper */
+  .profile {
+    gap: 0;
+    padding: 4px;
+  }
+
+  /* Smaller avatar */
+  .avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 0.8rem;
+  }
+
+  /* Search results full-width on mobile */
+  .searchResults {
+    max-height: 240px;
+    border-radius: 10px;
+  }
+
+  .searchResultItem {
+    padding: 10px 14px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .header {
+    padding: 0 8px;
+  }
+
+  .searchContainer {
+    margin: 0 6px;
+  }
+
+  .searchInput {
+    padding: 7px 10px 7px 32px;
+    font-size: 0.8rem;
+  }
+}
