@@ -187,31 +187,33 @@
 /* ===== MOBILE RESPONSIVE ===== */
 @media (max-width: 768px) {
   .header {
-    padding: 0 12px;
-    gap: 8px;
+    /* Push content right so it doesn't overlap the 46px fixed toggle button (left:16px + 46px + 8px gap = 70px) */
+    padding: 0 12px 0 72px;
+    gap: 6px;
   }
 
-  /* Shrink search to fill available space */
+  /* Search fills remaining space but with a max-width cap */
   .searchContainer {
     flex: 1;
-    margin: 0 8px;
+    margin: 0;
     min-width: 0;
+    max-width: 220px;
   }
 
   .searchInput {
-    padding: 8px 12px 8px 36px;
-    font-size: 0.85rem;
+    padding: 8px 12px 8px 34px;
+    font-size: 0.82rem;
     border-radius: 14px;
   }
 
   .searchIcon {
     left: 10px;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
   }
 
   /* Tighten right-side actions */
   .actions {
-    gap: 6px;
+    gap: 4px;
     flex-shrink: 0;
   }
 
@@ -229,7 +231,7 @@
   /* Tighter profile wrapper */
   .profile {
     gap: 0;
-    padding: 4px;
+    padding: 2px;
   }
 
   /* Smaller avatar */
@@ -243,6 +245,9 @@
   .searchResults {
     max-height: 240px;
     border-radius: 10px;
+    left: 0;
+    right: auto;
+    width: 85vw;
   }
 
   .searchResultItem {
@@ -253,15 +258,15 @@
 
 @media (max-width: 420px) {
   .header {
-    padding: 0 8px;
+    padding: 0 8px 0 70px;
   }
 
   .searchContainer {
-    margin: 0 6px;
+    max-width: 160px;
   }
 
   .searchInput {
-    padding: 7px 10px 7px 32px;
-    font-size: 0.8rem;
+    padding: 7px 10px 7px 30px;
+    font-size: 0.78rem;
   }
 }
