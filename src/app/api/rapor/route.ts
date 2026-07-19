@@ -53,7 +53,7 @@ export async function GET() {
     
     if (sheetBalekno) {
        try {
-         await sheetBalekno.loadHeaderRow(2); // The header is on row 2
+         await sheetBalekno.loadHeaderRow(1); // The header is on row 1
          const rowsBalekno = await sheetBalekno.getRows({ offset: 0 }); // Fetch rows after header
          
          for (const row of rowsBalekno) {
@@ -155,7 +155,7 @@ export async function POST(request: Request) {
     const sheetBalekno = raporDoc.sheetsByTitle['BALEKNO'];
     if (!sheetBalekno) throw new Error('Tab BALEKNO tidak ditemukan');
 
-    await sheetBalekno.loadHeaderRow(2); // The header is on row 2
+    await sheetBalekno.loadHeaderRow(1); // The header is on row 1
 
     // Excel format date (approx) or just local date string. Let's use local date string to be safe.
     // Wait, the existing data uses serial number. Actually, Google Sheets accepts normal date strings.

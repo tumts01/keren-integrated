@@ -10,6 +10,7 @@ export default function PengembalianRaporPage() {
   
   // Filter state
   const [filterKelas, setFilterKelas] = useState('Semua');
+  const [searchName, setSearchName] = useState('');
 
   // Modals state
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -117,7 +118,11 @@ export default function PengembalianRaporPage() {
   );
 
   const kelasOptions = ['Semua', ...Array.from(new Set(data?.missingList?.map((s:any)=>s.kelas) || []))].sort();
-  const filteredList = data?.missingList?.filter((s:any) => filterKelas === 'Semua' || s.kelas === filterKelas) || [];
+  const filteredList = data?.missingList?.filter((s:any) => {
+    const matchKelas = filterKelas === 'Semua' || s.kelas === filterKelas;
+    const matchName = searchName === '' || s.nama.toLowerCase().includes(searchName.toLowerCase()) || s.nis.includes(searchName);
+    return matchKelas && matchName;
+  }) || [];
   
   // Autocomplete filtering for Input Modal
   const searchResults = inputSearch.length > 2 
@@ -177,12 +182,20 @@ export default function PengembalianRaporPage() {
         <div className={styles.tableHeader}>
           <h2>Daftar Belum Mengembalikan</h2>
           <div className={styles.filters}>
+            <input 
+              type="text" 
+              className={styles.input} 
+              placeholder="Cari nama / NIS..." 
+              value={searchName} 
+              onChange={e => setSearchName(e.target.value)} 
+            />
             <select 
               className={styles.select} 
               value={filterKelas} 
               onChange={(e) => setFilterKelas(e.target.value)}
             >
-              {kelasOptions.map((k:any) => <option key={k} value={k}>{k}</option>)}
+              <option value="Semua">Semua Kelas</option>
+              {kelasOptions.filter(k => k !== 'Semua').map((k:any) => <option key={k} value={k}>{k}</option>)}
             </select>
           </div>
         </div>
