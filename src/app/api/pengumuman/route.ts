@@ -11,7 +11,7 @@ function formatPhone(rawHp: string) {
 
 export async function POST(request: Request) {
   try {
-    const { pesan, pengirim, target } = await request.json();
+    const { pesan, pengirim, target, phones } = await request.json();
 
     if (!pesan) {
       return NextResponse.json({ success: false, error: 'Pesan tidak boleh kosong' }, { status: 400 });
@@ -61,31 +61,36 @@ export async function POST(request: Request) {
       }
 
       // Match nama pimpinan ke db_GTK
-      const phones: string[] = [];
+      const phonesArr: string[] = [];
       pimpinanNames.forEach(pn => {
-        // Exact match
-        if (gtkMap[pn]) { phones.push(formatPhone(gtkMap[pn])); return; }
-        // Partial match (nama pimpinan terkandung di GTK atau sebaliknya)
+        if (gtkMap[pn]) { phonesArr.push(formatPhone(gtkMap[pn])); return; }
         const key = Object.keys(gtkMap).find(k => k.includes(pn) || pn.includes(k));
-        if (key) phones.push(formatPhone(gtkMap[key]));
+        if (key) phonesArr.push(formatPhone(gtkMap[key]));
       });
 
-      // Jika tidak ditemukan di GTK, coba ambil langsung dari kolom HP di Users (jika ada)
-      if (phones.length === 0) {
+      if (phonesArr.length === 0) {
         userRows
           .filter(r => (r.get('Rule') || '').toLowerCase().trim() === 'pimpinan')
           .forEach(r => {
             const hp = (r.get('No WA') || r.get('HP') || r.get('NoHP') || '').trim();
-            if (hp.length >= 8) phones.push(formatPhone(hp));
+            if (hp.length >= 8) phonesArr.push(formatPhone(hp));
           });
       }
 
-      if (phones.length === 0) {
-        return NextResponse.json({ success: false, error: 'Nomor WA pimpinan tidak ditemukan. Pastikan nama di Users sesuai dengan db_GTK.' }, { status: 404 });
+      if (phonesArr.length === 0) {
+        return NextResponse.json({ success: false, error: 'Nomor WA pimpinan tidak ditemukan.' }, { status: 404 });
       }
 
-      targets = [...new Set(phones)].join(',');
-      count = phones.length;
+      targets = [...new Set(phonesArr)].join(',');
+      count = phonesArr.length;
+    } else if (target === 'custom' && Array.isArray(phones) && phones.length > 0) {
+      // 2b. Custom — kirim ke nomor-nomor yang dipilih
+      const formatted = phones.map((hp: string) => formatPhone(hp)).filter(hp => hp.length >= 8);
+      if (formatted.length === 0) {
+        return NextResponse.json({ success: false, error: 'Tidak ada nomor WA yang valid' }, { status: 400 });
+      }
+      targets = [...new Set(formatted)].join(',');
+      count = formatted.length;
     } else {
       // 2b. Kirim ke semua GTK aktif
       const allPhones = Object.values(gtkMap).map(hp => formatPhone(hp));
@@ -113,12 +118,13 @@ export async function POST(request: Request) {
       const tanggal = dateWIB.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
       const jam = dateWIB.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
+      const targetLabel = target === 'pimpinan' ? 'Pimpinan' : target === 'custom' ? `${count} Guru Pilihan` : 'Semua GTK';
       await sheetPengumuman.addRow({
         Tanggal: tanggal,
         Jam: jam,
         Pengirim: pengirim || 'Admin',
         Pesan: pesan,
-        Target: target === 'pimpinan' ? 'Pimpinan' : 'Semua GTK'
+        Target: targetLabel
       });
     } catch (sheetError) {
       console.error('Gagal menyimpan log ke Spreadsheet:', sheetError);
@@ -139,7 +145,7 @@ export async function POST(request: Request) {
     if (result.status) {
       return NextResponse.json({
         success: true,
-        message: `Pesan berhasil dikirim ke ${count} kontak${target === 'pimpinan' ? ' Pimpinan' : ' GTK'}.`,
+        message: `Pesan berhasil dikirim ke ${count} kontak${target === 'pimpinan' ? ' Pimpinan' : target === 'custom' ? ' Guru Pilihan' : ' GTK'}.`,
         data: result
       });
     } else {
@@ -155,8 +161,30 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const listType = searchParams.get('list');
+
+    // Kembalikan daftar GTK aktif beserta nomor WA untuk custom send
+    if (listType === 'gtk') {
+      const indukDoc = await getIndukDoc();
+      const sheetGtk = indukDoc.sheetsByTitle['db_GTK'];
+      if (!sheetGtk) return NextResponse.json({ success: false, data: [] });
+      const rows = await sheetGtk.getRows();
+      const data = rows
+        .filter(r => (r.get('Status') || '').toLowerCase().trim() === 'aktif')
+        .map(r => ({
+          nama: r.get('Nama') || '',
+          noWA: r.get('No WA') || '',
+          jabatan: r.get('Jabatan') || r.get('Pangkat') || ''
+        }))
+        .filter(r => r.nama && r.noWA.length >= 8)
+        .sort((a, b) => a.nama.localeCompare(b.nama));
+      return NextResponse.json({ success: true, data });
+    }
+
+    // Default: kembalikan riwayat pengumuman
     const presensiDoc = await getPresensiDoc();
     const sheetPengumuman = presensiDoc.sheetsByTitle['PENGUMUMAN'];
     if (!sheetPengumuman) return NextResponse.json({ success: true, data: [], total: 0 });
