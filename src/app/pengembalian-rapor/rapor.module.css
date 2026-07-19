@@ -310,3 +310,166 @@
   background: #f8fafc;
   color: #2563eb;
 }
+
+/* ===== MOBILE RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .container {
+    padding: 16px;
+  }
+
+  .header {
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .titleArea h1 {
+    font-size: 1.5rem;
+  }
+
+  .titleArea p {
+    font-size: 0.95rem;
+  }
+
+  .actionArea {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .actionArea button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btnPrimary, .btnSecondary, .btnExcel {
+    padding: 12px 16px;
+    font-size: 0.9rem;
+  }
+
+  /* Rekap Cards Grid */
+  .rekapGrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .rekapCard {
+    padding: 12px;
+    border-left-width: 3px;
+    border-radius: 10px;
+  }
+
+  .cardTitle {
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+  }
+
+  .cardStats {
+    font-size: 0.75rem;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .cardMissing {
+    font-size: 1.3rem;
+    margin-top: 4px;
+  }
+
+  .cardMissing span {
+    font-size: 0.75rem !important;
+  }
+
+  /* Table Section */
+  .tableSection {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .tableHeader {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .tableHeader h2 {
+    font-size: 1.15rem;
+  }
+
+  .filters {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .select, .input {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Table */
+  .table th, .table td {
+    padding: 10px 8px;
+    font-size: 0.85rem;
+  }
+
+  .table th:first-child, .table td:first-child {
+    width: 36px;
+    text-align: center;
+  }
+
+  /* Modal */
+  .modalContent {
+    width: 95%;
+    padding: 20px;
+    border-radius: 14px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  .modalTitle {
+    font-size: 1.2rem;
+    margin-bottom: 16px;
+  }
+
+  .modalActions {
+    flex-direction: column-reverse;
+    gap: 8px;
+    margin-top: 20px;
+  }
+
+  .modalActions button {
+    width: 100%;
+    justify-content: center;
+    padding: 12px;
+  }
+
+  .suggestions {
+    max-height: 160px;
+  }
+
+  .suggestionItem {
+    padding: 10px 12px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .rekapGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .titleArea h1 {
+    font-size: 1.3rem;
+  }
+
+  .container {
+    padding: 12px;
+  }
+
+  .cardMissing {
+    font-size: 1.1rem;
+  }
+}
