@@ -103,13 +103,14 @@ export default function PengembalianRaporPage() {
   };
 
   if (loading) return <div className={styles.container}>Loading data...</div>;
+  if (!data) return <div className={styles.container}>Gagal memuat data dari server. Silakan muat ulang halaman.</div>;
 
-  const kelasOptions = ['Semua', ...Array.from(new Set(data?.missingList.map((s:any)=>s.kelas)))].sort();
-  const filteredList = data?.missingList.filter((s:any) => filterKelas === 'Semua' || s.kelas === filterKelas) || [];
+  const kelasOptions = ['Semua', ...Array.from(new Set(data?.missingList?.map((s:any)=>s.kelas) || []))].sort();
+  const filteredList = data?.missingList?.filter((s:any) => filterKelas === 'Semua' || s.kelas === filterKelas) || [];
   
   // Autocomplete filtering for Input Modal
   const searchResults = inputSearch.length > 2 
-    ? data?.allActive.filter((s:any) => s.nama.toLowerCase().includes(inputSearch.toLowerCase()) || s.nis.includes(inputSearch))
+    ? data?.allActive?.filter((s:any) => s.nama.toLowerCase().includes(inputSearch.toLowerCase()) || s.nis.includes(inputSearch)) || []
     : [];
 
   return (
@@ -144,7 +145,7 @@ export default function PengembalianRaporPage() {
       </div>
 
       <div className={styles.rekapGrid}>
-        {data?.rekap.map((r: any, idx: number) => {
+        {data?.rekap?.map((r: any, idx: number) => {
            const isDanger = r.missing > 0;
            return (
              <div key={idx} className={`${styles.rekapCard} ${isDanger ? styles.danger : styles.success}`}>

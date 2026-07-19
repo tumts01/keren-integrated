@@ -66,19 +66,33 @@ export async function GET() {
          // Validate Date
          let isValidDate = true;
          if (startDate || endDate) {
-           let jsDate;
-           if (!isNaN(Number(tglVal))) {
-             jsDate = excelDateToJSDate(Number(tglVal));
-           } else {
-             jsDate = new Date(tglVal);
+           let jsDate: Date | null = null;
+           try {
+             if (!isNaN(Number(tglVal))) {
+               jsDate = excelDateToJSDate(Number(tglVal));
+             } else if (typeof tglVal === 'string') {
+               const datePart = tglVal.split(' ')[0];
+               const parts = datePart.split(/[\/\-]/);
+               if (parts.length === 3 && parts[2].length === 4) {
+                 // Convert DD/MM/YYYY to YYYY-MM-DD
+                 jsDate = new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}T12:00:00Z`);
+               } else {
+                 jsDate = new Date(tglVal);
+               }
+             }
+             
+             if (jsDate && !isNaN(jsDate.getTime())) {
+               const yyyy = jsDate.getUTCFullYear();
+               const mm = String(jsDate.getUTCMonth() + 1).padStart(2, '0');
+               const dd = String(jsDate.getUTCDate()).padStart(2, '0');
+               const yyyymmdd = `${yyyy}-${mm}-${dd}`;
+               
+               if (startDate && yyyymmdd < startDate) isValidDate = false;
+               if (endDate && yyyymmdd > endDate) isValidDate = false;
+             }
+           } catch (e) {
+             console.error("Date parsing error for", tglVal, e);
            }
-           
-           // jsDate might be invalid if parsing failed, but let's assume it works.
-           // Ignore time, compare YYYY-MM-DD
-           const yyyymmdd = jsDate.toISOString().split('T')[0];
-           
-           if (startDate && yyyymmdd < startDate) isValidDate = false;
-           if (endDate && yyyymmdd > endDate) isValidDate = false;
          }
          
          if (isValidDate) {
