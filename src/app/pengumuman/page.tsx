@@ -8,13 +8,27 @@ export default function PengumumanPage() {
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error' | null, text: string }>({ type: null, text: '' });
+  const [history, setHistory] = useState<any[]>([]);
+
+  const fetchHistory = async () => {
+    try {
+      const res = await fetch('/api/pengumuman');
+      const data = await res.json();
+      if (data.success) {
+        setHistory(data.data);
+        localStorage.setItem('keren_last_pengumuman_count', data.total.toString());
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   useEffect(() => {
     const storedUser = localStorage.getItem('keren_user_data');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
-    setLoading(false);
+    fetchHistory().then(() => setLoading(false));
   }, []);
 
   const isAdmin = user?.rule?.toLowerCase() === 'admin';
@@ -44,6 +58,7 @@ export default function PengumumanPage() {
       if (response.ok && data.success) {
         setStatus({ type: 'success', text: 'Pengumuman berhasil dikirim ke seluruh Guru & Staf via WhatsApp!' });
         setMessage(''); // Reset form
+        fetchHistory(); // Segarkan riwayat
       } else {
         setStatus({ type: 'error', text: data.error || 'Gagal mengirim pengumuman.' });
       }
@@ -54,23 +69,40 @@ export default function PengumumanPage() {
     }
   };
 
+  const renderHistory = () => (
+    <div className={styles.historyContainer}>
+      <h2 className={styles.historyTitle}>
+        <i className="fa-solid fa-clock-rotate-left"></i> Riwayat Pengumuman
+      </h2>
+      <div className={styles.historyList}>
+        {history.length === 0 ? (
+          <div className={styles.noHistory}>Belum ada pengumuman.</div>
+        ) : (
+          history.map((h, i) => (
+            <div key={i} className={styles.historyCard}>
+              <div className={styles.historyMeta}>
+                <span className={styles.historySender}><i className="fa-solid fa-user mr-1"></i> {h.pengirim}</span>
+                <span><i className="fa-solid fa-calendar mr-1"></i> {h.tanggal} - {h.jam} WIB</span>
+              </div>
+              <div className={styles.historyMessage}>{h.pesan}</div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+
   if (loading) return null;
 
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1>Broadcast Pengumuman</h1>
-        <p>Kirim pesan WhatsApp massal ke seluruh Guru & Staf</p>
+        <h1>{isAdmin ? 'Broadcast Pengumuman' : 'Papan Pengumuman'}</h1>
+        <p>{isAdmin ? 'Kirim pesan WhatsApp massal ke seluruh Guru & Staf' : 'Daftar informasi dan pengumuman terbaru'}</p>
       </div>
 
-      <div className={styles.card}>
-        {!isAdmin ? (
-          <div className={styles.notAdmin}>
-            <i className="fa-solid fa-lock"></i>
-            <h2>Akses Ditolak</h2>
-            <p>Hanya pengguna dengan hak akses <b>Admin</b> yang dapat mengirimkan pengumuman.</p>
-          </div>
-        ) : (
+      {isAdmin && (
+        <div className={styles.card}>
           <form onSubmit={handleSubmit}>
             <div className={styles.formGroup}>
               <label className={styles.label} htmlFor="message">Isi Pesan Pengumuman</label>
@@ -103,8 +135,10 @@ export default function PengumumanPage() {
               </div>
             )}
           </form>
-        )}
-      </div>
+        </div>
+      )}
+
+      {renderHistory()}
     </div>
   );
 }

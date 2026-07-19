@@ -20,6 +20,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [userRole, setUserRole] = useState<string>('');
+  const [hasNewPengumuman, setHasNewPengumuman] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -30,6 +31,22 @@ export default function Sidebar() {
         activeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     }
+
+    const checkPengumuman = async () => {
+      try {
+        const res = await fetch('/api/pengumuman');
+        const data = await res.json();
+        if (data.success) {
+          const lastCount = localStorage.getItem('keren_last_pengumuman_count') || '0';
+          if (data.total > parseInt(lastCount)) {
+            setHasNewPengumuman(true);
+          } else {
+            setHasNewPengumuman(false);
+          }
+        }
+      } catch(e) {}
+    };
+    checkPengumuman();
   }, [pathname]);
 
   const menuCategories: MenuCategory[] = [
@@ -246,7 +263,16 @@ export default function Sidebar() {
                         }}
                       >
                         <div style={{display:'flex', alignItems:'center', gap: '12px'}}>
-                          <i className={`fas ${item.icon} ${styles.menuIcon}`}></i>
+                          <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                            <i className={`fas ${item.icon} ${styles.menuIcon}`}></i>
+                            {item.name === 'Pengumuman' && hasNewPengumuman && (
+                              <span style={{
+                                position: 'absolute', top: '-4px', right: '-4px', 
+                                width: '10px', height: '10px', backgroundColor: '#ef4444', 
+                                borderRadius: '50%', border: '2px solid white'
+                              }}></span>
+                            )}
+                          </div>
                           {!isCollapsed && <span className={styles.menuText}>{item.name}</span>}
                         </div>
                         {!isCollapsed && hasSub && (

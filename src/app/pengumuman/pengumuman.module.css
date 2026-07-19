@@ -134,5 +134,60 @@
 .notAdmin i {
   font-size: 3rem;
   color: #94a3b8;
-  margin-bottom: 16px;
+}
+
+.historyContainer {
+  margin-top: 30px;
+}
+
+.historyTitle {
+  font-size: 1.4rem;
+  color: #1e293b;
+  margin-bottom: 20px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.historyList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.historyCard {
+  background: white;
+  border-left: 4px solid #3b82f6;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.historyMeta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+  color: #64748b;
+}
+
+.historySender {
+  font-weight: 600;
+  color: #334155;
+}
+
+.historyMessage {
+  color: #1e293b;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.noHistory {
+  text-align: center;
+  padding: 30px;
+  color: #94a3b8;
+  font-style: italic;
+  background: #f8fafc;
+  border-radius: 8px;
 }

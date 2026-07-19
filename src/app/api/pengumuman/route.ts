@@ -104,3 +104,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, error: 'Terjadi kesalahan sistem internal.' }, { status: 500 });
   }
 }
+
+export async function GET() {
+  try {
+    const presensiDoc = await getPresensiDoc();
+    const sheetPengumuman = presensiDoc.sheetsByTitle['PENGUMUMAN'];
+    if (!sheetPengumuman) return NextResponse.json({ success: true, data: [], total: 0 });
+    
+    const rows = await sheetPengumuman.getRows();
+    const data = rows.map(r => ({
+      tanggal: r.get('Tanggal'),
+      jam: r.get('Jam'),
+      pengirim: r.get('Pengirim'),
+      pesan: r.get('Pesan')
+    })).reverse(); // Terbaru di atas
+    
+    return NextResponse.json({ success: true, data, total: data.length });
+  } catch (error) {
+    return NextResponse.json({ success: false, data: [], total: 0 });
+  }
+}
