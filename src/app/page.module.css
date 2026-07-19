@@ -200,13 +200,119 @@
 }
 
 @media (max-width: 768px) {
+  .container {
+    gap: 16px;
+  }
+
+  .welcomeCard {
+    padding: 24px 20px;
+    border-radius: 16px;
+  }
+
+  .welcomeTitle {
+    font-size: 1.4rem;
+  }
+
+  .welcomeSubtitle {
+    font-size: 0.95rem;
+  }
+
   .profileHero {
     flex-direction: column;
     text-align: center;
-    margin-top: 0;
+    padding: 20px 16px;
+    margin-top: -16px;
+    gap: 16px;
+    border-radius: 16px;
   }
-  
+
+  .photoFrame {
+    width: 100px;
+    height: 130px;
+    border-radius: 12px;
+  }
+
+  .heroInfo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .name {
+    font-size: 1.3rem;
+  }
+
+  .jabatan {
+    font-size: 0.95rem;
+    margin-bottom: 12px;
+  }
+
   .badgeGrid {
     justify-content: center;
+    gap: 8px;
+  }
+
+  .badge {
+    font-size: 0.75rem;
+    padding: 6px 10px;
+    gap: 6px;
+  }
+
+  .detailsGrid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .detailCard {
+    padding: 18px;
+    border-radius: 14px;
+  }
+
+  .cardHeader {
+    font-size: 1.05rem;
+    margin-bottom: 14px;
+    gap: 10px;
+  }
+
+  .cardIcon {
+    width: 34px;
+    height: 34px;
+    font-size: 0.95rem;
+  }
+
+  .infoList {
+    gap: 12px;
+  }
+
+  .infoValue {
+    font-size: 0.9rem;
+    padding: 8px 12px;
+  }
+
+  .infoLabel {
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .welcomeCard {
+    padding: 18px 14px;
+  }
+
+  .welcomeTitle {
+    font-size: 1.2rem;
+  }
+
+  .name {
+    font-size: 1.15rem;
+  }
+
+  .badge {
+    font-size: 0.7rem;
+    padding: 4px 8px;
+  }
+
+  .detailCard {
+    padding: 14px;
   }
 }
