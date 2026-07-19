@@ -80,6 +80,7 @@ export default function PengembalianRaporPage() {
       setShowInputModal(false);
       setInputSearch('');
       setSelectedStudent(null);
+      alert(`Sukses! Data pengembalian rapor atas nama ${selectedStudent.nama} berhasil disimpan.`);
       setLoading(true);
       fetchData();
     } catch(e) {}
@@ -102,8 +103,18 @@ export default function PengembalianRaporPage() {
     XLSX.writeFile(wb, "Data_Belum_Kembali_Rapor.xlsx");
   };
 
-  if (loading) return <div className={styles.container}>Loading data...</div>;
-  if (!data) return <div className={styles.container}>Gagal memuat data dari server. Silakan muat ulang halaman.</div>;
+  if (loading) return (
+    <div className={styles.loading}>
+      <i className="fa-solid fa-spinner fa-spin" style={{fontSize: '3rem', color:'#3b82f6', marginBottom:'16px'}}></i>
+      <div>Memuat Data Rapor...</div>
+    </div>
+  );
+  if (!data) return (
+    <div className={styles.loading}>
+      <i className="fa-solid fa-triangle-exclamation" style={{fontSize: '3rem', color:'#ef4444', marginBottom:'16px'}}></i>
+      <div>Gagal memuat data dari server. Silakan muat ulang halaman.</div>
+    </div>
+  );
 
   const kelasOptions = ['Semua', ...Array.from(new Set(data?.missingList?.map((s:any)=>s.kelas) || []))].sort();
   const filteredList = data?.missingList?.filter((s:any) => filterKelas === 'Semua' || s.kelas === filterKelas) || [];
