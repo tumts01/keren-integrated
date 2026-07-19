@@ -154,34 +154,41 @@ export default function PengumumanPage() {
           <i className="fa-solid fa-clock-rotate-left"></i> Riwayat Pengumuman
         </h2>
         <div className={styles.historyList}>
-          {history.length === 0 ? (
-            <div className={styles.noHistory}>Belum ada pengumuman.</div>
-          ) : (
-            history.map((h, i) => (
-              <div key={i} className={styles.historyCard}>
-                <div className={styles.historyMeta}>
-                  <span className={styles.historySender}>
-                    <i className="fa-solid fa-user mr-1"></i> {h.pengirim}
-                  </span>
-                  <span>
-                    <i className="fa-solid fa-calendar mr-1"></i> {h.tanggal} - {h.jam} WIB
-                  </span>
-                  {h.target && (
-                    <span style={{
-                      background: h.target === 'Pimpinan' ? '#ede9fe' : '#dcfce7',
-                      color: h.target === 'Pimpinan' ? '#7c3aed' : '#15803d',
-                      borderRadius: 20, padding: '2px 10px',
-                      fontSize: '0.75rem', fontWeight: 700
-                    }}>
-                      <i className={`fas ${h.target === 'Pimpinan' ? 'fa-user-tie' : 'fa-users'}`} style={{ marginRight: 4 }}></i>
-                      {h.target}
+          {(() => {
+            // Non-admin hanya lihat pesan yang ditujukan ke Semua GTK
+            const visibleHistory = isAdmin
+              ? history
+              : history.filter(h => !h.target || h.target === 'Semua GTK');
+
+            return visibleHistory.length === 0 ? (
+              <div className={styles.noHistory}>Belum ada pengumuman.</div>
+            ) : (
+              visibleHistory.map((h, i) => (
+                <div key={i} className={styles.historyCard}>
+                  <div className={styles.historyMeta}>
+                    <span className={styles.historySender}>
+                      <i className="fa-solid fa-user mr-1"></i> {h.pengirim}
                     </span>
-                  )}
+                    <span>
+                      <i className="fa-solid fa-calendar mr-1"></i> {h.tanggal} - {h.jam} WIB
+                    </span>
+                    {isAdmin && h.target && (
+                      <span style={{
+                        background: h.target === 'Pimpinan' ? '#ede9fe' : '#dcfce7',
+                        color: h.target === 'Pimpinan' ? '#7c3aed' : '#15803d',
+                        borderRadius: 20, padding: '2px 10px',
+                        fontSize: '0.75rem', fontWeight: 700
+                      }}>
+                        <i className={`fas ${h.target === 'Pimpinan' ? 'fa-user-tie' : 'fa-users'}`} style={{ marginRight: 4 }}></i>
+                        {h.target}
+                      </span>
+                    )}
+                  </div>
+                  <div className={styles.historyMessage}>{h.pesan}</div>
                 </div>
-                <div className={styles.historyMessage}>{h.pesan}</div>
-              </div>
-            ))
-          )}
+              ))
+            );
+          })()}
         </div>
       </div>
     </div>
