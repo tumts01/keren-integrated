@@ -556,7 +556,7 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const jumlah = jumlahDiminta || String(totalRincian);
+    const jumlah = jumlahDiminta.replace(/[^0-9]/g,'') || String(totalRincian);
     const res = await fetch('/api/bon/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -616,7 +616,18 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
           </div>
           <div className={styles.formGroup}>
             <label>Jumlah Uang Diminta (Rp) <span className={styles.required}>*</span></label>
-            <input type="number" className={styles.input} value={jumlahDiminta} onChange={e => setJumlahDiminta(e.target.value)} placeholder="Contoh: 5000000" min={0} required />
+            <input
+              type="text"
+              inputMode="numeric"
+              className={styles.input}
+              value={jumlahDiminta === '' ? '' : Number(jumlahDiminta.replace(/[^0-9]/g,'')||0).toLocaleString('id-ID')}
+              onChange={e => {
+                const raw = e.target.value.replace(/[^0-9]/g,'');
+                setJumlahDiminta(raw);
+              }}
+              placeholder="Contoh: 5.000.000"
+              required
+            />
           </div>
         </div>
 
