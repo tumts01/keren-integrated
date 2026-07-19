@@ -14,6 +14,7 @@ export async function POST(request: Request) {
     const jumlahDiminta = formData.get('jumlahDiminta') as string;
     const jumlahRealisasi = formData.get('jumlahRealisasi') as string;
     const keterangan = formData.get('keterangan') as string;
+    const penerimaJSON = formData.get('penerimaJSON') as string || '[]';
 
     const doc = await getBontuDoc();
 
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
       JumlahDiminta: jumlahDiminta,
       JumlahRealisasi: jumlahRealisasi,
       SisaUang: String(sisa),
+      PenerimaJSON: penerimaJSON,
       URLBuktiNota: urlBuktiNota,
       URLBuktiFoto: urlBuktiFoto,
       Keterangan: keterangan || '',

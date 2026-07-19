@@ -43,8 +43,10 @@ export default function CetakRealisasiPage() {
 
   let rincianPengajuan: any[] = [];
   let rincianRealisasi: any[] = [];
+  let penerimaData: any[] = [];
   try { rincianPengajuan = JSON.parse(bon['RincianJSON'] || '[]'); } catch {}
   try { rincianRealisasi = JSON.parse(realisasi?.['RincianJSON'] || '[]'); } catch {}
+  try { penerimaData = JSON.parse(realisasi?.['PenerimaJSON'] || bon['PenerimaJSON'] || '[]'); } catch {}
 
   const totalDiminta = parseFloat(bon['JumlahDiminta'] || bon['JumlahUang'] || '0');
   const totalRealisasi = rincianRealisasi.reduce((s: number, i: any) => s + ((i.qty || 0) * (i.harga || 0)), 0);
@@ -108,6 +110,19 @@ export default function CetakRealisasiPage() {
               <td className={styles.infoColon}>:</td>
               <td className={styles.infoVal} colSpan={4}>{bon['Keperluan']}</td>
             </tr>
+            {penerimaData.length > 0 && (
+              <tr>
+                <td className={styles.infoKey}>Penerima/Toko</td>
+                <td className={styles.infoColon}>:</td>
+                <td className={styles.infoVal} colSpan={4}>
+                  {penerimaData.map((p: any, i: number) => (
+                    <span key={i} style={{ display: 'block' }}>
+                      {i + 1}. {p.nama}{p.keterangan ? ` (${p.keterangan})` : ''}
+                    </span>
+                  ))}
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
 

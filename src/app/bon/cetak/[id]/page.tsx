@@ -45,7 +45,9 @@ export default function CetakBonPage() {
   if (!bon) return <div style={{ textAlign: 'center', padding: 48 }}>Data tidak ditemukan</div>;
 
   let rincian: any[] = [];
+  let penerima: any[] = [];
   try { rincian = JSON.parse(bon['RincianJSON'] || '[]'); } catch {}
+  try { penerima = JSON.parse(bon['PenerimaJSON'] || '[]'); } catch {}
   const totalRincian = rincian.reduce((s: number, i: any) => s + ((i.qty || 0) * (i.harga || 0)), 0);
 
   return (
@@ -103,6 +105,19 @@ export default function CetakBonPage() {
               <td className={styles.infoColon}>:</td>
               <td className={styles.infoVal} colSpan={4}>{bon['Keperluan']}</td>
             </tr>
+            {penerima.length > 0 && (
+              <tr>
+                <td className={styles.infoKey}>Penerima/Toko</td>
+                <td className={styles.infoColon}>:</td>
+                <td className={styles.infoVal} colSpan={4}>
+                  {penerima.map((p: any, i: number) => (
+                    <span key={i} style={{ display: 'block' }}>
+                      {i + 1}. {p.nama}{p.keterangan ? ` (${p.keterangan})` : ''}
+                    </span>
+                  ))}
+                </td>
+              </tr>
+            )}
             <tr>
               <td className={styles.infoKey}>Jumlah Uang</td>
               <td className={styles.infoColon}>:</td>

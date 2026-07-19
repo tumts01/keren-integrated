@@ -58,7 +58,7 @@ async function generateNoBon(sheet: any, namaDepan: string, tahunAjaran: string)
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { nama, jabatan, tanggal, keperluan, jumlahDiminta, rincian, keterangan, tahunAjaran } = body;
+    const { nama, jabatan, tanggal, keperluan, jumlahDiminta, rincian, penerima, keterangan, tahunAjaran } = body;
 
     if (!nama || !keperluan || !rincian || !tanggal) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
@@ -87,6 +87,7 @@ export async function POST(request: Request) {
       JumlahDiminta: String(nominalDiminta),
       Terbilang: terbilangText,
       RincianJSON: JSON.stringify(rincian),
+      PenerimaJSON: JSON.stringify(penerima || []),
       Keterangan: keterangan || '',
       Timestamp: timestampStr,
       Status: 'Draft'

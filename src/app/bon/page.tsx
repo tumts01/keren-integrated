@@ -14,7 +14,58 @@ const formatRp = (n: any) => {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(Number(n));
 };
 
-// ===== PRINT MODAL (iframe, no new tab) =====
+// ===== PENERIMA / TOKO FIELD =====
+function PenerimaField({ penerima, onChange, tokoList }: {
+  penerima: { nama: string; keterangan: string }[];
+  onChange: (p: { nama: string; keterangan: string }[]) => void;
+  tokoList: any[];
+}) {
+  const add = () => onChange([...penerima, { nama: '', keterangan: '' }]);
+  const remove = (i: number) => onChange(penerima.filter((_, idx) => idx !== i));
+  const update = (i: number, field: string, val: string) => {
+    const arr = [...penerima]; (arr[i] as any)[field] = val; onChange(arr);
+  };
+
+  return (
+    <div className={styles.rincianSection} style={{ marginBottom: 20 }}>
+      <div className={styles.rincianHeader}>
+        <span><i className="fas fa-handshake" style={{ color: '#f59e0b', marginRight: 6 }}></i>Penerima / Toko</span>
+        <button type="button" className={styles.btnSm} onClick={add}>
+          <i className="fas fa-plus"></i> Tambah Penerima/Toko
+        </button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {penerima.map((item, idx) => (
+          <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              list={`tokoList-${idx}`}
+              className={styles.rincianInput}
+              value={item.nama}
+              onChange={e => update(idx, 'nama', e.target.value)}
+              placeholder="Nama toko / rekanan..."
+            />
+            <datalist id={`tokoList-${idx}`}>
+              {tokoList.map((t, ti) => <option key={ti} value={t['NamaToko'] || t['namaToko']} />)}
+            </datalist>
+            <input
+              className={styles.rincianInput}
+              style={{ maxWidth: 200 }}
+              value={item.keterangan}
+              onChange={e => update(idx, 'keterangan', e.target.value)}
+              placeholder="Catatan (opsional)"
+            />
+            {penerima.length > 1 && (
+              <button type="button" className={`${styles.btnSm} ${styles.btnRed}`} onClick={() => remove(idx)}>
+                <i className="fas fa-times"></i>
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PrintModal({ url, onClose }: { url: string; onClose: () => void }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
@@ -294,6 +345,8 @@ function TabTambahToko() {
 
 // ===== TAB: LAPORAN REALISASI =====
 function TabRealisasi({ onPrint }: { onPrint: (url: string) => void }) {
+  const [penerima, setPenerima] = useState<{ nama: string; keterangan: string }[]>([{ nama: '', keterangan: '' }]);
+  const [tokoList, setTokoList] = useState<any[]>([]);
   const [bonList, setBonList] = useState<any[]>([]);
   const [selectedBon, setSelectedBon] = useState<any>(null);
   const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
@@ -309,6 +362,7 @@ function TabRealisasi({ onPrint }: { onPrint: (url: string) => void }) {
 
   useEffect(() => {
     fetch('/api/bon?status=Draft').then(r => r.json()).then(j => setBonList(j.data || []));
+    fetch('/api/bon/toko').then(r => r.json()).then(j => setTokoList(j.data || []));
   }, []);
 
   const totalRealisasi = rincian.reduce((s, i) => s + (i.qty * i.harga), 0);
@@ -332,6 +386,7 @@ function TabRealisasi({ onPrint }: { onPrint: (url: string) => void }) {
     fd.append('jumlahDiminta', selectedBon['JumlahDiminta'] || selectedBon['JumlahUang'] || '0');
     fd.append('jumlahRealisasi', String(totalRealisasi));
     fd.append('keterangan', keterangan);
+    fd.append('penerimaJSON', JSON.stringify(penerima.filter(p => p.nama)));
     buktiNota.forEach(f => fd.append('buktiNota', f));
     buktiFoto.forEach(f => fd.append('buktiFoto', f));
 
@@ -387,6 +442,8 @@ function TabRealisasi({ onPrint }: { onPrint: (url: string) => void }) {
             <span><strong>Diminta:</strong> <b style={{ color: '#3b82f6' }}>{formatRp(selectedBon['JumlahDiminta'] || selectedBon['JumlahUang'])}</b></span>
           </div>
         )}
+
+        <PenerimaField penerima={penerima} onChange={setPenerima} tokoList={tokoList} />
 
         <div className={styles.rincianSection}>
           <div className={styles.rincianHeader}>
@@ -455,6 +512,8 @@ function TabRealisasi({ onPrint }: { onPrint: (url: string) => void }) {
 // ===== TAB: AJUKAN BON =====
 function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
   const [availableUsers, setAvailableUsers] = useState<any[]>([]);
+  const [tokoList, setTokoList] = useState<any[]>([]);
+  const [penerima, setPenerima] = useState<{ nama: string; keterangan: string }[]>([{ nama: '', keterangan: '' }]);
   const [nama, setNama] = useState('');
   const [jabatan, setJabatan] = useState('');
   const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
@@ -474,7 +533,6 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
         return role === 'admin' || role === 'pimpinan';
       });
       setAvailableUsers(filtered);
-      // Pre-fill dari localStorage
       const stored = localStorage.getItem('keren_user_data');
       if (stored) {
         const u = JSON.parse(stored);
@@ -485,6 +543,7 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
         }
       }
     });
+    fetch('/api/bon/toko').then(r => r.json()).then(j => setTokoList(j.data || []));
   }, []);
 
   const totalRincian = rincian.reduce((s, i) => s + (i.qty * i.harga), 0);
@@ -501,7 +560,7 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
     const res = await fetch('/api/bon/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nama, jabatan, tanggal, keperluan, jumlahDiminta: jumlah, rincian, keterangan, tahunAjaran: '2026/2027' })
+      body: JSON.stringify({ nama, jabatan, tanggal, keperluan, jumlahDiminta: jumlah, rincian, penerima: penerima.filter(p => p.nama), keterangan, tahunAjaran: '2026/2027' })
     });
     const json = await res.json();
     if (json.success) { setSavedNoBon(json.noBon); setSukses(true); }
@@ -518,10 +577,10 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
         <div className={styles.noBonValue}>{savedNoBon}</div>
       </div>
       <div className={styles.successActions}>
-        <button className={styles.btnPrimary} onClick={() => onPrint(`/bon/cetak/${encodeURIComponent(savedNoBon)}`)}>
+        <button className={styles.btnPrimary} onClick={() => onPrint(`/bon/cetak/${encodeURIComponent(savedNoBon)}`)}>  
           <i className="fas fa-print"></i> Cetak Tanda Bukti BON
         </button>
-        <button className={styles.btnSecondary} onClick={() => { setSukses(false); setSavedNoBon(''); setKeperluan(''); setJumlahDiminta(''); setKeterangan(''); setRincian([{ barang: '', qty: 1, satuan: 'PCS', harga: 0 }]); }}>
+        <button className={styles.btnSecondary} onClick={() => { setSukses(false); setSavedNoBon(''); setKeperluan(''); setJumlahDiminta(''); setKeterangan(''); setRincian([{ barang: '', qty: 1, satuan: 'PCS', harga: 0 }]); setPenerima([{ nama: '', keterangan: '' }]); }}>
           <i className="fas fa-plus"></i> Ajukan BON Baru
         </button>
       </div>
@@ -593,6 +652,8 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
           </div>
         </div>
 
+        <PenerimaField penerima={penerima} onChange={setPenerima} tokoList={tokoList} />
+
         <div className={styles.formGroup}>
           <label>Keterangan Tambahan <span style={{ color: '#94a3b8', fontWeight: 400 }}>(opsional)</span></label>
           <textarea className={styles.input} rows={2} value={keterangan} onChange={e => setKeterangan(e.target.value)} placeholder="Catatan tambahan..." />
@@ -612,7 +673,7 @@ const TABS = [
   { id: 'realisasi',   label: 'Lap. Realisasi', icon: 'fa-receipt',             color: '#0ea5e9' },
   { id: 'rekap',       label: 'Rekap Data',     icon: 'fa-chart-bar',           color: '#8b5cf6' },
   { id: 'tambah-toko', label: 'Tambah Toko',    icon: 'fa-store',               color: '#f59e0b' },
-  { id: 'data-toko',   label: 'Data Toko',      icon: 'fa-list-ul',             color: '#64748b' },
+  { id: 'data-toko',   label: 'Data Penerima/Toko', icon: 'fa-list-ul', color: '#64748b' },
 ];
 
 export default function BonPage() {
