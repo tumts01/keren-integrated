@@ -1,0 +1,226 @@
+.page {
+  background: #f1f5f9;
+  min-height: 100vh;
+  padding: 20px;
+  font-family: 'Times New Roman', Times, serif;
+}
+
+.noPrint {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  justify-content: center;
+}
+
+.printBtn {
+  background: #237227;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.backBtn {
+  background: #64748b;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* A4 DOC */
+.doc {
+  background: white;
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 15mm 20mm 15mm 20mm;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+  font-size: 11pt;
+  color: #000;
+  box-sizing: border-box;
+}
+
+/* KOP */
+.kop {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 6px;
+}
+
+.logo {
+  width: 70px;
+  height: 70px;
+  object-fit: contain;
+}
+
+.kopText {
+  flex: 1;
+  text-align: center;
+}
+
+.kopTitle {
+  font-size: 16pt;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #1a1a1a;
+}
+
+.kopSekolah {
+  font-size: 13pt;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.kopAlamat {
+  font-size: 9pt;
+  color: #555;
+}
+
+.kopLine {
+  border-top: 3px double #1a1a1a;
+  margin-bottom: 12px;
+}
+
+/* INFO TABLE */
+.infoTable {
+  width: 100%;
+  margin-bottom: 10px;
+  border-collapse: collapse;
+}
+
+.infoKey {
+  width: 130px;
+  padding: 2px 0;
+  font-weight: normal;
+  vertical-align: top;
+}
+
+.infoColon {
+  width: 12px;
+  padding: 2px 4px;
+  vertical-align: top;
+}
+
+.infoVal {
+  padding: 2px 0;
+  vertical-align: top;
+}
+
+/* TERBILANG */
+.terbilang {
+  border: 1px solid #aaa;
+  padding: 6px 12px;
+  font-style: italic;
+  font-size: 10pt;
+  margin: 8px 0;
+  border-radius: 2px;
+}
+
+/* RINCIAN */
+.rincianTitle {
+  text-align: center;
+  font-weight: 800;
+  font-size: 12pt;
+  margin: 14px 0 8px;
+  letter-spacing: 0.5px;
+  text-decoration: underline;
+}
+
+.rincianTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10pt;
+  margin-bottom: 8px;
+}
+
+.rincianTable th {
+  background: #237227;
+  color: white;
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  text-align: center;
+  font-weight: 700;
+}
+
+.rincianTable td {
+  padding: 5px 8px;
+  border: 1px solid #ccc;
+}
+
+.totalRow td {
+  background: #f8f8f8;
+  font-weight: 700;
+  border-top: 2px solid #237227;
+}
+
+/* TTD */
+.ttdTable {
+  width: 100%;
+  margin-top: 32px;
+  border-collapse: collapse;
+}
+
+.ttdCell {
+  width: 33%;
+  text-align: center;
+  padding: 0 8px;
+  vertical-align: top;
+}
+
+.ttdTitle {
+  font-weight: 700;
+  font-size: 10.5pt;
+  margin-bottom: 2px;
+}
+
+.ttdSub {
+  font-size: 9pt;
+  font-style: italic;
+  color: #555;
+  margin-bottom: 4px;
+}
+
+.ttdSpace {
+  height: 60px;
+  border-bottom: 1px solid #000;
+  margin: 0 20px 4px;
+}
+
+.ttdName {
+  font-weight: 700;
+  font-size: 10.5pt;
+}
+
+.ttdJabatan {
+  font-size: 9pt;
+  color: #555;
+}
+
+/* PRINT STYLES */
+@media print {
+  .noPrint { display: none !important; }
+  .page { background: white; padding: 0; }
+  .doc {
+    box-shadow: none;
+    margin: 0;
+    width: 100%;
+    padding: 10mm 15mm;
+  }
+  @page {
+    size: A4;
+    margin: 0;
+  }
+}

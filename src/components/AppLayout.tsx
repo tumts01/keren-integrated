@@ -245,7 +245,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const isPrintPage = pathname?.includes('/cetak/');
+  const isPrintPage = pathname?.includes('/cetak/') || pathname?.includes('/cetak-realisasi/');
   if (isPrintPage) {
     return <>{children}</>;
   }

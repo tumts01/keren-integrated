@@ -1,0 +1,22 @@
+.ringkasanTable {
+  width: 50%;
+  margin: 10px 0 10px auto;
+  border-collapse: collapse;
+  font-size: 10.5pt;
+  border: 1px solid #aaa;
+}
+
+.ringkasanTable td {
+  padding: 4px 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+.rKey {
+  font-weight: 600;
+  width: 150px;
+}
+
+.rVal {
+  font-weight: 700;
+  text-align: right;
+}
