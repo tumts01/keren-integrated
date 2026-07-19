@@ -55,35 +55,36 @@ function PrintSiswaModal({
     if (!content) return;
     const win = window.open('', '_blank', 'width=900,height=700');
     if (!win) return;
+
+    // Hitung ukuran baris agar 1 kelas = 1 halaman A4
+    // A4 usable: ~774pt (273mm). Overhead title+subtitle+header = ~70pt
+    const maxCount = mode === 'angkatan'
+      ? Math.max(...Object.values(groupedByKelas).map(l => l.length), 1)
+      : Math.max(selectedData.length, 1);
+    const availablePt = 774 - (mode === 'angkatan' ? 88 : 70);
+    const rowHeightPt = Math.min(availablePt / maxCount, 20);
+    const fontSizePt  = Math.max(Math.min(rowHeightPt * 0.60, 9), 6);
+    const paddingPt   = Math.max((rowHeightPt - fontSizePt * 1.2) / 2, 1);
+    const titlePt     = Math.min(fontSizePt + 1.5, 10);
+    const subPt       = Math.max(fontSizePt - 0.5, 6);
+
     win.document.write(`<!DOCTYPE html><html><head>
       <title>Daftar Siswa</title>
       <style>
-        @page { size: A4 portrait; margin: 15mm 12mm; }
+        @page { size: A4 portrait; margin: 12mm 10mm; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Arial, sans-serif; font-size: 10pt; color: #000; }
-        .kop { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-        .kop img { width: 60px; height: 60px; object-fit: contain; }
-        .kop-text { flex: 1; text-align: center; }
-        .kop-title { font-size: 14pt; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
-        .kop-sub { font-size: 10pt; font-weight: 600; }
-        .kop-addr { font-size: 9pt; color: #555; }
-        .kop-line { border-top: 3px solid #000; border-bottom: 1px solid #000; margin: 6px 0 10px; height: 4px; }
-        .doc-title { text-align: center; font-size: 12pt; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px; }
-        .doc-sub { text-align: center; font-size: 9.5pt; color: #444; margin-bottom: 12px; }
-        table { width: 100%; border-collapse: collapse; font-size: 9.5pt; }
-        th { background: #1e293b; color: white; padding: 7px 8px; font-weight: 700; text-align: left; }
-        td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
-        tr:nth-child(even) td { background: #f8fafc; }
-        .col-no { width: 32px; text-align: center; }
-        .col-nama { min-width: 180px; font-weight: 600; }
-        .col-ket { min-width: 130px; }
-        .group-header td { background: #e2e8f0; font-weight: 800; font-size: 9pt; padding: 5px 8px; color: #1e293b; border-top: 2px solid #94a3b8; }
-        .ttd { margin-top: 24px; display: flex; justify-content: flex-end; }
-        .ttd-box { text-align: center; min-width: 180px; }
-        .ttd-city { margin-bottom: 4px; font-size: 9.5pt; }
-        .ttd-space { height: 50px; }
-        .ttd-name { font-weight: 700; font-size: 10pt; border-top: 1px solid #000; padding-top: 2px; }
-        .footer-note { margin-top: 10px; font-size: 8pt; color: #888; }
+        body { font-family: Arial, sans-serif; font-size: ${fontSizePt}pt; font-weight: 400; color: #000; }
+        .doc-title { text-align: center; font-size: ${titlePt}pt; font-weight: 600; text-transform: uppercase; margin-bottom: 2px; }
+        .doc-sub { text-align: center; font-size: ${subPt}pt; color: #333; margin-bottom: 6px; }
+        table { width: 100%; border-collapse: collapse; font-size: ${fontSizePt}pt; }
+        thead { display: table-header-group; }
+        th { background: #f0f0f0; padding: ${paddingPt}pt 5pt; font-weight: 600; text-align: left; border: 1px solid #999; }
+        td { padding: ${paddingPt}pt 5pt; border: 1px solid #bbb; vertical-align: middle; height: ${rowHeightPt}pt; }
+        .col-no { width: 26pt; text-align: center; }
+        .col-nama { width: 55%; }
+        .group-header td { background: #e8e8e8; font-weight: 600; font-size: ${subPt}pt; padding: ${Math.max(paddingPt - 1, 1)}pt 5pt; border: 1px solid #999; }
+        .page-section { page-break-after: always; }
+        .page-section:last-child { page-break-after: avoid; }
         @media print { body { -webkit-print-color-adjust: exact; } }
       </style>
     </head><body>${content.innerHTML}</body></html>`);
@@ -198,31 +199,17 @@ function PrintSiswaModal({
         {/* Hidden print content */}
         <div style={{ display: 'none' }}>
           <div ref={printRef}>
-            {/* KOP */}
-            <div className="kop">
-              <img src="/logo.png" alt="Logo" />
-              <div className="kop-text">
-                <div className="kop-title">MTs Almaarif 01 Singosari</div>
-                <div className="kop-sub">MADRASAH TSANAWIYAH ALMAARIF 01 SINGOSARI</div>
-                <div className="kop-addr">Jl. Masjid No. 33 Pagentan Singosari Malang — NSM: 121235070033</div>
-              </div>
-            </div>
-            <div className="kop-line"></div>
-
-            <div className="doc-title">Daftar Siswa — {judulCetak}</div>
-            <div className="doc-sub">
-              Tahun Ajaran {activeData[0]?.tahunAjaran || '2026/2027'} &nbsp;|&nbsp; Dicetak: {today}
-            </div>
 
             {mode === 'angkatan' ? (
-              // Group per kelas
+              // Setiap kelas = 1 halaman
               Object.entries(groupedByKelas).sort(([a], [b]) => a.localeCompare(b)).map(([rombel, siswaList]) => (
-                <div key={rombel} style={{ marginBottom: 12 }}>
+                <div key={rombel} className="page-section">
+                  <div className="doc-title">Daftar Siswa — Kelas {rombel}</div>
+                  <div className="doc-sub">
+                    Tahun Ajaran {activeData[0]?.tahunAjaran || '2026/2027'} &nbsp;|&nbsp; Dicetak: {today} &nbsp;|&nbsp; {siswaList.length} Siswa
+                  </div>
                   <table>
                     <thead>
-                      <tr>
-                        <td colSpan={3} className="group-header">Kelas {rombel} — {siswaList.length} Siswa</td>
-                      </tr>
                       <tr>
                         <th className="col-no">No</th>
                         <th className="col-nama">Nama Siswa</th>
@@ -242,36 +229,32 @@ function PrintSiswaModal({
                 </div>
               ))
             ) : (
-              // Single kelas
-              <table>
-                <thead>
-                  <tr>
-                    <th className="col-no">No</th>
-                    <th className="col-nama">Nama Siswa</th>
-                    <th className="col-ket">Keterangan</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedData.map((s, i) => (
-                    <tr key={s.id}>
-                      <td className="col-no">{i + 1}</td>
-                      <td className="col-nama">{s.nama}</td>
-                      <td className="col-ket"></td>
+              // Single kelas = 1 halaman
+              <div className="page-section">
+                <div className="doc-title">Daftar Siswa — Kelas {kelas}</div>
+                <div className="doc-sub">
+                  Tahun Ajaran {activeData[0]?.tahunAjaran || '2026/2027'} &nbsp;|&nbsp; Dicetak: {today} &nbsp;|&nbsp; {selectedData.length} Siswa
+                </div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th className="col-no">No</th>
+                      <th className="col-nama">Nama Siswa</th>
+                      <th className="col-ket">Keterangan</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-
-            <div className="ttd">
-              <div className="ttd-box">
-                <div className="ttd-city">Singosari, {today}</div>
-                <div>Kepala Madrasah,</div>
-                <div className="ttd-space"></div>
-                <div className="ttd-name">Dwi Retno Palupi, M.Pd.</div>
+                  </thead>
+                  <tbody>
+                    {selectedData.map((s, i) => (
+                      <tr key={s.id}>
+                        <td className="col-no">{i + 1}</td>
+                        <td className="col-nama">{s.nama}</td>
+                        <td className="col-ket"></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </div>
-            <div className="footer-note">* Dokumen ini dicetak secara otomatis oleh Sistem Informasi MTs Almaarif 01 Singosari</div>
+            )}
           </div>
         </div>
       </div>
