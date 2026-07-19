@@ -9,6 +9,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   const [tagihanList, setTagihanList] = useState<any[]>([]);
+  const [raporInfo, setRaporInfo] = useState<{kelas: string, missing: number, total: number} | null>(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('keren_user_data');
@@ -23,12 +24,16 @@ export default function Home() {
 
   const fetchProfile = async (nama: string) => {
     try {
-      const [resGuru, resSurat] = await Promise.all([
+      const [resGuru, resSurat, resKelas, resRapor] = await Promise.all([
         fetch('/api/guru'),
-        fetch('/api/persuratan')
+        fetch('/api/persuratan'),
+        fetch('/api/kelas'),
+        fetch('/api/rapor')
       ]);
       const data = await resGuru.json();
       const surat = await resSurat.json();
+      const kelasData = await resKelas.json();
+      const raporData = await resRapor.json();
       
       let foundProfile = null;
       if (data.success) {
@@ -47,6 +52,24 @@ export default function Home() {
           )
         );
         setTagihanList(myTagihan);
+      }
+
+      // Check wali kelas rapor status
+      if (kelasData.success && raporData.success && foundProfile) {
+        const myName = foundProfile.nama.toLowerCase().trim();
+        const myKelas = kelasData.data.find((k: any) => 
+          k.waliKelas && k.waliKelas.toLowerCase().trim() === myName
+        );
+        if (myKelas) {
+          const rekapKelas = raporData.rekap?.find((r: any) => r.kelas === myKelas.rombel);
+          if (rekapKelas && rekapKelas.missing > 0) {
+            setRaporInfo({
+              kelas: myKelas.rombel,
+              missing: rekapKelas.missing,
+              total: rekapKelas.total
+            });
+          }
+        }
       }
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -141,6 +164,39 @@ export default function Home() {
               </div>
               <a href="/persuratan" style={{ display: 'inline-block', marginTop: '16px', background: '#dc2626', color: 'white', padding: '8px 16px', borderRadius: '8px', textDecoration: 'none', fontWeight: 600, fontSize: '0.9rem' }}>
                 Buka Menu Persuratan <i className="fas fa-arrow-right" style={{ marginLeft: '4px' }}></i>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Box Rapor Wali Kelas */}
+      {raporInfo && (
+        <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '12px', padding: '20px', marginBottom: '24px', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: '-10px', right: '-10px', opacity: 0.1 }}>
+            <i className="fas fa-book-open" style={{ fontSize: '8rem', color: '#f59e0b' }}></i>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', position: 'relative', zIndex: 1 }}>
+            <div style={{ background: '#f59e0b', color: 'white', width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', flexShrink: 0 }}>
+              <i className="fas fa-book"></i>
+            </div>
+            <div>
+              <h3 style={{ margin: '0 0 4px 0', color: '#92400e', fontSize: '1.2rem', fontWeight: 700 }}>Laporan Pengembalian Rapor &mdash; Kelas {raporInfo.kelas}</h3>
+              <p style={{ margin: '0 0 12px 0', color: '#a16207', fontSize: '0.95rem' }}>
+                <strong>{raporInfo.missing}</strong> dari <strong>{raporInfo.total}</strong> siswa di kelas Anda <strong>belum mengembalikan rapor</strong>.
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ background: 'white', borderRadius: '8px', padding: '8px 14px', border: '1px solid #fde68a' }}>
+                  <span style={{ fontSize: '1.8rem', fontWeight: 800, color: '#d97706' }}>{raporInfo.missing}</span>
+                  <span style={{ fontSize: '0.8rem', color: '#92400e', display: 'block' }}>Belum Kembali</span>
+                </div>
+                <div style={{ background: 'white', borderRadius: '8px', padding: '8px 14px', border: '1px solid #fde68a' }}>
+                  <span style={{ fontSize: '1.8rem', fontWeight: 800, color: '#16a34a' }}>{raporInfo.total - raporInfo.missing}</span>
+                  <span style={{ fontSize: '0.8rem', color: '#166534', display: 'block' }}>Sudah Kembali</span>
+                </div>
+              </div>
+              <a href="/pengembalian-rapor" style={{ display: 'inline-block', marginTop: '16px', background: '#d97706', color: 'white', padding: '8px 16px', borderRadius: '8px', textDecoration: 'none', fontWeight: 600, fontSize: '0.9rem' }}>
+                Lihat Detail Pengembalian <i className="fas fa-arrow-right" style={{ marginLeft: '4px' }}></i>
               </a>
             </div>
           </div>
