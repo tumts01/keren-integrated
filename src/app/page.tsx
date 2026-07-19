@@ -57,9 +57,12 @@ export default function Home() {
       // Check wali kelas rapor status
       if (kelasData.success && raporData.success && foundProfile) {
         const myName = foundProfile.nama.toLowerCase().trim();
-        const myKelas = kelasData.data.find((k: any) => 
-          k.waliKelas && k.waliKelas.toLowerCase().trim() === myName
-        );
+        // Use flexible matching: either the wali kelas name includes the guru name or vice versa
+        const myKelas = kelasData.data.find((k: any) => {
+          if (!k.waliKelas) return false;
+          const waliName = k.waliKelas.toLowerCase().trim();
+          return waliName.includes(myName) || myName.includes(waliName);
+        });
         if (myKelas) {
           const rekapKelas = raporData.rekap?.find((r: any) => r.kelas === myKelas.rombel);
           if (rekapKelas && rekapKelas.missing > 0) {
