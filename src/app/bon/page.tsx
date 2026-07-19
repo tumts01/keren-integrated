@@ -109,7 +109,197 @@ function PrintModal({ url, onClose }: { url: string; onClose: () => void }) {
   );
 }
 
-// ===== TAB: REKAP DATA =====
+// ===== EDIT BON MODAL =====
+function EditBonModal({ bon, tokoList, onClose, onSaved }: {
+  bon: any;
+  tokoList: any[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const parseJSON = (s: string, fallback: any) => { try { return JSON.parse(s); } catch { return fallback; } };
+
+  const [nama, setNama] = useState(bon['Nama'] || '');
+  const [jabatan, setJabatan] = useState(bon['Jabatan'] || '');
+  const [tanggal, setTanggal] = useState(bon['Tanggal'] || '');
+  const [keperluan, setKeperluan] = useState(bon['Keperluan'] || '');
+  const [jumlahDiminta, setJumlahDiminta] = useState(bon['JumlahDiminta'] || '');
+  const [keterangan, setKeterangan] = useState(bon['Keterangan'] || '');
+  const [rincian, setRincian] = useState<any[]>(
+    parseJSON(bon['RincianJSON'], [{ barang: '', qty: 1, satuan: 'PCS', harga: 0 }])
+  );
+  const [penerima, setPenerima] = useState<{ nama: string; keterangan: string }[]>(
+    parseJSON(bon['PenerimaJSON'], [{ nama: '', keterangan: '' }])
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const updateRow = (idx: number, field: string, val: any) => {
+    const arr = [...rincian]; (arr[idx] as any)[field] = val; setRincian(arr);
+  };
+  const addRow = () => setRincian([...rincian, { barang: '', qty: 1, satuan: 'PCS', harga: 0 }]);
+  const removeRow = (idx: number) => setRincian(rincian.filter((_, i) => i !== idx));
+
+  const totalRincian = rincian.reduce((s, i) => s + (i.qty * i.harga), 0);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    try {
+      const jumlah = jumlahDiminta.replace(/[^0-9]/g, '') || String(totalRincian);
+      const res = await fetch('/api/bon/update', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          noBon: bon['NoBon'] || bon['ID'],
+          nama, jabatan, tanggal, keperluan,
+          jumlahDiminta: jumlah,
+          rincian,
+          penerima: penerima.filter(p => p.nama),
+          keterangan
+        })
+      });
+      const json = await res.json();
+      if (json.success) { onSaved(); onClose(); }
+      else setError(json.error || 'Gagal menyimpan');
+    } catch { setError('Terjadi kesalahan jaringan'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className={styles.printOverlay} style={{ zIndex: 1100 }}>
+      <div style={{
+        background: '#fff', borderRadius: 16, maxWidth: 760, width: '95vw',
+        maxHeight: '90vh', overflowY: 'auto', margin: 'auto', marginTop: 32,
+        boxShadow: '0 20px 60px rgba(0,0,0,0.3)', padding: 0
+      }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: '18px 24px', borderBottom: '1px solid #e2e8f0',
+          background: 'linear-gradient(135deg, #f59e0b, #d97706)', borderRadius: '16px 16px 0 0'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <i className="fas fa-edit" style={{ color: '#fff', fontSize: '1.1rem' }}></i>
+            <div>
+              <div style={{ color: '#fff', fontWeight: 700, fontSize: '1rem' }}>Edit Pengajuan BON</div>
+              <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.78rem' }}>{bon['NoBon'] || bon['ID']}</div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 8, color: '#fff', padding: '6px 12px', cursor: 'pointer', fontWeight: 700 }}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSave} style={{ padding: 24 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div className={styles.formGroup}>
+              <label>Nama Pemohon</label>
+              <input className={styles.input} value={nama} onChange={e => setNama(e.target.value)} required />
+            </div>
+            <div className={styles.formGroup}>
+              <label>Jabatan</label>
+              <input className={styles.input} value={jabatan} onChange={e => setJabatan(e.target.value)} />
+            </div>
+            <div className={styles.formGroup}>
+              <label>Tanggal</label>
+              <input type="date" className={styles.input} value={tanggal} onChange={e => setTanggal(e.target.value)} required />
+            </div>
+            <div className={styles.formGroup}>
+              <label>Jumlah Uang Diminta (Rp)</label>
+              <input
+                type="text" inputMode="numeric" className={styles.input}
+                value={jumlahDiminta === '' ? '' : Number(String(jumlahDiminta).replace(/[^0-9]/g,'')||0).toLocaleString('id-ID')}
+                onChange={e => setJumlahDiminta(e.target.value.replace(/[^0-9]/g,''))}
+                placeholder="Contoh: 5.000.000"
+              />
+            </div>
+          </div>
+          <div className={styles.formGroup} style={{ marginBottom: 16 }}>
+            <label>Keperluan / Rincian</label>
+            <textarea className={styles.input} style={{ minHeight: 60 }} value={keperluan} onChange={e => setKeperluan(e.target.value)} required />
+          </div>
+
+          {/* Penerima */}
+          <div className={styles.rincianSection} style={{ marginBottom: 16 }}>
+            <div className={styles.rincianHeader}>
+              <span><i className="fas fa-handshake" style={{ color: '#f59e0b', marginRight: 6 }}></i>Penerima / Toko</span>
+              <button type="button" className={styles.btnSm} onClick={() => setPenerima([...penerima, { nama: '', keterangan: '' }])}>
+                <i className="fas fa-plus"></i> Tambah
+              </button>
+            </div>
+            {penerima.map((item, idx) => (
+              <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+                <input list={`editToko-${idx}`} className={styles.rincianInput} value={item.nama}
+                  onChange={e => { const a = [...penerima]; a[idx].nama = e.target.value; setPenerima(a); }}
+                  placeholder="Nama toko / rekanan..." />
+                <datalist id={`editToko-${idx}`}>{tokoList.map((t, ti) => <option key={ti} value={t['NamaToko'] || t['namaToko']} />)}</datalist>
+                <input className={styles.rincianInput} style={{ maxWidth: 180 }} value={item.keterangan}
+                  onChange={e => { const a = [...penerima]; a[idx].keterangan = e.target.value; setPenerima(a); }}
+                  placeholder="Catatan (opsional)" />
+                {penerima.length > 1 && (
+                  <button type="button" className={`${styles.btnSm} ${styles.btnRed}`}
+                    onClick={() => setPenerima(penerima.filter((_, i) => i !== idx))}>
+                    <i className="fas fa-times"></i>
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Rincian Barang */}
+          <div className={styles.rincianSection} style={{ marginBottom: 16 }}>
+            <div className={styles.rincianHeader}>
+              <span><i className="fas fa-list" style={{ color: '#3b82f6', marginRight: 6 }}></i>Rincian Keperluan/Barang</span>
+              <button type="button" className={styles.btnSm} onClick={addRow}><i className="fas fa-plus"></i> Tambah Baris</button>
+            </div>
+            <table className={styles.table}>
+              <thead><tr>
+                <th style={{ width: '35%' }}>Nama Barang/Kegiatan</th>
+                <th style={{ width: 44 }}>Qty</th>
+                <th style={{ width: 82 }}>Satuan</th>
+                <th style={{ width: 120 }}>Harga Satuan</th>
+                <th style={{ width: 110 }}>Jumlah</th>
+                <th style={{ width: 36 }}></th>
+              </tr></thead>
+              <tbody>
+                {rincian.map((item, idx) => (
+                  <tr key={idx}>
+                    <td><input className={styles.rincianInput} value={item.barang} onChange={e => updateRow(idx, 'barang', e.target.value)} placeholder="Nama barang..." /></td>
+                    <td><input type="text" inputMode="numeric" className={styles.rincianInput} style={{ width: '100%', textAlign: 'center' }} value={item.qty === 0 ? '' : item.qty} onChange={e => updateRow(idx, 'qty', parseInt(e.target.value.replace(/[^0-9]/g,'')) || 0)} placeholder="1" /></td>
+                    <td><select className={styles.rincianInput} value={item.satuan} onChange={e => updateRow(idx, 'satuan', e.target.value)}>{SATUAN_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}</select></td>
+                    <td><input type="text" inputMode="numeric" className={styles.rincianInput} value={item.harga === 0 ? '' : item.harga.toLocaleString('id-ID')} onChange={e => updateRow(idx, 'harga', parseInt(e.target.value.replace(/[^0-9]/g,'')) || 0)} placeholder="0" /></td>
+                    <td style={{ fontWeight: 600, fontSize: '0.85rem' }}>{formatRp(item.qty * item.harga)}</td>
+                    <td>{rincian.length > 1 && <button type="button" className={`${styles.btnSm} ${styles.btnRed}`} onClick={() => removeRow(idx)}><i className="fas fa-times"></i></button>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={{ textAlign: 'right', marginTop: 8, fontWeight: 700, color: '#1e293b' }}>
+              Total Rincian: {formatRp(totalRincian)}
+            </div>
+          </div>
+
+          <div className={styles.formGroup} style={{ marginBottom: 20 }}>
+            <label>Keterangan Tambahan (opsional)</label>
+            <textarea className={styles.input} style={{ minHeight: 52 }} value={keterangan} onChange={e => setKeterangan(e.target.value)} placeholder="Catatan, alasan revisi, dll..." />
+          </div>
+
+          {error && <div style={{ color: '#ef4444', marginBottom: 12, fontSize: '0.88rem' }}><i className="fas fa-exclamation-circle mr-1"></i>{error}</div>}
+
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <button type="button" className={styles.btnSecondary} onClick={onClose} disabled={saving}>Batal</button>
+            <button type="submit" className={styles.btnPrimary} disabled={saving}>
+              {saving ? <><i className="fas fa-spinner fa-spin"></i> Menyimpan...</> : <><i className="fas fa-save"></i> Simpan Perubahan</>}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function TabRekap({ onPrint }: { onPrint: (url: string) => void }) {
   const [data, setData] = useState<any[]>([]);
   const [stats, setStats] = useState<any>({});
@@ -118,6 +308,8 @@ function TabRekap({ onPrint }: { onPrint: (url: string) => void }) {
   const [status, setStatus] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [editBon, setEditBon] = useState<any | null>(null);
+  const [tokoList, setTokoList] = useState<any[]>([]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -134,9 +326,21 @@ function TabRekap({ onPrint }: { onPrint: (url: string) => void }) {
   };
 
   useEffect(() => { fetchData(); }, [search, status, from, to]);
+  useEffect(() => {
+    fetch('/api/bon/toko').then(r => r.json()).then(j => setTokoList(j.data || []));
+  }, []);
 
   return (
     <div>
+      {/* Edit Modal */}
+      {editBon && (
+        <EditBonModal
+          bon={editBon}
+          tokoList={tokoList}
+          onClose={() => setEditBon(null)}
+          onSaved={() => { setEditBon(null); fetchData(); }}
+        />
+      )}
       {/* Stat Cards */}
       <div className={styles.statCards}>
         {[
@@ -204,6 +408,18 @@ function TabRekap({ onPrint }: { onPrint: (url: string) => void }) {
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {/* Tombol Edit — tampil untuk status selain Selesai */}
+                      {(item['Status'] || 'Draft').toLowerCase() !== 'selesai' && (
+                        <button
+                          className={`${styles.actionBtn}`}
+                          style={{ background: '#fef3c7', color: '#d97706', borderColor: '#fde68a' }}
+                          onClick={() => setEditBon(item)}
+                          title="Edit Pengajuan BON"
+                        >
+                          <i className="fas fa-edit"></i>
+                          <span>Edit</span>
+                        </button>
+                      )}
                       <button className={styles.actionBtn} onClick={() => {
                         const id = encodeURIComponent(item['NoBon'] || item['ID']);
                         onPrint(`/bon/cetak/${id}`);
