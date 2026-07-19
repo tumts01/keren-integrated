@@ -86,7 +86,10 @@ export default function Sidebar() {
       items: [
         { name: 'Bendahara', path: '/bendahara', icon: 'fa-wallet' },
         { name: 'Pembayaran', path: '/pembayaran', icon: 'fa-money-bill-wave' },
-        ...(userRole.toLowerCase() === 'admin' || userRole.toLowerCase() === 'pimpinan' 
+        ...((() => {
+          const BON_ROLES = ['admin', 'pimpinan', 'guru / ka. lab. ti', 'bimbingan konseling', 'guru / koord. literasi', 'gtk / ka. lab. ipa', 'ka. perpustakaan'];
+          return BON_ROLES.includes(userRole.toLowerCase());
+        })()
           ? [{ name: 'Nota Bon', path: '/bon', icon: 'fa-file-invoice-dollar' }]
           : [])
       ]

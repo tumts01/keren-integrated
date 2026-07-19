@@ -742,20 +742,21 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
   const [savedNoBon, setSavedNoBon] = useState('');
 
   useEffect(() => {
-    // Hanya ambil user dengan role admin atau pimpinan
+    // Role yang bisa mengajukan BON
+    const BON_ROLES = ['admin', 'pimpinan', 'guru / ka. lab. ti', 'bimbingan konseling', 'guru / koord. literasi', 'gtk / ka. lab. ipa', 'ka. perpustakaan'];
     fetch('/api/user').then(r => r.json()).then(j => {
       const filtered = (j.data || []).filter((u: any) => {
         const role = (u.rule || u.role || '').toLowerCase();
-        return role === 'admin' || role === 'pimpinan';
+        return BON_ROLES.includes(role);
       });
       setAvailableUsers(filtered);
       const stored = localStorage.getItem('keren_user_data');
       if (stored) {
         const u = JSON.parse(stored);
         const role = (u.rule || '').toLowerCase();
-        if (role === 'admin' || role === 'pimpinan') {
+        if (BON_ROLES.includes(role)) {
           setNama(u.nama || '');
-          setJabatan(u.jabatan || '');
+          setJabatan(u.jabatan || u.rule || '');
         }
       }
     });
