@@ -457,9 +457,9 @@ function TabRealisasi({ onPrint }: { onPrint: (url: string) => void }) {
                 {rincian.map((item, idx) => (
                   <tr key={idx}>
                     <td><input className={styles.rincianInput} value={item.barang} onChange={e => updateRow(idx, 'barang', e.target.value)} placeholder="Nama barang..." required /></td>
-                    <td><input type="number" className={styles.rincianInput} value={item.qty} min={1} onChange={e => updateRow(idx, 'qty', parseInt(e.target.value) || 1)} /></td>
+                    <td><input type="text" inputMode="numeric" className={styles.rincianInput} value={item.qty === 0 ? '' : item.qty} onChange={e => updateRow(idx, 'qty', parseInt(e.target.value.replace(/[^0-9]/g,'')) || 0)} placeholder="1" /></td>
                     <td><select className={styles.rincianInput} value={item.satuan} onChange={e => updateRow(idx, 'satuan', e.target.value)}>{SATUAN_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}</select></td>
-                    <td><input type="number" className={styles.rincianInput} value={item.harga} min={0} onChange={e => updateRow(idx, 'harga', parseInt(e.target.value) || 0)} /></td>
+                    <td><input type="text" inputMode="numeric" className={styles.rincianInput} value={item.harga === 0 ? '' : item.harga.toLocaleString('id-ID')} onChange={e => updateRow(idx, 'harga', parseInt(e.target.value.replace(/[^0-9]/g,'')) || 0)} placeholder="0" /></td>
                     <td style={{ fontWeight: 600, fontSize: '0.85rem' }}>{formatRp(item.qty * item.harga)}</td>
                     <td>{rincian.length > 1 && <button type="button" className={`${styles.btnSm} ${styles.btnRed}`} onClick={() => removeRow(idx)}><i className="fas fa-times"></i></button>}</td>
                   </tr>
@@ -637,9 +637,9 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
                 {rincian.map((item, idx) => (
                   <tr key={idx}>
                     <td><input className={styles.rincianInput} value={item.barang} onChange={e => updateRow(idx, 'barang', e.target.value)} placeholder="Nama barang..." required /></td>
-                    <td><input type="number" className={styles.rincianInput} value={item.qty} min={1} onChange={e => updateRow(idx, 'qty', parseInt(e.target.value) || 1)} /></td>
+                    <td><input type="text" inputMode="numeric" className={styles.rincianInput} value={item.qty === 0 ? '' : item.qty} onChange={e => updateRow(idx, 'qty', parseInt(e.target.value.replace(/[^0-9]/g,'')) || 0)} placeholder="1" /></td>
                     <td><select className={styles.rincianInput} value={item.satuan} onChange={e => updateRow(idx, 'satuan', e.target.value)}>{SATUAN_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}</select></td>
-                    <td><input type="number" className={styles.rincianInput} value={item.harga} min={0} onChange={e => updateRow(idx, 'harga', parseInt(e.target.value) || 0)} /></td>
+                    <td><input type="text" inputMode="numeric" className={styles.rincianInput} value={item.harga === 0 ? '' : item.harga.toLocaleString('id-ID')} onChange={e => updateRow(idx, 'harga', parseInt(e.target.value.replace(/[^0-9]/g,'')) || 0)} placeholder="0" /></td>
                     <td style={{ fontWeight: 600, fontSize: '0.85rem' }}>{formatRp(item.qty * item.harga)}</td>
                     <td>{rincian.length > 1 && <button type="button" className={`${styles.btnSm} ${styles.btnRed}`} onClick={() => removeRow(idx)}><i className="fas fa-times"></i></button>}</td>
                   </tr>
@@ -719,3 +719,4 @@ export default function BonPage() {
     </div>
   );
 }
+
