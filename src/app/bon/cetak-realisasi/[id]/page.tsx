@@ -240,7 +240,10 @@ export default function CetakRealisasiPage() {
 
           <div className={stylesR.lampiranGrid}>
             {allLampiran.map((url: string, idx: number) => {
-              const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url) || url.includes('drive.google.com');
+              const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url) ||
+                url.includes('drive.google.com/thumbnail') ||
+                url.includes('lh3.googleusercontent.com') ||
+                url.includes('drive.google.com/uc');
               return (
                 <div key={idx} className={stylesR.lampiranItem}>
                   <div className={stylesR.lampiranLabel}>

@@ -14,8 +14,6 @@ export async function POST(request: Request) {
     const jumlahDiminta = formData.get('jumlahDiminta') as string;
     const jumlahRealisasi = formData.get('jumlahRealisasi') as string;
     const keterangan = formData.get('keterangan') as string;
-    const buktiNota = formData.get('buktiNota') as File | null;
-    const buktiFoto = formData.get('buktiFoto') as File | null;
 
     const doc = await getBontuDoc();
 
@@ -29,7 +27,12 @@ export async function POST(request: Request) {
         if (file && file.size > 0) {
           const buf = Buffer.from(await file.arrayBuffer());
           const res = await uploadFileToDrive(buf, file.name, file.type, FOLDER_BUKTI_ID);
-          urls.push(`https://drive.google.com/uc?export=view&id=${res.id}`);
+          // Gunakan webViewLink dari GAS (sudah public), konversi ke thumbnail URL agar bisa tampil di <img>
+          const fileId = res.id;
+          const embedUrl = fileId
+            ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w1200`
+            : (res.webViewLink || '');
+          if (embedUrl) urls.push(embedUrl);
         }
       }
       return urls.join(',');
