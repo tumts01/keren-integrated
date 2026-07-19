@@ -14,16 +14,52 @@ const formatRp = (n: any) => {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(Number(n));
 };
 
-const tglIndo = (str: string) => {
-  if (!str) return '-';
-  try {
-    const d = new Date(str);
-    return d.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-  } catch { return str; }
-};
+// ===== PRINT MODAL (iframe, no new tab) =====
+function PrintModal({ url, onClose }: { url: string; onClose: () => void }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [ready, setReady] = useState(false);
+
+  const handlePrint = () => {
+    iframeRef.current?.contentWindow?.print();
+  };
+
+  return (
+    <div className={styles.printOverlay}>
+      <div className={styles.printBar}>
+        <div className={styles.printBarLeft}>
+          <i className="fas fa-file-pdf" style={{ color: '#ef4444' }}></i>
+          <span>Preview Dokumen</span>
+        </div>
+        <div className={styles.printBarRight}>
+          {ready && (
+            <button className={styles.printBarBtn} onClick={handlePrint}>
+              <i className="fas fa-print"></i> Cetak / Unduh PDF
+            </button>
+          )}
+          <button className={styles.printBarClose} onClick={onClose}>
+            <i className="fas fa-times"></i> Tutup
+          </button>
+        </div>
+      </div>
+      {!ready && (
+        <div className={styles.printLoading}>
+          <i className="fas fa-spinner fa-spin"></i>
+          <span>Memuat dokumen...</span>
+        </div>
+      )}
+      <iframe
+        ref={iframeRef}
+        src={url}
+        className={styles.printIframe}
+        style={{ opacity: ready ? 1 : 0 }}
+        onLoad={() => setReady(true)}
+      />
+    </div>
+  );
+}
 
 // ===== TAB: REKAP DATA =====
-function TabRekap({ user }: { user: any }) {
+function TabRekap({ onPrint }: { onPrint: (url: string) => void }) {
   const [data, setData] = useState<any[]>([]);
   const [stats, setStats] = useState<any>({});
   const [loading, setLoading] = useState(true);
@@ -50,43 +86,49 @@ function TabRekap({ user }: { user: any }) {
 
   return (
     <div>
+      {/* Stat Cards */}
       <div className={styles.statCards}>
-        <div className={styles.statCard} style={{ borderColor: '#3b82f6' }}>
-          <i className="fas fa-file-invoice" style={{ color: '#3b82f6' }}></i>
-          <div><div className={styles.statNum}>{stats.total || 0}</div><div className={styles.statLbl}>Total BON</div></div>
-        </div>
-        <div className={styles.statCard} style={{ borderColor: '#10b981' }}>
-          <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>
-          <div><div className={styles.statNum}>{stats.selesai || 0}</div><div className={styles.statLbl}>Sudah Lapor</div></div>
-        </div>
-        <div className={styles.statCard} style={{ borderColor: '#f59e0b' }}>
-          <i className="fas fa-clock" style={{ color: '#f59e0b' }}></i>
-          <div><div className={styles.statNum}>{stats.belumLapor || 0}</div><div className={styles.statLbl}>Belum Lapor</div></div>
-        </div>
-        <div className={styles.statCard} style={{ borderColor: '#8b5cf6' }}>
-          <i className="fas fa-wallet" style={{ color: '#8b5cf6' }}></i>
-          <div><div className={styles.statNum} style={{ fontSize: '1rem' }}>{formatRp(stats.totalNominal)}</div><div className={styles.statLbl}>Total Nominal</div></div>
-        </div>
+        {[
+          { icon: 'fa-file-invoice', color: '#3b82f6', num: stats.total || 0, lbl: 'Total BON' },
+          { icon: 'fa-check-circle', color: '#10b981', num: stats.selesai || 0, lbl: 'Sudah Lapor' },
+          { icon: 'fa-clock', color: '#f59e0b', num: stats.belumLapor || 0, lbl: 'Belum Lapor' },
+          { icon: 'fa-wallet', color: '#8b5cf6', num: formatRp(stats.totalNominal), lbl: 'Total Nominal', small: true },
+        ].map((c, i) => (
+          <div key={i} className={styles.statCard} style={{ borderColor: c.color }}>
+            <div className={styles.statIcon} style={{ background: c.color + '18', color: c.color }}>
+              <i className={`fas ${c.icon}`}></i>
+            </div>
+            <div>
+              <div className={styles.statNum} style={{ fontSize: c.small ? '0.95rem' : undefined }}>{c.num}</div>
+              <div className={styles.statLbl}>{c.lbl}</div>
+            </div>
+          </div>
+        ))}
       </div>
 
+      {/* Filter Bar */}
       <div className={styles.filterBar}>
-        <input type="text" placeholder="Cari nama / keperluan / jabatan..." className={styles.filterInput} value={search} onChange={e => setSearch(e.target.value)} />
+        <div className={styles.filterSearch}>
+          <i className="fas fa-search"></i>
+          <input type="text" placeholder="Cari nama / keperluan / jabatan..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
         <select className={styles.filterSelect} value={status} onChange={e => setStatus(e.target.value)}>
           <option value="">Semua Status</option>
-          <option value="Draft">Draft / Belum Lapor</option>
+          <option value="Draft">Belum Lapor</option>
           <option value="Selesai">Selesai</option>
         </select>
-        <input type="date" className={styles.filterInput} value={from} onChange={e => setFrom(e.target.value)} title="Dari tanggal" />
-        <input type="date" className={styles.filterInput} value={to} onChange={e => setTo(e.target.value)} title="Sampai tanggal" />
+        <input type="date" className={styles.filterDate} value={from} onChange={e => setFrom(e.target.value)} title="Dari tanggal" />
+        <input type="date" className={styles.filterDate} value={to} onChange={e => setTo(e.target.value)} title="Sampai tanggal" />
       </div>
 
+      {/* Table */}
       <div className={styles.tableCard}>
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
               <tr>
                 <th>No BON</th><th>Tanggal</th><th>Pemohon</th><th>Keperluan</th>
-                <th>Diminta</th><th>Status</th><th>Aksi</th>
+                <th>Diminta</th><th>Status</th><th style={{ minWidth: 160 }}>Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -96,7 +138,7 @@ function TabRekap({ user }: { user: any }) {
                 <tr><td colSpan={7} className={styles.emptyCell}>Tidak ada data BON</td></tr>
               ) : data.map((item, idx) => (
                 <tr key={idx}>
-                  <td style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '0.8rem' }}>{item['NoBon'] || item['ID'] || '-'}</td>
+                  <td style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '0.78rem' }}>{item['NoBon'] || item['ID'] || '-'}</td>
                   <td style={{ fontSize: '0.82rem' }}>{item['Tanggal'] || '-'}</td>
                   <td>
                     <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{item['Nama'] || '-'}</div>
@@ -110,20 +152,24 @@ function TabRekap({ user }: { user: any }) {
                     </span>
                   </td>
                   <td>
-                    <button className={styles.btnSm} onClick={() => {
-                      const id = encodeURIComponent(item['NoBon'] || item['ID']);
-                      window.open(`/bon/cetak/${id}`, '_blank');
-                    }} title="Cetak Pengajuan">
-                      <i className="fas fa-print"></i>
-                    </button>
-                    {(item['Status'] || '').toLowerCase() === 'selesai' && (
-                      <button className={`${styles.btnSm} ${styles.btnGreen}`} onClick={() => {
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button className={styles.actionBtn} onClick={() => {
                         const id = encodeURIComponent(item['NoBon'] || item['ID']);
-                        window.open(`/bon/cetak-realisasi/${id}`, '_blank');
-                      }} title="Cetak Realisasi">
-                        <i className="fas fa-file-alt"></i>
+                        onPrint(`/bon/cetak/${id}`);
+                      }} title="Cetak Pengajuan BON">
+                        <i className="fas fa-print"></i>
+                        <span>Cetak BON</span>
                       </button>
-                    )}
+                      {(item['Status'] || '').toLowerCase() === 'selesai' && (
+                        <button className={`${styles.actionBtn} ${styles.actionBtnGreen}`} onClick={() => {
+                          const id = encodeURIComponent(item['NoBon'] || item['ID']);
+                          onPrint(`/bon/cetak-realisasi/${id}`);
+                        }} title="Cetak Laporan Realisasi">
+                          <i className="fas fa-file-alt"></i>
+                          <span>Cetak Realisasi</span>
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -174,7 +220,7 @@ function TabDataToko() {
                 <td style={{ fontWeight: 600 }}>{t['NamaToko']}</td>
                 <td style={{ fontSize: '0.83rem', color: '#64748b' }}>{t['Alamat'] || '-'}</td>
                 <td>
-                  <span className={styles.badge} style={{ background: jenisColor[(t['Jenis'] || '').toLowerCase()] + '20', color: jenisColor[(t['Jenis'] || '').toLowerCase()], border: 'none' }}>
+                  <span className={styles.badge} style={{ background: (jenisColor[(t['Jenis'] || '').toLowerCase()] || '#64748b') + '20', color: jenisColor[(t['Jenis'] || '').toLowerCase()] || '#64748b', border: 'none' }}>
                     {t['Jenis'] || '-'}
                   </span>
                 </td>
@@ -223,7 +269,7 @@ function TabTambahToko() {
       {sukses && <div className={styles.alertOk}><i className="fas fa-check-circle"></i> {sukses}</div>}
       <form onSubmit={handleSubmit}>
         <div className={styles.formGroup}>
-          <label>Nama Toko / Rekanan <span style={{ color: 'red' }}>*</span></label>
+          <label>Nama Toko / Rekanan <span className={styles.required}>*</span></label>
           <input className={styles.input} value={namaToko} onChange={e => setNamaToko(e.target.value)} placeholder="Contoh: Toko Berkah Jaya" required />
         </div>
         <div className={styles.formGroup}>
@@ -247,14 +293,14 @@ function TabTambahToko() {
 }
 
 // ===== TAB: LAPORAN REALISASI =====
-function TabRealisasi() {
+function TabRealisasi({ onPrint }: { onPrint: (url: string) => void }) {
   const [bonList, setBonList] = useState<any[]>([]);
   const [selectedBon, setSelectedBon] = useState<any>(null);
   const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
   const [rincian, setRincian] = useState([{ barang: '', qty: 1, satuan: 'PCS', harga: 0 }]);
   const [keterangan, setKeterangan] = useState('');
-  const [buktiNota, setBuktiNota] = useState<File | null>(null);
-  const [buktiFoto, setBuktiFoto] = useState<File | null>(null);
+  const [buktiNota, setBuktiNota] = useState<File[]>([]);
+  const [buktiFoto, setBuktiFoto] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [sukses, setSukses] = useState(false);
   const [savedNoBon, setSavedNoBon] = useState('');
@@ -286,28 +332,26 @@ function TabRealisasi() {
     fd.append('jumlahDiminta', selectedBon['JumlahDiminta'] || selectedBon['JumlahUang'] || '0');
     fd.append('jumlahRealisasi', String(totalRealisasi));
     fd.append('keterangan', keterangan);
-    if (buktiNota) fd.append('buktiNota', buktiNota);
-    if (buktiFoto) fd.append('buktiFoto', buktiFoto);
+    buktiNota.forEach(f => fd.append('buktiNota', f));
+    buktiFoto.forEach(f => fd.append('buktiFoto', f));
 
     const res = await fetch('/api/bon/realisasi', { method: 'POST', body: fd });
     const json = await res.json();
-    if (json.success) {
-      setSavedNoBon(selectedBon['NoBon'] || selectedBon['ID']);
-      setSukses(true);
-    } else alert('Gagal: ' + json.error);
+    if (json.success) { setSavedNoBon(selectedBon['NoBon'] || selectedBon['ID']); setSukses(true); }
+    else alert('Gagal: ' + json.error);
     setLoading(false);
   };
 
   if (sukses) return (
-    <div className={styles.formCard} style={{ textAlign: 'center', padding: '48px 24px' }}>
-      <i className="fas fa-check-circle" style={{ fontSize: '4rem', color: '#10b981', marginBottom: '16px' }}></i>
-      <h3 style={{ color: '#065f46', marginBottom: '8px' }}>Realisasi Berhasil Disimpan!</h3>
-      <p style={{ color: '#64748b', marginBottom: '24px' }}>Laporan realisasi untuk {savedNoBon} telah dicatat.</p>
-      <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-        <button className={styles.btnPrimary} onClick={() => window.open(`/bon/cetak-realisasi/${encodeURIComponent(savedNoBon)}`, '_blank')}>
+    <div className={styles.successCard}>
+      <div className={styles.successIcon}><i className="fas fa-check-circle"></i></div>
+      <h3>Realisasi Berhasil Disimpan!</h3>
+      <p>Laporan realisasi untuk <strong>{savedNoBon}</strong> telah dicatat.</p>
+      <div className={styles.successActions}>
+        <button className={styles.btnPrimary} onClick={() => onPrint(`/bon/cetak-realisasi/${encodeURIComponent(savedNoBon)}`)}>
           <i className="fas fa-print"></i> Cetak Laporan Realisasi
         </button>
-        <button className={styles.btnSecondary} onClick={() => { setSukses(false); setSavedNoBon(''); setSelectedBon(null); setRincian([{ barang: '', qty: 1, satuan: 'PCS', harga: 0 }]); }}>
+        <button className={styles.btnSecondary} onClick={() => { setSukses(false); setSavedNoBon(''); setSelectedBon(null); setRincian([{ barang: '', qty: 1, satuan: 'PCS', harga: 0 }]); setBuktiNota([]); setBuktiFoto([]); }}>
           <i className="fas fa-plus"></i> Input Realisasi Lain
         </button>
       </div>
@@ -320,13 +364,11 @@ function TabRealisasi() {
       <form onSubmit={handleSubmit}>
         <div className={styles.formRow}>
           <div className={styles.formGroup}>
-            <label>Pilih Nota BON <span style={{ color: 'red' }}>*</span></label>
+            <label>Pilih Nota BON <span className={styles.required}>*</span></label>
             <select className={styles.input} value={selectedBon?.['NoBon'] || ''} onChange={e => {
               const bon = bonList.find(b => (b['NoBon'] || b['ID']) === e.target.value);
               setSelectedBon(bon || null);
-              if (bon) {
-                try { const r = JSON.parse(bon['RincianJSON'] || '[]'); if (r.length > 0) setRincian(r); } catch {}
-              }
+              if (bon) { try { const r = JSON.parse(bon['RincianJSON'] || '[]'); if (r.length > 0) setRincian(r); } catch {} }
             }} required>
               <option value="">— Pilih Nota BON —</option>
               {bonList.map((b, i) => <option key={i} value={b['NoBon'] || b['ID']}>{b['NoBon'] || b['ID']} — {b['Keperluan']}</option>)}
@@ -340,9 +382,9 @@ function TabRealisasi() {
 
         {selectedBon && (
           <div className={styles.infoBon}>
-            <div><strong>Pemohon:</strong> {selectedBon['Nama']} — {selectedBon['Jabatan']}</div>
-            <div><strong>Keperluan:</strong> {selectedBon['Keperluan']}</div>
-            <div><strong>Jumlah Diminta:</strong> <span style={{ color: '#3b82f6', fontWeight: 700 }}>{formatRp(selectedBon['JumlahDiminta'] || selectedBon['JumlahUang'])}</span></div>
+            <span><strong>Pemohon:</strong> {selectedBon['Nama']} — {selectedBon['Jabatan']}</span>
+            <span><strong>Keperluan:</strong> {selectedBon['Keperluan']}</span>
+            <span><strong>Diminta:</strong> <b style={{ color: '#3b82f6' }}>{formatRp(selectedBon['JumlahDiminta'] || selectedBon['JumlahUang'])}</b></span>
           </div>
         )}
 
@@ -353,18 +395,14 @@ function TabRealisasi() {
           </div>
           <div className={styles.tableWrap}>
             <table className={styles.table}>
-              <thead><tr><th>Nama Barang/Kegiatan</th><th>Qty</th><th>Satuan</th><th>Harga Satuan</th><th>Jumlah</th><th></th></tr></thead>
+              <thead><tr><th>Nama Barang/Kegiatan</th><th style={{ width: 60 }}>Qty</th><th style={{ width: 90 }}>Satuan</th><th style={{ width: 120 }}>Harga Satuan</th><th style={{ width: 110 }}>Jumlah</th><th style={{ width: 36 }}></th></tr></thead>
               <tbody>
                 {rincian.map((item, idx) => (
                   <tr key={idx}>
                     <td><input className={styles.rincianInput} value={item.barang} onChange={e => updateRow(idx, 'barang', e.target.value)} placeholder="Nama barang..." required /></td>
-                    <td><input type="number" className={styles.rincianInput} style={{ width: 60 }} value={item.qty} min={1} onChange={e => updateRow(idx, 'qty', parseInt(e.target.value) || 1)} /></td>
-                    <td>
-                      <select className={styles.rincianInput} style={{ width: 90 }} value={item.satuan} onChange={e => updateRow(idx, 'satuan', e.target.value)}>
-                        {SATUAN_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </td>
-                    <td><input type="number" className={styles.rincianInput} style={{ width: 120 }} value={item.harga} min={0} onChange={e => updateRow(idx, 'harga', parseInt(e.target.value) || 0)} placeholder="0" /></td>
+                    <td><input type="number" className={styles.rincianInput} value={item.qty} min={1} onChange={e => updateRow(idx, 'qty', parseInt(e.target.value) || 1)} /></td>
+                    <td><select className={styles.rincianInput} value={item.satuan} onChange={e => updateRow(idx, 'satuan', e.target.value)}>{SATUAN_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}</select></td>
+                    <td><input type="number" className={styles.rincianInput} value={item.harga} min={0} onChange={e => updateRow(idx, 'harga', parseInt(e.target.value) || 0)} /></td>
                     <td style={{ fontWeight: 600, fontSize: '0.85rem' }}>{formatRp(item.qty * item.harga)}</td>
                     <td>{rincian.length > 1 && <button type="button" className={`${styles.btnSm} ${styles.btnRed}`} onClick={() => removeRow(idx)}><i className="fas fa-times"></i></button>}</td>
                   </tr>
@@ -375,37 +413,39 @@ function TabRealisasi() {
           <div className={styles.totalRow}>
             <span>Total Realisasi: <strong style={{ color: '#1d4ed8' }}>{formatRp(totalRealisasi)}</strong></span>
             {selectedBon && (
-              <span style={{ marginLeft: 24 }}>
-                Sisa/Lebih: <strong style={{ color: sisa >= 0 ? '#059669' : '#dc2626' }}>{formatRp(Math.abs(sisa))} {sisa >= 0 ? '(Sisa)' : '(Kurang)'}</strong>
-              </span>
+              <span>Sisa/Lebih: <strong style={{ color: sisa >= 0 ? '#059669' : '#dc2626' }}>{formatRp(Math.abs(sisa))} {sisa >= 0 ? '(Sisa)' : '(Kurang)'}</strong></span>
             )}
           </div>
         </div>
 
         <div className={styles.formRow}>
           <div className={styles.formGroup}>
-            <label>Upload Bukti Nota</label>
+            <label>Upload Bukti Nota <span className={styles.fileBadge}>Bisa beberapa file</span></label>
             <div className={styles.fileBtn} onClick={() => notaRef.current?.click()}>
-              <input ref={notaRef} type="file" style={{ display: 'none' }} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={e => setBuktiNota(e.target.files?.[0] || null)} />
-              <i className="fas fa-paperclip"></i> {buktiNota ? buktiNota.name : 'Pilih file (PDF/JPG/Word)'}
+              <input ref={notaRef} type="file" style={{ display: 'none' }} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple onChange={e => setBuktiNota(Array.from(e.target.files || []))} />
+              <i className="fas fa-paperclip"></i>
+              <span>{buktiNota.length > 0 ? `${buktiNota.length} file dipilih` : 'Pilih file (PDF/JPG/Word)'}</span>
             </div>
+            {buktiNota.length > 0 && <div className={styles.fileList}>{buktiNota.map((f, i) => <span key={i}><i className="fas fa-file"></i> {f.name}</span>)}</div>}
           </div>
           <div className={styles.formGroup}>
-            <label>Upload Bukti Barang</label>
+            <label>Upload Bukti Barang <span className={styles.fileBadge}>Bisa beberapa foto</span></label>
             <div className={styles.fileBtn} onClick={() => fotoRef.current?.click()}>
-              <input ref={fotoRef} type="file" style={{ display: 'none' }} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" onChange={e => setBuktiFoto(e.target.files?.[0] || null)} />
-              <i className="fas fa-camera"></i> {buktiFoto ? buktiFoto.name : 'Foto barang / PDF'}
+              <input ref={fotoRef} type="file" style={{ display: 'none' }} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple onChange={e => setBuktiFoto(Array.from(e.target.files || []))} />
+              <i className="fas fa-camera"></i>
+              <span>{buktiFoto.length > 0 ? `${buktiFoto.length} file dipilih` : 'Foto barang / PDF'}</span>
             </div>
+            {buktiFoto.length > 0 && <div className={styles.fileList}>{buktiFoto.map((f, i) => <span key={i}><i className="fas fa-image"></i> {f.name}</span>)}</div>}
           </div>
         </div>
 
         <div className={styles.formGroup}>
-          <label>Keterangan Tambahan (opsional)</label>
+          <label>Keterangan Tambahan <span style={{ color: '#94a3b8', fontWeight: 400 }}>(opsional)</span></label>
           <textarea className={styles.input} rows={2} value={keterangan} onChange={e => setKeterangan(e.target.value)} placeholder="Catatan tambahan..." />
         </div>
 
         <button type="submit" className={styles.btnPrimary} disabled={loading} style={{ width: '100%' }}>
-          {loading ? <><i className="fas fa-spinner fa-spin"></i> Menyimpan...</> : <><i className="fas fa-save"></i> Simpan & Cetak Laporan Realisasi</>}
+          {loading ? <><i className="fas fa-spinner fa-spin"></i> Menyimpan & Upload...</> : <><i className="fas fa-save"></i> Simpan & Cetak Laporan Realisasi</>}
         </button>
       </form>
     </div>
@@ -413,7 +453,7 @@ function TabRealisasi() {
 }
 
 // ===== TAB: AJUKAN BON =====
-function TabAjukan({ user }: { user: any }) {
+function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
   const [availableUsers, setAvailableUsers] = useState<any[]>([]);
   const [nama, setNama] = useState('');
   const [jabatan, setJabatan] = useState('');
@@ -427,13 +467,24 @@ function TabAjukan({ user }: { user: any }) {
   const [savedNoBon, setSavedNoBon] = useState('');
 
   useEffect(() => {
-    const u = localStorage.getItem('keren_user_data');
-    if (u) {
-      const parsed = JSON.parse(u);
-      setNama(parsed.nama || '');
-      setJabatan(parsed.jabatan || parsed.rule || '');
-    }
-    fetch('/api/guru').then(r => r.json()).then(j => setAvailableUsers(j.data || []));
+    // Hanya ambil user dengan role admin atau pimpinan
+    fetch('/api/user').then(r => r.json()).then(j => {
+      const filtered = (j.data || []).filter((u: any) => {
+        const role = (u.rule || u.role || '').toLowerCase();
+        return role === 'admin' || role === 'pimpinan';
+      });
+      setAvailableUsers(filtered);
+      // Pre-fill dari localStorage
+      const stored = localStorage.getItem('keren_user_data');
+      if (stored) {
+        const u = JSON.parse(stored);
+        const role = (u.rule || '').toLowerCase();
+        if (role === 'admin' || role === 'pimpinan') {
+          setNama(u.nama || '');
+          setJabatan(u.jabatan || '');
+        }
+      }
+    });
   }, []);
 
   const totalRincian = rincian.reduce((s, i) => s + (i.qty * i.harga), 0);
@@ -453,23 +504,21 @@ function TabAjukan({ user }: { user: any }) {
       body: JSON.stringify({ nama, jabatan, tanggal, keperluan, jumlahDiminta: jumlah, rincian, keterangan, tahunAjaran: '2026/2027' })
     });
     const json = await res.json();
-    if (json.success) {
-      setSavedNoBon(json.noBon);
-      setSukses(true);
-    } else alert('Gagal: ' + json.error);
+    if (json.success) { setSavedNoBon(json.noBon); setSukses(true); }
+    else alert('Gagal: ' + json.error);
     setLoading(false);
   };
 
   if (sukses) return (
-    <div className={styles.formCard} style={{ textAlign: 'center', padding: '48px 24px' }}>
-      <i className="fas fa-check-circle" style={{ fontSize: '4rem', color: '#10b981', marginBottom: '16px' }}></i>
-      <h3 style={{ color: '#065f46', marginBottom: '8px' }}>BON Berhasil Diajukan!</h3>
-      <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 12, padding: '16px 24px', marginBottom: 24, display: 'inline-block' }}>
-        <div style={{ fontSize: '0.85rem', color: '#64748b' }}>Nomor BON</div>
-        <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#15803d' }}>{savedNoBon}</div>
+    <div className={styles.successCard}>
+      <div className={styles.successIcon}><i className="fas fa-check-circle"></i></div>
+      <h3>BON Berhasil Diajukan!</h3>
+      <div className={styles.noBonBox}>
+        <div className={styles.noBonLabel}>Nomor BON</div>
+        <div className={styles.noBonValue}>{savedNoBon}</div>
       </div>
-      <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-        <button className={styles.btnPrimary} onClick={() => window.open(`/bon/cetak/${encodeURIComponent(savedNoBon)}`, '_blank')}>
+      <div className={styles.successActions}>
+        <button className={styles.btnPrimary} onClick={() => onPrint(`/bon/cetak/${encodeURIComponent(savedNoBon)}`)}>
           <i className="fas fa-print"></i> Cetak Tanda Bukti BON
         </button>
         <button className={styles.btnSecondary} onClick={() => { setSukses(false); setSavedNoBon(''); setKeperluan(''); setJumlahDiminta(''); setKeterangan(''); setRincian([{ barang: '', qty: 1, satuan: 'PCS', harga: 0 }]); }}>
@@ -485,10 +534,10 @@ function TabAjukan({ user }: { user: any }) {
       <form onSubmit={handleSubmit}>
         <div className={styles.formRow}>
           <div className={styles.formGroup}>
-            <label>Nama Pemohon <span style={{ color: 'red' }}>*</span></label>
+            <label>Nama Pemohon <span className={styles.required}>*</span></label>
             <select className={styles.input} value={nama} onChange={e => {
               setNama(e.target.value);
-              const u = availableUsers.find(u => u['Nama'] === e.target.value || u['nama'] === e.target.value);
+              const u = availableUsers.find(u => (u['Nama'] || u['nama']) === e.target.value);
               if (u) setJabatan(u['Jabatan'] || u['jabatan'] || '');
             }} required>
               <option value="">Pilih Nama</option>
@@ -503,39 +552,35 @@ function TabAjukan({ user }: { user: any }) {
 
         <div className={styles.formRow}>
           <div className={styles.formGroup}>
-            <label>Tanggal Pengajuan <span style={{ color: 'red' }}>*</span></label>
+            <label>Tanggal Pengajuan <span className={styles.required}>*</span></label>
             <input type="date" className={styles.input} value={tanggal} onChange={e => setTanggal(e.target.value)} required />
           </div>
           <div className={styles.formGroup}>
-            <label>Jumlah Uang Diminta (Rp) <span style={{ color: 'red' }}>*</span></label>
+            <label>Jumlah Uang Diminta (Rp) <span className={styles.required}>*</span></label>
             <input type="number" className={styles.input} value={jumlahDiminta} onChange={e => setJumlahDiminta(e.target.value)} placeholder="Contoh: 5000000" min={0} required />
           </div>
         </div>
 
         <div className={styles.formGroup}>
-          <label>Keperluan / Tujuan Belanja <span style={{ color: 'red' }}>*</span></label>
+          <label>Keperluan / Tujuan Belanja <span className={styles.required}>*</span></label>
           <input className={styles.input} value={keperluan} onChange={e => setKeperluan(e.target.value)} placeholder="Contoh: Belanja ATK untuk rapat" required />
         </div>
 
         <div className={styles.rincianSection}>
           <div className={styles.rincianHeader}>
             <span>Rincian Keperluan/Barang</span>
-            <button type="button" className={styles.btnSm} onClick={addRow}><i className="fas fa-plus"></i> Tambah</button>
+            <button type="button" className={styles.btnSm} onClick={addRow}><i className="fas fa-plus"></i> Tambah Baris</button>
           </div>
           <div className={styles.tableWrap}>
             <table className={styles.table}>
-              <thead><tr><th>Nama Barang/Kegiatan</th><th>Qty</th><th>Satuan</th><th>Harga Satuan</th><th>Jumlah</th><th></th></tr></thead>
+              <thead><tr><th>Nama Barang/Kegiatan</th><th style={{ width: 60 }}>Qty</th><th style={{ width: 90 }}>Satuan</th><th style={{ width: 120 }}>Harga Satuan</th><th style={{ width: 110 }}>Jumlah</th><th style={{ width: 36 }}></th></tr></thead>
               <tbody>
                 {rincian.map((item, idx) => (
                   <tr key={idx}>
                     <td><input className={styles.rincianInput} value={item.barang} onChange={e => updateRow(idx, 'barang', e.target.value)} placeholder="Nama barang..." required /></td>
-                    <td><input type="number" className={styles.rincianInput} style={{ width: 60 }} value={item.qty} min={1} onChange={e => updateRow(idx, 'qty', parseInt(e.target.value) || 1)} /></td>
-                    <td>
-                      <select className={styles.rincianInput} style={{ width: 90 }} value={item.satuan} onChange={e => updateRow(idx, 'satuan', e.target.value)}>
-                        {SATUAN_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </td>
-                    <td><input type="number" className={styles.rincianInput} style={{ width: 120 }} value={item.harga} min={0} onChange={e => updateRow(idx, 'harga', parseInt(e.target.value) || 0)} /></td>
+                    <td><input type="number" className={styles.rincianInput} value={item.qty} min={1} onChange={e => updateRow(idx, 'qty', parseInt(e.target.value) || 1)} /></td>
+                    <td><select className={styles.rincianInput} value={item.satuan} onChange={e => updateRow(idx, 'satuan', e.target.value)}>{SATUAN_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}</select></td>
+                    <td><input type="number" className={styles.rincianInput} value={item.harga} min={0} onChange={e => updateRow(idx, 'harga', parseInt(e.target.value) || 0)} /></td>
                     <td style={{ fontWeight: 600, fontSize: '0.85rem' }}>{formatRp(item.qty * item.harga)}</td>
                     <td>{rincian.length > 1 && <button type="button" className={`${styles.btnSm} ${styles.btnRed}`} onClick={() => removeRow(idx)}><i className="fas fa-times"></i></button>}</td>
                   </tr>
@@ -549,7 +594,7 @@ function TabAjukan({ user }: { user: any }) {
         </div>
 
         <div className={styles.formGroup}>
-          <label>Keterangan Tambahan (opsional)</label>
+          <label>Keterangan Tambahan <span style={{ color: '#94a3b8', fontWeight: 400 }}>(opsional)</span></label>
           <textarea className={styles.input} rows={2} value={keterangan} onChange={e => setKeterangan(e.target.value)} placeholder="Catatan tambahan..." />
         </div>
 
@@ -563,24 +608,22 @@ function TabAjukan({ user }: { user: any }) {
 
 // ===== MAIN PAGE =====
 const TABS = [
-  { id: 'ajukan', label: 'Ajukan BON', icon: 'fa-file-invoice-dollar' },
-  { id: 'realisasi', label: 'Lap. Realisasi', icon: 'fa-receipt' },
-  { id: 'rekap', label: 'Rekap Data', icon: 'fa-chart-bar' },
-  { id: 'tambah-toko', label: 'Tambah Toko', icon: 'fa-store' },
-  { id: 'data-toko', label: 'Data Toko', icon: 'fa-list' },
+  { id: 'ajukan',      label: 'Ajukan BON',    icon: 'fa-file-invoice-dollar', color: '#237227' },
+  { id: 'realisasi',   label: 'Lap. Realisasi', icon: 'fa-receipt',             color: '#0ea5e9' },
+  { id: 'rekap',       label: 'Rekap Data',     icon: 'fa-chart-bar',           color: '#8b5cf6' },
+  { id: 'tambah-toko', label: 'Tambah Toko',    icon: 'fa-store',               color: '#f59e0b' },
+  { id: 'data-toko',   label: 'Data Toko',      icon: 'fa-list-ul',             color: '#64748b' },
 ];
 
 export default function BonPage() {
   const [activeTab, setActiveTab] = useState('rekap');
-  const [user, setUser] = useState<any>(null);
-
-  useEffect(() => {
-    const u = localStorage.getItem('keren_user_data');
-    if (u) setUser(JSON.parse(u));
-  }, []);
+  const [printUrl, setPrintUrl] = useState('');
 
   return (
     <div className={styles.container}>
+      {/* Print Modal */}
+      {printUrl && <PrintModal url={printUrl} onClose={() => setPrintUrl('')} />}
+
       <div className={styles.pageHeader}>
         <div>
           <h1 className={styles.pageTitle}><i className="fas fa-file-invoice-dollar"></i> Nota BON</h1>
@@ -588,25 +631,29 @@ export default function BonPage() {
         </div>
       </div>
 
+      {/* Modern Tab Bar */}
       <div className={styles.tabBar}>
         {TABS.map(tab => (
           <button
             key={tab.id}
             className={`${styles.tabBtn} ${activeTab === tab.id ? styles.tabActive : ''}`}
             onClick={() => setActiveTab(tab.id)}
+            style={activeTab === tab.id ? { '--tab-color': tab.color } as any : {}}
           >
-            <i className={`fas ${tab.icon}`}></i>
-            <span>{tab.label}</span>
+            <span className={styles.tabIcon} style={activeTab === tab.id ? { background: tab.color + '20', color: tab.color } : {}}>
+              <i className={`fas ${tab.icon}`}></i>
+            </span>
+            <span className={styles.tabLabel}>{tab.label}</span>
           </button>
         ))}
       </div>
 
       <div className={styles.tabContent}>
-        {activeTab === 'ajukan' && <TabAjukan user={user} />}
-        {activeTab === 'realisasi' && <TabRealisasi />}
-        {activeTab === 'rekap' && <TabRekap user={user} />}
+        {activeTab === 'ajukan'      && <TabAjukan onPrint={setPrintUrl} />}
+        {activeTab === 'realisasi'   && <TabRealisasi onPrint={setPrintUrl} />}
+        {activeTab === 'rekap'       && <TabRekap onPrint={setPrintUrl} />}
         {activeTab === 'tambah-toko' && <TabTambahToko />}
-        {activeTab === 'data-toko' && <TabDataToko />}
+        {activeTab === 'data-toko'   && <TabDataToko />}
       </div>
     </div>
   );

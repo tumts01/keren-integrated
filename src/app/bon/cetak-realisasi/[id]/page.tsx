@@ -20,6 +20,7 @@ export default function CetakRealisasiPage() {
   const [bon, setBon] = useState<any>(null);
   const [realisasi, setRealisasi] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const inIframe = typeof window !== 'undefined' && window !== window.parent;
 
   useEffect(() => {
     fetch(`/api/bon/detail/${encodeURIComponent(id)}`)
@@ -27,8 +28,9 @@ export default function CetakRealisasiPage() {
       .then(j => { setBon(j.bon); setRealisasi(j.realisasi); setLoading(false); });
   }, [id]);
 
+  // Hanya auto-print jika dibuka langsung (bukan via iframe modal)
   useEffect(() => {
-    if (bon && !loading) setTimeout(() => window.print(), 500);
+    if (bon && !loading && !inIframe) setTimeout(() => window.print(), 500);
   }, [bon, loading]);
 
   if (loading) return (
@@ -48,6 +50,11 @@ export default function CetakRealisasiPage() {
   const totalRealisasi = rincianRealisasi.reduce((s: number, i: any) => s + ((i.qty || 0) * (i.harga || 0)), 0);
   const sisa = parseFloat(realisasi?.['SisaUang'] || String(totalDiminta - totalRealisasi));
 
+  // Lampiran foto (bisa multiple, dipisah koma)
+  const lampiranNota: string[] = (realisasi?.['URLBuktiNota'] || '').split(',').map((u: string) => u.trim()).filter(Boolean);
+  const lampiranFoto: string[] = (realisasi?.['URLBuktiFoto'] || '').split(',').map((u: string) => u.trim()).filter(Boolean);
+  const allLampiran = [...lampiranNota, ...lampiranFoto];
+
   return (
     <div className={styles.page}>
       <div className={styles.noPrint}>
@@ -59,6 +66,7 @@ export default function CetakRealisasiPage() {
         </button>
       </div>
 
+      {/* ===== HALAMAN 1: LAPORAN REALISASI ===== */}
       <div className={styles.doc}>
         {/* KOP */}
         <div className={styles.kop}>
@@ -144,7 +152,7 @@ export default function CetakRealisasiPage() {
                 <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatRp(item.qty * item.harga)}</td>
               </tr>
             )) : (
-              <tr><td colSpan={6} style={{ textAlign: 'center', fontStyle: 'italic', color: '#888' }}>Belum ada data realisasi</td></tr>
+              <tr><td colSpan={6} style={{ textAlign: 'center', fontStyle: 'italic', color: '#888' }}>-</td></tr>
             )}
             <tr className={styles.totalRow}>
               <td colSpan={5} style={{ textAlign: 'right', fontWeight: 700 }}>TOTAL REALISASI</td>
@@ -153,7 +161,7 @@ export default function CetakRealisasiPage() {
           </tbody>
         </table>
 
-        {/* Ringkasan */}
+        {/* Ringkasan Keuangan */}
         <table className={stylesR.ringkasanTable}>
           <tbody>
             <tr>
@@ -168,7 +176,7 @@ export default function CetakRealisasiPage() {
             </tr>
             <tr style={{ fontWeight: 800 }}>
               <td className={stylesR.rKey} style={{ color: sisa >= 0 ? '#15803d' : '#dc2626' }}>
-                {sisa >= 0 ? 'Sisa / Kembali' : 'Kekurangan'}
+                {sisa >= 0 ? '✓ Sisa / Dikembalikan' : '⚠ Kekurangan'}
               </td>
               <td>:</td>
               <td className={stylesR.rVal} style={{ color: sisa >= 0 ? '#15803d' : '#dc2626' }}>
@@ -180,6 +188,13 @@ export default function CetakRealisasiPage() {
 
         {realisasi?.['Keterangan'] && (
           <div style={{ margin: '8px 0', fontSize: '10pt' }}><em>Ket: {realisasi['Keterangan']}</em></div>
+        )}
+
+        {/* Catatan lampiran jika ada */}
+        {allLampiran.length > 0 && (
+          <div style={{ margin: '8px 0', fontSize: '9pt', color: '#555', fontStyle: 'italic' }}>
+            * Bukti nota dan foto terlampir pada halaman berikutnya ({allLampiran.length} lampiran)
+          </div>
         )}
 
         {/* TTD */}
@@ -209,6 +224,43 @@ export default function CetakRealisasiPage() {
           </tbody>
         </table>
       </div>
+
+      {/* ===== HALAMAN 2+: LAMPIRAN FOTO/NOTA ===== */}
+      {allLampiran.length > 0 && (
+        <div className={`${styles.doc} ${stylesR.lampiranPage}`}>
+          <div className={styles.kop}>
+            <img src="/logo.png" alt="Logo" className={styles.logo} />
+            <div className={styles.kopText}>
+              <div className={styles.kopTitle} style={{ fontSize: '13pt' }}>LAMPIRAN BUKTI BELANJA</div>
+              <div className={styles.kopSekolah}>Ref: {bon['NoBon'] || bon['ID']}</div>
+              <div className={styles.kopAlamat}>{bon['Keperluan']}</div>
+            </div>
+          </div>
+          <div className={styles.kopLine}></div>
+
+          <div className={stylesR.lampiranGrid}>
+            {allLampiran.map((url: string, idx: number) => {
+              const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url) || url.includes('drive.google.com');
+              return (
+                <div key={idx} className={stylesR.lampiranItem}>
+                  <div className={stylesR.lampiranLabel}>
+                    Lampiran {idx + 1} {idx < lampiranNota.length ? '(Bukti Nota)' : '(Bukti Barang)'}
+                  </div>
+                  {isImage ? (
+                    <img src={url} alt={`Lampiran ${idx + 1}`} className={stylesR.lampiranImg} />
+                  ) : (
+                    <div className={stylesR.lampiranFile}>
+                      <i className="fas fa-file-pdf" style={{ fontSize: '2rem', color: '#dc2626' }}></i>
+                      <span>File terlampir (PDF/Dokumen)</span>
+                      <a href={url} target="_blank" rel="noopener noreferrer">{url}</a>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

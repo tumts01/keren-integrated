@@ -20,6 +20,7 @@ export default function CetakBonPage() {
   const id = decodeURIComponent(params.id as string);
   const [bon, setBon] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const inIframe = typeof window !== 'undefined' && window !== window.parent;
 
   useEffect(() => {
     fetch(`/api/bon/detail/${encodeURIComponent(id)}`)
@@ -27,8 +28,9 @@ export default function CetakBonPage() {
       .then(j => { setBon(j.bon); setLoading(false); });
   }, [id]);
 
+  // Hanya auto-print jika dibuka langsung (bukan via iframe modal)
   useEffect(() => {
-    if (bon && !loading) {
+    if (bon && !loading && !inIframe) {
       setTimeout(() => window.print(), 500);
     }
   }, [bon, loading]);

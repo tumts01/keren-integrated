@@ -19,19 +19,24 @@ export async function POST(request: Request) {
 
     const doc = await getBontuDoc();
 
-    // Upload files if provided
-    let urlBuktiNota = '';
-    let urlBuktiFoto = '';
-    if (buktiNota && buktiNota.size > 0) {
-      const buf = Buffer.from(await buktiNota.arrayBuffer());
-      const res = await uploadFileToDrive(buf, buktiNota.name, buktiNota.type, FOLDER_BUKTI_ID);
-      urlBuktiNota = `https://drive.google.com/uc?export=view&id=${res.id}`;
-    }
-    if (buktiFoto && buktiFoto.size > 0) {
-      const buf = Buffer.from(await buktiFoto.arrayBuffer());
-      const res = await uploadFileToDrive(buf, buktiFoto.name, buktiFoto.type, FOLDER_BUKTI_ID);
-      urlBuktiFoto = `https://drive.google.com/uc?export=view&id=${res.id}`;
-    }
+    // Upload multiple files
+    const buktiNotaFiles = formData.getAll('buktiNota') as File[];
+    const buktiFotoFiles = formData.getAll('buktiFoto') as File[];
+
+    const uploadAll = async (files: File[]) => {
+      const urls: string[] = [];
+      for (const file of files) {
+        if (file && file.size > 0) {
+          const buf = Buffer.from(await file.arrayBuffer());
+          const res = await uploadFileToDrive(buf, file.name, file.type, FOLDER_BUKTI_ID);
+          urls.push(`https://drive.google.com/uc?export=view&id=${res.id}`);
+        }
+      }
+      return urls.join(',');
+    };
+
+    const urlBuktiNota = await uploadAll(buktiNotaFiles);
+    const urlBuktiFoto = await uploadAll(buktiFotoFiles);
 
     const sisa = parseFloat(jumlahDiminta || '0') - parseFloat(jumlahRealisasi || '0');
     const now = new Date();

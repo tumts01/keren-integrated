@@ -20,3 +20,62 @@
   font-weight: 700;
   text-align: right;
 }
+
+/* ===== LAMPIRAN PAGE ===== */
+.lampiranPage {
+  margin-top: 0 !important;
+  page-break-before: always;
+}
+
+.lampiranGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-top: 16px;
+}
+
+.lampiranItem {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+  page-break-inside: avoid;
+}
+
+.lampiranLabel {
+  background: #f8f8f8;
+  padding: 6px 12px;
+  font-size: 9.5pt;
+  font-weight: 700;
+  border-bottom: 1px solid #ddd;
+  color: #333;
+}
+
+.lampiranImg {
+  width: 100%;
+  max-height: 200mm;
+  object-fit: contain;
+  display: block;
+  background: #fff;
+}
+
+.lampiranFile {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #555;
+  font-size: 9pt;
+}
+
+.lampiranFile a {
+  font-size: 8pt;
+  color: #3b82f6;
+  word-break: break-all;
+}
+
+@media print {
+  .lampiranPage {
+    page-break-before: always;
+  }
+}
