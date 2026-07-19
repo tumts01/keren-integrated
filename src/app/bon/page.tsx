@@ -5,7 +5,7 @@ import styles from './Bon.module.css';
 // ===== SATUAN OPTIONS =====
 const SATUAN_OPTIONS = [
   'PCS','PACK','RIM','UNIT','BKS','SAK','EKOR','BOX','LUSIN','KG',
-  'LITER','METER','SET','LEMBAR','BOTOL','KARDUS','ROLL','JAM','KEGIATAN','BUAH','KALI'
+  'LITER','METER','SET','LEMBAR','BOTOL','KARDUS','ROLL','JAM','KEGIATAN','BUAH','KALI','ORANG'
 ];
 
 // ===== HELPERS =====
@@ -452,12 +452,12 @@ function TabRealisasi({ onPrint }: { onPrint: (url: string) => void }) {
           </div>
           <div className={styles.tableWrap}>
             <table className={styles.table}>
-              <thead><tr><th>Nama Barang/Kegiatan</th><th style={{ width: 60 }}>Qty</th><th style={{ width: 90 }}>Satuan</th><th style={{ width: 120 }}>Harga Satuan</th><th style={{ width: 110 }}>Jumlah</th><th style={{ width: 36 }}></th></tr></thead>
+              <thead><tr><th style={{ width: '35%' }}>Nama Barang/Kegiatan</th><th style={{ width: 44 }}>Qty</th><th style={{ width: 82 }}>Satuan</th><th style={{ width: 120 }}>Harga Satuan</th><th style={{ width: 110 }}>Jumlah</th><th style={{ width: 36 }}></th></tr></thead>
               <tbody>
                 {rincian.map((item, idx) => (
                   <tr key={idx}>
                     <td><input className={styles.rincianInput} value={item.barang} onChange={e => updateRow(idx, 'barang', e.target.value)} placeholder="Nama barang..." required /></td>
-                    <td><input type="text" inputMode="numeric" className={styles.rincianInput} value={item.qty === 0 ? '' : item.qty} onChange={e => updateRow(idx, 'qty', parseInt(e.target.value.replace(/[^0-9]/g,'')) || 0)} placeholder="1" /></td>
+                    <td><input type="text" inputMode="numeric" className={styles.rincianInput} style={{ width: '100%', textAlign: 'center' }} value={item.qty === 0 ? '' : item.qty} onChange={e => updateRow(idx, 'qty', parseInt(e.target.value.replace(/[^0-9]/g,'')) || 0)} placeholder="1" /></td>
                     <td><select className={styles.rincianInput} value={item.satuan} onChange={e => updateRow(idx, 'satuan', e.target.value)}>{SATUAN_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}</select></td>
                     <td><input type="text" inputMode="numeric" className={styles.rincianInput} value={item.harga === 0 ? '' : item.harga.toLocaleString('id-ID')} onChange={e => updateRow(idx, 'harga', parseInt(e.target.value.replace(/[^0-9]/g,'')) || 0)} placeholder="0" /></td>
                     <td style={{ fontWeight: 600, fontSize: '0.85rem' }}>{formatRp(item.qty * item.harga)}</td>
@@ -632,12 +632,12 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
           </div>
           <div className={styles.tableWrap}>
             <table className={styles.table}>
-              <thead><tr><th>Nama Barang/Kegiatan</th><th style={{ width: 60 }}>Qty</th><th style={{ width: 90 }}>Satuan</th><th style={{ width: 120 }}>Harga Satuan</th><th style={{ width: 110 }}>Jumlah</th><th style={{ width: 36 }}></th></tr></thead>
+              <thead><tr><th style={{ width: '35%' }}>Nama Barang/Kegiatan</th><th style={{ width: 44 }}>Qty</th><th style={{ width: 82 }}>Satuan</th><th style={{ width: 120 }}>Harga Satuan</th><th style={{ width: 110 }}>Jumlah</th><th style={{ width: 36 }}></th></tr></thead>
               <tbody>
                 {rincian.map((item, idx) => (
                   <tr key={idx}>
                     <td><input className={styles.rincianInput} value={item.barang} onChange={e => updateRow(idx, 'barang', e.target.value)} placeholder="Nama barang..." required /></td>
-                    <td><input type="text" inputMode="numeric" className={styles.rincianInput} value={item.qty === 0 ? '' : item.qty} onChange={e => updateRow(idx, 'qty', parseInt(e.target.value.replace(/[^0-9]/g,'')) || 0)} placeholder="1" /></td>
+                    <td><input type="text" inputMode="numeric" className={styles.rincianInput} style={{ width: '100%', textAlign: 'center' }} value={item.qty === 0 ? '' : item.qty} onChange={e => updateRow(idx, 'qty', parseInt(e.target.value.replace(/[^0-9]/g,'')) || 0)} placeholder="1" /></td>
                     <td><select className={styles.rincianInput} value={item.satuan} onChange={e => updateRow(idx, 'satuan', e.target.value)}>{SATUAN_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}</select></td>
                     <td><input type="text" inputMode="numeric" className={styles.rincianInput} value={item.harga === 0 ? '' : item.harga.toLocaleString('id-ID')} onChange={e => updateRow(idx, 'harga', parseInt(e.target.value.replace(/[^0-9]/g,'')) || 0)} placeholder="0" /></td>
                     <td style={{ fontWeight: 600, fontSize: '0.85rem' }}>{formatRp(item.qty * item.harga)}</td>
