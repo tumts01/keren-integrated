@@ -97,28 +97,47 @@ export default function AbsensiGTK() {
   }, [activeTab, rekapBulan, rekapTahun]);
 
   const handleAbsen = async (action: 'checkin' | 'checkout') => {
-    if (!user) return;
+    if (!user || actionLoading) return; // proteksi double submit
     setActionLoading(true);
     setMessage('');
-    try {
-      const res = await fetch('/api/absensi', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, nama: user.nama })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setMessage(data.message);
-        fetchStatus(user.nama); // refresh status
-      } else {
-        setMessage(data.error);
+
+    const maxRetries = 3;
+    let lastError = '';
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const res = await fetch('/api/absensi', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, nama: user.nama })
+        });
+        const data = await res.json();
+        if (data.success) {
+          setMessage(data.message);
+          fetchStatus(user.nama);
+          setActionLoading(false);
+          setTimeout(() => setMessage(''), 4000);
+          return; // sukses, keluar
+        } else {
+          // Error dari server (bukan network) — langsung hentikan retry
+          setMessage(data.error || 'Gagal memproses absensi.');
+          setActionLoading(false);
+          setTimeout(() => setMessage(''), 4000);
+          return;
+        }
+      } catch (err) {
+        lastError = `Koneksi gagal, mencoba ulang... (${attempt}/${maxRetries})`;
+        if (attempt < maxRetries) {
+          setMessage(lastError);
+          await new Promise(r => setTimeout(r, 1000 * attempt)); // backoff: 1s, 2s
+        }
       }
-    } catch (err) {
-      setMessage('Gagal memproses absensi.');
-    } finally {
-      setActionLoading(false);
-      setTimeout(() => setMessage(''), 3000);
     }
+
+    // Semua retry habis
+    setMessage('Gagal terhubung ke server setelah beberapa percobaan. Cek koneksi internet dan coba lagi.');
+    setActionLoading(false);
+    setTimeout(() => setMessage(''), 6000);
   };
 
   const handleSaveLibur = async (e: React.FormEvent) => {
