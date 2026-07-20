@@ -46,13 +46,24 @@ export async function PATCH() {
     const jurnalSheet = presensiDoc.sheetsByTitle['JURNAL MENGAJAR'];
     if (!jurnalSheet) return NextResponse.json({ success: false, error: 'Sheet JURNAL MENGAJAR tidak ditemukan' }, { status: 404 });
 
+    // Ambil semua baris — getRows() sudah handle header row load secara internal
     const jurnalRows = await jurnalSheet.getRows();
-    const unknownRows = jurnalRows.filter(r => {
-      const guru = (r.get('NAMA GURU') || '').trim().toLowerCase();
-      return guru === 'unknown' || guru === '';
-    });
+    
+    // Cari baris Unknown beserta row number-nya
+    const unknownInfos: { rowNumber: number; kelas: string; mapel: string; tanggal: string }[] = [];
+    for (const row of jurnalRows) {
+      const guru = (row.get('NAMA GURU') || '').trim().toLowerCase();
+      if (guru === 'unknown' || guru === '') {
+        unknownInfos.push({
+          rowNumber: row.rowNumber, // 1-indexed (termasuk header di baris 1, data mulai baris 2)
+          kelas: (row.get('KELAS') || '').trim(),
+          mapel: (row.get('MAPEL') || '').trim().toLowerCase(),
+          tanggal: row.get('TANGGAL') || '',
+        });
+      }
+    }
 
-    if (unknownRows.length === 0) {
+    if (unknownInfos.length === 0) {
       return NextResponse.json({ success: true, message: 'Tidak ada baris Unknown', fixed: 0, ambiguous: [], notFound: [] });
     }
 
@@ -61,7 +72,6 @@ export async function PATCH() {
     const jadwalSheet = indukDoc.sheetsByTitle['JadwalMengajar'];
     if (!jadwalSheet) return NextResponse.json({ success: false, error: 'Sheet JadwalMengajar tidak ditemukan' }, { status: 404 });
 
-    await jadwalSheet.loadHeaderRow();
     const jadwalRows = await jadwalSheet.getRows();
     // Bangun map: { kelas_col: { mapel_lower: [namaGuru, ...] } }
     const jadwalMap: Record<string, Record<string, string[]>> = {};
@@ -84,47 +94,53 @@ export async function PATCH() {
       }
     }
 
-    let fixedCount = 0;
+    // Tentukan fix untuk setiap baris Unknown
+    const fixes: { rowNumber: number; namaGuru: string }[] = [];
     const ambiguous: any[] = [];
     const notFound: any[] = [];
 
-    for (const row of unknownRows) {
-      const kelas = (row.get('KELAS') || '').trim();
-      const mapel = (row.get('MAPEL') || '').trim().toLowerCase();
-      const tanggal = row.get('TANGGAL') || '';
-      const col = kelasToJadwalCol(kelas);
+    for (const info of unknownInfos) {
+      const col = kelasToJadwalCol(info.kelas);
+      if (!col) { notFound.push({ ...info, reason: 'Format kelas tidak dikenali' }); continue; }
 
-      if (!col) { notFound.push({ kelas, mapel, tanggal, reason: 'Format kelas tidak dikenali' }); continue; }
-
-      // Exact match mapel dulu
-      let candidates: string[] = jadwalMap[col]?.[mapel] || [];
-      // Fallback: partial match
+      let candidates: string[] = jadwalMap[col]?.[info.mapel] || [];
       if (candidates.length === 0) {
         for (const [mapelKey, gurus] of Object.entries(jadwalMap[col] || {})) {
-          if (mapelKey.includes(mapel) || mapel.includes(mapelKey)) {
+          if (mapelKey.includes(info.mapel) || info.mapel.includes(mapelKey)) {
             candidates = [...new Set([...candidates, ...gurus])];
           }
         }
       }
 
       if (candidates.length === 1) {
-        row.set('NAMA GURU', candidates[0]);
-        await row.save();
-        fixedCount++;
+        fixes.push({ rowNumber: info.rowNumber, namaGuru: candidates[0] });
       } else if (candidates.length > 1) {
-        ambiguous.push({ kelas, mapel, tanggal, candidates });
+        ambiguous.push({ ...info, candidates });
       } else {
-        notFound.push({ kelas, mapel, tanggal, col, reason: 'Tidak ditemukan di jadwal' });
+        notFound.push({ ...info, col, reason: 'Tidak ditemukan di jadwal' });
       }
+    }
+
+    // Terapkan fix menggunakan cells API (tidak bergantung pada header state)
+    if (fixes.length > 0) {
+      const maxRow = Math.max(...fixes.map(f => f.rowNumber));
+      // Kolom H = NAMA GURU (index 7, 0-based). Load range H1:H{maxRow}
+      await jurnalSheet.loadCells(`H1:H${maxRow}`);
+      for (const fix of fixes) {
+        // rowNumber 1-indexed → getCell pakai 0-indexed
+        const cell = jurnalSheet.getCell(fix.rowNumber - 1, 7);
+        cell.value = fix.namaGuru;
+      }
+      await jurnalSheet.saveUpdatedCells();
     }
 
     return NextResponse.json({
       success: true,
-      totalUnknown: unknownRows.length,
-      fixed: fixedCount,
+      totalUnknown: unknownInfos.length,
+      fixed: fixes.length,
       ambiguous,
       notFound,
-      message: `Berhasil fix ${fixedCount} dari ${unknownRows.length} baris Unknown`
+      message: `Berhasil fix ${fixes.length} dari ${unknownInfos.length} baris Unknown`
     });
   } catch (error: any) {
     console.error('PATCH Fix Unknown Error:', error);
