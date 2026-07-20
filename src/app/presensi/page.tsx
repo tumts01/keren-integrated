@@ -119,7 +119,16 @@ export default function PresensiPage() {
 
     setFixUnknownLoading(true);
     try {
-      const res = await fetch('/api/jurnal', { method: 'PATCH' });
+      // Ambil data jadwal dulu dari client (hemat quota — tidak perlu buka 2 spreadsheet di server)
+      const jadwalRes = await fetch('/api/jadwal');
+      const jadwalJson = await jadwalRes.json();
+      const jadwalData = jadwalJson.success ? jadwalJson.data : [];
+
+      const res = await fetch('/api/jurnal', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jadwalData })
+      });
       const json = await res.json();
       if (json.success) {
         let html = `<div style="text-align:left">`;

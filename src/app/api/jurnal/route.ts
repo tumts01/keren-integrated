@@ -39,23 +39,29 @@ export async function GET() {
   }
 }
 
-// PATCH: Fix baris "Unknown" dengan cross-reference ke JadwalMengajar
-export async function PATCH() {
+// PATCH: Fix baris "Unknown" — jadwal data dikirim dari client untuk hemat quota
+export async function PATCH(request: Request) {
   try {
+    const body = await request.json();
+    const { jadwalData } = body; // Array dari /api/jadwal, dikirim oleh client
+    if (!jadwalData || !Array.isArray(jadwalData)) {
+      return NextResponse.json({ success: false, error: 'jadwalData wajib dikirim dari client' }, { status: 400 });
+    }
+
+    // Buka hanya 1 spreadsheet (presensiDoc) → hemat quota
     const presensiDoc = await getPresensiDoc();
     const jurnalSheet = presensiDoc.sheetsByTitle['JURNAL MENGAJAR'];
     if (!jurnalSheet) return NextResponse.json({ success: false, error: 'Sheet JURNAL MENGAJAR tidak ditemukan' }, { status: 404 });
 
-    // Ambil semua baris — getRows() sudah handle header row load secara internal
     const jurnalRows = await jurnalSheet.getRows();
-    
+
     // Cari baris Unknown beserta row number-nya
     const unknownInfos: { rowNumber: number; kelas: string; mapel: string; tanggal: string }[] = [];
     for (const row of jurnalRows) {
       const guru = (row.get('NAMA GURU') || '').trim().toLowerCase();
       if (guru === 'unknown' || guru === '') {
         unknownInfos.push({
-          rowNumber: row.rowNumber, // 1-indexed (termasuk header di baris 1, data mulai baris 2)
+          rowNumber: row.rowNumber,
           kelas: (row.get('KELAS') || '').trim(),
           mapel: (row.get('MAPEL') || '').trim().toLowerCase(),
           tanggal: row.get('TANGGAL') || '',
@@ -67,25 +73,19 @@ export async function PATCH() {
       return NextResponse.json({ success: true, message: 'Tidak ada baris Unknown', fixed: 0, ambiguous: [], notFound: [] });
     }
 
-    // Load jadwal mengajar dari doc induk
-    const indukDoc = await getIndukDoc();
-    const jadwalSheet = indukDoc.sheetsByTitle['JadwalMengajar'];
-    if (!jadwalSheet) return NextResponse.json({ success: false, error: 'Sheet JadwalMengajar tidak ditemukan' }, { status: 404 });
-
-    const jadwalRows = await jadwalSheet.getRows();
-    // Bangun map: { kelas_col: { mapel_lower: [namaGuru, ...] } }
-    const jadwalMap: Record<string, Record<string, string[]>> = {};
+    // Bangun jadwalMap dari data yang dikirim client (tidak perlu buka spreadsheet kedua)
     const kelasCols = [
       'VII_A','VII_B','VII_C','VII_D','VII_E','VII_F','VII_G','VII_H','VII_I',
       'VIII_A','VIII_B','VIII_C','VIII_D','VIII_E','VIII_F','VIII_G','VIII_H','VIII_I',
       'IX_A','IX_B','IX_C','IX_D','IX_E','IX_F','IX_G','IX_H','IX_I',
     ];
-    for (const jRow of jadwalRows) {
-      const namaGuru = (jRow.get('namaGuru') || '').trim();
-      const mapel = (jRow.get('mataPelajaran') || '').trim().toLowerCase();
+    const jadwalMap: Record<string, Record<string, string[]>> = {};
+    for (const jRow of jadwalData) {
+      const namaGuru = (jRow.namaGuru || '').trim();
+      const mapel = (jRow.mataPelajaran || '').trim().toLowerCase();
       if (!namaGuru || !mapel) continue;
       for (const col of kelasCols) {
-        const val = (jRow.get(col) || '').trim();
+        const val = (jRow[col] || '').trim();
         if (val && val !== '0' && val !== '-') {
           if (!jadwalMap[col]) jadwalMap[col] = {};
           if (!jadwalMap[col][mapel]) jadwalMap[col][mapel] = [];
@@ -94,7 +94,7 @@ export async function PATCH() {
       }
     }
 
-    // Tentukan fix untuk setiap baris Unknown
+    // Tentukan fix
     const fixes: { rowNumber: number; namaGuru: string }[] = [];
     const ambiguous: any[] = [];
     const notFound: any[] = [];
@@ -121,14 +121,12 @@ export async function PATCH() {
       }
     }
 
-    // Terapkan fix menggunakan cells API (tidak bergantung pada header state)
+    // Terapkan fix via cells API
     if (fixes.length > 0) {
       const maxRow = Math.max(...fixes.map(f => f.rowNumber));
-      // Kolom H = NAMA GURU (index 7, 0-based). Load range H1:H{maxRow}
       await jurnalSheet.loadCells(`H1:H${maxRow}`);
       for (const fix of fixes) {
-        // rowNumber 1-indexed → getCell pakai 0-indexed
-        const cell = jurnalSheet.getCell(fix.rowNumber - 1, 7);
+        const cell = jurnalSheet.getCell(fix.rowNumber - 1, 7); // kolom H = index 7
         cell.value = fix.namaGuru;
       }
       await jurnalSheet.saveUpdatedCells();
