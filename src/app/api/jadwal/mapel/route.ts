@@ -9,19 +9,31 @@ export async function GET() {
     const doc = await getIndukDoc();
     let sheet = doc.sheetsByTitle[SHEET_TITLE];
     if (!sheet) {
-      // Sheet belum ada — buat baru dengan header
       sheet = await doc.addSheet({ headerValues: EXPECTED_HEADERS, title: SHEET_TITLE });
+      return NextResponse.json({ success: true, data: [] });
     }
+
+    // Load header row untuk tahu kolom apa saja yang ada di sheet
+    await sheet.loadHeaderRow();
+    const headers: string[] = sheet.headerValues || [];
+
+    // Cari kolom nama mapel secara fleksibel (case-insensitive, cek berbagai kemungkinan nama)
+    const mapelColKey = headers.find(h => {
+      const lower = h.toLowerCase().replace(/\s|_/g, '');
+      return lower === 'namamapel' || lower === 'mapel' || lower === 'matapelajaran' || lower === 'pelajaran' || lower === 'namapelajaran';
+    }) || 'namaMapel';
+
+    const idColKey = headers.find(h => h.toLowerCase() === 'id') || 'id';
 
     const rows = await sheet.getRows();
     const data = rows
       .map(r => ({
-        id: r.get('id') || r.get('ID') || '',
-        namaMapel: r.get('namaMapel') || r.get('NamaMapel') || r.get('nama_mapel') || ''
+        id: r.get(idColKey) || '',
+        namaMapel: r.get(mapelColKey) || r.get('namaMapel') || r.get('NamaMapel') || ''
       }))
-      .filter(r => r.namaMapel); // abaikan baris kosong
+      .filter(r => r.namaMapel.trim()); // abaikan baris kosong
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data, debug: { mapelColKey, idColKey, headers } });
   } catch (error) {
     console.error('Error fetching Mata Pelajaran:', error);
     return NextResponse.json({ success: false, error: 'Gagal mengambil data mata pelajaran' }, { status: 500 });
