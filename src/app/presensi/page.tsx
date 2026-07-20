@@ -126,8 +126,11 @@ export default function PresensiPage() {
     finally { setRekapSiswaLoading(false); }
   };
 
-  // 1 entry S/I/A = 10 jam (sekolah punya 10 jam per hari)
-  const countJamSIA = (_jamKe: string) => 10;
+  // Hitung jumlah jam dari field JAM KE (comma-separated: "1,2" = 2 jam)
+  const countJamSIA = (jamKe: string) => {
+    if (!jamKe) return 1;
+    return jamKe.split(',').map(s => s.trim()).filter(Boolean).length;
+  };
 
   const exportSiswaExcel = (filtered: any[]) => {
     const rows = filtered.map((r, i) => ({
@@ -151,9 +154,9 @@ export default function PresensiPage() {
       'No': i + 1,
       'Nama Siswa': s.nama,
       'Kelas': s.kelas,
-      'Sakit / S (Jam)': s.S,
-      'Izin / I (Jam)': s.I,
-      'Alpha / A (Jam)': s.A,
+      'Sakit / S (Hari)': Number((s.S / 10).toFixed(1)),
+      'Izin / I (Hari)': Number((s.I / 10).toFixed(1)),
+      'Alpha / A (Hari)': Number((s.A / 10).toFixed(1)),
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     ws['!cols'] = [{ wch: 5 }, { wch: 32 }, { wch: 10 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
@@ -493,7 +496,8 @@ export default function PresensiPage() {
     else if (r.kehadiran === 'I') rsAlphaMap[nm].I += jm;
     else if (r.kehadiran === 'A') rsAlphaMap[nm].A += jm;
   }
-  const rsSiaList = Object.values(rsAlphaMap).filter(s => (s.S + s.I + s.A) > 1).sort((a, b) => (b.S + b.I + b.A) - (a.S + a.I + a.A));
+  // Tampilkan jika total jam (S+I+A) > 10 (lebih dari 1 hari)
+  const rsSiaList = Object.values(rsAlphaMap).filter(s => (s.S + s.I + s.A) > 10).sort((a, b) => (b.S + b.I + b.A) - (a.S + a.I + a.A));
   // ──────────────────────────────────────────────────────────────────────────
 
   return (
@@ -920,8 +924,8 @@ export default function PresensiPage() {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.82rem', color: '#64748b' }}>{rsSiaList.length} siswa dengan total S/I/A &gt; 1</span>
-                    <span style={{ fontSize: '0.78rem', background: '#fee2e2', color: '#dc2626', padding: '2px 8px', borderRadius: 20 }}>🔴 = total lebih dari 5 jam</span>
+                    <span style={{ fontSize: '0.82rem', color: '#64748b' }}>{rsSiaList.length} siswa dengan total S/I/A &gt; 1 Hari</span>
+                    <span style={{ fontSize: '0.78rem', background: '#fee2e2', color: '#dc2626', padding: '2px 8px', borderRadius: 20 }}>🔴 = total lebih dari 5 hari</span>
                   </div>
                   <button onClick={() => exportAlphaExcel(rsSiaList)}
                     style={{ background: '#16a34a', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
@@ -931,7 +935,7 @@ export default function PresensiPage() {
                 {rsSiaList.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '32px 0', color: '#94a3b8' }}>
                     <i className="fas fa-check-circle" style={{ fontSize: '2rem', color: '#22c55e', display: 'block', marginBottom: 8 }}></i>
-                    Semua siswa memiliki total S/I/A &le; 1
+                    Semua siswa memiliki total S/I/A &le; 1 Hari (10 Jam)
                   </div>
                 ) : (
                   <div style={{ overflowX: 'auto' }}>
@@ -948,8 +952,8 @@ export default function PresensiPage() {
                       </thead>
                       <tbody>
                         {rsSiaList.map((s, i) => {
-                          const total = s.S + s.I + s.A;
-                          const isRed = total > 5;
+                          const totalDays = (s.S + s.I + s.A) / 10;
+                          const isRed = totalDays > 5;
                           return (
                             <tr key={s.nama} style={{ borderBottom: '1px solid #f1f5f9', background: isRed ? '#fff5f5' : i % 2 === 0 ? 'white' : '#f8fafc' }}>
                               <td style={{ padding: '9px 14px', textAlign: 'center', color: '#94a3b8' }}>{i + 1}</td>
@@ -958,9 +962,9 @@ export default function PresensiPage() {
                                 {s.nama}
                               </td>
                               <td style={{ padding: '9px 14px', color: '#475569' }}>{s.kelas}</td>
-                              <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, color: s.S > 0 ? '#d97706' : '#94a3b8' }}>{s.S > 0 ? s.S : '-'}</td>
-                              <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, color: s.I > 0 ? '#ea580c' : '#94a3b8' }}>{s.I > 0 ? s.I : '-'}</td>
-                              <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, color: s.A > 5 ? '#dc2626' : s.A > 0 ? '#7c3aed' : '#94a3b8', background: s.A > 5 ? '#fee2e2' : 'transparent', borderRadius: 6 }}>{s.A > 0 ? s.A : '-'}</td>
+                              <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, color: s.S > 0 ? '#d97706' : '#94a3b8' }}>{s.S > 0 ? Number((s.S / 10).toFixed(1)) : '-'}</td>
+                              <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, color: s.I > 0 ? '#ea580c' : '#94a3b8' }}>{s.I > 0 ? Number((s.I / 10).toFixed(1)) : '-'}</td>
+                              <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, color: totalDays > 5 ? '#dc2626' : s.A > 0 ? '#7c3aed' : '#94a3b8', background: isRed ? '#fee2e2' : 'transparent', borderRadius: 6 }}>{s.A > 0 ? Number((s.A / 10).toFixed(1)) : '-'}</td>
                             </tr>
                           );
                         })}
