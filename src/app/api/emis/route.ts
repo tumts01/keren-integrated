@@ -26,18 +26,20 @@ export async function GET(request: Request) {
 
     // Bangun list siswa aktif (logika sama persis dengan /api/siswa)
     type SiswaRecord = {
-      nisn: string; nis: string; nama: string;
+      nisn: string; nis: string; nama: string; status: string;
       kelas: string; tahunAjaran: string; isLatest: boolean;
     };
 
     const allRecords: SiswaRecord[] = rows.flatMap((row: any) => {
-      const status = (row.get('STATUS SISWA') || '').toLowerCase().trim();
-      if (status !== 'aktif') return [];
+      // Tidak filter status — tampilkan semua siswa sama seperti Data Siswa
+      const nama = (row.get('NAMA') || '').trim();
+      if (!nama) return []; // skip baris kosong saja
 
       const base = {
         nisn: (row.get('NISN') || '').trim(),
         nis: (row.get('ID SISWA') || '').trim(),
-        nama: row.get('NAMA') || '',
+        nama,
+        status: row.get('STATUS SISWA') || '',
       };
 
       const records: SiswaRecord[] = [];
@@ -67,9 +69,9 @@ export async function GET(request: Request) {
       return records;
     });
 
-    // Ambil hanya isLatest
+    // Ambil hanya isLatest (sama seperti Data Siswa — tanpa filter status)
     const siswaAktif = allRecords.filter(s =>
-      s.isLatest && s.nisn &&
+      s.isLatest &&
       (!tahunAjaranFilter || s.tahunAjaran === tahunAjaranFilter)
     );
 
