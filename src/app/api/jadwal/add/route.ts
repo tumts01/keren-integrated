@@ -23,6 +23,16 @@ export async function POST(request: Request) {
     if (!sheet) {
       sheet = await doc.addSheet({ headerValues: EXPECTED_HEADERS, title: SHEET_TITLE });
     } else {
+      // Sheet ada tapi mungkin header-nya kosong — pastikan header terisi
+      try {
+        await sheet.loadHeaderRow();
+        if (!sheet.headerValues || sheet.headerValues.length === 0) {
+          await sheet.setHeaderRow(EXPECTED_HEADERS);
+        }
+      } catch {
+        // loadHeaderRow gagal = baris pertama kosong → set header dulu
+        await sheet.setHeaderRow(EXPECTED_HEADERS);
+      }
     }
 
     const rows = await sheet.getRows();

@@ -17,6 +17,14 @@ export async function GET() {
     if (!sheet) {
       sheet = await doc.addSheet({ headerValues: EXPECTED_HEADERS, title: SHEET_TITLE });
     } else {
+      try {
+        await sheet.loadHeaderRow();
+        if (!sheet.headerValues || sheet.headerValues.length === 0) {
+          await sheet.setHeaderRow(EXPECTED_HEADERS);
+        }
+      } catch {
+        await sheet.setHeaderRow(EXPECTED_HEADERS);
+      }
     }
 
     const rows = await sheet.getRows();
