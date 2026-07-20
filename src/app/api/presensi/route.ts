@@ -11,15 +11,15 @@ export async function GET() {
     const rows = await sheet.getRows();
     const data = rows.map(r => ({
       id: r.get('ID') || '',
-      tanggal: r.get('TANGGAL') || '',
-      tahunAjaran: r.get('TAHUN AJARAN') || '',
-      kelas: r.get('KELAS') || '',
-      jamKe: r.get('JAM KE') || '',
-      mapel: r.get('MAPEL') || '',
-      guruPenginput: r.get('GURU PENGINPUT') || '',
+      tanggal: (r.get('TANGGAL') || '').trim(),
+      tahunAjaran: (r.get('TAHUN AJARAN') || '').trim(),
+      kelas: (r.get('KELAS') || '').trim(),
+      jamKe: (r.get('JAM KE') || '').trim(),
+      mapel: (r.get('MAPEL') || '').trim(),
+      guruPenginput: (r.get('GURU PENGINPUT') || '').trim(),
       namaSiswa: (r.get('NAMA SISWA') || '').trim(),
-      nisn: r.get('NISN') || '',
-      kehadiran: r.get('KEHADIRAN') || '',
+      nisn: (r.get('NISN') || '').trim(),
+      kehadiran: (r.get('KEHADIRAN') || '').trim(),
     })).filter(r => r.namaSiswa && r.kehadiran);
 
     return NextResponse.json({ success: true, data });

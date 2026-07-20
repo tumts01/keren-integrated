@@ -119,7 +119,17 @@ export default function PresensiPage() {
     try {
       const res = await fetch('/api/presensi');
       const json = await res.json();
-      if (json.success) setRekapSiswaData(json.data);
+      if (json.success) {
+        // Deduplicate: composite key tanggal+nama+kelas+mapel+jamKe+kehadiran
+        const seen = new Set<string>();
+        const deduped = json.data.filter((r: any) => {
+          const key = `${r.tanggal}|${r.namaSiswa}|${r.kelas}|${r.mapel}|${r.jamKe}|${r.kehadiran}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        setRekapSiswaData(deduped);
+      }
     } catch (e) { console.error(e); }
     finally { setRekapSiswaLoading(false); }
   };
@@ -794,12 +804,12 @@ export default function PresensiPage() {
             if (rsFilterFrom && r.tanggal < rsFilterFrom) return false;
             if (rsFilterTo && r.tanggal > rsFilterTo) return false;
             if (rsFilterNama && !r.namaSiswa.toLowerCase().includes(rsFilterNama.toLowerCase())) return false;
-            if (rsFilterKelas && r.kelas !== rsFilterKelas) return false;
+            if (rsFilterKelas && r.kelas.trim() !== rsFilterKelas.trim()) return false;
             return true;
           });
 
-          // Unique kelas dari data untuk filter dropdown
-          const rsKelasList = Array.from(new Set(rekapSiswaData.map(r => r.kelas).filter(Boolean))).sort() as string[];
+          // Unique kelas dari data — normalize trim dulu
+          const rsKelasList = Array.from(new Set(rekapSiswaData.map(r => (r.kelas || '').trim()).filter(Boolean))).sort() as string[];
 
           // Compute alpha summary (per siswa, total jam S/I/A)
           const alphaMap: Record<string, { nama: string; kelas: string; S: number; I: number; A: number }> = {};
@@ -947,7 +957,7 @@ export default function PresensiPage() {
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                         <thead>
                           <tr style={{ background: '#1e3a5f', color: 'white' }}>
-                            {['No','Nama Siswa','Kelas','Sakit (Jam)','Izin (Jam)','Alpha (Jam)','Total'].map(h => (
+                            {['No','Nama Siswa','Kelas','Sakit (S)','Izin (I)','Alpha (A)'].map(h => (
                               <th key={h} style={{ padding: '8px 12px', textAlign: 'center', whiteSpace: 'nowrap', fontWeight: 700 }}>{h}</th>
                             ))}
                           </tr>
@@ -957,16 +967,15 @@ export default function PresensiPage() {
                             const isRed = s.S > 5 || s.I > 5 || s.A > 5;
                             return (
                               <tr key={s.nama} style={{ borderBottom: '1px solid #f1f5f9', background: isRed ? '#fff5f5' : i % 2 === 0 ? 'white' : '#f8fafc' }}>
-                                <td style={{ padding: '8px 12px', textAlign: 'center', color: '#94a3b8' }}>{i + 1}</td>
-                                <td style={{ padding: '8px 12px', fontWeight: 700, color: isRed ? '#dc2626' : '#1e293b', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  {isRed && <i className="fas fa-exclamation-circle" style={{ color: '#dc2626' }}></i>}
+                                <td style={{ padding: '8px 12px', textAlign: 'center', color: '#94a3b8', width: 40 }}>{i + 1}</td>
+                                <td style={{ padding: '8px 12px', fontWeight: 600, color: isRed ? '#dc2626' : '#1e293b' }}>
+                                  {isRed && <i className="fas fa-exclamation-triangle" style={{ color: '#dc2626', marginRight: 6, fontSize: '0.75rem' }}></i>}
                                   {s.nama}
                                 </td>
                                 <td style={{ padding: '8px 12px', textAlign: 'center', color: '#475569' }}>{s.kelas}</td>
-                                <td style={tdStyle(s.S)}>{s.S}</td>
-                                <td style={tdStyle(s.I)}>{s.I}</td>
-                                <td style={tdStyle(s.A)}>{s.A}</td>
-                                <td style={{ ...tdStyle(s.S + s.I + s.A), background: isRed ? '#fee2e2' : '#f0fdf4', borderRadius: 6 }}>{s.S + s.I + s.A}</td>
+                                <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: s.S > 5 ? '#dc2626' : s.S > 0 ? '#d97706' : '#94a3b8' }}>{s.S}</td>
+                                <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: s.I > 5 ? '#dc2626' : s.I > 0 ? '#ea580c' : '#94a3b8' }}>{s.I}</td>
+                                <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: s.A > 5 ? '#dc2626' : s.A > 0 ? '#7c3aed' : '#94a3b8', background: s.A > 5 ? '#fee2e2' : 'transparent', borderRadius: 6 }}>{s.A}</td>
                               </tr>
                             );
                           })}
