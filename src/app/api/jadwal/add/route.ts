@@ -27,10 +27,12 @@ export async function POST(request: Request) {
       try {
         await sheet.loadHeaderRow();
         if (!sheet.headerValues || sheet.headerValues.length === 0) {
+          await sheet.resize({ rowCount: Math.max(sheet.rowCount, 2), columnCount: EXPECTED_HEADERS.length });
           await sheet.setHeaderRow(EXPECTED_HEADERS);
         }
       } catch {
-        // loadHeaderRow gagal = baris pertama kosong → set header dulu
+        // loadHeaderRow gagal = baris pertama kosong → resize lalu set header
+        await sheet.resize({ rowCount: Math.max(sheet.rowCount, 2), columnCount: EXPECTED_HEADERS.length });
         await sheet.setHeaderRow(EXPECTED_HEADERS);
       }
     }

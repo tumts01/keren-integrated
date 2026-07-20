@@ -20,9 +20,11 @@ export async function GET() {
       try {
         await sheet.loadHeaderRow();
         if (!sheet.headerValues || sheet.headerValues.length === 0) {
+          await sheet.resize({ rowCount: Math.max(sheet.rowCount, 2), columnCount: EXPECTED_HEADERS.length });
           await sheet.setHeaderRow(EXPECTED_HEADERS);
         }
       } catch {
+        await sheet.resize({ rowCount: Math.max(sheet.rowCount, 2), columnCount: EXPECTED_HEADERS.length });
         await sheet.setHeaderRow(EXPECTED_HEADERS);
       }
     }
