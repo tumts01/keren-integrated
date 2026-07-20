@@ -18,6 +18,7 @@ export default function PresensiPage() {
   const [mapelList, setMapelList] = useState<string[]>([]);
   const [siswaList, setSiswaList] = useState<any[]>([]);
   const [presensi, setPresensi] = useState<Record<string, string>>({}); // { nisn: 'H' | 'S' | 'I' | 'A' }
+  const [loadingSiswa, setLoadingSiswa] = useState(false);
 
   // Load classes and mapel
   useEffect(() => {
@@ -43,30 +44,27 @@ export default function PresensiPage() {
   // Effect when class changes (Mock loading students)
   useEffect(() => {
     if (selectedKelas) {
-      // In actual implementation, fetch from /api/siswa and filter by selectedKelas
+      setLoadingSiswa(true);
+      setSiswaList([]);
+      setPresensi({});
       fetch('/api/siswa').then(res => res.json()).then(data => {
         if (data.success) {
-          // Find students in the selected class that are active and in the latest academic year
           const filtered = data.data.filter((s: any) => 
             s.rombel === selectedKelas && 
             s.isLatest && 
             (s.status || '').toLowerCase().trim() === 'aktif'
           );
-          
           if (filtered.length > 0) {
             setSiswaList(filtered);
-            // Otomatis set 'H' (Hadir) untuk semua siswa
             const defaultPresensi: Record<string, string> = {};
-            filtered.forEach((s: any) => {
-              defaultPresensi[s.id] = 'H';
-            });
+            filtered.forEach((s: any) => { defaultPresensi[s.id] = 'H'; });
             setPresensi(defaultPresensi);
           } else {
-             setSiswaList([]);
-             setPresensi({});
+            setSiswaList([]);
+            setPresensi({});
           }
         }
-      });
+      }).finally(() => setLoadingSiswa(false));
     } else {
       setSiswaList([]);
       setPresensi({});
@@ -236,7 +234,7 @@ export default function PresensiPage() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <h1 className={styles.title}>Presensi & Jurnal Mengajar</h1>
+        <h1 className={styles.title}>Presensi Kelas & Jurnal Mengajar</h1>
         <p className={styles.subtitle}>Kelola kehadiran siswa dan aktivitas jurnal harian</p>
       </header>
 
@@ -338,7 +336,26 @@ export default function PresensiPage() {
               </div>
             </div>
 
-            {selectedKelas ? (
+            {loadingSiswa ? (
+              <div style={{ marginTop: 16 }}>
+                {/* Skeleton loading rows */}
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '12px 16px', borderBottom: '1px solid #f1f5f9',
+                    animation: 'pulse 1.5s ease-in-out infinite',
+                    animationDelay: `${i * 0.1}s`
+                  }}>
+                    <div style={{ width: 28, height: 14, background: '#e2e8f0', borderRadius: 4 }} />
+                    <div style={{ flex: 1, height: 14, background: '#e2e8f0', borderRadius: 4 }} />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {[1,2,3,4].map(j => <div key={j} style={{ width: 36, height: 28, background: '#e2e8f0', borderRadius: 6 }} />)}
+                    </div>
+                  </div>
+                ))}
+                <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }`}</style>
+              </div>
+            ) : selectedKelas ? (
               <div className={styles.studentList}>
                 <table className={styles.table}>
                   <thead>
