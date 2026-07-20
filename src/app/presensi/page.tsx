@@ -482,6 +482,29 @@ export default function PresensiPage() {
     }
   };
 
+  // ── Rekap Siswa: semua komputasi di LUAR JSX ─────────────────────────────
+  const rsFiltered = rekapSiswaData.filter(r => {
+    if (rsFilterFrom && r.tanggal < rsFilterFrom) return false;
+    if (rsFilterTo && r.tanggal > rsFilterTo) return false;
+    if (rsFilterNama && !r.namaSiswa.toLowerCase().includes(rsFilterNama.toLowerCase())) return false;
+    if (rsFilterKelas && r.kelas.trim() !== rsFilterKelas.trim()) return false;
+    return true;
+  }).sort((a, b) => {
+    const dc = (a.tanggal || '').localeCompare(b.tanggal || '');
+    return dc !== 0 ? dc : (a.namaSiswa || '').localeCompare(b.namaSiswa || '', 'id');
+  });
+  const rsKelasList = Array.from(new Set(rekapSiswaData.map(r => (r.kelas || '').trim()).filter(Boolean))).sort() as string[];
+  const rsAlphaMap: Record<string, { nama: string; kelas: string; S: number; I: number; A: number }> = {};
+  for (const r of rsFiltered) {
+    const nm = r.namaSiswa; const jm = countJamSIA(r.jamKe);
+    if (!rsAlphaMap[nm]) rsAlphaMap[nm] = { nama: nm, kelas: r.kelas, S: 0, I: 0, A: 0 };
+    if (r.kehadiran === 'S') rsAlphaMap[nm].S += jm;
+    else if (r.kehadiran === 'I') rsAlphaMap[nm].I += jm;
+    else if (r.kehadiran === 'A') rsAlphaMap[nm].A += jm;
+  }
+  const rsSiaList = Object.values(rsAlphaMap).filter(s => (s.S + s.I + s.A) > 1).sort((a, b) => (b.S + b.I + b.A) - (a.S + a.I + a.A));
+  // ──────────────────────────────────────────────────────────────────────────
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -795,202 +818,165 @@ export default function PresensiPage() {
         )}
 
 
-        {activeTab === 'rekap_siswa' && (() => {
-          // ── Filter & compute ──────────────────────────────────────────
-          const rsFiltered = rekapSiswaData.filter(r => {
-            if (rsFilterFrom && r.tanggal < rsFilterFrom) return false;
-            if (rsFilterTo && r.tanggal > rsFilterTo) return false;
-            if (rsFilterNama && !r.namaSiswa.toLowerCase().includes(rsFilterNama.toLowerCase())) return false;
-            if (rsFilterKelas && r.kelas.trim() !== rsFilterKelas.trim()) return false;
-            return true;
-          }).sort((a, b) => {
-            // Urut berdasarkan tanggal, lalu nama siswa
-            const dateCompare = (a.tanggal || '').localeCompare(b.tanggal || '');
-            if (dateCompare !== 0) return dateCompare;
-            return (a.namaSiswa || '').localeCompare(b.namaSiswa || '', 'id');
-          });
+        {activeTab === 'rekap_siswa' && (
+          <div className={styles.card}>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+              <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#1e293b' }}>
+                <i className="fas fa-users" style={{ marginRight: 8, color: '#237227' }}></i>
+                Rekap Presensi Siswa
+              </h2>
+              <button onClick={fetchRekapSiswa} style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <i className="fas fa-sync-alt"></i> Refresh
+              </button>
+            </div>
 
-          // Unique kelas dari data — normalize trim dulu
-          const rsKelasList = Array.from(new Set(rekapSiswaData.map(r => (r.kelas || '').trim()).filter(Boolean))).sort() as string[];
+            {/* Sub-tabs */}
+            <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '2px solid #e2e8f0' }}>
+              {([{ key: 'semua', label: '📋 Semua Presensi' }, { key: 'alpha', label: `⚠️ Rekap S/I/A (${rsSiaList.length} siswa)` }] as const).map(t => (
+                <button key={t.key} onClick={() => setRsSubTab(t.key as 'semua' | 'alpha')}
+                  style={{ padding: '8px 16px', border: 'none', background: rsSubTab === t.key ? '#237227' : 'transparent', color: rsSubTab === t.key ? 'white' : '#64748b', borderRadius: '6px 6px 0 0', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s' }}
+                >{t.label}</button>
+              ))}
+            </div>
 
-          // Compute alpha summary (per siswa, total jam S/I/A)
-          const alphaMap: Record<string, { nama: string; kelas: string; S: number; I: number; A: number }> = {};
-          for (const r of rsFiltered) {
-            const nama = r.namaSiswa;
-            const jam = countJamSIA(r.jamKe);
-            if (!alphaMap[nama]) alphaMap[nama] = { nama, kelas: r.kelas, S: 0, I: 0, A: 0 };
-            if (r.kehadiran === 'S') alphaMap[nama].S += jam;
-            else if (r.kehadiran === 'I') alphaMap[nama].I += jam;
-            else if (r.kehadiran === 'A') alphaMap[nama].A += jam;
-          }
-          const alphaList = Object.values(alphaMap)
-            .filter(s => (s.S + s.I + s.A) > 1)
-            .sort((a, b) => (b.S + b.I + b.A) - (a.S + a.I + a.A));
-
-          const tdStyle = (val: number) => ({
-            padding: '8px 12px', textAlign: 'center' as const,
-            fontWeight: 700,
-            color: val > 5 ? '#dc2626' : val > 0 ? '#d97706' : '#64748b',
-          });
-
-          return (
-            <div className={styles.card}>
-              {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-                <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#1e293b' }}>
-                  <i className="fas fa-users" style={{ marginRight: 8, color: '#237227' }}></i>
-                  Rekap Presensi Siswa
-                </h2>
-                <button onClick={fetchRekapSiswa} style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <i className="fas fa-sync-alt"></i> Refresh
+            {/* Filters */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16, padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>Dari Tanggal</label>
+                <input type="date" value={rsFilterFrom} onChange={e => setRsFilterFrom(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: '0.85rem' }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>Sampai Tanggal</label>
+                <input type="date" value={rsFilterTo} onChange={e => setRsFilterTo(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: '0.85rem' }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>Nama Siswa</label>
+                <input type="text" placeholder="Cari nama..." value={rsFilterNama} onChange={e => setRsFilterNama(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: '0.85rem', minWidth: 160 }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>Kelas</label>
+                <select value={rsFilterKelas} onChange={e => setRsFilterKelas(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: '0.85rem' }}>
+                  <option value="">Semua Kelas</option>
+                  {rsKelasList.map(k => <option key={k} value={k}>{k}</option>)}
+                </select>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'flex-end' }}>
+                <button onClick={() => { setRsFilterFrom(''); setRsFilterTo(''); setRsFilterNama(''); setRsFilterKelas(''); }}
+                  style={{ padding: '6px 12px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
+                  <i className="fas fa-times"></i> Reset
                 </button>
               </div>
+            </div>
 
-              {/* Sub-tabs */}
-              <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '2px solid #e2e8f0' }}>
-                {[{ key: 'semua', label: '📋 Semua Presensi' }, { key: 'alpha', label: `⚠️ Rekap S/I/A (${alphaList.length} siswa)` }].map(t => (
-                  <button key={t.key} onClick={() => setRsSubTab(t.key as 'semua' | 'alpha')}
-                    style={{ padding: '8px 16px', border: 'none', background: rsSubTab === t.key ? '#237227' : 'transparent', color: rsSubTab === t.key ? 'white' : '#64748b', borderRadius: '6px 6px 0 0', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s' }}
-                  >{t.label}</button>
-                ))}
+            {rekapSiswaLoading ? (
+              <div style={{ textAlign: 'center', padding: '48px 0', color: '#64748b' }}>
+                <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', display: 'block', marginBottom: 12 }}></i>
+                Memuat data presensi...
               </div>
-
-              {/* Filters */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16, padding: '12px 14px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>Dari Tanggal</label>
-                  <input type="date" value={rsFilterFrom} onChange={e => setRsFilterFrom(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: '0.85rem' }} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>Sampai Tanggal</label>
-                  <input type="date" value={rsFilterTo} onChange={e => setRsFilterTo(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: '0.85rem' }} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>Nama Siswa</label>
-                  <input type="text" placeholder="Cari nama..." value={rsFilterNama} onChange={e => setRsFilterNama(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: '0.85rem', minWidth: 160 }} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>Kelas</label>
-                  <select value={rsFilterKelas} onChange={e => setRsFilterKelas(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: '0.85rem' }}>
-                    <option value="">Semua Kelas</option>
-                    {rsKelasList.map(k => <option key={k} value={k}>{k}</option>)}
-                  </select>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'flex-end' }}>
-                  <button onClick={() => { setRsFilterFrom(''); setRsFilterTo(''); setRsFilterNama(''); setRsFilterKelas(''); }}
-                    style={{ padding: '6px 12px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
-                    <i className="fas fa-times"></i> Reset
+            ) : rsSubTab === 'semua' ? (
+              /* ── TAB SEMUA PRESENSI ── */
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <span style={{ fontSize: '0.82rem', color: '#64748b' }}>{rsFiltered.length} entri</span>
+                  <button onClick={() => exportSiswaExcel(rsFiltered)}
+                    style={{ background: '#16a34a', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                    <i className="fas fa-file-excel"></i> Export Excel ({rsFiltered.length})
                   </button>
                 </div>
-              </div>
-
-              {rekapSiswaLoading ? (
-                <div style={{ textAlign: 'center', padding: '48px 0', color: '#64748b' }}>
-                  <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', display: 'block', marginBottom: 12 }}></i>
-                  Memuat data presensi...
-                </div>
-              ) : rsSubTab === 'semua' ? (
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                    <span style={{ fontSize: '0.82rem', color: '#64748b' }}>{rsFiltered.length} entri</span>
-                    <button onClick={() => exportSiswaExcel(rsFiltered)}
-                      style={{ background: '#16a34a', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-                      <i className="fas fa-file-excel"></i> Export Excel ({rsFiltered.length})
-                    </button>
+                {rsFiltered.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '32px 0', color: '#94a3b8' }}>
+                    <i className="fas fa-inbox" style={{ fontSize: '2rem', display: 'block', marginBottom: 8 }}></i>
+                    Tidak ada data
                   </div>
-                  {rsFiltered.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '32px 0', color: '#94a3b8' }}>
-                      <i className="fas fa-inbox" style={{ fontSize: '2rem', display: 'block', marginBottom: 8 }}></i>
-                      Tidak ada data
-                    </div>
-                  ) : (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                        <thead>
-                          <tr style={{ background: '#1e3a5f', color: 'white' }}>
-                            {['No','Tanggal','Nama Siswa','Kelas','Mata Pelajaran','Jam Ke','Ket.'].map(h => (
-                              <th key={h} style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rsFiltered.map((r, i) => (
-                            <tr key={r.id || i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? 'white' : '#f8fafc' }}>
-                              <td style={{ padding: '7px 12px', color: '#94a3b8' }}>{i + 1}</td>
-                              <td style={{ padding: '7px 12px', whiteSpace: 'nowrap' }}>{r.tanggal}</td>
-                              <td style={{ padding: '7px 12px', fontWeight: 600 }}>{r.namaSiswa}</td>
-                              <td style={{ padding: '7px 12px' }}>{r.kelas}</td>
-                              <td style={{ padding: '7px 12px', color: '#475569' }}>{r.mapel}</td>
-                              <td style={{ padding: '7px 12px', textAlign: 'center' }}>
-                                <span style={{ background: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600 }}>Jam {r.jamKe}</span>
-                              </td>
-                              <td style={{ padding: '7px 12px', textAlign: 'center' }}>
-                                <span style={{
-                                  background: r.kehadiran === 'A' ? '#fef2f2' : r.kehadiran === 'I' ? '#fff7ed' : '#fefce8',
-                                  color: r.kehadiran === 'A' ? '#dc2626' : r.kehadiran === 'I' ? '#ea580c' : '#ca8a04',
-                                  padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700
-                                }}>{r.kehadiran}</span>
-                              </td>
-                            </tr>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ background: '#1e3a5f', color: 'white' }}>
+                          {['No','Tanggal','Nama Siswa','Kelas','Mata Pelajaran','Jam Ke','Ket.'].map(h => (
+                            <th key={h} style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>{h}</th>
                           ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                /* ── SUB-TAB ALPHA ── */
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.82rem', color: '#64748b' }}>{alphaList.length} siswa dengan total S/I/A &gt; 1</span>
-                      <span style={{ fontSize: '0.78rem', background: '#fee2e2', color: '#dc2626', padding: '2px 8px', borderRadius: 20 }}>🔴 = total lebih dari 5 jam</span>
-                    </div>
-                    <button onClick={() => exportAlphaExcel(alphaList)}
-                      style={{ background: '#16a34a', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-                      <i className="fas fa-file-excel"></i> Export Excel
-                    </button>
-                  </div>
-                  {alphaList.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '32px 0', color: '#94a3b8' }}>
-                      <i className="fas fa-check-circle" style={{ fontSize: '2rem', color: '#22c55e', display: 'block', marginBottom: 8 }}></i>
-                      Semua siswa memiliki total S/I/A ≤ 1
-                    </div>
-                  ) : (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                        <thead>
-                          <tr style={{ background: '#1e3a5f', color: 'white' }}>
-                            {['No','Nama Siswa','Kelas','Total S/I/A'].map(h => (
-                              <th key={h} style={{ padding: '8px 14px', textAlign: h === 'No' || h === 'Total S/I/A' ? 'center' : 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>{h}</th>
-                            ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rsFiltered.map((r, i) => (
+                          <tr key={`${r.tanggal}-${r.namaSiswa}-${i}`} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? 'white' : '#f8fafc' }}>
+                            <td style={{ padding: '7px 12px', color: '#94a3b8' }}>{i + 1}</td>
+                            <td style={{ padding: '7px 12px', whiteSpace: 'nowrap' }}>{r.tanggal}</td>
+                            <td style={{ padding: '7px 12px', fontWeight: 600 }}>{r.namaSiswa}</td>
+                            <td style={{ padding: '7px 12px' }}>{r.kelas}</td>
+                            <td style={{ padding: '7px 12px', color: '#475569' }}>{r.mapel}</td>
+                            <td style={{ padding: '7px 12px', textAlign: 'center' }}>
+                              <span style={{ background: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600 }}>Jam {r.jamKe}</span>
+                            </td>
+                            <td style={{ padding: '7px 12px', textAlign: 'center' }}>
+                              <span style={{
+                                background: r.kehadiran === 'A' ? '#fef2f2' : r.kehadiran === 'I' ? '#fff7ed' : '#fefce8',
+                                color: r.kehadiran === 'A' ? '#dc2626' : r.kehadiran === 'I' ? '#ea580c' : '#ca8a04',
+                                padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700
+                              }}>{r.kehadiran}</span>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {alphaList.map((s, i) => {
-                            const total = s.S + s.I + s.A;
-                            const isRed = total > 5;
-                            return (
-                              <tr key={s.nama} style={{ borderBottom: '1px solid #f1f5f9', background: isRed ? '#fff5f5' : i % 2 === 0 ? 'white' : '#f8fafc' }}>
-                                <td style={{ padding: '9px 14px', textAlign: 'center', color: '#94a3b8', width: 44 }}>{i + 1}</td>
-                                <td style={{ padding: '9px 14px', fontWeight: 600, color: isRed ? '#dc2626' : '#1e293b' }}>
-                                  {isRed && <i className="fas fa-exclamation-triangle" style={{ color: '#dc2626', marginRight: 6, fontSize: '0.75rem' }}></i>}
-                                  {s.nama}
-                                </td>
-                                <td style={{ padding: '9px 14px', color: '#475569' }}>{s.kelas}</td>
-                                <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, fontSize: '1rem', color: isRed ? '#dc2626' : total > 0 ? '#d97706' : '#64748b', background: isRed ? '#fee2e2' : total > 3 ? '#fff7ed' : 'transparent', borderRadius: 8 }}>{total}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* ── TAB REKAP S/I/A ── */
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.82rem', color: '#64748b' }}>{rsSiaList.length} siswa dengan total S/I/A &gt; 1</span>
+                    <span style={{ fontSize: '0.78rem', background: '#fee2e2', color: '#dc2626', padding: '2px 8px', borderRadius: 20 }}>🔴 = total lebih dari 5 jam</span>
+                  </div>
+                  <button onClick={() => exportAlphaExcel(rsSiaList)}
+                    style={{ background: '#16a34a', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                    <i className="fas fa-file-excel"></i> Export Excel
+                  </button>
                 </div>
-              )}
-            </div>
-          );
-        })()}
+                {rsSiaList.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '32px 0', color: '#94a3b8' }}>
+                    <i className="fas fa-check-circle" style={{ fontSize: '2rem', color: '#22c55e', display: 'block', marginBottom: 8 }}></i>
+                    Semua siswa memiliki total S/I/A &le; 1
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ background: '#1e3a5f', color: 'white' }}>
+                          <th style={{ padding: '8px 14px', textAlign: 'center', width: 44, fontWeight: 700 }}>No</th>
+                          <th style={{ padding: '8px 14px', textAlign: 'left', fontWeight: 700 }}>Nama Siswa</th>
+                          <th style={{ padding: '8px 14px', textAlign: 'left', fontWeight: 700 }}>Kelas</th>
+                          <th style={{ padding: '8px 14px', textAlign: 'center', fontWeight: 700 }}>Total S/I/A</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rsSiaList.map((s, i) => {
+                          const total = s.S + s.I + s.A;
+                          const isRed = total > 5;
+                          return (
+                            <tr key={s.nama} style={{ borderBottom: '1px solid #f1f5f9', background: isRed ? '#fff5f5' : i % 2 === 0 ? 'white' : '#f8fafc' }}>
+                              <td style={{ padding: '9px 14px', textAlign: 'center', color: '#94a3b8' }}>{i + 1}</td>
+                              <td style={{ padding: '9px 14px', fontWeight: 600, color: isRed ? '#dc2626' : '#1e293b' }}>
+                                {isRed && <i className="fas fa-exclamation-triangle" style={{ color: '#dc2626', marginRight: 6, fontSize: '0.75rem' }}></i>}
+                                {s.nama}
+                              </td>
+                              <td style={{ padding: '9px 14px', color: '#475569' }}>{s.kelas}</td>
+                              <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, fontSize: '1rem', color: isRed ? '#dc2626' : '#d97706', background: isRed ? '#fee2e2' : total > 3 ? '#fff7ed' : 'transparent', borderRadius: 8 }}>{total}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {activeTab === 'rekap_jurnal' && (
           <div className={styles.card}>
