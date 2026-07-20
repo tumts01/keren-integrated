@@ -35,6 +35,7 @@ export default function PresensiPage() {
   const [guruListRekap, setGuruListRekap] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUsername, setCurrentUsername] = useState('');
+  const [fixUnknownLoading, setFixUnknownLoading] = useState(false);
 
   // Load classes and mapel
   useEffect(() => {
@@ -101,6 +102,55 @@ export default function PresensiPage() {
       }
     } catch (e) { console.error(e); }
     finally { setRekapJurnalLoading(false); }
+  };
+
+  const handleFixUnknown = async () => {
+    const confirmResult = await Swal.fire({
+      title: 'Fix Nama Guru Unknown?',
+      html: 'Sistem akan mencoba mencocokkan data jurnal yang <b>Unknown</b> dengan jadwal mengajar.<br><br>Data di spreadsheet akan diperbarui otomatis jika ditemukan.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#7c3aed',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Ya, Proses!',
+      cancelButtonText: 'Batal'
+    });
+    if (!confirmResult.isConfirmed) return;
+
+    setFixUnknownLoading(true);
+    try {
+      const res = await fetch('/api/jurnal', { method: 'PATCH' });
+      const json = await res.json();
+      if (json.success) {
+        let html = `<div style="text-align:left">`;
+        html += `<p>📊 Total Unknown: <b>${json.totalUnknown}</b></p>`;
+        html += `<p>✅ Berhasil difix: <b>${json.fixed}</b></p>`;
+        if (json.ambiguous?.length > 0) {
+          html += `<p>⚠️ Ambigu (lebih dari 1 kandidat):</p><ul style="margin:4px 0 8px 16px;font-size:0.85rem">`;
+          json.ambiguous.forEach((a: any) => {
+            html += `<li>${a.tanggal} — ${a.kelas} ${a.mapel}: <em>${a.candidates.join(', ')}</em></li>`;
+          });
+          html += `</ul>`;
+        }
+        if (json.notFound?.length > 0) {
+          html += `<p>❌ Tidak ditemukan di jadwal (${json.notFound.length} baris) — perlu update manual</p>`;
+        }
+        html += `</div>`;
+        await Swal.fire({
+          title: json.fixed > 0 ? 'Selesai!' : 'Hasil Proses',
+          html,
+          icon: json.fixed > 0 ? 'success' : 'info',
+          width: 520
+        });
+        if (json.fixed > 0) fetchRekapJurnal(); // Refresh data
+      } else {
+        Swal.fire({ icon: 'error', title: 'Gagal', text: json.error || 'Terjadi kesalahan' });
+      }
+    } catch (e: any) {
+      Swal.fire({ icon: 'error', title: 'Error', text: e.message });
+    } finally {
+      setFixUnknownLoading(false);
+    }
   };
 
   // Effect when class changes (Mock loading students)
@@ -644,12 +694,24 @@ export default function PresensiPage() {
                   {isAdmin ? 'Data semua guru' : `Data jurnal: ${currentUsername}`}
                 </p>
               </div>
-              <button
-                onClick={fetchRekapJurnal}
-                style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}
-              >
-                <i className="fas fa-sync-alt"></i> Muat Data
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={fetchRekapJurnal}
+                  style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <i className="fas fa-sync-alt"></i> Muat Data
+                </button>
+                {isAdmin && (
+                  <button
+                    onClick={handleFixUnknown}
+                    disabled={fixUnknownLoading}
+                    style={{ background: fixUnknownLoading ? '#ede9fe' : '#7c3aed', border: 'none', padding: '8px 16px', borderRadius: 8, cursor: fixUnknownLoading ? 'not-allowed' : 'pointer', fontSize: '0.85rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, opacity: fixUnknownLoading ? 0.7 : 1 }}
+                  >
+                    <i className={fixUnknownLoading ? 'fas fa-spinner fa-spin' : 'fas fa-magic'}></i>
+                    {fixUnknownLoading ? 'Memproses...' : 'Fix Unknown'}
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Filter */}
@@ -702,31 +764,8 @@ export default function PresensiPage() {
                 if (filterTo && r.tanggal > filterTo) return false;
                 return true;
               });
-              const guruSummary = filtered.reduce((acc: Record<string, number>, r) => {
-                acc[r.namaGuru] = (acc[r.namaGuru] || 0) + 1;
-                return acc;
-              }, {});
               return (
                 <div>
-                  {/* Summary cards (admin, no guru filter) */}
-                  {isAdmin && !filterGuruRekap && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
-                      <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '12px 20px' }}>
-                        <div style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 600 }}>TOTAL ENTRI</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e40af' }}>{filtered.length}</div>
-                      </div>
-                      <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '12px 20px' }}>
-                        <div style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600 }}>JUMLAH GURU</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#15803d' }}>{Object.keys(guruSummary).length}</div>
-                      </div>
-                      {Object.entries(guruSummary).sort((a,b) => b[1]-a[1]).slice(0,3).map(([nama, count]) => (
-                        <div key={nama} style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: 10, padding: '12px 20px' }}>
-                          <div style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600 }}>🏆 {nama}</div>
-                          <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#92400e' }}>{count} <span style={{fontSize:'0.8rem',fontWeight:500}}>entri</span></div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                   {filtered.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '32px 0', color: '#94a3b8' }}>
                       <i className="fas fa-search" style={{ fontSize: '2rem', display: 'block', marginBottom: 8 }}></i>
