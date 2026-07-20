@@ -123,8 +123,11 @@ export async function POST(req: Request) {
       let maxNo = 0;
       rowsKeluar.forEach(row => {
         const rowTanggal = row.get('TANGGAL') || '';
-        // Only count numbers from the same year
-        if (rowTanggal.endsWith(year.toString())) {
+        const rowNoSurat  = row.get('NO. SURAT') || '';
+        // Wajib punya NO. SURAT terisi agar baris formula/kosong tidak ikut dihitung
+        if (!rowNoSurat) return;
+        // Hanya hitung tahun yang sama
+        if (rowTanggal.endsWith(year.toString()) || rowNoSurat.endsWith('/' + year.toString())) {
           const currentNo = parseInt(row.get('NO'), 10);
           if (!isNaN(currentNo) && currentNo > maxNo) {
             maxNo = currentNo;
