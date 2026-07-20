@@ -1,6 +1,6 @@
 .container {
-  padding: 24px;
-  max-width: 1200px;
+  padding: 16px 20px;
+  max-width: 100%;
   margin: 0 auto;
 }
 
@@ -8,13 +8,13 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 12px;
 }
 
 .title {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   color: var(--text-main);
   margin: 0;
 }
@@ -23,14 +23,15 @@
   background: var(--primary);
   color: white;
   border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
+  padding: 8px 16px;
+  border-radius: 6px;
   font-weight: 600;
+  font-size: 0.85rem;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .addBtn:hover {
@@ -39,16 +40,16 @@
 
 .controls {
   display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .searchInput {
   flex: 1;
-  padding: 12px 16px;
+  padding: 8px 12px;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 0.95rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
   outline: none;
 }
 
@@ -59,10 +60,10 @@
 
 .card {
   background: white;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid var(--border-color);
   overflow: hidden;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .tableWrapper {
@@ -72,36 +73,80 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1000px; /* Ensure horizontal scroll on small screens */
+  font-size: 0.775rem;
 }
 
-.table th, .table td {
-  padding: 12px 16px;
-  text-align: center;
-  border-bottom: 1px solid var(--border-color);
-  border-right: 1px solid var(--border-color);
-}
-
+/* Header baris pertama: kelompok kelas */
 .table th {
-  background: #f8fafc;
+  background: #1e3a5f;
+  color: white;
   font-weight: 600;
-  color: var(--text-muted);
+  font-size: 0.72rem;
+  padding: 5px 4px;
+  text-align: center;
+  border: 1px solid #2d5080;
+  white-space: nowrap;
 }
 
-.table td:first-child, .table th:first-child {
-  border-left: none;
-}
-.table td:last-child, .table th:last-child {
-  border-right: none;
+/* Sub-header: A, B, C, dst */
+.table thead tr:nth-child(2) th {
+  background: #2d5a8e;
+  font-size: 0.7rem;
+  padding: 4px 2px;
 }
 
+/* Header kolom kiri (non-class): Kode, Nama, Status, Mapel, JML, Ket, Aksi */
+.table thead tr:first-child th:nth-child(-n+4),
+.table thead tr:first-child th:nth-last-child(-n+3) {
+  background: #237227;
+}
+
+.table td {
+  padding: 4px 6px;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+  font-size: 0.775rem;
+  color: #334155;
+  white-space: nowrap;
+}
+
+/* Kolom jam mengajar (angka kelas): lebih sempit */
+.table td:nth-child(n+5):nth-child(-n+31) {
+  padding: 4px 2px;
+  min-width: 22px;
+  max-width: 32px;
+  font-weight: 600;
+  color: #166534;
+}
+
+/* Kolom nama guru: rata kiri */
 .table td.textLeft {
   text-align: left;
+  min-width: 120px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Row striping */
+.table tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.table tbody tr:hover td {
+  background: #f0fdf4;
+}
+
+/* Total jam: bold, highlight */
+.table td:nth-last-child(3) {
+  font-weight: 700;
+  color: #1e3a5f;
+  background: #eff6ff;
 }
 
 .actionBtns {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   justify-content: center;
 }
 
@@ -109,9 +154,10 @@
   border: none;
   background: none;
   cursor: pointer;
-  padding: 6px;
+  padding: 4px 5px;
   border-radius: 4px;
   transition: background 0.2s;
+  font-size: 0.75rem;
 }
 
 .editBtn { color: #3b82f6; }
@@ -119,7 +165,7 @@
 .deleteBtn { color: #ef4444; }
 .deleteBtn:hover { background: #fef2f2; }
 
-/* Modal */
+/* ===== MODAL ===== */
 .modalOverlay {
   position: fixed;
   top: 0;
@@ -136,29 +182,32 @@
 
 .modalContent {
   background: white;
-  padding: 24px;
+  padding: 20px 24px;
   border-radius: 12px;
   width: 100%;
-  max-width: 700px;
+  max-width: 680px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
 }
 
 .modalTitle {
-  margin: 0 0 20px 0;
-  font-size: 1.25rem;
+  margin: 0 0 16px 0;
+  font-size: 1.1rem;
+  color: #1e293b;
+  border-bottom: 2px solid var(--primary);
+  padding-bottom: 10px;
 }
 
 .formGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
 .inputGroup {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .inputGroup.fullWidth {
@@ -167,25 +216,31 @@
 
 .inputGroup label {
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 5px;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   color: var(--text-muted);
 }
 
 .inputGroup input, .inputGroup select {
   width: 100%;
-  padding: 10px 12px;
+  padding: 8px 10px;
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: 6px;
   outline: none;
+  font-size: 0.875rem;
   background: white;
+}
+
+.inputGroup input:focus, .inputGroup select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(35,114,39,0.1);
 }
 
 .kelasGrid {
   display: grid;
   grid-template-columns: repeat(9, 1fr);
-  gap: 8px;
+  gap: 6px;
 }
 
 .kelasItem {
@@ -195,40 +250,62 @@
 }
 
 .kelasItem label {
-  font-size: 0.75rem;
-  margin-bottom: 4px;
+  font-size: 0.7rem;
+  margin-bottom: 3px;
   color: #64748b;
+  font-weight: 600;
 }
 
 .kelasItem input {
   width: 100%;
-  padding: 6px;
+  padding: 5px 2px;
   text-align: center;
   border: 1px solid var(--border-color);
   border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.kelasItem input:focus {
+  border-color: var(--primary);
+  outline: none;
 }
 
 .sectionTitle {
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 20px 0 10px 0;
-  color: var(--text-main);
-  border-bottom: 1px solid var(--border-color);
+  font-size: 0.875rem;
+  font-weight: 700;
+  margin: 14px 0 8px 0;
+  color: #1e293b;
+  border-bottom: 1px solid #e2e8f0;
   padding-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sectionTitle::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 14px;
+  background: var(--primary);
+  border-radius: 2px;
 }
 
 .modalActions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 24px;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
 }
 
 .cancelBtn, .saveBtn {
-  padding: 10px 20px;
-  border-radius: 8px;
+  padding: 8px 18px;
+  border-radius: 6px;
   cursor: pointer;
   font-weight: 600;
+  font-size: 0.875rem;
 }
 
 .cancelBtn {
@@ -237,14 +314,22 @@
   color: var(--text-main);
 }
 
+.cancelBtn:hover {
+  background: #f8fafc;
+}
+
 .saveBtn {
   border: none;
   background: var(--primary);
   color: white;
 }
 
+.saveBtn:hover {
+  background: var(--primary-dark);
+}
+
 .saveBtn:disabled {
-  opacity: 0.7;
+  opacity: 0.65;
   cursor: not-allowed;
 }
 
@@ -252,32 +337,27 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #f8fafc;
-  padding: 12px 16px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  padding: 10px 14px;
   border-radius: 8px;
-  margin-top: 16px;
+  margin-top: 14px;
   font-weight: 600;
+  font-size: 0.9rem;
 }
 
 /* ===== MOBILE RESPONSIVE ===== */
 @media (max-width: 768px) {
-  .container { padding: 16px; }
-  .header { flex-direction: column; align-items: stretch; gap: 12px; }
-  .controls { flex-direction: column; align-items: stretch; gap: 12px; }
-  .title { font-size: 1.4rem; }
-  .sectionTitle { font-size: 1.4rem; }
-  .searchInput { flex-direction: column; gap: 8px; width: 100%; }
-  .table th, .table td { padding: 10px 8px; font-size: 0.85rem; }
-  .tableWrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .card { padding: 16px; }
-  .modalContent { width: 95%; padding: 20px; max-height: 90vh; overflow-y: auto; }
-  .modalTitle { font-size: 1.2rem; }
-  .modalActions { flex-direction: column-reverse; gap: 8px; }
-  .modalActions button { width: 100%; justify-content: center; padding: 12px; box-sizing: border-box; }
-}
-
-@media (max-width: 420px) {
   .container { padding: 12px; }
-  .title { font-size: 1.2rem; }
-  .sectionTitle { font-size: 1.2rem; }
+  .header { flex-direction: column; align-items: stretch; gap: 10px; }
+  .controls { flex-direction: column; gap: 8px; }
+  .title { font-size: 1.1rem; }
+  .table { font-size: 0.7rem; }
+  .table th, .table td { padding: 3px 2px; }
+  .tableWrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .modalContent { width: 95%; padding: 16px; max-height: 90vh; overflow-y: auto; }
+  .modalTitle { font-size: 1rem; }
+  .modalActions { flex-direction: column-reverse; gap: 8px; }
+  .modalActions button { width: 100%; justify-content: center; padding: 10px; box-sizing: border-box; }
+  .formGrid { grid-template-columns: 1fr; }
 }

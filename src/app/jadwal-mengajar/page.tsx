@@ -117,6 +117,7 @@ export default function JadwalMengajarPage() {
   };
 
   const handleSave = async () => {
+    if (!isAdmin) { alert('Akses ditolak'); return; }
     if (!formData.kodeGuru || !formData.namaGuru || !formData.mataPelajaran) {
       alert('Kode Guru, Nama, dan Mata Pelajaran harus diisi!');
       return;
@@ -147,6 +148,7 @@ export default function JadwalMengajarPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!isAdmin) { alert('Akses ditolak'); return; }
     if (!confirm('Apakah Anda yakin ingin menghapus jadwal ini?')) return;
     
     try {
