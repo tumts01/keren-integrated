@@ -322,16 +322,19 @@ export default function PresensiPage() {
 
               <div className={styles.filterGroup}>
                 <label>Mata Pelajaran</label>
-                <select 
-                  value={selectedMapel} 
+                <input
+                  list="mapel-options"
+                  value={selectedMapel}
                   onChange={(e) => setSelectedMapel(e.target.value)}
                   className={styles.inputField}
-                >
-                  <option value="">-- Pilih Mapel --</option>
-                  {mapelList.map(mapel => (
-                    <option key={mapel} value={mapel}>{mapel}</option>
+                  placeholder="Ketik atau pilih mata pelajaran..."
+                  autoComplete="off"
+                />
+                <datalist id="mapel-options">
+                  {mapelList.map((mapel, i) => (
+                    <option key={i} value={mapel} />
                   ))}
-                </select>
+                </datalist>
               </div>
             </div>
 
@@ -436,16 +439,19 @@ export default function PresensiPage() {
               
               <div className={styles.filterGroup}>
                 <label>Mata Pelajaran</label>
-                <select 
-                  value={selectedMapel} 
+                <input
+                  list="mapel-options"
+                  value={selectedMapel}
                   onChange={(e) => setSelectedMapel(e.target.value)}
                   className={styles.inputField}
-                >
-                  <option value="">-- Pilih Mapel --</option>
-                  {mapelList.map((m, i) => (
-                    <option key={i} value={m}>{m}</option>
+                  placeholder="Ketik atau pilih mata pelajaran..."
+                  autoComplete="off"
+                />
+                <datalist id="mapel-options">
+                  {mapelList.map((mapel, i) => (
+                    <option key={i} value={mapel} />
                   ))}
-                </select>
+                </datalist>
               </div>
 
               <div className={styles.filterGroup}>
