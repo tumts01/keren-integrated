@@ -92,6 +92,10 @@ export default function PersuratanPage() {
   const [generateTanggal, setGenerateTanggal] = useState(
     new Date().toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })
   );
+
+  // Riwayat cetak
+  const [riwayatCetak, setRiwayatCetak] = useState<any[]>([]);
+  const [showRiwayat, setShowRiwayat] = useState(true);
   
   const [searchSiswaTerm, setSearchSiswaTerm] = useState('');
   const [siswaOptions, setSiswaOptions] = useState<any[]>([]);
@@ -194,7 +198,52 @@ export default function PersuratanPage() {
 
   useEffect(() => {
     fetchData();
+    // Load riwayat dari localStorage
+    const saved = localStorage.getItem('keren_riwayat_cetak');
+    if (saved) {
+      try { setRiwayatCetak(JSON.parse(saved)); } catch {}
+    }
   }, []);
+
+  const repopulateForm = (record: any) => {
+    setGenerateJenis(record.jenis);
+    setGenerateNomor(record.nomor);
+    setGenerateTanggal(record.tanggal);
+    setGenerateSiswa(record.siswa || null);
+    setSearchSiswaTerm(record.siswa?.nama || '');
+    setGenerateSiswaList(record.siswaList || []);
+    setGenerateGuruTugas(record.guruTugas || []);
+    setGenerateTujuan(record.tujuan || '');
+    setGenerateKegiatan(record.kegiatan || '');
+    setGenerateKonteks(record.konteks || '');
+    setGenerateHariTanggal(record.hariTanggal || '');
+    setGenerateWaktu(record.waktu || '');
+    setGenerateTempat(record.tempat || '');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSaveAndPrint = () => {
+    const record = {
+      id: Date.now().toString(),
+      jenis: generateJenis,
+      nomor: generateNomor,
+      tanggal: generateTanggal,
+      tglCetak: new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
+      siswa: generateSiswa,
+      siswaList: generateSiswaList,
+      guruTugas: generateGuruTugas,
+      tujuan: generateTujuan,
+      kegiatan: generateKegiatan,
+      konteks: generateKonteks,
+      hariTanggal: generateHariTanggal,
+      waktu: generateWaktu,
+      tempat: generateTempat,
+    };
+    const updated = [record, ...riwayatCetak].slice(0, 50);
+    localStorage.setItem('keren_riwayat_cetak', JSON.stringify(updated));
+    setRiwayatCetak(updated);
+    window.print();
+  };
 
   const handleGenerateSurat = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -729,6 +778,62 @@ export default function PersuratanPage() {
           <>
           {activeTab === 'generate' ? (
             <div className={styles.generateContainer} style={{ padding: '24px' }}>
+
+              {/* Riwayat Cetak */}
+              {riwayatCetak.length > 0 && (
+                <div style={{ marginBottom: '28px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
+                  <div
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', cursor: 'pointer', background: '#f1f5f9', borderBottom: showRiwayat ? '1px solid #e2e8f0' : 'none' }}
+                    onClick={() => setShowRiwayat(v => !v)}
+                  >
+                    <span style={{ fontWeight: 700, color: '#334155', fontSize: '0.95rem' }}>
+                      <i className="fas fa-history" style={{ marginRight: '8px', color: '#8b5cf6' }}></i>
+                      Riwayat Cetak ({riwayatCetak.length})
+                    </span>
+                    <i className={`fas fa-chevron-${showRiwayat ? 'up' : 'down'}`} style={{ color: '#64748b' }}></i>
+                  </div>
+                  {showRiwayat && (
+                    <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
+                      {riwayatCetak.map((r, i) => (
+                        <div key={r.id} style={{ padding: '12px 18px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', background: i % 2 === 0 ? 'white' : '#fafafa' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#1e293b', marginBottom: '3px' }}>{r.nomor}</div>
+                            <div style={{ fontSize: '0.8rem', color: '#475569' }}>
+                              <span style={{ background: '#e0e7ff', color: '#4338ca', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem', marginRight: '6px' }}>{r.jenis}</span>
+                              {r.siswa?.nama && <span style={{ marginRight: '4px' }}>• {r.siswa.nama}</span>}
+                              {r.siswaList?.length > 0 && <span style={{ marginRight: '4px' }}>• {r.siswaList.length} siswa</span>}
+                              {r.guruTugas?.length > 0 && <span style={{ marginRight: '4px' }}>• {r.guruTugas.map((g: any) => g.guru.nama).join(', ')}</span>}
+                            </div>
+                            <div style={{ fontSize: '0.73rem', color: '#94a3b8', marginTop: '3px' }}>Dicetak: {r.tglCetak}</div>
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                            <button
+                              className="btn"
+                              style={{ background: '#ede9fe', color: '#7c3aed', padding: '6px 12px', fontSize: '0.78rem', whiteSpace: 'nowrap' }}
+                              onClick={() => repopulateForm(r)}
+                            >
+                              <i className="fas fa-redo"></i> Cetak Ulang
+                            </button>
+                            <button
+                              className="btn"
+                              style={{ background: '#fee2e2', color: '#ef4444', padding: '6px 10px', fontSize: '0.78rem' }}
+                              onClick={() => {
+                                const updated = riwayatCetak.filter(x => x.id !== r.id);
+                                setRiwayatCetak(updated);
+                                localStorage.setItem('keren_riwayat_cetak', JSON.stringify(updated));
+                              }}
+                              title="Hapus dari riwayat"
+                            >
+                              <i className="fas fa-trash"></i>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               <h3 style={{ marginBottom: '20px', color: '#1e293b' }}><i className="fas fa-print" style={{ marginRight: '8px' }}></i> Form Generate Surat</h3>
               
               <div style={{ display: 'grid', gap: '20px', maxWidth: '600px' }}>
@@ -984,11 +1089,11 @@ export default function PersuratanPage() {
                   />
                 </div>
 
-                <div style={{ marginTop: '10px' }}>
+                <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <button 
                     className="btn btn-primary" 
                     style={{ width: '100%', padding: '12px' }}
-                    onClick={() => window.print()}
+                    onClick={handleSaveAndPrint}
                     disabled={!generateNomor || !generateTanggal || (generateJenis === 'Surat Keterangan Aktif Siswa' ? !generateSiswa : (generateJenis === 'Surat Permohonan Izin' ? (generateSiswaList.length === 0 || !generateTujuan || !generateKegiatan || !generateKonteks) : (generateGuruTugas.length === 0 || !generateKonteks || !generateHariTanggal || !generateTempat)))}
                   >
                     <i className="fas fa-print"></i> Generate & Cetak Surat
