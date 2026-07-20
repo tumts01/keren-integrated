@@ -109,7 +109,12 @@ export default function PresensiPage() {
       const json = await res.json();
       if (json.success) {
         setRekapJurnalData(json.data);
-        const gurus = Array.from(new Set(json.data.map((r: any) => r.namaGuru).filter(Boolean))) as string[];
+        // Normalize: trim + collapse multiple spaces, lalu deduplikasi
+        const gurus = Array.from(new Set(
+          json.data
+            .map((r: any) => (r.namaGuru || '').trim().replace(/\s+/g, ' '))
+            .filter(Boolean)
+        )) as string[];
         gurus.sort();
         setGuruListRekap(gurus);
       }
@@ -118,20 +123,35 @@ export default function PresensiPage() {
   };
 
   const handleExportExcel = (filtered: any[]) => {
-    const rows = filtered.map((r, i) => ({
-      'No': i + 1,
-      'Tanggal': r.tanggal || '-',
-      'Nama Guru': r.namaGuru || '-',
-      'Kelas': r.kelas || '-',
-      'Mata Pelajaran': r.mapel || '-',
-      'Jam Ke': r.jamKe || '-',
-      'Materi': r.materi || '-',
-    }));
+    // Hitung jam per entri: "9,10" = 2 jam, "1,2,3" = 3 jam
+    const countJam = (jamKe: string) => {
+      if (!jamKe) return 1;
+      return jamKe.split(',').map(s => s.trim()).filter(Boolean).length;
+    };
+
+    // Group by namaGuru (normalized), akumulasi total jam
+    const grouped: Record<string, number> = {};
+    for (const r of filtered) {
+      const nama = (r.namaGuru || '').trim().replace(/\s+/g, ' ');
+      if (!nama) continue;
+      grouped[nama] = (grouped[nama] || 0) + countJam(r.jamKe || '');
+    }
+
+    const rows = Object.entries(grouped)
+      .sort(([a], [b]) => a.localeCompare(b, 'id'))
+      .map(([nama, jumlah], i) => ({
+        'No': i + 1,
+        'Nama Guru': nama,
+        'Jumlah Jam Mengajar': jumlah,
+      }));
+
     const ws = XLSX.utils.json_to_sheet(rows);
+    // Set column widths
+    ws['!cols'] = [{ wch: 5 }, { wch: 40 }, { wch: 22 }];
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Jurnal Mengajar');
+    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Jam Mengajar');
     const now = new Date().toLocaleDateString('id-ID').replace(/\//g, '-');
-    XLSX.writeFile(wb, `Rekap_Jurnal_${now}.xlsx`);
+    XLSX.writeFile(wb, `Rekap_Jam_Mengajar_${now}.xlsx`);
   };
 
   const handleFixUnknown = async () => {
