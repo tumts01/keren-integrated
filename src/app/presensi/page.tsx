@@ -502,19 +502,16 @@ export default function PresensiPage() {
 
               <div className={styles.filterGroup}>
                 <label>Mata Pelajaran</label>
-                <input
-                  list="mapel-options"
+                <select
                   value={selectedMapel}
                   onChange={(e) => setSelectedMapel(e.target.value)}
                   className={styles.inputField}
-                  placeholder="Ketik atau pilih mata pelajaran..."
-                  autoComplete="off"
-                />
-                <datalist id="mapel-options">
+                >
+                  <option value="">-- Pilih Mata Pelajaran --</option>
                   {mapelList.map((mapel, i) => (
-                    <option key={i} value={mapel} />
+                    <option key={i} value={mapel}>{mapel}</option>
                   ))}
-                </datalist>
+                </select>
               </div>
             </div>
 
@@ -638,19 +635,16 @@ export default function PresensiPage() {
               
               <div className={styles.filterGroup}>
                 <label>Mata Pelajaran</label>
-                <input
-                  list="mapel-options"
+                <select
                   value={selectedMapel}
                   onChange={(e) => setSelectedMapel(e.target.value)}
                   className={styles.inputField}
-                  placeholder="Ketik atau pilih mata pelajaran..."
-                  autoComplete="off"
-                />
-                <datalist id="mapel-options">
+                >
+                  <option value="">-- Pilih Mata Pelajaran --</option>
                   {mapelList.map((mapel, i) => (
-                    <option key={i} value={mapel} />
+                    <option key={i} value={mapel}>{mapel}</option>
                   ))}
-                </datalist>
+                </select>
               </div>
 
               <div className={styles.filterGroup}>
@@ -669,19 +663,16 @@ export default function PresensiPage() {
 
               <div className={styles.filterGroup}>
                 <label>Guru yang Mengajar</label>
-                <input
-                  list="guru-options"
+                <select
                   value={selectedGuru}
                   onChange={(e) => setSelectedGuru(e.target.value)}
                   className={styles.inputField}
-                  placeholder="Ketik atau pilih nama guru..."
-                  autoComplete="off"
-                />
-                <datalist id="guru-options">
+                >
+                  <option value="">-- Pilih Nama Guru --</option>
                   {guruList.map((nama, i) => (
-                    <option key={i} value={nama} />
+                    <option key={i} value={nama}>{nama}</option>
                   ))}
-                </datalist>
+                </select>
               </div>
               
               <div className={styles.filterGroup} style={{ flex: '1 1 100%' }}>
