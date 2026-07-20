@@ -53,8 +53,8 @@ export async function POST(request: Request) {
     await sheet.addRow(rowData);
     return NextResponse.json({ success: true, message: 'Jadwal berhasil ditambahkan' });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error adding Jadwal Mengajar:', error);
-    return NextResponse.json({ success: false, error: 'Gagal menyimpan data jadwal mengajar' }, { status: 500 });
+    return NextResponse.json({ success: false, error: error.message || 'Gagal menyimpan data jadwal mengajar' }, { status: 500 });
   }
 }
