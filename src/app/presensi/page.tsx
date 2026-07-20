@@ -26,6 +26,16 @@ export default function PresensiPage() {
   const [guruList, setGuruList] = useState<string[]>([]);
   const [selectedGuru, setSelectedGuru] = useState('');
 
+  // Rekap Jurnal
+  const [rekapJurnalData, setRekapJurnalData] = useState<any[]>([]);
+  const [rekapJurnalLoading, setRekapJurnalLoading] = useState(false);
+  const [filterFrom, setFilterFrom] = useState('');
+  const [filterTo, setFilterTo] = useState('');
+  const [filterGuruRekap, setFilterGuruRekap] = useState('');
+  const [guruListRekap, setGuruListRekap] = useState<string[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [currentUsername, setCurrentUsername] = useState('');
+
   // Load classes and mapel
   useEffect(() => {
     fetch('/api/kelas').then(res => res.json()).then(data => {
@@ -61,7 +71,37 @@ export default function PresensiPage() {
     }).catch(() => {
       setSelectedGuru(localStorage.getItem('username') || '');
     });
+
+    // Load user role
+    const storedUser = localStorage.getItem('keren_user_data');
+    const username = localStorage.getItem('username') || '';
+    setCurrentUsername(username);
+    if (storedUser) {
+      try {
+        const u = JSON.parse(storedUser);
+        const role = (u.rule || u.role || '').toLowerCase();
+        setIsAdmin(role === 'admin');
+        if (role !== 'admin') setFilterGuruRekap(username);
+      } catch {}
+    } else {
+      setFilterGuruRekap(username);
+    }
   }, []);
+
+  const fetchRekapJurnal = async () => {
+    setRekapJurnalLoading(true);
+    try {
+      const res = await fetch('/api/jurnal');
+      const json = await res.json();
+      if (json.success) {
+        setRekapJurnalData(json.data);
+        const gurus = Array.from(new Set(json.data.map((r: any) => r.namaGuru).filter(Boolean))) as string[];
+        gurus.sort();
+        setGuruListRekap(gurus);
+      }
+    } catch (e) { console.error(e); }
+    finally { setRekapJurnalLoading(false); }
+  };
 
   // Effect when class changes (Mock loading students)
   useEffect(() => {
@@ -594,8 +634,148 @@ export default function PresensiPage() {
 
         {activeTab === 'rekap_jurnal' && (
           <div className={styles.card}>
-            <h2>Rekap Jurnal</h2>
-            <p className={styles.placeholderText}>Modul rekap jurnal mengajar akan segera hadir. Menunggu konfigurasi spreadsheet.</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#1e293b' }}>
+                  <i className="fas fa-clipboard-list" style={{ marginRight: 8, color: '#237227' }}></i>
+                  Rekap Jurnal Mengajar
+                </h2>
+                <p style={{ margin: '4px 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                  {isAdmin ? 'Data semua guru' : `Data jurnal: ${currentUsername}`}
+                </p>
+              </div>
+              <button
+                onClick={fetchRekapJurnal}
+                style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                <i className="fas fa-sync-alt"></i> Muat Data
+              </button>
+            </div>
+
+            {/* Filter */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 20, padding: 16, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>Dari Tanggal</label>
+                <input type="date" value={filterFrom} onChange={e => setFilterFrom(e.target.value)}
+                  style={{ padding: '7px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: '0.9rem' }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>Sampai Tanggal</label>
+                <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)}
+                  style={{ padding: '7px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: '0.9rem' }} />
+              </div>
+              {isAdmin && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>Filter Guru</label>
+                  <select value={filterGuruRekap} onChange={e => setFilterGuruRekap(e.target.value)}
+                    style={{ padding: '7px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: '0.9rem', minWidth: 200 }}>
+                    <option value="">Semua Guru</option>
+                    {guruListRekap.map(g => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                </div>
+              )}
+              {(filterFrom || filterTo || (isAdmin && filterGuruRekap)) && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'flex-end' }}>
+                  <button onClick={() => { setFilterFrom(''); setFilterTo(''); if (isAdmin) setFilterGuruRekap(''); }}
+                    style={{ padding: '7px 14px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>
+                    <i className="fas fa-times"></i> Reset
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {rekapJurnalLoading ? (
+              <div style={{ textAlign: 'center', padding: '48px 0', color: '#64748b' }}>
+                <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', display: 'block', marginBottom: 12 }}></i>
+                Memuat data jurnal...
+              </div>
+            ) : rekapJurnalData.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
+                <i className="fas fa-inbox" style={{ fontSize: '2.5rem', display: 'block', marginBottom: 12 }}></i>
+                Klik <strong>"Muat Data"</strong> untuk menampilkan rekap jurnal
+              </div>
+            ) : (() => {
+              const filtered = rekapJurnalData.filter(r => {
+                if (!isAdmin && r.namaGuru !== currentUsername) return false;
+                if (filterGuruRekap && r.namaGuru !== filterGuruRekap) return false;
+                if (filterFrom && r.tanggal < filterFrom) return false;
+                if (filterTo && r.tanggal > filterTo) return false;
+                return true;
+              });
+              const guruSummary = filtered.reduce((acc: Record<string, number>, r) => {
+                acc[r.namaGuru] = (acc[r.namaGuru] || 0) + 1;
+                return acc;
+              }, {});
+              return (
+                <div>
+                  {/* Summary cards (admin, no guru filter) */}
+                  {isAdmin && !filterGuruRekap && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
+                      <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 10, padding: '12px 20px' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 600 }}>TOTAL ENTRI</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e40af' }}>{filtered.length}</div>
+                      </div>
+                      <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '12px 20px' }}>
+                        <div style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600 }}>JUMLAH GURU</div>
+                        <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#15803d' }}>{Object.keys(guruSummary).length}</div>
+                      </div>
+                      {Object.entries(guruSummary).sort((a,b) => b[1]-a[1]).slice(0,3).map(([nama, count]) => (
+                        <div key={nama} style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: 10, padding: '12px 20px' }}>
+                          <div style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600 }}>🏆 {nama}</div>
+                          <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#92400e' }}>{count} <span style={{fontSize:'0.8rem',fontWeight:500}}>entri</span></div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {filtered.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '32px 0', color: '#94a3b8' }}>
+                      <i className="fas fa-search" style={{ fontSize: '2rem', display: 'block', marginBottom: 8 }}></i>
+                      Tidak ada data sesuai filter
+                    </div>
+                  ) : (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                        <thead>
+                          <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                            <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>No</th>
+                            <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>Tanggal</th>
+                            {isAdmin && <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>Nama Guru</th>}
+                            <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>Kelas</th>
+                            <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>Mata Pelajaran</th>
+                            <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>Jam Ke</th>
+                            <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, color: '#475569' }}>Materi</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filtered.map((r, i) => (
+                            <tr key={r.id || i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? 'white' : '#fafafa' }}>
+                              <td style={{ padding: '10px 14px', color: '#94a3b8' }}>{i + 1}</td>
+                              <td style={{ padding: '10px 14px', whiteSpace: 'nowrap', color: '#334155', fontWeight: 500 }}>
+                                {r.tanggal ? new Date(r.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}
+                              </td>
+                              {isAdmin && (
+                                <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>
+                                  <span style={{ background: '#e0e7ff', color: '#4338ca', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600 }}>{r.namaGuru}</span>
+                                </td>
+                              )}
+                              <td style={{ padding: '10px 14px', whiteSpace: 'nowrap', fontWeight: 600, color: '#1e293b' }}>{r.kelas}</td>
+                              <td style={{ padding: '10px 14px', whiteSpace: 'nowrap', color: '#475569' }}>{r.mapel}</td>
+                              <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                                <span style={{ background: '#dcfce7', color: '#16a34a', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600 }}>Jam {r.jamKe}</span>
+                              </td>
+                              <td style={{ padding: '10px 14px', color: '#475569', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.materi}>{r.materi}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <div style={{ marginTop: 12, fontSize: '0.8rem', color: '#94a3b8', textAlign: 'right' }}>
+                        Menampilkan {filtered.length} dari {rekapJurnalData.length} entri
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>
