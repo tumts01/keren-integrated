@@ -21,6 +21,7 @@ interface Guru {
   alamat: string;
   tanggalSk: string;
   email: string;
+  pendidikan: string;
 }
 
 export default function GuruPage() {
@@ -83,6 +84,7 @@ export default function GuruPage() {
       'Pass Emis (Dev)': g.passEmisDev,
       'Jenis Kelamin': g.jenisKelamin,
       'Jabatan': g.jabatan,
+      'Pendidikan': g.pendidikan,
       'Tempat Lahir': g.tempatLahir,
       'Tanggal Lahir': g.tanggalLahir,
       'NIK': g.nik,
@@ -131,6 +133,10 @@ export default function GuruPage() {
                 <div className={styles.infoGroup}>
                   <span className={styles.infoLabel}>Jabatan</span>
                   <div className={styles.infoValue}>{selectedGuru.jabatan || '-'}</div>
+                </div>
+                <div className={styles.infoGroup}>
+                  <span className={styles.infoLabel}>Pendidikan</span>
+                  <div className={styles.infoValue}>{selectedGuru.pendidikan || '-'}</div>
                 </div>
                 <div className={styles.infoGroup}>
                   <span className={styles.infoLabel}>Status</span>
@@ -255,6 +261,7 @@ export default function GuruPage() {
                   <th>Nomor Induk Pegawai</th>
                   <th>PEG ID</th>
                   <th>Jabatan</th>
+                  <th>Pendidikan</th>
                   <th>Jenis Kelamin</th>
                   <th>Tempat Lahir</th>
                   <th>Tanggal Lahir</th>
@@ -294,6 +301,7 @@ export default function GuruPage() {
                       <td>{guru.nip || '-'}</td>
                       <td>{guru.pegId || '-'}</td>
                       <td>{guru.jabatan || '-'}</td>
+                      <td>{guru.pendidikan || '-'}</td>
                       <td>{guru.jenisKelamin || '-'}</td>
                       <td>{guru.tempatLahir || '-'}</td>
                       <td>{guru.tanggalLahir || '-'}</td>
@@ -317,7 +325,7 @@ export default function GuruPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={16} style={{ textAlign: 'center', padding: '40px' }}>
+                    <td colSpan={17} style={{ textAlign: 'center', padding: '40px' }}>
                       <i className="fas fa-folder-open" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
                       Tidak ada data guru yang ditemukan. Coba cek isi Excel Anda.
                     </td>

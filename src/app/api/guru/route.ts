@@ -59,7 +59,8 @@ export async function GET() {
         noHp: row.get('No WA') || '',
         alamat: row.get('Alamat') || '',
         tanggalSk: row.get('Tanggal SK Awal') || '',
-        email: row.get('Email') || ''
+        email: row.get('Email') || '',
+        pendidikan: row.get('Pendidikan') || ''
       };
     });
 
