@@ -162,16 +162,13 @@ export default function PresensiPage() {
       'No': i + 1,
       'Nama Siswa': s.nama,
       'Kelas': s.kelas,
-      'Sakit (Jam)': s.S,
-      'Izin (Jam)': s.I,
-      'Alpha (Jam)': s.A,
-      'Total S+I+A': s.S + s.I + s.A,
+      'Total S/I/A (Jam)': s.S + s.I + s.A,
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 5 }, { wch: 30 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
+    ws['!cols'] = [{ wch: 5 }, { wch: 32 }, { wch: 10 }, { wch: 18 }];
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Alpha');
-    XLSX.writeFile(wb, `Rekap_Alpha_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, 'Rekap S-I-A');
+    XLSX.writeFile(wb, `Rekap_SIA_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.xlsx`);
   };
 
   const fetchRekapJurnal = async () => {
@@ -806,6 +803,11 @@ export default function PresensiPage() {
             if (rsFilterNama && !r.namaSiswa.toLowerCase().includes(rsFilterNama.toLowerCase())) return false;
             if (rsFilterKelas && r.kelas.trim() !== rsFilterKelas.trim()) return false;
             return true;
+          }).sort((a, b) => {
+            // Urut berdasarkan tanggal, lalu nama siswa
+            const dateCompare = (a.tanggal || '').localeCompare(b.tanggal || '');
+            if (dateCompare !== 0) return dateCompare;
+            return (a.namaSiswa || '').localeCompare(b.namaSiswa || '', 'id');
           });
 
           // Unique kelas dari data — normalize trim dulu
@@ -821,7 +823,9 @@ export default function PresensiPage() {
             else if (r.kehadiran === 'I') alphaMap[nama].I += jam;
             else if (r.kehadiran === 'A') alphaMap[nama].A += jam;
           }
-          const alphaList = Object.values(alphaMap).filter(s => s.A > 1).sort((a, b) => b.A - a.A);
+          const alphaList = Object.values(alphaMap)
+            .filter(s => (s.S + s.I + s.A) > 1)
+            .sort((a, b) => (b.S + b.I + b.A) - (a.S + a.I + a.A));
 
           const tdStyle = (val: number) => ({
             padding: '8px 12px', textAlign: 'center' as const,
@@ -844,7 +848,7 @@ export default function PresensiPage() {
 
               {/* Sub-tabs */}
               <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '2px solid #e2e8f0' }}>
-                {[{ key: 'semua', label: '📋 Semua Presensi' }, { key: 'alpha', label: `⚠️ Rekap Alpha (${alphaList.length} siswa)` }].map(t => (
+                {[{ key: 'semua', label: '📋 Semua Presensi' }, { key: 'alpha', label: `⚠️ Rekap S/I/A (${alphaList.length} siswa)` }].map(t => (
                   <button key={t.key} onClick={() => setRsSubTab(t.key as 'semua' | 'alpha')}
                     style={{ padding: '8px 16px', border: 'none', background: rsSubTab === t.key ? '#237227' : 'transparent', color: rsSubTab === t.key ? 'white' : '#64748b', borderRadius: '6px 6px 0 0', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s' }}
                   >{t.label}</button>
@@ -939,8 +943,8 @@ export default function PresensiPage() {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.82rem', color: '#64748b' }}>{alphaList.length} siswa dengan Alpha &gt; 1</span>
-                      <span style={{ fontSize: '0.78rem', background: '#fee2e2', color: '#dc2626', padding: '2px 8px', borderRadius: 20 }}>🔴 = S/I/A lebih dari 5 jam</span>
+                      <span style={{ fontSize: '0.82rem', color: '#64748b' }}>{alphaList.length} siswa dengan total S/I/A &gt; 1</span>
+                      <span style={{ fontSize: '0.78rem', background: '#fee2e2', color: '#dc2626', padding: '2px 8px', borderRadius: 20 }}>🔴 = total lebih dari 5 jam</span>
                     </div>
                     <button onClick={() => exportAlphaExcel(alphaList)}
                       style={{ background: '#16a34a', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
@@ -950,32 +954,31 @@ export default function PresensiPage() {
                   {alphaList.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '32px 0', color: '#94a3b8' }}>
                       <i className="fas fa-check-circle" style={{ fontSize: '2rem', color: '#22c55e', display: 'block', marginBottom: 8 }}></i>
-                      Semua siswa Alpha ≤ 1 — tidak ada yang perlu diperhatikan
+                      Semua siswa memiliki total S/I/A ≤ 1
                     </div>
                   ) : (
                     <div style={{ overflowX: 'auto' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                         <thead>
                           <tr style={{ background: '#1e3a5f', color: 'white' }}>
-                            {['No','Nama Siswa','Kelas','Sakit (S)','Izin (I)','Alpha (A)'].map(h => (
-                              <th key={h} style={{ padding: '8px 12px', textAlign: 'center', whiteSpace: 'nowrap', fontWeight: 700 }}>{h}</th>
+                            {['No','Nama Siswa','Kelas','Total S/I/A'].map(h => (
+                              <th key={h} style={{ padding: '8px 14px', textAlign: h === 'No' || h === 'Total S/I/A' ? 'center' : 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {alphaList.map((s, i) => {
-                            const isRed = s.S > 5 || s.I > 5 || s.A > 5;
+                            const total = s.S + s.I + s.A;
+                            const isRed = total > 5;
                             return (
                               <tr key={s.nama} style={{ borderBottom: '1px solid #f1f5f9', background: isRed ? '#fff5f5' : i % 2 === 0 ? 'white' : '#f8fafc' }}>
-                                <td style={{ padding: '8px 12px', textAlign: 'center', color: '#94a3b8', width: 40 }}>{i + 1}</td>
-                                <td style={{ padding: '8px 12px', fontWeight: 600, color: isRed ? '#dc2626' : '#1e293b' }}>
+                                <td style={{ padding: '9px 14px', textAlign: 'center', color: '#94a3b8', width: 44 }}>{i + 1}</td>
+                                <td style={{ padding: '9px 14px', fontWeight: 600, color: isRed ? '#dc2626' : '#1e293b' }}>
                                   {isRed && <i className="fas fa-exclamation-triangle" style={{ color: '#dc2626', marginRight: 6, fontSize: '0.75rem' }}></i>}
                                   {s.nama}
                                 </td>
-                                <td style={{ padding: '8px 12px', textAlign: 'center', color: '#475569' }}>{s.kelas}</td>
-                                <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: s.S > 5 ? '#dc2626' : s.S > 0 ? '#d97706' : '#94a3b8' }}>{s.S}</td>
-                                <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: s.I > 5 ? '#dc2626' : s.I > 0 ? '#ea580c' : '#94a3b8' }}>{s.I}</td>
-                                <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 700, color: s.A > 5 ? '#dc2626' : s.A > 0 ? '#7c3aed' : '#94a3b8', background: s.A > 5 ? '#fee2e2' : 'transparent', borderRadius: 6 }}>{s.A}</td>
+                                <td style={{ padding: '9px 14px', color: '#475569' }}>{s.kelas}</td>
+                                <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, fontSize: '1rem', color: isRed ? '#dc2626' : total > 0 ? '#d97706' : '#64748b', background: isRed ? '#fee2e2' : total > 3 ? '#fff7ed' : 'transparent', borderRadius: 8 }}>{total}</td>
                               </tr>
                             );
                           })}
