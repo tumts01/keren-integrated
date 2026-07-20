@@ -37,6 +37,45 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Popup Pengumuman Baru saat user berhasil login / load
+  useEffect(() => {
+    if (user) {
+      fetch('/api/pengumuman')
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && data.data && data.data.length > 0) {
+            const latest = data.data[0]; // Pengumuman terbaru
+            const annId = `${latest.tanggal}_${latest.jam}_${latest.pengirim}`;
+            const lastRead = localStorage.getItem('keren_last_read_ann');
+            
+            if (lastRead !== annId) {
+              import('sweetalert2').then(Swal => {
+                Swal.default.fire({
+                  title: '📢 Pengumuman Baru!',
+                  html: `
+                    <div style="text-align: left; margin-top: 10px;">
+                      <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 12px; display: flex; justify-content: space-between;">
+                        <span>Dari: <b>${latest.pengirim}</b></span>
+                        <span>${latest.tanggal} ${latest.jam}</span>
+                      </div>
+                      <div style="background: #eff6ff; padding: 16px; border-radius: 12px; border-left: 4px solid #0ea5e9; font-size: 0.95rem; line-height: 1.5; color: #1e293b; white-space: pre-wrap;">${latest.pesan}</div>
+                    </div>
+                  `,
+                  confirmButtonText: 'Tutup & Mengerti',
+                  confirmButtonColor: '#0ea5e9',
+                  width: '500px',
+                  allowOutsideClick: false
+                }).then(() => {
+                  localStorage.setItem('keren_last_read_ann', annId);
+                });
+              });
+            }
+          }
+        })
+        .catch(err => console.error('Gagal memuat pengumuman:', err));
+    }
+  }, [user]);
+
   const handleInstallClick = async () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();

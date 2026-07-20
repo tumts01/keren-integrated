@@ -205,6 +205,7 @@ export default function PengumumanPage() {
   }, []);
 
   const isAdmin = user?.rule?.toLowerCase() === 'admin';
+  const [viaAppOnly, setViaAppOnly] = useState(false);
 
   const handleSend = async (target: 'all' | 'pimpinan') => {
     if (!message.trim()) {
@@ -220,13 +221,14 @@ export default function PengumumanPage() {
         body: JSON.stringify({
           pesan: message,
           pengirim: user?.nama || 'Admin',
-          target: target === 'pimpinan' ? 'pimpinan' : 'semua'
+          target: target === 'pimpinan' ? 'pimpinan' : 'semua',
+          viaAppOnly
         })
       });
       const data = await response.json();
       if (response.ok && data.success) {
         const label = target === 'pimpinan' ? 'Pimpinan' : 'seluruh Guru & Staf';
-        setStatus({ type: 'success', text: `Pengumuman berhasil dikirim ke ${label} via WhatsApp!` });
+        setStatus({ type: 'success', text: `Pengumuman berhasil ${viaAppOnly ? 'diposting di Aplikasi untuk' : 'dikirim ke'} ${label}!` });
         setMessage(''); fetchHistory();
       } else {
         setStatus({ type: 'error', text: data.error || 'Gagal mengirim pengumuman.' });
@@ -274,6 +276,17 @@ export default function PengumumanPage() {
                 value={message} onChange={(e) => setMessage(e.target.value)}
                 disabled={sendingTo !== null}
               />
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+              <input 
+                type="checkbox" id="viaAppOnly" 
+                checked={viaAppOnly} onChange={e => setViaAppOnly(e.target.checked)}
+                style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#0ea5e9' }}
+              />
+              <label htmlFor="viaAppOnly" style={{ fontSize: '0.85rem', cursor: 'pointer', color: '#475569', fontWeight: 600 }}>
+                Hanya tampilkan di Aplikasi (Jangan kirim pesan WhatsApp)
+              </label>
             </div>
 
             {/* Tiga tombol kirim */}

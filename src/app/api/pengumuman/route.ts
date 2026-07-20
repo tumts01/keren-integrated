@@ -11,14 +11,14 @@ function formatPhone(rawHp: string) {
 
 export async function POST(request: Request) {
   try {
-    const { pesan, pengirim, target, phones } = await request.json();
+    const { pesan, pengirim, target, phones, viaAppOnly } = await request.json();
 
     if (!pesan) {
       return NextResponse.json({ success: false, error: 'Pesan tidak boleh kosong' }, { status: 400 });
     }
 
     const token = process.env.FONNTE_TOKEN;
-    if (!token) {
+    if (!token && !viaAppOnly) {
       return NextResponse.json({ success: false, error: 'FONNTE_TOKEN belum dikonfigurasi' }, { status: 500 });
     }
 
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
         .map(r => (r.get('Nama') || '').toLowerCase().trim())
         .filter(Boolean);
 
-      if (pimpinanNames.length === 0) {
+      if (pimpinanNames.length === 0 && !viaAppOnly) {
         return NextResponse.json({ success: false, error: 'Tidak ada user dengan role Pimpinan ditemukan' }, { status: 404 });
       }
 
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
           });
       }
 
-      if (phonesArr.length === 0) {
+      if (phonesArr.length === 0 && !viaAppOnly) {
         return NextResponse.json({ success: false, error: 'Nomor WA pimpinan tidak ditemukan.' }, { status: 404 });
       }
 
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     } else if (target === 'custom' && Array.isArray(phones) && phones.length > 0) {
       // 2b. Custom — kirim ke nomor-nomor yang dipilih
       const formatted = phones.map((hp: string) => formatPhone(hp)).filter(hp => hp.length >= 8);
-      if (formatted.length === 0) {
+      if (formatted.length === 0 && !viaAppOnly) {
         return NextResponse.json({ success: false, error: 'Tidak ada nomor WA yang valid' }, { status: 400 });
       }
       targets = [...new Set(formatted)].join(',');
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
     } else {
       // 2b. Kirim ke semua GTK aktif
       const allPhones = Object.values(gtkMap).map(hp => formatPhone(hp));
-      if (allPhones.length === 0) {
+      if (allPhones.length === 0 && !viaAppOnly) {
         return NextResponse.json({ success: false, error: 'Tidak ada nomor WA GTK aktif yang ditemukan' }, { status: 404 });
       }
       targets = allPhones.join(',');
@@ -118,7 +118,7 @@ export async function POST(request: Request) {
       const tanggal = dateWIB.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
       const jam = dateWIB.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
-      const targetLabel = target === 'pimpinan' ? 'Pimpinan' : target === 'custom' ? `${count} Guru Pilihan` : 'Semua GTK';
+      const targetLabel = viaAppOnly ? (target === 'pimpinan' ? 'Aplikasi: Pimpinan' : 'Aplikasi: Semua GTK') : (target === 'pimpinan' ? 'Pimpinan' : target === 'custom' ? `${count} Guru Pilihan` : 'Semua GTK');
       await sheetPengumuman.addRow({
         Tanggal: tanggal,
         Jam: jam,
@@ -130,11 +130,19 @@ export async function POST(request: Request) {
       console.error('Gagal menyimpan log ke Spreadsheet:', sheetError);
     }
 
-    // 4. Kirim via Fonnte API
+    // 4. Kirim via Fonnte API (Jika viaAppOnly false)
+    if (viaAppOnly) {
+      return NextResponse.json({
+        success: true,
+        message: `Pengumuman berhasil diposting di aplikasi (tanpa pesan WA).`,
+        data: { status: true }
+      });
+    }
+
     const response = await fetch('https://api.fonnte.com/send', {
       method: 'POST',
       headers: {
-        'Authorization': token,
+        'Authorization': token || '',
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ target: targets, message: pesan, delay: '2' })
