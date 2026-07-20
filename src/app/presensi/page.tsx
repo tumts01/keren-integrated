@@ -22,6 +22,10 @@ export default function PresensiPage() {
   // Cache siswa per kelas agar tidak refetch ulang ke server
   const siswaCache = useRef<Record<string, any[]>>({});
 
+  // Jurnal: guru yang mengajar
+  const [guruList, setGuruList] = useState<string[]>([]);
+  const [selectedGuru, setSelectedGuru] = useState('');
+
   // Load classes and mapel
   useEffect(() => {
     fetch('/api/kelas').then(res => res.json()).then(data => {
@@ -41,6 +45,22 @@ export default function PresensiPage() {
         setMapelList(data.data.map((m: any) => m.namaMapel));
       }
     }).catch(err => console.error(err));
+
+    // Load daftar guru aktif untuk pilihan guru di jurnal
+    fetch('/api/guru').then(res => res.json()).then(data => {
+      if (data.success && data.data) {
+        const namaGuru = data.data
+          .filter((g: any) => (g.status || '').toLowerCase().trim() === 'aktif')
+          .map((g: any) => g.nama)
+          .filter(Boolean);
+        setGuruList(namaGuru);
+      }
+      // Pre-fill dengan nama user yang login
+      const loginName = localStorage.getItem('username') || '';
+      setSelectedGuru(loginName);
+    }).catch(() => {
+      setSelectedGuru(localStorage.getItem('username') || '');
+    });
   }, []);
 
   // Effect when class changes (Mock loading students)
@@ -201,7 +221,7 @@ export default function PresensiPage() {
     if (!result.isConfirmed) return;
 
     setIsSubmitting(true);
-    const guru = localStorage.getItem('username') || 'Unknown';
+    const guru = selectedGuru || localStorage.getItem('username') || 'Unknown';
     try {
       const res = await fetch('/api/jurnal', {
         method: 'POST',
@@ -496,6 +516,23 @@ export default function PresensiPage() {
                     <option key={k} value={k}>{k}</option>
                   ))}
                 </select>
+              </div>
+
+              <div className={styles.filterGroup}>
+                <label>Guru yang Mengajar</label>
+                <input
+                  list="guru-options"
+                  value={selectedGuru}
+                  onChange={(e) => setSelectedGuru(e.target.value)}
+                  className={styles.inputField}
+                  placeholder="Ketik atau pilih nama guru..."
+                  autoComplete="off"
+                />
+                <datalist id="guru-options">
+                  {guruList.map((nama, i) => (
+                    <option key={i} value={nama} />
+                  ))}
+                </datalist>
               </div>
               
               <div className={styles.filterGroup} style={{ flex: '1 1 100%' }}>
