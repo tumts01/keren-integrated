@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Swal from 'sweetalert2';
 import styles from './presensi.module.css';
 
@@ -19,6 +19,8 @@ export default function PresensiPage() {
   const [siswaList, setSiswaList] = useState<any[]>([]);
   const [presensi, setPresensi] = useState<Record<string, string>>({}); // { nisn: 'H' | 'S' | 'I' | 'A' }
   const [loadingSiswa, setLoadingSiswa] = useState(false);
+  // Cache siswa per kelas agar tidak refetch ulang ke server
+  const siswaCache = useRef<Record<string, any[]>>({});
 
   // Load classes and mapel
   useEffect(() => {
@@ -44,16 +46,27 @@ export default function PresensiPage() {
   // Effect when class changes (Mock loading students)
   useEffect(() => {
     if (selectedKelas) {
+      // Pakai cache kalau data kelas ini sudah pernah diambil
+      if (siswaCache.current[selectedKelas]) {
+        const cached = siswaCache.current[selectedKelas];
+        setSiswaList(cached);
+        const defaultPresensi: Record<string, string> = {};
+        cached.forEach((s: any) => { defaultPresensi[s.id] = 'H'; });
+        setPresensi(defaultPresensi);
+        return;
+      }
       setLoadingSiswa(true);
       setSiswaList([]);
       setPresensi({});
       fetch('/api/siswa').then(res => res.json()).then(data => {
         if (data.success) {
-          const filtered = data.data.filter((s: any) => 
-            s.rombel === selectedKelas && 
-            s.isLatest && 
+          const filtered = data.data.filter((s: any) =>
+            s.rombel === selectedKelas &&
+            s.isLatest &&
             (s.status || '').toLowerCase().trim() === 'aktif'
           );
+          // Simpan ke cache
+          siswaCache.current[selectedKelas] = filtered;
           if (filtered.length > 0) {
             setSiswaList(filtered);
             const defaultPresensi: Record<string, string> = {};
