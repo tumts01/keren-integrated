@@ -2,6 +2,33 @@ import { NextResponse } from 'next/server';
 import { getPresensiDoc } from '@/lib/google-sheets';
 import crypto from 'crypto';
 
+export async function GET() {
+  try {
+    const doc = await getPresensiDoc();
+    const sheet = doc.sheetsByTitle['PRESENSI SISWA'];
+    if (!sheet) return NextResponse.json({ success: false, error: 'Sheet PRESENSI SISWA tidak ditemukan' }, { status: 404 });
+
+    const rows = await sheet.getRows();
+    const data = rows.map(r => ({
+      id: r.get('ID') || '',
+      tanggal: r.get('TANGGAL') || '',
+      tahunAjaran: r.get('TAHUN AJARAN') || '',
+      kelas: r.get('KELAS') || '',
+      jamKe: r.get('JAM KE') || '',
+      mapel: r.get('MAPEL') || '',
+      guruPenginput: r.get('GURU PENGINPUT') || '',
+      namaSiswa: (r.get('NAMA SISWA') || '').trim(),
+      nisn: r.get('NISN') || '',
+      kehadiran: r.get('KEHADIRAN') || '',
+    })).filter(r => r.namaSiswa && r.kehadiran);
+
+    return NextResponse.json({ success: true, data });
+  } catch (error: any) {
+    console.error('GET Presensi Error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
 // Retry dengan exponential backoff — penting untuk handle quota 429
 async function withRetry<T>(fn: () => Promise<T>, maxRetries = 4, baseDelayMs = 2000): Promise<T> {
   let lastError: any;
