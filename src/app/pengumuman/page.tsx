@@ -352,9 +352,15 @@ export default function PengumumanPage() {
         </h2>
         <div className={styles.historyList}>
           {(() => {
+            const isPimpinan = user?.rule?.toLowerCase() === 'pimpinan';
             const visibleHistory = isAdmin
               ? history
-              : history.filter(h => !h.target || h.target === 'Semua GTK');
+              : history.filter(h => {
+                  if (!h.target) return true;
+                  if (h.target === 'Semua GTK' || h.target === 'Aplikasi: Semua GTK') return true;
+                  if (isPimpinan && (h.target === 'Pimpinan' || h.target === 'Aplikasi: Pimpinan')) return true;
+                  return false;
+                });
 
             return visibleHistory.length === 0 ? (
               <div className={styles.noHistory}>Belum ada pengumuman.</div>
