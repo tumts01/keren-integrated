@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Swal from 'sweetalert2';
+import * as XLSX from 'xlsx';
 import styles from './presensi.module.css';
 
 export default function PresensiPage() {
@@ -73,21 +74,33 @@ export default function PresensiPage() {
       setSelectedGuru(localStorage.getItem('username') || '');
     });
 
-    // Load user role
+    // Load user role — gunakan NAMA LENGKAP (u.nama) untuk cocok dengan namaGuru di jurnal
     const storedUser = localStorage.getItem('keren_user_data');
-    const username = localStorage.getItem('username') || '';
-    setCurrentUsername(username);
+    const usernameRaw = localStorage.getItem('username') || '';
     if (storedUser) {
       try {
         const u = JSON.parse(storedUser);
         const role = (u.rule || u.role || '').toLowerCase();
+        const namaLengkap = u.nama || usernameRaw; // ← nama lengkap untuk filter jurnal
+        setCurrentUsername(namaLengkap);
         setIsAdmin(role === 'admin');
-        if (role !== 'admin') setFilterGuruRekap(username);
-      } catch {}
+        if (role !== 'admin') setFilterGuruRekap(namaLengkap);
+      } catch {
+        setCurrentUsername(usernameRaw);
+        setFilterGuruRekap(usernameRaw);
+      }
     } else {
-      setFilterGuruRekap(username);
+      setCurrentUsername(usernameRaw);
+      setFilterGuruRekap(usernameRaw);
     }
   }, []);
+
+  // Auto-load rekap jurnal ketika tab rekap_jurnal dibuka
+  useEffect(() => {
+    if (activeTab === 'rekap_jurnal' && rekapJurnalData.length === 0 && !rekapJurnalLoading) {
+      fetchRekapJurnal();
+    }
+  }, [activeTab]);
 
   const fetchRekapJurnal = async () => {
     setRekapJurnalLoading(true);
@@ -102,6 +115,23 @@ export default function PresensiPage() {
       }
     } catch (e) { console.error(e); }
     finally { setRekapJurnalLoading(false); }
+  };
+
+  const handleExportExcel = (filtered: any[]) => {
+    const rows = filtered.map((r, i) => ({
+      'No': i + 1,
+      'Tanggal': r.tanggal || '-',
+      'Nama Guru': r.namaGuru || '-',
+      'Kelas': r.kelas || '-',
+      'Mata Pelajaran': r.mapel || '-',
+      'Jam Ke': r.jamKe || '-',
+      'Materi': r.materi || '-',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Jurnal Mengajar');
+    const now = new Date().toLocaleDateString('id-ID').replace(/\//g, '-');
+    XLSX.writeFile(wb, `Rekap_Jurnal_${now}.xlsx`);
   };
 
   const handleFixUnknown = async () => {
@@ -762,8 +792,8 @@ export default function PresensiPage() {
               </div>
             ) : rekapJurnalData.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
-                <i className="fas fa-inbox" style={{ fontSize: '2.5rem', display: 'block', marginBottom: 12 }}></i>
-                Klik <strong>"Muat Data"</strong> untuk menampilkan rekap jurnal
+                <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', display: 'block', marginBottom: 12 }}></i>
+                Memuat data jurnal...
               </div>
             ) : (() => {
               const filtered = rekapJurnalData.filter(r => {
@@ -778,9 +808,20 @@ export default function PresensiPage() {
                   {filtered.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '32px 0', color: '#94a3b8' }}>
                       <i className="fas fa-search" style={{ fontSize: '2rem', display: 'block', marginBottom: 8 }}></i>
-                      Tidak ada data sesuai filter
+                      Tidak ada data jurnal ditemukan
+                      {!isAdmin && <p style={{ fontSize: '0.82rem', marginTop: 8 }}>Pastikan nama akun Anda cocok dengan nama guru di jurnal: <strong>{currentUsername}</strong></p>}
                     </div>
                   ) : (
+                    <div>
+                      {/* Export button */}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+                        <button
+                          onClick={() => handleExportExcel(filtered)}
+                          style={{ background: '#16a34a', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+                        >
+                          <i className="fas fa-file-excel"></i> Export Excel ({filtered.length} data)
+                        </button>
+                      </div>
                     <div style={{ overflowX: 'auto' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                         <thead>
@@ -820,6 +861,7 @@ export default function PresensiPage() {
                         Menampilkan {filtered.length} dari {rekapJurnalData.length} entri
                       </div>
                     </div>
+                  </div>
                   )}
                 </div>
               );
