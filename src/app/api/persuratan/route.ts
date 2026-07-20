@@ -118,20 +118,22 @@ export async function POST(req: Request) {
       const romanMonth = romanMonths[dateObj.getMonth()];
       const year = dateObj.getFullYear();
 
-      // Load all rows to find the next NO for the given year
+      // Load all rows — ambil nomor urut langsung dari string NO. SURAT
+      // Format: "322/YPA/MTs-01.X/VII/2026" → ambil angka di depan "/"
       const rowsKeluar = await sheetKeluar.getRows();
       let maxNo = 0;
       rowsKeluar.forEach(row => {
-        const rowTanggal = row.get('TANGGAL') || '';
-        const rowNoSurat  = row.get('NO. SURAT') || '';
-        // Wajib punya NO. SURAT terisi agar baris formula/kosong tidak ikut dihitung
-        if (!rowNoSurat) return;
-        // Hanya hitung tahun yang sama
-        if (rowTanggal.endsWith(year.toString()) || rowNoSurat.endsWith('/' + year.toString())) {
-          const currentNo = parseInt(row.get('NO'), 10);
-          if (!isNaN(currentNo) && currentNo > maxNo) {
-            maxNo = currentNo;
-          }
+        const rowNoSurat = (row.get('NO. SURAT') || '').trim();
+        if (!rowNoSurat) return; // skip baris kosong / formula saja
+
+        // Pastikan surat tahun yang sama
+        if (!rowNoSurat.endsWith('/' + year.toString())) return;
+
+        // Ekstrak angka di depan "/" pertama: "322/YPA/..." → 322
+        const match = rowNoSurat.match(/^(\d+)\//);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (!isNaN(num) && num > maxNo) maxNo = num;
         }
       });
       const nextNo = maxNo + 1;
