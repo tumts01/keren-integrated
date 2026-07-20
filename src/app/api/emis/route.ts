@@ -31,15 +31,19 @@ export async function GET(request: Request) {
     };
 
     const allRecords: SiswaRecord[] = rows.flatMap((row: any) => {
-      // Tidak filter status — tampilkan semua siswa sama seperti Data Siswa
+      // Skip siswa dengan status "Tidak Aktif"
       const nama = (row.get('NAMA') || '').trim();
-      if (!nama) return []; // skip baris kosong saja
+      if (!nama) return []; // skip baris kosong
+      const status = (row.get('STATUS SISWA') || '').toLowerCase().trim();
+      if (status === 'tidak aktif') return []; // buang yang tidak aktif
 
       const base = {
         nisn: (row.get('NISN') || '').trim(),
         nis: (row.get('ID SISWA') || '').trim(),
         nama,
         status: row.get('STATUS SISWA') || '',
+        asalSekolah: row.get('SD/MI') || '',
+        alamatSekolah: row.get('ALAMAT SD/MI') || '',
       };
 
       const records: SiswaRecord[] = [];
