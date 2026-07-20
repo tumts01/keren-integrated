@@ -92,6 +92,56 @@ function PrintSiswaModal({
     setTimeout(() => { win.focus(); win.print(); }, 400);
   };
 
+  const handleExportExcel = () => {
+    if (mode === 'angkatan') {
+      // Export per angkatan: 1 sheet per kelas
+      const wb = XLSX.utils.book_new();
+      Object.entries(groupedByKelas).sort(([a], [b]) => a.localeCompare(b)).forEach(([rombel, list]) => {
+        const rows = list.map((s, i) => ({
+          'No': i + 1,
+          'Nama Siswa': s.nama,
+          'NIS': s.nis,
+          'NISN': s.nisn,
+          'NIK': s.nik,
+          'Jenis Kelamin': s.jenisKelamin,
+          'Tempat Lahir': s.tempatLahir,
+          'Tanggal Lahir': s.tanggalLahir,
+          'Kelas': s.rombel,
+          'Alamat': s.alamat,
+          'No. HP / WA': s.noHp,
+          'Nama Ayah': s.namaAyah,
+          'Nama Ibu': s.namaIbu,
+          'Tahun Ajaran': s.tahunAjaran,
+        }));
+        const ws = XLSX.utils.json_to_sheet(rows);
+        XLSX.utils.book_append_sheet(wb, ws, `Kelas ${rombel}`);
+      });
+      XLSX.writeFile(wb, `Daftar_Siswa_Angkatan_${angkatan}_${new Date().toISOString().slice(0,10)}.xlsx`);
+    } else {
+      // Export per kelas: 1 sheet
+      const rows = selectedData.map((s, i) => ({
+        'No': i + 1,
+        'Nama Siswa': s.nama,
+        'NIS': s.nis,
+        'NISN': s.nisn,
+        'NIK': s.nik,
+        'Jenis Kelamin': s.jenisKelamin,
+        'Tempat Lahir': s.tempatLahir,
+        'Tanggal Lahir': s.tanggalLahir,
+        'Kelas': s.rombel,
+        'Alamat': s.alamat,
+        'No. HP / WA': s.noHp,
+        'Nama Ayah': s.namaAyah,
+        'Nama Ibu': s.namaIbu,
+        'Tahun Ajaran': s.tahunAjaran,
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `Kelas ${kelas}`);
+      XLSX.writeFile(wb, `Daftar_Siswa_${kelas}_${new Date().toISOString().slice(0,10)}.xlsx`);
+    }
+  };
+
   // Group by kelas jika angkatan
   const groupedByKelas: Record<string, Siswa[]> = {};
   if (mode === 'angkatan') {
@@ -186,6 +236,13 @@ function PrintSiswaModal({
         <div className={styles.printModalFooter}>
           <button className={styles.printCancelBtn} onClick={onClose}>
             Batal
+          </button>
+          <button
+            className={styles.printExcelBtn}
+            onClick={handleExportExcel}
+            disabled={mode === 'kelas' && !kelas}
+          >
+            <i className="fas fa-file-excel"></i> Export Excel
           </button>
           <button
             className={styles.printConfirmBtn}

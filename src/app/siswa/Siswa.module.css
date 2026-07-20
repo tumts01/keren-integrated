@@ -614,6 +614,14 @@
   cursor: pointer; transition: all 0.15s;
 }
 .printCancelBtn:hover { background: #f8fafc; }
+.printExcelBtn {
+  padding: 10px 20px; background: linear-gradient(135deg, #16a34a, #15803d);
+  color: white; border: none; border-radius: 10px; font-size: 0.9rem;
+  font-weight: 700; cursor: pointer; display: flex; align-items: center;
+  gap: 8px; transition: all 0.2s; box-shadow: 0 2px 8px rgba(22,163,74,0.3);
+}
+.printExcelBtn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(22,163,74,0.4); }
+.printExcelBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 .printConfirmBtn {
   padding: 10px 24px; background: linear-gradient(135deg, #7c3aed, #6d28d9);
   color: white; border: none; border-radius: 10px; font-size: 0.9rem;

@@ -68,6 +68,7 @@ export default function Sidebar() {
         { name: 'Jadwal Mengajar', path: '/jadwal-mengajar', icon: 'fa-clock' },
         { name: 'Nilai Siswa', path: '/nilai-siswa', icon: 'fa-star' },
         { name: 'Pengembalian Rapor', path: '/pengembalian-rapor', icon: 'fa-file-signature' },
+        { name: 'EMIS', path: '/emis', icon: 'fa-database' },
       ]
     },
     {
