@@ -134,11 +134,8 @@ export default function PresensiPage() {
     finally { setRekapSiswaLoading(false); }
   };
 
-  // Hitung jumlah jam dari field JAM KE (comma-separated: "1,2" = 2 jam)
-  const countJamSIA = (jamKe: string) => {
-    if (!jamKe) return 1;
-    return jamKe.split(',').map(s => s.trim()).filter(Boolean).length;
-  };
+  // 1 entry S/I/A = 10 jam (sekolah punya 10 jam per hari)
+  const countJamSIA = (_jamKe: string) => 10;
 
   const exportSiswaExcel = (filtered: any[]) => {
     const rows = filtered.map((r, i) => ({
@@ -162,10 +159,12 @@ export default function PresensiPage() {
       'No': i + 1,
       'Nama Siswa': s.nama,
       'Kelas': s.kelas,
-      'Total S/I/A (Jam)': s.S + s.I + s.A,
+      'Sakit / S (Jam)': s.S,
+      'Izin / I (Jam)': s.I,
+      'Alpha / A (Jam)': s.A,
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 5 }, { wch: 32 }, { wch: 10 }, { wch: 18 }];
+    ws['!cols'] = [{ wch: 5 }, { wch: 32 }, { wch: 10 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Rekap S-I-A');
     XLSX.writeFile(wb, `Rekap_SIA_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.xlsx`);
@@ -950,7 +949,9 @@ export default function PresensiPage() {
                           <th style={{ padding: '8px 14px', textAlign: 'center', width: 44, fontWeight: 700 }}>No</th>
                           <th style={{ padding: '8px 14px', textAlign: 'left', fontWeight: 700 }}>Nama Siswa</th>
                           <th style={{ padding: '8px 14px', textAlign: 'left', fontWeight: 700 }}>Kelas</th>
-                          <th style={{ padding: '8px 14px', textAlign: 'center', fontWeight: 700 }}>Total S/I/A</th>
+                          <th style={{ padding: '8px 14px', textAlign: 'center', fontWeight: 700, background: '#fbbf24', color: '#1e293b' }}>Sakit (S)</th>
+                          <th style={{ padding: '8px 14px', textAlign: 'center', fontWeight: 700, background: '#fb923c', color: 'white' }}>Izin (I)</th>
+                          <th style={{ padding: '8px 14px', textAlign: 'center', fontWeight: 700, background: '#ef4444', color: 'white' }}>Alpha (A)</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -965,7 +966,9 @@ export default function PresensiPage() {
                                 {s.nama}
                               </td>
                               <td style={{ padding: '9px 14px', color: '#475569' }}>{s.kelas}</td>
-                              <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, fontSize: '1rem', color: isRed ? '#dc2626' : '#d97706', background: isRed ? '#fee2e2' : total > 3 ? '#fff7ed' : 'transparent', borderRadius: 8 }}>{total}</td>
+                              <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, color: s.S > 0 ? '#d97706' : '#94a3b8' }}>{s.S > 0 ? s.S : '-'}</td>
+                              <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, color: s.I > 0 ? '#ea580c' : '#94a3b8' }}>{s.I > 0 ? s.I : '-'}</td>
+                              <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, color: s.A > 5 ? '#dc2626' : s.A > 0 ? '#7c3aed' : '#94a3b8', background: s.A > 5 ? '#fee2e2' : 'transparent', borderRadius: 6 }}>{s.A > 0 ? s.A : '-'}</td>
                             </tr>
                           );
                         })}
