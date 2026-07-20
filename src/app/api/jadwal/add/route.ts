@@ -23,8 +23,6 @@ export async function POST(request: Request) {
     if (!sheet) {
       sheet = await doc.addSheet({ headerValues: EXPECTED_HEADERS, title: SHEET_TITLE });
     } else {
-      try { await sheet.loadHeaderRow(); } catch (e) {}
-      await sheet.setHeaderRow(EXPECTED_HEADERS);
     }
 
     const rows = await sheet.getRows();

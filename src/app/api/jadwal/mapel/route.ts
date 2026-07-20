@@ -9,17 +9,17 @@ export async function GET() {
     const doc = await getIndukDoc();
     let sheet = doc.sheetsByTitle[SHEET_TITLE];
     if (!sheet) {
+      // Sheet belum ada — buat baru dengan header
       sheet = await doc.addSheet({ headerValues: EXPECTED_HEADERS, title: SHEET_TITLE });
-    } else {
-      try { await sheet.loadHeaderRow(); } catch (e) {}
-      await sheet.setHeaderRow(EXPECTED_HEADERS);
     }
 
     const rows = await sheet.getRows();
-    const data = rows.map(r => ({
-      id: r.get('id'),
-      namaMapel: r.get('namaMapel')
-    }));
+    const data = rows
+      .map(r => ({
+        id: r.get('id') || r.get('ID') || '',
+        namaMapel: r.get('namaMapel') || r.get('NamaMapel') || r.get('nama_mapel') || ''
+      }))
+      .filter(r => r.namaMapel); // abaikan baris kosong
 
     return NextResponse.json({ success: true, data });
   } catch (error) {

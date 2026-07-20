@@ -15,8 +15,6 @@ export async function POST(request: Request) {
     if (!sheet) {
       sheet = await doc.addSheet({ headerValues: liburExpectedHeaders, title: 'Libur_GTK' });
     } else {
-      try { await sheet.loadHeaderRow(); } catch(e) {}
-      await sheet.setHeaderRow(liburExpectedHeaders);
     }
 
     const rows = await sheet.getRows();
