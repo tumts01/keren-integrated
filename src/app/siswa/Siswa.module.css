@@ -529,17 +529,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 16px;
+  overflow-y: auto;  /* overlay bisa scroll kalau modal terlalu tinggi */
 }
 .printModalCard {
   background: white;
   border-radius: 20px;
   width: 100%;
   max-width: 560px;
+  max-height: calc(100dvh - 32px); /* tidak melebihi viewport */
   box-shadow: 0 20px 60px rgba(0,0,0,0.3);
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  margin: auto; /* center di overlay yang scrollable */
 }
 .printModalHeader {
   display: flex;
@@ -560,7 +563,12 @@
 }
 .printModalClose:hover { background: #e2e8f0; color: #1e293b; }
 .printModalBody {
-  padding: 20px 24px; display: flex; flex-direction: column; gap: 18px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto; /* body scroll jika konten > tinggi modal */
+  flex: 1;
 }
 .printModeRow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .printModeBtn {
