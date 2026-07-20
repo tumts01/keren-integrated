@@ -76,12 +76,22 @@ export async function GET() {
       }
     }
 
+    // Ambil riwayat cetak dari sheet RIWAYAT_CETAK
+    let riwayatCetak: any[] = [];
+    if (doc.sheetsByTitle['RIWAYAT_CETAK']) {
+      const riwayatRows = await doc.sheetsByTitle['RIWAYAT_CETAK'].getRows();
+      riwayatCetak = riwayatRows.map((r: any) => {
+        try { return JSON.parse(r.get('DataJSON') || '{}'); } catch { return null; }
+      }).filter(Boolean).reverse(); // terbaru di atas
+    }
+
     return NextResponse.json({ 
       success: true, 
       suratKeluar: dataKeluar,
       suratMasuk: dataMasuk,
       topikList: listTopik,
-      sheetTitles // For debugging
+      riwayatCetak,
+      sheetTitles
     });
   } catch (error: any) {
     console.error('Fetch Persuratan Error:', error);
@@ -187,6 +197,17 @@ export async function POST(req: Request) {
       });
 
       return NextResponse.json({ success: true, nextNo, noSurat });
+    }
+
+    if (action === 'save_riwayat') {
+      const doc = await getPersuratanDoc();
+      // Buat sheet RIWAYAT_CETAK jika belum ada
+      let riwayatSheet = doc.sheetsByTitle['RIWAYAT_CETAK'];
+      if (!riwayatSheet) {
+        riwayatSheet = await doc.addSheet({ title: 'RIWAYAT_CETAK', headerValues: ['DataJSON'] });
+      }
+      await riwayatSheet.addRow({ DataJSON: JSON.stringify(payload) });
+      return NextResponse.json({ success: true });
     }
 
     return NextResponse.json({ success: false, error: 'Aksi tidak valid' }, { status: 400 });

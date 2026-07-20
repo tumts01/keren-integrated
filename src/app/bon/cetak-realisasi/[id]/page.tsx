@@ -217,11 +217,10 @@ export default function CetakRealisasiPage() {
           <tbody>
             <tr>
               <td className={styles.ttdCell}>
-                <div className={styles.ttdTitle}>Pemohon</div>
-                <div className={styles.ttdSub}>&nbsp;</div>
+                <div className={styles.ttdTitle}>Kepala Madrasah</div>
+                <div className={styles.ttdSub}>Menyetujui</div>
                 <div className={styles.ttdSpace}></div>
-                <div className={styles.ttdName}>{bon['Nama']}</div>
-                <div className={styles.ttdJabatan}>{bon['Jabatan'] || ''}</div>
+                <div className={styles.ttdName}>Dwi Retno Palupi, M.Pd.</div>
               </td>
               <td className={styles.ttdCell}>
                 <div className={styles.ttdTitle}>Bendahara</div>
@@ -230,10 +229,11 @@ export default function CetakRealisasiPage() {
                 <div className={styles.ttdName}>S. Nur Ainy, S.Pd.</div>
               </td>
               <td className={styles.ttdCell}>
-                <div className={styles.ttdTitle}>Kepala Madrasah</div>
-                <div className={styles.ttdSub}>Menyetujui</div>
+                <div className={styles.ttdTitle}>Pemohon</div>
+                <div className={styles.ttdSub}>&nbsp;</div>
                 <div className={styles.ttdSpace}></div>
-                <div className={styles.ttdName}>Dwi Retno Palupi, M.Pd.</div>
+                <div className={styles.ttdName}>{bon['Nama']}</div>
+                <div className={styles.ttdJabatan}>{bon['Jabatan'] || ''}</div>
               </td>
             </tr>
           </tbody>

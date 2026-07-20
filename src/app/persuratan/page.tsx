@@ -178,10 +178,11 @@ export default function PersuratanPage() {
       if (result.success) {
         const sortedKeluar = result.suratKeluar.sort((a: any, b: any) => b.rowNumber - a.rowNumber);
         const sortedMasuk = result.suratMasuk.sort((a: any, b: any) => b.rowNumber - a.rowNumber);
-        
         setDataKeluar(sortedKeluar);
         setDataMasuk(sortedMasuk);
         setTopikList(result.topikList);
+        // Load riwayat dari API (cross-device)
+        if (result.riwayatCetak) setRiwayatCetak(result.riwayatCetak);
       } else {
         setError(result.error);
       }
@@ -198,11 +199,6 @@ export default function PersuratanPage() {
 
   useEffect(() => {
     fetchData();
-    // Load riwayat dari localStorage
-    const saved = localStorage.getItem('keren_riwayat_cetak');
-    if (saved) {
-      try { setRiwayatCetak(JSON.parse(saved)); } catch {}
-    }
   }, []);
 
   const repopulateForm = (record: any) => {
@@ -222,7 +218,7 @@ export default function PersuratanPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleSaveAndPrint = () => {
+  const handleSaveAndPrint = async () => {
     const record = {
       id: Date.now().toString(),
       jenis: generateJenis,
@@ -239,9 +235,12 @@ export default function PersuratanPage() {
       waktu: generateWaktu,
       tempat: generateTempat,
     };
-    const updated = [record, ...riwayatCetak].slice(0, 50);
-    localStorage.setItem('keren_riwayat_cetak', JSON.stringify(updated));
-    setRiwayatCetak(updated);
+    // Simpan ke Google Sheets (cross-device)
+    fetch('/api/persuratan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'save_riwayat', payload: record }),
+    }).then(() => fetchData()); // refresh riwayat setelah simpan
     window.print();
   };
 
@@ -780,19 +779,25 @@ export default function PersuratanPage() {
             <div className={styles.generateContainer} style={{ padding: '24px' }}>
 
               {/* Riwayat Cetak */}
-              {riwayatCetak.length > 0 && (
-                <div style={{ marginBottom: '28px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
-                  <div
-                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', cursor: 'pointer', background: '#f1f5f9', borderBottom: showRiwayat ? '1px solid #e2e8f0' : 'none' }}
-                    onClick={() => setShowRiwayat(v => !v)}
-                  >
-                    <span style={{ fontWeight: 700, color: '#334155', fontSize: '0.95rem' }}>
-                      <i className="fas fa-history" style={{ marginRight: '8px', color: '#8b5cf6' }}></i>
-                      Riwayat Cetak ({riwayatCetak.length})
-                    </span>
-                    <i className={`fas fa-chevron-${showRiwayat ? 'up' : 'down'}`} style={{ color: '#64748b' }}></i>
-                  </div>
-                  {showRiwayat && (
+              <div style={{ marginBottom: '28px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
+                <div
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', cursor: 'pointer', background: '#f1f5f9', borderBottom: showRiwayat ? '1px solid #e2e8f0' : 'none' }}
+                  onClick={() => setShowRiwayat(v => !v)}
+                >
+                  <span style={{ fontWeight: 700, color: '#334155', fontSize: '0.95rem' }}>
+                    <i className="fas fa-history" style={{ marginRight: '8px', color: '#8b5cf6' }}></i>
+                    Riwayat Cetak ({riwayatCetak.length})
+                  </span>
+                  <i className={`fas fa-chevron-${showRiwayat ? 'up' : 'down'}`} style={{ color: '#64748b' }}></i>
+                </div>
+                {showRiwayat && (
+                  riwayatCetak.length === 0 ? (
+                    <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem' }}>
+                      <i className="fas fa-clock" style={{ fontSize: '1.8rem', display: 'block', marginBottom: '8px' }}></i>
+                      Belum ada riwayat cetak. Setiap kali klik <strong>"Generate &amp; Cetak Surat"</strong>, rekaman akan muncul di sini.
+                      <div style={{ fontSize: '0.78rem', marginTop: '6px', color: '#cbd5e1' }}>⚠️ Riwayat tersimpan di browser ini saja</div>
+                    </div>
+                  ) : (
                     <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
                       {riwayatCetak.map((r, i) => (
                         <div key={r.id} style={{ padding: '12px 18px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', background: i % 2 === 0 ? 'white' : '#fafafa' }}>
@@ -830,9 +835,9 @@ export default function PersuratanPage() {
                         </div>
                       ))}
                     </div>
-                  )}
-                </div>
-              )}
+                  )
+                )}
+              </div>
 
               <h3 style={{ marginBottom: '20px', color: '#1e293b' }}><i className="fas fa-print" style={{ marginRight: '8px' }}></i> Form Generate Surat</h3>
               
