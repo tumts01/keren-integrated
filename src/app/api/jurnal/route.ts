@@ -61,6 +61,7 @@ export async function PATCH() {
     const jadwalSheet = indukDoc.sheetsByTitle['JadwalMengajar'];
     if (!jadwalSheet) return NextResponse.json({ success: false, error: 'Sheet JadwalMengajar tidak ditemukan' }, { status: 404 });
 
+    await jadwalSheet.loadHeaderRow();
     const jadwalRows = await jadwalSheet.getRows();
     // Bangun map: { kelas_col: { mapel_lower: [namaGuru, ...] } }
     const jadwalMap: Record<string, Record<string, string[]>> = {};
