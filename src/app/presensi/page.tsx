@@ -120,15 +120,7 @@ export default function PresensiPage() {
       const res = await fetch('/api/presensi');
       const json = await res.json();
       if (json.success) {
-        // Deduplicate: composite key tanggal+nama+kelas+mapel+jamKe+kehadiran
-        const seen = new Set<string>();
-        const deduped = json.data.filter((r: any) => {
-          const key = `${r.tanggal}|${r.namaSiswa}|${r.kelas}|${r.mapel}|${r.jamKe}|${r.kehadiran}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-        setRekapSiswaData(deduped);
+        setRekapSiswaData(json.data);
       }
     } catch (e) { console.error(e); }
     finally { setRekapSiswaLoading(false); }
