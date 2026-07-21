@@ -65,20 +65,6 @@ export default function SajianDataPage() {
     });
   };
 
-  const renderSiswaDomisiliRows = (obj: Record<string, number>) => {
-    return Object.keys(obj).map(k => {
-      const val = obj[k] || 0;
-      return (
-        <tr key={k}>
-          <td className={styles.subCategoryCell}>{k}</td>
-          <td className={styles.numberCell}>-</td>
-          <td className={styles.numberCell}>-</td>
-          <td className={styles.totalCell}>{val}</td>
-        </tr>
-      );
-    });
-  };
-
   return (
     <div className={styles.container}>
       <div className={styles.actionContainer}>
@@ -187,7 +173,7 @@ export default function SajianDataPage() {
               <tr className={styles.subTotalRow}>
                 <td colSpan={4} className={styles.categoryCell} style={{ borderRight: 'none' }}>Berdasarkan Domisili</td>
               </tr>
-              {renderSiswaDomisiliRows(siswa.domisili)}
+              {renderRincianRows(siswa.domisili)}
             </tbody>
           </table>
         </div>

@@ -142,9 +142,9 @@ export async function GET() {
         'Tanpa Keterangan': { L: 0, P: 0 }
       },
       domisili: {
-        Rumah: 0,
-        Pesantren: 0,
-        'Belum terdata': 0
+        Rumah: { L: 0, P: 0 },
+        Pesantren: { L: 0, P: 0 },
+        'Belum terdata': { L: 0, P: 0 }
       }
     };
 
@@ -178,13 +178,16 @@ export async function GET() {
 
       // Domisili (Kolom K)
       const dom = (r.get(headerDomisili) || '').toString().toLowerCase().trim();
+      let domKey = 'Belum terdata';
       if (!dom) {
-        siswaStats.domisili['Belum terdata']++;
+        domKey = 'Belum terdata';
       } else if (dom === 'rumah') {
-        siswaStats.domisili['Rumah']++;
+        domKey = 'Rumah';
       } else {
-        // Jika selain rumah, maka pesantren
-        siswaStats.domisili['Pesantren']++;
+        domKey = 'Pesantren';
+      }
+      if (lp === 'L' || lp === 'P') {
+        siswaStats.domisili[domKey as keyof typeof siswaStats.domisili][lp]++;
       }
     });
 
