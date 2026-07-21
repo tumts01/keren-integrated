@@ -128,3 +128,42 @@ a {
     border-radius: var(--radius-md);
   }
 }
+
+@media print {
+  aside, 
+  header, 
+  footer,
+  nav,
+  [class*="Sidebar_sidebar"],
+  [class*="Header_header"] {
+    display: none !important;
+  }
+
+  .app-container {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .main-content {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .page-content {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: transparent !important;
+  }
+
+  body {
+    background: white !important;
+    overflow: visible !important;
+  }
+}
