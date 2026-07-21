@@ -81,6 +81,12 @@ export default function SajianDataPage() {
 
   return (
     <div className={styles.container}>
+      <div className={styles.actionContainer}>
+        <button className={styles.printBtn} onClick={() => window.print()}>
+          <i className="fas fa-print"></i> Cetak / Download PDF
+        </button>
+      </div>
+
       <header className={styles.header}>
         <h1 className={styles.title}>Sajian Data Terpadu</h1>
         <p className={styles.subtitle}>Rekapitulasi statistik dalam format tabel</p>

@@ -141,3 +141,89 @@
   font-weight: 600;
   border-bottom: 1px solid #cbd5e1;
 }
+
+.actionContainer {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.printBtn {
+  background-color: #2563eb;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.printBtn:hover {
+  background-color: #1d4ed8;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm;
+  }
+  
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background: white;
+  }
+
+  .actionContainer {
+    display: none !important;
+  }
+
+  .container {
+    padding: 0;
+    max-width: none;
+    margin: 0;
+  }
+  
+  .section {
+    box-shadow: none;
+    border: 1px solid #ccc;
+    page-break-inside: avoid;
+    margin-bottom: 20px;
+  }
+  
+  .title {
+    font-size: 16pt;
+    color: black;
+  }
+  
+  .subtitle {
+    font-size: 10pt;
+    color: #333;
+  }
+  
+  .dataTable th {
+    background-color: #f0f0f0 !important;
+    color: black !important;
+    border-bottom: 2px solid #aaa !important;
+  }
+  
+  .mainTotalRow td {
+    background-color: #e0e0e0 !important;
+    color: black !important;
+    border-bottom: 2px solid #999 !important;
+  }
+  
+  .subTotalRow td {
+    background-color: #f9f9f9 !important;
+  }
+  
+  .categoryCell, .subCategoryCell, .numberCell, .totalCell {
+    color: black !important;
+    border-right: 1px solid #ddd !important;
+  }
+}
