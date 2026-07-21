@@ -1422,6 +1422,7 @@ export default function PresensiPage() {
                       <th style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>No</th>
                       <th style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>Tanggal</th>
                       <th style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>Petugas Piket</th>
+                      <th style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>Guru Dispo</th>
                       <th style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>Guru Izin</th>
                       <th style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>Alasan Izin</th>
                       <th style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>Kls Kosong</th>
@@ -1435,6 +1436,7 @@ export default function PresensiPage() {
                         <td style={{ padding: '7px 12px', color: '#94a3b8' }}>{i + 1}</td>
                         <td style={{ padding: '7px 12px', whiteSpace: 'nowrap' }}>{r.tanggal}</td>
                         <td style={{ padding: '7px 12px', fontWeight: 600 }}>{r.petugasPiket}</td>
+                        <td style={{ padding: '7px 12px', fontWeight: 600 }}>{r.guruDispo}</td>
                         <td style={{ padding: '7px 12px', color: '#b45309', fontWeight: 600 }}>{r.guruIzin}</td>
                         <td style={{ padding: '7px 12px' }}>{r.alasanIzin}</td>
                         <td style={{ padding: '7px 12px', color: '#dc2626', fontWeight: 600 }}>{r.kelasDitinggalkan}</td>
