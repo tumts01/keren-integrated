@@ -1089,6 +1089,11 @@ export default function PresensiPage() {
         {activeTab === 'jurnal_piket' && (
           <div className={styles.card}>
             <h2>Jurnal Piket</h2>
+            <datalist id="guru-datalist">
+              {guruList.map(g => (
+                <option key={g} value={g} />
+              ))}
+            </datalist>
             <div className={styles.filterSection} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: 20, marginBottom: 20 }}>
               <div className={styles.filterGroup}>
                 <label>Tanggal</label>
@@ -1103,6 +1108,7 @@ export default function PresensiPage() {
                 <label>Petugas Piket <span style={{color: 'red'}}>*</span></label>
                 <input 
                   type="text" 
+                  list="guru-datalist"
                   value={jpPetugasPiket}
                   onChange={(e) => setJpPetugasPiket(e.target.value)}
                   placeholder="Contoh: Budi, Siti"
@@ -1113,6 +1119,7 @@ export default function PresensiPage() {
                 <label>Guru Dispo</label>
                 <input 
                   type="text" 
+                  list="guru-datalist"
                   value={jpGuruDispo}
                   onChange={(e) => setJpGuruDispo(e.target.value)}
                   placeholder="Contoh: Pak Andi"
@@ -1151,6 +1158,7 @@ export default function PresensiPage() {
                       <td style={{ padding: '8px 10px' }}>
                         <input 
                           type="text" 
+                          list="guru-datalist"
                           value={entry.guruIzin}
                           onChange={(e) => {
                             const newEntries = [...jpEntries];
@@ -1207,6 +1215,7 @@ export default function PresensiPage() {
                       <td style={{ padding: '8px 10px' }}>
                         <input 
                           type="text" 
+                          list="guru-datalist"
                           value={entry.guruPengganti}
                           onChange={(e) => {
                             const newEntries = [...jpEntries];
