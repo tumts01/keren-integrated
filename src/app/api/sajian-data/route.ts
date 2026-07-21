@@ -159,11 +159,9 @@ export async function GET() {
       const lpRaw = (r.get('L/P') || r.get('Jenis Kelamin') || r.get('JENIS KELAMIN') || '').toString().trim().toUpperCase();
       const lp = lpRaw === 'L' || lpRaw === 'LAKI-LAKI' ? 'L' : (lpRaw === 'P' || lpRaw === 'PEREMPUAN' ? 'P' : 'Lainnya');
       
+      siswaStats.total.Total++;
       if (lp === 'L' || lp === 'P') {
         siswaStats.total[lp]++;
-        siswaStats.total.Total++;
-      } else {
-        return; // Jika jenis kelamin tidak valid, skip hitungan L/P rinciannya
       }
 
       // Asal Sekolah (Kolom BA)
@@ -173,7 +171,9 @@ export async function GET() {
       else if (asal.includes('MI')) asalKey = 'MI';
       
       if (siswaStats.asalSekolah[asalKey as keyof typeof siswaStats.asalSekolah]) {
-        siswaStats.asalSekolah[asalKey as keyof typeof siswaStats.asalSekolah][lp]++;
+        if (lp === 'L' || lp === 'P') {
+          siswaStats.asalSekolah[asalKey as keyof typeof siswaStats.asalSekolah][lp]++;
+        }
       }
 
       // Domisili (Kolom K)
