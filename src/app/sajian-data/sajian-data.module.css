@@ -2,21 +2,23 @@
   padding: 24px;
   max-width: 1200px;
   margin: 0 auto;
+  font-size: 0.85rem;
 }
 
 .header {
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .title {
-  font-size: 1.8rem;
-  font-weight: 800;
+  font-size: 1.5rem;
+  font-weight: 700;
   color: #1e293b;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .subtitle {
   color: #64748b;
+  font-size: 0.85rem;
 }
 
 .loading {
@@ -39,96 +41,103 @@
 }
 
 .section {
-  margin-bottom: 40px;
+  margin-bottom: 32px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
 }
 
 .sectionTitle {
-  font-size: 1.4rem;
-  font-weight: 700;
+  font-size: 1.1rem;
+  font-weight: 600;
   color: #0f172a;
-  margin-bottom: 16px;
+  padding: 16px 20px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
+.tableWrapper {
+  overflow-x: auto;
 }
 
-.card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  border: 1px solid #f1f5f9;
+.dataTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
 }
 
-.cardHeader {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #475569;
-  margin-bottom: 12px;
+.dataTable th,
+.dataTable td {
+  padding: 10px 20px;
   border-bottom: 1px solid #f1f5f9;
-  padding-bottom: 8px;
 }
 
-.statRow {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 8px;
-  font-size: 0.95rem;
+.dataTable th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.dataTable tr:last-child td {
+  border-bottom: none;
+}
+
+.dataTable tbody tr:hover {
+  background: #f8fafc;
+}
+
+.categoryCell {
+  font-weight: 600;
   color: #334155;
+  width: 30%;
+  border-right: 1px solid #f1f5f9;
 }
 
-.statLabel {
+.subCategoryCell {
+  color: #475569;
+  padding-left: 32px !important;
+  width: 30%;
+  border-right: 1px solid #f1f5f9;
+}
+
+.numberCell {
   font-weight: 500;
-}
-
-.statValue {
-  font-weight: 700;
-  color: #0ea5e9;
-}
-
-.statValueL {
-  color: #3b82f6;
-  font-weight: 600;
-}
-
-.statValueP {
-  color: #ec4899;
-  font-weight: 600;
-}
-
-.totalHighlight {
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: #0ea5e9;
+  color: #334155;
   text-align: center;
-  margin: 16px 0;
+  width: 15%;
 }
 
-.subTotal {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  font-size: 1rem;
+.totalCell {
+  font-weight: 700;
+  color: #0f172a;
+  text-align: center;
+  background: #f8fafc;
+  width: 15%;
 }
 
-.badgeL {
+.mainTotalRow td {
   background: #eff6ff;
-  color: #2563eb;
-  padding: 4px 12px;
-  border-radius: 99px;
-  font-weight: 600;
+  border-bottom: 2px solid #bfdbfe;
+  font-weight: 700;
+  color: #1e3a8a;
+  font-size: 0.95rem;
 }
 
-.badgeP {
-  background: #fdf2f8;
-  color: #db2777;
-  padding: 4px 12px;
-  border-radius: 99px;
+.mainTotalRow .numberCell {
+  color: #1d4ed8;
+}
+
+.subTotalRow td {
+  background: #f1f5f9;
   font-weight: 600;
+  border-bottom: 1px solid #cbd5e1;
 }
