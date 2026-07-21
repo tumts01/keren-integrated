@@ -2,6 +2,33 @@ import { NextResponse } from 'next/server';
 import { getPresensiDoc } from '@/lib/google-sheets';
 import crypto from 'crypto';
 
+export async function GET() {
+  try {
+    const doc = await getPresensiDoc();
+    const sheet = doc.sheetsByTitle['JURNAL PIKET'];
+    if (!sheet) return NextResponse.json({ success: false, error: 'Sheet JURNAL PIKET tidak ditemukan' }, { status: 404 });
+
+    const rows = await sheet.getRows();
+    const data = rows.map(row => ({
+      id: row.get('ID') || '',
+      timestamp: row.get('TIMESTAMP') || '',
+      tanggal: row.get('TANGGAL') || '',
+      petugasPiket: row.get('PETUGAS PIKET') || '',
+      guruIzin: row.get('GURU IZIN') || '',
+      alasanIzin: row.get('ALASAN IZIN') || '',
+      kelasDitinggalkan: row.get('KELAS DITINGGALKAN') || '',
+      materi: row.get('MATERI') || '',
+      guruPengganti: row.get('GURU PENGGANTI') || '',
+      guruDispo: row.get('GURU DISPO') || '',
+    })).filter(r => r.tanggal || r.petugasPiket).reverse();
+
+    return NextResponse.json({ success: true, data });
+  } catch (error: any) {
+    console.error('GET Jurnal Piket Error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();

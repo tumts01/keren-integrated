@@ -68,7 +68,7 @@ const MultiSelectDropdown = ({ options, selected, onChange, placeholder, classNa
 };
 
 export default function PresensiPage() {
-  const [activeTab, setActiveTab] = useState<'absen' | 'piket' | 'jurnal' | 'jurnal_piket' | 'rekap_siswa' | 'rekap_jurnal'>('absen');
+  const [activeTab, setActiveTab] = useState<'absen' | 'piket' | 'jurnal' | 'jurnal_piket' | 'rekap_piket' | 'rekap_siswa' | 'rekap_jurnal'>('absen');
 
   // States for Absen Siswa
   const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
@@ -130,6 +130,12 @@ export default function PresensiPage() {
   const [rsFilterTo, setRsFilterTo] = useState('');
   const [rsFilterNama, setRsFilterNama] = useState('');
   const [rsFilterKelas, setRsFilterKelas] = useState('');
+
+  // Rekap Piket
+  const [rekapPiketData, setRekapPiketData] = useState<any[]>([]);
+  const [rekapPiketLoading, setRekapPiketLoading] = useState(false);
+  const [rpFilterFrom, setRpFilterFrom] = useState('');
+  const [rpFilterTo, setRpFilterTo] = useState('');
 
   // Load classes and mapel
   useEffect(() => {
@@ -196,7 +202,22 @@ export default function PresensiPage() {
     if (activeTab === 'rekap_siswa' && rekapSiswaData.length === 0 && !rekapSiswaLoading) {
       fetchRekapSiswa();
     }
+    if (activeTab === 'rekap_piket' && rekapPiketData.length === 0 && !rekapPiketLoading) {
+      fetchRekapPiket();
+    }
   }, [activeTab]);
+
+  const fetchRekapPiket = async () => {
+    setRekapPiketLoading(true);
+    try {
+      const res = await fetch('/api/jurnal-piket');
+      const json = await res.json();
+      if (json.success) {
+        setRekapPiketData(json.data);
+      }
+    } catch (e) { console.error(e); }
+    finally { setRekapPiketLoading(false); }
+  };
 
   const fetchRekapSiswa = async () => {
     setRekapSiswaLoading(true);
@@ -248,6 +269,27 @@ export default function PresensiPage() {
     XLSX.utils.book_append_sheet(wb, ws, 'Rekap S-I-A');
     XLSX.writeFile(wb, `Rekap_SIA_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.xlsx`);
   };
+
+  const exportPiketExcel = (filtered: any[]) => {
+    const rows = filtered.map((r, i) => ({
+      'No': i + 1,
+      'Tanggal': r.tanggal || '',
+      'Petugas Piket': r.petugasPiket || '',
+      'Guru Izin': r.guruIzin || '',
+      'Alasan Izin': r.alasanIzin || '',
+      'Kelas Ditinggalkan': r.kelasDitinggalkan || '',
+      'Materi / Tugas': r.materi || '',
+      'Guru Pengganti': r.guruPengganti || '',
+      'Guru Dispo': r.guruDispo || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{ wch: 5 }, { wch: 12 }, { wch: 25 }, { wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 30 }, { wch: 25 }, { wch: 25 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Piket');
+    XLSX.writeFile(wb, `Rekap_Piket_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.xlsx`);
+  };
+
+  // ── Rekap Jurnal Helper ──────────────────────────────────────────────────
 
   const fetchRekapJurnal = async () => {
     setRekapJurnalLoading(true);
@@ -629,6 +671,13 @@ export default function PresensiPage() {
     }
   };
 
+  // ── Rekap Piket Filtering ──
+  const rpFiltered = rekapPiketData.filter(r => {
+    if (rpFilterFrom && r.tanggal < rpFilterFrom) return false;
+    if (rpFilterTo && r.tanggal > rpFilterTo) return false;
+    return true;
+  });
+
   // ── Rekap Siswa: semua komputasi di LUAR JSX ─────────────────────────────
   const rsFiltered = rekapSiswaData.filter(r => {
     if (rsFilterFrom && r.tanggal < rsFilterFrom) return false;
@@ -690,6 +739,13 @@ export default function PresensiPage() {
             >
               <i className="fas fa-clipboard"></i>
               Jurnal Piket
+            </button>
+            <button 
+              className={`${styles.tab} ${activeTab === 'rekap_piket' ? styles.activeTab : ''}`}
+              onClick={() => setActiveTab('rekap_piket')}
+            >
+              <i className="fas fa-clipboard-list"></i>
+              Rekap Piket
             </button>
             <button 
               className={`${styles.tab} ${activeTab === 'rekap_siswa' ? styles.activeTab : ''}`}
@@ -1319,6 +1375,77 @@ export default function PresensiPage() {
                 <> <i className="fas fa-save"></i> Simpan Jurnal Piket </>
               )}
             </button>
+          </div>
+        )}
+
+        {/* Rekap Piket Tab */}
+        {activeTab === 'rekap_piket' && (
+          <div className={styles.card}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+              <h2 style={{ margin: 0 }}>Rekap Jurnal Piket</h2>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <input type="date" value={rpFilterFrom} onChange={(e) => setRpFilterFrom(e.target.value)} className={styles.inputField} style={{ marginBottom: 0, padding: '6px 12px', width: 'auto' }} />
+                <span>s/d</span>
+                <input type="date" value={rpFilterTo} onChange={(e) => setRpFilterTo(e.target.value)} className={styles.inputField} style={{ marginBottom: 0, padding: '6px 12px', width: 'auto' }} />
+                
+                <button 
+                  onClick={() => exportPiketExcel(rpFiltered)}
+                  style={{ background: '#16a34a', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <i className="fas fa-file-excel"></i> Export Excel
+                </button>
+                <button 
+                  onClick={fetchRekapPiket}
+                  style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '8px 12px', borderRadius: 6, cursor: 'pointer' }}
+                  disabled={rekapPiketLoading}
+                >
+                  <i className={`fas fa-sync-alt ${rekapPiketLoading ? 'fa-spin' : ''}`}></i>
+                </button>
+              </div>
+            </div>
+
+            {rekapPiketLoading ? (
+              <div style={{ textAlign: 'center', padding: '48px 0', color: '#64748b' }}>
+                <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', display: 'block', marginBottom: 12 }}></i>
+                Memuat data rekap piket...
+              </div>
+            ) : rpFiltered.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px 0', color: '#94a3b8' }}>
+                <i className="fas fa-inbox" style={{ fontSize: '2rem', display: 'block', marginBottom: 8 }}></i>
+                Tidak ada data
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr style={{ background: '#1e3a5f', color: 'white' }}>
+                      <th style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>No</th>
+                      <th style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>Tanggal</th>
+                      <th style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>Petugas Piket</th>
+                      <th style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>Guru Izin</th>
+                      <th style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>Alasan Izin</th>
+                      <th style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>Kls Kosong</th>
+                      <th style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>Materi</th>
+                      <th style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>Pengganti</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rpFiltered.map((r, i) => (
+                      <tr key={r.id || i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? 'white' : '#f8fafc' }}>
+                        <td style={{ padding: '7px 12px', color: '#94a3b8' }}>{i + 1}</td>
+                        <td style={{ padding: '7px 12px', whiteSpace: 'nowrap' }}>{r.tanggal}</td>
+                        <td style={{ padding: '7px 12px', fontWeight: 600 }}>{r.petugasPiket}</td>
+                        <td style={{ padding: '7px 12px', color: '#b45309', fontWeight: 600 }}>{r.guruIzin}</td>
+                        <td style={{ padding: '7px 12px' }}>{r.alasanIzin}</td>
+                        <td style={{ padding: '7px 12px', color: '#dc2626', fontWeight: 600 }}>{r.kelasDitinggalkan}</td>
+                        <td style={{ padding: '7px 12px' }}>{r.materi}</td>
+                        <td style={{ padding: '7px 12px', color: '#16a34a' }}>{r.guruPengganti}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
