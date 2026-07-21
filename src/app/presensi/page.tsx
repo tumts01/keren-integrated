@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx';
 import styles from './presensi.module.css';
 
 export default function PresensiPage() {
-  const [activeTab, setActiveTab] = useState<'absen' | 'piket' | 'jurnal' | 'rekap_siswa' | 'rekap_jurnal'>('absen');
+  const [activeTab, setActiveTab] = useState<'absen' | 'piket' | 'jurnal' | 'jurnal_piket' | 'rekap_siswa' | 'rekap_jurnal'>('absen');
 
   // States for Absen Siswa
   const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
@@ -41,6 +41,15 @@ export default function PresensiPage() {
   // Jurnal: guru yang mengajar
   const [guruList, setGuruList] = useState<string[]>([]);
   const [selectedGuru, setSelectedGuru] = useState('');
+
+  // Jurnal Piket states
+  const [jpGuruIzin, setJpGuruIzin] = useState('');
+  const [jpAlasanIzin, setJpAlasanIzin] = useState('');
+  const [jpKelasDitinggalkan, setJpKelasDitinggalkan] = useState('');
+  const [jpMateri, setJpMateri] = useState('');
+  const [jpGuruPengganti, setJpGuruPengganti] = useState('');
+  const [jpPetugasPiket, setJpPetugasPiket] = useState('');
+  const [jpGuruDispo, setJpGuruDispo] = useState('');
 
   // Rekap Jurnal
   const [rekapJurnalData, setRekapJurnalData] = useState<any[]>([]);
@@ -495,6 +504,73 @@ export default function PresensiPage() {
     }
   };
 
+  const handleJurnalPiketSubmit = async () => {
+    if (!jpPetugasPiket.trim()) {
+      Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Mohon isi Nama Petugas Piket!' });
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: 'Konfirmasi',
+      text: `Simpan Jurnal Piket untuk tanggal ${tanggal}?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Ya, Simpan!',
+      cancelButtonText: 'Batal'
+    });
+
+    if (!result.isConfirmed) return;
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/jurnal-piket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tanggal,
+          petugasPiket: jpPetugasPiket,
+          guruIzin: jpGuruIzin,
+          alasanIzin: jpAlasanIzin,
+          kelasDitinggalkan: jpKelasDitinggalkan,
+          materi: jpMateri,
+          guruPengganti: jpGuruPengganti,
+          guruDispo: jpGuruDispo
+        })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Berhasil!',
+          text: 'Jurnal Piket berhasil disimpan.'
+        });
+        setJpGuruIzin('');
+        setJpAlasanIzin('');
+        setJpKelasDitinggalkan('');
+        setJpMateri('');
+        setJpGuruPengganti('');
+        setJpGuruDispo('');
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Gagal',
+          text: 'Gagal menyimpan: ' + (data.error || 'Terjadi kesalahan')
+        });
+      }
+    } catch (error: any) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Terjadi kesalahan sistem: ' + error.message
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // ── Rekap Siswa: semua komputasi di LUAR JSX ─────────────────────────────
   const rsFiltered = rekapSiswaData.filter(r => {
     if (rsFilterFrom && r.tanggal < rsFilterFrom) return false;
@@ -549,6 +625,13 @@ export default function PresensiPage() {
             >
               <i className="fas fa-book-open"></i>
               Jurnal Mengajar
+            </button>
+            <button 
+              className={`${styles.tab} ${activeTab === 'jurnal_piket' ? styles.activeTab : ''}`}
+              onClick={() => setActiveTab('jurnal_piket')}
+            >
+              <i className="fas fa-clipboard"></i>
+              Jurnal Piket
             </button>
             <button 
               className={`${styles.tab} ${activeTab === 'rekap_siswa' ? styles.activeTab : ''}`}
@@ -1003,6 +1086,116 @@ export default function PresensiPage() {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Jurnal Piket Tab */}
+        {activeTab === 'jurnal_piket' && (
+          <div className={styles.card}>
+            <h2>Jurnal Piket</h2>
+            <div className={styles.filterSection}>
+              <div className={styles.filterGroup}>
+                <label>Tanggal</label>
+                <input 
+                  type="date" 
+                  value={tanggal} 
+                  onChange={(e) => setTanggal(e.target.value)}
+                  className={styles.inputField}
+                />
+              </div>
+            </div>
+
+            <div className={styles.formGrid}>
+              <div className={styles.formGroup}>
+                <label>Petugas Piket <span style={{color: 'red'}}>*</span></label>
+                <input 
+                  type="text" 
+                  value={jpPetugasPiket}
+                  onChange={(e) => setJpPetugasPiket(e.target.value)}
+                  placeholder="Contoh: Budi, Siti"
+                  className={styles.inputField}
+                />
+              </div>
+              
+              <div className={styles.formGroup}>
+                <label>Guru Dispo</label>
+                <input 
+                  type="text" 
+                  value={jpGuruDispo}
+                  onChange={(e) => setJpGuruDispo(e.target.value)}
+                  placeholder="Contoh: Pak Andi"
+                  className={styles.inputField}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Nama Guru yang Izin</label>
+                <input 
+                  type="text" 
+                  value={jpGuruIzin}
+                  onChange={(e) => setJpGuruIzin(e.target.value)}
+                  placeholder="Contoh: Bu Ratna"
+                  className={styles.inputField}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Alasan Izin</label>
+                <input 
+                  type="text" 
+                  value={jpAlasanIzin}
+                  onChange={(e) => setJpAlasanIzin(e.target.value)}
+                  placeholder="Sakit, Dinas Luar, dll"
+                  className={styles.inputField}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Kelas yang Ditinggalkan</label>
+                <input 
+                  type="text" 
+                  value={jpKelasDitinggalkan}
+                  onChange={(e) => setJpKelasDitinggalkan(e.target.value)}
+                  placeholder="Contoh: 7A, 8B"
+                  className={styles.inputField}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Materi</label>
+                <input 
+                  type="text" 
+                  value={jpMateri}
+                  onChange={(e) => setJpMateri(e.target.value)}
+                  placeholder="Materi tugas pengganti"
+                  className={styles.inputField}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Guru Pengganti</label>
+                <input 
+                  type="text" 
+                  value={jpGuruPengganti}
+                  onChange={(e) => setJpGuruPengganti(e.target.value)}
+                  placeholder="Nama guru pengganti jika ada"
+                  className={styles.inputField}
+                />
+              </div>
+            </div>
+
+            <button 
+              className={styles.submitBtn} 
+              onClick={handleJurnalPiketSubmit}
+              disabled={isSubmitting}
+              style={{ marginTop: '20px' }}
+            >
+              {isSubmitting ? (
+                <> <i className="fas fa-spinner fa-spin"></i> Menyimpan... </>
+              ) : (
+                <> <i className="fas fa-save"></i> Simpan Jurnal Piket </>
+              )}
+            </button>
           </div>
         )}
 
