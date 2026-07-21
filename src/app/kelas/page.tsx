@@ -193,6 +193,9 @@ export default function KelasPage() {
             <button onClick={handleExportExcel} className="btn btn-gold" style={{ height: '42px', padding: '0 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <i className="fas fa-file-excel"></i> Export Excel
             </button>
+            <button onClick={() => window.print()} className="btn btn-primary" style={{ background: '#2563eb', borderColor: '#2563eb', height: '42px', padding: '0 16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <i className="fas fa-print"></i> Cetak / Download PDF
+            </button>
           </div>
         )}
       </div>
