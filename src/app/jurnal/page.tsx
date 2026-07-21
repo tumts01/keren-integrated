@@ -42,14 +42,14 @@ export default function JurnalPage() {
   useEffect(() => {
     // Load user info
     const storedUser = localStorage.getItem('keren_user_data');
-    const username = localStorage.getItem('username') || '';
-    setCurrentUsername(username);
     if (storedUser) {
       try {
         const u = JSON.parse(storedUser);
         const role = (u.rule || u.role || '').toLowerCase();
+        const namaGuru = u.nama || u.username || '';
+        setCurrentUsername(namaGuru);
         setIsAdmin(role === 'admin');
-        if (role !== 'admin') setFilterGuru(username);
+        if (role !== 'admin') setFilterGuru(namaGuru);
       } catch {}
     }
 
@@ -125,7 +125,15 @@ export default function JurnalPage() {
     if (!result.isConfirmed) return;
 
     setIsSubmitting(true);
-    const guru = localStorage.getItem('username') || 'Unknown';
+    // Ambil nama guru dari keren_user_data (field 'nama'), bukan 'username' yang tidak tersimpan
+    let guru = 'Unknown';
+    try {
+      const stored = localStorage.getItem('keren_user_data');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        guru = parsed.nama || parsed.username || 'Unknown';
+      }
+    } catch {}
     try {
       const res = await fetch('/api/jurnal', {
         method: 'POST',
