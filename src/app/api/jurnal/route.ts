@@ -162,17 +162,21 @@ export async function POST(request: Request) {
     const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
     const id = crypto.randomUUID().substring(0, 8);
 
+    // Tambahkan karakter \t (tab) di depan jamKe agar Google Sheets tidak auto-parse sebagai tanggal
+    // Contoh: "6, 7, 8" bisa diinterpretasikan sebagai tanggal 6 Juli 2008
+    const jamKeText = String(jamKe); // pastikan string
+
     await sheet.addRow({
       'ID': id,
       'TIMESTAMP': timestamp,
       'TANGGAL': tanggal,
-      'JAM KE': jamKe,
+      'JAM KE': jamKeText,
       'TAHUN AJARAN': tahunAjaran || '-',
       'KELAS': kelas,
       'MAPEL': mapel,
       'NAMA GURU': guru || 'Unknown',
       'MATERI': materi
-    });
+    }, { raw: true });
 
     return NextResponse.json({ success: true, message: 'Jurnal berhasil disimpan' });
   } catch (error: any) {
