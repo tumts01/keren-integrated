@@ -80,6 +80,7 @@ export default function Sidebar() {
         { name: 'SPMB', path: '/spmb', icon: 'fa-user-graduate' },
         { name: 'Data Prestasi', path: '/prestasi', icon: 'fa-trophy' },
         { name: 'Arsip Foto', path: '/arsip-foto', icon: 'fa-images' },
+        { name: 'Sajian Data', path: '/sajian-data', icon: 'fa-chart-pie' },
       ]
     },
     {
