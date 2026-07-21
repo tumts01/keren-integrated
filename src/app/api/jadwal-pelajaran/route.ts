@@ -39,56 +39,76 @@ export async function GET() {
     });
     
     const parsedData: any[] = [];
-    let currentDay = '';
-    let classColMap: Record<number, string> = {};
+
+    // Keep track of active days we are parsing in parallel (since SENIN and KAMIS are side-by-side)
+    // Map column index of "JAM" -> { currentDay, classColMap }
+    const activeBlocks: Record<number, { day: string, classColMap: Record<number, string> }> = {};
 
     for (let r = 0; r < rowCount - 1; r++) {
-      const colC = sheetJadwal.getCell(r, 2).value; // Index 2 is Column C
-      const colD = sheetJadwal.getCell(r, 3).value; // Index 3 is Column D
-      
-      if (typeof colC === 'string' && colC.trim().toUpperCase() === 'JAM' && colD && typeof colD === 'string' && DAYS.includes(colD.trim().toUpperCase())) {
-        currentDay = colD.trim().toUpperCase();
-        // The NEXT row contains the class names
-        classColMap = {};
-        for (let c = 3; c < colCount; c++) { 
-          const val = sheetJadwal.getCell(r + 1, c).value;
-          if (val) {
-            // Format class from '7A' to 'VII_A'
-            let rawClass = val.toString().trim().toUpperCase();
-            if (rawClass.startsWith('7')) rawClass = 'VII_' + rawClass.substring(1);
-            else if (rawClass.startsWith('8')) rawClass = 'VIII_' + rawClass.substring(1);
-            else if (rawClass.startsWith('9')) rawClass = 'IX_' + rawClass.substring(1);
-            
-            classColMap[c] = rawClass;
+      // 1. Detect if this row contains 'JAM' headers
+      let isHeaderRow = false;
+      for (let c = 0; c < colCount - 1; c++) {
+        const valC = sheetJadwal.getCell(r, c).value;
+        const valD = sheetJadwal.getCell(r, c + 1).value;
+        
+        if (typeof valC === 'string' && valC.trim().toUpperCase() === 'JAM' && typeof valD === 'string') {
+          let dayStr = valD.trim().toUpperCase().replace(/['\s]/g, ''); // "JUM' AT" -> "JUMAT"
+          if (DAYS.includes(dayStr)) {
+            isHeaderRow = true;
+            // The NEXT row contains the class names for this block
+            const classColMap: Record<number, string> = {};
+            for (let classCol = c + 1; classCol < c + 35 && classCol < colCount; classCol++) {
+              const valClass = sheetJadwal.getCell(r + 1, classCol).value;
+              if (valClass && typeof valClass === 'string') {
+                let rawClass = valClass.trim().toUpperCase();
+                if (rawClass.match(/^[789][A-Z]$/)) {
+                  if (rawClass.startsWith('7')) rawClass = 'VII_' + rawClass.substring(1);
+                  else if (rawClass.startsWith('8')) rawClass = 'VIII_' + rawClass.substring(1);
+                  else if (rawClass.startsWith('9')) rawClass = 'IX_' + rawClass.substring(1);
+                  classColMap[classCol] = rawClass;
+                }
+              }
+            }
+            activeBlocks[c] = { day: dayStr, classColMap };
           }
         }
-        r++; // skip the class row since we just processed it
+      }
+
+      if (isHeaderRow) {
+        r++; // Skip the next row since we already processed the class names
         continue;
       }
 
-      // If it's a schedule row
-      if (currentDay && typeof colC === 'number') {
-        const jamKe = colC;
-        for (const [colIndex, className] of Object.entries(classColMap)) {
-          let kodeGuru = sheetJadwal.getCell(r, parseInt(colIndex)).value;
-          if (kodeGuru !== null && kodeGuru !== undefined && kodeGuru !== '') {
-            kodeGuru = kodeGuru.toString().trim();
-            const guruInfo = mapKodeGuru[kodeGuru] || { namaGuru: 'Unknown', mataPelajaran: 'Unknown' };
-            
-            // Special codes like 'K' (Kosong), 'PK' (Pramuka/Upacara), etc
-            if (['K', 'PK', 'UPACARA', 'ISTIRAHAT'].includes(kodeGuru.toUpperCase())) {
-               guruInfo.namaGuru = kodeGuru;
-               guruInfo.mataPelajaran = '-';
-            }
+      // 2. Parse schedule rows for all active blocks
+      for (const [jamColStr, blockInfo] of Object.entries(activeBlocks)) {
+        const jamCol = parseInt(jamColStr);
+        const jamVal = sheetJadwal.getCell(r, jamCol).value;
+        
+        // If it's a valid Jam Ke number
+        if (typeof jamVal === 'number' || (typeof jamVal === 'string' && !isNaN(parseInt(jamVal)))) {
+          const jamKe = parseInt(jamVal.toString());
+          
+          for (const [colIndexStr, className] of Object.entries(blockInfo.classColMap)) {
+            const colIndex = parseInt(colIndexStr);
+            let kodeGuru = sheetJadwal.getCell(r, colIndex).value;
+            if (kodeGuru !== null && kodeGuru !== undefined && kodeGuru !== '') {
+              kodeGuru = kodeGuru.toString().trim();
+              const guruInfo = mapKodeGuru[kodeGuru] || { namaGuru: 'Unknown', mataPelajaran: 'Unknown' };
+              
+              if (['K', 'PK', 'UPACARA', 'ISTIRAHAT'].includes(kodeGuru.toUpperCase())) {
+                 guruInfo.namaGuru = kodeGuru.toUpperCase() === 'K' ? 'Kosong' : kodeGuru.toUpperCase();
+                 guruInfo.mataPelajaran = '-';
+              }
 
-            parsedData.push({
-              kelas: className,
-              hari: currentDay,
-              jamKe,
-              kodeGuru,
-              namaGuru: guruInfo.namaGuru,
-              mataPelajaran: guruInfo.mataPelajaran
-            });
+              parsedData.push({
+                kelas: className,
+                hari: blockInfo.day,
+                jamKe,
+                kodeGuru,
+                namaGuru: guruInfo.namaGuru,
+                mataPelajaran: guruInfo.mataPelajaran
+              });
+            }
           }
         }
       }

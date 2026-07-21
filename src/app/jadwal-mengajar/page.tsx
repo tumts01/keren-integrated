@@ -367,24 +367,24 @@ export default function JadwalMengajarPage() {
               <table className={styles.table} style={{ minWidth: '800px' }}>
                 <thead>
                   <tr style={{ background: '#1e3a5f', color: 'white' }}>
-                    <th style={{ padding: '10px 8px', fontSize: '0.85rem' }}>Jam Ke</th>
+                    <th style={{ padding: '6px 4px', fontSize: '0.75rem', textAlign: 'center', width: '40px' }}>Jam Ke</th>
                     {DAYS.map(day => (
-                      <th key={day} style={{ padding: '10px 8px', fontSize: '0.85rem' }}>{day}</th>
+                      <th key={day} style={{ padding: '6px 4px', fontSize: '0.75rem', textAlign: 'center', width: '16%' }}>{day}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {jamKeList.map((jam) => (
                     <tr key={jam} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ fontWeight: 'bold', background: '#f8fafc', fontSize: '0.9rem' }}>{jam}</td>
+                      <td style={{ fontWeight: 'bold', background: '#f8fafc', fontSize: '0.8rem', textAlign: 'center' }}>{jam}</td>
                       {DAYS.map(day => {
                         const entry = getCellData(day, jam);
                         return (
-                          <td key={`${day}-${jam}`} style={{ padding: '8px', verticalAlign: 'top', height: '60px' }}>
+                          <td key={`${day}-${jam}`} style={{ padding: '4px', verticalAlign: 'top', height: '50px' }}>
                             {entry ? (
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'center' }}>
-                                <span style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '0.8rem' }}>{entry.mataPelajaran}</span>
-                                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{entry.namaGuru}</span>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'center', lineHeight: '1.2' }}>
+                                <span style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '0.7rem' }}>{entry.mataPelajaran}</span>
+                                <span style={{ fontSize: '0.6rem', color: '#64748b', wordWrap: 'break-word' }}>{entry.namaGuru}</span>
                               </div>
                             ) : (
                               <span style={{ color: '#cbd5e1' }}>-</span>
