@@ -367,8 +367,8 @@ export default function SiswaPage() {
   });
 
   const statsData = data.filter(s => selectedTahun === 'Semua' ? s.isLatest : s.tahunAjaran === selectedTahun);
-  const activeData = statsData.filter(s => ['aktif', 'lulus'].includes(s.status.toLowerCase().trim()));
-  const nonActiveData = statsData.filter(s => !['aktif', 'lulus'].includes(s.status.toLowerCase().trim()) && s.status.trim() !== '');
+  const activeData = statsData.filter(s => ['aktif'].includes(s.status.toLowerCase().trim()));
+  const nonActiveData = statsData.filter(s => !['aktif'].includes(s.status.toLowerCase().trim()) && s.status.trim() !== '');
 
   const totalSiswa = activeData.length;
   const totalLaki = activeData.filter(s => s.jenisKelamin.toLowerCase().includes('laki')).length;
@@ -465,7 +465,7 @@ export default function SiswaPage() {
                 <div className={styles.infoGroup}>
                   <span className={styles.infoLabel}>Status</span>
                   <div className={styles.infoValue}>
-                    <span className={`${styles.badge} ${['aktif', 'lulus'].includes(selectedSiswa.status.toLowerCase().trim()) ? styles.badgeAktif : styles.badgeNon}`}>
+                    <span className={`${styles.badge} ${['aktif'].includes(selectedSiswa.status.toLowerCase().trim()) ? styles.badgeAktif : styles.badgeNon}`}>
                       {selectedSiswa.status || '-'}
                     </span>
                   </div>
@@ -641,7 +641,7 @@ export default function SiswaPage() {
                         </div>
                       </td>
                       <td>
-                        <span className={`${styles.badge} ${['aktif', 'lulus'].includes(siswa.status.toLowerCase().trim()) ? styles.badgeAktif : styles.badgeNon}`}>
+                        <span className={`${styles.badge} ${['aktif'].includes(siswa.status.toLowerCase().trim()) ? styles.badgeAktif : styles.badgeNon}`}>
                           {siswa.status || 'Tidak Diketahui'}
                         </span>
                       </td>
