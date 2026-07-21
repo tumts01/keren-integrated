@@ -2,14 +2,17 @@ import { NextResponse } from 'next/server';
 import { getPresensiDoc } from '@/lib/google-sheets';
 import crypto from 'crypto';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const filterTanggal = searchParams.get('tanggal');
+
     const doc = await getPresensiDoc();
     const sheet = doc.sheetsByTitle['PRESENSI SISWA'];
     if (!sheet) return NextResponse.json({ success: false, error: 'Sheet PRESENSI SISWA tidak ditemukan' }, { status: 404 });
 
     const rows = await sheet.getRows();
-    const data = rows.map(r => ({
+    let data = rows.map(r => ({
       id: r.get('ID') || '',
       tanggal: (r.get('TANGGAL') || '').trim(),
       tahunAjaran: (r.get('TAHUN AJARAN') || '').trim(),
@@ -21,6 +24,10 @@ export async function GET() {
       nisn: (r.get('NISN') || '').trim(),
       kehadiran: (r.get('KEHADIRAN') || '').trim(),
     })).filter(r => r.namaSiswa && r.kehadiran);
+
+    if (filterTanggal) {
+      data = data.filter(r => r.tanggal === filterTanggal);
+    }
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {

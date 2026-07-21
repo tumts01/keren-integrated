@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx';
 import styles from './presensi.module.css';
 
 export default function PresensiPage() {
-  const [activeTab, setActiveTab] = useState<'absen' | 'jurnal' | 'rekap_siswa' | 'rekap_jurnal'>('absen');
+  const [activeTab, setActiveTab] = useState<'absen' | 'piket' | 'jurnal' | 'rekap_siswa' | 'rekap_jurnal'>('absen');
 
   // States for Absen Siswa
   const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
@@ -22,6 +22,21 @@ export default function PresensiPage() {
   const [loadingSiswa, setLoadingSiswa] = useState(false);
   // Cache siswa per kelas agar tidak refetch ulang ke server
   const siswaCache = useRef<Record<string, any[]>>({});
+
+  const [piketStudents, setPiketStudents] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!tanggal || !selectedKelas) {
+      setPiketStudents([]);
+      return;
+    }
+    fetch(`/api/presensi?tanggal=${tanggal}`).then(r => r.json()).then(res => {
+      if (res.success) {
+        const pikets = res.data.filter((r: any) => r.mapel === 'PIKET' && r.kelas === selectedKelas);
+        setPiketStudents(pikets.map((r: any) => r.namaSiswa));
+      }
+    });
+  }, [tanggal, selectedKelas, activeTab]);
 
   // Jurnal: guru yang mengajar
   const [guruList, setGuruList] = useState<string[]>([]);
@@ -319,6 +334,8 @@ export default function PresensiPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [materi, setMateri] = useState('');
 
+  const displaySiswa = activeTab === 'absen' ? siswaList.filter(s => !piketStudents.includes(s.nama)) : siswaList;
+
   const handlePresensiChange = (id: string, status: string) => {
     setPresensi(prev => ({
       ...prev,
@@ -333,7 +350,8 @@ export default function PresensiPage() {
   };
 
   const handleSubmit = async () => {
-    if (!selectedKelas || !selectedMapel) {
+    const finalMapel = activeTab === 'piket' ? 'PIKET' : selectedMapel;
+    if (!selectedKelas || !finalMapel) {
       Swal.fire({
         icon: 'warning',
         title: 'Oops...',
@@ -371,12 +389,13 @@ export default function PresensiPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tanggal,
-          jamKe: selectedJam.join(', '),
+          jamKe: selectedJam.join(','),
           kelas: selectedKelas,
-          mapel: selectedMapel,
+          mapel: finalMapel,
           guru,
+          tahunAjaran: '2024/2025',
           presensi,
-          siswaList
+          siswaList: displaySiswa
         })
       });
       const data = await res.json();
@@ -518,6 +537,13 @@ export default function PresensiPage() {
               Absen Siswa
             </button>
             <button 
+              className={`${styles.tab} ${activeTab === 'piket' ? styles.activeTab : ''}`}
+              onClick={() => setActiveTab('piket')}
+            >
+              <i className="fas fa-clipboard-check"></i>
+              Presensi Piket
+            </button>
+            <button 
               className={`${styles.tab} ${activeTab === 'jurnal' ? styles.activeTab : ''}`}
               onClick={() => setActiveTab('jurnal')}
             >
@@ -543,10 +569,16 @@ export default function PresensiPage() {
       </div>
 
       <div className={styles.content}>
-        {activeTab === 'absen' && (
+        {(activeTab === 'absen' || activeTab === 'piket') && (
           <div className={styles.card}>
-            <h2>Absen Siswa</h2>
+            <h2>{activeTab === 'piket' ? 'Presensi Piket' : 'Absen Siswa'}</h2>
             
+            {activeTab === 'piket' && (
+              <div className={styles.alertMessage} style={{ background: '#fffbeb', color: '#b45309', border: '1px solid #fef3c7', marginBottom: 20 }}>
+                <i className="fas fa-exclamation-triangle mr-2"></i> <strong>Penting:</strong> Menu ini khusus digunakan untuk Guru Piket. Siswa yang diabsen S/I/A di menu ini namanya tidak akan muncul lagi di menu Absen Siswa Guru mata pelajaran.
+              </div>
+            )}
+
             <div className={styles.filterSection}>
               <div className={styles.filterGroup}>
                 <label>Tanggal</label>
@@ -587,55 +619,47 @@ export default function PresensiPage() {
                 </div>
               </div>
 
-              <div className={styles.filterGroup}>
-                <label>Mata Pelajaran</label>
-                <select
-                  value={selectedMapel}
-                  onChange={(e) => setSelectedMapel(e.target.value)}
-                  className={styles.inputField}
-                >
-                  <option value="">-- Pilih Mata Pelajaran --</option>
-                  {mapelList.map((mapel, i) => (
-                    <option key={i} value={mapel}>{mapel}</option>
-                  ))}
-                </select>
-              </div>
+              {activeTab === 'piket' ? (
+                <div className={styles.filterGroup}>
+                  <label>Mata Pelajaran</label>
+                  <input type="text" value="PIKET" disabled className={styles.inputField} style={{ background: '#f1f5f9', cursor: 'not-allowed', fontWeight: 600, color: '#475569' }} />
+                </div>
+              ) : activeTab === 'absen' ? (
+                <div className={styles.filterGroup}>
+                  <label>Mata Pelajaran</label>
+                  <select
+                    value={selectedMapel}
+                    onChange={(e) => setSelectedMapel(e.target.value)}
+                    className={styles.inputField}
+                  >
+                    <option value="">-- Pilih Mata Pelajaran --</option>
+                    {mapelList.map((mapel, i) => (
+                      <option key={i} value={mapel}>{mapel}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
             </div>
 
             {loadingSiswa ? (
-              <div style={{ marginTop: 16 }}>
-                {/* Skeleton loading rows */}
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '12px 16px', borderBottom: '1px solid #f1f5f9',
-                    animation: 'pulse 1.5s ease-in-out infinite',
-                    animationDelay: `${i * 0.1}s`
-                  }}>
-                    <div style={{ width: 28, height: 14, background: '#e2e8f0', borderRadius: 4 }} />
-                    <div style={{ flex: 1, height: 14, background: '#e2e8f0', borderRadius: 4 }} />
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      {[1,2,3,4].map(j => <div key={j} style={{ width: 36, height: 28, background: '#e2e8f0', borderRadius: 6 }} />)}
-                    </div>
-                  </div>
-                ))}
-                <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }`}</style>
-              </div>
-            ) : selectedKelas ? (
-              <div className={styles.studentList}>
+              <div className={styles.loading}>Memuat data siswa...</div>
+            ) : displaySiswa.length > 0 ? (
+              <div className={styles.tableContainer}>
                 <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th style={{ width: '50px' }}>No</th>
+                      <th style={{ width: '50px', textAlign: 'center' }}>No</th>
+                      <th>NISN</th>
                       <th>Nama Siswa</th>
-                      <th style={{ textAlign: 'center' }}>Kehadiran</th>
+                      <th style={{ textAlign: 'center', width: '200px' }}>Kehadiran</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {siswaList.map((siswa, idx) => (
+                    {displaySiswa.map((siswa: any, i: number) => (
                       <tr key={siswa.id}>
-                        <td>{idx + 1}</td>
-                        <td style={{ fontWeight: 500 }}>{siswa.nama}</td>
+                        <td style={{ textAlign: 'center' }}>{i + 1}</td>
+                        <td className={styles.nisn}>{siswa.nisn}</td>
+                        <td className={styles.nama}>{siswa.nama}</td>
                         <td>
                           <div className={styles.radioGroup}>
                             <label className={`${styles.radioLabel} ${presensi[siswa.id] === 'H' ? styles.radioCheckedH : ''}`}>
@@ -695,6 +719,11 @@ export default function PresensiPage() {
                     {isSubmitting ? 'Menyimpan...' : 'Simpan Presensi'}
                   </button>
                 </div>
+              </div>
+            ) : selectedKelas ? (
+              <div className={styles.emptyState}>
+                <i className="fas fa-users-slash"></i>
+                <p>{activeTab === 'absen' && piketStudents.length > 0 ? `Semua siswa di kelas ${selectedKelas} telah diabsen S/I/A oleh Guru Piket hari ini.` : `Data siswa kelas ${selectedKelas} tidak ditemukan.`}</p>
               </div>
             ) : (
               <div className={styles.emptyState}>
