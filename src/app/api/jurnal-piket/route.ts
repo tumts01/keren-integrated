@@ -5,15 +5,11 @@ import crypto from 'crypto';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { 
+    const {
       tanggal, 
       petugasPiket, 
-      guruIzin, 
-      alasanIzin, 
-      kelasDitinggalkan, 
-      materi, 
-      guruPengganti, 
-      guruDispo 
+      guruDispo,
+      entries
     } = body;
 
     if (!tanggal || !petugasPiket) {
@@ -47,20 +43,38 @@ export async function POST(request: Request) {
     }
 
     const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
-    const id = crypto.randomUUID().substring(0, 8);
-
-    await sheet.addRow({
-      'ID': id,
-      'TIMESTAMP': timestamp,
-      'TANGGAL': tanggal,
-      'PETUGAS PIKET': petugasPiket,
-      'GURU IZIN': guruIzin || '-',
-      'ALASAN IZIN': alasanIzin || '-',
-      'KELAS DITINGGALKAN': kelasDitinggalkan || '-',
-      'MATERI': materi || '-',
-      'GURU PENGGANTI': guruPengganti || '-',
-      'GURU DISPO': guruDispo || '-'
-    }, { raw: true });
+    
+    if (!entries || entries.length === 0) {
+      // Jika tidak ada data guru yang izin, tetap simpan satu baris laporan piket nihil
+      const id = crypto.randomUUID().substring(0, 8);
+      await sheet.addRow({
+        'ID': id,
+        'TIMESTAMP': timestamp,
+        'TANGGAL': tanggal,
+        'PETUGAS PIKET': petugasPiket,
+        'GURU IZIN': 'NIHIL',
+        'ALASAN IZIN': '-',
+        'KELAS DITINGGALKAN': '-',
+        'MATERI': '-',
+        'GURU PENGGANTI': '-',
+        'GURU DISPO': guruDispo || '-'
+      }, { raw: true });
+    } else {
+      // Simpan setiap entri sebagai baris baru
+      const rows = entries.map((entry: any) => ({
+        'ID': crypto.randomUUID().substring(0, 8),
+        'TIMESTAMP': timestamp,
+        'TANGGAL': tanggal,
+        'PETUGAS PIKET': petugasPiket,
+        'GURU IZIN': entry.guruIzin || '-',
+        'ALASAN IZIN': entry.alasanIzin || '-',
+        'KELAS DITINGGALKAN': entry.kelasDitinggalkan || '-',
+        'MATERI': entry.materi || '-',
+        'GURU PENGGANTI': entry.guruPengganti || '-',
+        'GURU DISPO': guruDispo || '-'
+      }));
+      await sheet.addRows(rows, { raw: true });
+    }
 
     return NextResponse.json({ success: true, message: 'Jurnal Piket berhasil disimpan' });
   } catch (error: any) {

@@ -43,13 +43,11 @@ export default function PresensiPage() {
   const [selectedGuru, setSelectedGuru] = useState('');
 
   // Jurnal Piket states
-  const [jpGuruIzin, setJpGuruIzin] = useState('');
-  const [jpAlasanIzin, setJpAlasanIzin] = useState('');
-  const [jpKelasDitinggalkan, setJpKelasDitinggalkan] = useState('');
-  const [jpMateri, setJpMateri] = useState('');
-  const [jpGuruPengganti, setJpGuruPengganti] = useState('');
   const [jpPetugasPiket, setJpPetugasPiket] = useState('');
   const [jpGuruDispo, setJpGuruDispo] = useState('');
+  const [jpEntries, setJpEntries] = useState([
+    { guruIzin: '', alasanIzin: '', kelasDitinggalkan: '', materi: '', guruPengganti: '' }
+  ]);
 
   // Rekap Jurnal
   const [rekapJurnalData, setRekapJurnalData] = useState<any[]>([]);
@@ -510,6 +508,11 @@ export default function PresensiPage() {
       return;
     }
 
+    if (jpEntries.some(e => !e.guruIzin.trim() && (e.alasanIzin || e.kelasDitinggalkan || e.materi || e.guruPengganti))) {
+      Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Nama Guru Izin harus diisi jika ada isian lain di baris tersebut!' });
+      return;
+    }
+
     const result = await Swal.fire({
       title: 'Konfirmasi',
       text: `Simpan Jurnal Piket untuk tanggal ${tanggal}?`,
@@ -531,12 +534,8 @@ export default function PresensiPage() {
         body: JSON.stringify({
           tanggal,
           petugasPiket: jpPetugasPiket,
-          guruIzin: jpGuruIzin,
-          alasanIzin: jpAlasanIzin,
-          kelasDitinggalkan: jpKelasDitinggalkan,
-          materi: jpMateri,
-          guruPengganti: jpGuruPengganti,
-          guruDispo: jpGuruDispo
+          guruDispo: jpGuruDispo,
+          entries: jpEntries.filter(e => e.guruIzin.trim() !== '') // hanya kirim baris yang ada isinya
         })
       });
       const data = await res.json();
@@ -547,11 +546,8 @@ export default function PresensiPage() {
           title: 'Berhasil!',
           text: 'Jurnal Piket berhasil disimpan.'
         });
-        setJpGuruIzin('');
-        setJpAlasanIzin('');
-        setJpKelasDitinggalkan('');
-        setJpMateri('');
-        setJpGuruPengganti('');
+        setJpEntries([{ guruIzin: '', alasanIzin: '', kelasDitinggalkan: '', materi: '', guruPengganti: '' }]);
+        setJpPetugasPiket('');
         setJpGuruDispo('');
       } else {
         Swal.fire({
@@ -1093,7 +1089,7 @@ export default function PresensiPage() {
         {activeTab === 'jurnal_piket' && (
           <div className={styles.card}>
             <h2>Jurnal Piket</h2>
-            <div className={styles.filterSection}>
+            <div className={styles.filterSection} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: 20, marginBottom: 20 }}>
               <div className={styles.filterGroup}>
                 <label>Tanggal</label>
                 <input 
@@ -1103,10 +1099,7 @@ export default function PresensiPage() {
                   className={styles.inputField}
                 />
               </div>
-            </div>
-
-            <div className={styles.formGrid}>
-              <div className={styles.formGroup}>
+              <div className={styles.filterGroup}>
                 <label>Petugas Piket <span style={{color: 'red'}}>*</span></label>
                 <input 
                   type="text" 
@@ -1116,8 +1109,7 @@ export default function PresensiPage() {
                   className={styles.inputField}
                 />
               </div>
-              
-              <div className={styles.formGroup}>
+              <div className={styles.filterGroup}>
                 <label>Guru Dispo</label>
                 <input 
                   type="text" 
@@ -1127,68 +1119,130 @@ export default function PresensiPage() {
                   className={styles.inputField}
                 />
               </div>
+            </div>
 
-              <div className={styles.formGroup}>
-                <label>Nama Guru yang Izin</label>
-                <input 
-                  type="text" 
-                  value={jpGuruIzin}
-                  onChange={(e) => setJpGuruIzin(e.target.value)}
-                  placeholder="Contoh: Bu Ratna"
-                  className={styles.inputField}
-                />
-              </div>
+            <div style={{ marginBottom: 15, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '1.1rem', margin: 0 }}>Daftar Guru Izin / Laporan Kejadian</h3>
+              <button 
+                onClick={() => setJpEntries([...jpEntries, { guruIzin: '', alasanIzin: '', kelasDitinggalkan: '', materi: '', guruPengganti: '' }])}
+                style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: '0.85rem' }}
+              >
+                <i className="fas fa-plus"></i> Tambah Baris
+              </button>
+            </div>
 
-              <div className={styles.formGroup}>
-                <label>Alasan Izin</label>
-                <input 
-                  type="text" 
-                  value={jpAlasanIzin}
-                  onChange={(e) => setJpAlasanIzin(e.target.value)}
-                  placeholder="Sakit, Dinas Luar, dll"
-                  className={styles.inputField}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label>Kelas yang Ditinggalkan</label>
-                <input 
-                  type="text" 
-                  value={jpKelasDitinggalkan}
-                  onChange={(e) => setJpKelasDitinggalkan(e.target.value)}
-                  placeholder="Contoh: 7A, 8B"
-                  className={styles.inputField}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label>Materi</label>
-                <input 
-                  type="text" 
-                  value={jpMateri}
-                  onChange={(e) => setJpMateri(e.target.value)}
-                  placeholder="Materi tugas pengganti"
-                  className={styles.inputField}
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label>Guru Pengganti</label>
-                <input 
-                  type="text" 
-                  value={jpGuruPengganti}
-                  onChange={(e) => setJpGuruPengganti(e.target.value)}
-                  placeholder="Nama guru pengganti jika ada"
-                  className={styles.inputField}
-                />
-              </div>
+            <div style={{ overflowX: 'auto', marginBottom: 20 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                    <th style={{ padding: '10px', textAlign: 'left' }}>No</th>
+                    <th style={{ padding: '10px', textAlign: 'left' }}>Nama Guru Izin</th>
+                    <th style={{ padding: '10px', textAlign: 'left' }}>Alasan Izin</th>
+                    <th style={{ padding: '10px', textAlign: 'left' }}>Kelas Ditinggalkan</th>
+                    <th style={{ padding: '10px', textAlign: 'left' }}>Materi / Tugas</th>
+                    <th style={{ padding: '10px', textAlign: 'left' }}>Guru Pengganti</th>
+                    <th style={{ padding: '10px', textAlign: 'center' }}>Hapus</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {jpEntries.map((entry, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '8px 10px', textAlign: 'center', color: '#64748b' }}>{idx + 1}</td>
+                      <td style={{ padding: '8px 10px' }}>
+                        <input 
+                          type="text" 
+                          value={entry.guruIzin}
+                          onChange={(e) => {
+                            const newEntries = [...jpEntries];
+                            newEntries[idx].guruIzin = e.target.value;
+                            setJpEntries(newEntries);
+                          }}
+                          placeholder="Nama Guru"
+                          className={styles.inputField}
+                          style={{ marginBottom: 0, padding: '6px 10px' }}
+                        />
+                      </td>
+                      <td style={{ padding: '8px 10px' }}>
+                        <input 
+                          type="text" 
+                          value={entry.alasanIzin}
+                          onChange={(e) => {
+                            const newEntries = [...jpEntries];
+                            newEntries[idx].alasanIzin = e.target.value;
+                            setJpEntries(newEntries);
+                          }}
+                          placeholder="Sakit/Izin/Dinas"
+                          className={styles.inputField}
+                          style={{ marginBottom: 0, padding: '6px 10px' }}
+                        />
+                      </td>
+                      <td style={{ padding: '8px 10px' }}>
+                        <input 
+                          type="text" 
+                          value={entry.kelasDitinggalkan}
+                          onChange={(e) => {
+                            const newEntries = [...jpEntries];
+                            newEntries[idx].kelasDitinggalkan = e.target.value;
+                            setJpEntries(newEntries);
+                          }}
+                          placeholder="7A, 8B"
+                          className={styles.inputField}
+                          style={{ marginBottom: 0, padding: '6px 10px' }}
+                        />
+                      </td>
+                      <td style={{ padding: '8px 10px' }}>
+                        <input 
+                          type="text" 
+                          value={entry.materi}
+                          onChange={(e) => {
+                            const newEntries = [...jpEntries];
+                            newEntries[idx].materi = e.target.value;
+                            setJpEntries(newEntries);
+                          }}
+                          placeholder="Tugas Mengerjakan LKS"
+                          className={styles.inputField}
+                          style={{ marginBottom: 0, padding: '6px 10px' }}
+                        />
+                      </td>
+                      <td style={{ padding: '8px 10px' }}>
+                        <input 
+                          type="text" 
+                          value={entry.guruPengganti}
+                          onChange={(e) => {
+                            const newEntries = [...jpEntries];
+                            newEntries[idx].guruPengganti = e.target.value;
+                            setJpEntries(newEntries);
+                          }}
+                          placeholder="Nama Pengganti"
+                          className={styles.inputField}
+                          style={{ marginBottom: 0, padding: '6px 10px' }}
+                        />
+                      </td>
+                      <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                        <button 
+                          onClick={() => {
+                            if (jpEntries.length > 1) {
+                              setJpEntries(jpEntries.filter((_, i) => i !== idx));
+                            } else {
+                              setJpEntries([{ guruIzin: '', alasanIzin: '', kelasDitinggalkan: '', materi: '', guruPengganti: '' }]);
+                            }
+                          }}
+                          style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '5px' }}
+                          title="Hapus baris"
+                        >
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
             <button 
               className={styles.submitBtn} 
               onClick={handleJurnalPiketSubmit}
               disabled={isSubmitting}
-              style={{ marginTop: '20px' }}
             >
               {isSubmitting ? (
                 <> <i className="fas fa-spinner fa-spin"></i> Menyimpan... </>
