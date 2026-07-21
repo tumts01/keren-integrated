@@ -5,6 +5,68 @@ import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
 import styles from './presensi.module.css';
 
+const MultiSelectDropdown = ({ options, selected, onChange, placeholder, className }: { options: string[], selected: string[], onChange: (s: string[]) => void, placeholder: string, className?: string }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [wrapperRef]);
+  
+  const toggle = (opt: string) => {
+    if (selected.includes(opt)) {
+      onChange(selected.filter(x => x !== opt));
+    } else {
+      onChange([...selected, opt]);
+    }
+  };
+
+  return (
+    <div ref={wrapperRef} style={{ position: 'relative', width: '100%' }}>
+      <div 
+        className={className} 
+        style={{ minHeight: '38px', cursor: 'pointer', display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {selected.length === 0 ? <span style={{ color: '#9ca3af' }}>{placeholder}</span> : 
+          selected.map(s => (
+            <span key={s} style={{ background: '#e0e7ff', color: '#3730a3', padding: '2px 8px', borderRadius: 4, fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center' }}>
+              {s}
+              <button 
+                onClick={(e) => { e.stopPropagation(); toggle(s); }} 
+                style={{ background: 'transparent', border: 'none', color: '#4f46e5', marginLeft: 4, cursor: 'pointer', fontSize: '0.9rem', lineHeight: 1 }}
+              >
+                &times;
+              </button>
+            </span>
+          ))
+        }
+      </div>
+      {isOpen && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #d1d5db', zIndex: 50, maxHeight: '200px', overflowY: 'auto', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', borderRadius: '4px', marginTop: '4px' }}>
+          {options.map(opt => (
+            <div 
+              key={opt} 
+              style={{ padding: '8px 12px', cursor: 'pointer', background: selected.includes(opt) ? '#f3f4f6' : 'white', display: 'flex', alignItems: 'center', fontSize: '0.9rem' }}
+              onClick={() => toggle(opt)}
+            >
+              <input type="checkbox" checked={selected.includes(opt)} readOnly style={{ marginRight: 8, cursor: 'pointer' }} />
+              {opt}
+            </div>
+          ))}
+          {options.length === 0 && <div style={{ padding: '8px 12px', color: '#9ca3af', fontSize: '0.9rem' }}>Tidak ada pilihan</div>}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function PresensiPage() {
   const [activeTab, setActiveTab] = useState<'absen' | 'piket' | 'jurnal' | 'jurnal_piket' | 'rekap_siswa' | 'rekap_jurnal'>('absen');
 
@@ -43,8 +105,8 @@ export default function PresensiPage() {
   const [selectedGuru, setSelectedGuru] = useState('');
 
   // Jurnal Piket states
-  const [jpPetugasPiket, setJpPetugasPiket] = useState('');
-  const [jpGuruDispo, setJpGuruDispo] = useState('');
+  const [jpPetugasPiket, setJpPetugasPiket] = useState<string[]>([]);
+  const [jpGuruDispo, setJpGuruDispo] = useState<string[]>([]);
   const [jpEntries, setJpEntries] = useState([
     { guruIzin: '', alasanIzin: '', kelasDitinggalkan: '', materi: '', guruPengganti: '' }
   ]);
@@ -503,7 +565,7 @@ export default function PresensiPage() {
   };
 
   const handleJurnalPiketSubmit = async () => {
-    if (!jpPetugasPiket.trim()) {
+    if (jpPetugasPiket.length === 0) {
       Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Mohon isi Nama Petugas Piket!' });
       return;
     }
@@ -533,8 +595,8 @@ export default function PresensiPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tanggal,
-          petugasPiket: jpPetugasPiket,
-          guruDispo: jpGuruDispo,
+          petugasPiket: jpPetugasPiket.join(', '),
+          guruDispo: jpGuruDispo.join(', '),
           entries: jpEntries.filter(e => e.guruIzin.trim() !== '') // hanya kirim baris yang ada isinya
         })
       });
@@ -547,8 +609,8 @@ export default function PresensiPage() {
           text: 'Jurnal Piket berhasil disimpan.'
         });
         setJpEntries([{ guruIzin: '', alasanIzin: '', kelasDitinggalkan: '', materi: '', guruPengganti: '' }]);
-        setJpPetugasPiket('');
-        setJpGuruDispo('');
+        setJpPetugasPiket([]);
+        setJpGuruDispo([]);
       } else {
         Swal.fire({
           icon: 'error',
@@ -1106,23 +1168,21 @@ export default function PresensiPage() {
               </div>
               <div className={styles.filterGroup}>
                 <label>Petugas Piket <span style={{color: 'red'}}>*</span></label>
-                <input 
-                  type="text" 
-                  list="guru-datalist"
-                  value={jpPetugasPiket}
-                  onChange={(e) => setJpPetugasPiket(e.target.value)}
-                  placeholder="Contoh: Budi, Siti"
+                <MultiSelectDropdown 
+                  options={guruList}
+                  selected={jpPetugasPiket}
+                  onChange={setJpPetugasPiket}
+                  placeholder="Pilih Petugas Piket..."
                   className={styles.inputField}
                 />
               </div>
               <div className={styles.filterGroup}>
                 <label>Guru Dispo</label>
-                <input 
-                  type="text" 
-                  list="guru-datalist"
-                  value={jpGuruDispo}
-                  onChange={(e) => setJpGuruDispo(e.target.value)}
-                  placeholder="Contoh: Pak Andi"
+                <MultiSelectDropdown 
+                  options={guruList}
+                  selected={jpGuruDispo}
+                  onChange={setJpGuruDispo}
+                  placeholder="Pilih Guru Dispo..."
                   className={styles.inputField}
                 />
               </div>
