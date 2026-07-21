@@ -173,10 +173,25 @@
     margin: 15mm;
   }
   
-  body {
+  body,
+  .container,
+  .section,
+  .sectionTitle,
+  .dataTable,
+  .dataTable th,
+  .dataTable td,
+  .dataTable tr,
+  .mainTotalRow td,
+  .subTotalRow td,
+  .totalCell,
+  .categoryCell,
+  .subCategoryCell,
+  .numberCell {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-    background: white;
   }
 
   .actionContainer {
@@ -184,46 +199,50 @@
   }
 
   .container {
-    padding: 0;
-    max-width: none;
-    margin: 0;
+    padding: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
   }
   
   .section {
-    box-shadow: none;
-    border: 1px solid #ccc;
-    page-break-inside: avoid;
-    margin-bottom: 20px;
+    box-shadow: none !important;
+    border: 1px solid #999 !important;
+    page-break-inside: avoid !important;
+    margin-bottom: 20px !important;
   }
-  
-  .title {
-    font-size: 16pt;
-    color: black;
-  }
-  
-  .subtitle {
-    font-size: 10pt;
-    color: #333;
+
+  .sectionTitle {
+    border-bottom: 2px solid #333 !important;
+    font-size: 11pt !important;
   }
   
   .dataTable th {
-    background-color: #f0f0f0 !important;
-    color: black !important;
-    border-bottom: 2px solid #aaa !important;
+    border-bottom: 2px solid #555 !important;
+    font-size: 8pt !important;
+  }
+
+  .dataTable td {
+    border-bottom: 1px solid #ddd !important;
   }
   
   .mainTotalRow td {
-    background-color: #e0e0e0 !important;
-    color: black !important;
-    border-bottom: 2px solid #999 !important;
+    border-top: 2px solid #333 !important;
+    border-bottom: 2px solid #333 !important;
+    font-weight: 700 !important;
   }
   
   .subTotalRow td {
-    background-color: #f9f9f9 !important;
+    border-top: 1px solid #aaa !important;
+    border-bottom: 1px solid #aaa !important;
+    font-weight: 600 !important;
   }
   
-  .categoryCell, .subCategoryCell, .numberCell, .totalCell {
-    color: black !important;
-    border-right: 1px solid #ddd !important;
+  .categoryCell, .subCategoryCell {
+    border-right: 1px solid #aaa !important;
+  }
+
+  .totalCell {
+    font-weight: 700 !important;
   }
 }
+

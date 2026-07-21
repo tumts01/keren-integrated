@@ -129,20 +129,41 @@ a {
   }
 }
 
+
+.print-header {
+  display: none;
+}
+
 @media print {
-  aside, 
-  header, 
+  @page {
+    size: A4 portrait;
+    margin: 15mm;
+  }
+
+  aside,
+  header,
   footer,
   nav,
-  [class*="Sidebar_sidebar"],
-  [class*="Header_header"] {
+  [class*="Sidebar"],
+  [class*="Header"] {
     display: none !important;
+  }
+
+  html,
+  body,
+  .app-container,
+  .main-content,
+  .page-content,
+  main {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    background-image: none !important;
+    overflow: visible !important;
   }
 
   .app-container {
     display: block !important;
     height: auto !important;
-    overflow: visible !important;
   }
 
   .main-content {
@@ -150,7 +171,6 @@ a {
     width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
-    overflow: visible !important;
   }
 
   .page-content {
@@ -158,33 +178,14 @@ a {
     width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
-    overflow: visible !important;
-    background: transparent !important;
   }
 
-  body {
-    background: white !important;
-    overflow: visible !important;
-  }
-}
-
-.print-header {
-  display: none;
-}
-
-@media print {
   .print-header {
     display: block !important;
-    margin-bottom: 24px;
+    margin-bottom: 16px;
   }
-  
+
   .install-pwa-btn {
     display: none !important;
-  }
-  
-  html, body, .app-container, .main-content, .page-content, main {
-    background: #ffffff !important;
-    background-color: #ffffff !important;
-    background-image: none !important;
   }
 }
