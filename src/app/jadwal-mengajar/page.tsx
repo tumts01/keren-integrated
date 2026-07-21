@@ -46,6 +46,8 @@ export default function JadwalMengajarPage() {
 
   const [activeTab, setActiveTab] = useState<'guru' | 'kelas'>('guru');
   const [selectedKelas, setSelectedKelas] = useState('VII_A');
+  const [jadwalPelajaran, setJadwalPelajaran] = useState<any[]>([]);
+  const [loadingPelajaran, setLoadingPelajaran] = useState(false);
 
   const router = useRouter();
 
@@ -58,8 +60,27 @@ export default function JadwalMengajarPage() {
         setCurrentUsername(user.nama || user.username || '');
       } catch(e) {}
     }
-    fetchData();
-  }, []);
+    if (activeTab === 'guru') {
+      fetchData();
+    } else if (activeTab === 'kelas' && jadwalPelajaran.length === 0 && !loadingPelajaran) {
+      fetchJadwalPelajaran();
+    }
+  }, [activeTab]);
+
+  const fetchJadwalPelajaran = async () => {
+    setLoadingPelajaran(true);
+    try {
+      const res = await fetch('/api/jadwal-pelajaran');
+      const data = await res.json();
+      if (data.success) {
+        setJadwalPelajaran(data.data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingPelajaran(false);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -183,16 +204,20 @@ export default function JadwalMengajarPage() {
   const isAdmin = userRole === 'admin' || userRole === 'pimpinan';
 
   // Jadwal Kelas computed
-  const kelasJadwalList = jadwalList.filter(j => {
-    const jam = parseInt(j[selectedKelas] || '0');
-    return jam > 0;
-  }).sort((a, b) => {
-    const mapelA = (a.mataPelajaran || '').toLowerCase();
-    const mapelB = (b.mataPelajaran || '').toLowerCase();
-    return mapelA.localeCompare(mapelB);
-  });
-
-  const totalJamKelas = kelasJadwalList.reduce((acc, curr) => acc + parseInt(curr[selectedKelas] || '0'), 0);
+  // Filter for the selected class
+  const classTimetable = jadwalPelajaran.filter(j => j.kelas === selectedKelas);
+  
+  // Get unique Jam Ke
+  const jamKeList = Array.from(new Set(classTimetable.map(j => j.jamKe))).sort((a, b) => a - b);
+  
+  // Get unique days 
+  const DAYS = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
+  
+  const getCellData = (hari: string, jam: number) => {
+    const entry = classTimetable.find(j => j.hari === hari && j.jamKe === jam);
+    if (!entry) return null;
+    return entry;
+  };
 
   const ALL_KELAS_OPTIONS = [
     ...KELAS_VII.map(k => `VII_${k}`),
@@ -328,36 +353,47 @@ export default function JadwalMengajarPage() {
           </div>
           )
         ) : (
-          kelasJadwalList.length === 0 ? (
+          loadingPelajaran ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <i className="fas fa-spinner fa-spin fa-2x"></i>
+              <p>Memuat jadwal kelas...</p>
+            </div>
+          ) : classTimetable.length === 0 ? (
             <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
               <p>Tidak ada jadwal untuk kelas {selectedKelas.replace('_', ' ')}.</p>
             </div>
           ) : (
             <div className={styles.tableWrapper}>
-              <table className={styles.table}>
+              <table className={styles.table} style={{ minWidth: '800px' }}>
                 <thead>
-                  <tr>
-                    <th>No</th>
-                    <th className={styles.textLeft}>Mata Pelajaran</th>
-                    <th className={styles.textLeft}>Nama Guru</th>
-                    <th>Kode</th>
-                    <th>Beban Jam</th>
+                  <tr style={{ background: '#1e3a5f', color: 'white' }}>
+                    <th style={{ padding: '10px 8px', fontSize: '0.85rem' }}>Jam Ke</th>
+                    {DAYS.map(day => (
+                      <th key={day} style={{ padding: '10px 8px', fontSize: '0.85rem' }}>{day}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {kelasJadwalList.map((item, idx) => (
-                    <tr key={item.id}>
-                      <td>{idx + 1}</td>
-                      <td className={styles.textLeft} style={{ fontWeight: 600 }}>{item.mataPelajaran}</td>
-                      <td className={styles.textLeft}>{item.namaGuru}</td>
-                      <td>{item.kodeGuru}</td>
-                      <td style={{ fontWeight: 'bold', color: '#166534' }}>{item[selectedKelas]}</td>
+                  {jamKeList.map((jam) => (
+                    <tr key={jam} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ fontWeight: 'bold', background: '#f8fafc', fontSize: '0.9rem' }}>{jam}</td>
+                      {DAYS.map(day => {
+                        const entry = getCellData(day, jam);
+                        return (
+                          <td key={`${day}-${jam}`} style={{ padding: '8px', verticalAlign: 'top', height: '60px' }}>
+                            {entry ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'center' }}>
+                                <span style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '0.8rem' }}>{entry.mataPelajaran}</span>
+                                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{entry.namaGuru}</span>
+                              </div>
+                            ) : (
+                              <span style={{ color: '#cbd5e1' }}>-</span>
+                            )}
+                          </td>
+                        )
+                      })}
                     </tr>
                   ))}
-                  <tr style={{ background: '#eff6ff' }}>
-                    <td colSpan={4} style={{ textAlign: 'right', fontWeight: 700, color: '#1e3a5f' }}>Total Jam:</td>
-                    <td style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '1rem' }}>{totalJamKelas}</td>
-                  </tr>
                 </tbody>
               </table>
             </div>
