@@ -167,3 +167,24 @@ a {
     overflow: visible !important;
   }
 }
+
+.print-header {
+  display: none;
+}
+
+@media print {
+  .print-header {
+    display: block !important;
+    margin-bottom: 24px;
+  }
+  
+  .install-pwa-btn {
+    display: none !important;
+  }
+  
+  html, body, .app-container, .main-content, .page-content, main {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    background-image: none !important;
+  }
+}

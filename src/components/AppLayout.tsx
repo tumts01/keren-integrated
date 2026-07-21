@@ -371,6 +371,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           });
         }} />
         <main className="page-content">
+          <div className="print-header">
+            <img src="/kop_surat_mts.png" alt="Kop Surat MTs Almaarif 01" style={{ width: '100%', maxWidth: '800px', display: 'block', margin: '0 auto' }} />
+          </div>
           {children}
         </main>
         <footer style={{
@@ -413,6 +416,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           }}
           onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
           onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+          className="install-pwa-btn"
         >
           <i className="fas fa-download"></i> Install Aplikasi
         </button>
