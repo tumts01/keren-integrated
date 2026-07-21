@@ -70,6 +70,40 @@
   overflow-x: auto;
 }
 
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 8px;
+  overflow-x: auto;
+}
+
+.tab {
+  background: transparent;
+  border: none;
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tab:hover {
+  background: #f1f5f9;
+  color: var(--text-main);
+}
+
+.activeTab {
+  background: #eff6ff;
+  color: var(--primary);
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;

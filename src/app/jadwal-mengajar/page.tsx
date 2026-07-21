@@ -44,6 +44,9 @@ export default function JadwalMengajarPage() {
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<Jadwal>>({});
 
+  const [activeTab, setActiveTab] = useState<'guru' | 'kelas'>('guru');
+  const [selectedKelas, setSelectedKelas] = useState('VII_A');
+
   const router = useRouter();
 
   useEffect(() => {
@@ -179,6 +182,24 @@ export default function JadwalMengajarPage() {
 
   const isAdmin = userRole === 'admin' || userRole === 'pimpinan';
 
+  // Jadwal Kelas computed
+  const kelasJadwalList = jadwalList.filter(j => {
+    const jam = parseInt(j[selectedKelas] || '0');
+    return jam > 0;
+  }).sort((a, b) => {
+    const mapelA = (a.mataPelajaran || '').toLowerCase();
+    const mapelB = (b.mataPelajaran || '').toLowerCase();
+    return mapelA.localeCompare(mapelB);
+  });
+
+  const totalJamKelas = kelasJadwalList.reduce((acc, curr) => acc + parseInt(curr[selectedKelas] || '0'), 0);
+
+  const ALL_KELAS_OPTIONS = [
+    ...KELAS_VII.map(k => `VII_${k}`),
+    ...KELAS_VIII.map(k => `VIII_${k}`),
+    ...KELAS_IX.map(k => `IX_${k}`)
+  ];
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -188,22 +209,56 @@ export default function JadwalMengajarPage() {
             Rincian beban jam mengajar guru semester ini.
           </p>
         </div>
-        {isAdmin && (
+        {isAdmin && activeTab === 'guru' && (
           <button className={styles.addBtn} onClick={openAddModal}>
             <i className="fas fa-plus"></i> Tambah Jadwal
           </button>
         )}
       </div>
 
-      <div className={styles.controls}>
-        <input 
-          type="text" 
-          placeholder="Cari berdasarkan nama guru atau mata pelajaran..." 
-          className={styles.searchInput}
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+      <div className={styles.tabs}>
+        <button 
+          className={`${styles.tab} ${activeTab === 'guru' ? styles.activeTab : ''}`}
+          onClick={() => setActiveTab('guru')}
+        >
+          <i className="fas fa-chalkboard-teacher"></i>
+          Jadwal Guru
+        </button>
+        <button 
+          className={`${styles.tab} ${activeTab === 'kelas' ? styles.activeTab : ''}`}
+          onClick={() => setActiveTab('kelas')}
+        >
+          <i className="fas fa-users"></i>
+          Jadwal Kelas
+        </button>
       </div>
+
+      {activeTab === 'guru' && (
+        <div className={styles.controls}>
+          <input 
+            type="text" 
+            placeholder="Cari berdasarkan nama guru atau mata pelajaran..." 
+            className={styles.searchInput}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      )}
+
+      {activeTab === 'kelas' && (
+        <div className={styles.controls}>
+          <select 
+            className={styles.searchInput}
+            value={selectedKelas}
+            onChange={(e) => setSelectedKelas(e.target.value)}
+            style={{ maxWidth: '300px' }}
+          >
+            {ALL_KELAS_OPTIONS.map(k => (
+              <option key={k} value={k}>Kelas {k.replace('_', ' ')}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className={styles.card}>
         {loading ? (
@@ -211,12 +266,13 @@ export default function JadwalMengajarPage() {
             <i className="fas fa-spinner fa-spin fa-2x"></i>
             <p>Memuat data jadwal...</p>
           </div>
-        ) : filteredList.length === 0 ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            <p>Tidak ada data jadwal ditemukan.</p>
-          </div>
-        ) : (
-          <div className={styles.tableWrapper}>
+        ) : activeTab === 'guru' ? (
+          filteredList.length === 0 ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <p>Tidak ada data jadwal ditemukan.</p>
+            </div>
+          ) : (
+            <div className={styles.tableWrapper}>
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -270,6 +326,42 @@ export default function JadwalMengajarPage() {
               </tbody>
             </table>
           </div>
+          )
+        ) : (
+          kelasJadwalList.length === 0 ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <p>Tidak ada jadwal untuk kelas {selectedKelas.replace('_', ' ')}.</p>
+            </div>
+          ) : (
+            <div className={styles.tableWrapper}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>No</th>
+                    <th className={styles.textLeft}>Mata Pelajaran</th>
+                    <th className={styles.textLeft}>Nama Guru</th>
+                    <th>Kode</th>
+                    <th>Beban Jam</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {kelasJadwalList.map((item, idx) => (
+                    <tr key={item.id}>
+                      <td>{idx + 1}</td>
+                      <td className={styles.textLeft} style={{ fontWeight: 600 }}>{item.mataPelajaran}</td>
+                      <td className={styles.textLeft}>{item.namaGuru}</td>
+                      <td>{item.kodeGuru}</td>
+                      <td style={{ fontWeight: 'bold', color: '#166534' }}>{item[selectedKelas]}</td>
+                    </tr>
+                  ))}
+                  <tr style={{ background: '#eff6ff' }}>
+                    <td colSpan={4} style={{ textAlign: 'right', fontWeight: 700, color: '#1e3a5f' }}>Total Jam:</td>
+                    <td style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '1rem' }}>{totalJamKelas}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )
         )}
       </div>
 
