@@ -150,8 +150,8 @@ export async function GET() {
 
     siswaRows.forEach(r => {
       // Pastikan siswa aktif
-      const statusAktif = (r.get('Status Siswa') || r.get('STATUS SISWA') || r.get('Ket') || r.get('KETERANGAN') || '').toString().toLowerCase();
-      if (statusAktif === 'keluar' || statusAktif === 'lulus' || statusAktif === 'pindah' || statusAktif === 'mutasi') return;
+      const statusAktif = (r.get('Status Siswa') || r.get('STATUS SISWA') || r.get('Ket') || r.get('KETERANGAN') || '').toString().toLowerCase().trim();
+      if (statusAktif !== 'aktif') return;
 
       const nama = (r.get('Nama') || r.get('NAMA') || r.get('Nama Siswa') || r.get('NAMA SISWA') || '').toString().trim();
       if (!nama) return; // Skip row kosong
