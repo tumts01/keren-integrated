@@ -43,6 +43,7 @@ export default function PersuratanPage() {
   // Modal states
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [successNoSurat, setSuccessNoSurat] = useState<string | null>(null);
   const [uploadTarget, setUploadTarget] = useState<{ id: number, rowNumber: number, type: 'keluar' | 'masuk' } | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -265,9 +266,8 @@ export default function PersuratanPage() {
       });
       const result = await res.json();
       if (result.success) {
-        showToast(`Nomor Surat berhasil dibuat: ${result.noSurat}`, 'success');
-        alert(`Berhasil! Nomor surat Anda adalah:\n\n${result.noSurat}`);
         setShowGenerateModal(false);
+        setSuccessNoSurat(result.noSurat);
         // Reset form
         setFormNamaSurat('');
         setFormSasaran('Guru');
@@ -1450,6 +1450,120 @@ export default function PersuratanPage() {
           </div>
         )}
       </div>
+
+      {/* ===== PREMIUM SUCCESS MODAL ===== */}
+      {successNoSurat && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 99999, animation: 'fadeIn 0.3s ease'
+        }} onClick={() => setSuccessNoSurat(null)}>
+          <div style={{
+            background: 'white', borderRadius: '20px', width: '420px', maxWidth: '92vw',
+            overflow: 'hidden', boxShadow: '0 25px 60px rgba(0,0,0,0.3)',
+            animation: 'slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            transform: 'translateY(0)'
+          }} onClick={(e) => e.stopPropagation()}>
+            {/* Header Gradient */}
+            <div style={{
+              background: 'linear-gradient(135deg, #1e6b3a, #2d8f4e, #1e6b3a)',
+              padding: '32px 24px 28px', textAlign: 'center', position: 'relative',
+              overflow: 'hidden'
+            }}>
+              {/* Decorative circles */}
+              <div style={{
+                position: 'absolute', top: '-20px', right: '-20px', width: '80px', height: '80px',
+                borderRadius: '50%', background: 'rgba(255,255,255,0.08)'
+              }}></div>
+              <div style={{
+                position: 'absolute', bottom: '-15px', left: '-15px', width: '60px', height: '60px',
+                borderRadius: '50%', background: 'rgba(255,255,255,0.06)'
+              }}></div>
+              {/* Check icon */}
+              <div style={{
+                width: '64px', height: '64px', borderRadius: '50%',
+                background: 'rgba(255,255,255,0.2)', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px',
+                border: '3px solid rgba(255,255,255,0.4)',
+                animation: 'scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both'
+              }}>
+                <i className="fas fa-check" style={{ fontSize: '28px', color: 'white' }}></i>
+              </div>
+              <h3 style={{
+                margin: 0, color: 'white', fontSize: '1.25rem', fontWeight: 700,
+                letterSpacing: '0.5px'
+              }}>Nomor Surat Berhasil Dibuat!</h3>
+              <p style={{
+                margin: '6px 0 0', color: 'rgba(255,255,255,0.8)', fontSize: '0.85rem'
+              }}>Nomor surat Anda telah tercatat di sistem</p>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '28px 24px' }}>
+              <p style={{
+                margin: '0 0 10px', fontSize: '0.8rem', color: '#64748b',
+                textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: 600,
+                textAlign: 'center'
+              }}>Nomor Surat</p>
+              <div style={{
+                background: 'linear-gradient(135deg, #f0fdf4, #ecfdf5)',
+                border: '2px solid #bbf7d0', borderRadius: '12px',
+                padding: '16px 20px', textAlign: 'center', position: 'relative'
+              }}>
+                <p style={{
+                  margin: 0, fontSize: '1.2rem', fontWeight: 800,
+                  color: '#15803d', letterSpacing: '0.5px', fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                  wordBreak: 'break-all', lineHeight: 1.5
+                }}>{successNoSurat}</p>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(successNoSurat);
+                    showToast('Nomor surat berhasil disalin!', 'success');
+                  }}
+                  style={{
+                    flex: 1, padding: '12px 16px', borderRadius: '10px',
+                    border: '2px solid #d1d5db', background: 'white',
+                    color: '#374151', fontWeight: 600, fontSize: '0.9rem',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', gap: '8px', transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => { e.currentTarget.style.background = '#f9fafb'; e.currentTarget.style.borderColor = '#9ca3af'; }}
+                  onMouseOut={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = '#d1d5db'; }}
+                >
+                  <i className="fas fa-copy"></i> Salin
+                </button>
+                <button
+                  onClick={() => { setSuccessNoSurat(null); fetchData(); }}
+                  style={{
+                    flex: 2, padding: '12px 16px', borderRadius: '10px',
+                    border: 'none', background: 'linear-gradient(135deg, #1e6b3a, #2d8f4e)',
+                    color: 'white', fontWeight: 700, fontSize: '0.9rem',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', gap: '8px', transition: 'all 0.2s',
+                    boxShadow: '0 4px 14px rgba(30,107,58,0.3)'
+                  }}
+                  onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(30,107,58,0.4)'; }}
+                  onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(30,107,58,0.3)'; }}
+                >
+                  <i className="fas fa-check-circle"></i> Selesai
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(40px) scale(0.95) } to { opacity: 1; transform: translateY(0) scale(1) } }
+        @keyframes scaleIn { from { transform: scale(0) } to { transform: scale(1) } }
+      `}</style>
+
     </div>
   );
 }
