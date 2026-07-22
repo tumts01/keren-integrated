@@ -778,7 +778,12 @@ export default function PresensiPage() {
 
             {activeTab === 'absen' && (
               <div className={styles.alertMessage} style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #d1fae5', marginBottom: 20 }}>
-                <i className="fas fa-info-circle mr-2" style={{ marginRight: '6px' }}></i> Jika siswa <strong>masuk semua</strong>, abaikan menu ini dan langsung isi <strong>Jurnal Mengajar</strong>.
+                <div style={{ marginBottom: '4px' }}>
+                  <i className="fas fa-info-circle mr-2" style={{ marginRight: '6px' }}></i> Jika siswa <strong>masuk semua</strong>, abaikan menu ini dan langsung isi <strong>Jurnal Mengajar</strong>.
+                </div>
+                <div>
+                  <i className="fas fa-info-circle mr-2" style={{ marginRight: '6px', opacity: 0 }}></i> Siswa yang mengikuti kegiatan madrasah maka dianggap <strong>Hadir</strong>.
+                </div>
               </div>
             )}
 
