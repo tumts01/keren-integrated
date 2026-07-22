@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
+import * as XLSX from 'xlsx';
 import styles from '../presensi/presensi.module.css';
 
 export default function DispoPage() {
@@ -20,6 +21,9 @@ export default function DispoPage() {
 
   const [dispoHistory, setDispoHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [filterFrom, setFilterFrom] = useState(new Date().toISOString().split('T')[0]);
+  const [filterTo, setFilterTo] = useState(new Date().toISOString().split('T')[0]);
+  const [filterKelas, setFilterKelas] = useState('');
 
   useEffect(() => {
     // Clock for Jam Kedatangan
@@ -140,7 +144,36 @@ export default function DispoPage() {
     }
   };
 
-  const todayHistory = dispoHistory.filter(r => r.tanggal === tanggal);
+  const filteredHistory = dispoHistory.filter(r => {
+    if (!r.tanggal) return false;
+    const matchDate = r.tanggal >= filterFrom && r.tanggal <= filterTo;
+    const matchKelas = filterKelas ? r.kelas === filterKelas : true;
+    return matchDate && matchKelas;
+  });
+
+  const availableKelas = Array.from(new Set(dispoHistory.map(r => r.kelas))).filter(Boolean).sort();
+
+  const exportExcel = () => {
+    if (filteredHistory.length === 0) {
+      Swal.fire({ icon: 'info', title: 'Kosong', text: 'Tidak ada data untuk dicetak pada rentang tanggal ini.' });
+      return;
+    }
+    const rows = filteredHistory.map((r, i) => ({
+      'No': i + 1,
+      'Tanggal': r.tanggal,
+      'Jam Kedatangan': r.jamKedatangan,
+      'Nama Siswa': r.namaSiswa,
+      'Kelas': r.kelas,
+      'Alasan Terlambat': r.alasanTerlambat,
+      'Petugas Dispo': r.petugasDispo
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Dispo');
+    const namaKelas = filterKelas ? `_${filterKelas}` : '';
+    XLSX.writeFile(wb, `Rekap_Dispo_Siswa_${filterFrom}_sd_${filterTo}${namaKelas}.xlsx`);
+  };
 
   return (
     <div className={styles.container}>
@@ -238,19 +271,55 @@ export default function DispoPage() {
         </div>
 
         <div className={styles.card}>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-            <i className="fas fa-history" style={{ color: '#475569' }}></i> Riwayat Hari Ini ({tanggal})
-          </h2>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', gap: '10px' }}>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+              <i className="fas fa-history" style={{ color: '#475569' }}></i> Riwayat Dispo
+            </h2>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <input 
+                type="date" 
+                value={filterFrom} 
+                onChange={(e) => setFilterFrom(e.target.value)} 
+                className={styles.inputField} 
+                style={{ marginBottom: 0, padding: '6px 10px' }}
+              />
+              <span style={{ fontWeight: 'bold', color: '#64748b' }}>s/d</span>
+              <input 
+                type="date" 
+                value={filterTo} 
+                onChange={(e) => setFilterTo(e.target.value)} 
+                className={styles.inputField} 
+                style={{ marginBottom: 0, padding: '6px 10px' }}
+              />
+              <select 
+                value={filterKelas}
+                onChange={(e) => setFilterKelas(e.target.value)}
+                className={styles.inputField}
+                style={{ marginBottom: 0, padding: '6px 10px', minWidth: '120px' }}
+              >
+                <option value="">Semua Kelas</option>
+                {availableKelas.map((kls: any) => (
+                  <option key={kls} value={kls}>{kls}</option>
+                ))}
+              </select>
+              <button 
+                onClick={exportExcel}
+                style={{ background: '#16a34a', border: 'none', padding: '8px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.9rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+              >
+                <i className="fas fa-file-excel"></i> Cetak / Export
+              </button>
+            </div>
+          </div>
           
           {loadingHistory ? (
             <div style={{ textAlign: 'center', padding: '30px 0', color: '#64748b' }}>
               <i className="fas fa-spinner fa-spin" style={{ fontSize: '1.5rem', marginBottom: '10px' }}></i>
               <p>Memuat riwayat...</p>
             </div>
-          ) : todayHistory.length === 0 ? (
+          ) : filteredHistory.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '30px 0', color: '#94a3b8' }}>
               <i className="fas fa-check-circle" style={{ fontSize: '2.5rem', marginBottom: '10px', color: '#10b981', opacity: 0.7 }}></i>
-              <p>Belum ada siswa yang terlambat hari ini.</p>
+              <p>Belum ada siswa yang terlambat pada rentang tanggal ini.</p>
             </div>
           ) : (
             <div className={styles.tableWrapper}>
@@ -258,6 +327,7 @@ export default function DispoPage() {
                 <thead>
                   <tr>
                     <th>No</th>
+                    <th>Tanggal</th>
                     <th>Jam</th>
                     <th>Nama Siswa</th>
                     <th>Kelas</th>
@@ -266,9 +336,10 @@ export default function DispoPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {todayHistory.map((r, idx) => (
+                  {filteredHistory.map((r, idx) => (
                     <tr key={r.id}>
                       <td>{idx + 1}</td>
+                      <td>{r.tanggal}</td>
                       <td><span style={{ fontWeight: 600, color: '#ea580c' }}>{r.jamKedatangan}</span></td>
                       <td style={{ fontWeight: 500 }}>{r.namaSiswa}</td>
                       <td><span style={{ fontSize: '0.8rem', background: '#e0e7ff', color: '#4338ca', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>{r.kelas}</span></td>
