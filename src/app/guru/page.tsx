@@ -32,6 +32,8 @@ export default function GuruPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedGuru, setSelectedGuru] = useState<Guru | null>(null);
+  const [showDaftarHadir, setShowDaftarHadir] = useState(false);
+  const [namaKegiatan, setNamaKegiatan] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -190,6 +192,9 @@ export default function GuruPage() {
             </div>
             <button onClick={handleExportExcel} className="btn btn-gold" style={{ marginRight: '8px' }}>
               <i className="fas fa-file-excel"></i> Export Excel
+            </button>
+            <button onClick={() => setShowDaftarHadir(true)} className="btn btn-primary" style={{ marginRight: '8px', background: 'linear-gradient(135deg,#7c3aed,#6d28d9)', borderColor: '#7c3aed' }}>
+              <i className="fas fa-clipboard-list"></i> Daftar Hadir
             </button>
             <button className="btn btn-primary">
             <i className="fas fa-plus"></i> Tambah Data
@@ -377,6 +382,190 @@ export default function GuruPage() {
         </>
         )}
       </div>
+      {/* ===== MODAL DAFTAR HADIR ===== */}
+      {showDaftarHadir && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 99999
+        }} onClick={() => setShowDaftarHadir(false)}>
+          <div style={{
+            background: 'white', borderRadius: '16px', width: '440px', maxWidth: '92vw',
+            overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.25)',
+            animation: 'slideUp 0.3s ease'
+          }} onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div style={{
+              background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+              padding: '24px', textAlign: 'center', position: 'relative'
+            }}>
+              <div style={{
+                position: 'absolute', top: '-15px', right: '-15px', width: '60px', height: '60px',
+                borderRadius: '50%', background: 'rgba(255,255,255,0.08)'
+              }}></div>
+              <div style={{
+                width: '52px', height: '52px', borderRadius: '50%',
+                background: 'rgba(255,255,255,0.2)', display: 'flex',
+                alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px',
+                border: '2px solid rgba(255,255,255,0.3)'
+              }}>
+                <i className="fas fa-clipboard-list" style={{ fontSize: '22px', color: 'white' }}></i>
+              </div>
+              <h3 style={{ margin: 0, color: 'white', fontSize: '1.15rem', fontWeight: 700 }}>Buat Daftar Hadir</h3>
+              <p style={{ margin: '4px 0 0', color: 'rgba(255,255,255,0.75)', fontSize: '0.82rem' }}>Cetak daftar hadir guru & staf</p>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '24px' }}>
+              <label style={{ display: 'block', fontWeight: 600, color: '#374151', fontSize: '0.9rem', marginBottom: '8px' }}>
+                Nama Kegiatan / Keperluan <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: Rapat Dinas, Workshop Kurikulum..."
+                value={namaKegiatan}
+                onChange={(e) => setNamaKegiatan(e.target.value)}
+                style={{
+                  width: '100%', padding: '12px 16px', border: '2px solid #e2e8f0',
+                  borderRadius: '10px', fontSize: '0.9rem', outline: 'none',
+                  transition: 'border-color 0.2s', boxSizing: 'border-box'
+                }}
+                onFocus={(e) => e.currentTarget.style.borderColor = '#7c3aed'}
+                onBlur={(e) => e.currentTarget.style.borderColor = '#e2e8f0'}
+                autoFocus
+              />
+              <p style={{ margin: '8px 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+                <i className="fas fa-info-circle" style={{ marginRight: '4px' }}></i>
+                Nama kegiatan akan menjadi judul pada lembar daftar hadir.
+              </p>
+
+              {/* Buttons */}
+              <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
+                <button
+                  onClick={() => { setShowDaftarHadir(false); setNamaKegiatan(''); }}
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: '10px',
+                    border: '2px solid #e2e8f0', background: 'white',
+                    color: '#475569', fontWeight: 600, fontSize: '0.9rem',
+                    cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={() => {
+                    if (!namaKegiatan.trim()) return;
+                    handleCetakDaftarHadir(namaKegiatan.trim());
+                    setShowDaftarHadir(false);
+                    setNamaKegiatan('');
+                  }}
+                  disabled={!namaKegiatan.trim()}
+                  style={{
+                    flex: 2, padding: '12px', borderRadius: '10px',
+                    border: 'none', background: namaKegiatan.trim() ? 'linear-gradient(135deg, #7c3aed, #6d28d9)' : '#e2e8f0',
+                    color: namaKegiatan.trim() ? 'white' : '#94a3b8', fontWeight: 700, fontSize: '0.9rem',
+                    cursor: namaKegiatan.trim() ? 'pointer' : 'not-allowed',
+                    transition: 'all 0.2s', boxShadow: namaKegiatan.trim() ? '0 4px 14px rgba(124,58,237,0.3)' : 'none'
+                  }}
+                >
+                  <i className="fas fa-print" style={{ marginRight: '6px' }}></i> Cetak Daftar Hadir
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px) scale(0.96) } to { opacity: 1; transform: translateY(0) scale(1) } }
+      `}</style>
     </div>
   );
+
+  function handleCetakDaftarHadir(kegiatan: string) {
+    const guruList = data.sort((a, b) => a.nama.localeCompare(b.nama, 'id'));
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) return;
+
+    const today = new Date();
+    const tgl = today.toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
+    const hari = today.toLocaleDateString('id-ID', { weekday: 'long' });
+
+    const rows = guruList.map((g, i) => `
+      <tr>
+        <td style="text-align:center;padding:6px 8px;border:1px solid #333;">${i + 1}</td>
+        <td style="padding:6px 10px;border:1px solid #333;">${g.nama}</td>
+        <td style="text-align:center;padding:6px 8px;border:1px solid #333;">${g.jabatan || '-'}</td>
+        <td style="border:1px solid #333;width:160px;"></td>
+      </tr>
+    `).join('');
+
+    win.document.write(`
+      <html>
+      <head>
+        <title>Daftar Hadir - ${kegiatan}</title>
+        <style>
+          @page { size: A4 portrait; margin: 15mm 15mm 15mm 20mm; }
+          body { font-family: 'Times New Roman', serif; font-size: 12pt; color: #000; margin: 0; padding: 0; }
+          .header { text-align: center; margin-bottom: 20px; }
+          .header h2 { margin: 0 0 4px; font-size: 15pt; text-transform: uppercase; letter-spacing: 1px; }
+          .header h3 { margin: 0 0 4px; font-size: 13pt; font-weight: normal; }
+          .header .lembaga { font-size: 11pt; color: #333; margin: 0 0 2px; }
+          .header hr { border: none; border-top: 2px solid #333; margin: 10px 0; }
+          .info { margin-bottom: 14px; font-size: 11pt; }
+          .info td { padding: 2px 8px 2px 0; vertical-align: top; }
+          table.main { width: 100%; border-collapse: collapse; font-size: 10.5pt; }
+          table.main th { background: #f0f0f0; border: 1px solid #333; padding: 7px 8px; text-align: center; font-weight: bold; }
+          table.main td { font-size: 10.5pt; }
+          .footer { margin-top: 30px; display: flex; justify-content: flex-end; }
+          .footer .ttd { text-align: center; min-width: 220px; }
+          .footer .ttd .line { margin-top: 70px; }
+          @media print { body { -webkit-print-color-adjust: exact; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <p class="lembaga" style="margin:0;font-size:11pt;">YAYASAN PENDIDIKAN AL AMIN</p>
+          <h2>MTs AL AMIN SINGOSARI</h2>
+          <p class="lembaga">NSM: 121235070055 &nbsp;|&nbsp; NPSN: 20549512</p>
+          <p class="lembaga">Jl. Kyai Mu'min No. 40, Pagentan, Singosari, Kab. Malang</p>
+          <hr/>
+          <h3 style="margin-top:12px;"><strong>DAFTAR HADIR</strong></h3>
+          <h3><strong>${kegiatan.toUpperCase()}</strong></h3>
+        </div>
+
+        <table class="info">
+          <tr><td>Hari</td><td>:</td><td>${hari}</td></tr>
+          <tr><td>Tanggal</td><td>:</td><td>${tgl}</td></tr>
+        </table>
+
+        <table class="main">
+          <thead>
+            <tr>
+              <th style="width:40px;">No</th>
+              <th>Nama</th>
+              <th style="width:140px;">Jabatan</th>
+              <th style="width:160px;">Tanda Tangan</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+
+        <div class="footer">
+          <div class="ttd">
+            <p style="margin:0;">Singosari, ${tgl}</p>
+            <p style="margin:0;">Kepala Madrasah,</p>
+            <div class="line"></div>
+            <p style="margin:0;font-weight:bold;text-decoration:underline;">DWI RETNO PALUPI, M.Pd.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `);
+    win.document.close();
+    setTimeout(() => win.print(), 500);
+  }
 }
