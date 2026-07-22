@@ -328,6 +328,7 @@ export default function SiswaPage() {
   const [selectedSiswa, setSelectedSiswa] = useState<Siswa | null>(null);
   const [selectedTahun, setSelectedTahun] = useState<string>('Semua');
   const [selectedTingkat, setSelectedTingkat] = useState<string>('Semua');
+  const [selectedRombel, setSelectedRombel] = useState<string>('Semua');
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showPrintModal, setShowPrintModal] = useState(false);
 
@@ -357,13 +358,21 @@ export default function SiswaPage() {
 
   const uniqueTahun = Array.from(new Set(data.map(s => s.tahunAjaran).filter(Boolean))).sort((a, b) => b.localeCompare(a));
 
+  const uniqueRombel = Array.from(new Set(
+    data.filter(s => 
+      (selectedTahun === 'Semua' ? s.isLatest : s.tahunAjaran === selectedTahun) && 
+      (selectedTingkat === 'Semua' ? true : s.rombel.startsWith(selectedTingkat))
+    ).map(s => (s.rombel || '').trim()).filter(Boolean)
+  )).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
   const filteredData = data.filter(s => {
     const matchSearch = s.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         s.nisn.includes(searchTerm) ||
                         s.rombel.toLowerCase().includes(searchTerm.toLowerCase());
     const matchTahun = selectedTahun === 'Semua' ? s.isLatest : s.tahunAjaran === selectedTahun;
     const matchTingkat = selectedTingkat === 'Semua' ? true : s.rombel.startsWith(selectedTingkat);
-    return matchSearch && matchTahun && matchTingkat;
+    const matchRombel = selectedRombel === 'Semua' ? true : (s.rombel || '').trim() === selectedRombel;
+    return matchSearch && matchTahun && matchTingkat && matchRombel;
   });
 
   const statsData = data.filter(s => selectedTahun === 'Semua' ? s.isLatest : s.tahunAjaran === selectedTahun);
@@ -524,12 +533,22 @@ export default function SiswaPage() {
             <select
               className={styles.filterSelect}
               value={selectedTingkat}
-              onChange={(e) => setSelectedTingkat(e.target.value)}
+              onChange={(e) => { setSelectedTingkat(e.target.value); setSelectedRombel('Semua'); }}
             >
               <option value="Semua">Semua Tingkat</option>
               <option value="7">Tingkat 7</option>
               <option value="8">Tingkat 8</option>
               <option value="9">Tingkat 9</option>
+            </select>
+            <select
+              className={styles.filterSelect}
+              value={selectedRombel}
+              onChange={(e) => setSelectedRombel(e.target.value)}
+            >
+              <option value="Semua">Semua Rombel</option>
+              {uniqueRombel.map(r => (
+                <option key={r} value={r}>{r}</option>
+              ))}
             </select>
             <div className={styles.searchBox}>
               <i className={`fas fa-search ${styles.searchIcon}`}></i>
