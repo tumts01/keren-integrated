@@ -166,19 +166,49 @@ export async function POST(request: Request) {
     // Contoh: "6, 7, 8" bisa diinterpretasikan sebagai tanggal 6 Juli 2008
     const jamKeText = String(jamKe); // pastikan string
 
-    await sheet.addRow({
-      'ID': id,
-      'TIMESTAMP': timestamp,
-      'TANGGAL': tanggal,
-      'JAM KE': jamKeText,
-      'TAHUN AJARAN': tahunAjaran || '-',
-      'KELAS': kelas,
-      'MAPEL': mapel,
-      'NAMA GURU': guru || 'Unknown',
-      'MATERI': materi
-    }, { raw: true });
+    // ── LOGIKA ANTI-DOBEL ──
+    const rows = await sheet.getRows();
+    const existing = rows.filter(r => 
+      r.get('TANGGAL') === tanggal && 
+      r.get('KELAS') === kelas && 
+      r.get('MAPEL') === mapel && 
+      String(r.get('JAM KE')) === jamKeText
+    );
 
-    return NextResponse.json({ success: true, message: 'Jurnal berhasil disimpan' });
+    if (existing.length > 0) {
+      // Jika sudah ada, update datanya saja
+      existing[0].assign({
+        'TIMESTAMP': timestamp,
+        'TAHUN AJARAN': tahunAjaran || '-',
+        'NAMA GURU': guru || 'Unknown',
+        'MATERI': materi
+      });
+      await existing[0].save();
+
+      // Opsional: Hapus sisa duplikat jika terlanjur ada dari sebelumnya (reverse order)
+      if (existing.length > 1) {
+        for (let i = existing.length - 1; i >= 1; i--) {
+          try { await existing[i].delete(); } catch(e) {}
+        }
+      }
+
+      return NextResponse.json({ success: true, message: 'Jurnal berhasil diperbarui (Anti-Dobel)' });
+    } else {
+      // Jika belum ada, buat baru
+      await sheet.addRow({
+        'ID': id,
+        'TIMESTAMP': timestamp,
+        'TANGGAL': tanggal,
+        'JAM KE': jamKeText,
+        'TAHUN AJARAN': tahunAjaran || '-',
+        'KELAS': kelas,
+        'MAPEL': mapel,
+        'NAMA GURU': guru || 'Unknown',
+        'MATERI': materi
+      }, { raw: true });
+
+      return NextResponse.json({ success: true, message: 'Jurnal berhasil disimpan' });
+    }
   } catch (error: any) {
     console.error('Submit Jurnal Error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
