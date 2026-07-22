@@ -493,7 +493,7 @@ export default function PresensiPage() {
     if (!result.isConfirmed) return;
 
     setIsSubmitting(true);
-    const guru = localStorage.getItem('username') || 'Unknown';
+    const guru = currentUsername || 'Unknown';
     try {
       const res = await fetch('/api/presensi', {
         method: 'POST',
@@ -563,7 +563,7 @@ export default function PresensiPage() {
     if (!result.isConfirmed) return;
 
     setIsSubmitting(true);
-    const guru = selectedGuru || localStorage.getItem('username') || 'Unknown';
+    const guru = selectedGuru || currentUsername || 'Unknown';
     try {
       const res = await fetch('/api/jurnal', {
         method: 'POST',
