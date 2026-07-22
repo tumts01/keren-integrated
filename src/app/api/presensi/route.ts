@@ -77,24 +77,58 @@ export async function POST(request: Request) {
     const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
     const batchId = crypto.randomUUID().substring(0, 8);
 
+    const allRows = await withRetry(() => sheet.getRows());
+    const existingRecords = allRows.filter(r => 
+      r.get('TANGGAL') === tanggal && 
+      r.get('KELAS') === kelas &&
+      r.get('JAM KE') === jamKe &&
+      r.get('MAPEL') === mapel
+    );
+
     // Hanya simpan data S, I, A — Hadir tidak perlu dicatat
     const rowsToAdd: any[] = [];
     for (const siswa of siswaList) {
       const status = presensi[siswa.id] || 'H';
-      if (status !== 'H') {
-        rowsToAdd.push({
-          'ID': `${batchId}-${siswa.nisn}`,
-          'TIMESTAMP': timestamp,
-          'TANGGAL': tanggal,
-          'TAHUN AJARAN': tahunAjaran || '',
-          'KELAS': kelas,
-          'JAM KE': jamKe,
-          'MAPEL': mapel,
-          'GURU PENGINPUT': guru || 'Unknown',
-          'NAMA SISWA': siswa.nama,
-          'NISN': siswa.nisn,
-          'KEHADIRAN': status
-        });
+      
+      const existingStudentRows = existingRecords.filter(r => r.get('NISN') === siswa.nisn || r.get('NAMA SISWA') === siswa.nama);
+
+      if (existingStudentRows.length > 0) {
+        if (status === 'H') {
+          // Hapus semua record duplikat jika sekarang diset Hadir
+          for (const row of existingStudentRows) {
+            await withRetry(() => row.delete());
+          }
+        } else {
+          // Update record pertama, hapus sisanya (duplikat)
+          const [firstRow, ...restRows] = existingStudentRows;
+          if (firstRow.get('KEHADIRAN') !== status) {
+            firstRow.assign({
+              'KEHADIRAN': status,
+              'TIMESTAMP': timestamp,
+              'GURU PENGINPUT': guru || 'Unknown'
+            });
+            await withRetry(() => firstRow.save());
+          }
+          for (const row of restRows) {
+            await withRetry(() => row.delete());
+          }
+        }
+      } else {
+        if (status !== 'H') {
+          rowsToAdd.push({
+            'ID': `${batchId}-${siswa.nisn}`,
+            'TIMESTAMP': timestamp,
+            'TANGGAL': tanggal,
+            'TAHUN AJARAN': tahunAjaran || '',
+            'KELAS': kelas,
+            'JAM KE': jamKe,
+            'MAPEL': mapel,
+            'GURU PENGINPUT': guru || 'Unknown',
+            'NAMA SISWA': siswa.nama,
+            'NISN': siswa.nisn,
+            'KEHADIRAN': status
+          });
+        }
       }
     }
 
