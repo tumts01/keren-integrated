@@ -21,8 +21,8 @@ export default function DispoPage() {
 
   const [dispoHistory, setDispoHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [filterFrom, setFilterFrom] = useState(new Date().toISOString().split('T')[0]);
-  const [filterTo, setFilterTo] = useState(new Date().toISOString().split('T')[0]);
+  const [filterFrom, setFilterFrom] = useState('');
+  const [filterTo, setFilterTo] = useState('');
   const [filterKelas, setFilterKelas] = useState('');
 
   useEffect(() => {
@@ -146,7 +146,7 @@ export default function DispoPage() {
 
   const filteredHistory = dispoHistory.filter(r => {
     if (!r.tanggal) return false;
-    const matchDate = r.tanggal >= filterFrom && r.tanggal <= filterTo;
+    const matchDate = (!filterFrom || r.tanggal >= filterFrom) && (!filterTo || r.tanggal <= filterTo);
     const matchKelas = filterKelas ? r.kelas === filterKelas : true;
     return matchDate && matchKelas;
   });
