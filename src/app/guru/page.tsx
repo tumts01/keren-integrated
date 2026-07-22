@@ -484,7 +484,7 @@ export default function GuruPage() {
   );
 
   function handleCetakDaftarHadir(kegiatan: string) {
-    const guruList = data.sort((a, b) => a.nama.localeCompare(b.nama, 'id'));
+    const guruList = data; // urutan sesuai sheet db_gtk
     const win = window.open('', '_blank', 'width=900,height=700');
     if (!win) return;
 
@@ -506,13 +506,12 @@ export default function GuruPage() {
       <head>
         <title>Daftar Hadir - ${kegiatan}</title>
         <style>
-          @page { size: A4 portrait; margin: 15mm 15mm 15mm 20mm; }
+          @page { size: A4 portrait; margin: 10mm 15mm 15mm 15mm; }
           body { font-family: 'Times New Roman', serif; font-size: 12pt; color: #000; margin: 0; padding: 0; }
-          .header { text-align: center; margin-bottom: 20px; }
-          .header h2 { margin: 0 0 4px; font-size: 15pt; text-transform: uppercase; letter-spacing: 1px; }
-          .header h3 { margin: 0 0 4px; font-size: 13pt; font-weight: normal; }
-          .header .lembaga { font-size: 11pt; color: #333; margin: 0 0 2px; }
-          .header hr { border: none; border-top: 2px solid #333; margin: 10px 0; }
+          .kop { text-align: center; margin-bottom: 6px; }
+          .kop img { width: 100%; max-width: 720px; height: auto; }
+          .judul { text-align: center; margin-bottom: 16px; }
+          .judul h3 { margin: 0 0 2px; font-size: 13pt; }
           .info { margin-bottom: 14px; font-size: 11pt; }
           .info td { padding: 2px 8px 2px 0; vertical-align: top; }
           table.main { width: 100%; border-collapse: collapse; font-size: 10.5pt; }
@@ -525,13 +524,12 @@ export default function GuruPage() {
         </style>
       </head>
       <body>
-        <div class="header">
-          <p class="lembaga" style="margin:0;font-size:11pt;">YAYASAN PENDIDIKAN AL AMIN</p>
-          <h2>MTs AL AMIN SINGOSARI</h2>
-          <p class="lembaga">NSM: 121235070055 &nbsp;|&nbsp; NPSN: 20549512</p>
-          <p class="lembaga">Jl. Kyai Mu'min No. 40, Pagentan, Singosari, Kab. Malang</p>
-          <hr/>
-          <h3 style="margin-top:12px;"><strong>DAFTAR HADIR</strong></h3>
+        <div class="kop">
+          <img src="/kop_surat_mts.png" alt="Kop Surat" />
+        </div>
+
+        <div class="judul">
+          <h3><strong>DAFTAR HADIR</strong></h3>
           <h3><strong>${kegiatan.toUpperCase()}</strong></h3>
         </div>
 
