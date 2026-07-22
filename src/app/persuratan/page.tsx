@@ -97,6 +97,7 @@ export default function PersuratanPage() {
   // Riwayat cetak
   const [riwayatCetak, setRiwayatCetak] = useState<any[]>([]);
   const [showRiwayat, setShowRiwayat] = useState(true);
+  const [searchRiwayat, setSearchRiwayat] = useState('');
   
   const [searchSiswaTerm, setSearchSiswaTerm] = useState('');
   const [siswaOptions, setSiswaOptions] = useState<any[]>([]);
@@ -797,45 +798,82 @@ export default function PersuratanPage() {
                       Belum ada riwayat cetak. Setiap kali klik <strong>"Generate &amp; Cetak Surat"</strong>, rekaman akan muncul di sini.
                       <div style={{ fontSize: '0.78rem', marginTop: '6px', color: '#cbd5e1' }}>⚠️ Riwayat tersimpan di browser ini saja</div>
                     </div>
-                  ) : (
-                    <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
-                      {riwayatCetak.map((r, i) => (
-                        <div key={r.id} style={{ padding: '12px 18px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', background: i % 2 === 0 ? 'white' : '#fafafa' }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#1e293b', marginBottom: '3px' }}>{r.nomor}</div>
-                            <div style={{ fontSize: '0.8rem', color: '#475569' }}>
-                              <span style={{ background: '#e0e7ff', color: '#4338ca', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem', marginRight: '6px' }}>{r.jenis}</span>
-                              {r.siswa?.nama && <span style={{ marginRight: '4px' }}>• {r.siswa.nama}</span>}
-                              {r.siswaList?.length > 0 && <span style={{ marginRight: '4px' }}>• {r.siswaList.length} siswa</span>}
-                              {r.guruTugas?.length > 0 && <span style={{ marginRight: '4px' }}>• {r.guruTugas.map((g: any) => g.guru.nama).join(', ')}</span>}
-                            </div>
-                            <div style={{ fontSize: '0.73rem', color: '#94a3b8', marginTop: '3px' }}>Dicetak: {r.tglCetak}</div>
-                          </div>
-                          <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                            <button
-                              className="btn"
-                              style={{ background: '#ede9fe', color: '#7c3aed', padding: '6px 12px', fontSize: '0.78rem', whiteSpace: 'nowrap' }}
-                              onClick={() => repopulateForm(r)}
-                            >
-                              <i className="fas fa-redo"></i> Cetak Ulang
-                            </button>
-                            <button
-                              className="btn"
-                              style={{ background: '#fee2e2', color: '#ef4444', padding: '6px 10px', fontSize: '0.78rem' }}
-                              onClick={() => {
-                                const updated = riwayatCetak.filter(x => x.id !== r.id);
-                                setRiwayatCetak(updated);
-                                localStorage.setItem('keren_riwayat_cetak', JSON.stringify(updated));
+                  ) : (() => {
+                    const q = searchRiwayat.toLowerCase().trim();
+                    const filtered = q ? riwayatCetak.filter(r =>
+                      (r.nomor || '').toLowerCase().includes(q) ||
+                      (r.jenis || '').toLowerCase().includes(q) ||
+                      (r.siswa?.nama || '').toLowerCase().includes(q) ||
+                      (r.guruTugas || []).some((g: any) => (g.guru?.nama || '').toLowerCase().includes(q))
+                    ) : riwayatCetak;
+                    return (
+                      <>
+                        {/* Search Filter */}
+                        <div style={{ padding: '10px 14px', borderBottom: '1px solid #e2e8f0', background: 'white' }}>
+                          <div style={{ position: 'relative' }}>
+                            <i className="fas fa-search" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '0.8rem' }}></i>
+                            <input
+                              type="text"
+                              placeholder="Cari nomor surat atau nama surat..."
+                              value={searchRiwayat}
+                              onChange={(e) => setSearchRiwayat(e.target.value)}
+                              style={{
+                                width: '100%', padding: '8px 12px 8px 34px', border: '1px solid #e2e8f0',
+                                borderRadius: '8px', fontSize: '0.82rem', outline: 'none',
+                                background: '#f8fafc', transition: 'border-color 0.2s', boxSizing: 'border-box'
                               }}
-                              title="Hapus dari riwayat"
-                            >
-                              <i className="fas fa-trash"></i>
-                            </button>
+                              onFocus={(e) => e.currentTarget.style.borderColor = '#8b5cf6'}
+                              onBlur={(e) => e.currentTarget.style.borderColor = '#e2e8f0'}
+                            />
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )
+                        {filtered.length === 0 ? (
+                          <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
+                            <i className="fas fa-search" style={{ display: 'block', marginBottom: 6, fontSize: '1.2rem' }}></i>
+                            Tidak ditemukan riwayat untuk "{searchRiwayat}"
+                          </div>
+                        ) : (
+                          <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
+                            {filtered.map((r, i) => (
+                              <div key={r.id} style={{ padding: '12px 18px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', background: i % 2 === 0 ? 'white' : '#fafafa' }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#1e293b', marginBottom: '3px' }}>{r.nomor}</div>
+                                  <div style={{ fontSize: '0.8rem', color: '#475569' }}>
+                                    <span style={{ background: '#e0e7ff', color: '#4338ca', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem', marginRight: '6px' }}>{r.jenis}</span>
+                                    {r.siswa?.nama && <span style={{ marginRight: '4px' }}>• {r.siswa.nama}</span>}
+                                    {r.siswaList?.length > 0 && <span style={{ marginRight: '4px' }}>• {r.siswaList.length} siswa</span>}
+                                    {r.guruTugas?.length > 0 && <span style={{ marginRight: '4px' }}>• {r.guruTugas.map((g: any) => g.guru.nama).join(', ')}</span>}
+                                  </div>
+                                  <div style={{ fontSize: '0.73rem', color: '#94a3b8', marginTop: '3px' }}>Dicetak: {r.tglCetak}</div>
+                                </div>
+                                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                                  <button
+                                    className="btn"
+                                    style={{ background: '#ede9fe', color: '#7c3aed', padding: '6px 12px', fontSize: '0.78rem', whiteSpace: 'nowrap' }}
+                                    onClick={() => repopulateForm(r)}
+                                  >
+                                    <i className="fas fa-redo"></i> Cetak Ulang
+                                  </button>
+                                  <button
+                                    className="btn"
+                                    style={{ background: '#fee2e2', color: '#ef4444', padding: '6px 10px', fontSize: '0.78rem' }}
+                                    onClick={() => {
+                                      const updated = riwayatCetak.filter(x => x.id !== r.id);
+                                      setRiwayatCetak(updated);
+                                      localStorage.setItem('keren_riwayat_cetak', JSON.stringify(updated));
+                                    }}
+                                    title="Hapus dari riwayat"
+                                  >
+                                    <i className="fas fa-trash"></i>
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()
                 )}
               </div>
 
