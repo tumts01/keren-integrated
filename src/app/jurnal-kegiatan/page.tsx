@@ -358,12 +358,47 @@ export default function JurnalKegiatanPage() {
 
                 <div className={styles.formGroup}>
                   <label>Dokumentasi Kegiatan</label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <input type="file" id="dokumentasiFile" accept="image/*" capture="environment" />
-                    <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Atau masukkan link eksternal (Drive, dll):</span>
-                    <input type="url" placeholder="Link Gambar / Google Drive" value={formData.dokumentasi} onChange={e => setFormData({...formData, dokumentasi: e.target.value})} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {/* Tombol Foto Kamera Langsung - hanya aktif di perangkat mobile */}
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <label style={{ 
+                          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                          padding: '10px', border: '2px dashed #3b82f6', borderRadius: '8px',
+                          cursor: 'pointer', color: '#3b82f6', fontWeight: 600, fontSize: '0.9rem',
+                          background: '#eff6ff'
+                        }}>
+                          <i className="fas fa-camera"></i> Ambil Foto
+                          <input type="file" id="dokumentasiFile" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => {
+                            const f = e.target.files?.[0];
+                            if (f) setFormData({...formData, dokumentasi: ''});
+                          }} />
+                        </label>
+                        <label style={{ 
+                          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                          padding: '10px', border: '2px dashed #10b981', borderRadius: '8px',
+                          cursor: 'pointer', color: '#10b981', fontWeight: 600, fontSize: '0.9rem',
+                          background: '#f0fdf4'
+                        }}>
+                          <i className="fas fa-images"></i> Pilih Galeri
+                          <input type="file" id="dokumentasiGallery" accept="image/*" style={{ display: 'none' }} onChange={e => {
+                            const f = e.target.files?.[0];
+                            if (f) {
+                              // copy file ke input utama
+                              const dataTransfer = new DataTransfer();
+                              dataTransfer.items.add(f);
+                              const mainInput = document.getElementById('dokumentasiFile') as HTMLInputElement;
+                              if (mainInput) mainInput.files = dataTransfer.files;
+                              setFormData({...formData, dokumentasi: ''});
+                            }
+                          }} />
+                        </label>
+                      </div>
+                      {/* Pratinjau nama file terpilih */}
+                      <div id="fotoPreview" style={{ fontSize: '0.85rem', color: '#475569', padding: '4px 0' }}></div>
+                      <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Atau masukkan link eksternal (Drive, dll):</span>
+                      <input type="url" placeholder="Link Gambar / Google Drive" value={formData.dokumentasi} onChange={e => setFormData({...formData, dokumentasi: e.target.value})} style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px' }} />
+                    </div>
                   </div>
-                </div>
                 </>
                 )}
               </div>
