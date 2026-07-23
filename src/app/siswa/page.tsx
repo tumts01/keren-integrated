@@ -190,7 +190,7 @@ function PrintPresensiModal({
           <h2><i className="fas fa-print"></i> Cetak Presensi Kelas</h2>
           <button className={styles.closeBtn} onClick={onClose}><i className="fas fa-times"></i></button>
         </div>
-        <div className={styles.modalBody} style={{ padding: '20px' }}>
+        <div className={styles.modalBody} style={{ padding: '20px', display: 'block' }}>
           
           <div style={{ marginBottom: '15px' }}>
             <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', fontSize: '0.9rem' }}>Tingkat Kelas</label>
