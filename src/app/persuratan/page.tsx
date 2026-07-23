@@ -478,7 +478,7 @@ export default function PersuratanPage() {
                 <i className="fas fa-times"></i>
               </button>
             </div>
-            <div className={styles.modalBody}>
+            <div className={styles.modalBody} style={{ display: 'block' }}>
               <p style={{ marginBottom: '20px', color: '#64748b', fontSize: '0.9rem' }}>
                 Pilih file PDF atau Gambar dari perangkat Anda. Sistem akan otomatis mengunggah file ini ke folder Google Drive Madrasah dan melampirkan tautannya.
               </p>
