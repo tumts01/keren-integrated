@@ -145,7 +145,7 @@ export async function POST(request: Request) {
         'Authorization': token || '',
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ target: targets, message: pesan, delay: '2' })
+      body: JSON.stringify({ target: targets, message: pesan, delay: '15-30' })
     });
 
     const result = await response.json();

@@ -109,7 +109,7 @@ export async function GET(request: Request) {
       body: JSON.stringify({
         target: targets,
         message,
-        delay: '2'
+        delay: '15-30'
       })
     });
 
