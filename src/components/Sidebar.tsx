@@ -85,10 +85,7 @@ export default function Sidebar() {
         { 
           name: 'Jurnal Kegiatan', 
           path: '/jurnal-kegiatan', 
-          icon: 'fa-book-open',
-          subItems: [
-            { name: 'Notulen', path: '/jurnal-kegiatan/notulen' }
-          ]
+          icon: 'fa-book-open'
         },
       ]
     },
