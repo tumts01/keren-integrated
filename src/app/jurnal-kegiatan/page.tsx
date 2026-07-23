@@ -208,7 +208,8 @@ export default function JurnalKegiatanPage() {
           new Paragraph({
             text: "HASIL NOTULEN:",
             heading: HeadingLevel.HEADING_3,
-            spacing: { after: 120 }
+            spacing: { after: 120 },
+            pageBreakBefore: true
           }),
           ...n.hasilNotulen.split('\n').map((line: string) => 
             new Paragraph({ text: line, spacing: { after: 120 } })
@@ -294,7 +295,7 @@ export default function JurnalKegiatanPage() {
                   </div>
                   <div className={styles.formGroup} style={{ flex: 1 }}>
                     <label>Waktu (Jam)</label>
-                    <input type="time" required value={formData.waktu} onChange={e => setFormData({...formData, waktu: e.target.value})} />
+                    <input type="text" placeholder="Misal: 13:30" required value={formData.waktu} onChange={e => setFormData({...formData, waktu: e.target.value})} />
                   </div>
                 </div>
 

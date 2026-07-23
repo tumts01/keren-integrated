@@ -159,7 +159,7 @@
   color: #334155;
 }
 
-.formGroup input,
+.formGroup input:not([type="checkbox"]):not([type="radio"]),
 .formGroup select,
 .formGroup textarea {
   width: 100%;
@@ -170,7 +170,7 @@
   transition: all 0.2s;
 }
 
-.formGroup input:focus,
+.formGroup input:not([type="checkbox"]):not([type="radio"]):focus,
 .formGroup select:focus,
 .formGroup textarea:focus {
   outline: none;
