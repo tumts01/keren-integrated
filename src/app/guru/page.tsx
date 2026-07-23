@@ -494,9 +494,9 @@ export default function GuruPage() {
 
     const rows = guruList.map((g, i) => `
       <tr>
-        <td style="text-align:center;padding:6px 8px;border:1px solid #333;">${i + 1}</td>
-        <td style="padding:6px 10px;border:1px solid #333;">${g.nama}</td>
-        <td style="text-align:center;padding:6px 8px;border:1px solid #333;">${g.jabatan || '-'}</td>
+        <td style="text-align:center;padding:12px 8px;border:1px solid #333;">${i + 1}</td>
+        <td style="padding:12px 10px;border:1px solid #333;">${g.nama}</td>
+        <td style="text-align:center;padding:12px 8px;border:1px solid #333;">${g.jabatan || '-'}</td>
         <td style="border:1px solid #333;width:160px;"></td>
       </tr>
     `).join('');
@@ -515,7 +515,7 @@ export default function GuruPage() {
           .info { margin-bottom: 14px; font-size: 11pt; }
           .info td { padding: 2px 8px 2px 0; vertical-align: top; }
           table.main { width: 100%; border-collapse: collapse; font-size: 10.5pt; }
-          table.main th { background: #f0f0f0; border: 1px solid #333; padding: 7px 8px; text-align: center; font-weight: bold; }
+          table.main th { background: #f0f0f0; border: 1px solid #333; padding: 10px 8px; text-align: center; font-weight: bold; }
           table.main td { font-size: 10.5pt; }
           .footer { margin-top: 30px; display: flex; justify-content: flex-end; }
           .footer .ttd { text-align: center; min-width: 220px; }
