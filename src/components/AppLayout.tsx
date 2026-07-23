@@ -50,7 +50,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             
             if (lastRead !== annId) {
               import('sweetalert2').then(Swal => {
-                const matchId = latest.lampiran ? (latest.lampiran.match(/\\/d\\/([a-zA-Z0-9_-]+)/) || [])[1] : null;
+                const matchId = latest.lampiran ? (latest.lampiran.match(/\/[d]\/([a-zA-Z0-9_-]+)/) || [])[1] : null;
                 const imgTag = matchId ? `<img src="https://lh3.googleusercontent.com/d/${matchId}=w600" style="width: 100%; border-radius: 8px; margin-bottom: 12px; object-fit: contain; max-height: 350px; display: block;" onerror="this.style.display='none'" />` : '';
 
                 Swal.default.fire({
