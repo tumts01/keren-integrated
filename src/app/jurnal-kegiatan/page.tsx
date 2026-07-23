@@ -10,6 +10,7 @@ export default function JurnalKegiatanPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [step, setStep] = useState(1);
 
   const [formData, setFormData] = useState({
     tanggal: new Date().toISOString().split('T')[0],
@@ -117,6 +118,7 @@ export default function JurnalKegiatanPage() {
         });
         setSelectedPeserta([]);
         setSelectAllPeserta(false);
+        setStep(1);
         if (fileInput) fileInput.value = '';
         fetchData();
       } else {
@@ -288,7 +290,9 @@ export default function JurnalKegiatanPage() {
             
             <form onSubmit={handleSubmit}>
               <div className={styles.modalBody}>
-                <div style={{ display: 'flex', gap: '16px' }}>
+                {step === 1 && (
+                  <>
+                    <div style={{ display: 'flex', gap: '16px' }}>
                   <div className={styles.formGroup} style={{ flex: 1 }}>
                     <label>Tanggal Rapat</label>
                     <input type="date" required value={formData.tanggal} onChange={e => setFormData({...formData, tanggal: e.target.value})} />
@@ -342,7 +346,11 @@ export default function JurnalKegiatanPage() {
                     </div>
                   )}
                 </div>
+                </>
+                )}
 
+                {step === 2 && (
+                <>
                 <div className={styles.formGroup}>
                   <label>Hasil Notulen</label>
                   <textarea rows={6} required value={formData.hasilNotulen} onChange={e => setFormData({...formData, hasilNotulen: e.target.value})} placeholder="Ketik hasil/keputusan rapat di sini..."></textarea>
@@ -356,16 +364,31 @@ export default function JurnalKegiatanPage() {
                     <input type="url" placeholder="Link Gambar / Google Drive" value={formData.dokumentasi} onChange={e => setFormData({...formData, dokumentasi: e.target.value})} />
                   </div>
                 </div>
+                </>
+                )}
               </div>
 
               <div className={styles.modalFooter}>
-                <button type="button" className={styles.btnSecondary} onClick={() => setShowModal(false)} disabled={saving}>
-                  Batal
-                </button>
-                <button type="submit" className={styles.btnPrimary} disabled={saving}>
-                  {saving ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>}
-                  Simpan Notulen
-                </button>
+                {step === 1 ? (
+                  <>
+                    <button type="button" className={styles.btnSecondary} onClick={() => { setShowModal(false); setStep(1); }} disabled={saving}>
+                      Batal
+                    </button>
+                    <button type="button" className={styles.btnPrimary} onClick={() => setStep(2)}>
+                      Berikutnya <i className="fas fa-arrow-right"></i>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" className={styles.btnSecondary} onClick={() => setStep(1)} disabled={saving}>
+                      <i className="fas fa-arrow-left"></i> Kembali
+                    </button>
+                    <button type="submit" className={styles.btnPrimary} disabled={saving}>
+                      {saving ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>}
+                      Simpan Notulen
+                    </button>
+                  </>
+                )}
               </div>
             </form>
           </div>
