@@ -1444,8 +1444,8 @@ export default function PersuratanPage() {
                   <p>Memberi tugas kepada:</p>
                   
                   {generateGuruTugas.some(g => g.guru.id === 'terlampir') ? (
-                    <div style={{ padding: '0 20px', fontWeight: 'bold', margin: '20px 0' }}>
-                      nama-nama terlampir
+                    <div style={{ padding: '0 20px', fontWeight: 'bold', fontStyle: 'italic', margin: '20px 0' }}>
+                      Nama-nama terlampir
                     </div>
                   ) : (
                     <div style={{ padding: '0 20px' }}>
