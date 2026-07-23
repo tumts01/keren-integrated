@@ -26,6 +26,7 @@ export default function JurnalKegiatanPage() {
   const [selectedPeserta, setSelectedPeserta] = useState<string[]>([]);
   const [selectAllPeserta, setSelectAllPeserta] = useState(false);
   const [searchPeserta, setSearchPeserta] = useState('');
+  const [dokumentasiFile, setDokumentasiFile] = useState<File | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -120,6 +121,7 @@ export default function JurnalKegiatanPage() {
         setSelectedPeserta([]);
         setSelectAllPeserta(false);
         setSearchPeserta('');
+        setDokumentasiFile(null);
         setStep(1);
         if (fileInput) fileInput.value = '';
         fetchData();
@@ -185,7 +187,7 @@ export default function JurnalKegiatanPage() {
     let fotoBuffer: ArrayBuffer | null = null;
     if (n.dokumentasi && n.dokumentasi.startsWith('http')) {
       try {
-        const fotoRes = await fetch(n.dokumentasi);
+        const fotoRes = await fetch(`/api/proxy-image?url=${encodeURIComponent(n.dokumentasi)}`);
         if (fotoRes.ok) fotoBuffer = await fotoRes.arrayBuffer();
       } catch (e) { /* skip if fetch fails */ }
     }
@@ -196,7 +198,7 @@ export default function JurnalKegiatanPage() {
         children: [
           new ImageRun({
             data: kopBuffer,
-            transformation: { width: 600, height: 90 },
+            transformation: { width: 600, height: 129 },
             type: 'png',
           })
         ],
@@ -275,6 +277,7 @@ export default function JurnalKegiatanPage() {
                 width: { size: 40, type: WidthType.PERCENTAGE },
                 children: [
                   para([bold('Notulis,')], { alignment: AlignmentType.CENTER }),
+                  para([txt('')], { alignment: AlignmentType.CENTER }), // blank para so it matches 2 lines on the left
                   para([txt('')], { spacing: { before: 1200, after: 0 } }),
                   para([txt(n.notulis)], { alignment: AlignmentType.CENTER }),
                 ]
