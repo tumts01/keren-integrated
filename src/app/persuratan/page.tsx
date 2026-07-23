@@ -1471,7 +1471,7 @@ export default function PersuratanPage() {
                   )}
 
                   <p style={{ margin: '0 0 20px 0', lineHeight: '1.5', textAlign: 'justify' }}>
-                    Untuk mengikuti {generateKonteks} pada tanggal {generateHariTanggal} yang bertempat di {generateTempat}.
+                    Untuk {generateKonteks}, {generateHariTanggal} yang bertempat di {generateTempat}.
                   </p>
                   <p style={{ margin: '0 0 30px 0', lineHeight: '1.5', textAlign: 'justify' }}>
                     Demikian surat tugas ini dibuat untuk dilaksanakan dengan penuh tanggung jawab. Atas perhatian dan kerja samanya diucapkan terima kasih.
