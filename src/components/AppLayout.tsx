@@ -50,6 +50,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             
             if (lastRead !== annId) {
               import('sweetalert2').then(Swal => {
+                const matchId = latest.lampiran ? (latest.lampiran.match(/\\/d\\/([a-zA-Z0-9_-]+)/) || [])[1] : null;
+                const imgTag = matchId ? `<img src="https://lh3.googleusercontent.com/d/${matchId}=w600" style="width: 100%; border-radius: 8px; margin-bottom: 12px; object-fit: contain; max-height: 350px; display: block;" onerror="this.style.display='none'" />` : '';
+
                 Swal.default.fire({
                   title: '📢 Pengumuman Baru!',
                   html: `
@@ -58,11 +61,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         <span>Dari: <b>${latest.pengirim}</b></span>
                         <span>${latest.tanggal} ${latest.jam}</span>
                       </div>
+                      ${imgTag}
                       ${latest.pesan ? `<div style="background: #eff6ff; padding: 16px; border-radius: 12px; border-left: 4px solid #0ea5e9; font-size: 0.95rem; line-height: 1.5; color: #1e293b; white-space: pre-wrap;">${latest.pesan}</div>` : ''}
                       ${latest.lampiran ? `
                         <div style="margin-top: 12px; text-align: center;">
                           <a href="${latest.lampiran}" target="_blank" rel="noreferrer" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; background: #0ea5e9; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 0.9rem;">
-                            <i class="fas fa-paperclip"></i> Lihat Lampiran
+                            <i class="fas fa-paperclip"></i> Buka / Unduh Lampiran
                           </a>
                         </div>
                       ` : ''}
