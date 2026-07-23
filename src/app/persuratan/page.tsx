@@ -480,15 +480,15 @@ export default function PersuratanPage() {
             </div>
             <div className={styles.modalBody} style={{ display: 'block' }}>
               <p style={{ marginBottom: '20px', color: '#64748b', fontSize: '0.9rem' }}>
-                Pilih file PDF atau Gambar dari perangkat Anda. Sistem akan otomatis mengunggah file ini ke folder Google Drive Madrasah dan melampirkan tautannya.
+                Pilih file PDF, Excel, atau Gambar dari perangkat Anda. Sistem akan otomatis mengunggah file ini ke folder Google Drive Madrasah dan melampirkan tautannya.
               </p>
               <form onSubmit={handleFileUpload}>
                 <div className={styles.infoGroup} style={{ marginBottom: '20px' }}>
-                  <label className={styles.infoLabel}>Pilih File (PDF/JPG/PNG)</label>
+                  <label className={styles.infoLabel}>Pilih File (PDF/Excel/Gambar)</label>
                   <input 
                     type="file" 
                     ref={fileInputRef}
-                    accept=".pdf,image/*,.doc,.docx"
+                    accept=".pdf,image/*,.doc,.docx,.xls,.xlsx"
                     style={{ 
                       width: '100%', 
                       padding: '10px', 
