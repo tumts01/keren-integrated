@@ -131,93 +131,151 @@ export default function JurnalKegiatanPage() {
   };
 
   const generateWord = async (n: any) => {
+    // Buat daftar peserta menjadi baris-baris tabel
+    // Buat map nama -> jabatan dari data guru
+    const guruMap: Record<string, string> = {};
+    gurus.forEach((g: any) => { guruMap[g.nama] = g.jabatan || ''; });
+
+    const pesertaList: string[] = n.dihadiriOleh === 'Seluruh GTK'
+      ? gurus.map((g: any) => g.nama)
+      : n.dihadiriOleh.split(',').map((s: string) => s.trim()).filter(Boolean);
+
+    const pesertaRows = pesertaList.map((nama: string, idx: number) =>
+      new TableRow({
+        children: [
+          new TableCell({ children: [new Paragraph({ text: String(idx + 1), alignment: AlignmentType.CENTER })], width: { size: 8, type: WidthType.PERCENTAGE } }),
+          new TableCell({ children: [new Paragraph(nama)], width: { size: 42, type: WidthType.PERCENTAGE } }),
+          new TableCell({ children: [new Paragraph(guruMap[nama] || '')], width: { size: 25, type: WidthType.PERCENTAGE } }),
+          new TableCell({ children: [new Paragraph('Hadir')], width: { size: 25, type: WidthType.PERCENTAGE } }),
+        ]
+      })
+    );
+
+    const noBorderTable = {
+      top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+      bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+      left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+      right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+      insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+      insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+    };
+
+    const bold = (text: string) => new TextRun({ text, bold: true });
+    const makeRow = (label: string, value: string) => new TableRow({
+      children: [
+        new TableCell({ children: [new Paragraph({ children: [bold(label)] })], width: { size: 28, type: WidthType.PERCENTAGE } }),
+        new TableCell({ children: [new Paragraph(':')] , width: { size: 3, type: WidthType.PERCENTAGE } }),
+        new TableCell({ children: [new Paragraph(value)] }),
+      ]
+    });
+
     const doc = new Document({
       sections: [{
         properties: {
           page: {
-            size: {
-              width: 11906, // A4 width in twips
-              height: 16838 // A4 height in twips
-            }
+            size: { width: 11906, height: 16838 },
+            margin: { top: 1440, right: 1080, bottom: 1440, left: 1800 }
           }
         },
         children: [
+          // KOP SURAT
+          new Paragraph({ text: 'MTs Almaarif 01 Singosari', alignment: AlignmentType.CENTER, spacing: { after: 0 }, children: [bold('MTs Almaarif 01 Singosari')] }),
+          new Paragraph({ text: 'Jl. Pahlawan No. 67, Singosari, Malang', alignment: AlignmentType.CENTER, spacing: { after: 0 } }),
+          new Paragraph({ text: '─────────────────────────────────────────────────────', alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
+
+          // JUDUL
           new Paragraph({
-            text: "NOTULEN RAPAT",
-            heading: HeadingLevel.HEADING_1,
+            children: [bold('NOTULEN RAPAT')],
             alignment: AlignmentType.CENTER,
-            spacing: { after: 400 }
+            spacing: { before: 100, after: 100 }
           }),
+          new Paragraph({
+            children: [bold(n.agendaRapat.toUpperCase())],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 300 }
+          }),
+
+          // TABEL INFO RAPAT
           new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
-            borders: {
-              top: { style: BorderStyle.NONE },
-              bottom: { style: BorderStyle.NONE },
-              left: { style: BorderStyle.NONE },
-              right: { style: BorderStyle.NONE },
-              insideHorizontal: { style: BorderStyle.NONE },
-              insideVertical: { style: BorderStyle.NONE },
-            },
+            borders: noBorderTable,
+            rows: [
+              makeRow('Hari / Tanggal', n.tanggal),
+              makeRow('Waktu', `${n.waktu} WIB`),
+              makeRow('Tempat', n.tempatRapat),
+              makeRow('Pimpinan Rapat', n.pimpinanRapat),
+              makeRow('Notulis', n.notulis),
+            ]
+          }),
+
+          new Paragraph({ text: '', spacing: { before: 300, after: 100 } }),
+
+          // I. DAFTAR HADIR
+          new Paragraph({ children: [bold('I.   DAFTAR HADIR')], spacing: { after: 120 } }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+              new TableRow({
+                tableHeader: true,
+                children: [
+                  new TableCell({ children: [new Paragraph({ children: [bold('No.')], alignment: AlignmentType.CENTER })], width: { size: 8, type: WidthType.PERCENTAGE } }),
+                  new TableCell({ children: [new Paragraph({ children: [bold('Nama')] })], width: { size: 42, type: WidthType.PERCENTAGE } }),
+                  new TableCell({ children: [new Paragraph({ children: [bold('Jabatan')] })], width: { size: 25, type: WidthType.PERCENTAGE } }),
+                  new TableCell({ children: [new Paragraph({ children: [bold('Keterangan')] })], width: { size: 25, type: WidthType.PERCENTAGE } }),
+                ]
+              }),
+              ...pesertaRows,
+            ]
+          }),
+
+          new Paragraph({ text: '', spacing: { before: 300, after: 100 } }),
+
+          // II. HASIL DAN KEPUTUSAN RAPAT
+          new Paragraph({ children: [bold('II.  HASIL DAN KEPUTUSAN RAPAT')], spacing: { after: 200 }, pageBreakBefore: true }),
+          ...n.hasilNotulen.split('\n').map((line: string) =>
+            new Paragraph({ text: line, spacing: { after: 120 } })
+          ),
+
+          new Paragraph({ text: '', spacing: { before: 300, after: 100 } }),
+
+          // III. PENUTUP
+          new Paragraph({ children: [bold('III. PENUTUP')], spacing: { after: 120 } }),
+          new Paragraph({
+            text: `Rapat dipimpin langsung oleh ${n.pimpinanRapat} dan ditutup dengan pembacaan doa bersama pada pukul ${n.waktu} WIB.`,
+            spacing: { after: 400 }
+          }),
+
+          // TANDA TANGAN
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: noBorderTable,
             rows: [
               new TableRow({
                 children: [
-                  new TableCell({ children: [new Paragraph("Tanggal")], width: { size: 25, type: WidthType.PERCENTAGE } }),
-                  new TableCell({ children: [new Paragraph(`: ${n.tanggal}`)] })
+                  new TableCell({
+                    width: { size: 50, type: WidthType.PERCENTAGE },
+                    children: [
+                      new Paragraph({ children: [bold('Mengetahui,')], alignment: AlignmentType.CENTER }),
+                      new Paragraph({ children: [bold('Kepala Madrasah,')], alignment: AlignmentType.CENTER }),
+                      new Paragraph({ text: '', spacing: { before: 800, after: 0 } }),
+                      new Paragraph({ children: [bold('Dwi Retno Palupi, M.Pd.')], alignment: AlignmentType.CENTER }),
+                    ]
+                  }),
+                  new TableCell({
+                    width: { size: 50, type: WidthType.PERCENTAGE },
+                    children: [
+                      new Paragraph({ children: [bold('Notulis,')], alignment: AlignmentType.CENTER }),
+                      new Paragraph({ text: '', spacing: { before: 800, after: 0 } }),
+                      new Paragraph({ children: [bold(n.notulis)], alignment: AlignmentType.CENTER }),
+                    ]
+                  }),
                 ]
-              }),
-              new TableRow({
-                children: [
-                  new TableCell({ children: [new Paragraph("Waktu")] }),
-                  new TableCell({ children: [new Paragraph(`: ${n.waktu}`)] })
-                ]
-              }),
-              new TableRow({
-                children: [
-                  new TableCell({ children: [new Paragraph("Tempat")] }),
-                  new TableCell({ children: [new Paragraph(`: ${n.tempatRapat}`)] })
-                ]
-              }),
-              new TableRow({
-                children: [
-                  new TableCell({ children: [new Paragraph("Agenda")] }),
-                  new TableCell({ children: [new Paragraph(`: ${n.agendaRapat}`)] })
-                ]
-              }),
-              new TableRow({
-                children: [
-                  new TableCell({ children: [new Paragraph("Pimpinan Rapat")] }),
-                  new TableCell({ children: [new Paragraph(`: ${n.pimpinanRapat}`)] })
-                ]
-              }),
-              new TableRow({
-                children: [
-                  new TableCell({ children: [new Paragraph("Dihadiri Oleh")] }),
-                  new TableCell({ children: [new Paragraph(`: ${n.dihadiriOleh}`)] })
-                ]
-              }),
-              new TableRow({
-                children: [
-                  new TableCell({ children: [new Paragraph("Notulis")] }),
-                  new TableCell({ children: [new Paragraph(`: ${n.notulis}`)] })
-                ]
-              }),
+              })
             ]
           }),
-          new Paragraph({
-            text: "",
-            spacing: { before: 200, after: 200 }
-          }),
-          new Paragraph({
-            text: "HASIL NOTULEN:",
-            heading: HeadingLevel.HEADING_3,
-            spacing: { after: 120 },
-            pageBreakBefore: true
-          }),
-          ...n.hasilNotulen.split('\n').map((line: string) => 
-            new Paragraph({ text: line, spacing: { after: 120 } })
-          ),
         ],
       }],
+
     });
 
     Packer.toBlob(doc).then((blob) => {
