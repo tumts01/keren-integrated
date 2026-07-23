@@ -612,6 +612,11 @@ export default function PresensiPage() {
       return;
     }
 
+    if (jpGuruDispo.length === 0) {
+      Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Mohon isi Guru Dispo!' });
+      return;
+    }
+
     if (jpEntries.some(e => !e.guruIzin.trim() && (e.alasanIzin || e.kelasDitinggalkan || e.materi || e.guruPengganti))) {
       Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Nama Guru Izin harus diisi jika ada isian lain di baris tersebut!' });
       return;
