@@ -80,7 +80,7 @@ function PrintPresensiModal({
 
     const getCols = (day: number) => {
       if (day === 5) return 8; // Jumat
-      if (day === 6) return 11; // Sabtu
+      if (day === 6) return 9; // Sabtu
       return 10;
     };
 
@@ -97,7 +97,7 @@ function PrintPresensiModal({
           <thead>
             <tr>
               <th rowspan="2" style="width: 25px;">No</th>
-              <th rowspan="2" style="width: 260px; text-align: center;">NAMA</th>
+              <th rowspan="2" style="width: 200px; text-align: center;">NAMA</th>
               <th rowspan="2" style="width: 20px;">L<br/>P</th>
       `;
 
@@ -122,7 +122,7 @@ function PrintPresensiModal({
         tableHtml += `
           <tr>
             <td style="text-align: center; font-size: 8pt;">${i + 1}</td>
-            <td style="text-align: left; padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; font-size: 8pt;">${s.nama}</td>
+            <td style="text-align: left; padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; font-size: 8pt;">${s.nama}</td>
             <td style="text-align: center; font-size: 8pt;">${jk}</td>
         `;
         dates.forEach(date => {
@@ -169,7 +169,7 @@ function PrintPresensiModal({
           .header h3 { margin: 0; font-size: 12pt; font-weight: bold; }
           .sub-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 9pt; margin-bottom: 5px; text-transform: uppercase; }
           table.main-table { width: 100%; border-collapse: collapse; }
-          table.main-table th, table.main-table td { border: 1px solid black; padding: 2px; text-align: center; height: 16px; }
+          table.main-table th, table.main-table td { border: 1px solid black; padding: 2px; text-align: center; height: 22px; }
           table.main-table th { font-weight: bold; }
           @media print { body { -webkit-print-color-adjust: exact; } }
         </style>
