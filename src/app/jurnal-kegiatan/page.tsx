@@ -25,6 +25,7 @@ export default function JurnalKegiatanPage() {
 
   const [selectedPeserta, setSelectedPeserta] = useState<string[]>([]);
   const [selectAllPeserta, setSelectAllPeserta] = useState(false);
+  const [searchPeserta, setSearchPeserta] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -118,6 +119,7 @@ export default function JurnalKegiatanPage() {
         });
         setSelectedPeserta([]);
         setSelectAllPeserta(false);
+        setSearchPeserta('');
         setStep(1);
         if (fileInput) fileInput.value = '';
         fetchData();
@@ -389,20 +391,31 @@ export default function JurnalKegiatanPage() {
                       <strong>Seluruh GTK</strong>
                     </label>
                   </div>
-                  {!selectAllPeserta && (
-                    <div className={styles.checkboxList}>
-                      {gurus.map(g => (
-                        <label key={g.nama} className={styles.checkboxItem}>
-                          <input 
-                            type="checkbox" 
-                            checked={selectedPeserta.includes(g.nama)}
-                            onChange={() => handleCheckboxChange(g.nama)}
-                          />
-                          {g.nama}
-                        </label>
-                      ))}
-                    </div>
-                  )}
+                    {!selectAllPeserta && (
+                      <>
+                        <input
+                          type="text"
+                          placeholder="🔍 Cari nama guru..."
+                          value={searchPeserta}
+                          onChange={e => setSearchPeserta(e.target.value)}
+                          style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', marginBottom: '8px', fontSize: '0.9rem' }}
+                        />
+                        <div className={styles.checkboxList}>
+                          {gurus
+                            .filter((g: any) => g.nama.toLowerCase().includes(searchPeserta.toLowerCase()))
+                            .map((g: any) => (
+                            <label key={g.nama} className={styles.checkboxItem}>
+                              <input 
+                                type="checkbox" 
+                                checked={selectedPeserta.includes(g.nama)}
+                                onChange={() => handleCheckboxChange(g.nama)}
+                              />
+                              {g.nama}
+                            </label>
+                          ))}
+                        </div>
+                      </>
+                    )}
                 </div>
                 </>
                 )}
