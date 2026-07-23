@@ -4,8 +4,8 @@ import styles from './pengumuman.module.css';
 
 // ===== CUSTOM SEND MODAL =====
 function CustomSendModal({
-  pesan, pengirim, onClose, onSent
-}: { pesan: string; pengirim: string; onClose: () => void; onSent: () => void }) {
+  pesan, pengirim, attachmentFile, onClose, onSent
+}: { pesan: string; pengirim: string; attachmentFile: File | null; onClose: () => void; onSent: () => void }) {
   const [gtkList, setGtkList] = useState<any[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
@@ -43,14 +43,16 @@ function CustomSendModal({
     if (selected.size === 0) { setErr('Pilih minimal 1 guru'); return; }
     setSending(true); setErr('');
     try {
+      const fd = new FormData();
+      fd.append('pesan', pesan);
+      fd.append('pengirim', pengirim);
+      fd.append('target', 'custom');
+      fd.append('phones', JSON.stringify(Array.from(selected)));
+      if (attachmentFile) fd.append('file', attachmentFile);
+
       const res = await fetch('/api/pengumuman', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pesan, pengirim,
-          target: 'custom',
-          phones: Array.from(selected)
-        })
+        body: fd
       });
       const data = await res.json();
       if (data.success) { onSent(); onClose(); }
@@ -186,6 +188,7 @@ export default function PengumumanPage() {
   const [status, setStatus] = useState<{ type: 'success' | 'error' | null, text: string }>({ type: null, text: '' });
   const [history, setHistory] = useState<any[]>([]);
   const [showCustomModal, setShowCustomModal] = useState(false);
+  const [attachment, setAttachment] = useState<File | null>(null);
 
   const fetchHistory = async () => {
     try {
@@ -208,28 +211,29 @@ export default function PengumumanPage() {
   const [viaAppOnly, setViaAppOnly] = useState(false);
 
   const handleSend = async (target: 'all' | 'pimpinan') => {
-    if (!message.trim()) {
-      setStatus({ type: 'error', text: 'Isi pengumuman tidak boleh kosong.' });
+    if (!message.trim() && !attachment) {
+      setStatus({ type: 'error', text: 'Isi pengumuman atau lampiran tidak boleh kosong.' });
       return;
     }
     setSendingTo(target);
     setStatus({ type: null, text: '' });
     try {
+      const fd = new FormData();
+      fd.append('pesan', message);
+      fd.append('pengirim', user?.nama || 'Admin');
+      fd.append('target', target === 'pimpinan' ? 'pimpinan' : 'semua');
+      fd.append('viaAppOnly', String(viaAppOnly));
+      if (attachment) fd.append('file', attachment);
+
       const response = await fetch('/api/pengumuman', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pesan: message,
-          pengirim: user?.nama || 'Admin',
-          target: target === 'pimpinan' ? 'pimpinan' : 'semua',
-          viaAppOnly
-        })
+        body: fd
       });
       const data = await response.json();
       if (response.ok && data.success) {
         const label = target === 'pimpinan' ? 'Pimpinan' : 'seluruh Guru & Staf';
         setStatus({ type: 'success', text: `Pengumuman berhasil ${viaAppOnly ? 'diposting di Aplikasi untuk' : 'dikirim ke'} ${label}!` });
-        setMessage(''); fetchHistory();
+        setMessage(''); setAttachment(null); fetchHistory();
       } else {
         setStatus({ type: 'error', text: data.error || 'Gagal mengirim pengumuman.' });
       }
@@ -255,8 +259,9 @@ export default function PengumumanPage() {
         <CustomSendModal
           pesan={message}
           pengirim={user?.nama || 'Admin'}
+          attachmentFile={attachment}
           onClose={() => setShowCustomModal(false)}
-          onSent={() => { setMessage(''); setStatus({ type: 'success', text: 'Pengumuman berhasil dikirim ke guru pilihan via WhatsApp!' }); fetchHistory(); }}
+          onSent={() => { setMessage(''); setAttachment(null); setStatus({ type: 'success', text: 'Pengumuman berhasil dikirim ke guru pilihan via WhatsApp!' }); fetchHistory(); }}
         />
       )}
 
@@ -277,6 +282,43 @@ export default function PengumumanPage() {
                 disabled={sendingTo !== null}
               />
             </div>
+
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Lampirkan File (Opsional, Max 2MB)</label>
+              <label style={{ 
+                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                padding: '10px 16px', border: '2px dashed #0ea5e9', borderRadius: '8px',
+                cursor: 'pointer', color: '#0ea5e9', fontWeight: 600, fontSize: '0.9rem',
+                background: '#f0f9ff', width: 'fit-content'
+              }}>
+                <i className="fas fa-paperclip"></i> Pilih File JPG/PDF/Word
+                <input 
+                  type="file" 
+                  accept="image/jpeg,image/png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+                  style={{ display: 'none' }} 
+                  disabled={sendingTo !== null}
+                  onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      if (f.size > 2 * 1024 * 1024) {
+                        alert('Ukuran file maksimal 2MB!');
+                        e.target.value = '';
+                        return;
+                      }
+                      setAttachment(f);
+                    } else {
+                      setAttachment(null);
+                    }
+                  }} 
+                />
+              </label>
+              {attachment && (
+                <div style={{ marginTop: '8px', fontSize: '0.85rem', color: '#16a34a', fontWeight: '500' }}>
+                  ✅ File dilampirkan: {attachment.name} 
+                  <button type="button" onClick={() => setAttachment(null)} style={{ marginLeft: 8, background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: 'bold' }}>✕ Batal</button>
+                </div>
+              )}
+            </div>
             
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
               <input 
@@ -293,7 +335,7 @@ export default function PengumumanPage() {
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               {/* Semua GTK */}
               <button type="button" className={styles.submitBtn}
-                disabled={sendingTo !== null || !message.trim()}
+                disabled={sendingTo !== null || (!message.trim() && !attachment)}
                 onClick={() => handleSend('all')}
                 style={{ flex: 1, minWidth: 160 }}>
                 {sendingTo === 'all'
@@ -303,14 +345,14 @@ export default function PengumumanPage() {
 
               {/* Pimpinan */}
               <button type="button"
-                disabled={sendingTo !== null || !message.trim()}
+                disabled={sendingTo !== null || (!message.trim() && !attachment)}
                 onClick={() => handleSend('pimpinan')}
                 style={{
                   flex: 1, minWidth: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                   padding: '12px 16px',
-                  background: (sendingTo !== null || !message.trim()) ? '#e9d5ff' : 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+                  background: (sendingTo !== null || (!message.trim() && !attachment)) ? '#e9d5ff' : 'linear-gradient(135deg, #7c3aed, #6d28d9)',
                   color: 'white', border: 'none', borderRadius: 12, fontSize: '0.9rem', fontWeight: 700,
-                  cursor: (sendingTo !== null || !message.trim()) ? 'not-allowed' : 'pointer',
+                  cursor: (sendingTo !== null || (!message.trim() && !attachment)) ? 'not-allowed' : 'pointer',
                   boxShadow: '0 2px 8px rgba(124,58,237,0.25)', transition: 'all 0.2s'
                 }}>
                 {sendingTo === 'pimpinan'
@@ -320,14 +362,14 @@ export default function PengumumanPage() {
 
               {/* Guru Tertentu */}
               <button type="button"
-                disabled={sendingTo !== null || !message.trim()}
+                disabled={sendingTo !== null || (!message.trim() && !attachment)}
                 onClick={() => setShowCustomModal(true)}
                 style={{
                   flex: 1, minWidth: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                   padding: '12px 16px',
-                  background: (sendingTo !== null || !message.trim()) ? '#bae6fd' : 'linear-gradient(135deg, #0ea5e9, #0284c7)',
+                  background: (sendingTo !== null || (!message.trim() && !attachment)) ? '#bae6fd' : 'linear-gradient(135deg, #0ea5e9, #0284c7)',
                   color: 'white', border: 'none', borderRadius: 12, fontSize: '0.9rem', fontWeight: 700,
-                  cursor: (sendingTo !== null || !message.trim()) ? 'not-allowed' : 'pointer',
+                  cursor: (sendingTo !== null || (!message.trim() && !attachment)) ? 'not-allowed' : 'pointer',
                   boxShadow: '0 2px 8px rgba(14,165,233,0.25)', transition: 'all 0.2s'
                 }}>
                 <i className="fa-solid fa-user-check"></i> Pilih Guru Tertentu
@@ -382,6 +424,18 @@ export default function PengumumanPage() {
                     )}
                   </div>
                   <div className={styles.historyMessage}>{h.pesan}</div>
+                  {h.lampiran && (
+                    <div style={{ marginTop: '12px' }}>
+                      <a href={h.lampiran} target="_blank" rel="noreferrer" style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                        padding: '6px 12px', background: '#f1f5f9', color: '#0ea5e9',
+                        borderRadius: '6px', fontSize: '0.85rem', fontWeight: 600,
+                        textDecoration: 'none', border: '1px solid #e2e8f0'
+                      }}>
+                        <i className="fas fa-paperclip"></i> Lihat Lampiran
+                      </a>
+                    </div>
+                  )}
                 </div>
               ))
             );

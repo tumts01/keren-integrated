@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getIndukDoc, getPresensiDoc } from '@/lib/google-sheets';
+import { uploadFileToDrive } from '@/lib/google-drive';
 
 function formatPhone(rawHp: string) {
   let hp = rawHp.replace(/\D/g, ''); // Remove non-numeric
@@ -11,15 +12,35 @@ function formatPhone(rawHp: string) {
 
 export async function POST(request: Request) {
   try {
-    const { pesan, pengirim, target, phones, viaAppOnly } = await request.json();
+    const fd = await request.formData();
+    const pesan = (fd.get('pesan') as string) || '';
+    const pengirim = fd.get('pengirim') as string;
+    const target = fd.get('target') as string;
+    const phonesStr = fd.get('phones') as string;
+    const phones = phonesStr ? JSON.parse(phonesStr) : [];
+    const viaAppOnly = (fd.get('viaAppOnly') as string) === 'true';
+    const file = fd.get('file') as File | null;
 
-    if (!pesan) {
-      return NextResponse.json({ success: false, error: 'Pesan tidak boleh kosong' }, { status: 400 });
+    if (!pesan && !file) {
+      return NextResponse.json({ success: false, error: 'Pesan atau lampiran tidak boleh kosong' }, { status: 400 });
     }
 
     const token = process.env.FONNTE_TOKEN;
     if (!token && !viaAppOnly) {
       return NextResponse.json({ success: false, error: 'FONNTE_TOKEN belum dikonfigurasi' }, { status: 500 });
+    }
+    
+    let lampiranUrl = '';
+    if (file && file.size > 0) {
+      const folderId = process.env.GOOGLE_DRIVE_PERSURATAN_FOLDER_ID || '';
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      try {
+        const driveRes = await uploadFileToDrive(buffer, file.name, file.type, folderId);
+        lampiranUrl = driveRes.webViewLink || '';
+      } catch (e) {
+        console.error('Upload to Drive failed', e);
+      }
     }
 
     // 1. Dapatkan daftar GTK dari db_GTK (build nama -> noWA map)
@@ -104,7 +125,7 @@ export async function POST(request: Request) {
     // 3. Simpan Riwayat ke Spreadsheet
     try {
       const presensiDoc = await getPresensiDoc();
-      const expectedHeaders = ['Tanggal', 'Jam', 'Pengirim', 'Pesan', 'Target'];
+      const expectedHeaders = ['Tanggal', 'Jam', 'Pengirim', 'Pesan', 'Target', 'Lampiran'];
       let sheetPengumuman = presensiDoc.sheetsByTitle['PENGUMUMAN'];
 
       if (!sheetPengumuman) {
@@ -124,7 +145,8 @@ export async function POST(request: Request) {
         Jam: jam,
         Pengirim: pengirim || 'Admin',
         Pesan: pesan,
-        Target: targetLabel
+        Target: targetLabel,
+        Lampiran: lampiranUrl
       });
     } catch (sheetError) {
       console.error('Gagal menyimpan log ke Spreadsheet:', sheetError);
@@ -139,13 +161,19 @@ export async function POST(request: Request) {
       });
     }
 
+    // Use Fonnte API with FormData to support file attachments
+    const fonnteFd = new FormData();
+    fonnteFd.append('target', targets);
+    if (pesan) fonnteFd.append('message', pesan);
+    fonnteFd.append('delay', '15-30');
+    if (file) fonnteFd.append('file', file);
+
     const response = await fetch('https://api.fonnte.com/send', {
       method: 'POST',
       headers: {
-        'Authorization': token || '',
-        'Content-Type': 'application/json'
+        'Authorization': token || ''
       },
-      body: JSON.stringify({ target: targets, message: pesan, delay: '15-30' })
+      body: fonnteFd
     });
 
     const result = await response.json();
@@ -203,7 +231,8 @@ export async function GET(request: Request) {
       jam: r.get('Jam'),
       pengirim: r.get('Pengirim'),
       pesan: r.get('Pesan'),
-      target: r.get('Target') || 'Semua GTK'
+      target: r.get('Target') || 'Semua GTK',
+      lampiran: r.get('Lampiran') || ''
     })).reverse();
 
     return NextResponse.json({ success: true, data, total: data.length });
