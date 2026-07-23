@@ -578,7 +578,8 @@ export default function SiswaPage() {
   const filteredData = data.filter(s => {
     const matchSearch = s.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         s.nisn.includes(searchTerm) ||
-                        s.rombel.toLowerCase().includes(searchTerm.toLowerCase());
+                        s.rombel.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        (s.domisili || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchTahun = selectedTahun === 'Semua' ? s.isLatest : s.tahunAjaran === selectedTahun;
     const matchTingkat = selectedTingkat === 'Semua' ? true : s.rombel.startsWith(selectedTingkat);
     const matchRombel = selectedRombel === 'Semua' ? true : (s.rombel || '').trim() === selectedRombel;
@@ -768,7 +769,7 @@ export default function SiswaPage() {
               <i className={`fas fa-search ${styles.searchIcon}`}></i>
               <input
                 type="text"
-                placeholder="Cari nama, NISN, atau kelas..."
+                placeholder="Cari nama, NISN, kelas, atau domisili..."
                 className={styles.searchInput}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
