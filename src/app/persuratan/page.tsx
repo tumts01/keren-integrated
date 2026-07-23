@@ -1367,7 +1367,7 @@ export default function PersuratanPage() {
               </>
             ) : generateJenis === 'Surat Permohonan Izin' ? (
               <>
-                <div style={{ fontSize: '11pt', marginTop: '10px' }}>
+                <div style={{ fontSize: '12pt', marginTop: '10px' }}>
                   <table style={{ border: 'none', borderCollapse: 'collapse', width: '100%', marginBottom: '15px' }}>
                     <tbody>
                       <tr><td style={{ width: '70px', padding: 0 }}>Nomor</td><td style={{ width: '15px', padding: 0 }}>:</td><td style={{ padding: 0 }}>{generateNomor}</td></tr>
@@ -1431,9 +1431,9 @@ export default function PersuratanPage() {
               <>
                 <div style={{ textAlign: 'center', marginBottom: '30px', marginTop: '10px' }}>
                   <h3 style={{ textDecoration: 'underline', margin: '0 0 5px 0', fontSize: '14pt', letterSpacing: '1px' }}>S U R A T &nbsp;&nbsp; T U G A S</h3>
-                  <p style={{ margin: 0, fontSize: '11pt' }}>Nomor: {generateNomor}</p>
+                  <p style={{ margin: 0, fontSize: '12pt' }}>Nomor: {generateNomor}</p>
                 </div>
-                <div style={{ fontSize: '11pt' }}>
+                <div style={{ fontSize: '12pt' }}>
                   <p style={{ margin: '0 0 10px 0' }}>Yang bertanda tangan di bawah ini:</p>
                   <table style={{ border: 'none', borderCollapse: 'collapse', width: '100%', marginBottom: '20px' }}>
                     <tbody>
