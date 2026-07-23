@@ -96,3 +96,7 @@ export async function getRaporDoc() {
   await doc.loadInfo();
   return doc;
 }
+
+export async function getNotulenDoc() {
+  return getDocWithFallback('1nZINEbfTS48NS3AGMbmyxmUiP8jTdpJOhkjDtgBc9SY');
+}
