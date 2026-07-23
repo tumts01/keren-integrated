@@ -87,20 +87,26 @@ export async function POST(request: Request) {
         'GURU DISPO': guruDispo || '-'
       }, { raw: true });
     } else {
-      // Simpan setiap entri sebagai baris baru
-      const rows = entries.map((entry: any) => ({
-        'ID': crypto.randomUUID().substring(0, 8),
+      // Gabungkan semua entri guru izin menjadi 1 baris (pemisah ' | ')
+      const id = crypto.randomUUID().substring(0, 8);
+      const guruIzinArr = entries.map((e: any) => e.guruIzin || '-');
+      const alasanArr = entries.map((e: any) => e.alasanIzin || '-');
+      const kelasArr = entries.map((e: any) => e.kelasDitinggalkan || '-');
+      const materiArr = entries.map((e: any) => e.materi || '-');
+      const penggantiArr = entries.map((e: any) => e.guruPengganti || '-');
+
+      await sheet.addRow({
+        'ID': id,
         'TIMESTAMP': timestamp,
         'TANGGAL': tanggal,
         'PETUGAS PIKET': petugasPiket,
-        'GURU IZIN': entry.guruIzin || '-',
-        'ALASAN IZIN': entry.alasanIzin || '-',
-        'KELAS DITINGGALKAN': entry.kelasDitinggalkan || '-',
-        'MATERI': entry.materi || '-',
-        'GURU PENGGANTI': entry.guruPengganti || '-',
+        'GURU IZIN': guruIzinArr.join(' | '),
+        'ALASAN IZIN': alasanArr.join(' | '),
+        'KELAS DITINGGALKAN': kelasArr.join(' | '),
+        'MATERI': materiArr.join(' | '),
+        'GURU PENGGANTI': penggantiArr.join(' | '),
         'GURU DISPO': guruDispo || '-'
-      }));
-      await sheet.addRows(rows, { raw: true });
+      }, { raw: true });
     }
 
     return NextResponse.json({ success: true, message: 'Jurnal Piket berhasil disimpan' });
