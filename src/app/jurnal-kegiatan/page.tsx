@@ -294,7 +294,7 @@ export default function JurnalKegiatanPage() {
             new ImageRun({
               data: fotoBuffer,
               transformation: { width: 450, height: 300 },
-              type: 'jpeg',
+              type: 'jpg',
             })
           ],
           alignment: AlignmentType.CENTER,
