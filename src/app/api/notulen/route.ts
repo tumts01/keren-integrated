@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
 import { getNotulenDoc } from '@/lib/google-sheets';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +42,6 @@ import { uploadFileToDrive } from '@/lib/google-drive';
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
     const formData = await request.formData();
     
     const tanggal = formData.get('tanggal') as string;
@@ -95,7 +92,7 @@ export async function POST(request: Request) {
       'Agenda Rapat': agendaRapat,
       'Pimpinan Rapat': pimpinanRapat,
       'Dihadiri Oleh': dihadiriOleh,
-      'Notulis': notulis || session?.user?.name || 'Admin',
+      'Notulis': notulis || 'Admin',
       'Hasil Notulen': hasilNotulen,
       'Dokumentasi': dokumentasiUrl
     });

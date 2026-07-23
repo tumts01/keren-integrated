@@ -83,6 +83,7 @@ export default function JurnalKegiatanPage() {
       payload.append('waktu', formData.waktu);
       payload.append('tempatRapat', formData.tempatRapat);
       payload.append('agendaRapat', formData.agendaRapat);
+      payload.append('notulis', formData.notulis);
       payload.append('pimpinanRapat', formData.pimpinanRapat);
       payload.append('hasilNotulen', formData.hasilNotulen);
       
@@ -303,6 +304,11 @@ export default function JurnalKegiatanPage() {
                 <div className={styles.formGroup}>
                   <label>Agenda Rapat</label>
                   <input type="text" required value={formData.agendaRapat} onChange={e => setFormData({...formData, agendaRapat: e.target.value})} />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label>Nama Notulis</label>
+                  <input type="text" placeholder="Misal: Bapak/Ibu X" required value={formData.notulis} onChange={e => setFormData({...formData, notulis: e.target.value})} />
                 </div>
 
                 <div className={styles.formGroup}>
