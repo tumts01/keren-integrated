@@ -17,6 +17,7 @@ export default function JurnalKegiatanPage() {
     tempatRapat: '',
     agendaRapat: '',
     pimpinanRapat: '',
+    notulis: '',
     hasilNotulen: '',
     dokumentasi: ''
   });
@@ -110,6 +111,7 @@ export default function JurnalKegiatanPage() {
           tempatRapat: '',
           agendaRapat: '',
           pimpinanRapat: '',
+          notulis: '',
           hasilNotulen: '',
           dokumentasi: ''
         });
