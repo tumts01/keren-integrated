@@ -82,6 +82,9 @@ export default function PersuratanPage() {
   const [generateHariTanggal, setGenerateHariTanggal] = useState('');
   const [generateWaktu, setGenerateWaktu] = useState('');
   const [generateTempat, setGenerateTempat] = useState('');
+  const [generateHari, setGenerateHari] = useState('');
+  const [generateTanggalPelaksanaan, setGenerateTanggalPelaksanaan] = useState('');
+  const [generateAcara, setGenerateAcara] = useState('');
   
   // New States for Surat Tugas
   const [generateGuruTugas, setGenerateGuruTugas] = useState<{guru: any, tugas: string}[]>([]);
@@ -217,6 +220,9 @@ export default function PersuratanPage() {
     setGenerateHariTanggal(record.hariTanggal || '');
     setGenerateWaktu(record.waktu || '');
     setGenerateTempat(record.tempat || '');
+    setGenerateHari(record.hari || '');
+    setGenerateTanggalPelaksanaan(record.tanggalPelaksanaan || '');
+    setGenerateAcara(record.acara || '');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -236,6 +242,9 @@ export default function PersuratanPage() {
       hariTanggal: generateHariTanggal,
       waktu: generateWaktu,
       tempat: generateTempat,
+      hari: generateHari,
+      tanggalPelaksanaan: generateTanggalPelaksanaan,
+      acara: generateAcara,
     };
     // Simpan ke Google Sheets (cross-device)
     fetch('/api/persuratan', {
@@ -892,11 +901,15 @@ export default function PersuratanPage() {
                       setGenerateSiswaList([]);
                       setGenerateGuruTugas([]);
                       setSearchGuruTerm('');
+                      setGenerateHari('');
+                      setGenerateTanggalPelaksanaan('');
+                      setGenerateAcara('');
                     }}
                   >
                     <option value="Surat Keterangan Aktif Siswa">Surat Keterangan Aktif Siswa</option>
                     <option value="Surat Permohonan Izin">Surat Permohonan Izin</option>
                     <option value="Surat Tugas">Surat Tugas</option>
+                    <option value="Surat Undangan GTK">Surat Undangan GTK</option>
                   </select>
                 </div>
 
@@ -918,11 +931,42 @@ export default function PersuratanPage() {
                   <input 
                     type="text" 
                     className={styles.searchInput}
-                    placeholder={generateJenis === 'Surat Keterangan Aktif Siswa' ? "Contoh: 115/YPA/MTs-01.A.1/VI/2026" : "Contoh: 309/YPA/MTs-01.A.8/VII/2026"}
+                    placeholder={
+                      generateJenis === 'Surat Keterangan Aktif Siswa' 
+                        ? "Contoh: 115/YPA/MTs-01.A.1/VI/2026" 
+                        : generateJenis === 'Surat Undangan GTK'
+                        ? "Contoh: 329/YPA/MTs-01.P.8/VII/2026"
+                        : "Contoh: 309/YPA/MTs-01.A.8/VII/2026"
+                    }
                     value={generateNomor}
                     onChange={(e) => setGenerateNomor(e.target.value)}
                   />
                 </div>
+
+                {generateJenis === 'Surat Undangan GTK' && (
+                  <>
+                    <div className={styles.infoGroup}>
+                      <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Hari <span style={{ color: 'red' }}>*</span></label>
+                      <input 
+                        type="text" 
+                        className={styles.searchInput}
+                        placeholder="Contoh: Jum'at"
+                        value={generateHari}
+                        onChange={(e) => setGenerateHari(e.target.value)}
+                      />
+                    </div>
+                    <div className={styles.infoGroup}>
+                      <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Tanggal Pelaksanaan <span style={{ color: 'red' }}>*</span></label>
+                      <input 
+                        type="text" 
+                        className={styles.searchInput}
+                        placeholder="Contoh: 24 Juli 2027"
+                        value={generateTanggalPelaksanaan}
+                        onChange={(e) => setGenerateTanggalPelaksanaan(e.target.value)}
+                      />
+                    </div>
+                  </>
+                )}
 
                 {(generateJenis === 'Surat Permohonan Izin' || generateJenis === 'Surat Tugas') && (
                   <>
@@ -958,29 +1002,46 @@ export default function PersuratanPage() {
                         onChange={(e) => setGenerateHariTanggal(e.target.value)}
                       />
                     </div>
-                    {generateJenis === 'Surat Permohonan Izin' && (
-                      <div className={styles.infoGroup}>
-                        <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Waktu Pelaksanaan <span style={{ color: 'red' }}>*</span></label>
-                        <input 
-                          type="text" 
-                          className={styles.searchInput}
-                          placeholder="Contoh: Pukul 12.00 - 15.30 WIB"
-                          value={generateWaktu}
-                          onChange={(e) => setGenerateWaktu(e.target.value)}
-                        />
-                      </div>
-                    )}
-                    <div className={styles.infoGroup}>
-                      <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Tempat Pelaksanaan <span style={{ color: 'red' }}>*</span></label>
-                      <input 
-                        type="text" 
-                        className={styles.searchInput}
-                        placeholder="Contoh: MTs Almaarif 01 Singosari"
-                        value={generateTempat}
-                        onChange={(e) => setGenerateTempat(e.target.value)}
-                      />
-                    </div>
                   </>
+                )}
+
+                {(generateJenis === 'Surat Permohonan Izin' || generateJenis === 'Surat Undangan GTK') && (
+                  <div className={styles.infoGroup}>
+                    <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Pukul <span style={{ color: 'red' }}>*</span></label>
+                    <input 
+                      type="text" 
+                      className={styles.searchInput}
+                      placeholder={generateJenis === 'Surat Undangan GTK' ? "Contoh: 13.00 - selesai" : "Contoh: Pukul 12.00 - 15.30 WIB"}
+                      value={generateWaktu}
+                      onChange={(e) => setGenerateWaktu(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {(generateJenis === 'Surat Permohonan Izin' || generateJenis === 'Surat Tugas' || generateJenis === 'Surat Undangan GTK') && (
+                  <div className={styles.infoGroup}>
+                    <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Tempat <span style={{ color: 'red' }}>*</span></label>
+                    <input 
+                      type="text" 
+                      className={styles.searchInput}
+                      placeholder="Contoh: Kantor MTs Almaarif 01 Singosari"
+                      value={generateTempat}
+                      onChange={(e) => setGenerateTempat(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {generateJenis === 'Surat Undangan GTK' && (
+                  <div className={styles.infoGroup}>
+                    <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Acara <span style={{ color: 'red' }}>*</span></label>
+                    <input 
+                      type="text" 
+                      className={styles.searchInput}
+                      placeholder="Contoh: Rapat Rutin Awal Tahun Ajaran Baru 2026/2027"
+                      value={generateAcara}
+                      onChange={(e) => setGenerateAcara(e.target.value)}
+                    />
+                  </div>
                 )}
 
                 {generateJenis !== 'Surat Tugas' && (
@@ -1137,7 +1198,7 @@ export default function PersuratanPage() {
                     className="btn btn-primary" 
                     style={{ width: '100%', padding: '12px' }}
                     onClick={handleSaveAndPrint}
-                    disabled={!generateNomor || !generateTanggal || (generateJenis === 'Surat Keterangan Aktif Siswa' ? !generateSiswa : (generateJenis === 'Surat Permohonan Izin' ? (generateSiswaList.length === 0 || !generateTujuan || !generateKegiatan || !generateKonteks) : (generateGuruTugas.length === 0 || !generateKonteks || !generateHariTanggal || !generateTempat)))}
+                    disabled={!generateNomor || !generateTanggal || (generateJenis === 'Surat Keterangan Aktif Siswa' ? !generateSiswa : (generateJenis === 'Surat Permohonan Izin' ? (generateSiswaList.length === 0 || !generateTujuan || !generateKegiatan || !generateKonteks) : (generateJenis === 'Surat Tugas' ? (generateGuruTugas.length === 0 || !generateKonteks || !generateHariTanggal || !generateTempat) : (!generateHari || !generateTanggalPelaksanaan || !generateWaktu || !generateTempat || !generateAcara))))}
                   >
                     <i className="fas fa-print"></i> Generate & Cetak Surat
                   </button>
@@ -1315,7 +1376,7 @@ export default function PersuratanPage() {
         )}
 
         {/* Print Template - Hidden on screen, shown on print */}
-        {activeTab === 'generate' && ((generateJenis === 'Surat Keterangan Aktif Siswa' && generateSiswa) || (generateJenis === 'Surat Permohonan Izin' && generateSiswaList.length > 0) || (generateJenis === 'Surat Tugas' && generateGuruTugas.length > 0)) && (
+        {activeTab === 'generate' && ((generateJenis === 'Surat Keterangan Aktif Siswa' && generateSiswa) || (generateJenis === 'Surat Permohonan Izin' && generateSiswaList.length > 0) || (generateJenis === 'Surat Tugas' && generateGuruTugas.length > 0) || (generateJenis === 'Surat Undangan GTK' && generateNomor)) && (
           <div className={styles.printOnly}>
             <div className={styles.kopSurat}>
               <img src="/kop_surat_mts.png" alt="Kop Surat MTs Almaarif 01" />
@@ -1427,6 +1488,56 @@ export default function PersuratanPage() {
                   <p style={{ fontStyle: 'italic', marginBottom: '20px' }}>Wassalamu'alaikum Wr. Wb.</p>
                 </div>
               </>
+            ) : generateJenis === 'Surat Undangan GTK' ? (
+              <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt', color: 'black', lineHeight: '1.4' }}>
+                <table style={{ border: 'none', borderCollapse: 'collapse', width: '100%', marginBottom: '20px', fontSize: '12pt', fontFamily: 'Arial, sans-serif' }}>
+                  <tbody>
+                    <tr><td style={{ width: '90px', padding: 0 }}>Nomor</td><td style={{ width: '15px', padding: 0 }}>:</td><td style={{ padding: 0 }}>{generateNomor}</td></tr>
+                    <tr><td style={{ padding: 0 }}>Lampiran</td><td style={{ padding: 0 }}>:</td><td style={{ padding: 0 }}>-</td></tr>
+                    <tr><td style={{ padding: 0 }}>Perihal</td><td style={{ padding: 0 }}>:</td><td style={{ padding: 0 }}>Undangan</td></tr>
+                  </tbody>
+                </table>
+
+                <div style={{ marginBottom: '20px', lineHeight: '1.3' }}>
+                  <div>Kepada Yth :</div>
+                  <div style={{ fontWeight: 'bold' }}>Bapak/Ibu Guru &amp; Staf</div>
+                  <div style={{ fontWeight: 'bold' }}>MTs Almaarif 01 Singosari</div>
+                  <div>di</div>
+                  <div style={{ paddingLeft: '40px' }}>Tempat</div>
+                </div>
+
+                <p style={{ margin: '0 0 14px 0' }}>Assalamualaikum Wr. Wb.</p>
+
+                <p style={{ margin: '0 0 14px 0', textAlign: 'justify', lineHeight: '1.4' }}>
+                  Salam silaturrahim teriring do'a, semoga rahmat hidayah serta inayah Allah SWT selalu menyertai kita dalam beraktifitas sehari-hari, amin.
+                </p>
+
+                <p style={{ margin: '0 0 14px 0', textAlign: 'justify', lineHeight: '1.4' }}>
+                  Dengan hormat kami memohon kehadiran Bapak/Ibu Guru &amp; Staf untuk hadir pada:
+                </p>
+
+                <table style={{ border: 'none', borderCollapse: 'collapse', width: '100%', marginBottom: '20px', marginLeft: '40px', fontSize: '12pt', fontFamily: 'Arial, sans-serif' }}>
+                  <tbody>
+                    <tr><td style={{ width: '110px', padding: '3px 0' }}>Hari</td><td style={{ width: '15px', padding: '3px 0' }}>:</td><td style={{ padding: '3px 0' }}>{generateHari}</td></tr>
+                    <tr><td style={{ padding: '3px 0' }}>Tanggal</td><td style={{ padding: '3px 0' }}>:</td><td style={{ padding: '3px 0' }}>{generateTanggalPelaksanaan}</td></tr>
+                    <tr><td style={{ padding: '3px 0' }}>Pukul</td><td style={{ padding: '3px 0' }}>:</td><td style={{ padding: '3px 0' }}>{generateWaktu}</td></tr>
+                    <tr><td style={{ padding: '3px 0' }}>Tempat</td><td style={{ padding: '3px 0' }}>:</td><td style={{ padding: '3px 0' }}>{generateTempat}</td></tr>
+                    <tr><td style={{ padding: '3px 0' }}>Acara</td><td style={{ padding: '3px 0' }}>:</td><td style={{ padding: '3px 0' }}>{generateAcara}</td></tr>
+                  </tbody>
+                </table>
+
+                <p style={{ margin: '0 0 14px 0', textAlign: 'justify', lineHeight: '1.4' }}>
+                  Demikian undangan ini disampaikan, atas perhatian dan kehadiran bapak/ibu Guru &amp; Staf kami sampaikan terima kasih.
+                </p>
+
+                <p style={{ margin: '0 0 35px 0' }}>Wassalamu'alaikum Wr. Wb.</p>
+
+                <div className={styles.suratTtd} style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt' }}>
+                  <p style={{ margin: '0 0 5px 0' }}>Singosari, {generateTanggal}</p>
+                  <p style={{ margin: '0 0 90px 0' }}>Kepala Madrasah</p>
+                  <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>Dwi Retno Palupi, M.Pd.</p>
+                </div>
+              </div>
             ) : (
               <>
                 <div style={{ textAlign: 'center', marginBottom: '30px', marginTop: '10px' }}>
