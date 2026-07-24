@@ -237,7 +237,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </form>
             
             <div className={styles.footer}>
-              &copy; {new Date().getFullYear()} Kementerian Agama Republik Indonesia
+              &copy; {new Date().getFullYear()} KEREN Integrated from Aa' Icoll
             </div>
           </div>
         </div>
