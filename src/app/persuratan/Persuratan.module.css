@@ -476,46 +476,6 @@
   background: white;
 }
 
-@media print {
-  html, body {
-    background-color: white !important;
-  }
-
-  /* Sembunyikan elemen secara visual */
-  body * {
-    visibility: hidden;
-    background: transparent !important;
-  }
-  
-  /* Hapus elemen-elemen di dalam container dari flow agar tidak memakan tinggi (height) dokumen */
-  .container > *:not(:global(.print-area)) {
-    display: none !important;
-  }
-
-  /* Tampilkan komponen print template secara penuh di halaman cetak */
-  .printOnly, .printOnly * {
-    visibility: visible !important;
-    background: white !important;
-    color: black !important;
-  }
-  
-  .printOnly {
-    display: block;
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    padding: 0;
-    margin: 0;
-    background: white !important;
-  }
-
-  @page {
-    size: A4;
-    margin: 15mm 20mm;
-  }
-}
-
 .kopSurat {
   width: 100%;
   margin-bottom: 10px;
