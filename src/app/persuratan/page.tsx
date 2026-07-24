@@ -842,7 +842,7 @@ export default function PersuratanPage() {
                             Tidak ditemukan riwayat untuk "{searchRiwayat}"
                           </div>
                         ) : (
-                          <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
+                          <div style={{ maxHeight: '155px', overflowY: 'auto' }}>
                             {filtered.map((r, i) => (
                               <div key={r.id} style={{ padding: '12px 18px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', background: i % 2 === 0 ? 'white' : '#fafafa' }}>
                                 <div style={{ flex: 1, minWidth: 0 }}>
