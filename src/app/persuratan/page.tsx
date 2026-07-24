@@ -1384,7 +1384,7 @@ export default function PersuratanPage() {
 
         {/* Print Template - Hidden on screen, shown on print */}
         {activeTab === 'generate' && ((generateJenis === 'Surat Keterangan Aktif Siswa' && generateSiswa) || (generateJenis === 'Surat Permohonan Izin' && generateSiswaList.length > 0) || (generateJenis === 'Surat Tugas' && generateGuruTugas.length > 0) || (generateJenis === 'Surat Undangan GTK' && generateNomor)) && (
-          <div className={styles.printOnly}>
+          <div className={`${styles.printOnly} print-area`}>
             <div className={styles.kopSurat}>
               <img src="/kop_surat_mts.png" alt="Kop Surat MTs Almaarif 01" />
             </div>

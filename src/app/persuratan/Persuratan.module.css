@@ -488,7 +488,7 @@
   }
   
   /* Hapus elemen-elemen di dalam container dari flow agar tidak memakan tinggi (height) dokumen */
-  .container > *:not(.printOnly) {
+  .container > *:not(:global(.print-area)) {
     display: none !important;
   }
 
