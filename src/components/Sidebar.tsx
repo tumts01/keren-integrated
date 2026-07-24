@@ -49,6 +49,8 @@ export default function Sidebar() {
     checkPengumuman();
   }, [pathname]);
 
+  const isAdmin = userRole.toLowerCase() === 'admin';
+
   const menuCategories: MenuCategory[] = [
     {
       title: 'Utama',
@@ -66,43 +68,46 @@ export default function Sidebar() {
         { name: 'Data Kelas', path: '/kelas', icon: 'fa-chalkboard' },
         { name: 'Presensi & Jurnal', path: '/presensi', icon: 'fa-calendar-check' },
         { name: 'Dispo Siswa', path: '/dispo', icon: 'fa-user-clock' },
-        { name: 'Jadwal Mengajar', path: '/jadwal-mengajar', icon: 'fa-clock' },
-        { name: 'Nilai Siswa', path: '/nilai-siswa', icon: 'fa-star' },
+        ...(isAdmin ? [
+          { name: 'Jadwal Mengajar', path: '/jadwal-mengajar', icon: 'fa-clock' },
+          { name: 'Nilai Siswa', path: '/nilai-siswa', icon: 'fa-star' },
+        ] : []),
         { name: 'Pengembalian Rapor', path: '/pengembalian-rapor', icon: 'fa-file-signature' },
-        { name: 'EMIS', path: '/emis', icon: 'fa-database' },
+        ...(isAdmin ? [
+          { name: 'EMIS', path: '/emis', icon: 'fa-database' },
+        ] : []),
       ]
     },
     {
       title: 'Administrasi',
       items: [
-        { name: 'Persuratan', path: '/persuratan', icon: 'fa-envelope-open-text' },
+        ...(isAdmin ? [
+          { name: 'Persuratan', path: '/persuratan', icon: 'fa-envelope-open-text' },
+        ] : []),
         { name: 'Loker Digital', path: '/loker-digital', icon: 'fa-folder-open' },
-        { name: 'Buku Tamu', path: '/buku-tamu', icon: 'fa-address-book' },
-        { name: 'SPMB', path: '/spmb', icon: 'fa-user-graduate' },
-        { name: 'Data Prestasi', path: '/prestasi', icon: 'fa-trophy' },
+        ...(isAdmin ? [
+          { name: 'Buku Tamu', path: '/buku-tamu', icon: 'fa-address-book' },
+          { name: 'SPMB', path: '/spmb', icon: 'fa-user-graduate' },
+          { name: 'Data Prestasi', path: '/prestasi', icon: 'fa-trophy' },
+        ] : []),
         { name: 'Arsip Foto', path: '/arsip-foto', icon: 'fa-images' },
         { name: 'Sajian Data', path: '/sajian-data', icon: 'fa-chart-pie' },
         { name: 'Survey Madrasah', path: '/survey-madrasah', icon: 'fa-poll-h' },
-        { 
-          name: 'Jurnal Kegiatan', 
-          path: '/jurnal-kegiatan', 
-          icon: 'fa-book-open'
-        },
+        ...(isAdmin ? [
+          { name: 'Jurnal Kegiatan', path: '/jurnal-kegiatan', icon: 'fa-book-open' },
+        ] : []),
       ]
     },
-    {
-      title: 'Keuangan',
-      items: [
-        { name: 'Bendahara', path: '/bendahara', icon: 'fa-wallet' },
-        { name: 'Pembayaran', path: '/pembayaran', icon: 'fa-money-bill-wave' },
-        ...((() => {
-          const BON_ROLES = ['admin', 'pimpinan', 'guru / ka. lab. ti', 'bimbingan konseling', 'guru / koord. literasi', 'gtk / ka. lab. ipa', 'ka. perpustakaan'];
-          return BON_ROLES.includes(userRole.toLowerCase());
-        })()
-          ? [{ name: 'Nota Bon', path: '/bon', icon: 'fa-file-invoice-dollar' }]
-          : [])
-      ]
-    }
+    ...(isAdmin ? [
+      {
+        title: 'Keuangan',
+        items: [
+          { name: 'Bendahara', path: '/bendahara', icon: 'fa-wallet' },
+          { name: 'Pembayaran', path: '/pembayaran', icon: 'fa-money-bill-wave' },
+          { name: 'Nota Bon', path: '/bon', icon: 'fa-file-invoice-dollar' }
+        ]
+      }
+    ] : [])
   ];
 
   const [openCategories, setOpenCategories] = useState<string[]>(['Utama', 'Akademik & KBM', 'Administrasi', 'Keuangan']);
