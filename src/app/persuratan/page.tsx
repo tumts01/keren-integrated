@@ -207,6 +207,7 @@ export default function PersuratanPage() {
   }, []);
 
   const repopulateForm = (record: any) => {
+    setActiveTab('generate');
     setGenerateJenis(record.jenis);
     setGenerateNomor(record.nomor);
     setGenerateTanggal(record.tanggal);
