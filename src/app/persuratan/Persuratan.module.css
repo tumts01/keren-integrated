@@ -481,12 +481,17 @@
     background-color: white !important;
   }
 
-  /* Sembunyikan elemen dashboard (sidebar, header, dsb) saat diprint */
+  /* Sembunyikan elemen secara visual */
   body * {
     visibility: hidden;
     background: transparent !important;
   }
   
+  /* Hapus elemen-elemen di dalam container dari flow agar tidak memakan tinggi (height) dokumen */
+  .container > *:not(.printOnly) {
+    display: none !important;
+  }
+
   /* Tampilkan komponen print template secara penuh di halaman cetak */
   .printOnly, .printOnly * {
     visibility: visible !important;
@@ -500,7 +505,6 @@
     left: 0;
     top: 0;
     width: 100%;
-    height: auto;
     padding: 0;
     margin: 0;
     background: white !important;
