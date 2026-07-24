@@ -1526,13 +1526,13 @@ export default function PersuratanPage() {
                   </tbody>
                 </table>
 
-                <p style={{ margin: '0 0 10px 0', textAlign: 'justify', lineHeight: '1.35' }}>
+                <p style={{ margin: '0 0 10px 0', textAlign: 'justify', lineHeight: '1.3' }}>
                   Demikian undangan ini disampaikan, atas perhatian dan kehadiran bapak/ibu Guru &amp; Staf kami sampaikan terima kasih.
                 </p>
 
-                <p style={{ margin: '0 0 20px 0' }}>Wassalamu'alaikum Wr. Wb.</p>
+                <p style={{ margin: '0 0 15px 0' }}>Wassalamu'alaikum Wr. Wb.</p>
 
-                <div className={styles.suratTtd} style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt', marginTop: '10px' }}>
+                <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt', marginTop: '10px', marginLeft: 'auto', width: '300px', textAlign: 'left' }}>
                   <p style={{ margin: '0 0 5px 0' }}>Singosari, {generateTanggal}</p>
                   <p style={{ margin: '0 0 65px 0' }}>Kepala Madrasah</p>
                   <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>Dwi Retno Palupi, M.Pd.</p>
@@ -1540,13 +1540,13 @@ export default function PersuratanPage() {
               </div>
             ) : (
               <>
-                <div style={{ textAlign: 'center', marginBottom: '30px', marginTop: '10px' }}>
+                <div style={{ textAlign: 'center', marginBottom: '25px', marginTop: '10px' }}>
                   <h3 style={{ textDecoration: 'underline', margin: '0 0 5px 0', fontSize: '14pt', letterSpacing: '1px' }}>S U R A T &nbsp;&nbsp; T U G A S</h3>
                   <p style={{ margin: 0, fontSize: '12pt' }}>Nomor: {generateNomor}</p>
                 </div>
                 <div style={{ fontSize: '12pt' }}>
                   <p style={{ margin: '0 0 10px 0' }}>Yang bertanda tangan di bawah ini:</p>
-                  <table style={{ border: 'none', borderCollapse: 'collapse', width: '100%', marginBottom: '20px' }}>
+                  <table style={{ border: 'none', borderCollapse: 'collapse', width: '100%', marginBottom: '15px' }}>
                     <tbody>
                       <tr><td style={{ width: '100px', padding: '4px 0' }}>Nama</td><td style={{ width: '20px', padding: '4px 0' }}>:</td><td style={{ padding: '4px 0' }}>Dwi Retno Palupi, M.Pd.</td></tr>
                       <tr><td style={{ padding: '4px 0' }}>Jabatan</td><td style={{ padding: '4px 0' }}>:</td><td style={{ padding: '4px 0' }}>Kepala Madrasah Tsanawiyah Almaarif 01 Singosari</td></tr>
@@ -1581,10 +1581,10 @@ export default function PersuratanPage() {
                     </div>
                   )}
 
-                  <p style={{ margin: '0 0 20px 0', lineHeight: '1.5', textAlign: 'justify' }}>
+                  <p style={{ margin: '0 0 15px 0', lineHeight: '1.4', textAlign: 'justify' }}>
                     Untuk {generateKonteks}, {generateHariTanggal} yang bertempat di {generateTempat}.
                   </p>
-                  <p style={{ margin: '0 0 30px 0', lineHeight: '1.5', textAlign: 'justify' }}>
+                  <p style={{ margin: '0 0 25px 0', lineHeight: '1.4', textAlign: 'justify' }}>
                     Demikian surat tugas ini dibuat untuk dilaksanakan dengan penuh tanggung jawab. Atas perhatian dan kerja samanya diucapkan terima kasih.
                   </p>
                 </div>
@@ -1592,12 +1592,14 @@ export default function PersuratanPage() {
             )}
 
             {generateJenis !== 'Surat Undangan GTK' && (
-              <div className={styles.suratTtd}>
+              <div style={{ marginTop: '20px', marginLeft: 'auto', width: '300px', textAlign: 'left', fontSize: '12pt' }}>
                 <p style={{ margin: '0 0 5px 0' }}>Singosari, {generateTanggal}</p>
                 <p style={{ margin: '0 0 90px 0' }}>Kepala Madrasah,</p>
                 <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>DWI RETNO PALUPI, M.Pd.</p>
               </div>
             )}
+            
+            <div style={{ clear: 'both' }}></div>
           </div>
         )}
       </div>
