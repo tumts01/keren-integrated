@@ -43,6 +43,53 @@ import { uploadFileToDrive } from '@/lib/google-drive';
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
+    const action = formData.get('action') as string;
+    
+    if (action === 'update_dokumentasi') {
+      const idToUpdate = formData.get('id') as string;
+      const filesToUpdate = formData.getAll('dokumentasi') as File[];
+      
+      if (!idToUpdate || filesToUpdate.length === 0) {
+        return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
+      }
+
+      const doc = await getNotulenDoc();
+      let sheet = doc.sheetsByTitle['notulen'] || doc.sheetsByTitle['Notulen'];
+      if (!sheet) sheet = doc.sheetsByIndex[0];
+      
+      const rows = await sheet.getRows();
+      const targetRow = rows.find((r: any) => r.get('ID') === idToUpdate);
+      
+      if (!targetRow) {
+        return NextResponse.json({ success: false, error: 'Data notulen tidak ditemukan' }, { status: 404 });
+      }
+      
+      const folderId = process.env.GOOGLE_DRIVE_PERSURATAN_FOLDER_ID || '';
+      const urls: string[] = [];
+      
+      for (const file of filesToUpdate) {
+        if (file.size > 0) {
+          const arrayBuffer = await file.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          const driveRes = await uploadFileToDrive(buffer, file.name, file.type, folderId);
+          if (driveRes.webViewLink) {
+            urls.push(driveRes.webViewLink);
+          }
+        }
+      }
+      
+      if (urls.length > 0) {
+        const existingUrl = targetRow.get('Dokumentasi') || '';
+        if (existingUrl) {
+          targetRow.set('Dokumentasi', existingUrl + ' || ' + urls.join(' || '));
+        } else {
+          targetRow.set('Dokumentasi', urls.join(' || '));
+        }
+        await targetRow.save();
+      }
+      
+      return NextResponse.json({ success: true, message: 'Dokumentasi berhasil ditambahkan' });
+    }
     
     const tanggal = formData.get('tanggal') as string;
     const waktu = formData.get('waktu') as string;

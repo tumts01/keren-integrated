@@ -11,6 +11,9 @@ export default function JurnalKegiatanPage() {
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [step, setStep] = useState(1);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadTarget, setUploadTarget] = useState<any>(null);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
 
   const [formData, setFormData] = useState({
     tanggal: new Date().toISOString().split('T')[0],
@@ -373,7 +376,10 @@ export default function JurnalKegiatanPage() {
                     <td><strong>{n.agendaRapat}</strong><br/><span style={{ fontSize: '0.8rem', color: '#64748b' }}>{n.tempatRapat}</span></td>
                     <td>{n.pimpinanRapat}</td>
                     <td>{n.notulis}</td>
-                    <td style={{ textAlign: 'center' }}>
+                    <td style={{ textAlign: 'center', display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                      <button className="btn btn-secondary btn-sm" onClick={() => { setUploadTarget(n); setShowUploadModal(true); }} title="Lampirkan Foto Tambahan">
+                        <i className="fas fa-camera"></i> Foto
+                      </button>
                       <button className="btn btn-primary btn-sm" onClick={() => generateWord(n)} title="Download Word">
                         <i className="fas fa-file-word"></i> Word
                       </button>
@@ -549,6 +555,82 @@ export default function JurnalKegiatanPage() {
                     </button>
                   </>
                 )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showUploadModal && uploadTarget && (
+        <div className={styles.modalOverlay} onClick={() => setShowUploadModal(false)}>
+          <div className={styles.modalCard} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2><i className="fas fa-camera"></i> Lampirkan Foto Tambahan</h2>
+              <button className={styles.closeBtn} onClick={() => setShowUploadModal(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setSaving(true);
+              try {
+                const payload = new FormData();
+                payload.append('action', 'update_dokumentasi');
+                payload.append('id', uploadTarget.id);
+                uploadFiles.forEach(f => payload.append('dokumentasi', f));
+                const res = await fetch('/api/notulen', { method: 'POST', body: payload });
+                const json = await res.json();
+                if (json.success) {
+                  setShowUploadModal(false);
+                  setUploadTarget(null);
+                  setUploadFiles([]);
+                  fetchData();
+                } else {
+                  alert(json.error);
+                }
+              } catch (err: any) {
+                alert(err.message);
+              }
+              setSaving(false);
+            }}>
+              <div className={styles.modalBody}>
+                <p style={{ marginBottom: '16px', fontSize: '0.9rem', color: '#475569' }}>
+                  Tambahkan foto dokumentasi untuk <strong>{uploadTarget.agendaRapat}</strong>.
+                </p>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <label style={{ 
+                    flex: 1, padding: '16px', border: '2px dashed #10b981', borderRadius: '8px', 
+                    textAlign: 'center', cursor: 'pointer', color: '#10b981', fontWeight: 600, background: '#f0fdf4' 
+                  }}>
+                    <i className="fas fa-images" style={{ display: 'block', fontSize: '1.5rem', marginBottom: '8px' }}></i> 
+                    Pilih File Foto
+                    <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={e => {
+                      if (e.target.files) {
+                        setUploadFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                      }
+                    }} />
+                  </label>
+                </div>
+                {uploadFiles.length > 0 && (
+                  <div style={{ padding: '12px', marginTop: '16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#16a34a', marginBottom: '8px' }}>
+                      ✅ {uploadFiles.length} foto dipilih:
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.85rem', color: '#475569', opacity: 0.9 }}>
+                      {uploadFiles.map((f, i) => <li key={i}>{f.name}</li>)}
+                    </ul>
+                    <button type="button" onClick={() => setUploadFiles([])} style={{ marginTop: '12px', padding: '6px 12px', color: '#ef4444', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>
+                      <i className="fas fa-trash"></i> Hapus Semua Pilihan
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className={styles.modalFooter}>
+                <button type="button" className={styles.btnSecondary} onClick={() => setShowUploadModal(false)} disabled={saving}>Batal</button>
+                <button type="submit" className={styles.btnPrimary} disabled={saving || uploadFiles.length === 0}>
+                  {saving ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-upload"></i>} Simpan Lampiran
+                </button>
               </div>
             </form>
           </div>
