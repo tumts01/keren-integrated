@@ -82,6 +82,7 @@ export default function Sidebar() {
         { name: 'Data Prestasi', path: '/prestasi', icon: 'fa-trophy' },
         { name: 'Arsip Foto', path: '/arsip-foto', icon: 'fa-images' },
         { name: 'Sajian Data', path: '/sajian-data', icon: 'fa-chart-pie' },
+        { name: 'Survey Madrasah', path: '/survey-madrasah', icon: 'fa-poll-h' },
         { 
           name: 'Jurnal Kegiatan', 
           path: '/jurnal-kegiatan', 
