@@ -53,17 +53,33 @@ export async function POST(request: Request) {
     const notulis = formData.get('notulis') as string;
     const hasilNotulen = formData.get('hasilNotulen') as string;
     
-    const file = formData.get('dokumentasi') as File;
+    const files = formData.getAll('dokumentasi') as File[];
     let dokumentasiUrl = formData.get('dokumentasiUrl') as string || '';
 
     // Jika ada file gambar diupload
-    if (file && file.size > 0) {
+    if (files && files.length > 0) {
       const folderId = process.env.GOOGLE_DRIVE_PERSURATAN_FOLDER_ID || '';
-      const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+      const urls: string[] = [];
       
-      const driveRes = await uploadFileToDrive(buffer, file.name, file.type, folderId);
-      dokumentasiUrl = driveRes.webViewLink || '';
+      for (const file of files) {
+        if (file.size > 0) {
+          const arrayBuffer = await file.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+          const driveRes = await uploadFileToDrive(buffer, file.name, file.type, folderId);
+          if (driveRes.webViewLink) {
+            urls.push(driveRes.webViewLink);
+          }
+        }
+      }
+      
+      if (urls.length > 0) {
+        // Jika sebelumnya ada dokumentasiUrl manual, tambahkan juga
+        if (dokumentasiUrl) {
+          dokumentasiUrl = dokumentasiUrl + ' || ' + urls.join(' || ');
+        } else {
+          dokumentasiUrl = urls.join(' || ');
+        }
+      }
     }
 
     const doc = await getNotulenDoc();

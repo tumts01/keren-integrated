@@ -26,7 +26,7 @@ export default function JurnalKegiatanPage() {
   const [selectedPeserta, setSelectedPeserta] = useState<string[]>([]);
   const [selectAllPeserta, setSelectAllPeserta] = useState(false);
   const [searchPeserta, setSearchPeserta] = useState('');
-  const [dokumentasiFile, setDokumentasiFile] = useState<File | null>(null);
+  const [dokumentasiFiles, setDokumentasiFiles] = useState<File[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -94,12 +94,10 @@ export default function JurnalKegiatanPage() {
       const dihadiriOleh = selectAllPeserta ? 'Seluruh GTK' : selectedPeserta.join(' || ');
       payload.append('dihadiriOleh', dihadiriOleh);
       
-      const fileInput = document.getElementById('dokumentasiFile') as HTMLInputElement;
-      if (fileInput && fileInput.files && fileInput.files.length > 0) {
-        payload.append('dokumentasi', fileInput.files[0]);
-      } else {
-        payload.append('dokumentasiUrl', formData.dokumentasi);
+      if (dokumentasiFiles.length > 0) {
+        dokumentasiFiles.forEach(f => payload.append('dokumentasi', f));
       }
+      payload.append('dokumentasiUrl', formData.dokumentasi);
 
       const res = await fetch('/api/notulen', {
         method: 'POST',
@@ -121,8 +119,9 @@ export default function JurnalKegiatanPage() {
         setSelectedPeserta([]);
         setSelectAllPeserta(false);
         setSearchPeserta('');
-        setDokumentasiFile(null);
+        setDokumentasiFiles([]);
         setStep(1);
+        const fileInput = document.getElementById('dokumentasiFile') as HTMLInputElement;
         if (fileInput) fileInput.value = '';
         fetchData();
       } else {
@@ -183,13 +182,19 @@ export default function JurnalKegiatanPage() {
     const kopRes = await fetch('/kop_surat_mts.png');
     const kopBuffer = await kopRes.arrayBuffer();
 
-    // Ambil foto dokumentasi jika ada link
-    let fotoBuffer: ArrayBuffer | null = null;
-    if (n.dokumentasi && n.dokumentasi.startsWith('http')) {
-      try {
-        const fotoRes = await fetch(`/api/proxy-image?url=${encodeURIComponent(n.dokumentasi)}`);
-        if (fotoRes.ok) fotoBuffer = await fotoRes.arrayBuffer();
-      } catch (e) { /* skip if fetch fails */ }
+    // Ambil foto dokumentasi jika ada link (bisa lebih dari satu, dipisahkan oleh ||)
+    const fotoBuffers: ArrayBuffer[] = [];
+    if (n.dokumentasi) {
+      const urls = n.dokumentasi.split('||').map((u: string) => u.trim()).filter((u: string) => u.startsWith('http'));
+      for (const url of urls) {
+        try {
+          const fotoRes = await fetch(`/api/proxy-image?url=${encodeURIComponent(url)}`);
+          if (fotoRes.ok) {
+            const buf = await fotoRes.arrayBuffer();
+            fotoBuffers.push(buf);
+          }
+        } catch (e) { /* skip */ }
+      }
     }
 
     const pageChildren: any[] = [
@@ -289,20 +294,26 @@ export default function JurnalKegiatanPage() {
     ];
 
     // Lampiran foto dokumentasi di halaman baru jika ada
-    if (fotoBuffer) {
+    if (fotoBuffers.length > 0) {
       pageChildren.push(
-        para([bold('DOKUMENTASI KEGIATAN')], { pageBreakBefore: true, alignment: AlignmentType.CENTER, spacing: { after: 200 } }),
-        new Paragraph({
-          children: [
-            new ImageRun({
-              data: fotoBuffer,
-              transformation: { width: 450, height: 300 },
-              type: 'jpg',
-            })
-          ],
-          alignment: AlignmentType.CENTER,
-        })
+        para([bold('DOKUMENTASI KEGIATAN')], { pageBreakBefore: true, alignment: AlignmentType.CENTER, spacing: { after: 200 } })
       );
+      
+      for (const buf of fotoBuffers) {
+        pageChildren.push(
+          new Paragraph({
+            children: [
+              new ImageRun({
+                data: buf,
+                transformation: { width: 450, height: 300 },
+                type: 'jpg',
+              })
+            ],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 200 }
+          })
+        );
+      }
     }
 
     const doc = new Document({
@@ -467,7 +478,6 @@ export default function JurnalKegiatanPage() {
                 <div className={styles.formGroup}>
                   <label>Dokumentasi Kegiatan</label>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      {/* Tombol Foto Kamera Langsung - hanya aktif di perangkat mobile */}
                       <div style={{ display: 'flex', gap: '10px' }}>
                         <label style={{ 
                           flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
@@ -476,10 +486,9 @@ export default function JurnalKegiatanPage() {
                           background: '#eff6ff'
                         }}>
                           <i className="fas fa-camera"></i> Ambil Foto
-                          <input type="file" id="dokumentasiFile" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => {
-                            const f = e.target.files?.[0];
-                            if (f) {
-                              setDokumentasiFile(f);
+                          <input type="file" id="dokumentasiFile" accept="image/*" capture="environment" multiple style={{ display: 'none' }} onChange={e => {
+                            if (e.target.files && e.target.files.length > 0) {
+                              setDokumentasiFiles(prev => [...prev, ...Array.from(e.target.files!)]);
                               setFormData({...formData, dokumentasi: ''});
                             }
                           }} />
@@ -491,28 +500,27 @@ export default function JurnalKegiatanPage() {
                           background: '#f0fdf4'
                         }}>
                           <i className="fas fa-images"></i> Pilih Galeri
-                          <input type="file" id="dokumentasiGallery" accept="image/*" style={{ display: 'none' }} onChange={e => {
-                            const f = e.target.files?.[0];
-                            if (f) {
-                              // copy file ke input utama agar terbaca oleh handleSubmit
-                              const dataTransfer = new DataTransfer();
-                              dataTransfer.items.add(f);
-                              const mainInput = document.getElementById('dokumentasiFile') as HTMLInputElement;
-                              if (mainInput) mainInput.files = dataTransfer.files;
-                              
-                              setDokumentasiFile(f);
+                          <input type="file" id="dokumentasiGallery" accept="image/*" multiple style={{ display: 'none' }} onChange={e => {
+                            if (e.target.files && e.target.files.length > 0) {
+                              setDokumentasiFiles(prev => [...prev, ...Array.from(e.target.files!)]);
                               setFormData({...formData, dokumentasi: ''});
                             }
                           }} />
                         </label>
                       </div>
                       {/* Pratinjau nama file terpilih */}
-                      {dokumentasiFile && (
+                      {dokumentasiFiles.length > 0 && (
                         <div style={{ padding: '8px', fontSize: '0.9rem', color: '#16a34a', fontWeight: '500', background: '#dcfce7', borderRadius: '6px', border: '1px solid #86efac', textAlign: 'center' }}>
-                          ✅ Foto berhasil dipilih:<br/>{dokumentasiFile.name}
+                          ✅ {dokumentasiFiles.length} foto dipilih:<br/>
+                          <div style={{ fontSize: '0.8rem', marginTop: '4px', opacity: 0.8 }}>
+                            {dokumentasiFiles.map(f => f.name).join(', ')}
+                          </div>
+                          <button type="button" onClick={(e) => { e.preventDefault(); setDokumentasiFiles([]); }} style={{ marginTop: '8px', padding: '4px 8px', color: '#ef4444', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600 }}>
+                            <i className="fas fa-trash"></i> Hapus Semua Foto
+                          </button>
                         </div>
                       )}
-                      <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Atau masukkan link eksternal (Drive, dll):</span>
+                      <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Atau masukkan link eksternal (Drive, dll), pisahkan dengan || jika lebih dari satu:</span>
                       <input type="url" placeholder="Link Gambar / Google Drive" value={formData.dokumentasi} onChange={e => setFormData({...formData, dokumentasi: e.target.value})} style={{ padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px' }} />
                     </div>
                   </div>
