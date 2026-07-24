@@ -194,43 +194,50 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className={styles.rightSection}>
           <div className={styles.loginCard}>
             <div className={styles.brand}>
-              <img src="/logo.png" alt="Logo" style={{ width: '64px', height: '64px', objectFit: 'contain' }} />
+              <img src="/logo.png" alt="Logo" style={{ width: '56px', height: '56px', objectFit: 'contain' }} />
               <h2>KEREN</h2>
             </div>
             
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '8px' }}>
-              Sistem Informasi Administrasi Digital
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b', marginBottom: '4px' }}>
+              Masuk ke KEREN
             </h3>
-            <p style={{ fontStyle: 'italic', fontSize: '0.85rem', color: '#8e8e8e', marginBottom: '16px' }}>
-              "Administrasi Lebih Mudah, Cepat, dan KEREN"
+            <p style={{ fontSize: '0.82rem', color: '#94a3b8', marginBottom: '20px' }}>
+              Sistem Informasi Administrasi Digital
             </p>
 
             <form onSubmit={handleLogin} className={styles.form}>
-              <div className={styles.inputGroup}>
-                <input 
-                  type="text" 
-                  placeholder="Masukkan Username Anda..." 
-                  value={usernameInput}
-                  onChange={(e) => setUsernameInput(e.target.value)}
-                  required 
-                />
+              <div style={{ textAlign: 'left', marginBottom: '16px' }}>
+                <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '6px' }}>
+                  Username
+                </label>
+                <div className={styles.inputGroup}>
+                  <input 
+                    type="text" 
+                    placeholder="Masukkan username anda" 
+                    value={usernameInput}
+                    onChange={(e) => setUsernameInput(e.target.value)}
+                    required 
+                  />
+                </div>
               </div>
 
               <button type="submit" className={styles.loginBtn} disabled={loading}>
-                {loading ? <i className="fas fa-spinner fa-spin"></i> : "Masuk Aplikasi"}
+                {loading ? <><i className="fas fa-spinner fa-spin"></i> Memproses...</> : <><i className="fas fa-sign-in-alt"></i> Masuk</>}
               </button>
+              
+              <div className={styles.divider}>atau</div>
               
               <button 
                 type="button" 
                 className={styles.forgotBtn} 
                 onClick={() => setShowLupaPassword(true)}
               >
-                Lupa Password / Username?
+                Klik disini untuk bantuan akses login
               </button>
             </form>
             
             <div className={styles.footer}>
-              &copy; {new Date().getFullYear()} KEREN Integrated from Aa' Icoll
+              &copy; {new Date().getFullYear()} Kementerian Agama Republik Indonesia
             </div>
           </div>
         </div>

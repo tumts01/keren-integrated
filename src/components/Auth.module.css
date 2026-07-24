@@ -1,58 +1,56 @@
 .loginWrapper {
   display: flex;
   min-height: 100vh;
-  background-color: #fafafa;
-}
-
-.leftSection {
-  display: none;
-  flex: 1;
+  align-items: center;
+  justify-content: center;
   background-image: url('/bg-login.JPG');
   background-size: cover;
   background-position: center;
   position: relative;
 }
 
-@media (min-width: 800px) {
-  .leftSection {
-    display: block;
-  }
+.loginWrapper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(35,114,39,0.75), rgba(14,165,233,0.55));
+  z-index: 0;
+}
+
+/* Left section hidden in new layout */
+.leftSection {
+  display: none;
 }
 
 .leftOverlay {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.7));
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  text-align: center;
-  padding: 40px;
+  display: none;
 }
 
+/* Right section becomes centered card container */
 .rightSection {
+  position: relative;
+  z-index: 1;
   width: 100%;
+  max-width: 440px;
   background: white;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  padding: 40px 20px;
+  border-radius: 16px;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+  padding: 40px 36px 32px;
+  margin: 20px;
+  animation: cardSlideUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 @media (min-width: 800px) {
   .rightSection {
-    width: 450px;
-    border-left: 1px solid #dbdbdb;
-    box-shadow: -4px 0 15px rgba(0,0,0,0.03);
+    width: 440px;
+    border-left: none;
+    padding: 48px 44px 36px;
   }
 }
 
 .loginCard {
   width: 100%;
-  max-width: 350px;
+  max-width: 100%;
   text-align: center;
 }
 
@@ -60,37 +58,42 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   color: var(--text-main);
-  margin-bottom: 24px;
+  margin-bottom: 8px;
 }
 
 .brand h2 {
-  font-size: 2rem;
+  font-size: 1.8rem;
   font-weight: 900;
   margin: 0;
   letter-spacing: -1px;
+  background: linear-gradient(135deg, #237227, #16a34a);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  margin-top: 24px;
+  gap: 0;
+  margin-top: 20px;
 }
 
 .inputGroup {
   display: flex;
   align-items: center;
   background: #fafafa;
-  border-radius: 4px;
-  padding: 10px 14px;
+  border-radius: 8px;
+  padding: 12px 14px;
   border: 1px solid #dbdbdb;
   transition: all 0.2s;
 }
 
 .inputGroup:focus-within {
-  border-color: #a8a8a8;
+  border-color: #237227;
+  box-shadow: 0 0 0 3px rgba(35,114,39,0.1);
 }
 
 .inputGroup i {
@@ -108,68 +111,70 @@
 }
 
 .loginBtn {
-  background: #237227;
+  background: linear-gradient(135deg, #237227, #1a5e1e);
   color: white;
   border: none;
   border-radius: 8px;
-  padding: 12px;
+  padding: 13px;
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  transition: background 0.2s;
-  margin-top: 8px;
+  transition: all 0.2s;
+  margin-top: 16px;
+  box-shadow: 0 4px 12px rgba(35,114,39,0.3);
 }
 
 .loginBtn:hover {
-  background: #519A66;
+  background: linear-gradient(135deg, #2d8a32, #237227);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(35,114,39,0.4);
 }
 
 .forgotBtn {
   background: transparent;
   border: none;
-  color: #64748b;
+  color: #237227;
   font-size: 0.85rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   padding: 8px;
   transition: all 0.2s ease;
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 2px;
   margin-top: 4px;
 }
 
 .forgotBtn:hover {
-  color: #237227;
-  text-decoration: underline;
+  color: #16a34a;
 }
 
 .divider {
   display: flex;
   align-items: center;
-  margin: 20px 0;
+  margin: 16px 0;
   color: #8e8e8e;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  text-transform: uppercase;
 }
 
 .divider::before, .divider::after {
   content: "";
   flex: 1;
   height: 1px;
-  background: #dbdbdb;
+  background: #e2e8f0;
 }
 
-.divider::before { margin-right: 18px; }
-.divider::after { margin-left: 18px; }
+.divider::before { margin-right: 14px; }
+.divider::after { margin-left: 14px; }
 
 .footer {
-  margin-top: 40px;
-  font-size: 0.8rem;
-  color: #8e8e8e;
+  margin-top: 28px;
+  font-size: 0.78rem;
+  color: #94a3b8;
   text-align: center;
 }
 
@@ -264,4 +269,9 @@
 @keyframes scaleUp {
   from { opacity: 0; transform: scale(0.9); }
   to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes cardSlideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
 }
