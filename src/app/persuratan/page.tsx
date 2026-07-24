@@ -1044,7 +1044,7 @@ export default function PersuratanPage() {
                   </div>
                 )}
 
-                {generateJenis !== 'Surat Tugas' && (
+                {(generateJenis === 'Surat Keterangan Aktif Siswa' || generateJenis === 'Surat Permohonan Izin') && (
                   <div className={styles.infoGroup} style={{ position: 'relative' }}>
                     <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Pilih Siswa <span style={{ color: 'red' }}>*</span></label>
                   
