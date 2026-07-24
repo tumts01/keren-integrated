@@ -1547,13 +1547,13 @@ export default function PersuratanPage() {
               </div>
             ) : (
               <>
-                <div style={{ textAlign: 'center', marginBottom: '25px', marginTop: '10px' }}>
+                <div style={{ textAlign: 'center', marginBottom: '25px', marginTop: '10px', fontFamily: 'Arial, sans-serif' }}>
                   <h3 style={{ textDecoration: 'underline', margin: '0 0 5px 0', fontSize: '14pt', letterSpacing: '1px' }}>S U R A T &nbsp;&nbsp; T U G A S</h3>
                   <p style={{ margin: 0, fontSize: '12pt' }}>Nomor: {generateNomor}</p>
                 </div>
-                <div style={{ fontSize: '12pt' }}>
+                <div style={{ fontSize: '12pt', fontFamily: 'Arial, sans-serif' }}>
                   <p style={{ margin: '0 0 10px 0' }}>Yang bertanda tangan di bawah ini:</p>
-                  <table style={{ border: 'none', borderCollapse: 'collapse', width: '100%', marginBottom: '15px' }}>
+                  <table style={{ border: 'none', borderCollapse: 'collapse', width: '100%', marginBottom: '15px', fontSize: '12pt', fontFamily: 'Arial, sans-serif' }}>
                     <tbody>
                       <tr><td style={{ width: '100px', padding: '4px 0' }}>Nama</td><td style={{ width: '20px', padding: '4px 0' }}>:</td><td style={{ padding: '4px 0' }}>Dwi Retno Palupi, M.Pd.</td></tr>
                       <tr><td style={{ padding: '4px 0' }}>Jabatan</td><td style={{ padding: '4px 0' }}>:</td><td style={{ padding: '4px 0' }}>Kepala Madrasah Tsanawiyah Almaarif 01 Singosari</td></tr>
@@ -1567,7 +1567,7 @@ export default function PersuratanPage() {
                     </div>
                   ) : (
                     <div style={{ padding: '0 20px' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px', fontSize: '12pt', fontFamily: 'Arial, sans-serif' }}>
                         <thead>
                           <tr>
                             <th style={{ border: '1px solid black', padding: '8px', width: '50px' }}>NO</th>
@@ -1599,7 +1599,7 @@ export default function PersuratanPage() {
             )}
 
             {generateJenis !== 'Surat Undangan GTK' && (
-              <div style={{ marginTop: '20px', marginLeft: 'auto', width: '300px', textAlign: 'left', fontSize: '12pt' }}>
+              <div style={{ marginTop: '20px', marginLeft: 'auto', width: '300px', textAlign: 'left', fontSize: '12pt', fontFamily: 'Arial, sans-serif' }}>
                 <p style={{ margin: '0 0 5px 0' }}>Singosari, {generateTanggal}</p>
                 <p style={{ margin: '0 0 90px 0' }}>Kepala Madrasah,</p>
                 <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>DWI RETNO PALUPI, M.Pd.</p>
