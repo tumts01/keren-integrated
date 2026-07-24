@@ -4,6 +4,59 @@ import styles from './JurnalKegiatan.module.css';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, BorderStyle, WidthType, AlignmentType, HeadingLevel, ImageRun } from 'docx';
 import { saveAs } from 'file-saver';
 
+const compressImage = async (file: File): Promise<File> => {
+  if (!file.type.startsWith('image/')) return file;
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1200;
+        const MAX_HEIGHT = 1200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height = Math.round((height *= MAX_WIDTH / width));
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width = Math.round((width *= MAX_HEIGHT / height));
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            } else {
+              resolve(file);
+            }
+          }, 'image/jpeg', 0.7);
+        } else {
+          resolve(file);
+        }
+      };
+      img.onerror = () => resolve(file);
+    };
+    reader.onerror = () => resolve(file);
+  });
+};
+
 export default function JurnalKegiatanPage() {
   const [notulens, setNotulens] = useState<any[]>([]);
   const [gurus, setGurus] = useState<any[]>([]);
@@ -492,9 +545,11 @@ export default function JurnalKegiatanPage() {
                           background: '#eff6ff'
                         }}>
                           <i className="fas fa-camera"></i> Ambil Foto
-                          <input type="file" id="dokumentasiFile" accept="image/*" capture="environment" multiple style={{ display: 'none' }} onChange={e => {
+                          <input type="file" id="dokumentasiFile" accept="image/*" capture="environment" multiple style={{ display: 'none' }} onChange={async e => {
                             if (e.target.files && e.target.files.length > 0) {
-                              setDokumentasiFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                              const files = Array.from(e.target.files);
+                              const compressed = await Promise.all(files.map(f => compressImage(f)));
+                              setDokumentasiFiles(prev => [...prev, ...compressed]);
                               setFormData({...formData, dokumentasi: ''});
                             }
                           }} />
@@ -506,9 +561,11 @@ export default function JurnalKegiatanPage() {
                           background: '#f0fdf4'
                         }}>
                           <i className="fas fa-images"></i> Pilih Galeri
-                          <input type="file" id="dokumentasiGallery" accept="image/*" multiple style={{ display: 'none' }} onChange={e => {
+                          <input type="file" id="dokumentasiGallery" accept="image/*" multiple style={{ display: 'none' }} onChange={async e => {
                             if (e.target.files && e.target.files.length > 0) {
-                              setDokumentasiFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                              const files = Array.from(e.target.files);
+                              const compressed = await Promise.all(files.map(f => compressImage(f)));
+                              setDokumentasiFiles(prev => [...prev, ...compressed]);
                               setFormData({...formData, dokumentasi: ''});
                             }
                           }} />
@@ -605,9 +662,11 @@ export default function JurnalKegiatanPage() {
                   }}>
                     <i className="fas fa-images" style={{ display: 'block', fontSize: '1.5rem', marginBottom: '8px' }}></i> 
                     Pilih File Foto
-                    <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={e => {
-                      if (e.target.files) {
-                        setUploadFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                    <input type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={async e => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        const files = Array.from(e.target.files);
+                        const compressed = await Promise.all(files.map(f => compressImage(f)));
+                        setUploadFiles(prev => [...prev, ...compressed]);
                       }
                     }} />
                   </label>
