@@ -1489,8 +1489,8 @@ export default function PersuratanPage() {
                 </div>
               </>
             ) : generateJenis === 'Surat Undangan GTK' ? (
-              <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt', color: 'black', lineHeight: '1.4' }}>
-                <table style={{ border: 'none', borderCollapse: 'collapse', width: '100%', marginBottom: '20px', fontSize: '12pt', fontFamily: 'Arial, sans-serif' }}>
+              <div style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt', color: 'black', lineHeight: '1.35' }}>
+                <table style={{ border: 'none', borderCollapse: 'collapse', width: '100%', marginBottom: '14px', fontSize: '12pt', fontFamily: 'Arial, sans-serif' }}>
                   <tbody>
                     <tr><td style={{ width: '90px', padding: 0 }}>Nomor</td><td style={{ width: '15px', padding: 0 }}>:</td><td style={{ padding: 0 }}>{generateNomor}</td></tr>
                     <tr><td style={{ padding: 0 }}>Lampiran</td><td style={{ padding: 0 }}>:</td><td style={{ padding: 0 }}>-</td></tr>
@@ -1498,7 +1498,7 @@ export default function PersuratanPage() {
                   </tbody>
                 </table>
 
-                <div style={{ marginBottom: '20px', lineHeight: '1.3' }}>
+                <div style={{ marginBottom: '14px', lineHeight: '1.3' }}>
                   <div>Kepada Yth :</div>
                   <div style={{ fontWeight: 'bold' }}>Bapak/Ibu Guru &amp; Staf</div>
                   <div style={{ fontWeight: 'bold' }}>MTs Almaarif 01 Singosari</div>
@@ -1506,35 +1506,35 @@ export default function PersuratanPage() {
                   <div style={{ paddingLeft: '40px' }}>Tempat</div>
                 </div>
 
-                <p style={{ margin: '0 0 14px 0' }}>Assalamualaikum Wr. Wb.</p>
+                <p style={{ margin: '0 0 10px 0' }}>Assalamualaikum Wr. Wb.</p>
 
-                <p style={{ margin: '0 0 14px 0', textAlign: 'justify', lineHeight: '1.4' }}>
+                <p style={{ margin: '0 0 10px 0', textAlign: 'justify', lineHeight: '1.35' }}>
                   Salam silaturrahim teriring do'a, semoga rahmat hidayah serta inayah Allah SWT selalu menyertai kita dalam beraktifitas sehari-hari, amin.
                 </p>
 
-                <p style={{ margin: '0 0 14px 0', textAlign: 'justify', lineHeight: '1.4' }}>
+                <p style={{ margin: '0 0 10px 0', textAlign: 'justify', lineHeight: '1.35' }}>
                   Dengan hormat kami memohon kehadiran Bapak/Ibu Guru &amp; Staf untuk hadir pada:
                 </p>
 
-                <table style={{ border: 'none', borderCollapse: 'collapse', width: '100%', marginBottom: '20px', marginLeft: '40px', fontSize: '12pt', fontFamily: 'Arial, sans-serif' }}>
+                <table style={{ border: 'none', borderCollapse: 'collapse', width: '100%', marginBottom: '14px', marginLeft: '40px', fontSize: '12pt', fontFamily: 'Arial, sans-serif' }}>
                   <tbody>
-                    <tr><td style={{ width: '110px', padding: '3px 0' }}>Hari</td><td style={{ width: '15px', padding: '3px 0' }}>:</td><td style={{ padding: '3px 0' }}>{generateHari}</td></tr>
-                    <tr><td style={{ padding: '3px 0' }}>Tanggal</td><td style={{ padding: '3px 0' }}>:</td><td style={{ padding: '3px 0' }}>{generateTanggalPelaksanaan}</td></tr>
-                    <tr><td style={{ padding: '3px 0' }}>Pukul</td><td style={{ padding: '3px 0' }}>:</td><td style={{ padding: '3px 0' }}>{generateWaktu}</td></tr>
-                    <tr><td style={{ padding: '3px 0' }}>Tempat</td><td style={{ padding: '3px 0' }}>:</td><td style={{ padding: '3px 0' }}>{generateTempat}</td></tr>
-                    <tr><td style={{ padding: '3px 0' }}>Acara</td><td style={{ padding: '3px 0' }}>:</td><td style={{ padding: '3px 0' }}>{generateAcara}</td></tr>
+                    <tr><td style={{ width: '110px', padding: '2px 0' }}>Hari</td><td style={{ width: '15px', padding: '2px 0' }}>:</td><td style={{ padding: '2px 0' }}>{generateHari}</td></tr>
+                    <tr><td style={{ padding: '2px 0' }}>Tanggal</td><td style={{ padding: '2px 0' }}>:</td><td style={{ padding: '2px 0' }}>{generateTanggalPelaksanaan}</td></tr>
+                    <tr><td style={{ padding: '2px 0' }}>Pukul</td><td style={{ padding: '2px 0' }}>:</td><td style={{ padding: '2px 0' }}>{generateWaktu}</td></tr>
+                    <tr><td style={{ padding: '2px 0' }}>Tempat</td><td style={{ padding: '2px 0' }}>:</td><td style={{ padding: '2px 0' }}>{generateTempat}</td></tr>
+                    <tr><td style={{ padding: '2px 0' }}>Acara</td><td style={{ padding: '2px 0' }}>:</td><td style={{ padding: '2px 0' }}>{generateAcara}</td></tr>
                   </tbody>
                 </table>
 
-                <p style={{ margin: '0 0 14px 0', textAlign: 'justify', lineHeight: '1.4' }}>
+                <p style={{ margin: '0 0 10px 0', textAlign: 'justify', lineHeight: '1.35' }}>
                   Demikian undangan ini disampaikan, atas perhatian dan kehadiran bapak/ibu Guru &amp; Staf kami sampaikan terima kasih.
                 </p>
 
-                <p style={{ margin: '0 0 35px 0' }}>Wassalamu'alaikum Wr. Wb.</p>
+                <p style={{ margin: '0 0 20px 0' }}>Wassalamu'alaikum Wr. Wb.</p>
 
-                <div className={styles.suratTtd} style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt' }}>
+                <div className={styles.suratTtd} style={{ fontFamily: 'Arial, sans-serif', fontSize: '12pt', marginTop: '10px' }}>
                   <p style={{ margin: '0 0 5px 0' }}>Singosari, {generateTanggal}</p>
-                  <p style={{ margin: '0 0 90px 0' }}>Kepala Madrasah</p>
+                  <p style={{ margin: '0 0 65px 0' }}>Kepala Madrasah</p>
                   <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>Dwi Retno Palupi, M.Pd.</p>
                 </div>
               </div>
@@ -1591,11 +1591,13 @@ export default function PersuratanPage() {
               </>
             )}
 
-            <div className={styles.suratTtd}>
-              <p style={{ margin: '0 0 5px 0' }}>Singosari, {generateTanggal}</p>
-              <p style={{ margin: '0 0 90px 0' }}>Kepala Madrasah,</p>
-              <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>DWI RETNO PALUPI, M.Pd.</p>
-            </div>
+            {generateJenis !== 'Surat Undangan GTK' && (
+              <div className={styles.suratTtd}>
+                <p style={{ margin: '0 0 5px 0' }}>Singosari, {generateTanggal}</p>
+                <p style={{ margin: '0 0 90px 0' }}>Kepala Madrasah,</p>
+                <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>DWI RETNO PALUPI, M.Pd.</p>
+              </div>
+            )}
           </div>
         )}
       </div>
