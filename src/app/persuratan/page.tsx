@@ -224,6 +224,12 @@ export default function PersuratanPage() {
     setGenerateTanggalPelaksanaan(record.tanggalPelaksanaan || '');
     setGenerateAcara(record.acara || '');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Otomatis langsung membuka dialog print setelah form terisi 
+    // (tanpa memanggil fungsi save_riwayat ke sheet)
+    setTimeout(() => {
+      window.print();
+    }, 500);
   };
 
   const handleSaveAndPrint = async () => {
