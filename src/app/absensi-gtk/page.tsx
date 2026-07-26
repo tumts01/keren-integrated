@@ -268,7 +268,7 @@ export default function AbsensiGTK() {
 
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
             <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{user.nama}</h3>
-            <p style={{ color: '#64748b', margin: 0 }}>{profile?.jabatan || user.rule}</p>
+            <p style={{ color: '#64748b', margin: 0 }}>{profile?.jabatan || user.role}</p>
           </div>
 
           {loading ? (
@@ -332,7 +332,7 @@ export default function AbsensiGTK() {
               </select>
             </div>
             <div style={{ display: 'flex', gap: '12px' }}>
-              {user.rule?.toLowerCase() === 'admin' && (
+              {user.role?.toLowerCase() === 'admin' && (
                 <button className="btn" style={{ background: '#3b82f6', color: 'white' }} onClick={() => setShowModalLibur(true)}>
                   <i className="fas fa-calendar-alt"></i> Set Hari Libur
                 </button>
@@ -445,7 +445,7 @@ export default function AbsensiGTK() {
               </tr>
               <tr>
                 <td>JABATAN</td>
-                <td>{profile?.jabatan || user.rule?.toUpperCase() || '-'}</td>
+                <td>{profile?.jabatan || user.role?.toUpperCase() || '-'}</td>
               </tr>
               <tr>
                 <td>DEPARTMENT</td>

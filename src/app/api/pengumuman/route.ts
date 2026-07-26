@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       }
       const userRows = await usersSheet.getRows();
       const pimpinanNames = userRows
-        .filter(r => (r.get('Rule') || '').toLowerCase().trim() === 'pimpinan')
+        .filter(r => (r.get('Role') || '').toLowerCase().trim() === 'pimpinan')
         .map(r => (r.get('Nama') || '').toLowerCase().trim())
         .filter(Boolean);
 
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
 
       if (phonesArr.length === 0) {
         userRows
-          .filter(r => (r.get('Rule') || '').toLowerCase().trim() === 'pimpinan')
+          .filter(r => (r.get('Role') || '').toLowerCase().trim() === 'pimpinan')
           .forEach(r => {
             const hp = (r.get('No WA') || r.get('HP') || r.get('NoHP') || '').trim();
             if (hp.length >= 8) phonesArr.push(formatPhone(hp));

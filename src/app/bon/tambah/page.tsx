@@ -20,7 +20,7 @@ export default function AddBonPage() {
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
-        setUserRole(parsedUser.rule || parsedUser.role || '');
+        setUserRole(parsedUser.role || parsedUser.role || '');
       } catch (e) {}
     }
 
@@ -31,7 +31,7 @@ export default function AddBonPage() {
         const json = await res.json();
         if (json.success && json.data) {
           const filtered = json.data.filter((u: any) => {
-            const role = (u.rule || '').toLowerCase();
+            const role = (u.role || '').toLowerCase();
             return role === 'admin' || role === 'pimpinan';
           });
           setAvailableUsers(filtered);

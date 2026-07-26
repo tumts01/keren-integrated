@@ -27,7 +27,7 @@ export default function MataPelajaranPage() {
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
-        const role = (user.rule || user.role || '').toLowerCase();
+        const role = (user.role || user.role || '').toLowerCase();
         setUserRole(role);
         if (role !== 'admin' && role !== 'pimpinan') {
           alert('Anda tidak memiliki akses ke halaman ini.');

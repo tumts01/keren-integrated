@@ -9,7 +9,7 @@ interface HeaderProps {
     nama: string;
     username: string;
     foto: string;
-    rule: string;
+    role: string;
   };
   onLogout: () => void;
 }
@@ -130,7 +130,7 @@ export default function Header({ user, onLogout }: HeaderProps) {
           )}
           <div className={styles.userInfo}>
             <span className={styles.userName}>{user?.nama || user?.username}</span>
-            <span className={styles.userRole}>{user?.rule || 'Staf'}</span>
+            <span className={styles.userRole}>{user?.role || 'Staf'}</span>
           </div>
         </div>
         <button onClick={onLogout} className={styles.iconBtn} title="Keluar">

@@ -179,7 +179,7 @@ export default function PresensiPage() {
     if (storedUser) {
       try {
         const u = JSON.parse(storedUser);
-        const role = (u.rule || u.role || '').toLowerCase();
+        const role = (u.role || u.role || '').toLowerCase();
         const namaLengkap = u.nama || usernameRaw; // ← nama lengkap untuk filter jurnal
         setCurrentUsername(namaLengkap);
         setIsAdmin(role === 'admin');

@@ -136,7 +136,7 @@ export default function Sidebar() {
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
-        setUserRole(parsedUser.rule || parsedUser.role || '');
+        setUserRole(parsedUser.role || parsedUser.role || '');
       } catch(e){}
     }
 

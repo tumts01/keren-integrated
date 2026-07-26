@@ -45,7 +45,7 @@ export default function JurnalPage() {
     if (storedUser) {
       try {
         const u = JSON.parse(storedUser);
-        const role = (u.rule || u.role || '').toLowerCase();
+        const role = (u.role || u.role || '').toLowerCase();
         const namaGuru = u.nama || u.username || '';
         setCurrentUsername(namaGuru);
         setIsAdmin(role === 'admin');

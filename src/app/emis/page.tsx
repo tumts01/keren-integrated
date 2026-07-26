@@ -35,7 +35,7 @@ export default function EmisPage() {
     if (stored) {
       try {
         const user = JSON.parse(stored);
-        const role = (user.rule || user.role || '').toLowerCase().trim();
+        const role = (user.role || user.role || '').toLowerCase().trim();
         setIsAdmin(role === 'admin');
       } catch {}
     }

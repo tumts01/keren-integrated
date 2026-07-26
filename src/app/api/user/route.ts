@@ -15,7 +15,7 @@ export async function GET() {
     const users = rows.map((row) => ({
       nama: row.get('Nama') || '',
       username: row.get('Username') || '',
-      rule: row.get('Rule') || 'Staf',
+      rule: row.get('Role') || 'Staf',
     })).filter(u => u.nama); // Filter out empty rows
 
     return NextResponse.json({ success: true, data: users });

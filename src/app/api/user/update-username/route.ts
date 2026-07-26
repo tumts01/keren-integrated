@@ -51,7 +51,7 @@ export async function POST(request: Request) {
           nama: userRow.get('Nama') || '',
           username: newUsername,
           foto: userRow.get('Foto') || '',
-          rule: userRow.get('Rule') || 'Staf',
+          rule: userRow.get('Role') || 'Staf',
           sudahGantiUsername: true
         }
       });

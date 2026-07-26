@@ -207,7 +207,7 @@ export default function PengumumanPage() {
     fetchHistory().then(() => setLoading(false));
   }, []);
 
-  const isAdmin = user?.rule?.toLowerCase() === 'admin';
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
   const [viaAppOnly, setViaAppOnly] = useState(false);
 
   const handleSend = async (target: 'all' | 'pimpinan') => {
@@ -394,7 +394,7 @@ export default function PengumumanPage() {
         </h2>
         <div className={styles.historyList}>
           {(() => {
-            const isPimpinan = user?.rule?.toLowerCase() === 'pimpinan';
+            const isPimpinan = user?.role?.toLowerCase() === 'pimpinan';
             const visibleHistory = isAdmin
               ? history
               : history.filter(h => {

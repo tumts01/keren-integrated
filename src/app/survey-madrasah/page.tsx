@@ -20,7 +20,7 @@ export default function SurveyMadrasahPage() {
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
-        const role = (user.rule || user.role || '').toLowerCase();
+        const role = (user.role || user.role || '').toLowerCase();
         if (role === 'admin') setIsAdmin(true);
       } catch (e) {}
     }

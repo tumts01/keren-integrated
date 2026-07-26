@@ -26,7 +26,7 @@ export default function KelasPage() {
     const storedUser = localStorage.getItem('userApp');
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
-      setUserRole(parsedUser.rule || parsedUser.role || '');
+      setUserRole(parsedUser.role || parsedUser.role || '');
     }
     fetchData();
   }, []);

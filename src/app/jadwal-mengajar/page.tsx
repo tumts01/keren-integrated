@@ -56,7 +56,7 @@ export default function JadwalMengajarPage() {
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
-        setUserRole((user.rule || user.role || '').toLowerCase());
+        setUserRole((user.role || user.role || '').toLowerCase());
         setCurrentUsername(user.nama || user.username || '');
       } catch(e) {}
     }

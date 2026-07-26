@@ -23,7 +23,7 @@ export default function PengembalianRaporPage() {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const isAdmin = user?.rule?.toLowerCase() === 'admin';
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
 
   const fetchData = async () => {
     try {
