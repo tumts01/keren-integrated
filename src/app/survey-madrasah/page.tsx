@@ -229,7 +229,7 @@ export default function SurveyMadrasahPage() {
           </div>
           
           <div className={styles.formGroup} style={{ position: 'relative' }}>
-            <label>Nama Wali Murid <span style={{color: 'red'}}>*</span></label>
+            <label>Nama Siswa <span style={{color: 'red'}}>*</span></label>
             <input 
               type="text" 
               className={styles.input} 
@@ -241,29 +241,21 @@ export default function SurveyMadrasahPage() {
               }} 
               onFocus={() => setShowSuggestionsWali(true)}
               onBlur={() => setTimeout(() => setShowSuggestionsWali(false), 200)}
-              placeholder="Masukkan nama Anda..." 
+              placeholder="Masukkan nama siswa..." 
             />
             {showSuggestionsWali && formDataWaliMurid.nama.length > 1 && (
               <ul className={styles.suggestionsList}>
                 {siswas
-                  .filter(s => 
-                    (s.namaAyah && s.namaAyah.toLowerCase().includes(formDataWaliMurid.nama.toLowerCase())) ||
-                    (s.namaIbu && s.namaIbu.toLowerCase().includes(formDataWaliMurid.nama.toLowerCase())) ||
-                    (s.nama && s.nama.toLowerCase().includes(formDataWaliMurid.nama.toLowerCase()))
-                  )
+                  .filter(s => s.isLatest && s.nama && s.nama.toLowerCase().includes(formDataWaliMurid.nama.toLowerCase()))
                   .slice(0, 5)
                   .map((s, idx) => {
-                    const matchAyah = s.namaAyah && s.namaAyah.toLowerCase().includes(formDataWaliMurid.nama.toLowerCase());
-                    const matchIbu = s.namaIbu && s.namaIbu.toLowerCase().includes(formDataWaliMurid.nama.toLowerCase());
-                    const parentName = matchAyah ? s.namaAyah : (matchIbu ? s.namaIbu : s.namaAyah || s.namaIbu || 'Wali');
-                    
                     return (
                       <li key={idx} onClick={() => {
-                        setFormDataWaliMurid({...formDataWaliMurid, nama: parentName});
+                        setFormDataWaliMurid({...formDataWaliMurid, nama: s.nama});
                         setShowSuggestionsWali(false);
                       }}>
-                        <strong>{parentName}</strong> <br/>
-                        <small style={{color: '#64748b'}}>Wali dari: {s.nama} ({s.rombel || s.tahunAjaran})</small>
+                        <strong>{s.nama}</strong> <br/>
+                        <small style={{color: '#64748b'}}>Kelas: {s.rombel || s.tahunAjaran}</small>
                       </li>
                     );
                   })}
