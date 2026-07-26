@@ -10,6 +10,40 @@ export default function SurveyMadrasahPage() {
   const [showSuggestionsWali, setShowSuggestionsWali] = useState(false);
   const [showSuggestionsSiswa, setShowSuggestionsSiswa] = useState(false);
   const [showSuggestionsOrtu, setShowSuggestionsOrtu] = useState(false);
+  const [activeTab, setActiveTab] = useState<'isi'|'monitor'>('isi');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [rekapData, setRekapData] = useState<any[]>([]);
+  const [loadingRekap, setLoadingRekap] = useState(false);
+
+  useEffect(() => {
+    const userStr = localStorage.getItem('keren_user_data');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user.role === 'admin') setIsAdmin(true);
+      } catch (e) {}
+    }
+  }, []);
+
+  const fetchRekap = async () => {
+    setLoadingRekap(true);
+    try {
+      const res = await fetch('/api/survey-madrasah/rekap');
+      const data = await res.json();
+      if (data.success) {
+        setRekapData(data.data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    setLoadingRekap(false);
+  };
+
+  useEffect(() => {
+    if (activeTab === 'monitor') {
+      fetchRekap();
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     const fetchSiswa = async () => {
@@ -203,7 +237,20 @@ export default function SurveyMadrasahPage() {
         Berikan masukan dan pendapat Anda untuk membangun MTs Almaarif 01 Singosari menjadi lebih baik.
       </p>
 
-      {!activeSurvey && (
+      {isAdmin && (
+        <div className={styles.tabContainer}>
+          <button className={`${styles.tabBtn} ${activeTab === 'isi' ? styles.activeTab : ''}`} onClick={() => { setActiveTab('isi'); setActiveSurvey(null); }}>
+            <i className="fas fa-edit"></i> Isi Angket
+          </button>
+          <button className={`${styles.tabBtn} ${activeTab === 'monitor' ? styles.activeTab : ''}`} onClick={() => setActiveTab('monitor')}>
+            <i className="fas fa-chart-bar"></i> Monitoring (Admin)
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'isi' ? (
+        <>
+          {!activeSurvey && (
         <div className={styles.gridContainer}>
           <div className={styles.surveyCard} onClick={() => setActiveSurvey('wali_murid')}>
             <div className={styles.iconWrapper}><i className="fas fa-user-friends"></i></div>
@@ -504,6 +551,50 @@ export default function SurveyMadrasahPage() {
             {loading ? 'Mengirim...' : 'Kirim Survey'} <i className="fas fa-paper-plane"></i>
           </button>
         </form>
+      )}
+      </>
+      ) : (
+        <div className={styles.monitorContainer}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2 style={{ color: '#1e293b', fontSize: '1.25rem' }}>Rekapitulasi Survey</h2>
+            <button onClick={fetchRekap} disabled={loadingRekap} className={styles.btnAction} style={{ padding: '8px 16px', fontSize: '0.9rem' }}>
+              <i className={`fas fa-sync-alt ${loadingRekap ? 'fa-spin' : ''}`}></i> Refresh
+            </button>
+          </div>
+          {loadingRekap ? (
+            <div style={{textAlign: 'center', padding: '40px', color: '#64748b'}}>
+              <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#3b82f6', marginBottom: '10px' }}></i>
+              <p>Memuat data rekap...</p>
+            </div>
+          ) : (
+            <div className={styles.gridContainer}>
+              {rekapData.map((rek, idx) => (
+                <div key={idx} className={styles.rekapCard}>
+                  <h3>{rek.nama}</h3>
+                  <div className={styles.rekapTotal}>
+                    <span className={styles.totalNumber}>{rek.total}</span>
+                    <span className={styles.totalLabel}>Responden</span>
+                  </div>
+                  <div className={styles.rekapDetail}>
+                    <h4>10 Input Terakhir:</h4>
+                    {rek.latest && rek.latest.length > 0 ? (
+                      <ul>
+                        {rek.latest.map((item: any, i: number) => (
+                          <li key={i}>
+                            <strong>{item.nama}</strong> <span style={{ color: '#64748b' }}>({item.kelas})</span><br/>
+                            <small>{item.timestamp}</small>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p style={{color: '#94a3b8', fontSize: '0.85rem'}}>Belum ada data</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
     </div>
