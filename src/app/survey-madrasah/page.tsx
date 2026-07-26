@@ -1,11 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
 import styles from './page.module.css';
 
 export default function SurveyMadrasahPage() {
   const [activeSurvey, setActiveSurvey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
   const [siswas, setSiswas] = useState<any[]>([]);
   const [showSuggestionsWali, setShowSuggestionsWali] = useState(false);
   const [showSuggestionsSiswa, setShowSuggestionsSiswa] = useState(false);
@@ -110,7 +110,6 @@ export default function SurveyMadrasahPage() {
   const submitSurvey = async (e: React.FormEvent, type: string) => {
     e.preventDefault();
     setLoading(true);
-    setSuccessMsg('');
 
     let payloadData: any = {};
 
@@ -165,20 +164,32 @@ export default function SurveyMadrasahPage() {
       const result = await res.json();
       
       if (result.success) {
-        setSuccessMsg('Terima kasih! Respon Anda telah berhasil disimpan.');
-        setTimeout(() => {
-          setActiveSurvey(null);
-          setSuccessMsg('');
-          // reset forms
-          setFormDataWaliMurid({ nama: '', alasanMemilih: [], alasanLain: '', sumberInfo: [], sumberInfoLain: '', saran: '' });
-          setFormDataSiswa({ nama: '', kelas: '', alasanMemilih: [], alasanLain: '', sumberInfo: [], harapan: '' });
-          setFormDataOrtu({ namaWali: '', namaSiswa: '', kelasSiswa: '', q1: '', q2: '', q3: '', q4: '', q5: '', q6: '', q7: '', q8: '', q9: '', q10: '' });
-        }, 3000);
+        Swal.fire({
+          icon: 'success',
+          title: 'Berhasil!',
+          text: 'Terima kasih! Respon Anda telah berhasil disimpan.',
+          confirmButtonColor: '#3b82f6'
+        });
+        setActiveSurvey(null);
+        // reset forms
+        setFormDataWaliMurid({ nama: '', alasanMemilih: [], alasanLain: '', sumberInfo: [], sumberInfoLain: '', saran: '' });
+        setFormDataSiswa({ nama: '', kelas: '', alasanMemilih: [], alasanLain: '', sumberInfo: [], harapan: '' });
+        setFormDataOrtu({ namaWali: '', namaSiswa: '', kelasSiswa: '', q1: '', q2: '', q3: '', q4: '', q5: '', q6: '', q7: '', q8: '', q9: '', q10: '' });
       } else {
-        alert(result.error || 'Terjadi kesalahan');
+        Swal.fire({
+          icon: 'error',
+          title: 'Gagal',
+          text: result.error || 'Terjadi kesalahan',
+          confirmButtonColor: '#3b82f6'
+        });
       }
     } catch (err: any) {
-      alert('Error: ' + err.message);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: err.message,
+        confirmButtonColor: '#3b82f6'
+      });
     }
     setLoading(false);
   };
@@ -191,12 +202,6 @@ export default function SurveyMadrasahPage() {
       <p className={styles.subtitle}>
         Berikan masukan dan pendapat Anda untuk membangun MTs Almaarif 01 Singosari menjadi lebih baik.
       </p>
-
-      {successMsg && (
-        <div className={styles.alertSuccess}>
-          <i className="fas fa-check-circle"></i> {successMsg}
-        </div>
-      )}
 
       {!activeSurvey && (
         <div className={styles.gridContainer}>
