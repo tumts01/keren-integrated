@@ -100,3 +100,7 @@ export async function getRaporDoc() {
 export async function getNotulenDoc() {
   return getDocWithFallback('1nZINEbfTS48NS3AGMbmyxmUiP8jTdpJOhkjDtgBc9SY');
 }
+
+export async function getSurveyDoc() {
+  return getDocWithFallback('1j2Miz37WpXt91kFNx93jII9lzklRscFU1S_bb5C21OY');
+}
