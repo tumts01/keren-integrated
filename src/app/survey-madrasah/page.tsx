@@ -271,7 +271,7 @@ export default function SurveyMadrasahPage() {
               {alasanWaliMurid.map((item, idx) => (
                 <label key={idx} className={styles.checkboxLabel}>
                   <input type="checkbox" value={item} checked={formDataWaliMurid.alasanMemilih.includes(item)} onChange={e => handleCheckboxChange(e, formDataWaliMurid, setFormDataWaliMurid, 'alasanMemilih')} />
-                  {item}
+                  <span>{item}</span>
                 </label>
               ))}
               <div className={styles.customInputGroup}>
@@ -290,7 +290,7 @@ export default function SurveyMadrasahPage() {
               {infoWaliMurid.map((item, idx) => (
                 <label key={idx} className={styles.checkboxLabel}>
                   <input type="checkbox" value={item} checked={formDataWaliMurid.sumberInfo.includes(item)} onChange={e => handleCheckboxChange(e, formDataWaliMurid, setFormDataWaliMurid, 'sumberInfo')} />
-                  {item}
+                  <span>{item}</span>
                 </label>
               ))}
               <div className={styles.customInputGroup}>
@@ -370,7 +370,7 @@ export default function SurveyMadrasahPage() {
               {alasanSiswa.map((item, idx) => (
                 <label key={idx} className={styles.checkboxLabel}>
                   <input type="checkbox" value={item} checked={formDataSiswa.alasanMemilih.includes(item)} onChange={e => handleCheckboxChange(e, formDataSiswa, setFormDataSiswa, 'alasanMemilih')} />
-                  {item}
+                  <span>{item}</span>
                 </label>
               ))}
               <div className={styles.customInputGroup}>
@@ -389,7 +389,7 @@ export default function SurveyMadrasahPage() {
               {infoSiswa.map((item, idx) => (
                 <label key={idx} className={styles.checkboxLabel}>
                   <input type="checkbox" value={item} checked={formDataSiswa.sumberInfo.includes(item)} onChange={e => handleCheckboxChange(e, formDataSiswa, setFormDataSiswa, 'sumberInfo')} />
-                  {item}
+                  <span>{item}</span>
                 </label>
               ))}
             </div>
