@@ -26,8 +26,8 @@ export default function SurveyMadrasahPage() {
     }
   }, []);
 
-  const fetchRekap = async () => {
-    setLoadingRekap(true);
+  const fetchRekap = async (silent = false) => {
+    if (!silent) setLoadingRekap(true);
     try {
       const res = await fetch('/api/survey-madrasah/rekap');
       const data = await res.json();
@@ -37,13 +37,20 @@ export default function SurveyMadrasahPage() {
     } catch (e) {
       console.error(e);
     }
-    setLoadingRekap(false);
+    if (!silent) setLoadingRekap(false);
   };
 
   useEffect(() => {
+    let intervalId: NodeJS.Timeout;
     if (activeTab === 'monitor') {
-      fetchRekap();
+      fetchRekap(false); // First load shows spinner
+      intervalId = setInterval(() => {
+        fetchRekap(true); // Silent auto-refresh
+      }, 30000); // Tiap 30 detik
     }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [activeTab]);
 
   useEffect(() => {
@@ -558,7 +565,7 @@ export default function SurveyMadrasahPage() {
         <div className={styles.monitorContainer}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <h2 style={{ color: '#1e293b', fontSize: '1.25rem' }}>Rekapitulasi Survey</h2>
-            <button onClick={fetchRekap} disabled={loadingRekap} className={styles.btnAction} style={{ padding: '8px 16px', fontSize: '0.9rem' }}>
+            <button onClick={() => fetchRekap(false)} disabled={loadingRekap} className={styles.btnAction} style={{ padding: '8px 16px', fontSize: '0.9rem' }}>
               <i className={`fas fa-sync-alt ${loadingRekap ? 'fa-spin' : ''}`}></i> Refresh
             </button>
           </div>
