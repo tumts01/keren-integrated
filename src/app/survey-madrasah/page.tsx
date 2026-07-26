@@ -266,7 +266,7 @@ export default function SurveyMadrasahPage() {
           </div>
 
           <div className={styles.formGroup}>
-            <label>A. Mengapa Bapak/Ibu memilih MTs Almaarif sebagai tempat pendidikan untuk putra putrinya? (Bisa pilih lebih dari satu)</label>
+            <label>A. Mengapa Bapak/Ibu memilih MTs Almaarif sebagai tempat pendidikan untuk putra putrinya? <br/><small style={{color: '#64748b', fontWeight: 'normal'}}>* Bisa memilih lebih dari satu jawaban</small></label>
             <div className={styles.checkboxGrid}>
               {alasanWaliMurid.map((item, idx) => (
                 <label key={idx} className={styles.checkboxLabel}>
@@ -285,7 +285,7 @@ export default function SurveyMadrasahPage() {
           </div>
 
           <div className={styles.formGroup}>
-            <label>B. Bagaimana Bapak/Ibu mendapatkan informasi tentang MTs Almaarif?</label>
+            <label>B. Bagaimana Bapak/Ibu mendapatkan informasi tentang MTs Almaarif? <br/><small style={{color: '#64748b', fontWeight: 'normal'}}>* Bisa memilih lebih dari satu jawaban</small></label>
             <div className={styles.checkboxGrid}>
               {infoWaliMurid.map((item, idx) => (
                 <label key={idx} className={styles.checkboxLabel}>
