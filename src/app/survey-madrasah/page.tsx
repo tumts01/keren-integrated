@@ -370,7 +370,7 @@ export default function SurveyMadrasahPage() {
           </div>
 
           <div className={styles.formGroup}>
-            <label>A. Mengapa Ananda memilih MTs Almaarif sebagai tempat belajar dan menuntut ilmu? Karena…</label>
+            <label>A. Mengapa Ananda memilih MTs Almaarif sebagai tempat belajar dan menuntut ilmu? Karena… <br/><small style={{color: '#64748b', fontWeight: 'normal'}}>* Bisa memilih lebih dari satu jawaban</small></label>
             <div className={styles.checkboxGrid}>
               {alasanSiswa.map((item, idx) => (
                 <label key={idx} className={styles.checkboxLabel}>
@@ -389,7 +389,7 @@ export default function SurveyMadrasahPage() {
           </div>
 
           <div className={styles.formGroup}>
-            <label>B. Bagaimana Ananda mendapatkan informasi tentang MTs Almaarif 01 Singosari?</label>
+            <label>B. Bagaimana Ananda mendapatkan informasi tentang MTs Almaarif 01 Singosari? <br/><small style={{color: '#64748b', fontWeight: 'normal'}}>* Bisa memilih lebih dari satu jawaban</small></label>
             <div className={styles.checkboxGrid}>
               {infoSiswa.map((item, idx) => (
                 <label key={idx} className={styles.checkboxLabel}>
