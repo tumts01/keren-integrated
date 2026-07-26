@@ -1,11 +1,28 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import styles from './page.module.css';
 
 export default function SurveyMadrasahPage() {
   const [activeSurvey, setActiveSurvey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  const [siswas, setSiswas] = useState<any[]>([]);
+  const [showSuggestionsWali, setShowSuggestionsWali] = useState(false);
+
+  useEffect(() => {
+    const fetchSiswa = async () => {
+      try {
+        const res = await fetch('/api/siswa');
+        const data = await res.json();
+        if (data.success) {
+          setSiswas(data.data || []);
+        }
+      } catch (err) {
+        console.error('Gagal mengambil data siswa:', err);
+      }
+    };
+    fetchSiswa();
+  }, []);
 
   // Form states
   const [formDataWaliMurid, setFormDataWaliMurid] = useState({
@@ -211,9 +228,47 @@ export default function SurveyMadrasahPage() {
             <h2>Angket Persepsi Wali Murid</h2>
           </div>
           
-          <div className={styles.formGroup}>
-            <label>Nama Wali Murid (Opsional)</label>
-            <input type="text" className={styles.input} value={formDataWaliMurid.nama} onChange={e => setFormDataWaliMurid({...formDataWaliMurid, nama: e.target.value})} placeholder="Masukkan nama Anda..." />
+          <div className={styles.formGroup} style={{ position: 'relative' }}>
+            <label>Nama Wali Murid <span style={{color: 'red'}}>*</span></label>
+            <input 
+              type="text" 
+              className={styles.input} 
+              value={formDataWaliMurid.nama} 
+              required
+              onChange={e => {
+                setFormDataWaliMurid({...formDataWaliMurid, nama: e.target.value});
+                setShowSuggestionsWali(true);
+              }} 
+              onFocus={() => setShowSuggestionsWali(true)}
+              onBlur={() => setTimeout(() => setShowSuggestionsWali(false), 200)}
+              placeholder="Masukkan nama Anda..." 
+            />
+            {showSuggestionsWali && formDataWaliMurid.nama.length > 1 && (
+              <ul className={styles.suggestionsList}>
+                {siswas
+                  .filter(s => 
+                    (s.namaAyah && s.namaAyah.toLowerCase().includes(formDataWaliMurid.nama.toLowerCase())) ||
+                    (s.namaIbu && s.namaIbu.toLowerCase().includes(formDataWaliMurid.nama.toLowerCase())) ||
+                    (s.nama && s.nama.toLowerCase().includes(formDataWaliMurid.nama.toLowerCase()))
+                  )
+                  .slice(0, 5)
+                  .map((s, idx) => {
+                    const matchAyah = s.namaAyah && s.namaAyah.toLowerCase().includes(formDataWaliMurid.nama.toLowerCase());
+                    const matchIbu = s.namaIbu && s.namaIbu.toLowerCase().includes(formDataWaliMurid.nama.toLowerCase());
+                    const parentName = matchAyah ? s.namaAyah : (matchIbu ? s.namaIbu : s.namaAyah || s.namaIbu || 'Wali');
+                    
+                    return (
+                      <li key={idx} onClick={() => {
+                        setFormDataWaliMurid({...formDataWaliMurid, nama: parentName});
+                        setShowSuggestionsWali(false);
+                      }}>
+                        <strong>{parentName}</strong> <br/>
+                        <small style={{color: '#64748b'}}>Wali dari: {s.nama} ({s.rombel || s.tahunAjaran})</small>
+                      </li>
+                    );
+                  })}
+              </ul>
+            )}
           </div>
 
           <div className={styles.formGroup}>

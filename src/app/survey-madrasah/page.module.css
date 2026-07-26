@@ -162,6 +162,38 @@
   margin-bottom: 0;
 }
 
+.suggestionsList {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  margin-top: 4px;
+  max-height: 250px;
+  overflow-y: auto;
+  z-index: 10;
+  list-style: none;
+  padding: 0;
+}
+
+.suggestionsList li {
+  padding: 10px 15px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.suggestionsList li:last-child {
+  border-bottom: none;
+}
+
+.suggestionsList li:hover {
+  background: #f8fafc;
+}
+
 .checkboxGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
