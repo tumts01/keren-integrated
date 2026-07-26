@@ -8,6 +8,8 @@ export default function SurveyMadrasahPage() {
   const [successMsg, setSuccessMsg] = useState('');
   const [siswas, setSiswas] = useState<any[]>([]);
   const [showSuggestionsWali, setShowSuggestionsWali] = useState(false);
+  const [showSuggestionsSiswa, setShowSuggestionsSiswa] = useState(false);
+  const [showSuggestionsOrtu, setShowSuggestionsOrtu] = useState(false);
 
   useEffect(() => {
     const fetchSiswa = async () => {
@@ -322,13 +324,43 @@ export default function SurveyMadrasahPage() {
           </div>
           
           <div className={styles.formRow}>
-            <div className={styles.formGroup}>
-              <label>Nama Ananda (Opsional)</label>
-              <input type="text" className={styles.input} value={formDataSiswa.nama} onChange={e => setFormDataSiswa({...formDataSiswa, nama: e.target.value})} placeholder="Nama Siswa..." />
+            <div className={styles.formGroup} style={{ position: 'relative' }}>
+              <label>Nama Siswa <span style={{color: 'red'}}>*</span></label>
+              <input 
+                type="text" 
+                className={styles.input} 
+                value={formDataSiswa.nama} 
+                required
+                onChange={e => {
+                  setFormDataSiswa({...formDataSiswa, nama: e.target.value});
+                  setShowSuggestionsSiswa(true);
+                }}
+                onFocus={() => setShowSuggestionsSiswa(true)}
+                onBlur={() => setTimeout(() => setShowSuggestionsSiswa(false), 200)}
+                placeholder="Masukkan nama siswa..." 
+              />
+              {showSuggestionsSiswa && formDataSiswa.nama.length > 1 && (
+                <ul className={styles.suggestionsList}>
+                  {siswas
+                    .filter(s => s.isLatest && s.nama && s.nama.toLowerCase().includes(formDataSiswa.nama.toLowerCase()))
+                    .slice(0, 5)
+                    .map((s, idx) => {
+                      return (
+                        <li key={idx} onClick={() => {
+                          setFormDataSiswa({...formDataSiswa, nama: s.nama, kelas: s.rombel || s.tahunAjaran || ''});
+                          setShowSuggestionsSiswa(false);
+                        }}>
+                          <strong>{s.nama}</strong> <br/>
+                          <small style={{color: '#64748b'}}>Kelas: {s.rombel || s.tahunAjaran}</small>
+                        </li>
+                      );
+                    })}
+                </ul>
+              )}
             </div>
             <div className={styles.formGroup}>
-              <label>Kelas (Opsional)</label>
-              <input type="text" className={styles.input} value={formDataSiswa.kelas} onChange={e => setFormDataSiswa({...formDataSiswa, kelas: e.target.value})} placeholder="Contoh: 7A" />
+              <label>Kelas (Otomatis)</label>
+              <input type="text" className={styles.input} value={formDataSiswa.kelas} readOnly onChange={e => setFormDataSiswa({...formDataSiswa, kelas: e.target.value})} placeholder="Contoh: 7A" />
             </div>
           </div>
 
@@ -388,13 +420,50 @@ export default function SurveyMadrasahPage() {
               <label>Nama Orang Tua / Wali (Opsional)</label>
               <input type="text" className={styles.input} value={formDataOrtu.namaWali} onChange={e => setFormDataOrtu({...formDataOrtu, namaWali: e.target.value})} placeholder="Nama Anda..." />
             </div>
-            <div className={styles.formGroup}>
-              <label>Nama Anak / Siswa (Opsional)</label>
-              <input type="text" className={styles.input} value={formDataOrtu.namaSiswa} onChange={e => setFormDataOrtu({...formDataOrtu, namaSiswa: e.target.value})} placeholder="Nama Anak..." />
+            <div className={styles.formGroup} style={{ position: 'relative' }}>
+              <label>Nama Anak / Siswa <span style={{color: 'red'}}>*</span></label>
+              <input 
+                type="text" 
+                className={styles.input} 
+                value={formDataOrtu.namaSiswa} 
+                required
+                onChange={e => {
+                  setFormDataOrtu({...formDataOrtu, namaSiswa: e.target.value});
+                  setShowSuggestionsOrtu(true);
+                }}
+                onFocus={() => setShowSuggestionsOrtu(true)}
+                onBlur={() => setTimeout(() => setShowSuggestionsOrtu(false), 200)}
+                placeholder="Masukkan nama siswa..." 
+              />
+              {showSuggestionsOrtu && formDataOrtu.namaSiswa.length > 1 && (
+                <ul className={styles.suggestionsList}>
+                  {siswas
+                    .filter(s => s.isLatest && s.nama && s.nama.toLowerCase().includes(formDataOrtu.namaSiswa.toLowerCase()))
+                    .slice(0, 5)
+                    .map((s, idx) => {
+                      return (
+                        <li key={idx} onClick={() => {
+                          // Auto-fill both the student's class and the parent's name if empty
+                          const parentName = formDataOrtu.namaWali ? formDataOrtu.namaWali : (s.namaAyah || s.namaIbu || '');
+                          setFormDataOrtu({
+                            ...formDataOrtu, 
+                            namaSiswa: s.nama, 
+                            kelasSiswa: s.rombel || s.tahunAjaran || '',
+                            namaWali: parentName
+                          });
+                          setShowSuggestionsOrtu(false);
+                        }}>
+                          <strong>{s.nama}</strong> <br/>
+                          <small style={{color: '#64748b'}}>Kelas: {s.rombel || s.tahunAjaran}</small>
+                        </li>
+                      );
+                    })}
+                </ul>
+              )}
             </div>
             <div className={styles.formGroup}>
-              <label>Kelas (Opsional)</label>
-              <input type="text" className={styles.input} value={formDataOrtu.kelasSiswa} onChange={e => setFormDataOrtu({...formDataOrtu, kelasSiswa: e.target.value})} placeholder="Contoh: 8B" />
+              <label>Kelas (Otomatis)</label>
+              <input type="text" className={styles.input} value={formDataOrtu.kelasSiswa} readOnly onChange={e => setFormDataOrtu({...formDataOrtu, kelasSiswa: e.target.value})} placeholder="Contoh: 8B" />
             </div>
           </div>
 
