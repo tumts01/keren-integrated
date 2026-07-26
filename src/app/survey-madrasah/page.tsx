@@ -495,7 +495,7 @@ export default function SurveyMadrasahPage() {
             </table>
           </div>
 
-          <button type="submit" className={styles.btnSubmit} disabled={loading}>
+          <button type="submit" className={styles.btnSubmit} disabled={loading || !formDataOrtu.q1 || !formDataOrtu.q2 || !formDataOrtu.q3 || !formDataOrtu.q4 || !formDataOrtu.q5 || !formDataOrtu.q6 || !formDataOrtu.q7 || !formDataOrtu.q8 || !formDataOrtu.q9 || !formDataOrtu.q10}>
             {loading ? 'Mengirim...' : 'Kirim Survey'} <i className="fas fa-paper-plane"></i>
           </button>
         </form>
