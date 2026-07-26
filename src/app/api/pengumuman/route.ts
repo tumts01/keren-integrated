@@ -18,16 +18,11 @@ export async function POST(request: Request) {
     const target = fd.get('target') as string;
     const phonesStr = fd.get('phones') as string;
     const phones = phonesStr ? JSON.parse(phonesStr) : [];
-    const viaAppOnly = (fd.get('viaAppOnly') as string) === 'true';
+    const viaAppOnly = true; // Selalu true, WA dinonaktifkan
     const file = fd.get('file') as File | null;
 
     if (!pesan && !file) {
       return NextResponse.json({ success: false, error: 'Pesan atau lampiran tidak boleh kosong' }, { status: 400 });
-    }
-
-    const token = process.env.FONNTE_TOKEN;
-    if (!token && !viaAppOnly) {
-      return NextResponse.json({ success: false, error: 'FONNTE_TOKEN belum dikonfigurasi' }, { status: 500 });
     }
     
     let lampiranUrl = '';
@@ -152,44 +147,12 @@ export async function POST(request: Request) {
       console.error('Gagal menyimpan log ke Spreadsheet:', sheetError);
     }
 
-    // 4. Kirim via Fonnte API (Jika viaAppOnly false)
-    if (viaAppOnly) {
-      return NextResponse.json({
-        success: true,
-        message: `Pengumuman berhasil diposting di aplikasi (tanpa pesan WA).`,
-        data: { status: true }
-      });
-    }
-
-    // Use Fonnte API with FormData to support file attachments
-    const fonnteFd = new FormData();
-    fonnteFd.append('target', targets);
-    if (pesan) fonnteFd.append('message', pesan);
-    fonnteFd.append('delay', '15-30');
-    if (file) fonnteFd.append('file', file);
-
-    const response = await fetch('https://api.fonnte.com/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': token || ''
-      },
-      body: fonnteFd
+    // 4. Selesai (Hanya via Aplikasi)
+    return NextResponse.json({
+      success: true,
+      message: `Pengumuman berhasil diposting di aplikasi.`,
+      data: { status: true }
     });
-
-    const result = await response.json();
-
-    if (result.status) {
-      return NextResponse.json({
-        success: true,
-        message: `Pesan berhasil dikirim ke ${count} kontak${target === 'pimpinan' ? ' Pimpinan' : target === 'custom' ? ' Guru Pilihan' : ' GTK'}.`,
-        data: result
-      });
-    } else {
-      return NextResponse.json({
-        success: false,
-        error: result.reason || 'Gagal mengirim pesan dari Fonnte'
-      }, { status: 400 });
-    }
 
   } catch (error: any) {
     console.error('API Pengumuman Error:', error);

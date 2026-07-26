@@ -208,7 +208,6 @@ export default function PengumumanPage() {
   }, []);
 
   const isAdmin = user?.role?.toLowerCase() === 'admin';
-  const [viaAppOnly, setViaAppOnly] = useState(false);
 
   const handleSend = async (target: 'all' | 'pimpinan') => {
     if (!message.trim() && !attachment) {
@@ -222,7 +221,7 @@ export default function PengumumanPage() {
       fd.append('pesan', message);
       fd.append('pengirim', user?.nama || 'Admin');
       fd.append('target', target === 'pimpinan' ? 'pimpinan' : 'semua');
-      fd.append('viaAppOnly', String(viaAppOnly));
+      fd.append('viaAppOnly', 'true');
       if (attachment) fd.append('file', attachment);
 
       const response = await fetch('/api/pengumuman', {
@@ -232,7 +231,7 @@ export default function PengumumanPage() {
       const data = await response.json();
       if (response.ok && data.success) {
         const label = target === 'pimpinan' ? 'Pimpinan' : 'seluruh Guru & Staf';
-        setStatus({ type: 'success', text: `Pengumuman berhasil ${viaAppOnly ? 'diposting di Aplikasi untuk' : 'dikirim ke'} ${label}!` });
+        setStatus({ type: 'success', text: `Pengumuman berhasil diposting di Aplikasi untuk ${label}!` });
         setMessage(''); setAttachment(null); fetchHistory();
       } else {
         setStatus({ type: 'error', text: data.error || 'Gagal mengirim pengumuman.' });
@@ -261,13 +260,13 @@ export default function PengumumanPage() {
           pengirim={user?.nama || 'Admin'}
           attachmentFile={attachment}
           onClose={() => setShowCustomModal(false)}
-          onSent={() => { setMessage(''); setAttachment(null); setStatus({ type: 'success', text: 'Pengumuman berhasil dikirim ke guru pilihan via WhatsApp!' }); fetchHistory(); }}
+          onSent={() => { setMessage(''); setAttachment(null); setStatus({ type: 'success', text: 'Pengumuman berhasil diposting di Aplikasi untuk guru pilihan!' }); fetchHistory(); }}
         />
       )}
 
       <div className={styles.header}>
         <h1>{isAdmin ? 'Broadcast Pengumuman' : 'Papan Pengumuman'}</h1>
-        <p>{isAdmin ? 'Kirim pesan WhatsApp ke Semua GTK, Pimpinan, atau Guru Tertentu' : 'Daftar informasi dan pengumuman terbaru'}</p>
+        <p>{isAdmin ? 'Kirim Pengumuman ke Semua GTK atau Guru Tertentu' : 'Daftar informasi dan pengumuman terbaru'}</p>
       </div>
 
       {isAdmin && (
@@ -320,18 +319,7 @@ export default function PengumumanPage() {
               )}
             </div>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-              <input 
-                type="checkbox" id="viaAppOnly" 
-                checked={viaAppOnly} onChange={e => setViaAppOnly(e.target.checked)}
-                style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#0ea5e9' }}
-              />
-              <label htmlFor="viaAppOnly" style={{ fontSize: '0.85rem', cursor: 'pointer', color: '#475569', fontWeight: 600 }}>
-                Hanya tampilkan di Aplikasi (Jangan kirim pesan WhatsApp)
-              </label>
-            </div>
-
-            {/* Tiga tombol kirim */}
+            {/* Tombol kirim */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               {/* Semua GTK */}
               <button type="button" className={styles.submitBtn}
@@ -340,24 +328,7 @@ export default function PengumumanPage() {
                 style={{ flex: 1, minWidth: 160 }}>
                 {sendingTo === 'all'
                   ? <><i className="fa-solid fa-spinner fa-spin"></i> Mengirim...</>
-                  : <><i className="fa-brands fa-whatsapp"></i> Kirim ke Semua GTK</>}
-              </button>
-
-              {/* Pimpinan */}
-              <button type="button"
-                disabled={sendingTo !== null || (!message.trim() && !attachment)}
-                onClick={() => handleSend('pimpinan')}
-                style={{
-                  flex: 1, minWidth: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  padding: '12px 16px',
-                  background: (sendingTo !== null || (!message.trim() && !attachment)) ? '#e9d5ff' : 'linear-gradient(135deg, #7c3aed, #6d28d9)',
-                  color: 'white', border: 'none', borderRadius: 12, fontSize: '0.9rem', fontWeight: 700,
-                  cursor: (sendingTo !== null || (!message.trim() && !attachment)) ? 'not-allowed' : 'pointer',
-                  boxShadow: '0 2px 8px rgba(124,58,237,0.25)', transition: 'all 0.2s'
-                }}>
-                {sendingTo === 'pimpinan'
-                  ? <><i className="fa-solid fa-spinner fa-spin"></i> Mengirim...</>
-                  : <><i className="fa-solid fa-user-tie"></i> Kirim ke Pimpinan</>}
+                  : <><i className="fa-solid fa-bullhorn"></i> Kirim ke Semua GTK</>}
               </button>
 
               {/* Guru Tertentu */}
