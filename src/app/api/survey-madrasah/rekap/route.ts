@@ -18,16 +18,21 @@ export async function GET() {
     for (let i = 0; i < sheetTitles.length; i++) {
       const sheet = doc.sheetsByTitle[sheetTitles[i]];
       if (sheet) {
-        const rows = await sheet.getRows();
-        rekap[i].total = rows.length;
-        
-        // Ambil 10 data terakhir untuk detail ringkas
-        const lastRows = rows.slice(-10).reverse();
-        rekap[i].latest = lastRows.map(r => ({
-          timestamp: r.get('Timestamp') || '-',
-          nama: r.get('Nama Wali Murid') || r.get('Nama Siswa') || r.get('Nama Anak / Siswa') || '-',
-          kelas: r.get('Kelas') || r.get('Kelas Siswa') || '-'
-        }));
+        try {
+          const rows = await sheet.getRows();
+          rekap[i].total = rows.length;
+          
+          // Ambil 10 data terakhir untuk detail ringkas
+          const lastRows = rows.slice(-10).reverse();
+          rekap[i].latest = lastRows.map(r => ({
+            timestamp: r.get('Timestamp') || '-',
+            nama: r.get('Nama Wali Murid') || r.get('Nama Siswa') || r.get('Nama Anak / Siswa') || '-',
+            kelas: r.get('Kelas') || r.get('Kelas Siswa') || '-'
+          }));
+        } catch (e) {
+          console.error(`Error loading rows for sheet ${sheetTitles[i]}:`, e);
+          // Biarkan total 0 dan latest kosong
+        }
       }
     }
 
