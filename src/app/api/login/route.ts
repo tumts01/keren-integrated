@@ -51,7 +51,7 @@ export async function POST(request: Request) {
           nama: userRow.get('Nama') || '',
           username: userRow.get('Username') || '',
           foto: userRow.get('Foto') || '',
-          rule: userRow.get('Role') || 'Staf', // Default to Staf if empty
+          role: userRow.get('Role') || 'Staf', // Default to Staf if empty
           sudahGantiUsername: userRow.get('Sudah Ganti Username')?.toString().toLowerCase() === 'true' || false,
         }
       });
