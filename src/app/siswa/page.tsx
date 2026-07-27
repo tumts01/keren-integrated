@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import styles from './Siswa.module.css';
 import * as XLSX from 'xlsx';
 
@@ -243,9 +243,10 @@ function PrintSiswaModal({
   allData: Siswa[];
   onClose: () => void;
 }) {
-  const [mode, setMode] = useState<'angkatan' | 'kelas'>('angkatan');
+  const [mode, setMode] = useState<'angkatan' | 'kelas' | 'manual'>('angkatan');
   const [angkatan, setAngkatan] = useState<string>('7');
   const [kelas, setKelas] = useState<string>('');
+  const [manualNames, setManualNames] = useState<string>('');
   const printRef = useRef<HTMLDivElement>(null);
 
   // Kelas unik dari data aktif
@@ -255,9 +256,20 @@ function PrintSiswaModal({
   const kelasList = Array.from(new Set(activeData.map(s => s.rombel).filter(Boolean))).sort();
 
   // Data yang akan dicetak
-  const selectedData = mode === 'angkatan'
-    ? activeData.filter(s => s.rombel.startsWith(angkatan)).sort((a, b) => a.rombel.localeCompare(b.rombel) || a.nama.localeCompare(b.nama))
-    : activeData.filter(s => s.rombel === kelas).sort((a, b) => a.nama.localeCompare(b.nama));
+  const selectedData = useMemo(() => {
+    if (mode === 'angkatan') {
+      return activeData.filter(s => s.rombel.startsWith(angkatan)).sort((a, b) => a.rombel.localeCompare(b.rombel) || a.nama.localeCompare(b.nama));
+    } else if (mode === 'kelas') {
+      return activeData.filter(s => s.rombel === kelas).sort((a, b) => a.nama.localeCompare(b.nama));
+    } else {
+      const names = manualNames.split('\n').map(n => n.trim()).filter(Boolean);
+      return names.map(n => {
+        const match = activeData.find(s => s.nama.toLowerCase() === n.toLowerCase() || s.nama.toLowerCase().includes(n.toLowerCase()));
+        if (match) return match;
+        return { id: Math.random().toString(), nama: n, rombel: '', domisili: '' } as unknown as Siswa;
+      });
+    }
+  }, [mode, angkatan, kelas, manualNames, activeData]);
 
   const handlePrint = () => {
     const content = printRef.current;
@@ -330,24 +342,25 @@ function PrintSiswaModal({
       // Export per kelas: 1 sheet
       const rows = selectedData.map((s, i) => ({
         'No': i + 1,
-        'Nama Siswa': s.nama,
-        'NIS': s.nis,
-        'NISN': s.nisn,
-        'NIK': s.nik,
-        'Jenis Kelamin': s.jenisKelamin,
-        'Tempat Lahir': s.tempatLahir,
-        'Tanggal Lahir': s.tanggalLahir,
-        'Kelas': s.rombel,
-        'Alamat': s.alamat,
-        'No. HP / WA': s.noHp,
-        'Nama Ayah': s.namaAyah,
-        'Nama Ibu': s.namaIbu,
-        'Tahun Ajaran': s.tahunAjaran,
+        'Nama Siswa': s.nama || '',
+        'NIS': s.nis || '',
+        'NISN': s.nisn || '',
+        'NIK': s.nik || '',
+        'Jenis Kelamin': s.jenisKelamin || '',
+        'Tempat Lahir': s.tempatLahir || '',
+        'Tanggal Lahir': s.tanggalLahir || '',
+        'Kelas': s.rombel || '',
+        'Domisili': s.domisili || '',
+        'Alamat': s.alamat || '',
+        'No. HP / WA': s.noHp || '',
+        'Nama Ayah': s.namaAyah || '',
+        'Nama Ibu': s.namaIbu || '',
+        'Tahun Ajaran': s.tahunAjaran || '',
       }));
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, `Kelas ${kelas}`);
-      XLSX.writeFile(wb, `Daftar_Siswa_${kelas}_${new Date().toISOString().slice(0,10)}.xlsx`);
+      XLSX.utils.book_append_sheet(wb, ws, mode === 'manual' ? 'Daftar Manual' : `Kelas ${kelas}`);
+      XLSX.writeFile(wb, `Daftar_Siswa_${mode === 'manual' ? 'Manual' : kelas}_${new Date().toISOString().slice(0,10)}.xlsx`);
     }
   };
 
@@ -361,7 +374,7 @@ function PrintSiswaModal({
   }
 
   const today = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-  const judulCetak = mode === 'angkatan' ? `Kelas ${angkatan}` : `Kelas ${kelas}`;
+  const judulCetak = mode === 'angkatan' ? `Kelas ${angkatan}` : mode === 'kelas' ? `Kelas ${kelas}` : 'Daftar Input Manual';
 
   return (
     <div className={styles.printModalOverlay} onClick={onClose}>
@@ -396,6 +409,14 @@ function PrintSiswaModal({
               <span>Per Kelas</span>
               <small>Cetak 1 kelas tertentu saja</small>
             </button>
+            <button
+              className={`${styles.printModeBtn} ${mode === 'manual' ? styles.printModeBtnActive : ''}`}
+              onClick={() => setMode('manual')}
+            >
+              <i className="fas fa-keyboard"></i>
+              <span>Input Manual</span>
+              <small>Cetak dari ketikan nama</small>
+            </button>
           </div>
 
           {mode === 'angkatan' ? (
@@ -414,7 +435,7 @@ function PrintSiswaModal({
                 ))}
               </div>
             </div>
-          ) : (
+          ) : mode === 'kelas' ? (
             <div className={styles.printSelectRow}>
               <label>Pilih Kelas:</label>
               <div className={styles.kelasBtns}>
@@ -430,6 +451,17 @@ function PrintSiswaModal({
                 ))}
               </div>
             </div>
+          ) : (
+            <div className={styles.printSelectRow}>
+              <label>Ketik Daftar Nama (1 nama per baris):</label>
+              <textarea
+                value={manualNames}
+                onChange={e => setManualNames(e.target.value)}
+                rows={5}
+                placeholder="Misal:&#10;Ahmad Dahlan&#10;Budi Santoso&#10;Siti Aminah"
+                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', resize: 'vertical' }}
+              />
+            </div>
           )}
 
           <div className={styles.printPreviewInfo}>
@@ -437,6 +469,7 @@ function PrintSiswaModal({
             <span>
               {selectedData.length} siswa akan dicetak
               {mode === 'kelas' && !kelas ? ' — pilih kelas terlebih dahulu' : ''}
+              {mode === 'manual' && manualNames.trim() === '' ? ' — ketik minimal 1 nama' : ''}
             </span>
           </div>
         </div>
@@ -456,7 +489,7 @@ function PrintSiswaModal({
           <button
             className={styles.printConfirmBtn}
             onClick={handlePrint}
-            disabled={mode === 'kelas' && !kelas}
+            disabled={(mode === 'kelas' && !kelas) || (mode === 'manual' && manualNames.trim() === '')}
           >
             <i className="fas fa-print"></i> Cetak Sekarang
           </button>
@@ -506,15 +539,29 @@ function PrintSiswaModal({
                     <tr>
                       <th className="col-no">No</th>
                       <th className="col-nama">Nama Siswa</th>
-                      <th className="col-ket">Keterangan</th>
+                      {mode === 'manual' ? (
+                        <>
+                          <th className="col-kelas" style={{ width: '20%' }}>Kelas</th>
+                          <th className="col-domisili" style={{ width: '25%' }}>Domisili</th>
+                        </>
+                      ) : (
+                        <th className="col-ket">Keterangan</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
                     {selectedData.map((s, i) => (
-                      <tr key={s.id}>
+                      <tr key={s.id || i}>
                         <td className="col-no">{i + 1}</td>
                         <td className="col-nama">{s.nama}</td>
-                        <td className="col-ket"></td>
+                        {mode === 'manual' ? (
+                          <>
+                            <td className="col-kelas">{s.rombel}</td>
+                            <td className="col-domisili">{s.domisili}</td>
+                          </>
+                        ) : (
+                          <td className="col-ket"></td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
