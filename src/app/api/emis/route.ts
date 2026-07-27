@@ -89,11 +89,12 @@ export async function GET(request: Request) {
     const emisRows = await emisSheet.getRows();
     const emisMap: Record<string, any> = {};
     emisRows.forEach((r: any) => {
-      const nisn = (r.get('NISN') || '').trim();
-      if (nisn) {
-        emisMap[nisn] = {
-          masukEMIS: (r.get('MasukEMIS') || '').toUpperCase() === 'YES',
-          emisValid:  (r.get('EMISValid')  || '').toUpperCase() === 'YES',
+      const rawNisn = String(r.get('NISN') || '').replace(/^'/, '').trim();
+      if (rawNisn) {
+        const key = rawNisn.replace(/^0+/, ''); // buang 0 di depan untuk pencocokan yang aman
+        emisMap[key] = {
+          masukEMIS: String(r.get('MasukEMIS') || '').toUpperCase() === 'YES',
+          emisValid:  String(r.get('EMISValid')  || '').toUpperCase() === 'YES',
           tglMasukEMIS: r.get('TglMasukEMIS') || '',
           tglEMISValid:  r.get('TglEMISValid')  || '',
         };
@@ -101,7 +102,8 @@ export async function GET(request: Request) {
     });
 
     const data = siswaAktif.map(s => {
-      const emis = emisMap[s.nisn] || { masukEMIS: false, emisValid: false, tglMasukEMIS: '', tglEMISValid: '' };
+      const key = s.nisn.replace(/^0+/, '');
+      const emis = emisMap[key] || { masukEMIS: false, emisValid: false, tglMasukEMIS: '', tglEMISValid: '' };
       return { ...s, ...emis };
     });
 
@@ -123,12 +125,13 @@ export async function POST(request: Request) {
     const rows = await emisSheet.getRows();
 
     const tglNow = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
-    const existingRow = rows.find((r: any) => (r.get('NISN') || '').trim() === nisn.trim());
+    const searchNisn = nisn.trim().replace(/^0+/, '');
+    const existingRow = rows.find((r: any) => String(r.get('NISN') || '').replace(/^'/, '').trim().replace(/^0+/, '') === searchNisn);
 
     if (existingRow) {
       const colName = field === 'masukEMIS' ? 'MasukEMIS' : 'EMISValid';
       const tglCol  = field === 'masukEMIS' ? 'TglMasukEMIS' : 'TglEMISValid';
-      const currentVal = (existingRow.get(colName) || '').toUpperCase();
+      const currentVal = String(existingRow.get(colName) || '').toUpperCase();
       const newVal = currentVal === 'YES' ? 'NO' : 'YES';
       existingRow.set(colName, newVal);
       existingRow.set(tglCol, newVal === 'YES' ? tglNow : '');
@@ -136,7 +139,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, newValue: newVal === 'YES' });
     } else {
       await emisSheet.addRow({
-        NISN: nisn, Nama: nama || '', Kelas: kelas || '', TahunAjaran: tahunAjaran || '',
+        NISN: `'${nisn}`, Nama: nama || '', Kelas: kelas || '', TahunAjaran: tahunAjaran || '',
         MasukEMIS: field === 'masukEMIS' ? 'YES' : 'NO',
         EMISValid:  field === 'emisValid'  ? 'YES' : 'NO',
         TglMasukEMIS: field === 'masukEMIS' ? tglNow : '',
