@@ -300,6 +300,218 @@ function EditBonModal({ bon, tokoList, onClose, onSaved }: {
   );
 }
 
+// ===== EDIT REALISASI MODAL =====
+function EditRealisasiModal({ data, tokoList, onClose, onSaved }: {
+  data: { bon: any; realisasi: any };
+  tokoList: any[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const parseJSON = (s: string, fallback: any) => { try { return JSON.parse(s); } catch { return fallback; } };
+
+  const [tanggal, setTanggal] = useState(data.realisasi['TanggalBelanja'] || new Date().toISOString().split('T')[0]);
+  const [rincian, setRincian] = useState<any[]>(
+    parseJSON(data.realisasi['RincianJSON'], [{ barang: '', qty: 1, satuan: 'PCS', harga: 0 }])
+  );
+  const [penerima, setPenerima] = useState<{ nama: string; keterangan: string }[]>(
+    parseJSON(data.realisasi['PenerimaJSON'], [{ nama: '', keterangan: '' }])
+  );
+  const [keterangan, setKeterangan] = useState(data.realisasi['Keterangan'] || '');
+  const [buktiNota, setBuktiNota] = useState<File[]>([]);
+  const [buktiFoto, setBuktiFoto] = useState<File[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const notaRef = useRef<HTMLInputElement>(null);
+  const fotoRef = useRef<HTMLInputElement>(null);
+
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1200;
+          const MAX_HEIGHT = 1200;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) { if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; } }
+          else { if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; } }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", { type: 'image/jpeg', lastModified: Date.now() }));
+            } else { reject(new Error('Canvas to Blob failed')); }
+          }, 'image/jpeg', 0.7);
+        };
+        img.onerror = reject;
+      };
+      reader.onerror = reject;
+    });
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<File[]>>) => {
+    const files = Array.from(e.target.files || []);
+    const processedFiles: File[] = [];
+    for (const file of files) {
+      if (file.type.startsWith('image/')) {
+        try { processedFiles.push(await compressImage(file)); }
+        catch (err) { processedFiles.push(file); }
+      } else { processedFiles.push(file); }
+    }
+    setter(processedFiles);
+  };
+
+  const updateRow = (idx: number, field: string, val: any) => {
+    const arr = [...rincian]; (arr[idx] as any)[field] = val; setRincian(arr);
+  };
+  const addRow = () => setRincian([...rincian, { barang: '', qty: 1, satuan: 'PCS', harga: 0 }]);
+  const removeRow = (idx: number) => setRincian(rincian.filter((_, i) => i !== idx));
+
+  const totalRealisasi = rincian.reduce((s, i) => s + (i.qty * i.harga), 0);
+  const sisa = parseFloat(data.bon['JumlahDiminta'] || data.bon['JumlahUang'] || '0') - totalRealisasi;
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    try {
+      const fd = new FormData();
+      fd.append('id', data.realisasi['ID']);
+      fd.append('tanggalBelanja', tanggal);
+      fd.append('rincianJSON', JSON.stringify(rincian));
+      fd.append('jumlahDiminta', data.bon['JumlahDiminta'] || data.bon['JumlahUang'] || '0');
+      fd.append('jumlahRealisasi', String(totalRealisasi));
+      fd.append('keterangan', keterangan);
+      fd.append('penerimaJSON', JSON.stringify(penerima.filter(p => p.nama)));
+      buktiNota.forEach(f => fd.append('buktiNota', f));
+      buktiFoto.forEach(f => fd.append('buktiFoto', f));
+
+      const res = await fetch('/api/bon/realisasi', { method: 'PATCH', body: fd });
+      const json = await res.json();
+      if (json.success) { onSaved(); onClose(); }
+      else setError(json.error || 'Gagal menyimpan realisasi');
+    } catch { setError('Terjadi kesalahan jaringan'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className={styles.printOverlay} style={{ zIndex: 1100 }}>
+      <div style={{
+        background: '#fff', borderRadius: 16, maxWidth: 860, width: '95vw',
+        maxHeight: '90vh', overflowY: 'auto', margin: 'auto', marginTop: 32,
+        boxShadow: '0 20px 60px rgba(0,0,0,0.3)', padding: 0
+      }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: '18px 24px', borderBottom: '1px solid #e2e8f0',
+          background: 'linear-gradient(135deg, #10b981, #059669)', borderRadius: '16px 16px 0 0'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <i className="fas fa-edit" style={{ color: '#fff', fontSize: '1.1rem' }}></i>
+            <div>
+              <div style={{ color: '#fff', fontWeight: 700, fontSize: '1rem' }}>Edit Realisasi Belanja</div>
+              <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.78rem' }}>{data.bon['NoBon'] || data.bon['ID']}</div>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 8, color: '#fff', padding: '6px 12px', cursor: 'pointer', fontWeight: 700 }}>
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSave} style={{ padding: 24 }}>
+          {error && <div style={{ background: '#fee2e2', color: '#dc2626', padding: 12, borderRadius: 8, marginBottom: 16 }}>{error}</div>}
+          
+          <div className={styles.formGroup} style={{ marginBottom: 16 }}>
+            <label>Tanggal Realisasi</label>
+            <input type="date" className={styles.input} value={tanggal} onChange={e => setTanggal(e.target.value)} required />
+          </div>
+
+          <div className={styles.infoBon} style={{ marginBottom: 16 }}>
+            <span><strong>Pemohon:</strong> {data.bon['Nama']} — {data.bon['Jabatan']}</span>
+            <span><strong>Keperluan:</strong> {data.bon['Keperluan']}</span>
+            <span><strong>Diminta:</strong> <b style={{ color: '#3b82f6' }}>{formatRp(data.bon['JumlahDiminta'] || data.bon['JumlahUang'])}</b></span>
+          </div>
+
+          <PenerimaField penerima={penerima} onChange={setPenerima} tokoList={tokoList} />
+
+          <div className={styles.rincianSection}>
+            <div className={styles.rincianHeader}>
+              <span>Rincian Realisasi Belanja</span>
+              <button type="button" className={styles.btnSm} onClick={addRow}><i className="fas fa-plus"></i> Tambah</button>
+            </div>
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead><tr><th style={{ width: '35%' }}>Nama Barang/Kegiatan</th><th style={{ width: 44 }}>Qty</th><th style={{ width: 82 }}>Satuan</th><th style={{ width: 120 }}>Harga Satuan</th><th style={{ width: 110 }}>Jumlah</th><th style={{ width: 36 }}></th></tr></thead>
+                <tbody>
+                  {rincian.map((item, idx) => (
+                    <tr key={idx}>
+                      <td><input className={styles.rincianInput} value={item.barang} onChange={e => updateRow(idx, 'barang', e.target.value)} required /></td>
+                      <td><input type="text" inputMode="numeric" className={styles.rincianInput} style={{ width: '100%', textAlign: 'center' }} value={item.qty === 0 ? '' : item.qty} onChange={e => updateRow(idx, 'qty', parseInt(e.target.value.replace(/[^0-9]/g,'')) || 0)} /></td>
+                      <td><select className={styles.rincianInput} value={item.satuan} onChange={e => updateRow(idx, 'satuan', e.target.value)}>{SATUAN_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}</select></td>
+                      <td><input type="text" inputMode="numeric" className={styles.rincianInput} value={item.harga === 0 ? '' : item.harga.toLocaleString('id-ID')} onChange={e => updateRow(idx, 'harga', parseInt(e.target.value.replace(/[^0-9]/g,'')) || 0)} /></td>
+                      <td style={{ fontWeight: 600, fontSize: '0.85rem' }}>{formatRp(item.qty * item.harga)}</td>
+                      <td>{rincian.length > 1 && <button type="button" className={`${styles.btnSm} ${styles.btnRed}`} onClick={() => removeRow(idx)}><i className="fas fa-times"></i></button>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className={styles.totalRow}>
+              <span>Total Realisasi: <strong style={{ color: '#1d4ed8' }}>{formatRp(totalRealisasi)}</strong></span>
+              <span>Sisa/Lebih: <strong style={{ color: sisa >= 0 ? '#059669' : '#dc2626' }}>{formatRp(Math.abs(sisa))} {sisa >= 0 ? '(Sisa)' : '(Kurang)'}</strong></span>
+            </div>
+          </div>
+
+          <div className={styles.formRow} style={{ marginTop: 16 }}>
+            <div className={styles.formGroup}>
+              <label>Upload Ulang Bukti Nota <span className={styles.fileBadge}>Bisa beberapa file</span></label>
+              <div className={styles.fileBtn} onClick={() => notaRef.current?.click()}>
+                <input ref={notaRef} type="file" style={{ display: 'none' }} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple onChange={e => handleFileChange(e, setBuktiNota)} />
+                <i className="fas fa-paperclip"></i>
+                <span>{buktiNota.length > 0 ? `${buktiNota.length} file dipilih` : 'Pilih file baru (Biarkan kosong jika tetap)'}</span>
+              </div>
+              {buktiNota.length > 0 && <div className={styles.fileList}>{buktiNota.map((f, i) => <span key={i}><i className="fas fa-file"></i> {f.name}</span>)}</div>}
+            </div>
+            <div className={styles.formGroup}>
+              <label>Upload Ulang Bukti Barang <span className={styles.fileBadge}>Bisa beberapa foto</span></label>
+              <div className={styles.fileBtn} onClick={() => fotoRef.current?.click()}>
+                <input ref={fotoRef} type="file" style={{ display: 'none' }} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple onChange={e => handleFileChange(e, setBuktiFoto)} />
+                <i className="fas fa-camera"></i>
+                <span>{buktiFoto.length > 0 ? `${buktiFoto.length} file dipilih` : 'Pilih file baru (Biarkan kosong jika tetap)'}</span>
+              </div>
+              {buktiFoto.length > 0 && <div className={styles.fileList}>{buktiFoto.map((f, i) => <span key={i}><i className="fas fa-image"></i> {f.name}</span>)}</div>}
+            </div>
+          </div>
+
+          <div className={styles.formGroup} style={{ marginTop: 16 }}>
+            <label>Keterangan Tambahan</label>
+            <textarea className={styles.input} rows={2} value={keterangan} onChange={e => setKeterangan(e.target.value)} />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
+            <button type="button" className={styles.btnSecondary} onClick={onClose}>Batal</button>
+            <button type="submit" className={styles.btnPrimary} disabled={saving}>
+              {saving ? <><i className="fas fa-spinner fa-spin"></i> Menyimpan...</> : <><i className="fas fa-save"></i> Simpan Perubahan</>}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function TabRekap({ onPrint }: { onPrint: (url: string) => void }) {
   const [data, setData] = useState<any[]>([]);
   const [stats, setStats] = useState<any>({});
@@ -309,7 +521,21 @@ function TabRekap({ onPrint }: { onPrint: (url: string) => void }) {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [editBon, setEditBon] = useState<any | null>(null);
+  const [editRealisasiBon, setEditRealisasiBon] = useState<any | null>(null);
   const [tokoList, setTokoList] = useState<any[]>([]);
+
+  const handleEditRealisasiClick = async (item: any) => {
+    setLoading(true);
+    const id = item['NoBon'] || item['ID'];
+    const res = await fetch(`/api/bon/realisasi?bonId=${encodeURIComponent(id)}`);
+    const json = await res.json();
+    if (json.success && json.data && json.data.length > 0) {
+      setEditRealisasiBon({ bon: item, realisasi: json.data[0] });
+    } else {
+      alert('Data realisasi tidak ditemukan atau belum dibuat.');
+    }
+    setLoading(false);
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -339,6 +565,15 @@ function TabRekap({ onPrint }: { onPrint: (url: string) => void }) {
           tokoList={tokoList}
           onClose={() => setEditBon(null)}
           onSaved={() => { setEditBon(null); fetchData(); }}
+        />
+      )}
+      {/* Edit Realisasi Modal */}
+      {editRealisasiBon && (
+        <EditRealisasiModal
+          data={editRealisasiBon}
+          tokoList={tokoList}
+          onClose={() => setEditRealisasiBon(null)}
+          onSaved={() => { setEditRealisasiBon(null); fetchData(); }}
         />
       )}
       {/* Stat Cards */}
@@ -428,13 +663,19 @@ function TabRekap({ onPrint }: { onPrint: (url: string) => void }) {
                         <span>Cetak BON</span>
                       </button>
                       {(item['Status'] || '').toLowerCase() === 'selesai' && (
-                        <button className={`${styles.actionBtn} ${styles.actionBtnGreen}`} onClick={() => {
-                          const id = encodeURIComponent(item['NoBon'] || item['ID']);
-                          onPrint(`/bon/cetak-realisasi/${id}`);
-                        }} title="Cetak Laporan Realisasi">
-                          <i className="fas fa-file-alt"></i>
-                          <span>Cetak Realisasi</span>
-                        </button>
+                        <>
+                          <button className={`${styles.actionBtn}`} style={{ background: '#fef3c7', color: '#d97706', borderColor: '#fde68a' }} onClick={() => handleEditRealisasiClick(item)} title="Edit Laporan Realisasi">
+                            <i className="fas fa-edit"></i>
+                            <span>Edit Realisasi</span>
+                          </button>
+                          <button className={`${styles.actionBtn} ${styles.actionBtnGreen}`} onClick={() => {
+                            const id = encodeURIComponent(item['NoBon'] || item['ID']);
+                            onPrint(`/bon/cetak-realisasi/${id}`);
+                          }} title="Cetak Laporan Realisasi">
+                            <i className="fas fa-file-alt"></i>
+                            <span>Cetak Realisasi</span>
+                          </button>
+                        </>
                       )}
                     </div>
                   </td>

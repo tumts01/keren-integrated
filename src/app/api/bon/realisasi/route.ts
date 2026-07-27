@@ -80,6 +80,70 @@ export async function POST(request: Request) {
   }
 }
 
+export async function PATCH(request: Request) {
+  try {
+    const formData = await request.formData();
+    const id = formData.get('id') as string;
+    if (!id) return NextResponse.json({ success: false, error: 'ID Bukti tidak ditemukan' }, { status: 400 });
+
+    const tanggalBelanja = formData.get('tanggalBelanja') as string;
+    const rincianJSON = formData.get('rincianJSON') as string;
+    const jumlahDiminta = formData.get('jumlahDiminta') as string;
+    const jumlahRealisasi = formData.get('jumlahRealisasi') as string;
+    const keterangan = formData.get('keterangan') as string;
+    const penerimaJSON = formData.get('penerimaJSON') as string || '[]';
+
+    const doc = await getBontuDoc();
+    const buktiSheet = doc.sheetsByTitle['BelanjaBukti'];
+    const rows = await buktiSheet.getRows();
+    const buktiRow = rows.find(r => r.get('ID') === id || r.get('BonID') === id || r.get('NoBon') === id);
+
+    if (!buktiRow) {
+      return NextResponse.json({ success: false, error: 'Data realisasi tidak ditemukan' }, { status: 404 });
+    }
+
+    const sisa = parseFloat(jumlahDiminta || '0') - parseFloat(jumlahRealisasi || '0');
+    
+    // Check if new files are uploaded
+    const buktiNotaFiles = formData.getAll('buktiNota') as File[];
+    const buktiFotoFiles = formData.getAll('buktiFoto') as File[];
+
+    const uploadAll = async (files: File[]) => {
+      const urls: string[] = [];
+      for (const file of files) {
+        if (file && file.size > 0) {
+          const buf = Buffer.from(await file.arrayBuffer());
+          const res = await uploadFileToDrive(buf, file.name, file.type, FOLDER_BUKTI_ID);
+          const fileId = res.id;
+          const embedUrl = fileId ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w1200` : (res.webViewLink || '');
+          if (embedUrl) urls.push(embedUrl);
+        }
+      }
+      return urls.length > 0 ? urls.join(',') : null;
+    };
+
+    const newUrlBuktiNota = await uploadAll(buktiNotaFiles);
+    const newUrlBuktiFoto = await uploadAll(buktiFotoFiles);
+
+    buktiRow.set('TanggalBelanja', tanggalBelanja);
+    buktiRow.set('RincianJSON', rincianJSON);
+    buktiRow.set('JumlahDiminta', jumlahDiminta);
+    buktiRow.set('JumlahRealisasi', jumlahRealisasi);
+    buktiRow.set('SisaUang', String(sisa));
+    buktiRow.set('PenerimaJSON', penerimaJSON);
+    buktiRow.set('Keterangan', keterangan || '');
+    if (newUrlBuktiNota) buktiRow.set('URLBuktiNota', newUrlBuktiNota);
+    if (newUrlBuktiFoto) buktiRow.set('URLBuktiFoto', newUrlBuktiFoto);
+
+    await buktiRow.save();
+
+    return NextResponse.json({ success: true, sisa });
+  } catch (error: any) {
+    console.error('Edit realisasi error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
 export async function GET(request: Request) {
   // Get realisasi by BonID
   try {
