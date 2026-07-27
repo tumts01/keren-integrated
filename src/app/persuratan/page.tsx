@@ -1053,7 +1053,23 @@ export default function PersuratanPage() {
 
                 {(generateJenis === 'Surat Keterangan Aktif Siswa' || generateJenis === 'Surat Permohonan Izin') && (
                   <div className={styles.infoGroup} style={{ position: 'relative' }}>
-                    <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Pilih Siswa <span style={{ color: 'red' }}>*</span></label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <label style={{ fontWeight: 600, color: '#475569', fontSize: '0.9rem', marginBottom: 0 }}>Pilih Siswa <span style={{ color: 'red' }}>*</span></label>
+                      {generateJenis === 'Surat Permohonan Izin' && (
+                        <button 
+                          type="button"
+                          className="btn"
+                          style={{ background: '#e0e7ff', color: '#4338ca', padding: '2px 8px', fontSize: '0.75rem', borderRadius: '4px', border: 'none', cursor: 'pointer', fontWeight: 600 }}
+                          onClick={() => {
+                            if (!generateSiswaList.find(s => s.id === 'terlampir')) {
+                              setGenerateSiswaList(prev => [...prev, { id: 'terlampir', nama: 'Nama-Nama Terlampir', rombel: '-', domisili: '-' }]);
+                            }
+                          }}
+                        >
+                          + "Nama-Nama Terlampir"
+                        </button>
+                      )}
+                    </div>
                   
                   {generateJenis === 'Surat Permohonan Izin' && generateSiswaList.length > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
