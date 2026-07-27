@@ -246,7 +246,8 @@ function PrintSiswaModal({
   const [mode, setMode] = useState<'angkatan' | 'kelas' | 'manual'>('angkatan');
   const [angkatan, setAngkatan] = useState<string>('7');
   const [kelas, setKelas] = useState<string>('');
-  const [manualNames, setManualNames] = useState<string>('');
+  const [manualSearch, setManualSearch] = useState<string>('');
+  const [selectedManual, setSelectedManual] = useState<Siswa[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
 
   // Kelas unik dari data aktif
@@ -262,14 +263,18 @@ function PrintSiswaModal({
     } else if (mode === 'kelas') {
       return activeData.filter(s => s.rombel === kelas).sort((a, b) => a.nama.localeCompare(b.nama));
     } else {
-      const names = manualNames.split('\n').map(n => n.trim()).filter(Boolean);
-      return names.map(n => {
-        const match = activeData.find(s => s.nama.toLowerCase() === n.toLowerCase() || s.nama.toLowerCase().includes(n.toLowerCase()));
-        if (match) return match;
-        return { id: Math.random().toString(), nama: n, rombel: '', domisili: '' } as unknown as Siswa;
-      });
+      return selectedManual;
     }
-  }, [mode, angkatan, kelas, manualNames, activeData]);
+  }, [mode, angkatan, kelas, selectedManual, activeData]);
+
+  const searchResults = useMemo(() => {
+    if (!manualSearch.trim()) return [];
+    const searchLower = manualSearch.toLowerCase();
+    return activeData.filter(s => 
+      !selectedManual.some(sm => sm.id === s.id) &&
+      (s.nama.toLowerCase().includes(searchLower) || (s.nisn && s.nisn.includes(searchLower)))
+    ).slice(0, 8);
+  }, [manualSearch, activeData, selectedManual]);
 
   const handlePrint = () => {
     const content = printRef.current;
@@ -452,15 +457,58 @@ function PrintSiswaModal({
               </div>
             </div>
           ) : (
-            <div className={styles.printSelectRow}>
-              <label>Ketik Daftar Nama (1 nama per baris):</label>
-              <textarea
-                value={manualNames}
-                onChange={e => setManualNames(e.target.value)}
-                rows={5}
-                placeholder="Misal:&#10;Ahmad Dahlan&#10;Budi Santoso&#10;Siti Aminah"
-                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1', resize: 'vertical' }}
-              />
+            <div className={styles.printSelectRow} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label>Pilih Siswa <span style={{color: '#ef4444'}}>*</span></label>
+              
+              {selectedManual.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px' }}>
+                  {selectedManual.map((s, idx) => (
+                    <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.9rem' }}>{idx + 1}. {s.nama.toUpperCase()}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>{s.rombel} ({s.domisili || 'RUMAH'})</div>
+                      </div>
+                      <button 
+                        onClick={() => setSelectedManual(prev => prev.filter(item => item.id !== s.id))}
+                        style={{ background: '#f1f5f9', border: 'none', width: '32px', height: '32px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0f172a' }}
+                      >
+                        <i className="fas fa-times"></i>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  value={manualSearch}
+                  onChange={e => setManualSearch(e.target.value)}
+                  placeholder="Cari dan klik siswa untuk ditambahkan..."
+                  style={{ width: '100%', padding: '12px 16px', borderRadius: '24px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }}
+                />
+                
+                {manualSearch.trim() !== '' && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', marginTop: '4px', zIndex: 10, boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', maxHeight: '200px', overflowY: 'auto' }}>
+                    {searchResults.length > 0 ? (
+                      searchResults.map(s => (
+                        <div 
+                          key={s.id} 
+                          onClick={() => { setSelectedManual(prev => [...prev, s]); setManualSearch(''); }}
+                          style={{ padding: '10px 16px', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', display: 'flex', flexDirection: 'column' }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.85rem' }}>{s.nama}</span>
+                          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Kelas {s.rombel}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ padding: '12px 16px', fontSize: '0.85rem', color: '#64748b', textAlign: 'center' }}>Tidak ada siswa yang cocok</div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -469,7 +517,7 @@ function PrintSiswaModal({
             <span>
               {selectedData.length} siswa akan dicetak
               {mode === 'kelas' && !kelas ? ' — pilih kelas terlebih dahulu' : ''}
-              {mode === 'manual' && manualNames.trim() === '' ? ' — ketik minimal 1 nama' : ''}
+              {mode === 'manual' && selectedManual.length === 0 ? ' — pilih minimal 1 siswa' : ''}
             </span>
           </div>
         </div>
@@ -489,7 +537,7 @@ function PrintSiswaModal({
           <button
             className={styles.printConfirmBtn}
             onClick={handlePrint}
-            disabled={(mode === 'kelas' && !kelas) || (mode === 'manual' && manualNames.trim() === '')}
+            disabled={(mode === 'kelas' && !kelas) || (mode === 'manual' && selectedManual.length === 0)}
           >
             <i className="fas fa-print"></i> Cetak Sekarang
           </button>
