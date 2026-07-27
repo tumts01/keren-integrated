@@ -710,6 +710,7 @@ export default function SiswaPage() {
       'No': index + 1,
       'NIS': s.nis,
       'NISN': s.nisn,
+      'NIK': s.nik,
       'Nama Lengkap': s.nama,
       'Jenis Kelamin': s.jenisKelamin,
       'Tempat Lahir': s.tempatLahir,
@@ -730,7 +731,7 @@ export default function SiswaPage() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Data Siswa');
     worksheet['!cols'] = [
-      { wch: 5 }, { wch: 15 }, { wch: 15 }, { wch: 35 },
+      { wch: 5 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 35 },
       { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 12 },
       { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 40 },
       { wch: 25 }, { wch: 20 }, { wch: 25 }, { wch: 20 }, { wch: 18 }
