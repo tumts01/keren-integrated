@@ -576,6 +576,75 @@ function TabRealisasi({ onPrint }: { onPrint: (url: string) => void }) {
   const notaRef = useRef<HTMLInputElement>(null);
   const fotoRef = useRef<HTMLInputElement>(null);
 
+  const compressImage = (file: File): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1200;
+          const MAX_HEIGHT = 1200;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(newFile);
+            } else {
+              reject(new Error('Canvas to Blob failed'));
+            }
+          }, 'image/jpeg', 0.7); // compress to 70% quality JPEG
+        };
+        img.onerror = (error) => reject(error);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, setter: React.Dispatch<React.SetStateAction<File[]>>) => {
+    const files = Array.from(e.target.files || []);
+    const processedFiles: File[] = [];
+
+    for (const file of files) {
+      if (file.type.startsWith('image/')) {
+        try {
+          const compressed = await compressImage(file);
+          processedFiles.push(compressed);
+        } catch (error) {
+          console.error('Gagal kompres gambar', error);
+          processedFiles.push(file); // fallback ke asli
+        }
+      } else {
+        processedFiles.push(file); // pdf dll biarkan
+      }
+    }
+    setter(processedFiles);
+  };
+
   useEffect(() => {
     fetch('/api/bon?status=Draft').then(r => r.json()).then(j => setBonList(j.data || []));
     fetch('/api/bon/toko').then(r => r.json()).then(j => setTokoList(j.data || []));
@@ -695,7 +764,7 @@ function TabRealisasi({ onPrint }: { onPrint: (url: string) => void }) {
           <div className={styles.formGroup}>
             <label>Upload Bukti Nota <span className={styles.fileBadge}>Bisa beberapa file</span></label>
             <div className={styles.fileBtn} onClick={() => notaRef.current?.click()}>
-              <input ref={notaRef} type="file" style={{ display: 'none' }} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple onChange={e => setBuktiNota(Array.from(e.target.files || []))} />
+              <input ref={notaRef} type="file" style={{ display: 'none' }} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple onChange={e => handleFileChange(e, setBuktiNota)} />
               <i className="fas fa-paperclip"></i>
               <span>{buktiNota.length > 0 ? `${buktiNota.length} file dipilih` : 'Pilih file (PDF/JPG/Word)'}</span>
             </div>
@@ -704,12 +773,13 @@ function TabRealisasi({ onPrint }: { onPrint: (url: string) => void }) {
           <div className={styles.formGroup}>
             <label>Upload Bukti Barang <span className={styles.fileBadge}>Bisa beberapa foto</span></label>
             <div className={styles.fileBtn} onClick={() => fotoRef.current?.click()}>
-              <input ref={fotoRef} type="file" style={{ display: 'none' }} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple onChange={e => setBuktiFoto(Array.from(e.target.files || []))} />
+              <input ref={fotoRef} type="file" style={{ display: 'none' }} accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple onChange={e => handleFileChange(e, setBuktiFoto)} />
               <i className="fas fa-camera"></i>
               <span>{buktiFoto.length > 0 ? `${buktiFoto.length} file dipilih` : 'Foto barang / PDF'}</span>
             </div>
             {buktiFoto.length > 0 && <div className={styles.fileList}>{buktiFoto.map((f, i) => <span key={i}><i className="fas fa-image"></i> {f.name}</span>)}</div>}
           </div>
+
         </div>
 
         <div className={styles.formGroup}>
