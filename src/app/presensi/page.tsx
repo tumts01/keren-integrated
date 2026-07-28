@@ -343,6 +343,33 @@ export default function PresensiPage() {
     XLSX.writeFile(wb, `Rekap_Jam_Mengajar_${now}.xlsx`);
   };
 
+  const handleExportProksus = (filtered: any[]) => {
+    const dataProksus = filtered.filter(r => (r.mapel || '').toLowerCase().includes('program khusus') || (r.mapel || '').toLowerCase().includes('proksus'));
+    if (dataProksus.length === 0) {
+      Swal.fire('Info', 'Tidak ada data jurnal Program Khusus pada filter saat ini', 'info');
+      return;
+    }
+    
+    const excelData = dataProksus.map((r, i) => ({
+      'No': i + 1,
+      'Tanggal': r.tanggal ? new Date(r.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+      'Nama Guru': r.namaGuru,
+      'Kelas': r.kelas,
+      'Mata Pelajaran': r.mapel,
+      'Jam Ke': r.jamKe,
+      'Materi': r.materi
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    worksheet['!cols'] = [
+      { wch: 5 }, { wch: 15 }, { wch: 30 }, { wch: 10 }, { wch: 25 }, { wch: 10 }, { wch: 60 }
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Rekap Proksus');
+    XLSX.writeFile(workbook, `Rekap_Jurnal_Program_Khusus.xlsx`);
+  };
+
   const handleFixUnknown = async () => {
     const confirmResult = await Swal.fire({
       title: 'Fix Nama Guru Unknown?',
@@ -1560,7 +1587,13 @@ export default function PresensiPage() {
                   ) : (
                     <div>
                       {/* Export button */}
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10, gap: '8px' }}>
+                        <button
+                          onClick={() => handleExportProksus(filtered)}
+                          style={{ background: '#ecfdf5', border: '1px solid #10b981', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: '#059669', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+                        >
+                          <i className="fas fa-file-excel"></i> Export Proksus
+                        </button>
                         <button
                           onClick={() => handleExportExcel(filtered)}
                           style={{ background: '#16a34a', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
