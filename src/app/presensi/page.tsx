@@ -602,13 +602,26 @@ export default function PresensiPage() {
       return;
     }
 
+    const guru = selectedGuru || currentUsername || 'Unknown';
+    const detailHtml = `
+      <div style="text-align: left; font-size: 0.9rem; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 10px;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr><td style="padding: 4px 0; width: 110px; color: #64748b; font-weight: 600;">Guru</td><td>: <strong>${guru}</strong></td></tr>
+          <tr><td style="padding: 4px 0; color: #64748b; font-weight: 600;">Kelas</td><td>: <strong>${selectedKelas}</strong></td></tr>
+          <tr><td style="padding: 4px 0; color: #64748b; font-weight: 600;">Mapel</td><td>: <strong>${selectedMapel}</strong></td></tr>
+          <tr><td style="padding: 4px 0; color: #64748b; font-weight: 600;">Jam Ke</td><td>: <strong>${selectedJam.join(', ')}</strong></td></tr>
+          <tr><td style="padding: 4px 0; color: #64748b; font-weight: 600; vertical-align: top;">Materi</td><td style="padding-top: 4px; line-height: 1.4;">: <em>${materi.replace(/\n/g, '<br>')}</em></td></tr>
+        </table>
+      </div>
+    `;
+
     const result = await Swal.fire({
-      title: 'Konfirmasi',
-      text: `Simpan jurnal mengajar untuk kelas ${selectedKelas}?`,
+      title: 'Konfirmasi Simpan',
+      html: `Apakah Anda yakin ingin menyimpan jurnal mengajar ini? ${detailHtml}`,
       icon: 'question',
       showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
+      confirmButtonColor: '#16a34a',
+      cancelButtonColor: '#64748b',
       confirmButtonText: 'Ya, Simpan!',
       cancelButtonText: 'Batal'
     });
@@ -616,7 +629,6 @@ export default function PresensiPage() {
     if (!result.isConfirmed) return;
 
     setIsSubmitting(true);
-    const guru = selectedGuru || currentUsername || 'Unknown';
     try {
       const res = await fetch('/api/jurnal', {
         method: 'POST',
