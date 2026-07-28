@@ -321,6 +321,9 @@ export default function PresensiPage() {
     // Group by namaGuru (normalized), akumulasi total jam
     const grouped: Record<string, number> = {};
     for (const r of filtered) {
+      const mapelStr = (r.mapel || '').toLowerCase();
+      if (mapelStr.includes('program khusus') || mapelStr.includes('proksus')) continue;
+
       const nama = (r.namaGuru || '').trim().replace(/\s+/g, ' ');
       if (!nama) continue;
       grouped[nama] = (grouped[nama] || 0) + countJam(r.jamKe || '');
