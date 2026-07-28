@@ -331,13 +331,25 @@ export default function PresensiPage() {
 
     const rows = Object.entries(grouped)
       .sort(([a], [b]) => a.localeCompare(b, 'id'))
-      .map(([nama, jumlah], i) => ({
-        'No': i + 1,
-        'Nama Guru': nama,
-        'Jumlah Jam Mengajar': jumlah,
-      }));
+      .map(([nama, jumlah], i) => ([
+        i + 1,
+        nama,
+        jumlah
+      ]));
 
-    const ws = XLSX.utils.json_to_sheet(rows);
+    const filterText = (filterFrom || filterTo) ? `${filterFrom ? filterFrom : 'Awal'} s.d. ${filterTo ? filterTo : 'Akhir'}` : 'Semua Tanggal';
+    const cetakText = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    const aoa = [
+      ['REKAP JAM MENGAJAR GURU'],
+      [`Periode: ${filterText}`],
+      [`Dicetak: ${cetakText}`],
+      [],
+      ['No', 'Nama Guru', 'Jumlah Jam Mengajar'],
+      ...rows
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
     // Set column widths
     ws['!cols'] = [{ wch: 5 }, { wch: 40 }, { wch: 22 }];
     const wb = XLSX.utils.book_new();
