@@ -350,19 +350,45 @@ export default function PresensiPage() {
       return;
     }
     
-    const excelData = dataProksus.map((r, i) => ({
-      'No': i + 1,
-      'Tanggal': r.tanggal ? new Date(r.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
-      'Nama Guru': r.namaGuru,
-      'Kelas': r.kelas,
-      'Mata Pelajaran': r.mapel,
-      'Jam Ke': r.jamKe,
-      'Materi': r.materi
-    }));
+    // Grouping per guru
+    const countJam = (jamKe: string) => {
+      if (!jamKe) return 1;
+      return jamKe.split(',').map(s => s.trim()).filter(Boolean).length;
+    };
 
-    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const grouped: Record<string, { kali: number; jam: number }> = {};
+    for (const r of dataProksus) {
+      const nama = (r.namaGuru || '').trim().replace(/\s+/g, ' ');
+      if (!nama) continue;
+      if (!grouped[nama]) grouped[nama] = { kali: 0, jam: 0 };
+      grouped[nama].kali += 1;
+      grouped[nama].jam += countJam(r.jamKe || '');
+    }
+
+    const rows = Object.entries(grouped)
+      .sort(([a], [b]) => a.localeCompare(b, 'id'))
+      .map(([nama, stat], i) => ([
+        i + 1,
+        nama,
+        stat.kali,
+        stat.jam
+      ]));
+
+    const filterText = (filterFrom || filterTo) ? `${filterFrom ? filterFrom : 'Awal'} s.d. ${filterTo ? filterTo : 'Akhir'}` : 'Semua Tanggal';
+    const cetakText = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    const aoa = [
+      ['REKAP JURNAL PROGRAM KHUSUS'],
+      [`Periode: ${filterText}`],
+      [`Dicetak: ${cetakText}`],
+      [],
+      ['No', 'Nama Guru', 'Total Kali Pertemuan', 'Total Jam Mengajar'],
+      ...rows
+    ];
+
+    const worksheet = XLSX.utils.aoa_to_sheet(aoa);
     worksheet['!cols'] = [
-      { wch: 5 }, { wch: 15 }, { wch: 30 }, { wch: 10 }, { wch: 25 }, { wch: 10 }, { wch: 60 }
+      { wch: 5 }, { wch: 40 }, { wch: 20 }, { wch: 20 }
     ];
 
     const workbook = XLSX.utils.book_new();
