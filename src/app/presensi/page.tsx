@@ -603,10 +603,14 @@ export default function PresensiPage() {
     }
 
     const guru = selectedGuru || currentUsername || 'Unknown';
+    // Format tanggal ke format Indonesia yang mudah dibaca, misal: 25 Juli 2026
+    const formattedTanggal = tanggal ? new Date(tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
+    
     const detailHtml = `
       <div style="text-align: left; font-size: 0.9rem; background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 10px;">
         <table style="width: 100%; border-collapse: collapse;">
-          <tr><td style="padding: 4px 0; width: 110px; color: #64748b; font-weight: 600;">Guru</td><td>: <strong>${guru}</strong></td></tr>
+          <tr><td style="padding: 4px 0; width: 110px; color: #64748b; font-weight: 600;">Tanggal</td><td>: <strong>${formattedTanggal}</strong></td></tr>
+          <tr><td style="padding: 4px 0; color: #64748b; font-weight: 600;">Guru</td><td>: <strong>${guru}</strong></td></tr>
           <tr><td style="padding: 4px 0; color: #64748b; font-weight: 600;">Kelas</td><td>: <strong>${selectedKelas}</strong></td></tr>
           <tr><td style="padding: 4px 0; color: #64748b; font-weight: 600;">Mapel</td><td>: <strong>${selectedMapel}</strong></td></tr>
           <tr><td style="padding: 4px 0; color: #64748b; font-weight: 600;">Jam Ke</td><td>: <strong>${selectedJam.join(', ')}</strong></td></tr>
