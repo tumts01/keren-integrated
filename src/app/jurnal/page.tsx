@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Swal from 'sweetalert2';
+import * as XLSX from 'xlsx';
 import styles from './jurnal.module.css';
 
 interface JurnalRecord {
@@ -174,6 +175,33 @@ export default function JurnalPage() {
     return acc;
   }, {});
 
+  const handleExportProksus = () => {
+    const dataProksus = filtered.filter(r => (r.mapel || '').toLowerCase().includes('program khusus') || (r.mapel || '').toLowerCase().includes('proksus'));
+    if (dataProksus.length === 0) {
+      Swal.fire('Info', 'Tidak ada data jurnal Program Khusus pada filter saat ini', 'info');
+      return;
+    }
+    
+    const excelData = dataProksus.map((r, i) => ({
+      'No': i + 1,
+      'Tanggal': r.tanggal ? new Date(r.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+      'Nama Guru': r.namaGuru,
+      'Kelas': r.kelas,
+      'Mata Pelajaran': r.mapel,
+      'Jam Ke': r.jamKe,
+      'Materi': r.materi
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    worksheet['!cols'] = [
+      { wch: 5 }, { wch: 15 }, { wch: 30 }, { wch: 10 }, { wch: 25 }, { wch: 10 }, { wch: 60 }
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Rekap Proksus');
+    XLSX.writeFile(workbook, `Rekap_Jurnal_Program_Khusus.xlsx`);
+  };
+
   return (
     <div className={styles.container}>
       {/* Tabs */}
@@ -268,9 +296,14 @@ export default function JurnalPage() {
                 {isAdmin ? 'Menampilkan data semua guru' : `Data jurnal: ${currentUsername}`}
               </p>
             </div>
-            <button onClick={fetchRekap} style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <i className="fas fa-sync-alt"></i> Refresh
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={handleExportProksus} style={{ background: '#ecfdf5', border: '1px solid #10b981', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', color: '#059669', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                <i className="fas fa-file-excel"></i> Export Proksus
+              </button>
+              <button onClick={fetchRekap} style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <i className="fas fa-sync-alt"></i> Refresh
+              </button>
+            </div>
           </div>
 
           {/* Filter */}
