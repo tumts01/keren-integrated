@@ -356,22 +356,19 @@ export default function PresensiPage() {
       return jamKe.split(',').map(s => s.trim()).filter(Boolean).length;
     };
 
-    const grouped: Record<string, { kali: number; jam: number }> = {};
+    const grouped: Record<string, number> = {};
     for (const r of dataProksus) {
       const nama = (r.namaGuru || '').trim().replace(/\s+/g, ' ');
       if (!nama) continue;
-      if (!grouped[nama]) grouped[nama] = { kali: 0, jam: 0 };
-      grouped[nama].kali += 1;
-      grouped[nama].jam += countJam(r.jamKe || '');
+      grouped[nama] = (grouped[nama] || 0) + countJam(r.jamKe || '');
     }
 
     const rows = Object.entries(grouped)
       .sort(([a], [b]) => a.localeCompare(b, 'id'))
-      .map(([nama, stat], i) => ([
+      .map(([nama, jam], i) => ([
         i + 1,
         nama,
-        stat.kali,
-        stat.jam
+        jam
       ]));
 
     const filterText = (filterFrom || filterTo) ? `${filterFrom ? filterFrom : 'Awal'} s.d. ${filterTo ? filterTo : 'Akhir'}` : 'Semua Tanggal';
@@ -382,13 +379,13 @@ export default function PresensiPage() {
       [`Periode: ${filterText}`],
       [`Dicetak: ${cetakText}`],
       [],
-      ['No', 'Nama Guru', 'Total Kali Pertemuan', 'Total Jam Mengajar'],
+      ['No', 'Nama Guru', 'Total Jam / Pertemuan'],
       ...rows
     ];
 
     const worksheet = XLSX.utils.aoa_to_sheet(aoa);
     worksheet['!cols'] = [
-      { wch: 5 }, { wch: 40 }, { wch: 20 }, { wch: 20 }
+      { wch: 5 }, { wch: 40 }, { wch: 25 }
     ];
 
     const workbook = XLSX.utils.book_new();
