@@ -43,6 +43,7 @@ export async function GET(request: Request) {
         nama,
         status: row.get('STATUS SISWA') || '',
         asalSekolah: row.get('SD/MI') || '',
+        npsnSekolah: row.get('NPSN SD/MI') || '',
         alamatSekolah: row.get('ALAMAT SD/MI') || '',
       };
 
