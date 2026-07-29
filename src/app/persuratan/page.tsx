@@ -31,6 +31,7 @@ export default function PersuratanPage() {
   const [dataKeluar, setDataKeluar] = useState<SuratKeluar[]>([]);
   const [dataMasuk, setDataMasuk] = useState<SuratMasuk[]>([]);
   const [topikList, setTopikList] = useState<string[]>([]);
+  const [instansiList, setInstansiList] = useState<string[]>([]);
   const [guruList, setGuruList] = useState<{ id: string, nama: string }[]>([]);
   
   const [loading, setLoading] = useState(true);
@@ -189,10 +190,16 @@ export default function PersuratanPage() {
 
       if (result.success) {
         const sortedKeluar = result.suratKeluar.sort((a: any, b: any) => b.rowNumber - a.rowNumber);
-        const sortedMasuk = result.suratMasuk.sort((a: any, b: any) => b.rowNumber - a.rowNumber);
+        const sortedMasuk = result.suratMasuk.sort((a: any, b: any) => {
+          // Parse dd/mm/yyyy to yyyy-mm-dd for proper date comparison
+          const dateA = a.tanggal ? new Date(a.tanggal.split('/').reverse().join('-')).getTime() : 0;
+          const dateB = b.tanggal ? new Date(b.tanggal.split('/').reverse().join('-')).getTime() : 0;
+          return dateB - dateA; // Descending (terbaru di atas)
+        });
         setDataKeluar(sortedKeluar);
         setDataMasuk(sortedMasuk);
         setTopikList(result.topikList);
+        if (result.instansiList) setInstansiList(result.instansiList);
         // Load riwayat dari API (cross-device)
         if (result.riwayatCetak) setRiwayatCetak(result.riwayatCetak);
       } else {
@@ -597,7 +604,10 @@ export default function PersuratanPage() {
                 </div>
                 <div className={styles.infoGroup} style={{ marginBottom: '16px' }}>
                   <label className={styles.infoLabel}>Nama Pengirim / Asal Surat <span style={{ color: 'red' }}>*</span></label>
-                  <input type="text" className={styles.searchInput} value={addMasukPengirim} onChange={e => setAddMasukPengirim(e.target.value)} placeholder="Contoh: Dinas Pendidikan Kabupaten" required />
+                  <input type="text" className={styles.searchInput} value={addMasukPengirim} onChange={e => setAddMasukPengirim(e.target.value)} placeholder="Contoh: Dinas Pendidikan Kabupaten" list="instansi-list" required />
+                  <datalist id="instansi-list">
+                    {instansiList.map((instansi, i) => <option key={i} value={instansi} />)}
+                  </datalist>
                 </div>
                 <div className={styles.infoGroup} style={{ marginBottom: '20px' }}>
                   <label className={styles.infoLabel}>Upload File Scan (Wajib) <span style={{ color: 'red' }}>*</span></label>

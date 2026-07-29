@@ -90,11 +90,14 @@ export async function GET() {
       }).filter(Boolean).reverse(); // terbaru di atas
     }
 
+    const instansiList = Array.from(new Set(dataMasuk.map(item => item.pengirim).filter(Boolean))).sort();
+
     return NextResponse.json({ 
       success: true, 
       suratKeluar: dataKeluar,
-      suratMasuk: dataMasuk,
+      suratMasuk: dataMasuk.reverse(), // Urutkan dari yang terbaru (bawah ke atas)
       topikList: listTopik,
+      instansiList,
       riwayatCetak,
       sheetTitles
     });
