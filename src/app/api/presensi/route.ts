@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getPresensiDoc } from '@/lib/google-sheets';
+import { getPresensiDoc, getIndukDoc } from '@/lib/google-sheets';
 import crypto from 'crypto';
 
 export async function GET(request: Request) {
@@ -7,23 +7,41 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const filterTanggal = searchParams.get('tanggal');
 
+    // Ambil domisili dari DATABASE induk
+    const docInduk = await getIndukDoc();
+    const sheetInduk = docInduk.sheetsByTitle['DATABASE'];
+    const mapDomisili: Record<string, string> = {};
+    if (sheetInduk) {
+      const rowsInduk = await sheetInduk.getRows();
+      rowsInduk.forEach(r => {
+        const nisn = (r.get('NISN') || '').trim();
+        if (nisn) {
+          mapDomisili[nisn] = (r.get('DOMISILI') || '').trim();
+        }
+      });
+    }
+
     const doc = await getPresensiDoc();
     const sheet = doc.sheetsByTitle['PRESENSI SISWA'];
     if (!sheet) return NextResponse.json({ success: false, error: 'Sheet PRESENSI SISWA tidak ditemukan' }, { status: 404 });
 
     const rows = await sheet.getRows();
-    let data = rows.map(r => ({
-      id: r.get('ID') || '',
-      tanggal: (r.get('TANGGAL') || '').trim(),
-      tahunAjaran: (r.get('TAHUN AJARAN') || '').trim(),
-      kelas: (r.get('KELAS') || '').trim(),
-      jamKe: (r.get('JAM KE') || '').trim(),
-      mapel: (r.get('MAPEL') || '').trim(),
-      guruPenginput: (r.get('GURU PENGINPUT') || '').trim(),
-      namaSiswa: (r.get('NAMA SISWA') || '').trim(),
-      nisn: (r.get('NISN') || '').trim(),
-      kehadiran: (r.get('KEHADIRAN') || '').trim(),
-    })).filter(r => r.namaSiswa && r.kehadiran);
+    let data = rows.map(r => {
+      const nisn = (r.get('NISN') || '').trim();
+      return {
+        id: r.get('ID') || '',
+        tanggal: (r.get('TANGGAL') || '').trim(),
+        tahunAjaran: (r.get('TAHUN AJARAN') || '').trim(),
+        kelas: (r.get('KELAS') || '').trim(),
+        jamKe: (r.get('JAM KE') || '').trim(),
+        mapel: (r.get('MAPEL') || '').trim(),
+        guruPenginput: (r.get('GURU PENGINPUT') || '').trim(),
+        namaSiswa: (r.get('NAMA SISWA') || '').trim(),
+        nisn,
+        domisili: mapDomisili[nisn] || '',
+        kehadiran: (r.get('KEHADIRAN') || '').trim(),
+      };
+    }).filter(r => r.namaSiswa && r.kehadiran);
 
     if (filterTanggal) {
       data = data.filter(r => r.tanggal === filterTanggal);

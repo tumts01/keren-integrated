@@ -130,6 +130,7 @@ export default function PresensiPage() {
   const [rsFilterTo, setRsFilterTo] = useState('');
   const [rsFilterNama, setRsFilterNama] = useState('');
   const [rsFilterKelas, setRsFilterKelas] = useState('');
+  const [rsFilterDomisili, setRsFilterDomisili] = useState('');
 
   // Rekap Piket
   const [rekapPiketData, setRekapPiketData] = useState<any[]>([]);
@@ -243,12 +244,13 @@ export default function PresensiPage() {
       'Tanggal': r.tanggal || '',
       'Nama Siswa': r.namaSiswa || '',
       'Kelas': r.kelas || '',
+      'Domisili': r.domisili || '',
       'Mata Pelajaran': r.mapel || '',
       'Jam Ke': r.jamKe || '',
       'Keterangan': r.kehadiran || '',
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 5 }, { wch: 12 }, { wch: 30 }, { wch: 10 }, { wch: 20 }, { wch: 10 }, { wch: 12 }];
+    ws['!cols'] = [{ wch: 5 }, { wch: 12 }, { wch: 30 }, { wch: 10 }, { wch: 20 }, { wch: 20 }, { wch: 10 }, { wch: 12 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Presensi Siswa');
     XLSX.writeFile(wb, `Rekap_Presensi_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.xlsx`);
@@ -259,12 +261,13 @@ export default function PresensiPage() {
       'No': i + 1,
       'Nama Siswa': s.nama,
       'Kelas': s.kelas,
+      'Domisili': s.domisili,
       'Sakit / S (Hari)': Number((s.S / 10).toFixed(1)),
       'Izin / I (Hari)': Number((s.I / 10).toFixed(1)),
       'Alpha / A (Hari)': Number((s.A / 10).toFixed(1)),
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 5 }, { wch: 32 }, { wch: 10 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
+    ws['!cols'] = [{ wch: 5 }, { wch: 32 }, { wch: 10 }, { wch: 20 }, { wch: 16 }, { wch: 16 }, { wch: 16 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Rekap S-I-A');
     XLSX.writeFile(wb, `Rekap_SIA_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.xlsx`);
@@ -770,16 +773,18 @@ export default function PresensiPage() {
     if (rsFilterTo && r.tanggal > rsFilterTo) return false;
     if (rsFilterNama && !r.namaSiswa.toLowerCase().includes(rsFilterNama.toLowerCase())) return false;
     if (rsFilterKelas && r.kelas.trim() !== rsFilterKelas.trim()) return false;
+    if (rsFilterDomisili && (r.domisili || '').trim() !== rsFilterDomisili.trim()) return false;
     return true;
   }).sort((a, b) => {
     const dc = (a.tanggal || '').localeCompare(b.tanggal || '');
     return dc !== 0 ? dc : (a.namaSiswa || '').localeCompare(b.namaSiswa || '', 'id');
   });
   const rsKelasList = Array.from(new Set(rekapSiswaData.map(r => (r.kelas || '').trim()).filter(Boolean))).sort() as string[];
-  const rsAlphaMap: Record<string, { nama: string; kelas: string; S: number; I: number; A: number }> = {};
+  const rsDomisiliList = Array.from(new Set(rekapSiswaData.map(r => (r.domisili || '').trim()).filter(Boolean))).sort() as string[];
+  const rsAlphaMap: Record<string, { nama: string; kelas: string; domisili: string; S: number; I: number; A: number }> = {};
   for (const r of rsFiltered) {
     const nm = r.namaSiswa; const jm = countJamSIA(r.jamKe);
-    if (!rsAlphaMap[nm]) rsAlphaMap[nm] = { nama: nm, kelas: r.kelas, S: 0, I: 0, A: 0 };
+    if (!rsAlphaMap[nm]) rsAlphaMap[nm] = { nama: nm, kelas: r.kelas, domisili: r.domisili || '', S: 0, I: 0, A: 0 };
     if (r.kehadiran === 'S') rsAlphaMap[nm].S += jm;
     else if (r.kehadiran === 'I') rsAlphaMap[nm].I += jm;
     else if (r.kehadiran === 'A') rsAlphaMap[nm].A += jm;
@@ -1179,8 +1184,15 @@ export default function PresensiPage() {
                   {rsKelasList.map(k => <option key={k} value={k}>{k}</option>)}
                 </select>
               </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>Domisili</label>
+                <select value={rsFilterDomisili} onChange={e => setRsFilterDomisili(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: '0.85rem', minWidth: 120 }}>
+                  <option value="">Semua Domisili</option>
+                  {rsDomisiliList.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'flex-end' }}>
-                <button onClick={() => { setRsFilterFrom(''); setRsFilterTo(''); setRsFilterNama(''); setRsFilterKelas(''); }}
+                <button onClick={() => { setRsFilterFrom(''); setRsFilterTo(''); setRsFilterNama(''); setRsFilterKelas(''); setRsFilterDomisili(''); }}
                   style={{ padding: '6px 12px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
                   <i className="fas fa-times"></i> Reset
                 </button>
@@ -1212,7 +1224,7 @@ export default function PresensiPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                       <thead>
                         <tr style={{ background: '#1e3a5f', color: 'white' }}>
-                          {['No','Tanggal','Nama Siswa','Kelas','Mata Pelajaran','Jam Ke','Ket.'].map(h => (
+                          {['No','Tanggal','Nama Siswa','Kelas','Domisili','Mata Pelajaran','Jam Ke','Ket.'].map(h => (
                             <th key={h} style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>{h}</th>
                           ))}
                         </tr>
@@ -1224,6 +1236,7 @@ export default function PresensiPage() {
                             <td style={{ padding: '7px 12px', whiteSpace: 'nowrap' }}>{r.tanggal}</td>
                             <td style={{ padding: '7px 12px', fontWeight: 600 }}>{r.namaSiswa}</td>
                             <td style={{ padding: '7px 12px' }}>{r.kelas}</td>
+                            <td style={{ padding: '7px 12px', color: '#64748b' }}>{r.domisili || '-'}</td>
                             <td style={{ padding: '7px 12px', color: '#475569' }}>{r.mapel}</td>
                             <td style={{ padding: '7px 12px', textAlign: 'center' }}>
                               <span style={{ background: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600 }}>Jam {r.jamKe}</span>
@@ -1268,6 +1281,7 @@ export default function PresensiPage() {
                           <th style={{ padding: '8px 14px', textAlign: 'center', width: 44, fontWeight: 700 }}>No</th>
                           <th style={{ padding: '8px 14px', textAlign: 'left', fontWeight: 700 }}>Nama Siswa</th>
                           <th style={{ padding: '8px 14px', textAlign: 'left', fontWeight: 700 }}>Kelas</th>
+                          <th style={{ padding: '8px 14px', textAlign: 'left', fontWeight: 700 }}>Domisili</th>
                           <th style={{ padding: '8px 14px', textAlign: 'center', fontWeight: 700, background: '#fbbf24', color: '#1e293b' }}>Sakit (S)</th>
                           <th style={{ padding: '8px 14px', textAlign: 'center', fontWeight: 700, background: '#fb923c', color: 'white' }}>Izin (I)</th>
                           <th style={{ padding: '8px 14px', textAlign: 'center', fontWeight: 700, background: '#ef4444', color: 'white' }}>Alpha (A)</th>
@@ -1285,6 +1299,7 @@ export default function PresensiPage() {
                                 {s.nama}
                               </td>
                               <td style={{ padding: '9px 14px', color: '#475569' }}>{s.kelas}</td>
+                              <td style={{ padding: '9px 14px', color: '#64748b' }}>{s.domisili || '-'}</td>
                               <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, color: s.S > 0 ? '#d97706' : '#94a3b8' }}>{s.S > 0 ? Number((s.S / 10).toFixed(1)) : '-'}</td>
                               <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, color: s.I > 0 ? '#ea580c' : '#94a3b8' }}>{s.I > 0 ? Number((s.I / 10).toFixed(1)) : '-'}</td>
                               <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, color: totalDays > 5 ? '#dc2626' : s.A > 0 ? '#7c3aed' : '#94a3b8', background: isRed ? '#fee2e2' : 'transparent', borderRadius: 6 }}>{s.A > 0 ? Number((s.A / 10).toFixed(1)) : '-'}</td>
