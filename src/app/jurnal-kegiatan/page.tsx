@@ -58,8 +58,20 @@ const compressImage = async (file: File): Promise<File> => {
 };
 
 export default function JurnalKegiatanPage() {
+  const [activeTab, setActiveTab] = useState<'notulen' | 'lpj'>('notulen');
   const [notulens, setNotulens] = useState<any[]>([]);
+  const [lpjList, setLpjList] = useState<any[]>([]);
   const [gurus, setGurus] = useState<any[]>([]);
+
+  // States for LPJ Modal
+  const [showLpjModal, setShowLpjModal] = useState(false);
+  const [savingLpj, setSavingLpj] = useState(false);
+  const [lpjForm, setLpjForm] = useState({
+    tanggal: new Date().toISOString().split('T')[0],
+    namaKegiatan: '',
+    pjKegiatan: ''
+  });
+  const [lpjFile, setLpjFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -92,15 +104,57 @@ export default function JurnalKegiatanPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/notulen');
-      const json = await res.json();
-      if (json.success) {
-        setNotulens(json.data);
-      }
+      const [resNotulen, resLpj] = await Promise.all([
+        fetch('/api/notulen'),
+        fetch('/api/lpj-kegiatan')
+      ]);
+      const jsonNotulen = await resNotulen.json();
+      const jsonLpj = await resLpj.json();
+      if (jsonNotulen.success) setNotulens(jsonNotulen.data);
+      if (jsonLpj.success) setLpjList(jsonLpj.data);
     } catch (e) {
       console.error(e);
     }
     setLoading(false);
+  };
+
+  const handleLpjSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lpjFile) {
+      alert("File LPJ wajib diupload");
+      return;
+    }
+    setSavingLpj(true);
+    
+    try {
+      const payload = new FormData();
+      payload.append('tanggal', lpjForm.tanggal);
+      payload.append('namaKegiatan', lpjForm.namaKegiatan);
+      payload.append('pjKegiatan', lpjForm.pjKegiatan);
+      payload.append('file', lpjFile);
+      
+      const res = await fetch('/api/lpj-kegiatan', {
+        method: 'POST',
+        body: payload
+      });
+      
+      const json = await res.json();
+      if (json.success) {
+        setShowLpjModal(false);
+        setLpjForm({
+          tanggal: new Date().toISOString().split('T')[0],
+          namaKegiatan: '',
+          pjKegiatan: ''
+        });
+        setLpjFile(null);
+        fetchData(); // refresh data
+      } else {
+        alert('Gagal menyimpan LPJ: ' + json.error);
+      }
+    } catch (e) {
+      alert('Terjadi kesalahan saat menyimpan LPJ');
+    }
+    setSavingLpj(false);
   };
 
   const fetchGuru = async () => {
@@ -391,20 +445,44 @@ export default function JurnalKegiatanPage() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h1 className={styles.title}><i className="fas fa-book-open"></i> Notulen Rapat</h1>
-        <button className={styles.btnPrimary} onClick={() => setShowModal(true)}>
-          <i className="fas fa-plus"></i> Buat Notulen
-        </button>
+      <div className={styles.header} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '16px' }}>
+        <h1 className={styles.title}><i className="fas fa-book-open"></i> Jurnal & LPJ Kegiatan</h1>
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button 
+              className={`btn ${activeTab === 'notulen' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setActiveTab('notulen')}
+            >
+              <i className="fas fa-file-signature"></i> Notulen Rapat
+            </button>
+            <button 
+              className={`btn ${activeTab === 'lpj' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setActiveTab('lpj')}
+            >
+              <i className="fas fa-file-archive"></i> LPJ Kegiatan
+            </button>
+          </div>
+          
+          {activeTab === 'notulen' ? (
+            <button className={styles.btnPrimary} onClick={() => setShowModal(true)}>
+              <i className="fas fa-plus"></i> Buat Notulen
+            </button>
+          ) : (
+            <button className={styles.btnPrimary} onClick={() => setShowLpjModal(true)}>
+              <i className="fas fa-upload"></i> Tambah LPJ
+            </button>
+          )}
+        </div>
       </div>
 
       <div className={styles.tableContainer}>
         {loading ? (
           <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
             <i className="fas fa-spinner fa-spin fa-2x"></i>
-            <p>Memuat data notulen...</p>
+            <p>Memuat data {activeTab === 'notulen' ? 'notulen' : 'LPJ'}...</p>
           </div>
-        ) : (
+        ) : activeTab === 'notulen' ? (
           <table className={styles.table}>
             <thead>
               <tr>
@@ -436,6 +514,43 @@ export default function JurnalKegiatanPage() {
                       <button className="btn btn-primary btn-sm" onClick={() => generateWord(n)} title="Download Word">
                         <i className="fas fa-file-word"></i> Word
                       </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        ) : (
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Tanggal</th>
+                <th>Nama Kegiatan</th>
+                <th>PJ Kegiatan</th>
+                <th style={{ textAlign: 'center' }}>Arsip File</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lpjList.length === 0 ? (
+                <tr>
+                  <td colSpan={4} style={{ textAlign: 'center', color: '#64748b', padding: '24px' }}>
+                    Belum ada data LPJ Kegiatan.
+                  </td>
+                </tr>
+              ) : (
+                lpjList.map((l, i) => (
+                  <tr key={i}>
+                    <td>{l.tanggal}</td>
+                    <td style={{ fontWeight: 600 }}>{l.namaKegiatan}</td>
+                    <td>{l.pjKegiatan}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      {l.fileUpload ? (
+                        <a href={l.fileUpload} target="_blank" rel="noopener noreferrer" className="btn btn-sm" style={{ background: '#dcfce7', color: '#16a34a' }}>
+                          <i className="fas fa-external-link-alt"></i> Buka File
+                        </a>
+                      ) : (
+                        <span style={{ color: '#ef4444' }}>Tidak ada file</span>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -689,6 +804,49 @@ export default function JurnalKegiatanPage() {
                 <button type="button" className={styles.btnSecondary} onClick={() => setShowUploadModal(false)} disabled={saving}>Batal</button>
                 <button type="submit" className={styles.btnPrimary} disabled={saving || uploadFiles.length === 0}>
                   {saving ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-upload"></i>} Simpan Lampiran
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Modal Tambah LPJ */}
+      {showLpjModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowLpjModal(false)}>
+          <div className={styles.modalCard} onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className={styles.modalHeader}>
+              <h2><i className="fas fa-upload"></i> Tambah LPJ Kegiatan</h2>
+              <button className={styles.closeBtn} onClick={() => setShowLpjModal(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            
+            <form onSubmit={handleLpjSubmit}>
+              <div className={styles.modalBody}>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Tanggal Kegiatan <span style={{ color: 'red' }}>*</span></label>
+                  <input type="date" value={lpjForm.tanggal} onChange={e => setLpjForm({...lpjForm, tanggal: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px' }} required />
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Nama Kegiatan <span style={{ color: 'red' }}>*</span></label>
+                  <input type="text" value={lpjForm.namaKegiatan} onChange={e => setLpjForm({...lpjForm, namaKegiatan: e.target.value})} placeholder="Contoh: Classmeeting" style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px' }} required />
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>PJ Kegiatan <span style={{ color: 'red' }}>*</span></label>
+                  <input type="text" value={lpjForm.pjKegiatan} onChange={e => setLpjForm({...lpjForm, pjKegiatan: e.target.value})} list="guru-list" placeholder="Pilih/Ketik Nama PJ" style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px' }} required />
+                  <datalist id="guru-list">
+                    {gurus.map((g, i) => <option key={i} value={g.nama} />)}
+                  </datalist>
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>File LPJ (PDF/Scan) <span style={{ color: 'red' }}>*</span></label>
+                  <input type="file" accept=".pdf,image/*,.doc,.docx,.xls,.xlsx" onChange={e => setLpjFile(e.target.files ? e.target.files[0] : null)} style={{ width: '100%', padding: '10px', border: '1px dashed #3b82f6', borderRadius: '8px', background: '#eff6ff' }} required />
+                </div>
+              </div>
+              <div className={styles.modalFooter}>
+                <button type="button" className={styles.btnSecondary} onClick={() => setShowLpjModal(false)} disabled={savingLpj}>Batal</button>
+                <button type="submit" className={styles.btnPrimary} disabled={savingLpj}>
+                  {savingLpj ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>} Simpan LPJ
                 </button>
               </div>
             </form>
