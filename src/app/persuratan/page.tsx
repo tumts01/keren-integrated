@@ -1063,10 +1063,11 @@ export default function PersuratanPage() {
                           onClick={() => {
                             if (!generateSiswaList.find(s => s.id === 'terlampir')) {
                               setGenerateSiswaList(prev => [...prev, { id: 'terlampir', nama: 'Nama-Nama Terlampir', rombel: '-', domisili: '-' }]);
+                              setSearchSiswaTerm('');
                             }
                           }}
                         >
-                          + "Nama-Nama Terlampir"
+                          + Klik Tambah "Nama-Nama Terlampir"
                         </button>
                       )}
                     </div>
@@ -1221,8 +1222,33 @@ export default function PersuratanPage() {
                     className="btn btn-primary" 
                     style={{ width: '100%', padding: '12px' }}
                     onClick={handleSaveAndPrint}
-                    disabled={!generateNomor || !generateTanggal || (generateJenis === 'Surat Keterangan Aktif Siswa' ? !generateSiswa : (generateJenis === 'Surat Permohonan Izin' ? (generateSiswaList.length === 0 || !generateTujuan || !generateKegiatan || !generateKonteks) : (generateJenis === 'Surat Tugas' ? (generateGuruTugas.length === 0 || !generateKonteks || !generateHariTanggal || !generateTempat) : (!generateHari || !generateTanggalPelaksanaan || !generateWaktu || !generateTempat || !generateAcara))))}
-                  >
+                    disabled={
+                      !generateNomor || 
+                      !generateTanggal || 
+                      (generateJenis === 'Surat Keterangan Aktif Siswa' && !generateSiswa) ||
+                      (generateJenis === 'Surat Permohonan Izin' && (
+                        generateSiswaList.length === 0 || 
+                        !generateTujuan || 
+                        !generateKegiatan || 
+                        !generateKonteks ||
+                        !generateHariTanggal ||
+                        !generateWaktu ||
+                        !generateTempat
+                      )) ||
+                      (generateJenis === 'Surat Tugas' && (
+                        generateGuruTugas.length === 0 || 
+                        !generateKonteks || 
+                        !generateHariTanggal || 
+                        !generateTempat
+                      )) ||
+                      (generateJenis === 'Surat Undangan GTK' && (
+                        !generateHari || 
+                        !generateTanggalPelaksanaan || 
+                        !generateWaktu || 
+                        !generateTempat || 
+                        !generateAcara
+                      ))
+                    }                  >
                     <i className="fas fa-print"></i> Generate & Cetak Surat
                   </button>
                 </div>
