@@ -892,10 +892,10 @@ export default function SiswaPage() {
               <div className={styles.statInfo}>
                 <span className={styles.statLabel}>Total Siswa Aktif</span>
                 <span className={styles.statValue}>{totalSiswa}</span>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px', fontWeight: 500 }}>
-                  Kls 7: {totalKelas7Aktif} Aktif ({totalKelas7Non} Non) <br/>
-                  Kls 8: {totalKelas8Aktif} Aktif ({totalKelas8Non} Non) <br/>
-                  Kls 9: {totalKelas9Aktif} Aktif ({totalKelas9Non} Non)
+                <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '2px', lineHeight: '1.1', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <div>Kls 7: {totalKelas7Aktif} Aktif ({totalKelas7Non} Non)</div>
+                  <div>Kls 8: {totalKelas8Aktif} Aktif ({totalKelas8Non} Non)</div>
+                  <div>Kls 9: {totalKelas9Aktif} Aktif ({totalKelas9Non} Non)</div>
                 </div>
               </div>
             </div>
