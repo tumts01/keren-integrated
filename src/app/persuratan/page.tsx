@@ -48,6 +48,14 @@ export default function PersuratanPage() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Add Surat Masuk states
+  const [showAddMasukModal, setShowAddMasukModal] = useState(false);
+  const [addMasukTanggal, setAddMasukTanggal] = useState(new Date().toISOString().split('T')[0]);
+  const [addMasukNama, setAddMasukNama] = useState('');
+  const [addMasukPengirim, setAddMasukPengirim] = useState('');
+  const [addingMasuk, setAddingMasuk] = useState(false);
+  const addMasukFileRef = useRef<HTMLInputElement>(null);
+
   // Custom Toast State
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
@@ -347,6 +355,46 @@ export default function PersuratanPage() {
     }
   };
 
+  const handleAddMasukSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addMasukFileRef.current?.files?.[0]) {
+      showToast("File scan/arsip surat wajib diupload", 'error');
+      return;
+    }
+    if (!addMasukTanggal || !addMasukNama || !addMasukPengirim) {
+      showToast("Pastikan semua form sudah terisi", 'error');
+      return;
+    }
+
+    setAddingMasuk(true);
+    const formData = new FormData();
+    formData.append('tanggal', addMasukTanggal);
+    formData.append('namaSurat', addMasukNama);
+    formData.append('asalSurat', addMasukPengirim);
+    formData.append('file', addMasukFileRef.current.files[0]);
+
+    try {
+      const res = await fetch('/api/persuratan/add-masuk', {
+        method: 'POST',
+        body: formData,
+      });
+      const result = await res.json();
+      if (result.success) {
+        showToast('Surat Masuk berhasil ditambahkan dan diarsipkan!', 'success');
+        setShowAddMasukModal(false);
+        setAddMasukNama('');
+        setAddMasukPengirim('');
+        fetchData(); // Refresh table
+      } else {
+        showToast(`Gagal menambahkan surat: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      showToast('Terjadi kesalahan sistem saat menyimpan surat.', 'error');
+    } finally {
+      setAddingMasuk(false);
+    }
+  };
+
   const handleExportExcel = () => {
     let dataToExport: any[] = [];
     if (activeTab === 'keluar' || activeTab === 'tagihan') {
@@ -530,6 +578,61 @@ export default function PersuratanPage() {
         </div>
       )}
 
+      {/* Tambah Surat Masuk Modal */}
+      {showAddMasukModal && (
+        <div className={styles.modalOverlay} onClick={() => !addingMasuk && setShowAddMasukModal(false)}>
+          <div className={styles.modalCard} onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className={styles.modalHeader}>
+              <h3 className={styles.modalTitle}><i className="fas fa-inbox"></i> Tambah Surat Masuk</h3>
+              <button className={styles.closeBtn} onClick={() => !addingMasuk && setShowAddMasukModal(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <form onSubmit={handleAddMasukSubmit}>
+                <div className={styles.infoGroup} style={{ marginBottom: '16px' }}>
+                  <label className={styles.infoLabel}>Tanggal Terima <span style={{ color: 'red' }}>*</span></label>
+                  <input type="date" className={styles.searchInput} value={addMasukTanggal} onChange={e => setAddMasukTanggal(e.target.value)} required />
+                </div>
+                <div className={styles.infoGroup} style={{ marginBottom: '16px' }}>
+                  <label className={styles.infoLabel}>Nama Surat <span style={{ color: 'red' }}>*</span></label>
+                  <input type="text" className={styles.searchInput} value={addMasukNama} onChange={e => setAddMasukNama(e.target.value)} placeholder="Contoh: Undangan Rapat Komite" required />
+                </div>
+                <div className={styles.infoGroup} style={{ marginBottom: '16px' }}>
+                  <label className={styles.infoLabel}>Nama Pengirim / Asal Surat <span style={{ color: 'red' }}>*</span></label>
+                  <input type="text" className={styles.searchInput} value={addMasukPengirim} onChange={e => setAddMasukPengirim(e.target.value)} placeholder="Contoh: Dinas Pendidikan Kabupaten" required />
+                </div>
+                <div className={styles.infoGroup} style={{ marginBottom: '20px' }}>
+                  <label className={styles.infoLabel}>Upload File Scan (Wajib) <span style={{ color: 'red' }}>*</span></label>
+                  <input 
+                    type="file" 
+                    ref={addMasukFileRef}
+                    accept=".pdf,image/*,.doc,.docx,.xls,.xlsx"
+                    style={{ 
+                      width: '100%', 
+                      padding: '10px', 
+                      border: '2px dashed #cbd5e1', 
+                      borderRadius: '8px',
+                      background: '#f8fafc',
+                      cursor: 'pointer'
+                    }}
+                    required
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                  <button type="button" className="btn" style={{ background: '#f1f5f9', color: '#475569' }} onClick={() => setShowAddMasukModal(false)} disabled={addingMasuk}>
+                    Batal
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={addingMasuk}>
+                    {addingMasuk ? <><i className="fas fa-spinner fa-spin"></i> Menyimpan...</> : <><i className="fas fa-save"></i> Simpan & Upload</>}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Generate Nomor Surat Modal */}
       {showGenerateModal && (
         <div className={styles.modalOverlay} onClick={() => !generating && setShowGenerateModal(false)}>
@@ -701,6 +804,11 @@ export default function PersuratanPage() {
             {activeTab === 'keluar' && (
               <button className="btn btn-primary" onClick={() => setShowGenerateModal(true)}>
                 <i className="fas fa-plus"></i> Ambil Nomor Surat
+              </button>
+            )}
+            {activeTab === 'masuk' && (
+              <button className="btn btn-primary" onClick={() => setShowAddMasukModal(true)}>
+                <i className="fas fa-plus"></i> Tambah Surat Masuk
               </button>
             )}
           </div>
