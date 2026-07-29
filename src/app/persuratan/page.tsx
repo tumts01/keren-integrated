@@ -1588,7 +1588,7 @@ export default function PersuratanPage() {
                           <tr>
                             <th style={{ border: '1px solid black', padding: '8px', width: '50px' }}>NO</th>
                             <th style={{ border: '1px solid black', padding: '8px' }}>NAMA</th>
-                            <th style={{ border: '1px solid black', padding: '8px', width: '150px' }}>JABATAN</th>
+                            <th style={{ border: '1px solid black', padding: '8px', width: '150px' }}>KETERANGAN</th>
                           </tr>
                         </thead>
                         <tbody>
