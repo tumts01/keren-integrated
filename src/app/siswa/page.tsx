@@ -804,14 +804,23 @@ export default function SiswaPage() {
       </html>
     `;
 
-    const win = window.open('', '_blank');
-    if (!win) {
-      alert("Popup browser diblokir! Tolong izinkan popup untuk mencetak.");
-      return;
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    document.body.appendChild(iframe);
+    
+    const iframeDoc = iframe.contentWindow?.document;
+    if (iframeDoc) {
+      iframeDoc.write(printHtml);
+      iframeDoc.close();
+      
+      iframe.contentWindow?.focus();
+      setTimeout(() => {
+        iframe.contentWindow?.print();
+        setTimeout(() => {
+          document.body.removeChild(iframe);
+        }, 1000);
+      }, 500);
     }
-    win.document.write(printHtml);
-    win.document.close();
-    setTimeout(() => win.print(), 500);
   };
 
   return (
