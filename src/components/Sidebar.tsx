@@ -81,9 +81,7 @@ export default function Sidebar() {
     {
       title: 'Administrasi',
       items: [
-        ...(isAdmin ? [
-          { name: 'Persuratan', path: '/persuratan', icon: 'fa-envelope-open-text' },
-        ] : []),
+        { name: 'Persuratan', path: '/persuratan', icon: 'fa-envelope-open-text' },
         { name: 'Loker Digital', path: '/loker-digital', icon: 'fa-folder-open' },
         ...(isAdmin ? [
           { name: 'Buku Tamu', path: '/buku-tamu', icon: 'fa-address-book' },
