@@ -333,7 +333,14 @@ export default function PresensiPage() {
     }
 
     const rows = Object.entries(grouped)
-      .sort(([a], [b]) => a.localeCompare(b, 'id'))
+      .sort(([a], [b]) => {
+        const idxA = guruList.indexOf(a);
+        const idxB = guruList.indexOf(b);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return a.localeCompare(b, 'id');
+      })
       .map(([nama, jumlah], i) => ([
         i + 1,
         nama,
@@ -382,7 +389,14 @@ export default function PresensiPage() {
     }
 
     const rows = Object.entries(grouped)
-      .sort(([a], [b]) => a.localeCompare(b, 'id'))
+      .sort(([a], [b]) => {
+        const idxA = guruList.indexOf(a);
+        const idxB = guruList.indexOf(b);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return a.localeCompare(b, 'id');
+      })
       .map(([nama, jam], i) => ([
         i + 1,
         nama,
