@@ -47,7 +47,7 @@ export async function POST(req: Request) {
     // Map headers intelligently
     const headerTanggal = headers.find(h => h.includes('TANGGAL') || h.includes('TGL')) || 'TANGGAL TERIMA';
     const headerNamaSurat = headers.find(h => h.includes('NAMA SURAT') || h.includes('PERIHAL') || h.includes('RINGKAS')) || 'NAMA SURAT';
-    const headerAsalSurat = headers.find(h => h.includes('ASAL') || h.includes('PENGIRIM')) || 'ASAL SURAT';
+    const headerAsalSurat = headers.find(h => h.includes('INSTANSI') || h.includes('ASAL') || h.includes('PENGIRIM')) || 'NAMA INSTANSI';
     const headerFile = headers.find(h => h.includes('FILE') || h.includes('SCAN')) || 'FILE/SCAN SURAT';
 
     const newRow = {

@@ -48,7 +48,7 @@ export async function GET() {
       
       const headerTanggal = headers.find(h => h.includes('TANGGAL') || h.includes('TGL')) || 'TANGGAL';
       const headerNamaSurat = headers.find(h => h.includes('NAMA SURAT') || h.includes('PERIHAL')) || 'NAMA SURAT';
-      const headerPengirim = headers.find(h => h.includes('ASAL') || h.includes('PENGIRIM')) || 'ASAL SURAT';
+      const headerPengirim = headers.find(h => h.includes('INSTANSI') || h.includes('ASAL') || h.includes('PENGIRIM')) || 'NAMA INSTANSI';
       const headerFile = headers.find(h => h.includes('FILE') || h.includes('SCAN')) || 'FILE/SCAN SURAT';
 
       dataMasuk = rowsMasuk.map((row, index) => {
