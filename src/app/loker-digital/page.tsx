@@ -110,11 +110,25 @@ export default function LokerDigital() {
                 <i className="fas fa-times"></i>
               </button>
             </div>
-            <div className={styles.modalBody}>
+            <div className={styles.modalBody} style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ marginBottom: '12px', textAlign: 'center' }}>
+                <a 
+                  href={`https://drive.google.com/drive/folders/${modalFolder.id}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#e0f2fe', color: '#0369a1', borderRadius: '8px', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600, border: '1px solid #bae6fd' }}
+                >
+                  <i className="fas fa-external-link-alt"></i> Buka Langsung di Google Drive
+                </a>
+                <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '6px 0 0' }}>
+                  Jika isi loker di bawah error/tidak muncul (403), klik tombol di atas.
+                </p>
+              </div>
               <iframe 
                 src={`https://drive.google.com/embeddedfolderview?id=${modalFolder.id}#grid`}
                 className={styles.iframe}
                 allow="autoplay"
+                style={{ flex: 1, border: 'none', background: '#f8fafc', borderRadius: '8px' }}
               ></iframe>
             </div>
           </div>
