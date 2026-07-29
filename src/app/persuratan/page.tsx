@@ -1485,8 +1485,8 @@ export default function PersuratanPage() {
                         <tr key={i}>
                           <td style={{ width: '30px', verticalAlign: 'top', padding: '2px 0' }}>{i + 1}.</td>
                           <td style={{ verticalAlign: 'top', padding: '2px 0' }}>{siswa.nama}</td>
-                          <td style={{ width: '60px', verticalAlign: 'top', padding: '2px 0', textAlign: 'center' }}>{siswa.rombel}</td>
-                          <td style={{ verticalAlign: 'top', padding: '2px 0' }}>{siswa.domisili ? `(${siswa.domisili})` : ''}</td>
+                          <td style={{ width: '60px', verticalAlign: 'top', padding: '2px 0', textAlign: 'center' }}>{siswa.id === 'terlampir' ? '' : siswa.rombel}</td>
+                          <td style={{ verticalAlign: 'top', padding: '2px 0' }}>{siswa.id === 'terlampir' ? '' : (siswa.domisili ? `(${siswa.domisili})` : '')}</td>
                         </tr>
                       ))}
                     </tbody>
