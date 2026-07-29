@@ -21,9 +21,8 @@ interface SuratMasuk {
   id: number;
   rowNumber: number;
   tanggal: string;
+  namaSurat: string;
   pengirim: string;
-  noSurat: string;
-  perihal: string;
   fileScan: string;
 }
 
@@ -411,10 +410,9 @@ export default function PersuratanPage() {
       }));
     } else if (activeTab === 'masuk') {
       dataToExport = filteredMasuk.map(s => ({
-        'Tanggal': s.tanggal,
-        'Pengirim': s.pengirim,
-        'No Surat': s.noSurat,
-        'Perihal': s.perihal,
+        'Tanggal Masuk': s.tanggal,
+        'Nama Surat': s.namaSurat,
+        'Pengirim / Asal Surat': s.pengirim,
         'Status Arsip': s.fileScan ? 'Diarsipkan' : 'Belum Diarsipkan'
       }));
     } else if (activeTab === 'tugas') {
@@ -441,9 +439,8 @@ export default function PersuratanPage() {
   );
 
   const filteredMasuk = dataMasuk.filter(s => 
-    s.perihal.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    s.pengirim.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.noSurat.toLowerCase().includes(searchTerm.toLowerCase())
+    s.namaSurat.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    s.pengirim.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const filteredTagihan = filteredKeluar.filter(s => !s.fileScan);
@@ -1381,11 +1378,11 @@ export default function PersuratanPage() {
                 ) : activeTab === 'masuk' ? (
                   <tr>
                     <th>Tanggal Masuk</th>
-                    <th>Pengirim</th>
-                    <th>Nomor Surat</th>
-                    <th>Perihal</th>
+                    <th>Nama Surat</th>
+                    <th>Pengirim / Asal Surat</th>
                     <th style={{ textAlign: 'center' }}>Status / Arsip</th>
                   </tr>
+
                 ) : (
                   <tr>
                     <th>Nama Guru</th>
@@ -1432,9 +1429,9 @@ export default function PersuratanPage() {
                     currentMasuk.map(surat => (
                       <tr key={surat.id}>
                         <td>{surat.tanggal}</td>
-                        <td style={{ fontWeight: 600 }}>{surat.pengirim}</td>
-                        <td><span style={{ fontWeight: 600, color: 'var(--primary)', background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', fontSize: '0.85rem' }}>{surat.noSurat || '-'}</span></td>
-                        <td>{surat.perihal}</td>
+                        <td style={{ fontWeight: 600 }}>{surat.namaSurat}</td>
+                        <td><span style={{ fontWeight: 600, color: 'var(--primary)', background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', fontSize: '0.85rem' }}>{surat.pengirim || '-'}</span></td>
+
                         <td style={{ textAlign: 'center' }}>
                           {surat.fileScan ? (
                             <a href={surat.fileScan} target="_blank" rel="noopener noreferrer" className="btn" style={{ background: '#dcfce7', color: '#16a34a', padding: '6px 12px', fontSize: '0.8rem' }}>

@@ -42,26 +42,31 @@ export async function GET() {
 
     let dataMasuk: any[] = [];
     if (sheetMasuk) {
+      await sheetMasuk.loadHeaderRow();
+      const headers = sheetMasuk.headerValues.map(h => h?.toUpperCase().trim() || '');
       const rowsMasuk = await sheetMasuk.getRows();
-      // We don't know the exact columns for SURAT MASUK yet, let's just grab everything raw
+      
+      const headerTanggal = headers.find(h => h.includes('TANGGAL') || h.includes('TGL')) || 'TANGGAL';
+      const headerNamaSurat = headers.find(h => h.includes('NAMA SURAT') || h.includes('PERIHAL')) || 'NAMA SURAT';
+      const headerPengirim = headers.find(h => h.includes('ASAL') || h.includes('PENGIRIM')) || 'ASAL SURAT';
+      const headerFile = headers.find(h => h.includes('FILE') || h.includes('SCAN')) || 'FILE/SCAN SURAT';
+
       dataMasuk = rowsMasuk.map((row, index) => {
-        // Assuming standard columns like TANGGAL, PENGIRIM, NOMOR SURAT, PERIHAL, FILE
         return {
           id: index,
           rowNumber: row.rowNumber,
-          tanggal: row.get('TANGGAL') || row.get('TGL MASUK') || row.get('TANGGAL TERIMA') || '',
-          pengirim: row.get('PENGIRIM') || row.get('ASAL SURAT') || '',
-          noSurat: row.get('NO. SURAT') || row.get('NOMOR SURAT') || '',
-          perihal: row.get('PERIHAL') || row.get('ISI RINGKAS') || row.get('NAMA SURAT') || '',
+          tanggal: row.get(headerTanggal) || '',
+          namaSurat: row.get(headerNamaSurat) || '',
+          pengirim: row.get(headerPengirim) || '',
           fileScan: (() => {
-            const val = row.get('FILE/SCAN SURAT') || row.get('FILE') || '';
+            const val = row.get(headerFile) || '';
             if (val.toLowerCase().includes('klik disini') || !val.includes('http')) {
               return '';
             }
             return val;
           })()
         };
-      }).filter(item => item.noSurat || item.perihal);
+      }).filter(item => item.namaSurat || item.pengirim || item.fileScan);
     }
 
     let listTopik: string[] = [];
