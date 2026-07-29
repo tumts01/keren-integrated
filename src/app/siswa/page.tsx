@@ -739,6 +739,81 @@ export default function SiswaPage() {
     XLSX.writeFile(workbook, `Data_Siswa_${selectedTahun === 'Semua' ? 'All' : selectedTahun}.xlsx`);
   };
 
+  const handleExportMissingNisnNik = () => {
+    const missingData = filteredData.filter(s => !s.nisn || s.nisn.trim() === '' || !s.nik || s.nik.trim() === '');
+    if (missingData.length === 0) {
+      alert('Tidak ada siswa dengan NISN atau NIK kosong pada filter saat ini.');
+      return;
+    }
+
+    let rowsHtml = '';
+    missingData.forEach((s, i) => {
+      rowsHtml += `
+        <tr>
+          <td>${i + 1}</td>
+          <td style="text-align: left; padding-left: 8px; font-weight: bold;">${s.nama}</td>
+          <td>${s.rombel}</td>
+          <td style="color: #ef4444; font-weight: bold;">${s.nisn || 'KOSONG'}</td>
+          <td style="color: #ef4444; font-weight: bold;">${s.nik || 'KOSONG'}</td>
+          <td style="text-align: left; padding-left: 8px;">${s.tempatLahir}, ${s.tanggalLahir}</td>
+          <td style="text-align: left; padding-left: 8px;">${s.namaIbu}</td>
+          <td>${s.status}</td>
+        </tr>
+      `;
+    });
+
+    const printHtml = `
+      <html>
+      <head>
+        <title>Daftar Siswa NISN/NIK Kosong</title>
+        <style>
+          @page { size: 215mm 330mm portrait; margin: 15mm; }
+          body { font-family: 'Arial', sans-serif; font-size: 10pt; margin: 0; padding: 0; }
+          .header { text-align: center; margin-bottom: 20px; }
+          .header h2 { margin: 0 0 5px 0; font-size: 14pt; font-weight: bold; text-transform: uppercase; }
+          .header p { margin: 0; font-size: 10pt; color: #333; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          th, td { border: 1px solid black; padding: 6px; text-align: center; font-size: 9pt; vertical-align: middle; }
+          th { font-weight: bold; background-color: #f1f5f9; text-transform: uppercase; }
+          @media print { body { -webkit-print-color-adjust: exact; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h2>DAFTAR SISWA DENGAN NISN/NIK KOSONG</h2>
+          <p>Filter Tahun Ajaran: ${selectedTahun === 'Semua' ? 'Semua Tahun' : selectedTahun} | Filter Kelas: ${selectedTingkat === 'Semua' ? 'Semua' : selectedTingkat} - ${selectedRombel === 'Semua' ? 'Semua' : selectedRombel}</p>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 30px;">No</th>
+              <th>Nama Siswa</th>
+              <th style="width: 60px;">Kelas</th>
+              <th>NISN</th>
+              <th>NIK</th>
+              <th>Tempat, Tgl Lahir</th>
+              <th>Nama Ibu</th>
+              <th style="width: 60px;">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const win = window.open('', '_blank');
+    if (!win) {
+      alert("Popup browser diblokir! Tolong izinkan popup untuk mencetak.");
+      return;
+    }
+    win.document.write(printHtml);
+    win.document.close();
+    setTimeout(() => win.print(), 500);
+  };
+
   return (
     <div className={styles.container}>
       {/* Print Modal */}
@@ -873,6 +948,9 @@ export default function SiswaPage() {
             </div>
             <button onClick={handleExportExcel} className="btn btn-gold" style={{ marginRight: '8px' }}>
               <i className="fas fa-file-excel"></i> Export Excel
+            </button>
+            <button onClick={handleExportMissingNisnNik} className="btn" style={{ marginRight: '8px', background: '#ef4444', color: 'white', borderColor: '#ef4444' }} title="Cetak data siswa yang NISN atau NIK nya kosong">
+              <i className="fas fa-exclamation-circle"></i> Cek NISN/NIK Kosong
             </button>
             <button onClick={() => setShowPresensiModal(true)} className="btn btn-primary" style={{ background: "linear-gradient(135deg,#10b981,#059669)", borderColor: "#10b981", marginRight: "8px" }}>
               <i className="fas fa-calendar-check"></i> Cetak Absensi
