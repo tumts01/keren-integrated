@@ -618,14 +618,14 @@ function TabRekap({ onPrint }: { onPrint: (url: string) => void }) {
             <thead>
               <tr>
                 <th>No BON</th><th>Tanggal</th><th>Pemohon</th><th>Keperluan</th>
-                <th>Diminta</th><th>Status</th><th style={{ minWidth: 160 }}>Aksi</th>
+                <th>Diminta</th><th>Realisasi</th><th>Status</th><th style={{ minWidth: 160 }}>Aksi</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className={styles.emptyCell}><i className="fas fa-spinner fa-spin"></i> Memuat...</td></tr>
+                <tr><td colSpan={8} className={styles.emptyCell}><i className="fas fa-spinner fa-spin"></i> Memuat...</td></tr>
               ) : data.length === 0 ? (
-                <tr><td colSpan={7} className={styles.emptyCell}>Tidak ada data BON</td></tr>
+                <tr><td colSpan={8} className={styles.emptyCell}>Tidak ada data BON</td></tr>
               ) : data.map((item, idx) => (
                 <tr key={idx}>
                   <td style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '0.78rem' }}>{item['NoBon'] || item['ID'] || '-'}</td>
@@ -636,6 +636,9 @@ function TabRekap({ onPrint }: { onPrint: (url: string) => void }) {
                   </td>
                   <td style={{ maxWidth: 180, fontSize: '0.82rem' }}>{item['Keperluan'] || '-'}</td>
                   <td style={{ fontWeight: 600, fontSize: '0.85rem' }}>{formatRp(item['JumlahDiminta'] || item['JumlahUang'])}</td>
+                  <td style={{ fontWeight: 600, fontSize: '0.85rem', color: '#10b981' }}>
+                    {item['JumlahRealisasi'] ? formatRp(item['JumlahRealisasi']) : '-'}
+                  </td>
                   <td>
                     <span className={`${styles.badge} ${(item['Status'] || '').toLowerCase() === 'selesai' ? styles.badgeOk : styles.badgePending}`}>
                       {item['Status'] || 'Draft'}

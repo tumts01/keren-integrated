@@ -70,6 +70,7 @@ export async function POST(request: Request) {
     const bonRow = rows.find(r => r.get('NoBon') === noBon || r.get('ID') === bonId);
     if (bonRow) {
       bonRow.set('Status', 'Selesai');
+      bonRow.set('JumlahRealisasi', jumlahRealisasi);
       await bonRow.save();
     }
 
@@ -136,6 +137,15 @@ export async function PATCH(request: Request) {
     if (newUrlBuktiFoto) buktiRow.set('URLBuktiFoto', newUrlBuktiFoto);
 
     await buktiRow.save();
+
+    // Update BonData with new JumlahRealisasi
+    const bonSheet = doc.sheetsByTitle['BonData'];
+    const bonRows = await bonSheet.getRows();
+    const bonRow = bonRows.find(r => r.get('NoBon') === buktiRow.get('NoBon') || r.get('ID') === buktiRow.get('BonID'));
+    if (bonRow) {
+      bonRow.set('JumlahRealisasi', jumlahRealisasi);
+      await bonRow.save();
+    }
 
     return NextResponse.json({ success: true, sisa });
   } catch (error: any) {
