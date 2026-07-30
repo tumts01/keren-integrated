@@ -65,7 +65,24 @@ export async function GET(request: Request) {
     const sheet = doc.sheetsByTitle['BonData'];
     const rows = await sheet.getRows();
 
-    let data = rows.map(row => row.toObject()).filter(r => r['NoBon'] || r['ID']);
+    const buktiSheet = doc.sheetsByTitle['BelanjaBukti'];
+    let buktiData: any[] = [];
+    if (buktiSheet) {
+      const buktiRows = await buktiSheet.getRows();
+      buktiData = buktiRows.map(r => r.toObject());
+    }
+
+    let data = rows.map(row => {
+      const obj = row.toObject();
+      if (!obj['JumlahRealisasi']) {
+        const id = obj['NoBon'] || obj['ID'];
+        const b = buktiData.find(b => b['NoBon'] === id || b['BonID'] === id);
+        if (b) {
+          obj['JumlahRealisasi'] = b['JumlahRealisasi'];
+        }
+      }
+      return obj;
+    }).filter(r => r['NoBon'] || r['ID']);
     data = data.reverse();
 
     if (search) {
