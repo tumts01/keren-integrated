@@ -81,6 +81,39 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { tanggal, jamKe, kelas, mapel, guru, tahunAjaran, presensi, siswaList } = body;
 
+    if (body.action === 'delete' && body.id) {
+      const doc = await withRetry(() => getPresensiDoc());
+      const sheet = doc.sheetsByTitle['PRESENSI SISWA'];
+      if (!sheet) return NextResponse.json({ success: false, error: 'Tab tidak ditemukan' }, { status: 404 });
+      const rows = await withRetry(() => sheet.getRows());
+      const rowToDelete = rows.find(r => r.get('ID') === body.id);
+      if (rowToDelete) {
+        await withRetry(() => rowToDelete.delete());
+        return NextResponse.json({ success: true, message: 'Berhasil dihapus' });
+      }
+      return NextResponse.json({ success: false, error: 'Data tidak ditemukan' }, { status: 404 });
+    }
+
+    if (body.action === 'update' && body.id && body.status) {
+      const doc = await withRetry(() => getPresensiDoc());
+      const sheet = doc.sheetsByTitle['PRESENSI SISWA'];
+      if (!sheet) return NextResponse.json({ success: false, error: 'Tab tidak ditemukan' }, { status: 404 });
+      const rows = await withRetry(() => sheet.getRows());
+      const rowToUpdate = rows.find(r => r.get('ID') === body.id);
+      if (rowToUpdate) {
+        if (body.status === 'H') {
+          await withRetry(() => rowToUpdate.delete()); // If Hadir, remove from record
+        } else {
+          rowToUpdate.set('KEHADIRAN', body.status);
+          await withRetry(() => rowToUpdate.save());
+        }
+        return NextResponse.json({ success: true, message: 'Berhasil diupdate' });
+      }
+      return NextResponse.json({ success: false, error: 'Data tidak ditemukan' }, { status: 404 });
+    }
+
+
+
     if (!tanggal || !jamKe || !kelas || !mapel || !presensi || !siswaList) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
     }

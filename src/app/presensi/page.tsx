@@ -131,6 +131,8 @@ export default function PresensiPage() {
   const [rsFilterNama, setRsFilterNama] = useState('');
   const [rsFilterKelas, setRsFilterKelas] = useState('');
   const [rsFilterDomisili, setRsFilterDomisili] = useState('');
+  const [editRsId, setEditRsId] = useState<string | null>(null);
+  const [editRsStatus, setEditRsStatus] = useState<string>('');
 
   // Rekap Piket
   const [rekapPiketData, setRekapPiketData] = useState<any[]>([]);
@@ -230,6 +232,60 @@ export default function PresensiPage() {
       }
     } catch (e) { console.error(e); }
     finally { setRekapSiswaLoading(false); }
+  };
+
+  const handleSaveRsEdit = async (id: string) => {
+    if (!editRsStatus) return;
+    const isHadir = editRsStatus === 'H';
+    if (isHadir && !window.confirm('Jika diubah ke Hadir (H), catatan presensi (S/I/A) akan dihapus secara permanen. Lanjutkan?')) {
+      return;
+    }
+    
+    setRekapSiswaLoading(true);
+    try {
+      const res = await fetch('/api/presensi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update', id, status: editRsStatus })
+      });
+      const data = await res.json();
+      if (data.success) {
+        Swal.fire('Berhasil', 'Presensi berhasil diperbarui', 'success');
+        setEditRsId(null);
+        setEditRsStatus('');
+        fetchRekapSiswa(); // Refresh data
+      } else {
+        Swal.fire('Gagal', data.error || 'Gagal memperbarui', 'error');
+      }
+    } catch (e) {
+      Swal.fire('Error', 'Terjadi kesalahan jaringan', 'error');
+    } finally {
+      setRekapSiswaLoading(false);
+    }
+  };
+
+  const handleDeleteRs = async (id: string) => {
+    if (!window.confirm('Yakin ingin menghapus data presensi ini?')) return;
+    
+    setRekapSiswaLoading(true);
+    try {
+      const res = await fetch('/api/presensi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', id })
+      });
+      const data = await res.json();
+      if (data.success) {
+        Swal.fire('Berhasil', 'Presensi berhasil dihapus', 'success');
+        fetchRekapSiswa(); // Refresh data
+      } else {
+        Swal.fire('Gagal', data.error || 'Gagal menghapus', 'error');
+      }
+    } catch (e) {
+      Swal.fire('Error', 'Terjadi kesalahan jaringan', 'error');
+    } finally {
+      setRekapSiswaLoading(false);
+    }
   };
 
   // Hitung jumlah jam dari field JAM KE (comma-separated: "1,2" = 2 jam)
@@ -1238,7 +1294,7 @@ export default function PresensiPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                       <thead>
                         <tr style={{ background: '#1e3a5f', color: 'white' }}>
-                          {['No','Tanggal','Nama Siswa','Kelas','Domisili','Mata Pelajaran','Jam Ke','Ket.'].map(h => (
+                          {['No','Tanggal','Nama Siswa','Kelas','Domisili','Mata Pelajaran','Jam Ke','Ket.', 'Aksi'].map(h => (
                             <th key={h} style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>{h}</th>
                           ))}
                         </tr>
@@ -1256,11 +1312,37 @@ export default function PresensiPage() {
                               <span style={{ background: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600 }}>Jam {r.jamKe}</span>
                             </td>
                             <td style={{ padding: '7px 12px', textAlign: 'center' }}>
-                              <span style={{
-                                background: r.kehadiran === 'A' ? '#fef2f2' : r.kehadiran === 'I' ? '#fff7ed' : '#fefce8',
-                                color: r.kehadiran === 'A' ? '#dc2626' : r.kehadiran === 'I' ? '#ea580c' : '#ca8a04',
-                                padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700
-                              }}>{r.kehadiran}</span>
+                              {editRsId === r.id ? (
+                                <select 
+                                  value={editRsStatus} 
+                                  onChange={(e) => setEditRsStatus(e.target.value)}
+                                  style={{ padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.8rem' }}
+                                >
+                                  <option value="S">Sakit (S)</option>
+                                  <option value="I">Izin (I)</option>
+                                  <option value="A">Alpha (A)</option>
+                                  <option value="H">Hadir (Hapus)</option>
+                                </select>
+                              ) : (
+                                <span style={{
+                                  background: r.kehadiran === 'A' ? '#fef2f2' : r.kehadiran === 'I' ? '#fff7ed' : '#fefce8',
+                                  color: r.kehadiran === 'A' ? '#dc2626' : r.kehadiran === 'I' ? '#ea580c' : '#ca8a04',
+                                  padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700
+                                }}>{r.kehadiran}</span>
+                              )}
+                            </td>
+                            <td style={{ padding: '7px 12px', textAlign: 'center' }}>
+                              {editRsId === r.id ? (
+                                <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                                  <button onClick={() => handleSaveRsEdit(r.id)} style={{ background: '#16a34a', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }} title="Simpan"><i className="fas fa-check"></i></button>
+                                  <button onClick={() => setEditRsId(null)} style={{ background: '#94a3b8', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }} title="Batal"><i className="fas fa-times"></i></button>
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                                  <button onClick={() => { setEditRsId(r.id); setEditRsStatus(r.kehadiran); }} style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }} title="Edit"><i className="fas fa-edit"></i></button>
+                                  <button onClick={() => handleDeleteRs(r.id)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }} title="Hapus"><i className="fas fa-trash"></i></button>
+                                </div>
+                              )}
                             </td>
                           </tr>
                         ))}
