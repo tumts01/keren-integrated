@@ -83,6 +83,23 @@ export async function GET(request: Request) {
       }
       return obj;
     }).filter(r => r['NoBon'] || r['ID']);
+    // Hitung saldo per pemohon (sebelum filter/search)
+    const saldoMap: Record<string, number> = {};
+    data.forEach(item => {
+      const user = (item['Nama'] || '').trim();
+      if (!user) return;
+      if (!saldoMap[user]) saldoMap[user] = 0;
+
+      const dipakai = parseFloat(item['SaldoTerpakai'] || '0');
+      saldoMap[user] -= dipakai;
+
+      if ((item['Status'] || '').toLowerCase() === 'selesai') {
+         const diminta = parseFloat(item['JumlahDiminta'] || item['JumlahUang'] || '0');
+         const realisasi = parseFloat(item['JumlahRealisasi'] || '0');
+         saldoMap[user] += (diminta - realisasi);
+      }
+    });
+
     data = data.reverse();
 
     if (search) {
@@ -104,7 +121,7 @@ export async function GET(request: Request) {
     const belumLapor = data.filter(i => (i['Status'] || '').toLowerCase() !== 'selesai').length;
     const totalNominal = data.reduce((s, i) => s + (parseFloat(i['JumlahDiminta'] || i['JumlahUang'] || '0')), 0);
 
-    return NextResponse.json({ data, stats: { total, selesai, belumLapor, totalNominal } });
+    return NextResponse.json({ data, stats: { total, selesai, belumLapor, totalNominal }, saldoMap });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

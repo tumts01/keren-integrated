@@ -1051,6 +1051,8 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
   const [jumlahDiminta, setJumlahDiminta] = useState('');
   const [rincian, setRincian] = useState([{ barang: '', qty: 1, satuan: 'PCS', harga: 0 }]);
   const [keterangan, setKeterangan] = useState('');
+  const [gunakanSaldo, setGunakanSaldo] = useState('');
+  const [saldoMap, setSaldoMap] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [sukses, setSukses] = useState(false);
   const [savedNoBon, setSavedNoBon] = useState('');
@@ -1075,6 +1077,9 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
       }
     });
     fetch('/api/bon/toko').then(r => r.json()).then(j => setTokoList(j.data || []));
+    fetch('/api/bon').then(r => r.json()).then(j => {
+      if (j.saldoMap) setSaldoMap(j.saldoMap);
+    });
   }, []);
 
   const totalRincian = rincian.reduce((s, i) => s + (i.qty * i.harga), 0);
@@ -1088,10 +1093,11 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
     e.preventDefault();
     setLoading(true);
     const jumlah = jumlahDiminta.replace(/[^0-9]/g,'') || String(totalRincian);
+    const saldo = gunakanSaldo.replace(/[^0-9]/g,'') || '0';
     const res = await fetch('/api/bon/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nama, jabatan, tanggal, keperluan, jumlahDiminta: jumlah, rincian, penerima: penerima.filter(p => p.nama), keterangan, tahunAjaran: '2026/2027' })
+      body: JSON.stringify({ nama, jabatan, tanggal, keperluan, jumlahDiminta: jumlah, saldoTerpakai: saldo, rincian, penerima: penerima.filter(p => p.nama), keterangan, tahunAjaran: '2026/2027' })
     });
     const json = await res.json();
     if (json.success) { setSavedNoBon(json.noBon); setSukses(true); }
@@ -1161,6 +1167,38 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
             />
           </div>
         </div>
+
+        {nama && saldoMap[nama] > 0 && (
+          <div className={styles.formRow} style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
+            <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+              <label>Saldo Tersedia</label>
+              <div style={{ fontWeight: 600, color: '#059669', fontSize: '1.1rem' }}>Rp {Number(saldoMap[nama]).toLocaleString('id-ID')}</div>
+              <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Sisa uang dari BON sebelumnya</div>
+            </div>
+            <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+              <label>Gunakan Saldo (Rp)</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                className={styles.input}
+                value={gunakanSaldo === '' ? '' : Number(gunakanSaldo.replace(/[^0-9]/g,'')||0).toLocaleString('id-ID')}
+                onChange={e => {
+                  let raw = e.target.value.replace(/[^0-9]/g,'');
+                  if (Number(raw) > saldoMap[nama]) raw = String(saldoMap[nama]);
+                  setGunakanSaldo(raw);
+                }}
+                placeholder="Maksimal: "
+              />
+            </div>
+          </div>
+        )}
+
+        {gunakanSaldo && Number(gunakanSaldo) > 0 && (
+          <div style={{ background: '#eff6ff', padding: '12px 16px', borderRadius: '8px', color: '#1e3a8a', fontWeight: 600, marginBottom: '16px' }}>
+            <i className="fas fa-info-circle" style={{ marginRight: 8 }}></i>
+            Info: Kas Tunai yang akan diterima dari Bendahara adalah Rp {Number(Math.max(0, (Number(jumlahDiminta.replace(/[^0-9]/g,'')||0) - Number(gunakanSaldo)))).toLocaleString('id-ID')}
+          </div>
+        )}
 
         <div className={styles.formGroup}>
           <label>Keperluan / Tujuan Belanja <span className={styles.required}>*</span></label>

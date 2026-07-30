@@ -158,9 +158,21 @@ export default function CetakBonPage() {
               </tr>
             ))}
             <tr className={styles.totalRow}>
-              <td colSpan={5} style={{ textAlign: 'right', fontWeight: 700 }}>TOTAL</td>
+              <td colSpan={5} style={{ textAlign: 'right', fontWeight: 700 }}>TOTAL PENGAJUAN</td>
               <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatRp(totalRincian)}</td>
             </tr>
+            {Number(bon['SaldoTerpakai'] || '0') > 0 && (
+              <>
+                <tr>
+                  <td colSpan={5} style={{ textAlign: 'right', fontStyle: 'italic' }}>Saldo Terpakai (Sisa Sebelumnya)</td>
+                  <td style={{ textAlign: 'right', fontStyle: 'italic' }}>- {formatRp(bon['SaldoTerpakai'])}</td>
+                </tr>
+                <tr className={styles.totalRow}>
+                  <td colSpan={5} style={{ textAlign: 'right', fontWeight: 700 }}>KAS DIBERIKAN BENDAHARA</td>
+                  <td style={{ textAlign: 'right', fontWeight: 700, color: '#15803d' }}>{formatRp(Math.max(0, totalRincian - Number(bon['SaldoTerpakai'])))}</td>
+                </tr>
+              </>
+            )}
           </tbody>
         </table>
 

@@ -58,7 +58,7 @@ async function generateNoBon(sheet: any, namaDepan: string, tahunAjaran: string)
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { nama, jabatan, tanggal, keperluan, jumlahDiminta, rincian, penerima, keterangan, tahunAjaran } = body;
+    const { nama, jabatan, tanggal, keperluan, jumlahDiminta, rincian, penerima, keterangan, tahunAjaran, saldoTerpakai } = body;
 
     if (!nama || !keperluan || !rincian || !tanggal) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
@@ -66,6 +66,7 @@ export async function POST(request: Request) {
 
     const namaDepan = nama.split(' ').find((w: string) => w.length > 2) || nama.split(' ')[0];
     const nominalDiminta = parseFloat(jumlahDiminta || '0');
+    const nominalSaldoTerpakai = parseFloat(saldoTerpakai || '0');
     const terbilangText = terbilang(nominalDiminta) + ' rupiah';
 
     const doc = await getBontuDoc();
@@ -85,6 +86,7 @@ export async function POST(request: Request) {
       Jabatan: jabatan || 'Staf',
       Keperluan: keperluan,
       JumlahDiminta: String(nominalDiminta),
+      SaldoTerpakai: String(nominalSaldoTerpakai),
       Terbilang: terbilangText,
       RincianJSON: JSON.stringify(rincian),
       PenerimaJSON: JSON.stringify(penerima || []),
