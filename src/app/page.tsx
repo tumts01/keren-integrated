@@ -46,10 +46,7 @@ export default function Home() {
         const myName = foundProfile.nama.toLowerCase();
         const myTagihan = surat.suratKeluar.filter((s: any) => 
           !s.fileScan && 
-          (
-            (s.pj && s.pj.toLowerCase().includes(myName)) || 
-            (s.yangDitugaskan && s.yangDitugaskan.toLowerCase().includes(myName))
-          )
+          s.pj && s.pj.toLowerCase().includes(myName)
         );
         setTagihanList(myTagihan);
       }
@@ -152,7 +149,7 @@ export default function Home() {
             </div>
             <div>
               <h3 style={{ margin: '0 0 4px 0', color: '#991b1b', fontSize: '1.2rem', fontWeight: 700 }}>Perhatian! Ada Tagihan Arsip Surat</h3>
-              <p style={{ margin: '0 0 12px 0', color: '#b91c1c', fontSize: '0.95rem' }}>Anda ditugaskan atau menjadi PJ pada <strong>{tagihanList.length} surat</strong> yang arsip PDF-nya belum diunggah.</p>
+              <p style={{ margin: '0 0 12px 0', color: '#b91c1c', fontSize: '0.95rem' }}>Anda menjadi Pembuat Surat (PJ) pada <strong>{tagihanList.length} surat</strong> yang arsip PDF-nya belum diunggah.</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {tagihanList.slice(0, 3).map(s => (
                   <span key={s.id} style={{ background: 'white', color: '#7f1d1d', padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', border: '1px solid #fca5a5', fontWeight: 600 }}>
