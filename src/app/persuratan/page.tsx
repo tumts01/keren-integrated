@@ -1736,8 +1736,12 @@ export default function PersuratanPage() {
                           {generateGuruTugas.map((item, i) => (
                             <tr key={i}>
                               <td style={{ border: '1px solid black', padding: '8px', textAlign: 'center' }}>{i + 1}</td>
-                              <td style={{ border: '1px solid black', padding: '8px' }}>{item.guru.nama}</td>
-                              <td style={{ border: '1px solid black', padding: '8px', textAlign: 'center', textTransform: 'uppercase' }}>{item.tugas}</td>
+                              <td style={{ border: '1px solid black', padding: '8px' }}>
+                                {(item.guru.nama || '').replace(/\b\w+/g, (txt: string) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase())}
+                              </td>
+                              <td style={{ border: '1px solid black', padding: '8px', textAlign: 'center' }}>
+                                {(item.tugas || '').replace(/\b\w+/g, (txt: string) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase())}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
