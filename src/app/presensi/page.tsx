@@ -133,6 +133,7 @@ export default function PresensiPage() {
   const [rsFilterDomisili, setRsFilterDomisili] = useState('');
   const [editRsId, setEditRsId] = useState<string | null>(null);
   const [editRsStatus, setEditRsStatus] = useState<string>('');
+  const [editRsJam, setEditRsJam] = useState<string>('');
 
   // Rekap Piket
   const [rekapPiketData, setRekapPiketData] = useState<any[]>([]);
@@ -236,23 +237,38 @@ export default function PresensiPage() {
 
   const handleSaveRsEdit = async (id: string) => {
     if (!editRsStatus) return;
+    
     const isHadir = editRsStatus === 'H';
-    if (isHadir && !window.confirm('Jika diubah ke Hadir (H), catatan presensi (S/I/A) akan dihapus secara permanen. Lanjutkan?')) {
-      return;
-    }
+    const confirmMsg = isHadir 
+      ? 'Jika diubah ke Hadir (H), catatan presensi (S/I/A) ini akan dihapus secara permanen. Lanjutkan?'
+      : 'Yakin ingin menyimpan perubahan presensi ini?';
+
+    const result = await Swal.fire({
+      title: 'Konfirmasi Simpan',
+      text: confirmMsg,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#16a34a',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Ya, Simpan',
+      cancelButtonText: 'Batal'
+    });
+
+    if (!result.isConfirmed) return;
     
     setRekapSiswaLoading(true);
     try {
       const res = await fetch('/api/presensi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'update', id, status: editRsStatus })
+        body: JSON.stringify({ action: 'update', id, status: editRsStatus, jamKe: editRsJam })
       });
       const data = await res.json();
       if (data.success) {
         Swal.fire('Berhasil', 'Presensi berhasil diperbarui', 'success');
         setEditRsId(null);
         setEditRsStatus('');
+        setEditRsJam('');
         fetchRekapSiswa(); // Refresh data
       } else {
         Swal.fire('Gagal', data.error || 'Gagal memperbarui', 'error');
@@ -265,7 +281,18 @@ export default function PresensiPage() {
   };
 
   const handleDeleteRs = async (id: string) => {
-    if (!window.confirm('Yakin ingin menghapus data presensi ini?')) return;
+    const result = await Swal.fire({
+      title: 'Konfirmasi Hapus',
+      text: 'Yakin ingin menghapus data presensi ini secara permanen?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal'
+    });
+
+    if (!result.isConfirmed) return;
     
     setRekapSiswaLoading(true);
     try {
@@ -1309,7 +1336,16 @@ export default function PresensiPage() {
                             <td style={{ padding: '7px 12px', color: '#64748b' }}>{r.domisili || '-'}</td>
                             <td style={{ padding: '7px 12px', color: '#475569' }}>{r.mapel}</td>
                             <td style={{ padding: '7px 12px', textAlign: 'center' }}>
-                              <span style={{ background: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600 }}>Jam {r.jamKe}</span>
+                              {editRsId === r.id ? (
+                                <input
+                                  type="text"
+                                  value={editRsJam}
+                                  onChange={(e) => setEditRsJam(e.target.value)}
+                                  style={{ padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.8rem', width: '60px', textAlign: 'center' }}
+                                />
+                              ) : (
+                                <span style={{ background: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600 }}>Jam {r.jamKe}</span>
+                              )}
                             </td>
                             <td style={{ padding: '7px 12px', textAlign: 'center' }}>
                               {editRsId === r.id ? (
@@ -1339,7 +1375,7 @@ export default function PresensiPage() {
                                 </div>
                               ) : (
                                 <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                                  <button onClick={() => { setEditRsId(r.id); setEditRsStatus(r.kehadiran); }} style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }} title="Edit"><i className="fas fa-edit"></i></button>
+                                  <button onClick={() => { setEditRsId(r.id); setEditRsStatus(r.kehadiran); setEditRsJam(r.jamKe); }} style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }} title="Edit"><i className="fas fa-edit"></i></button>
                                   <button onClick={() => handleDeleteRs(r.id)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }} title="Hapus"><i className="fas fa-trash"></i></button>
                                 </div>
                               )}

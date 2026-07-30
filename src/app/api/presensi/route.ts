@@ -105,6 +105,9 @@ export async function POST(request: Request) {
           await withRetry(() => rowToUpdate.delete()); // If Hadir, remove from record
         } else {
           rowToUpdate.set('KEHADIRAN', body.status);
+          if (body.jamKe) {
+            rowToUpdate.set('JAM KE', body.jamKe);
+          }
           await withRetry(() => rowToUpdate.save());
         }
         return NextResponse.json({ success: true, message: 'Berhasil diupdate' });
