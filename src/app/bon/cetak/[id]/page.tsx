@@ -53,14 +53,16 @@ export default function CetakBonPage() {
   return (
     <div className={styles.page}>
       {/* Print Button (hidden when printing) */}
-      <div className={styles.noPrint}>
-        <button className={styles.printBtn} onClick={() => window.print()}>
-          <i className="fas fa-print"></i> Cetak / Unduh PDF
-        </button>
-        <button className={styles.backBtn} onClick={() => window.close()}>
-          <i className="fas fa-times"></i> Tutup
-        </button>
-      </div>
+      {(!inIframe) && (
+        <div className={styles.noPrint}>
+          <button className={styles.printBtn} onClick={() => window.print()}>
+            <i className="fas fa-print"></i> Cetak / Unduh PDF
+          </button>
+          <button className={styles.backBtn} onClick={() => window.close()}>
+            <i className="fas fa-times"></i> Tutup
+          </button>
+        </div>
+      )}
 
       {/* A4 Document */}
       <div className={styles.doc}>

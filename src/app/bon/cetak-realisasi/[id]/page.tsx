@@ -59,14 +59,16 @@ export default function CetakRealisasiPage() {
 
   return (
     <div className={styles.page}>
-      <div className={styles.noPrint}>
-        <button className={styles.printBtn} onClick={() => window.print()}>
-          <i className="fas fa-print"></i> Cetak / Unduh PDF
-        </button>
-        <button className={styles.backBtn} onClick={() => window.close()}>
-          <i className="fas fa-times"></i> Tutup
-        </button>
-      </div>
+      {(!inIframe) && (
+        <div className={styles.noPrint}>
+          <button className={styles.printBtn} onClick={() => window.print()}>
+            <i className="fas fa-print"></i> Cetak / Unduh PDF
+          </button>
+          <button className={styles.backBtn} onClick={() => window.close()}>
+            <i className="fas fa-times"></i> Tutup
+          </button>
+        </div>
+      )}
 
       {/* ===== HALAMAN 1: LAPORAN REALISASI ===== */}
       <div className={styles.doc}>
