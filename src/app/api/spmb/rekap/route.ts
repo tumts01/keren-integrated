@@ -7,7 +7,9 @@ export async function GET() {
     const sheet = doc.sheetsByTitle['SPMB'];
 
     if (!sheet) {
-      return NextResponse.json({ success: true, data: [] });
+      return NextResponse.json({ success: true, data: [] }, {
+        headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
+      });
     }
 
     const rows = await sheet.getRows();
@@ -36,7 +38,9 @@ export async function GET() {
     }).filter(item => item.namaLengkap !== ''); // filter out empty rows
 
     // Reverse to show newest first
-    return NextResponse.json({ success: true, data: data.reverse() });
+    return NextResponse.json({ success: true, data: data.reverse() }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
+    });
 
   } catch (error: any) {
     console.error('Fetch SPMB Error:', error);

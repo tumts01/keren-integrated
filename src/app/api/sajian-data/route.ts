@@ -197,6 +197,8 @@ export async function GET() {
         guruStaf: gtkStats,
         siswa: siswaStats
       }
+    }, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' }
     });
 
   } catch (error: any) {

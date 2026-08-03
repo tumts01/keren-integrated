@@ -35,7 +35,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ rowNumbe
       prestasi: targetRow.get('Prestasi (Jika Ada)') || ''
     };
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
+    });
 
   } catch (error: any) {
     console.error('Fetch Cetak SPMB Error:', error);

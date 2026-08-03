@@ -180,13 +180,17 @@ export async function GET(request: Request) {
         }))
         .filter(r => r.nama && r.noWA.length >= 8)
         .sort((a, b) => a.nama.localeCompare(b.nama));
-      return NextResponse.json({ success: true, data });
+      return NextResponse.json({ success: true, data }, {
+        headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
+      });
     }
 
     // Default: kembalikan riwayat pengumuman
     const presensiDoc = await getPresensiDoc();
     const sheetPengumuman = presensiDoc.sheetsByTitle['PENGUMUMAN'];
-    if (!sheetPengumuman) return NextResponse.json({ success: true, data: [], total: 0 });
+    if (!sheetPengumuman) return NextResponse.json({ success: true, data: [], total: 0 }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
+    });
 
     const rows = await sheetPengumuman.getRows();
     const data = rows.map(r => ({
@@ -198,7 +202,9 @@ export async function GET(request: Request) {
       lampiran: r.get('Lampiran') || ''
     })).reverse();
 
-    return NextResponse.json({ success: true, data, total: data.length });
+    return NextResponse.json({ success: true, data, total: data.length }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
+    });
   } catch (error) {
     return NextResponse.json({ success: false, data: [], total: 0 });
   }

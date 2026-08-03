@@ -7,7 +7,9 @@ export async function GET() {
     const sheet = doc.sheetsByTitle['MasterToko'];
     const rows = await sheet.getRows();
     const data = rows.map(r => r.toObject()).filter(r => r['NamaToko']);
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
+    });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

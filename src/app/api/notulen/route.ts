@@ -31,7 +31,9 @@ export async function GET(request: Request) {
       dokumentasi: row.get('Dokumentasi') || '',
     })).reverse(); // Balik urutan agar yang terbaru di atas
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
+    });
   } catch (error: any) {
     console.error('API Notulen GET Error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

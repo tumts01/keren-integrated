@@ -20,7 +20,9 @@ export async function GET() {
       petugasDispo: row.get('PETUGAS DISPO') || ''
     })).filter(r => r.tanggal).reverse();
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data }, {
+      headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+    });
   } catch (error: any) {
     console.error('GET Dispo Error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

@@ -39,7 +39,9 @@ export async function GET() {
       }))
       .filter((r: any) => r.namaMapel);
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
+    });
   } catch (error) {
     console.error('Error fetching Mata Pelajaran:', error);
     return NextResponse.json({ success: false, error: 'Gagal mengambil data mata pelajaran' }, { status: 500 });

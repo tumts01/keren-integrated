@@ -35,6 +35,8 @@ export async function GET() {
     return NextResponse.json({ 
       success: true, 
       data: data.reverse() // terbaru di atas
+    }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
     });
   } catch (error: any) {
     console.error('Fetch LPJ Kegiatan Error:', error);

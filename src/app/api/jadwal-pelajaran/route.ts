@@ -114,7 +114,9 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({ success: true, data: parsedData });
+    return NextResponse.json({ success: true, data: parsedData }, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' }
+    });
   } catch (error: any) {
     console.error('Error fetching Jadwal Pelajaran:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

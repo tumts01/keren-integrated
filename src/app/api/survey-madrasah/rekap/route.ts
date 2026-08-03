@@ -36,7 +36,9 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({ success: true, data: rekap });
+    return NextResponse.json({ success: true, data: rekap }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
+    });
   } catch (error: any) {
     console.error('API Survey Rekap Error:', error);
     return NextResponse.json({ success: false, error: 'Gagal mengambil data rekap: ' + error.message }, { status: 500 });

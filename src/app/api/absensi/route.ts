@@ -97,7 +97,9 @@ export async function GET(request: Request) {
       });
     }
 
-    return NextResponse.json({ success: true, todayStatus, rekap, holidays });
+    return NextResponse.json({ success: true, todayStatus, rekap, holidays }, {
+      headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+    });
 
   } catch (error) {
     console.error('Absensi GET error:', error);

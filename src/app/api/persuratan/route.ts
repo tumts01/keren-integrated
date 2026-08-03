@@ -100,6 +100,8 @@ export async function GET() {
       instansiList,
       riwayatCetak,
       sheetTitles
+    }, {
+      headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
     });
   } catch (error: any) {
     console.error('Fetch Persuratan Error:', error);

@@ -64,7 +64,9 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data }, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' }
+    });
   } catch (error: any) {
     console.error('Fetch Guru Error:', error);
     return NextResponse.json({ success: false, error: 'Gagal mengambil data dari Database' }, { status: 500 });

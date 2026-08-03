@@ -100,7 +100,9 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
+    });
   } catch (error: any) {
     console.error('Fetch Loker Error:', error);
     return NextResponse.json({ success: false, error: 'Gagal mengambil data Loker Digital: ' + (error.message || String(error)) }, { status: 500 });

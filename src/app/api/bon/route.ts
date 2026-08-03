@@ -121,7 +121,9 @@ export async function GET(request: Request) {
     const belumLapor = data.filter(i => (i['Status'] || '').toLowerCase() !== 'selesai').length;
     const totalNominal = data.reduce((s, i) => s + (parseFloat(i['JumlahDiminta'] || i['JumlahUang'] || '0')), 0);
 
-    return NextResponse.json({ data, stats: { total, selesai, belumLapor, totalNominal }, saldoMap });
+    return NextResponse.json({ data, stats: { total, selesai, belumLapor, totalNominal }, saldoMap }, {
+      headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+    });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

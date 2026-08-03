@@ -85,7 +85,9 @@ export async function GET() {
       return records;
     });
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data }, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' }
+    });
   } catch (error: any) {
     console.error('Fetch Siswa Error:', error);
     return NextResponse.json({ success: false, error: 'Gagal mengambil data dari Database' }, { status: 500 });

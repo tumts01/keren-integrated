@@ -22,7 +22,9 @@ export async function GET() {
       guruDispo: row.get('GURU DISPO') || '',
     })).filter(r => r.tanggal || r.petugasPiket).reverse();
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data }, {
+      headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+    });
   } catch (error: any) {
     console.error('GET Jurnal Piket Error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

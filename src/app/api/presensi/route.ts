@@ -47,7 +47,9 @@ export async function GET(request: Request) {
       data = data.filter(r => r.tanggal === filterTanggal);
     }
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data }, {
+      headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+    });
   } catch (error: any) {
     console.error('GET Presensi Error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

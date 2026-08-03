@@ -70,6 +70,8 @@ export async function GET(request: Request) {
         thumbnail: f.thumbnailLink,
         createdTime: f.createdTime,
       })),
+    }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
     });
   } catch (error: any) {
     console.error('Arsip Foto API Error:', error);

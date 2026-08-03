@@ -141,6 +141,8 @@ export async function GET() {
       rekap: rekapArray,
       missingList: missingStudents,
       allActive: activeStudents
+    }, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' }
     });
 
   } catch (error: any) {
