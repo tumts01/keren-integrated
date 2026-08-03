@@ -60,7 +60,15 @@ export const uploadFileToDrive = async (
       },
     });
 
-    const result = await response.json();
+    const responseText = await response.text();
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (e) {
+      console.error('GAS HTML Response:', responseText.substring(0, 500));
+      throw new Error(`Google Apps Script tidak mengembalikan JSON. Cek konfigurasi Deploy Web App (Pastikan Execute as: Me, Access: Anyone).`);
+    }
+
     if (!result.success) {
       throw new Error(result.error || 'Unknown Error from GAS');
     }
