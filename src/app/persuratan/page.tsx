@@ -1410,7 +1410,7 @@ export default function PersuratanPage() {
                         <td>{surat.tanggal}</td>
                         <td><span style={{ fontWeight: 600, color: 'var(--primary)', background: '#f1f5f9', padding: '4px 8px', borderRadius: '4px', fontSize: '0.85rem' }}>{surat.noSurat || '-'}</span></td>
                         <td>{surat.namaSurat}</td>
-                        <td>{surat.yangDitugaskan || '-'}</td>
+                        <td style={{ maxWidth: '250px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={surat.yangDitugaskan || '-'}>{surat.yangDitugaskan || '-'}</td>
                         <td><span className={styles.badge} style={{ background: '#e0e7ff', color: '#4338ca' }}>{surat.topik || '-'}</span></td>
                         <td>{surat.pj}</td>
                         <td style={{ textAlign: 'center' }}>
