@@ -632,3 +632,30 @@
 }
 .printConfirmBtn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(124,58,237,0.4); }
 .printConfirmBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+@media (max-width: 768px) {
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+  .actions > select, .actions > .searchBox, .actions > button {
+    width: 100%;
+    margin: 0 !important;
+  }
+  .searchBox {
+    grid-column: 1 / -1;
+  }
+  .actions button {
+    padding: 8px 10px;
+    font-size: 0.75rem;
+    justify-content: center;
+  }
+  .statsGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .statCard:first-child {
+    grid-column: 1 / -1;
+  }
+}
