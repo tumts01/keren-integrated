@@ -4,6 +4,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import styles from './AddBon.module.css';
 
+const SATUAN_OPTIONS = [
+  'PCS','PACK','RIM','UNIT','BKS','SAK','EKOR','BOX','LUSIN','KG',
+  'LITER','METER','SET','LEMBAR','BOTOL','KARDUS','ROLL','JAM','KEGIATAN','BUAH','KALI','ORANG','BULAN'
+];
+
 export default function AddBonPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -155,10 +160,7 @@ export default function AddBonPage() {
                 <input type="text" placeholder="Nama Barang" className={styles.rincianInput} value={item.barang} onChange={e => updateRow(idx, 'barang', e.target.value)} required />
                 <input type="number" placeholder="QTY" className={styles.rincianInput} value={item.qty} onChange={e => updateRow(idx, 'qty', parseInt(e.target.value))} min={1} required />
                 <select className={styles.rincianInput} value={item.satuan} onChange={e => updateRow(idx, 'satuan', e.target.value)}>
-                  <option value="PCS">PCS</option>
-                  <option value="PACK">PACK</option>
-                  <option value="RIM">RIM</option>
-                  <option value="UNIT">UNIT</option>
+                  {SATUAN_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <input type="number" placeholder="Harga Satuan" className={styles.rincianInput} value={item.harga} onChange={e => updateRow(idx, 'harga', parseInt(e.target.value))} min={0} required />
                 

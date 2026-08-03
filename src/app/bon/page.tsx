@@ -5,7 +5,7 @@ import styles from './Bon.module.css';
 // ===== SATUAN OPTIONS =====
 const SATUAN_OPTIONS = [
   'PCS','PACK','RIM','UNIT','BKS','SAK','EKOR','BOX','LUSIN','KG',
-  'LITER','METER','SET','LEMBAR','BOTOL','KARDUS','ROLL','JAM','KEGIATAN','BUAH','KALI','ORANG'
+  'LITER','METER','SET','LEMBAR','BOTOL','KARDUS','ROLL','JAM','KEGIATAN','BUAH','KALI','ORANG','BULAN'
 ];
 
 // ===== HELPERS =====
