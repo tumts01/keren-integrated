@@ -10,7 +10,7 @@ interface SiswaEmis {
   kelas: string;
   tahunAjaran: string;
   masukEMIS: boolean;
-  emisValid: boolean;
+  emisValid: 'SAMA' | 'BEDA';
   tglMasukEMIS: string;
   tglEMISValid: string;
   asalSekolah: string;
@@ -69,8 +69,8 @@ export default function EmisPage() {
     if (filterKelas && s.kelas !== filterKelas) return false;
     if (filterMasuk === 'sudah' && !s.masukEMIS) return false;
     if (filterMasuk === 'belum' && s.masukEMIS) return false;
-    if (filterValid === 'sudah' && !s.emisValid) return false;
-    if (filterValid === 'belum' && s.emisValid) return false;
+    if (filterValid === 'sudah' && s.emisValid !== 'SAMA') return false;
+    if (filterValid === 'belum' && s.emisValid === 'SAMA') return false;
     if (searchTerm && !s.nama.toLowerCase().includes(searchTerm.toLowerCase()) && !s.nisn.includes(searchTerm)) return false;
     return true;
   });
@@ -83,7 +83,7 @@ export default function EmisPage() {
   });
   const totalSiswa = statsBase.length;
   const sudahMasuk = statsBase.filter(s => s.masukEMIS).length;
-  const sudahValid = statsBase.filter(s => s.emisValid).length;
+  const sudahValid = statsBase.filter(s => s.emisValid === 'SAMA').length;
 
   const handleToggle = async (siswa: SiswaEmis, field: 'masukEMIS' | 'emisValid') => {
     if (!isAdmin) {
@@ -288,20 +288,16 @@ export default function EmisPage() {
                         </button>
                       </td>
                       <td>
-                        <button
-                          className={`${styles.statusBtn} ${s.emisValid ? styles.statusBtnValid : styles.statusBtnPending} ${!isAdmin ? styles.statusBtnReadOnly : ''}`}
-                          onClick={() => handleToggle(s, 'emisValid')}
-                          disabled={updating === `${s.nisn}-emisValid`}
-                          title={!isAdmin ? 'Hanya Admin yang dapat mengubah' : (s.tglEMISValid ? `Tanggal: ${s.tglEMISValid}` : '')}
+                        <div
+                          className={`${styles.statusBtn} ${s.emisValid === 'SAMA' ? styles.statusBtnValid : styles.statusBtnPending} ${styles.statusBtnReadOnly}`}
+                          style={s.emisValid === 'BEDA' ? { background: '#fee2e2', color: '#ef4444', borderColor: '#fca5a5' } : {}}
                         >
-                          {updating === `${s.nisn}-emisValid` ? (
-                            <i className="fas fa-spinner fa-spin"></i>
-                          ) : s.emisValid ? (
-                            <><i className="fas fa-check-double"></i> Data Valid</>
+                          {s.emisValid === 'SAMA' ? (
+                            <><i className="fas fa-check-double"></i> SAMA</>
                           ) : (
-                            <><i className={isAdmin ? 'fas fa-circle' : 'fas fa-lock'}></i> Belum Valid</>
+                            <><i className="fas fa-times"></i> BEDA</>
                           )}
-                        </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -85,27 +85,47 @@ export async function GET(request: Request) {
       allRecords.filter(s => s.isLatest).map(s => s.tahunAjaran).filter(Boolean)
     )).sort().reverse();
 
-    // Ambil status EMIS dari sheet Data_EMIS
+    // Ambil status MasukEMIS dari sheet Data_EMIS
     const emisSheet = await getOrCreateEmisSheet(doc);
     const emisRows = await emisSheet.getRows();
     const emisMap: Record<string, any> = {};
     emisRows.forEach((r: any) => {
       const rawNisn = String(r.get('NISN') || '').replace(/^'/, '').trim();
       if (rawNisn) {
-        const key = rawNisn.replace(/^0+/, ''); // buang 0 di depan untuk pencocokan yang aman
+        const key = rawNisn.replace(/^0+/, '');
         emisMap[key] = {
           masukEMIS: String(r.get('MasukEMIS') || '').toUpperCase() === 'YES',
-          emisValid:  String(r.get('EMISValid')  || '').toUpperCase() === 'YES',
           tglMasukEMIS: r.get('TglMasukEMIS') || '',
-          tglEMISValid:  r.get('TglEMISValid')  || '',
         };
       }
     });
 
+    // Ambil referensi NamaEmis untuk validasi SAMA/BEDA
+    const namaEmisSheet = doc.sheetsByTitle['NamaEmis'];
+    const namaEmisMap: Record<string, string> = {};
+    if (namaEmisSheet) {
+      const namaEmisRows = await namaEmisSheet.getRows();
+      namaEmisRows.forEach((r: any) => {
+        const rawNisn = String(r.get('NISN') || '').replace(/^'/, '').trim();
+        const nama = String(r.get('NAMA') || '').trim();
+        if (rawNisn && nama) {
+          const key = rawNisn.replace(/^0+/, '');
+          namaEmisMap[key] = nama;
+        }
+      });
+    }
+
     const data = siswaAktif.map(s => {
       const key = s.nisn.replace(/^0+/, '');
-      const emis = emisMap[key] || { masukEMIS: false, emisValid: false, tglMasukEMIS: '', tglEMISValid: '' };
-      return { ...s, ...emis };
+      const emis = emisMap[key] || { masukEMIS: false, tglMasukEMIS: '' };
+      
+      let emisValidStatus = 'BEDA';
+      const namaDiEmis = namaEmisMap[key];
+      if (namaDiEmis && namaDiEmis.toLowerCase() === s.nama.toLowerCase()) {
+        emisValidStatus = 'SAMA';
+      }
+
+      return { ...s, ...emis, emisValid: emisValidStatus };
     });
 
     return NextResponse.json({ success: true, data, tahunAjaranList }, {
