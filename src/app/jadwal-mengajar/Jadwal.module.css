@@ -123,15 +123,15 @@
 }
 
 /* Sub-header: A, B, C, dst */
-.table thead tr:nth-child(2) th {
+.tableGuru thead tr:nth-child(2) th {
   background: #2d5a8e;
   font-size: 0.7rem;
   padding: 4px 2px;
 }
 
 /* Header kolom kiri (non-class): Kode, Nama, Status, Mapel, JML, Ket, Aksi */
-.table thead tr:first-child th:nth-child(-n+4),
-.table thead tr:first-child th:nth-last-child(-n+3) {
+.tableGuru thead tr:first-child th:nth-child(-n+4),
+.tableGuru thead tr:first-child th:nth-last-child(-n+3) {
   background: #237227;
 }
 
@@ -145,7 +145,7 @@
 }
 
 /* Kolom jam mengajar (angka kelas): lebih sempit */
-.table td:nth-child(n+5):nth-child(-n+31) {
+.tableGuru td:nth-child(n+5):nth-child(-n+31) {
   padding: 4px 2px;
   min-width: 22px;
   max-width: 32px;
@@ -172,7 +172,7 @@
 }
 
 /* Total jam: bold, highlight */
-.table td:nth-last-child(3) {
+.tableGuru td:nth-last-child(3) {
   font-weight: 700;
   color: #1e3a5f;
   background: #eff6ff;

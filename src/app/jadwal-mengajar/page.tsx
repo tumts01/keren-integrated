@@ -298,7 +298,7 @@ export default function JadwalMengajarPage() {
             </div>
           ) : (
             <div className={styles.tableWrapper}>
-            <table className={styles.table}>
+            <table className={`${styles.table} ${styles.tableGuru}`}>
               <thead>
                 <tr>
                   <th rowSpan={2}>Kode</th>
@@ -364,7 +364,7 @@ export default function JadwalMengajarPage() {
             </div>
           ) : (
             <div className={styles.tableWrapper}>
-              <table className={styles.table} style={{ minWidth: '800px' }}>
+              <table className={styles.table} style={{ minWidth: '800px', tableLayout: 'fixed' }}>
                 <thead>
                   <tr style={{ background: '#1e3a5f', color: 'white' }}>
                     <th style={{ padding: '6px 4px', fontSize: '0.75rem', textAlign: 'center', width: '40px' }}>Jam Ke</th>
