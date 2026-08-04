@@ -380,7 +380,7 @@ export default function JadwalMengajarPage() {
                       {DAYS.map(day => {
                         const entry = getCellData(day, jam);
                         return (
-                          <td key={`${day}-${jam}`} style={{ padding: '4px', verticalAlign: 'top', height: '50px' }}>
+                          <td key={`${day}-${jam}`} style={{ padding: '4px', verticalAlign: 'top', height: '50px', whiteSpace: 'normal', wordBreak: 'break-word' }}>
                             {entry ? (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'center', lineHeight: '1.2' }}>
                                 <span style={{ fontWeight: 700, color: '#1e3a5f', fontSize: '0.7rem' }}>{entry.mataPelajaran}</span>
