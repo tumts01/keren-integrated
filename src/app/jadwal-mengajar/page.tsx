@@ -297,7 +297,7 @@ export default function JadwalMengajarPage() {
               <p>Tidak ada data jadwal ditemukan.</p>
             </div>
           ) : (
-            <div className={styles.tableWrapper}>
+            <div key="wrapper-guru" className={styles.tableWrapper}>
             <table className={`${styles.table} ${styles.tableGuru}`}>
               <thead>
                 <tr>
@@ -363,7 +363,7 @@ export default function JadwalMengajarPage() {
               <p>Tidak ada jadwal untuk kelas {selectedKelas.replace('_', ' ')}.</p>
             </div>
           ) : (
-            <div className={styles.tableWrapper}>
+            <div key="wrapper-kelas" className={styles.tableWrapper}>
               <table className={styles.table} style={{ minWidth: '800px', tableLayout: 'fixed' }}>
                 <thead>
                   <tr style={{ background: '#1e3a5f', color: 'white' }}>
