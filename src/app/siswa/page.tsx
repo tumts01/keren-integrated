@@ -844,9 +844,32 @@ export default function SiswaPage() {
               </button>
             </div>
             <div className={styles.modalBody}>
-              <div className={styles.modalPhotoFrame}>
+              <div className={styles.modalPhotoFrame} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 {selectedSiswa.foto ? (
-                  <img src={selectedSiswa.foto} alt="Profile" className={styles.modalPhoto} />
+                  <>
+                    <img src={selectedSiswa.foto} alt="Profile" className={styles.modalPhoto} />
+                    <a 
+                      href={selectedSiswa.foto} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      style={{ 
+                        marginTop: '12px', 
+                        fontSize: '0.8rem', 
+                        color: '#3b82f6', 
+                        textDecoration: 'none', 
+                        background: '#eff6ff', 
+                        padding: '6px 12px', 
+                        borderRadius: '6px', 
+                        fontWeight: 600,
+                        border: '1px solid #bfdbfe',
+                        width: '100%',
+                        textAlign: 'center',
+                        boxSizing: 'border-box'
+                      }}
+                    >
+                      <i className="fas fa-external-link-alt"></i> Buka Foto
+                    </a>
+                  </>
                 ) : (
                   <div style={{ fontSize: '4rem', fontWeight: 700, color: '#94a3b8' }}>
                     {selectedSiswa.nama.charAt(0).toUpperCase() || 'U'}
