@@ -7,6 +7,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const filterTanggal = searchParams.get('tanggal');
 
+    const cleanNisn = (val: any) => String(val || '').replace(/^'/, '').trim().replace(/^0+/, '');
+
     // Ambil domisili dari DATABASE induk
     const docInduk = await getIndukDoc();
     const sheetInduk = docInduk.sheetsByTitle['DATABASE'];
@@ -14,7 +16,7 @@ export async function GET(request: Request) {
     if (sheetInduk) {
       const rowsInduk = await sheetInduk.getRows();
       rowsInduk.forEach(r => {
-        const nisn = (r.get('NISN') || '').trim();
+        const nisn = cleanNisn(r.get('NISN'));
         if (nisn) {
           mapDomisili[nisn] = (r.get('DOMISILI') || '').trim();
         }
@@ -27,7 +29,8 @@ export async function GET(request: Request) {
 
     const rows = await sheet.getRows();
     let data = rows.map(r => {
-      const nisn = (r.get('NISN') || '').trim();
+      const rawNisn = (r.get('NISN') || '').trim();
+      const safeNisn = cleanNisn(rawNisn);
       return {
         id: r.get('ID') || '',
         tanggal: (r.get('TANGGAL') || '').trim(),
@@ -37,8 +40,8 @@ export async function GET(request: Request) {
         mapel: (r.get('MAPEL') || '').trim(),
         guruPenginput: (r.get('GURU PENGINPUT') || '').trim(),
         namaSiswa: (r.get('NAMA SISWA') || '').trim(),
-        nisn,
-        domisili: mapDomisili[nisn] || '',
+        nisn: rawNisn,
+        domisili: mapDomisili[safeNisn] || '',
         kehadiran: (r.get('KEHADIRAN') || '').trim(),
       };
     }).filter(r => r.namaSiswa && r.kehadiran);

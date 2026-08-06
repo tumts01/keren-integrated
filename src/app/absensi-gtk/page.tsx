@@ -22,6 +22,8 @@ export default function AbsensiGTK() {
   const [rekapData, setRekapData] = useState<any[]>([]);
   const [holidays, setHolidays] = useState<any[]>([]);
   const [loadingRekap, setLoadingRekap] = useState(false);
+  const [guruList, setGuruList] = useState<any[]>([]);
+  const [rekapUser, setRekapUser] = useState('');
 
   // States for Admin Holiday
   const [showModalLibur, setShowModalLibur] = useState(false);
@@ -48,6 +50,7 @@ export default function AbsensiGTK() {
       const res = await fetch('/api/guru');
       const data = await res.json();
       if (data.success) {
+        setGuruList(data.data);
         const found = data.data.find((g: any) => g.nama.toLowerCase().trim() === nama.toLowerCase().trim());
         setProfile(found);
       }
@@ -72,12 +75,13 @@ export default function AbsensiGTK() {
   };
 
   const fetchRekap = async () => {
-    if (!user) return;
+    const targetUser = rekapUser || user?.nama;
+    if (!targetUser) return;
     setLoadingRekap(true);
     try {
       const bln = rekapBulan.toString().padStart(2, '0');
       const thn = rekapTahun.toString();
-      const res = await fetch(`/api/absensi?nama=${encodeURIComponent(user.nama)}&bulan=${bln}&tahun=${thn}`);
+      const res = await fetch(`/api/absensi?nama=${encodeURIComponent(targetUser)}&bulan=${bln}&tahun=${thn}`);
       const data = await res.json();
       if (data.success) {
         setRekapData(data.rekap);
@@ -94,7 +98,7 @@ export default function AbsensiGTK() {
     if (activeTab === 'rekap') {
       fetchRekap();
     }
-  }, [activeTab, rekapBulan, rekapTahun]);
+  }, [activeTab, rekapBulan, rekapTahun, rekapUser]);
 
   const handleAbsen = async (action: 'checkin' | 'checkout') => {
     if (!user || actionLoading) return; // proteksi double submit
@@ -219,16 +223,37 @@ export default function AbsensiGTK() {
     } else {
       const dataAbsen = rekapData.find(r => r.tanggal === dateStr);
       if (dataAbsen) hadirCount++;
+
+      const hitungSelisih = (std: string, actual: string | undefined | null) => {
+        if (!actual || actual === '-') return '-';
+        const partsAct = actual.replace('.', ':').split(':');
+        const partsStd = std.split(':');
+        if (partsAct.length !== 2 || partsStd.length !== 2) return '-';
+        const actMin = parseInt(partsAct[0]) * 60 + parseInt(partsAct[1]);
+        const stdMin = parseInt(partsStd[0]) * 60 + parseInt(partsStd[1]);
+        const diff = actMin - stdMin;
+        if (diff === 0) return '0m';
+        const absDiff = Math.abs(diff);
+        const h = Math.floor(absDiff / 60);
+        const m = absDiff % 60;
+        const fmt = `${h > 0 ? h + 'j ' : ''}${m}m`;
+        return diff > 0 ? `+${fmt}` : `-${fmt}`;
+      };
+
       recapRows.push(
         <tr key={i}>
           <td>{i}</td>
           <td>{dayName}, {dateStr}</td>
           <td style={{ textAlign: 'center' }}>07:00</td>
           <td style={{ textAlign: 'center' }}>{dataAbsen ? dataAbsen.jam_masuk : '-'}</td>
-          <td style={{ textAlign: 'center' }}>-</td>
+          <td style={{ textAlign: 'center', color: dataAbsen && dataAbsen.jam_masuk ? (hitungSelisih('07:00', dataAbsen.jam_masuk).startsWith('+') ? '#ef4444' : '#10b981') : 'inherit' }}>
+            {dataAbsen ? hitungSelisih('07:00', dataAbsen.jam_masuk) : '-'}
+          </td>
           <td style={{ textAlign: 'center' }}>14:05</td>
           <td style={{ textAlign: 'center' }}>{dataAbsen ? dataAbsen.jam_pulang : '-'}</td>
-          <td style={{ textAlign: 'center' }}>-</td>
+          <td style={{ textAlign: 'center', color: dataAbsen && dataAbsen.jam_pulang ? (hitungSelisih('14:05', dataAbsen.jam_pulang).startsWith('-') ? '#ef4444' : '#10b981') : 'inherit' }}>
+            {dataAbsen ? hitungSelisih('14:05', dataAbsen.jam_pulang) : '-'}
+          </td>
           <td></td>
         </tr>
       );
@@ -322,6 +347,18 @@ export default function AbsensiGTK() {
         <div className={styles.card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <div style={{ display: 'flex', gap: '12px' }}>
+              {user.role?.toLowerCase() === 'admin' && (
+                <select 
+                  className={styles.input} 
+                  style={{ width: '200px' }} 
+                  value={rekapUser || user.nama} 
+                  onChange={e => setRekapUser(e.target.value)}
+                >
+                  {guruList.map((g, idx) => (
+                    <option key={idx} value={g.nama}>{g.nama}</option>
+                  ))}
+                </select>
+              )}
               <select className={styles.input} style={{ width: '150px' }} value={rekapBulan} onChange={e => setRekapBulan(Number(e.target.value))}>
                 {Array.from({ length: 12 }, (_, i) => (
                   <option key={i+1} value={i+1}>{new Date(2000, i, 1).toLocaleDateString('id-ID', { month: 'long' })}</option>
@@ -438,14 +475,14 @@ export default function AbsensiGTK() {
             <tbody>
               <tr>
                 <td style={{ width: '150px' }}>NAMA</td>
-                <td>{user.nama}</td>
+                <td>{rekapUser || user.nama}</td>
                 <td rowSpan={4} style={{ textAlign: 'right' }}>
                   <img src="/logo.png" alt="Logo" className={styles.printLogo} />
                 </td>
               </tr>
               <tr>
                 <td>JABATAN</td>
-                <td>{profile?.jabatan || user.role?.toUpperCase() || '-'}</td>
+                <td>{guruList.find(g => g.nama === (rekapUser || user.nama))?.jabatan || profile?.jabatan || user.role?.toUpperCase() || '-'}</td>
               </tr>
               <tr>
                 <td>DEPARTMENT</td>
