@@ -1322,7 +1322,7 @@ export default function PresensiPage() {
                       <thead>
                         <tr style={{ background: '#1e3a5f', color: 'white' }}>
                           {['No','Tanggal','Nama Siswa','Kelas','Domisili','Mata Pelajaran','Jam Ke','Ket.', 'Aksi'].map(h => (
-                            <th key={h} style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>{h}</th>
+                            <th key={h} style={{ padding: '8px 12px', textAlign: (h === 'Jam Ke' || h === 'Ket.' || h === 'Aksi') ? 'center' : 'left', whiteSpace: 'nowrap', fontWeight: 700, width: h === 'Jam Ke' ? '120px' : 'auto' }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -1335,7 +1335,7 @@ export default function PresensiPage() {
                             <td style={{ padding: '7px 12px' }}>{r.kelas}</td>
                             <td style={{ padding: '7px 12px', color: '#64748b' }}>{r.domisili || '-'}</td>
                             <td style={{ padding: '7px 12px', color: '#475569' }}>{r.mapel}</td>
-                            <td style={{ padding: '7px 12px', textAlign: 'center' }}>
+                            <td style={{ padding: '7px 12px', textAlign: 'center', maxWidth: '120px' }}>
                               {editRsId === r.id ? (
                                 <input
                                   type="text"
@@ -1344,7 +1344,7 @@ export default function PresensiPage() {
                                   style={{ padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.8rem', width: '60px', textAlign: 'center' }}
                                 />
                               ) : (
-                                <span style={{ background: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600 }}>Jam {r.jamKe}</span>
+                                <span style={{ display: 'inline-block', background: '#eff6ff', color: '#2563eb', padding: '4px 8px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 600, whiteSpace: 'normal', lineHeight: '1.4' }}>Jam {String(r.jamKe).replace(/,/g, ', ')}</span>
                               )}
                             </td>
                             <td style={{ padding: '7px 12px', textAlign: 'center' }}>
