@@ -130,19 +130,21 @@ export default function CetakLaporanKeuanganPage() {
 
   return (
     <div className={styles.printContainer}>
-      <div className={styles.page}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, borderBottom: '2px solid #000', paddingBottom: 10 }}>
-          <img src="/logo.png" alt="Logo" style={{ height: 75, width: 'auto', marginRight: 20 }} />
-          <div style={{ flex: 1, textAlign: 'center', paddingRight: 95 }}>
-            <div style={{ fontSize: '14pt', fontWeight: 'bold', marginBottom: 4 }}>
-              BUKU KAS PEMBANTU (LAPORAN KEUANGAN)
-            </div>
-            <div style={{ fontSize: '12pt', fontWeight: 'bold', marginBottom: 4 }}>
-              {(jabatanUser || 'Staf / Pemohon').toUpperCase()}
-            </div>
-            <div style={{ fontSize: '11pt' }}>
-              Bulan {bulanIndo(bulan)}
-            </div>
+      <style>{`
+        @media print {
+          @page { size: landscape; margin: 15mm; }
+        }
+      `}</style>
+      <div className={styles.page} style={{ minHeight: 'auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: 20, borderBottom: '2px solid #000', paddingBottom: 10 }}>
+          <div style={{ fontSize: '14pt', fontWeight: 'bold', marginBottom: 4 }}>
+            BUKU KAS PEMBANTU (LAPORAN KEUANGAN)
+          </div>
+          <div style={{ fontSize: '12pt', fontWeight: 'bold', marginBottom: 4 }}>
+            {(jabatanUser || 'Staf / Pemohon').toUpperCase()}
+          </div>
+          <div style={{ fontSize: '11pt' }}>
+            Bulan {bulanIndo(bulan)}
           </div>
         </div>
 
