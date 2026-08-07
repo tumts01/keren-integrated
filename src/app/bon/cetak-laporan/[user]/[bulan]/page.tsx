@@ -44,12 +44,14 @@ export default function CetakLaporanKeuanganPage() {
 
   let mutasi: any[] = [];
   let currentSaldo = 0;
+  let jabatanUser = '';
   
   const sortedData = [...data].reverse();
   
   sortedData.filter(d => (d.Nama || d.nama || '').trim() === user).forEach(bon => {
     const isTargetMonth = (bon.Tanggal || '').startsWith(bulan);
     const idBukti = bon.NoBon || bon.ID;
+    if (!jabatanUser && bon.Jabatan) jabatanUser = bon.Jabatan;
     
     const requested = parseFloat(bon.JumlahDiminta || '0');
     const saldoDipakai = parseFloat(bon.SaldoTerpakai || '0');
@@ -115,13 +117,17 @@ export default function CetakLaporanKeuanganPage() {
   return (
     <div className={styles.printContainer}>
       <div className={styles.page}>
-        <div className={styles.kop}>
-          <img src="/logo.png" alt="Logo" className={styles.kopLogo} />
-          <div className={styles.kopText}>
-            <div className={styles.kopTitle}>YAYASAN KEREN INDONESIA</div>
-            <div className={styles.kopSub}>BUKU KAS PEMBANTU (LAPORAN KEUANGAN)</div>
-            <div style={{ fontSize: '10pt', color: '#666' }}>
-              Periode: {bulanIndo(bulan)} &nbsp;|&nbsp; Pemohon: {user}
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20, borderBottom: '2px solid #000', paddingBottom: 10 }}>
+          <img src="/logo.png" alt="Logo" style={{ height: 75, width: 'auto', marginRight: 20 }} />
+          <div style={{ flex: 1, textAlign: 'center', paddingRight: 95 }}>
+            <div style={{ fontSize: '14pt', fontWeight: 'bold', marginBottom: 4 }}>
+              BUKU KAS PEMBANTU (LAPORAN KEUANGAN)
+            </div>
+            <div style={{ fontSize: '12pt', fontWeight: 'bold', marginBottom: 4 }}>
+              {(jabatanUser || 'Staf / Pemohon').toUpperCase()}
+            </div>
+            <div style={{ fontSize: '11pt' }}>
+              Bulan {bulanIndo(bulan)}
             </div>
           </div>
         </div>
