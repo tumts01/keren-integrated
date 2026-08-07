@@ -148,7 +148,7 @@ export default function CetakLaporanKeuanganPage() {
           </div>
         </div>
 
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10pt', marginTop: '20px' }}>
+        <table style={{ width: '100%', boxSizing: 'border-box', borderCollapse: 'collapse', fontSize: '10pt', marginTop: '20px', border: '1px solid #000' }}>
           <thead>
             <tr>
               <th style={{ width: 30, textAlign: 'center', border: '1px solid #000', padding: 6, backgroundColor: '#f1f5f9' }}>No</th>
@@ -195,8 +195,8 @@ export default function CetakLaporanKeuanganPage() {
                 <div className={styles.ttdName}>S. Nur Ainy, S.Pd.</div>
               </td>
               <td className={styles.ttdCell}>
-                <div className={styles.ttdTitle}>Pemohon</div>
-                <div className={styles.ttdSub}>Dibuat Oleh</div>
+                <div className={styles.ttdTitle}>Pembuat Laporan</div>
+                <div className={styles.ttdSub}>&nbsp;</div>
                 <div className={styles.ttdSpace}></div>
                 <div className={styles.ttdName}>{user}</div>
               </td>
