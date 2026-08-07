@@ -132,10 +132,13 @@ export default function CetakLaporanKeuanganPage() {
     <div className={styles.printContainer}>
       <style>{`
         @media print {
-          @page { size: landscape; margin: 15mm; }
+          @page { size: landscape; margin: 15mm 15mm 15mm 15mm; }
+          .page { background: white !important; padding: 0 !important; }
         }
       `}</style>
       <div className={styles.page} style={{ minHeight: 'auto' }}>
+        {/* Wrapper dengan padding agar border kanan tidak terpotong */}
+        <div style={{ background: 'white', padding: '10mm 15mm', boxSizing: 'border-box' }}>
         <div style={{ textAlign: 'center', marginBottom: 20, borderBottom: '2px solid #000', paddingBottom: 10 }}>
           <div style={{ fontSize: '14pt', fontWeight: 'bold', marginBottom: 4 }}>
             BUKU KAS PEMBANTU (LAPORAN KEUANGAN)
@@ -203,6 +206,7 @@ export default function CetakLaporanKeuanganPage() {
             </tr>
           </tbody>
         </table>
+        </div>{/* end padding wrapper */}
       </div>
     </div>
   );
