@@ -1357,7 +1357,8 @@ function TabLaporanKeuangan({ onPrint }: { onPrint: (url: string) => void }) {
 
       let rincian: any[] = [];
       try {
-        if (bon.RincianJSON) rincian = JSON.parse(bon.RincianJSON);
+        if (bon.RealisasiRincianJSON) rincian = JSON.parse(bon.RealisasiRincianJSON);
+        else if (bon.RincianJSON) rincian = JSON.parse(bon.RincianJSON);
       } catch(e){}
 
       if (rincian.length > 0) {

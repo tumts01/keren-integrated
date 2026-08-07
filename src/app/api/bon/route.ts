@@ -76,11 +76,12 @@ export async function GET(request: Request) {
 
     let data = rows.map(row => {
       const obj = row.toObject();
-      if (!obj['JumlahRealisasi']) {
+      if (!obj['JumlahRealisasi'] || !obj['RealisasiRincianJSON']) {
         const id = obj['NoBon'] || obj['ID'];
         const b = buktiData.find(b => b['NoBon'] === id || b['BonID'] === id);
         if (b) {
           obj['JumlahRealisasi'] = b['JumlahRealisasi'];
+          obj['RealisasiRincianJSON'] = b['RincianJSON'];
         }
       }
       return obj;
