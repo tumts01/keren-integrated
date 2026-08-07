@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     const doc = await getBontuDoc();
     const sheet = doc.sheetsByTitle['BonData'];
 
-    const isSaldoOnly = nominalDiminta === 0 && nominalSaldoTerpakai > 0;
+    const isSaldoOnly = nominalDiminta <= nominalSaldoTerpakai && nominalSaldoTerpakai > 0;
     const noBon = await generateNoBon(sheet, namaDepan, tahunAjaran || '', isSaldoOnly);
 
     const now = new Date();
