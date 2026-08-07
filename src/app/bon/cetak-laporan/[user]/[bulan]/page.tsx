@@ -45,6 +45,8 @@ export default function CetakLaporanKeuanganPage() {
   let mutasi: any[] = [];
   let currentSaldo = 0;
   let jabatanUser = '';
+  let totalTerima = 0;
+  let totalKeluar = 0;
   
   const sortedData = [...data].reverse();
   
@@ -62,6 +64,7 @@ export default function CetakLaporanKeuanganPage() {
       penerimaanKas = Math.max(0, requested - saldoDipakai);
       currentSaldo += penerimaanKas;
       if (isTargetMonth && penerimaanKas > 0) {
+        totalTerima += penerimaanKas;
         mutasi.push({
           id: `TRM-${idBukti}`,
           tanggal: bon.Tanggal,
@@ -88,6 +91,7 @@ export default function CetakLaporanKeuanganPage() {
         if (out > 0) {
           currentSaldo -= out;
           if (isTargetMonth) {
+            totalKeluar += out;
             mutasi.push({
               id: `KLR-${idBukti}-${idx}`,
               tanggal: bon.Tanggal,
@@ -179,6 +183,22 @@ export default function CetakLaporanKeuanganPage() {
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={4} style={{ textAlign: 'right', fontWeight: 700, border: '1px solid #000', padding: '7px 6px', backgroundColor: '#f1f5f9', fontSize: '10pt' }}>
+                JUMLAH
+              </td>
+              <td style={{ textAlign: 'right', fontWeight: 700, border: '1px solid #000', padding: '7px 6px', backgroundColor: '#f1f5f9', fontSize: '10pt' }}>
+                {formatRp(totalTerima)}
+              </td>
+              <td style={{ textAlign: 'right', fontWeight: 700, border: '1px solid #000', padding: '7px 6px', backgroundColor: '#f1f5f9', fontSize: '10pt' }}>
+                {formatRp(totalKeluar)}
+              </td>
+              <td style={{ textAlign: 'right', fontWeight: 700, border: '2px solid #000', padding: '7px 6px', backgroundColor: '#e6f4ea', fontSize: '10pt', color: '#15803d' }}>
+                {formatRp(totalTerima - totalKeluar)}
+              </td>
+            </tr>
+          </tfoot>
         </table>
 
         {/* TTD */}
