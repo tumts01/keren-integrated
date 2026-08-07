@@ -105,6 +105,20 @@ export default function AbsensiGTK() {
     setActionLoading(true);
     setMessage('');
 
+    // ── OPTIMISTIC UPDATE ──────────────────────────────────────────────────
+    // Langsung ubah state lokal agar tombol nonaktif & jam tampil SEKETIKA
+    // (tidak perlu menunggu API response)
+    const currentTimeOptimistic = new Date().toLocaleTimeString('id-ID', {
+      timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit'
+    });
+    const prevStatus = { ...status }; // simpan untuk rollback jika gagal
+    if (action === 'checkin') {
+      setStatus(s => ({ ...s, hasCheckedIn: true, jamMasuk: currentTimeOptimistic }));
+    } else {
+      setStatus(s => ({ ...s, hasCheckedOut: true, jamPulang: currentTimeOptimistic }));
+    }
+    // ──────────────────────────────────────────────────────────────────────
+
     const maxRetries = 3;
     let lastError = '';
 
@@ -118,12 +132,18 @@ export default function AbsensiGTK() {
         const data = await res.json();
         if (data.success) {
           setMessage(data.message);
-          fetchStatus(user.nama);
+          // Perbarui dengan waktu akurat dari server
+          if (action === 'checkin') {
+            setStatus(s => ({ ...s, hasCheckedIn: true, jamMasuk: data.time || currentTimeOptimistic }));
+          } else {
+            setStatus(s => ({ ...s, hasCheckedOut: true, jamPulang: data.time || currentTimeOptimistic }));
+          }
           setActionLoading(false);
           setTimeout(() => setMessage(''), 4000);
           return; // sukses, keluar
         } else {
-          // Error dari server (bukan network) — langsung hentikan retry
+          // Error dari server (bukan network) — rollback & hentikan retry
+          setStatus(prevStatus);
           setMessage(data.error || 'Gagal memproses absensi.');
           setActionLoading(false);
           setTimeout(() => setMessage(''), 4000);
@@ -138,7 +158,8 @@ export default function AbsensiGTK() {
       }
     }
 
-    // Semua retry habis
+    // Semua retry habis — rollback optimistic update
+    setStatus(prevStatus);
     setMessage('Gagal terhubung ke server setelah beberapa percobaan. Cek koneksi internet dan coba lagi.');
     setActionLoading(false);
     setTimeout(() => setMessage(''), 6000);

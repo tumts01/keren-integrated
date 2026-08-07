@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getIndukDoc } from '@/lib/google-sheets';
 
+// Paksa route ini selalu di-fetch langsung (tidak di-cache Vercel)
+export const dynamic = 'force-dynamic';
+
 function getCurrentDateString() {
   const date = new Date();
   return date.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -98,7 +101,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ success: true, todayStatus, rekap, holidays }, {
-      headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+      headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' }
     });
 
   } catch (error) {
