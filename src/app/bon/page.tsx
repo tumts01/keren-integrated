@@ -1056,6 +1056,7 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
   const [loading, setLoading] = useState(false);
   const [sukses, setSukses] = useState(false);
   const [savedNoBon, setSavedNoBon] = useState('');
+  const [historyItems, setHistoryItems] = useState<{name: string, price: number}[]>([]);
 
   useEffect(() => {
     // Role yang bisa mengajukan BON
@@ -1079,6 +1080,25 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
     fetch('/api/bon/toko').then(r => r.json()).then(j => setTokoList(j.data || []));
     fetch('/api/bon').then(r => r.json()).then(j => {
       if (j.saldoMap) setSaldoMap(j.saldoMap);
+      if (j.data) {
+        const history: Record<string, number> = {};
+        j.data.forEach((item: any) => {
+          if (item.RincianJSON) {
+            try {
+              const rincianArray = JSON.parse(item.RincianJSON);
+              rincianArray.forEach((r: any) => {
+                const name = (r.barang || '').trim();
+                const price = Number(r.harga) || 0;
+                // Simpan harga terakhir yang ditemukan (asumsi data di-reverse, jadi history terbaru ada di depan)
+                if (name && price > 0 && !history[name]) {
+                  history[name] = price;
+                }
+              });
+            } catch (e) {}
+          }
+        });
+        setHistoryItems(Object.entries(history).map(([name, price]) => ({ name, price })));
+      }
     });
   }, []);
 
@@ -1206,6 +1226,9 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
         </div>
 
         <div className={styles.rincianSection}>
+          <datalist id="history-barang">
+            {historyItems.map((h, i) => <option key={i} value={h.name} />)}
+          </datalist>
           <div className={styles.rincianHeader}>
             <span>Rincian Keperluan/Barang</span>
             <button type="button" className={styles.btnSm} onClick={addRow}><i className="fas fa-plus"></i> Tambah Baris</button>
@@ -1216,7 +1239,23 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
               <tbody>
                 {rincian.map((item, idx) => (
                   <tr key={idx}>
-                    <td><input className={styles.rincianInput} value={item.barang} onChange={e => updateRow(idx, 'barang', e.target.value)} placeholder="Nama barang..." required /></td>
+                    <td>
+                      <input 
+                        list="history-barang"
+                        className={styles.rincianInput} 
+                        value={item.barang} 
+                        onChange={e => {
+                          const val = e.target.value;
+                          updateRow(idx, 'barang', val);
+                          const found = historyItems.find(h => h.name === val);
+                          if (found && item.harga === 0) {
+                            updateRow(idx, 'harga', found.price);
+                          }
+                        }} 
+                        placeholder="Nama barang..." 
+                        required 
+                      />
+                    </td>
                     <td><input type="text" inputMode="numeric" className={styles.rincianInput} style={{ width: '100%', textAlign: 'center' }} value={item.qty === 0 ? '' : item.qty} onChange={e => updateRow(idx, 'qty', parseInt(e.target.value.replace(/[^0-9]/g,'')) || 0)} placeholder="1" /></td>
                     <td><select className={styles.rincianInput} value={item.satuan} onChange={e => updateRow(idx, 'satuan', e.target.value)}>{SATUAN_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}</select></td>
                     <td><input type="text" inputMode="numeric" className={styles.rincianInput} value={item.harga === 0 ? '' : item.harga.toLocaleString('id-ID')} onChange={e => updateRow(idx, 'harga', parseInt(e.target.value.replace(/[^0-9]/g,'')) || 0)} placeholder="0" /></td>
