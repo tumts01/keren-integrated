@@ -59,9 +59,9 @@ export default function CetakLaporanKeuanganPage() {
     
     let penerimaanKas = 0;
     if (!isSaldoOnly && requested > 0) {
-      penerimaanKas = requested;
+      penerimaanKas = Math.max(0, requested - saldoDipakai);
       currentSaldo += penerimaanKas;
-      if (isTargetMonth) {
+      if (isTargetMonth && penerimaanKas > 0) {
         mutasi.push({
           id: `TRM-${idBukti}`,
           tanggal: bon.Tanggal,
@@ -98,6 +98,19 @@ export default function CetakLaporanKeuanganPage() {
             });
           }
         }
+      });
+    }
+    
+    // Tambahkan baris khusus Sisa Saldo di akhir setiap BON
+    if (isTargetMonth) {
+      mutasi.push({
+        id: `SISA-${idBukti}`,
+        tanggal: bon.Tanggal,
+        noBukti: idBukti,
+        uraian: `*Sisa Saldo dari BON ini*`,
+        terima: 0,
+        keluar: 0,
+        saldo: currentSaldo
       });
     }
   });
