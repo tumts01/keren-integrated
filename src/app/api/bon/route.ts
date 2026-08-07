@@ -18,12 +18,12 @@ function terbilang(angka: number): string {
 }
 
 // Generate NoBon: BON-YYYY/MM-XXX/NamaDepan, urutan direset per tahun ajaran
-async function generateNoBon(doc: any, namaDepan: string, tahunAjaran?: string): Promise<string> {
+async function generateNoBon(doc: any, namaDepan: string, tahunAjaran?: string, isSaldoOnly: boolean = false): Promise<string> {
   const now = new Date();
   const yyyy = now.getFullYear();
   const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const prefix = isSaldoOnly ? 'SALDO' : 'BON';
 
-  // Tentukan tahun ajaran: Juli = awal TA baru
   const taStart = (now.getMonth() + 1) >= 7 ? yyyy : yyyy - 1;
   const taEnd = taStart + 1;
   const currentTA = tahunAjaran || `${taStart}/${taEnd}`;
@@ -33,23 +33,25 @@ async function generateNoBon(doc: any, namaDepan: string, tahunAjaran?: string):
 
   let maxNum = 0;
   for (let i = 1; i < 500; i++) {
-    const cellNoBon = sheet.getCell(i, 0); // NoBon
-    const cellTA   = sheet.getCell(i, 2); // TahunAjaran
+    const cellNoBon = sheet.getCell(i, 0); 
+    const cellTA   = sheet.getCell(i, 2); 
     const valNoBon = cellNoBon.value as string;
     const valTA    = cellTA.value as string;
     if (!valNoBon) continue;
-    // Hanya hitung nomor dalam TA yang sama
-    if (!valTA || valTA === currentTA) {
-      const match = valNoBon.match(/BON-\d{4}\/\d{2}-(\d{3})/);
+    if (!valTA || valTA === currentTA || valNoBon.startsWith(`${prefix}-`)) {
+      const regex = new RegExp(`${prefix}-\\d{4}\\/\\d{2}-(\\d{3})`);
+      const match = valNoBon.match(regex);
       if (match) {
         const num = parseInt(match[1], 10);
-        if (!isNaN(num) && num > maxNum) maxNum = num;
+        if (!isNaN(num) && num > maxNum) {
+           if (!valTA || valTA === currentTA) maxNum = num;
+        }
       }
     }
   }
 
   const nextNum = String(maxNum + 1).padStart(3, '0');
-  return `BON-${yyyy}/${mm}-${nextNum}/${namaDepan}`;
+  return `${prefix}-${yyyy}/${mm}-${nextNum}/${namaDepan}`;
 }
 
 export async function GET(request: Request) {

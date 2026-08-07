@@ -16,34 +16,29 @@ function terbilang(angka: number): string {
   return terbilang(Math.floor(angka / 1000000000)) + ' miliar' + (angka % 1000000000 !== 0 ? ' ' + terbilang(angka % 1000000000) : '');
 }
 
-async function generateNoBon(sheet: any, namaDepan: string, tahunAjaran: string): Promise<string> {
+async function generateNoBon(sheet: any, namaDepan: string, tahunAjaran: string, isSaldoOnly: boolean = false): Promise<string> {
   const now = new Date();
   const yyyy = now.getFullYear();
   const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const prefix = isSaldoOnly ? 'SALDO' : 'BON';
 
-  // Tahun ajaran: mulai Juli (bulan 7). Jika bulan < 7 berarti tahun ajaran sebelumnya.
-  // Contoh: Juli 2026 = TA 2026/2027. Januari 2027 = TA 2026/2027 juga.
   const taStart = (now.getMonth() + 1) >= 7 ? yyyy : yyyy - 1;
   const taEnd = taStart + 1;
   const currentTA = tahunAjaran || `${taStart}/${taEnd}`;
 
-  // Scan semua NoBon yang TA-nya sama (dari kolom TahunAjaran, kolom index 2)
-  // Ambil nomor urut terbesar di TA ini
   await sheet.loadCells('A1:C500');
   let maxNum = 0;
   for (let i = 1; i < 500; i++) {
-    const cellNoBon = sheet.getCell(i, 0); // kolom NoBon
-    const cellTA = sheet.getCell(i, 2);   // kolom TahunAjaran
+    const cellNoBon = sheet.getCell(i, 0); 
+    const cellTA = sheet.getCell(i, 2);   
     const valNoBon = cellNoBon.value as string;
     const valTA = cellTA.value as string;
     if (!valNoBon) continue;
-    // Hitung nomor urut hanya jika tahun ajaran sama
-    if (valTA === currentTA || valNoBon.startsWith('BON-')) {
-      // Cari pola BON-YYYY/MM-NNN/Nama
-      const match = valNoBon.match(/BON-\d{4}\/\d{2}-(\d{3})/);
+    if (valTA === currentTA || valNoBon.startsWith(`${prefix}-`)) {
+      const regex = new RegExp(`${prefix}-\\d{4}\\/\\d{2}-(\\d{3})`);
+      const match = valNoBon.match(regex);
       if (match) {
         const num = parseInt(match[1], 10);
-        // Hanya hitung jika TA cocok (atau jika kolom TA kosong, asumsikan masih TA yang sama)
         if (!isNaN(num) && num > maxNum) {
           if (!valTA || valTA === currentTA) maxNum = num;
         }
@@ -52,7 +47,7 @@ async function generateNoBon(sheet: any, namaDepan: string, tahunAjaran: string)
   }
 
   const nextNum = String(maxNum + 1).padStart(3, '0');
-  return `BON-${yyyy}/${mm}-${nextNum}/${namaDepan}`;
+  return `${prefix}-${yyyy}/${mm}-${nextNum}/${namaDepan}`;
 }
 
 export async function POST(request: Request) {
@@ -72,7 +67,8 @@ export async function POST(request: Request) {
     const doc = await getBontuDoc();
     const sheet = doc.sheetsByTitle['BonData'];
 
-    const noBon = await generateNoBon(sheet, namaDepan, tahunAjaran || '');
+    const isSaldoOnly = nominalDiminta === 0 && nominalSaldoTerpakai > 0;
+    const noBon = await generateNoBon(sheet, namaDepan, tahunAjaran || '', isSaldoOnly);
 
     const now = new Date();
     const timestampStr = now.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
