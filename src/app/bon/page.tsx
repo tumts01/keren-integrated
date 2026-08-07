@@ -1418,20 +1418,25 @@ function TabLaporanKeuangan({ onPrint }: { onPrint: (url: string) => void }) {
       </div>
 
       <div className={styles.filterBar}>
-        <div className={styles.filterGroup}>
-          <label>Filter Bulan</label>
-          <input type="month" className={styles.filterInput} value={filterBulan} onChange={e => setFilterBulan(e.target.value)} />
-        </div>
+        <input 
+          type="month" 
+          className={styles.filterDate} 
+          value={filterBulan} 
+          onChange={e => setFilterBulan(e.target.value)} 
+          title="Filter Bulan"
+        />
         {isAdmin && (
-          <div className={styles.filterGroup}>
-            <label>Filter Pemohon</label>
-            <select className={styles.filterInput} value={filterUser} onChange={e => setFilterUser(e.target.value)}>
-              <option value="">-- Pilih Pemohon --</option>
-              {availableUsers.map(u => (
-                <option key={u.ID || u.nama} value={u.Nama || u.nama}>{u.Nama || u.nama}</option>
-              ))}
-            </select>
-          </div>
+          <select 
+            className={styles.filterSelect} 
+            value={filterUser} 
+            onChange={e => setFilterUser(e.target.value)}
+            title="Filter Pemohon"
+          >
+            <option value="">-- Pilih Pemohon --</option>
+            {availableUsers.map(u => (
+              <option key={u.ID || u.nama} value={u.Nama || u.nama}>{u.Nama || u.nama}</option>
+            ))}
+          </select>
         )}
         <div style={{ marginLeft: 'auto' }}>
           <button 
