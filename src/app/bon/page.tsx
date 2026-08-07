@@ -1286,8 +1286,208 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
   );
 }
 
+// ===== TAB: LAPORAN KEUANGAN =====
+function TabLaporanKeuangan({ onPrint }: { onPrint: (url: string) => void }) {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [availableUsers, setAvailableUsers] = useState<any[]>([]);
+  const [filterUser, setFilterUser] = useState('');
+  const [filterBulan, setFilterBulan] = useState(new Date().toISOString().substring(0, 7));
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('keren_user_data');
+    if (stored) {
+      const u = JSON.parse(stored);
+      const role = (u.role || '').toLowerCase();
+      if (['admin', 'pimpinan', 'bendahara'].includes(role)) {
+        setIsAdmin(true);
+      } else {
+        setFilterUser(u.nama || '');
+      }
+    }
+    fetch('/api/user').then(r => r.json()).then(j => {
+      setAvailableUsers(j.data || []);
+    });
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    const res = await fetch(`/api/bon`);
+    const json = await res.json();
+    setData(json.data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchData(); }, []);
+
+  let mutasi: any[] = [];
+  let currentSaldo = 0;
+  let totalTerima = 0;
+  let totalKeluar = 0;
+
+  if (filterUser && filterBulan) {
+    const sortedData = [...data].reverse();
+    
+    sortedData.filter(d => (d.Nama || d.nama || '').trim() === filterUser).forEach(bon => {
+      const isTargetMonth = (bon.Tanggal || '').startsWith(filterBulan);
+      const idBukti = bon.NoBon || bon.ID;
+      
+      const requested = parseFloat(bon.JumlahDiminta || '0');
+      const saldoDipakai = parseFloat(bon.SaldoTerpakai || '0');
+      const isSaldoOnly = requested <= saldoDipakai && saldoDipakai > 0;
+      
+      let penerimaanKas = 0;
+      if (!isSaldoOnly && requested > 0) {
+        penerimaanKas = requested;
+        currentSaldo += penerimaanKas;
+        if (isTargetMonth) {
+          totalTerima += penerimaanKas;
+          mutasi.push({
+            id: `TRM-${idBukti}`,
+            tanggal: bon.Tanggal,
+            noBukti: idBukti,
+            uraian: `Penerimaan Kas: ${bon.Keperluan}`,
+            terima: penerimaanKas,
+            keluar: 0,
+            saldo: currentSaldo
+          });
+        }
+      }
+
+      let rincian: any[] = [];
+      try {
+        if (bon.RincianJSON) rincian = JSON.parse(bon.RincianJSON);
+      } catch(e){}
+
+      if (rincian.length > 0) {
+        rincian.forEach((r, idx) => {
+          const qty = Number(r.qty) || 0;
+          const harga = Number(r.harga) || 0;
+          const out = qty * harga;
+          if (out > 0) {
+            currentSaldo -= out;
+            if (isTargetMonth) {
+              totalKeluar += out;
+              mutasi.push({
+                id: `KLR-${idBukti}-${idx}`,
+                tanggal: bon.Tanggal,
+                noBukti: idBukti,
+                uraian: `Belanja: ${r.barang} (${qty} ${r.satuan})`,
+                terima: 0,
+                keluar: out,
+                saldo: currentSaldo
+              });
+            }
+          }
+        });
+      }
+    });
+  }
+
+  let lastBukti = '';
+  let counter = 0;
+  const finalMutasi = mutasi.map((m, i, arr) => {
+    if (m.noBukti !== lastBukti) {
+      lastBukti = m.noBukti;
+      counter++;
+      const rowSpanCount = arr.filter(x => x.noBukti === m.noBukti).length;
+      return { ...m, rowSpan: rowSpanCount, num: counter };
+    }
+    return { ...m, rowSpan: 0, num: counter };
+  });
+
+  return (
+    <div>
+      <div className={styles.statCards}>
+        {[
+          { icon: 'fa-arrow-down', color: '#10b981', num: formatRp(totalTerima), lbl: 'Penerimaan Bulan Ini' },
+          { icon: 'fa-arrow-up', color: '#ef4444', num: formatRp(totalKeluar), lbl: 'Pengeluaran Bulan Ini' },
+          { icon: 'fa-wallet', color: '#3b82f6', num: formatRp(currentSaldo), lbl: 'Sisa Saldo Akhir' },
+        ].map((s, i) => (
+          <div key={i} className={styles.statCard}>
+            <div className={styles.statIcon} style={{ background: s.color + '20', color: s.color }}>
+              <i className={`fas ${s.icon}`}></i>
+            </div>
+            <div className={styles.statInfo}>
+              <div className={styles.statNum} style={{ fontSize: '1.2rem' }}>{s.num}</div>
+              <div className={styles.statLbl}>{s.lbl}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className={styles.filterBar}>
+        <div className={styles.filterGroup}>
+          <label>Filter Bulan</label>
+          <input type="month" className={styles.filterInput} value={filterBulan} onChange={e => setFilterBulan(e.target.value)} />
+        </div>
+        {isAdmin && (
+          <div className={styles.filterGroup}>
+            <label>Filter Pemohon</label>
+            <select className={styles.filterInput} value={filterUser} onChange={e => setFilterUser(e.target.value)}>
+              <option value="">-- Pilih Pemohon --</option>
+              {availableUsers.map(u => (
+                <option key={u.ID || u.nama} value={u.Nama || u.nama}>{u.Nama || u.nama}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        <div style={{ marginLeft: 'auto' }}>
+          <button 
+            className={styles.btnPrimary} 
+            disabled={!filterUser || finalMutasi.length === 0}
+            onClick={() => onPrint(`/bon/cetak-laporan/${encodeURIComponent(filterUser)}/${filterBulan}`)}
+          >
+            <i className="fas fa-print"></i> Cetak Laporan Keuangan
+          </button>
+        </div>
+      </div>
+
+      <div className={styles.tableWrap}>
+        {loading ? (
+          <div style={{ padding: 40, textAlign: 'center' }}><i className="fas fa-spinner fa-spin fa-2x"></i></div>
+        ) : finalMutasi.length > 0 ? (
+          <table className={styles.table} style={{ whiteSpace: 'normal', minWidth: '800px' }}>
+            <thead>
+              <tr>
+                <th style={{ width: 40, textAlign: 'center' }}>No</th>
+                <th style={{ width: 100 }}>Tanggal</th>
+                <th style={{ width: 220 }}>No. Bukti / BON</th>
+                <th>Uraian / Keperluan</th>
+                <th style={{ width: 120, textAlign: 'right' }}>Penerimaan</th>
+                <th style={{ width: 120, textAlign: 'right' }}>Pengeluaran</th>
+                <th style={{ width: 120, textAlign: 'right' }}>Saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {finalMutasi.map((m) => (
+                <tr key={m.id}>
+                  {m.rowSpan > 0 && <td rowSpan={m.rowSpan} style={{ textAlign: 'center', verticalAlign: 'top' }}>{m.num}</td>}
+                  {m.rowSpan > 0 && <td rowSpan={m.rowSpan} style={{ verticalAlign: 'top', whiteSpace: 'nowrap' }}>{m.tanggal}</td>}
+                  {m.rowSpan > 0 && <td rowSpan={m.rowSpan} style={{ verticalAlign: 'top', whiteSpace: 'nowrap', fontWeight: 600 }}>{m.noBukti}</td>}
+                  <td style={{ verticalAlign: 'top' }}>{m.uraian}</td>
+                  <td style={{ textAlign: 'right', verticalAlign: 'top', color: m.terima > 0 ? '#10b981' : 'inherit' }}>{m.terima > 0 ? formatRp(m.terima) : '-'}</td>
+                  <td style={{ textAlign: 'right', verticalAlign: 'top', color: m.keluar > 0 ? '#ef4444' : 'inherit' }}>{m.keluar > 0 ? formatRp(m.keluar) : '-'}</td>
+                  <td style={{ textAlign: 'right', verticalAlign: 'top', fontWeight: 600, color: '#3b82f6' }}>{formatRp(m.saldo)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
+            <i className="fas fa-inbox fa-3x" style={{ marginBottom: 16 }}></i>
+            <p>Tidak ada mutasi belanja atau penerimaan untuk filter ini.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ===== MAIN PAGE =====
 const TABS = [
+  { id: 'laporan',     label: 'Lap. Keuangan', icon: 'fa-book',                color: '#ec4899' },
   { id: 'ajukan',      label: 'Ajukan BON',    icon: 'fa-file-invoice-dollar', color: '#237227' },
   { id: 'realisasi',   label: 'Lap. Realisasi', icon: 'fa-receipt',             color: '#0ea5e9' },
   { id: 'rekap',       label: 'Rekap Data',     icon: 'fa-chart-bar',           color: '#8b5cf6' },
@@ -1329,6 +1529,7 @@ export default function BonPage() {
       </div>
 
       <div className={styles.tabContent}>
+        {activeTab === 'laporan'     && <TabLaporanKeuangan onPrint={setPrintUrl} />}
         {activeTab === 'ajukan'      && <TabAjukan onPrint={setPrintUrl} />}
         {activeTab === 'realisasi'   && <TabRealisasi onPrint={setPrintUrl} />}
         {activeTab === 'rekap'       && <TabRekap onPrint={setPrintUrl} />}
