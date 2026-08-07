@@ -47,6 +47,7 @@ export default function CetakLaporanKeuanganPage() {
   let jabatanUser = '';
   let totalTerima = 0;
   let totalKeluar = 0;
+  let sisaAkhir = 0;
   
   const sortedData = [...data].reverse();
   
@@ -120,6 +121,8 @@ export default function CetakLaporanKeuanganPage() {
     }
   });
 
+  sisaAkhir = currentSaldo;
+
   let lastBukti = '';
   let counter = 0;
   const finalMutasi = mutasi.map((m, i, arr) => {
@@ -183,7 +186,7 @@ export default function CetakLaporanKeuanganPage() {
               </tr>
             ))}
           </tbody>
-          <tfoot>
+          <tbody>
             <tr>
               <td colSpan={4} style={{ textAlign: 'right', fontWeight: 700, border: '1px solid #000', padding: '7px 6px', backgroundColor: '#f1f5f9', fontSize: '10pt' }}>
                 JUMLAH
@@ -195,10 +198,10 @@ export default function CetakLaporanKeuanganPage() {
                 {formatRp(totalKeluar)}
               </td>
               <td style={{ textAlign: 'right', fontWeight: 700, border: '2px solid #000', padding: '7px 6px', backgroundColor: '#e6f4ea', fontSize: '10pt', color: '#15803d' }}>
-                {formatRp(totalTerima - totalKeluar)}
+                {formatRp(sisaAkhir)}
               </td>
             </tr>
-          </tfoot>
+          </tbody>
         </table>
 
         {/* TTD */}
