@@ -10,7 +10,7 @@ export default function AbsensiGTK() {
   const [time, setTime] = useState<Date | null>(null);
   
   // States for Attendance
-  const [status, setStatus] = useState({ hasCheckedIn: false, hasCheckedOut: false, jamMasuk: null, jamPulang: null });
+  const [status, setStatus] = useState<{ hasCheckedIn: boolean; hasCheckedOut: boolean; jamMasuk: string | null; jamPulang: string | null }>({ hasCheckedIn: false, hasCheckedOut: false, jamMasuk: null, jamPulang: null });
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState('');
