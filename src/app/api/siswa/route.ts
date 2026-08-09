@@ -109,34 +109,54 @@ export async function POST(request: Request) {
     }
 
     await sheet.loadHeaderRow();
+    const headers = sheet.headerValues; // array nama kolom
 
-    // Buat objek row — kolom yang dipilih sesuai kelas
+    // Buat map: nama kolom → nilai
     const rowData: Record<string, string> = {
-      'ID SISWA':                         fields.nis || '',
-      'NISN':                             fields.nisn || '',
-      'NIK':                              fields.nik || '',
-      'NAMA':                             fields.nama || '',
-      'JENIS KELAMIN':                    fields.jenisKelamin || '',
-      'TEMPAT, TANGGAL LAHIR':           `${fields.tempatLahir || ''}, ${fields.tanggalLahir || ''}`,
-      'DOMISILI':                         fields.domisili || '',
-      'ALAMAT AYAH KANDUNG':              fields.alamat || '',
-      'NAMA AYAH KANDUNG':                fields.namaAyah || '',
-      'NAMA IBU KANDUNG':                 fields.namaIbu || '',
-      'PEKERJAAN AYAH KANDUNG':           fields.pekerjaanAyah || '',
-      'PEKERJAAN IBU KANDUNG':            fields.pekerjaanIbu || '',
-      'NOMOR TELEPON AYAH KANDUNG':       fields.noHpAyah || '',
-      'NOMOR TELEPON IBU KANDUNG':        fields.noHpIbu || '',
-      'STATUS SISWA':                     'Aktif',
-      'Ket':                              'Mutasi Masuk',
-      // Asal sekolah
-      'ASAL SEKOLAH':                     fields.asalSekolah || '',
-      // Tahun ajaran dan rombel sesuai kelas yang dipilih
-      [`TA KELAS ${kelas}`]:              fields.tahunAjaran || '',
-      [`ROMBEL KELAS ${kelas}`]:          fields.rombel || '',
+      'ID SISWA':                   fields.nis || '',
+      'NISN':                       fields.nisn || '',
+      'NIK':                        fields.nik || '',
+      'NAMA':                       fields.nama || '',
+      'JENIS KELAMIN':              fields.jenisKelamin || '',
+      'TEMPAT, TANGGAL LAHIR':     `${fields.tempatLahir || ''}, ${fields.tanggalLahir || ''}`,
+      'DOMISILI':                   fields.domisili || '',
+      'ALAMAT AYAH KANDUNG':        fields.alamat || '',
+      'NAMA AYAH KANDUNG':          fields.namaAyah || '',
+      'NAMA IBU KANDUNG':           fields.namaIbu || '',
+      'PEKERJAAN AYAH KANDUNG':     fields.pekerjaanAyah || '',
+      'PEKERJAAN IBU KANDUNG':      fields.pekerjaanIbu || '',
+      'NOMOR TELEPON AYAH KANDUNG': fields.noHpAyah || '',
+      'NOMOR TELEPON IBU KANDUNG':  fields.noHpIbu || '',
+      'STATUS SISWA':               'Aktif',
+      [`TA KELAS ${kelas}`]:        fields.tahunAjaran || '',
+      [`ROMBEL KELAS ${kelas}`]:    fields.rombel || '',
     };
 
-    // Insert di baris ke-2 (index 1, di bawah header = baris pertama data)
-    await sheet.insertRows(1, [rowData]);
+    // Jika ada asal sekolah, cari nama kolom yang cocok
+    if (fields.asalSekolah) {
+      const asalKey = headers.find(h =>
+        h.toUpperCase().includes('ASAL') || h.toUpperCase().includes('SEKOLAH ASAL')
+      );
+      if (asalKey) rowData[asalKey] = fields.asalSekolah;
+    }
+
+    // Sisipkan baris kosong di row index 1 (baris ke-2, tepat di bawah header)
+    await sheet.insertDimension('ROWS', { startIndex: 1, endIndex: 2 }, false);
+
+    // Muat sel baris ke-2 (index 1)
+    await sheet.loadCells({ startRowIndex: 1, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: headers.length });
+
+    // Isi nilai per kolom
+    headers.forEach((header, colIndex) => {
+      const val = rowData[header];
+      if (val !== undefined && val !== '') {
+        const cell = sheet.getCell(1, colIndex);
+        cell.value = val;
+      }
+    });
+
+    // Simpan
+    await sheet.saveUpdatedCells();
 
     return NextResponse.json({ success: true, message: 'Siswa mutasi masuk berhasil ditambahkan.' });
   } catch (error: any) {
