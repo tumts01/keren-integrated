@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getIndukDoc } from '@/lib/google-sheets';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const doc = await getIndukDoc();
@@ -86,10 +88,59 @@ export async function GET() {
     });
 
     return NextResponse.json({ success: true, data }, {
-      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' }
+      headers: { 'Cache-Control': 'no-store, no-cache' }
     });
   } catch (error: any) {
     console.error('Fetch Siswa Error:', error);
     return NextResponse.json({ success: false, error: 'Gagal mengambil data dari Database' }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { kelas, ...fields } = body;
+    // kelas: '7' | '8' | '9'
+
+    const doc = await getIndukDoc();
+    const sheet = doc.sheetsByTitle['DATABASE'];
+    if (!sheet) {
+      return NextResponse.json({ success: false, error: 'Tab DATABASE tidak ditemukan' }, { status: 404 });
+    }
+
+    await sheet.loadHeaderRow();
+
+    // Buat objek row — kolom yang dipilih sesuai kelas
+    const rowData: Record<string, string> = {
+      'ID SISWA':                         fields.nis || '',
+      'NISN':                             fields.nisn || '',
+      'NIK':                              fields.nik || '',
+      'NAMA':                             fields.nama || '',
+      'JENIS KELAMIN':                    fields.jenisKelamin || '',
+      'TEMPAT, TANGGAL LAHIR':           `${fields.tempatLahir || ''}, ${fields.tanggalLahir || ''}`,
+      'DOMISILI':                         fields.domisili || '',
+      'ALAMAT AYAH KANDUNG':              fields.alamat || '',
+      'NAMA AYAH KANDUNG':                fields.namaAyah || '',
+      'NAMA IBU KANDUNG':                 fields.namaIbu || '',
+      'PEKERJAAN AYAH KANDUNG':           fields.pekerjaanAyah || '',
+      'PEKERJAAN IBU KANDUNG':            fields.pekerjaanIbu || '',
+      'NOMOR TELEPON AYAH KANDUNG':       fields.noHpAyah || '',
+      'NOMOR TELEPON IBU KANDUNG':        fields.noHpIbu || '',
+      'STATUS SISWA':                     'Aktif',
+      'Ket':                              'Mutasi Masuk',
+      // Asal sekolah
+      'ASAL SEKOLAH':                     fields.asalSekolah || '',
+      // Tahun ajaran dan rombel sesuai kelas yang dipilih
+      [`TA KELAS ${kelas}`]:              fields.tahunAjaran || '',
+      [`ROMBEL KELAS ${kelas}`]:          fields.rombel || '',
+    };
+
+    // Insert di baris ke-2 (index 1, di bawah header = baris pertama data)
+    await sheet.insertRows(1, [rowData]);
+
+    return NextResponse.json({ success: true, message: 'Siswa mutasi masuk berhasil ditambahkan.' });
+  } catch (error: any) {
+    console.error('POST Siswa Error:', error);
+    return NextResponse.json({ success: false, error: error.message || 'Gagal menyimpan data siswa' }, { status: 500 });
   }
 }

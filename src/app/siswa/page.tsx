@@ -236,6 +236,220 @@ function PrintPresensiModal({
 }
 
 // ===== CETAK MODAL (print langsung dari halaman) =====
+
+// ===== TAMBAH SISWA MUTASI MASUK MODAL =====
+function TambahMutasiModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const tahunSekarang = new Date().getFullYear();
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    nis: '', nisn: '', nik: '', nama: '', jenisKelamin: 'L',
+    tempatLahir: '', tanggalLahir: '', domisili: 'Pesantren',
+    asalSekolah: '', rombel: '', tahunAjaran: `${tahunSekarang}/${tahunSekarang + 1}`,
+    kelas: '7',
+    namaAyah: '', namaIbu: '', pekerjaanAyah: '', pekerjaanIbu: '',
+    noHpAyah: '', noHpIbu: '', alamat: '',
+  });
+
+  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.nama.trim() || !form.rombel.trim()) {
+      alert('Nama dan Rombel/Kelas wajib diisi!');
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch('/api/siswa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('✅ Siswa mutasi masuk berhasil ditambahkan!');
+        onSuccess();
+        onClose();
+      } else {
+        alert('❌ Gagal: ' + (data.error || 'Terjadi kesalahan'));
+      }
+    } catch {
+      alert('❌ Koneksi gagal, coba lagi.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '10px 14px', borderRadius: '10px',
+    border: '1px solid #cbd5e1', fontSize: '0.9rem', boxSizing: 'border-box'
+  };
+  const labelStyle: React.CSSProperties = {
+    display: 'block', fontWeight: 600, fontSize: '0.8rem',
+    color: '#475569', marginBottom: '4px'
+  };
+  const sectionStyle: React.CSSProperties = {
+    background: '#f8fafc', borderRadius: '12px', padding: '16px',
+    marginBottom: '16px', border: '1px solid #e2e8f0'
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+      zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '16px'
+    }}>
+      <div style={{
+        background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '680px',
+        maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 50px rgba(0,0,0,0.25)'
+      }}>
+        {/* Header */}
+        <div style={{
+          position: 'sticky', top: 0, background: 'linear-gradient(135deg,#0ea5e9,#0284c7)',
+          padding: '20px 24px', borderRadius: '20px 20px 0 0', color: 'white', zIndex: 1
+        }}>
+          <h3 style={{ margin: 0, fontSize: '1.1rem' }}>
+            <i className="fas fa-user-plus" style={{ marginRight: 10 }}></i>
+            Tambah Siswa Mutasi Masuk
+          </h3>
+          <p style={{ margin: '4px 0 0', fontSize: '0.8rem', opacity: 0.85 }}>
+            Data akan ditambahkan di baris paling atas sheet DATABASE
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
+
+          {/* DATA PRIBADI */}
+          <div style={sectionStyle}>
+            <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: 12, fontSize: '0.9rem' }}>
+              <i className="fas fa-id-card" style={{ marginRight: 8, color: '#0ea5e9' }}></i>Data Pribadi
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ gridColumn: '1/-1' }}>
+                <label style={labelStyle}>Nama Lengkap <span style={{color:'#ef4444'}}>*</span></label>
+                <input style={inputStyle} value={form.nama} onChange={e=>set('nama',e.target.value)} placeholder="Nama lengkap siswa" required />
+              </div>
+              <div>
+                <label style={labelStyle}>NIS / ID Siswa</label>
+                <input style={inputStyle} value={form.nis} onChange={e=>set('nis',e.target.value)} placeholder="contoh: 2024001" />
+              </div>
+              <div>
+                <label style={labelStyle}>NISN</label>
+                <input style={inputStyle} value={form.nisn} onChange={e=>set('nisn',e.target.value)} placeholder="10 digit" />
+              </div>
+              <div>
+                <label style={labelStyle}>NIK</label>
+                <input style={inputStyle} value={form.nik} onChange={e=>set('nik',e.target.value)} placeholder="16 digit" />
+              </div>
+              <div>
+                <label style={labelStyle}>Jenis Kelamin</label>
+                <select style={inputStyle} value={form.jenisKelamin} onChange={e=>set('jenisKelamin',e.target.value)}>
+                  <option value="L">Laki-laki</option>
+                  <option value="P">Perempuan</option>
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Tempat Lahir</label>
+                <input style={inputStyle} value={form.tempatLahir} onChange={e=>set('tempatLahir',e.target.value)} placeholder="Malang" />
+              </div>
+              <div>
+                <label style={labelStyle}>Tanggal Lahir</label>
+                <input type="date" style={inputStyle} value={form.tanggalLahir} onChange={e=>set('tanggalLahir',e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          {/* DATA SEKOLAH */}
+          <div style={sectionStyle}>
+            <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: 12, fontSize: '0.9rem' }}>
+              <i className="fas fa-school" style={{ marginRight: 8, color: '#0ea5e9' }}></i>Data Sekolah
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={labelStyle}>Masuk Kelas <span style={{color:'#ef4444'}}>*</span></label>
+                <select style={inputStyle} value={form.kelas} onChange={e=>set('kelas',e.target.value)}>
+                  <option value="7">Kelas 7</option>
+                  <option value="8">Kelas 8</option>
+                  <option value="9">Kelas 9</option>
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Rombel / Kelas <span style={{color:'#ef4444'}}>*</span></label>
+                <input style={inputStyle} value={form.rombel} onChange={e=>set('rombel',e.target.value.toUpperCase())} placeholder="contoh: 7A, 8B" required />
+              </div>
+              <div>
+                <label style={labelStyle}>Tahun Ajaran</label>
+                <input style={inputStyle} value={form.tahunAjaran} onChange={e=>set('tahunAjaran',e.target.value)} placeholder="2026/2027" />
+              </div>
+              <div>
+                <label style={labelStyle}>Asal Sekolah</label>
+                <input style={inputStyle} value={form.asalSekolah} onChange={e=>set('asalSekolah',e.target.value)} placeholder="SD/MI Asal" />
+              </div>
+              <div>
+                <label style={labelStyle}>Domisili</label>
+                <select style={inputStyle} value={form.domisili} onChange={e=>set('domisili',e.target.value)}>
+                  <option value="Pesantren">Pesantren</option>
+                  <option value="Rumah">Rumah</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* DATA ORANG TUA */}
+          <div style={sectionStyle}>
+            <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: 12, fontSize: '0.9rem' }}>
+              <i className="fas fa-users" style={{ marginRight: 8, color: '#0ea5e9' }}></i>Data Orang Tua / Wali
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={labelStyle}>Nama Ayah</label>
+                <input style={inputStyle} value={form.namaAyah} onChange={e=>set('namaAyah',e.target.value)} placeholder="Nama ayah kandung" />
+              </div>
+              <div>
+                <label style={labelStyle}>Nama Ibu</label>
+                <input style={inputStyle} value={form.namaIbu} onChange={e=>set('namaIbu',e.target.value)} placeholder="Nama ibu kandung" />
+              </div>
+              <div>
+                <label style={labelStyle}>Pekerjaan Ayah</label>
+                <input style={inputStyle} value={form.pekerjaanAyah} onChange={e=>set('pekerjaanAyah',e.target.value)} placeholder="Wiraswasta, PNS, dll" />
+              </div>
+              <div>
+                <label style={labelStyle}>Pekerjaan Ibu</label>
+                <input style={inputStyle} value={form.pekerjaanIbu} onChange={e=>set('pekerjaanIbu',e.target.value)} placeholder="Wiraswasta, IRT, dll" />
+              </div>
+              <div>
+                <label style={labelStyle}>No. HP Ayah</label>
+                <input style={inputStyle} value={form.noHpAyah} onChange={e=>set('noHpAyah',e.target.value)} placeholder="08xxxxxxxxxx" />
+              </div>
+              <div>
+                <label style={labelStyle}>No. HP Ibu</label>
+                <input style={inputStyle} value={form.noHpIbu} onChange={e=>set('noHpIbu',e.target.value)} placeholder="08xxxxxxxxxx" />
+              </div>
+              <div style={{ gridColumn: '1/-1' }}>
+                <label style={labelStyle}>Alamat</label>
+                <textarea style={{...inputStyle, resize:'vertical', minHeight:72}} value={form.alamat} onChange={e=>set('alamat',e.target.value)} placeholder="Alamat lengkap" />
+              </div>
+            </div>
+          </div>
+
+          {/* FOOTER */}
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <button type="button" onClick={onClose}
+              style={{ padding: '10px 24px', borderRadius: 10, border: '1px solid #cbd5e1', background: '#f1f5f9', cursor: 'pointer', fontWeight: 600 }}>
+              Batal
+            </button>
+            <button type="submit" disabled={saving}
+              style={{ padding: '10px 28px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#0ea5e9,#0284c7)', color: 'white', cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 700, opacity: saving ? 0.7 : 1 }}>
+              {saving ? <><i className="fas fa-spinner fa-spin" style={{marginRight:8}}></i>Menyimpan...</> : <><i className="fas fa-save" style={{marginRight:8}}></i>Simpan Data</>}
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function PrintSiswaModal({
   allData,
   onClose,
@@ -636,6 +850,7 @@ export default function SiswaPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showPresensiModal, setShowPresensiModal] = useState(false);
+  const [showMutasiModal, setShowMutasiModal] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -830,6 +1045,17 @@ export default function SiswaPage() {
         <PrintPresensiModal allData={data} onClose={() => setShowPresensiModal(false)} />
       )}
 
+      {showMutasiModal && (
+        <TambahMutasiModal
+          onClose={() => setShowMutasiModal(false)}
+          onSuccess={() => {
+            // Refresh data setelah simpan
+            fetch('/api/siswa').then(r => r.json()).then(result => {
+              if (result.success) setData(result.data);
+            });
+          }}
+        />
+      )}
       {showPrintModal && (
         <PrintSiswaModal allData={data} onClose={() => setShowPrintModal(false)} />
       )}
@@ -990,6 +1216,9 @@ export default function SiswaPage() {
             </button>
             <button onClick={() => setShowPrintModal(true)} className="btn btn-primary" style={{ background: 'linear-gradient(135deg,#7c3aed,#6d28d9)', borderColor: '#7c3aed' }}>
               <i className="fas fa-print"></i> Cetak Daftar
+            </button>
+            <button onClick={() => setShowMutasiModal(true)} className="btn btn-primary" style={{ background: 'linear-gradient(135deg,#0ea5e9,#0284c7)', borderColor: '#0ea5e9' }}>
+              <i className="fas fa-user-plus"></i> Mutasi Masuk
             </button>
           </div>
         </div>
