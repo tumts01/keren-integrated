@@ -130,6 +130,11 @@ export async function POST(request: Request) {
       'STATUS SISWA':               'Aktif',
       [`TA KELAS ${kelas}`]:        fields.tahunAjaran || '',
       [`ROMBEL KELAS ${kelas}`]:    fields.rombel || '',
+      'NOMOR SURAT MUTASI MASUK': fields.noSuratMutasiMasuk || '',
+      'SMP/MTs SEBELUMNYA': fields.sekolahSebelumnya || '',
+      'NPSN/NSS/NSM SMP/MTs SEBELUMNYA': fields.npsnSekolahSebelumnya || '',
+      'TANGGAL MUTASI MASUK': fields.tanggalMutasiMasuk || '',
+      'NOMOR SURAT MUTASI KELUAR': fields.noSuratMutasiKeluar || '',
     };
 
     // Jika ada asal sekolah, cari nama kolom yang cocok

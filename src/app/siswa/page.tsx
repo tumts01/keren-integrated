@@ -248,6 +248,8 @@ function TambahMutasiModal({ onClose, onSuccess }: { onClose: () => void; onSucc
     kelas: '7',
     namaAyah: '', namaIbu: '', pekerjaanAyah: '', pekerjaanIbu: '',
     noHpAyah: '', noHpIbu: '', alamat: '',
+    noSuratMutasiMasuk: '', sekolahSebelumnya: '', npsnSekolahSebelumnya: '',
+    tanggalMutasiMasuk: '', noSuratMutasiKeluar: ''
   });
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
@@ -355,6 +357,35 @@ function TambahMutasiModal({ onClose, onSuccess }: { onClose: () => void; onSucc
               <div>
                 <label style={labelStyle}>Tanggal Lahir</label>
                 <input type="date" style={inputStyle} value={form.tanggalLahir} onChange={e=>set('tanggalLahir',e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          {/* DATA MUTASI */}
+          <div style={sectionStyle}>
+            <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: 12, fontSize: '0.9rem' }}>
+              <i className="fas fa-exchange-alt" style={{ marginRight: 8, color: '#0ea5e9' }}></i>Data Mutasi
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ gridColumn: '1/-1' }}>
+                <label style={labelStyle}>Tanggal Mutasi Masuk</label>
+                <input type="date" style={inputStyle} value={form.tanggalMutasiMasuk} onChange={e=>set('tanggalMutasiMasuk',e.target.value)} />
+              </div>
+              <div>
+                <label style={labelStyle}>Nomor Surat Mutasi Masuk</label>
+                <input style={inputStyle} value={form.noSuratMutasiMasuk} onChange={e=>set('noSuratMutasiMasuk',e.target.value)} placeholder="No. Surat Mutasi" />
+              </div>
+              <div>
+                <label style={labelStyle}>Nomor Surat Mutasi Keluar</label>
+                <input style={inputStyle} value={form.noSuratMutasiKeluar} onChange={e=>set('noSuratMutasiKeluar',e.target.value)} placeholder="No. Surat Mutasi Keluar" />
+              </div>
+              <div style={{ gridColumn: '1/-1' }}>
+                <label style={labelStyle}>SMP/MTs Sebelumnya</label>
+                <input style={inputStyle} value={form.sekolahSebelumnya} onChange={e=>set('sekolahSebelumnya',e.target.value)} placeholder="Nama Sekolah Sebelumnya" />
+              </div>
+              <div style={{ gridColumn: '1/-1' }}>
+                <label style={labelStyle}>NPSN/NSS/NSM SMP/MTs Sebelumnya</label>
+                <input style={inputStyle} value={form.npsnSekolahSebelumnya} onChange={e=>set('npsnSekolahSebelumnya',e.target.value)} placeholder="NPSN Sekolah Sebelumnya" />
               </div>
             </div>
           </div>
