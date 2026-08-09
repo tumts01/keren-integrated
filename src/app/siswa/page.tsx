@@ -364,8 +364,8 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
               <div>
                 <label style={labelStyle}>Jenis Kelamin</label>
                 <select style={inputStyle} value={form.jenisKelamin} onChange={e=>set('jenisKelamin',e.target.value)}>
-                  <option value="L">Laki-laki</option>
-                  <option value="P">Perempuan</option>
+                  <option value="LAKI-LAKI">Laki-laki</option>
+                  <option value="PEREMPUAN">Perempuan</option>
                 </select>
               </div>
               <div>

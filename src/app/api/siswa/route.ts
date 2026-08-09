@@ -136,12 +136,9 @@ export async function POST(request: Request) {
       'TANGGAL MUTASI MASUK': fields.tanggalMutasiMasuk || '',
     };
 
-    // Jika ada asal sekolah, cari nama kolom yang cocok
-    if (fields.asalSekolah) {
-      const asalKey = headers.find(h =>
-        h.toUpperCase().includes('ASAL') || h.toUpperCase().includes('SEKOLAH ASAL')
-      );
-      if (asalKey) rowData[asalKey] = fields.asalSekolah;
+    // Asal SD/MI diarahkan ke kolom AY (index 50)
+    if (fields.asalSekolah && headers[50]) {
+      rowData[headers[50]] = fields.asalSekolah;
     }
 
     // Sisipkan baris kosong di row index 1 (baris ke-2, tepat di bawah header)
