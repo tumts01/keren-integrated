@@ -134,7 +134,6 @@ export async function POST(request: Request) {
       'SMP/MTs SEBELUMNYA': fields.sekolahSebelumnya || '',
       'NPSN/NSS/NSM SMP/MTs SEBELUMNYA': fields.npsnSekolahSebelumnya || '',
       'TANGGAL MUTASI MASUK': fields.tanggalMutasiMasuk || '',
-      'NOMOR SURAT MUTASI KELUAR': fields.noSuratMutasiKeluar || '',
     };
 
     // Jika ada asal sekolah, cari nama kolom yang cocok

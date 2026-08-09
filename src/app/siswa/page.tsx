@@ -249,7 +249,7 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
     namaAyah: '', namaIbu: '', pekerjaanAyah: '', pekerjaanIbu: '',
     noHpAyah: '', noHpIbu: '', alamat: '',
     noSuratMutasiMasuk: '', sekolahSebelumnya: '', npsnSekolahSebelumnya: '',
-    tanggalMutasiMasuk: '', noSuratMutasiKeluar: ''
+    tanggalMutasiMasuk: ''
   });
 
   useEffect(() => {
@@ -382,17 +382,13 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
               <i className="fas fa-exchange-alt" style={{ marginRight: 8, color: '#0ea5e9' }}></i>Data Mutasi
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div style={{ gridColumn: '1/-1' }}>
+              <div>
                 <label style={labelStyle}>Tanggal Mutasi Masuk</label>
                 <input type="date" style={inputStyle} value={form.tanggalMutasiMasuk} onChange={e=>set('tanggalMutasiMasuk',e.target.value)} />
               </div>
               <div>
                 <label style={labelStyle}>Nomor Surat Mutasi Masuk</label>
                 <input style={inputStyle} value={form.noSuratMutasiMasuk} onChange={e=>set('noSuratMutasiMasuk',e.target.value)} placeholder="No. Surat Mutasi" />
-              </div>
-              <div>
-                <label style={labelStyle}>Nomor Surat Mutasi Keluar</label>
-                <input style={inputStyle} value={form.noSuratMutasiKeluar} onChange={e=>set('noSuratMutasiKeluar',e.target.value)} placeholder="No. Surat Mutasi Keluar" />
               </div>
               <div style={{ gridColumn: '1/-1' }}>
                 <label style={labelStyle}>SMP/MTs Sebelumnya</label>
