@@ -251,6 +251,7 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
     noSuratMutasiMasuk: '', sekolahSebelumnya: '', npsnSekolahSebelumnya: '',
     tanggalMutasiMasuk: ''
   });
+  const [submitStatus, setSubmitStatus] = useState<{type: 'success' | 'error', message: string} | null>(null);
 
   useEffect(() => {
     let maxNis = 0;
@@ -272,7 +273,7 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.nama.trim() || !form.rombel.trim()) {
-      alert('Nama dan Rombel/Kelas wajib diisi!');
+      setSubmitStatus({ type: 'error', message: 'Nama dan Rombel/Kelas wajib diisi!' });
       return;
     }
     setSaving(true);
@@ -284,14 +285,16 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
       });
       const data = await res.json();
       if (data.success) {
-        alert('✅ Siswa mutasi masuk berhasil ditambahkan!');
-        onSuccess();
-        onClose();
+        setSubmitStatus({ type: 'success', message: 'Siswa mutasi masuk berhasil ditambahkan!' });
+        setTimeout(() => {
+          onSuccess();
+          onClose();
+        }, 2000);
       } else {
-        alert('❌ Gagal: ' + (data.error || 'Terjadi kesalahan'));
+        setSubmitStatus({ type: 'error', message: data.error || 'Terjadi kesalahan saat menyimpan.' });
       }
     } catch {
-      alert('❌ Koneksi gagal, coba lagi.');
+      setSubmitStatus({ type: 'error', message: 'Koneksi gagal, silakan periksa internet Anda dan coba lagi.' });
     } finally {
       setSaving(false);
     }
@@ -488,6 +491,47 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
 
         </form>
       </div>
+
+      {/* SUCCESS / ERROR POPUP */}
+      {submitStatus && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)'
+        }}>
+          <div style={{
+            background: '#fff', padding: '32px', borderRadius: '24px', textAlign: 'center', maxWidth: '400px', width: '90%',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', transform: 'scale(1)', transition: 'transform 0.3s'
+          }}>
+            <div style={{
+              width: '80px', height: '80px', borderRadius: '50%', margin: '0 auto 20px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: submitStatus.type === 'success' ? '#dcfce7' : '#fee2e2',
+              color: submitStatus.type === 'success' ? '#22c55e' : '#ef4444',
+              fontSize: '40px'
+            }}>
+              <i className={`fas ${submitStatus.type === 'success' ? 'fa-check' : 'fa-exclamation'}`}></i>
+            </div>
+            <h3 style={{ margin: '0 0 12px', fontSize: '1.5rem', color: '#0f172a' }}>
+              {submitStatus.type === 'success' ? 'Berhasil!' : 'Oops, Gagal!'}
+            </h3>
+            <p style={{ margin: '0 0 24px', color: '#64748b', lineHeight: '1.5' }}>
+              {submitStatus.message}
+            </p>
+            {submitStatus.type === 'error' && (
+              <button 
+                onClick={() => setSubmitStatus(null)}
+                style={{
+                  width: '100%', padding: '12px', borderRadius: '12px', border: 'none',
+                  background: '#f1f5f9', color: '#0f172a', fontWeight: 600, cursor: 'pointer',
+                  fontSize: '1rem'
+                }}
+              >
+                Tutup
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
