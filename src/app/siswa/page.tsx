@@ -238,7 +238,7 @@ function PrintPresensiModal({
 // ===== CETAK MODAL (print langsung dari halaman) =====
 
 // ===== TAMBAH SISWA MUTASI MASUK MODAL =====
-function TambahMutasiModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => void; onSuccess: () => void; allData: Siswa[] }) {
   const tahunSekarang = new Date().getFullYear();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -251,6 +251,21 @@ function TambahMutasiModal({ onClose, onSuccess }: { onClose: () => void; onSucc
     noSuratMutasiMasuk: '', sekolahSebelumnya: '', npsnSekolahSebelumnya: '',
     tanggalMutasiMasuk: '', noSuratMutasiKeluar: ''
   });
+
+  useEffect(() => {
+    let maxNis = 0;
+    allData.forEach(s => {
+      if (s.nis) {
+        const nisNum = parseInt(s.nis, 10);
+        if (!isNaN(nisNum) && nisNum > maxNis) {
+          maxNis = nisNum;
+        }
+      }
+    });
+    if (maxNis > 0) {
+      setForm(f => ({ ...f, nis: String(maxNis + 1) }));
+    }
+  }, [allData]);
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
@@ -1078,6 +1093,7 @@ export default function SiswaPage() {
 
       {showMutasiModal && (
         <TambahMutasiModal
+          allData={data}
           onClose={() => setShowMutasiModal(false)}
           onSuccess={() => {
             // Refresh data setelah simpan
