@@ -85,6 +85,14 @@ export async function GET(request: Request) {
         }
       }
       return obj;
+    }).map((obj, idx) => {
+      // Entry belanja sisa saldo (NoBon kosong) diberi ID virtual agar bisa ditampilkan
+      if (!obj['NoBon'] && !obj['ID']) {
+        const nama = (obj['Nama'] || 'UNKNOWN').trim().split(' ')[0].toUpperCase();
+        obj['NoBon'] = `SISA-${nama}-${idx + 1}`;
+        obj['isSisaSaldo'] = true;
+      }
+      return obj;
     }).filter(r => r['NoBon'] || r['ID']);
     // Hitung saldo per pemohon (sebelum filter/search)
     const saldoMap: Record<string, number> = {};

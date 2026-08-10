@@ -955,7 +955,13 @@ function TabRealisasi({ onPrint }: { onPrint: (url: string) => void }) {
               if (bon) { try { const r = JSON.parse(bon['RincianJSON'] || '[]'); if (r.length > 0) setRincian(r); } catch {} }
             }} required>
               <option value="">— Pilih Nota BON —</option>
-              {bonList.map((b, i) => <option key={i} value={b['NoBon'] || b['ID']}>{b['NoBon'] || b['ID']} — {b['Keperluan']}</option>)}
+              {bonList.map((b, i) => {
+                const id = b['NoBon'] || b['ID'];
+                const label = b['isSisaSaldo']
+                  ? `💰 Sisa Saldo — ${b['Nama'] || ''} — ${b['Keperluan'] || 'Belanja Sisa Saldo'}`
+                  : `${id} — ${b['Keperluan']}`;
+                return <option key={i} value={id}>{label}</option>;
+              })}
             </select>
           </div>
           <div className={styles.formGroup}>
