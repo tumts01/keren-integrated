@@ -307,6 +307,18 @@
     width: 100%;
     border-collapse: collapse;
   }
+  
+  .notulenPrintLayout .kopSurat {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .notulenPrintLayout .kopSurat img {
+    max-width: 100%;
+    height: auto;
+    max-height: 130px;
+    object-fit: contain;
+  }
 }
 
 .notulenPrintLayout {
