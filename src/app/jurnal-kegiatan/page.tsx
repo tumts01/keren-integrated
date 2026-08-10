@@ -648,6 +648,9 @@ export default function JurnalKegiatanPage() {
                     <label>Nama Guru / Staf <span style={{ color: 'red' }}>*</span></label>
                     <input list="gurus-list" type="text" required placeholder="Ketik atau pilih nama"
                       value={jurnalStafForm.namaStaf} onChange={e => setJurnalStafForm({...jurnalStafForm, namaStaf: e.target.value})} />
+                    <datalist id="gurus-list">
+                      {gurus.map((g, i) => <option key={i} value={g.nama} />)}
+                    </datalist>
                   </div>
                   <div className={styles.formGroup} style={{ marginBottom: 0 }}>
                     <label>Tanggal <span style={{ color: 'red' }}>*</span></label>
@@ -674,16 +677,20 @@ export default function JurnalKegiatanPage() {
                     <textarea placeholder="Catatan tambahan (opsional)" rows={3}
                       value={jurnalStafForm.keterangan} onChange={e => setJurnalStafForm({...jurnalStafForm, keterangan: e.target.value})}></textarea>
                   </div>
-                  <div className={styles.formGroup} style={{ gridColumn: '1 / -1', marginBottom: 0 }}>
-                    <label>Upload Foto Kegiatan (Opsional)</label>
+                  <div style={{ gridColumn: '1 / -1', marginBottom: '16px' }}>
+                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.9rem', color: '#334155' }}>
+                      Upload Foto Kegiatan (Opsional)
+                    </label>
                     <div style={{ display: 'flex', gap: '10px' }}>
                       <label style={{ 
                         flex: 1, padding: '16px', border: '2px dashed #3b82f6', borderRadius: '8px', 
-                        textAlign: 'center', cursor: 'pointer', color: '#3b82f6', fontWeight: 600, background: '#eff6ff' 
+                        textAlign: 'center', cursor: 'pointer', color: '#3b82f6', fontWeight: 600, background: '#eff6ff',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
                       }}>
-                        <i className="fas fa-camera" style={{ display: 'block', fontSize: '1.5rem', marginBottom: '8px' }}></i> 
-                        Pilih File Foto
-                        <input type="file" accept="image/*" style={{ display: 'none' }}
+                        <i className="fas fa-camera" style={{ fontSize: '1.5rem', marginBottom: '8px' }}></i> 
+                        <span>Pilih File Foto</span>
+                        <input type="file" accept="image/*" 
+                          style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', borderWidth: 0 }}
                           onChange={e => setJurnalStafFile(e.target.files ? e.target.files[0] : null)} />
                       </label>
                     </div>
@@ -718,7 +725,7 @@ export default function JurnalKegiatanPage() {
                         <td>
                           <div style={{ fontWeight: 600, color: '#334155' }}>{j.tanggal}</div>
                           <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                            {j.mulaiDari || '-'} s/d {j.sampaiDengan || '-'}
+                            {j.mulaiDari && j.sampaiDengan ? `${j.mulaiDari} s/d ${j.sampaiDengan}` : j.mulaiDari || j.sampaiDengan || ''}
                           </div>
                         </td>
                         <td style={{ fontWeight: 600, color: '#0f172a' }}>{j.namaStaf}</td>
