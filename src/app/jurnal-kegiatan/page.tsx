@@ -535,11 +535,12 @@ export default function JurnalKegiatanPage() {
             </button>
           </div>
           
-          {activeTab === 'notulen' ? (
+          {activeTab === 'notulen' && (
             <button className={styles.btnPrimary} onClick={() => setShowModal(true)}>
               <i className="fas fa-plus"></i> Buat Notulen
             </button>
-          ) : (
+          )}
+          {activeTab === 'lpj' && (
             <button className={styles.btnPrimary} onClick={() => setShowLpjModal(true)}>
               <i className="fas fa-upload"></i> Tambah LPJ
             </button>
