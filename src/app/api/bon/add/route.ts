@@ -16,11 +16,11 @@ function terbilang(angka: number): string {
   return terbilang(Math.floor(angka / 1000000000)) + ' miliar' + (angka % 1000000000 !== 0 ? ' ' + terbilang(angka % 1000000000) : '');
 }
 
-async function generateNoBon(sheet: any, namaDepan: string, tahunAjaran: string, isSaldoOnly: boolean = false): Promise<string> {
+async function generateNoBon(sheet: any, namaDepan: string, tahunAjaran: string): Promise<string> {
   const now = new Date();
   const yyyy = now.getFullYear();
   const mm = String(now.getMonth() + 1).padStart(2, '0');
-  const prefix = isSaldoOnly ? 'SALDO' : 'BON';
+  const prefix = 'BON';
 
   const taStart = (now.getMonth() + 1) >= 7 ? yyyy : yyyy - 1;
   const taEnd = taStart + 1;
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     const sheet = doc.sheetsByTitle['BonData'];
 
     const isSaldoOnly = nominalDiminta <= nominalSaldoTerpakai && nominalSaldoTerpakai > 0;
-    const noBon = await generateNoBon(sheet, namaDepan, tahunAjaran || '', isSaldoOnly);
+    const noBon = await generateNoBon(sheet, namaDepan, tahunAjaran || '');
 
     const now = new Date();
     const timestampStr = now.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
