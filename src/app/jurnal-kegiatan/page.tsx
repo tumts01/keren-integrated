@@ -67,6 +67,9 @@ export default function JurnalKegiatanPage() {
     namaStaf: '', kegiatan: '', tanggal: new Date().toISOString().split('T')[0], mulaiDari: '', sampaiDengan: '', keterangan: ''
   });
   const [jurnalStafFile, setJurnalStafFile] = useState<File | null>(null);
+  const [filterStartDate, setFilterStartDate] = useState('');
+  const [filterEndDate, setFilterEndDate] = useState('');
+  const [filterName, setFilterName] = useState('');
   const [notulens, setNotulens] = useState<any[]>([]);
   const [lpjList, setLpjList] = useState<any[]>([]);
   const [gurus, setGurus] = useState<any[]>([]);
@@ -709,8 +712,27 @@ export default function JurnalKegiatanPage() {
                 </div>
               </form>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table className={styles.table}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ flex: '1 1 200px' }}>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Dari Tanggal</label>
+                    <input type="date" style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }} value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
+                  </div>
+                  <div style={{ flex: '1 1 200px' }}>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Sampai Tanggal</label>
+                    <input type="date" style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }} value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
+                  </div>
+                  <div style={{ flex: '2 1 300px' }}>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Cari Nama Guru / Staf</label>
+                    <input type="text" placeholder="Ketik nama..." style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }} value={filterName} onChange={e => setFilterName(e.target.value)} />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                    <button type="button" onClick={() => { setFilterStartDate(''); setFilterEndDate(''); setFilterName(''); }} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Reset Filter</button>
+                  </div>
+                </div>
+                
+                <div style={{ overflowX: 'auto' }}>
+                  <table className={styles.table}>
                   <thead>
                     <tr>
                       <th style={{ width: '150px' }}>Waktu</th>
@@ -721,7 +743,15 @@ export default function JurnalKegiatanPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {jurnalStafData.length > 0 ? jurnalStafData.map((j, i) => (
+                    {(() => {
+                      const filtered = jurnalStafData.filter(j => {
+                        let match = true;
+                        if (filterStartDate && j.tanggal < filterStartDate) match = false;
+                        if (filterEndDate && j.tanggal > filterEndDate) match = false;
+                        if (filterName && !j.namaStaf?.toLowerCase().includes(filterName.toLowerCase())) match = false;
+                        return match;
+                      });
+                      return filtered.length > 0 ? filtered.map((j, i) => (
                       <tr key={i}>
                         <td>
                           <div style={{ fontWeight: 600, color: '#334155' }}>{j.tanggal}</div>
@@ -743,14 +773,15 @@ export default function JurnalKegiatanPage() {
                     )) : (
                       <tr>
                         <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
-                          Tidak ada data jurnal kegiatan.
+                          Tidak ada data jurnal kegiatan yang sesuai filter.
                         </td>
                       </tr>
-                    )}
+                    );
+                    })()}
                   </tbody>
                 </table>
               </div>
-            )}
+            </div>
           </div>
         )}
       </div>
