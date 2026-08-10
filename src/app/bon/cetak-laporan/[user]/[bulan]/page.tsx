@@ -104,8 +104,8 @@ export default function CetakLaporanKeuanganPage() {
     }
   });
 
-  // Saldo debet = saldo akhir running (akumulasi semua bulan s.d. bulan ini)
-  const saldoDebet = currentSaldo > 0 ? currentSaldo : 0;
+  // Saldo debet bulan ini = pemasukan - pengeluaran (laporan per bulan, seimbang kedua sisi)
+  const saldoDebet = totalPemasukan - totalPengeluaran;
 
   
   const rows = [];
@@ -148,8 +148,7 @@ export default function CetakLaporanKeuanganPage() {
     });
   }
 
-  // grandTotal = totalPengeluaran + saldoDebet = totalPemasukan (kedua sisi harus seimbang)
-  const grandTotal = totalPengeluaran + saldoDebet;
+  const grandTotal = totalPemasukan; // pengeluaran + saldoDebet = pemasukan, seimbang
 
   return (
     <div className={styles.printContainer}>
