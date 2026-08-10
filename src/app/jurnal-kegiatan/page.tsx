@@ -724,7 +724,12 @@ export default function JurnalKegiatanPage() {
                   </div>
                   <div style={{ flex: '2 1 300px' }}>
                     <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Cari Nama Guru / Staf</label>
-                    <input type="text" placeholder="Ketik nama..." style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }} value={filterName} onChange={e => setFilterName(e.target.value)} />
+                    <input type="text" list="stafNamesList" placeholder="Ketik nama..." style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }} value={filterName} onChange={e => setFilterName(e.target.value)} />
+                    <datalist id="stafNamesList">
+                      {Array.from(new Set(jurnalStafData.map((j: any) => j.namaStaf).filter(Boolean))).sort().map((name: any, idx) => (
+                        <option key={idx} value={name} />
+                      ))}
+                    </datalist>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
                     <button type="button" onClick={() => window.print()} className={styles.btnPrimary} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#3b82f6', color: 'white', fontWeight: 600, cursor: 'pointer' }}><i className="fas fa-print" style={{ marginRight: '8px' }}></i>Preview & Cetak</button>
