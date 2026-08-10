@@ -861,6 +861,7 @@ function PrintSiswaModal({
                       <tr>
                         <th className="col-no">No</th>
                         <th className="col-nama">Nama Siswa</th>
+                        <th className="col-domisili" style={{ width: '25%' }}>Domisili</th>
                         <th className="col-ket">Keterangan</th>
                       </tr>
                     </thead>
@@ -869,6 +870,7 @@ function PrintSiswaModal({
                         <tr key={s.id}>
                           <td className="col-no">{i + 1}</td>
                           <td className="col-nama">{s.nama}</td>
+                          <td className="col-domisili">{s.domisili || '-'}</td>
                           <td className="col-ket"></td>
                         </tr>
                       ))}
@@ -894,7 +896,10 @@ function PrintSiswaModal({
                           <th className="col-domisili" style={{ width: '25%' }}>Domisili</th>
                         </>
                       ) : (
-                        <th className="col-ket">Keterangan</th>
+                        <>
+                          <th className="col-domisili" style={{ width: '25%' }}>Domisili</th>
+                          <th className="col-ket">Keterangan</th>
+                        </>
                       )}
                     </tr>
                   </thead>
@@ -906,10 +911,13 @@ function PrintSiswaModal({
                         {mode === 'manual' ? (
                           <>
                             <td className="col-kelas">{s.rombel}</td>
-                            <td className="col-domisili">{s.domisili}</td>
+                            <td className="col-domisili">{s.domisili || '-'}</td>
                           </>
                         ) : (
-                          <td className="col-ket"></td>
+                          <>
+                            <td className="col-domisili">{s.domisili || '-'}</td>
+                            <td className="col-ket"></td>
+                          </>
                         )}
                       </tr>
                     ))}
