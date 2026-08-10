@@ -60,7 +60,7 @@ export default function CetakLaporanKeuanganPage() {
     const requested = parseFloat(bon.JumlahDiminta || '0');
     if (requested > 0) {
       arrPemasukan.push({
-        uraian: bon.Keperluan || `BON ${bon.NoBon || bon.ID}`,
+        uraian: bon.NoBon || bon.ID || bon.Keperluan || '',
         jumlah: requested
       });
       totalPemasukan += requested;
@@ -139,11 +139,16 @@ export default function CetakLaporanKeuanganPage() {
         @media print {
           @page { size: portrait; margin: 15mm 15mm 15mm 15mm; }
           .page { background: white !important; padding: 0 !important; }
+          .custom-table th { background-color: #ffb703 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .total-row td { background-color: #ffb703 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .saldo-row td.saldo-cell { background-color: #e5e5e5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
-        .custom-table th { background-color: #ffb703 !important; color: #000; font-weight: 700; border: 1px solid #000; padding: 8px; text-align: center; }
+        .custom-table { border-collapse: collapse; }
+        .custom-table th { background-color: #ffb703; color: #000; font-weight: 700; border: 2px solid #000; padding: 8px; text-align: center; }
         .custom-table td { border: 1px solid #000; padding: 6px 8px; vertical-align: top; }
-        .saldo-row td:nth-child(4), .saldo-row td:nth-child(5) { background-color: #e5e5e5 !important; font-weight: bold; }
-        .total-row td { background-color: #ffb703 !important; font-weight: bold; border: 1px solid #000; padding: 8px; }
+        .rp-cell { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; }
+        .saldo-cell { background-color: #e5e5e5; font-weight: bold; }
+        .total-row td { background-color: #ffb703; font-weight: bold; border: 2px solid #000; padding: 8px; }
       `}</style>
       <div className={styles.page} style={{ minHeight: 'auto' }}>
         <div style={{ background: 'white', padding: '10mm 15mm', boxSizing: 'border-box' }}>
@@ -171,30 +176,38 @@ export default function CetakLaporanKeuanganPage() {
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={i} className={r.isSaldoRow ? 'saldo-row' : ''}>
+              <tr key={i}>
                 <td>{r.pemasukanUraian}</td>
-                <td style={{ display: 'flex', justifyContent: 'space-between', border: 'none', height: '100%', alignItems: 'center' }}>
-                  <span>{r.pemasukanJumlah !== null ? 'Rp' : ''}</span>
-                  <span>{r.pemasukanJumlah !== null ? Number(r.pemasukanJumlah).toLocaleString('id-ID') : ''}</span>
+                <td>
+                  <div className="rp-cell">
+                    <span>{r.pemasukanJumlah !== null ? 'Rp' : ''}</span>
+                    <span>{r.pemasukanJumlah !== null ? Number(r.pemasukanJumlah).toLocaleString('id-ID') : ''}</span>
+                  </div>
                 </td>
                 <td style={{ textAlign: 'center' }}>{r.pengeluaranNo}</td>
-                <td>{r.pengeluaranUraian}</td>
-                <td style={{ display: 'flex', justifyContent: 'space-between', border: 'none', height: '100%', alignItems: 'center' }}>
-                  <span>{r.pengeluaranJumlah !== null ? 'Rp' : ''}</span>
-                  <span>{r.pengeluaranJumlah !== null ? Number(r.pengeluaranJumlah).toLocaleString('id-ID') : ''}</span>
+                <td className={r.isSaldoRow ? 'saldo-cell' : ''}>{r.pengeluaranUraian}</td>
+                <td className={r.isSaldoRow ? 'saldo-cell' : ''}>
+                  <div className="rp-cell">
+                    <span>{r.pengeluaranJumlah !== null ? 'Rp' : ''}</span>
+                    <span>{r.pengeluaranJumlah !== null ? Number(r.pengeluaranJumlah).toLocaleString('id-ID') : ''}</span>
+                  </div>
                 </td>
               </tr>
             ))}
             <tr className="total-row">
               <td style={{ textAlign: 'center' }}>JUMLAH</td>
-              <td style={{ display: 'flex', justifyContent: 'space-between', border: 'none' }}>
-                <span>Rp</span>
-                <span>{Number(grandTotal).toLocaleString('id-ID')}</span>
+              <td>
+                <div className="rp-cell">
+                  <span>Rp</span>
+                  <span>{Number(grandTotal).toLocaleString('id-ID')}</span>
+                </div>
               </td>
               <td colSpan={2} style={{ textAlign: 'center' }}>JUMLAH</td>
-              <td style={{ display: 'flex', justifyContent: 'space-between', border: 'none' }}>
-                <span>Rp</span>
-                <span>{Number(grandTotal).toLocaleString('id-ID')}</span>
+              <td>
+                <div className="rp-cell">
+                  <span>Rp</span>
+                  <span>{Number(grandTotal).toLocaleString('id-ID')}</span>
+                </div>
               </td>
             </tr>
           </tbody>
