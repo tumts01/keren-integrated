@@ -768,6 +768,7 @@ export default function JurnalKegiatanPage() {
                     <tr>
                       <th style={{ width: '50px', textAlign: 'center' }}>No</th>
                       <th style={{ width: '150px', textAlign: 'center' }}>Waktu</th>
+                      <th className={styles.noPrint} style={{ textAlign: 'center' }}>Nama Staf</th>
                       <th style={{ textAlign: 'center' }}>Kegiatan</th>
                       <th style={{ width: '250px', textAlign: 'center' }}>Keterangan</th>
                       <th style={{ width: '100px', textAlign: 'center' }}>Foto</th>
@@ -812,6 +813,7 @@ export default function JurnalKegiatanPage() {
                             {j.mulaiDari && j.sampaiDengan ? `${j.mulaiDari} s/d ${j.sampaiDengan}` : j.mulaiDari || j.sampaiDengan || ''}
                           </div>
                         </td>
+                        <td className={styles.noPrint} style={{ fontWeight: 600, color: '#0f172a' }}>{j.namaStaf}</td>
                         <td>{j.kegiatan}</td>
                         <td>{j.keterangan || '-'}</td>
                         <td style={{ textAlign: 'center' }}>
@@ -824,7 +826,7 @@ export default function JurnalKegiatanPage() {
                       </tr>
                     )) : (
                       <tr>
-                        <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                        <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
                           Tidak ada data jurnal kegiatan yang sesuai filter.
                         </td>
                       </tr>
