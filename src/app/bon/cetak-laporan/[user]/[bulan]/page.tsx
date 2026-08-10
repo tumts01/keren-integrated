@@ -58,14 +58,17 @@ export default function CetakLaporanKeuanganPage() {
     
     // Pemasukan dari nota bon — skip jika tipe SALDO (bukan penerimaan kas baru)
     const noBon = bon.NoBon || bon.ID || '';
-    const isSaldoEntry = noBon.toUpperCase().startsWith('SALDO');
+    const isSaldoEntry = noBon.toUpperCase().startsWith('SALDO') || noBon === '';
     const requested = parseFloat(bon.JumlahDiminta || '0');
-    if (requested > 0 && !isSaldoEntry) {
+    const saldoDipakai = parseFloat(bon.SaldoTerpakai || '0');
+    // Uang kas nyata dari sekolah = jumlahDiminta - saldoTerpakai yg sudah ada
+    const penerimaanKas = Math.max(0, requested - saldoDipakai);
+    if (penerimaanKas > 0 && !isSaldoEntry) {
       arrPemasukan.push({
         uraian: noBon || bon.Keperluan || '',
-        jumlah: requested
+        jumlah: penerimaanKas
       });
-      totalPemasukan += requested;
+      totalPemasukan += penerimaanKas;
     }
 
     // Pengeluaran dari rincian
