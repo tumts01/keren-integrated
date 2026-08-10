@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     const sheet = doc.sheetsByTitle['BonData'];
 
     const isSaldoOnly = nominalDiminta <= nominalSaldoTerpakai && nominalSaldoTerpakai > 0;
-    const noBon = await generateNoBon(sheet, namaDepan, tahunAjaran || '');
+    const noBon = isSaldoOnly ? '' : await generateNoBon(sheet, namaDepan, tahunAjaran || '');
 
     const now = new Date();
     const timestampStr = now.toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
