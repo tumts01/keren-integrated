@@ -45,6 +45,7 @@ export async function GET() {
         nis: row.get('ID SISWA') || '',
         nisn: row.get('NISN') || '',
         nik: row.get('NIK') || '',
+        nrp: row.get('NRP') || '',
         tempatLahir: (row.get('TEMPAT, TANGGAL LAHIR') || '').split(',')[0]?.trim() || '',
         tanggalLahir: (row.get('TEMPAT, TANGGAL LAHIR') || '').split(',').slice(1).join(',')?.trim() || '',
         nama,

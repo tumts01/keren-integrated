@@ -1378,6 +1378,7 @@ export default function SiswaPage() {
                   <th>Nama Ayah</th>
                   <th>Nama Ibu</th>
                   <th>No. WA</th>
+                  <th>NRP</th>
                   <th>Tahun Ajaran</th>
                   <th>Aksi</th>
                 </tr>
@@ -1416,6 +1417,7 @@ export default function SiswaPage() {
                       <td>{siswa.namaAyah || '-'}</td>
                       <td>{siswa.namaIbu || '-'}</td>
                       <td>{siswa.noHp || '-'}</td>
+                      <td>{siswa.nrp || '-'}</td>
                       <td>{siswa.tahunAjaran || '-'}</td>
                       <td>
                         <button
