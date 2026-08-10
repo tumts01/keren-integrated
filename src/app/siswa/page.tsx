@@ -8,6 +8,7 @@ interface Siswa {
   nis: string;
   nisn: string;
   nik: string;
+  nrp?: string;
   tempatLahir: string;
   tanggalLahir: string;
   nama: string;
