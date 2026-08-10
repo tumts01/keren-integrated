@@ -1,8 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
 import styles from './JurnalKegiatan.module.css';
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, BorderStyle, WidthType, AlignmentType, HeadingLevel, ImageRun } from 'docx';
-import { saveAs } from 'file-saver';
 import Swal from 'sweetalert2';
 
 const compressImage = async (file: File): Promise<File> => {
@@ -83,6 +81,8 @@ export default function JurnalKegiatanPage() {
     pjKegiatan: '',
     fileLink: ''
   });
+  const [printNotulenData, setPrintNotulenData] = useState<any>(null);
+  const [isPrintingNotulen, setIsPrintingNotulen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -303,208 +303,17 @@ export default function JurnalKegiatanPage() {
     setSaving(false);
   };
 
-  const generateWord = async (n: any) => {
-    // Buat map nama -> jabatan
-    const guruMap: Record<string, string> = {};
-    gurus.forEach((g: any) => { guruMap[g.nama] = g.jabatan || ''; });
-
-    // Pisahkan peserta - gunakan separator ' || ' agar nama bergelar tidak terpotong
-    const pesertaList: string[] = n.dihadiriOleh === 'Seluruh GTK'
-      ? gurus.map((g: any) => g.nama)
-      : n.dihadiriOleh.split(' || ').map((s: string) => s.trim()).filter(Boolean);
-
-    const sz = 24; // 12pt dalam half-points
-    const szCs = 24;
-
-    const txt = (text: string, options: any = {}) => new TextRun({ text, size: sz, sizeComplexScript: szCs, ...options });
-    const bold = (text: string) => new TextRun({ text, bold: true, size: sz, sizeComplexScript: szCs });
-    const para = (children: any[], opts: any = {}) => new Paragraph({ children, ...opts });
-
-    const noBorder = {
-      top: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-      bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-      left: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-      right: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-      insideHorizontal: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-      insideVertical: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
-    };
-
-    const makeInfoRow = (label: string, value: string) => new TableRow({
-      children: [
-        new TableCell({ children: [para([bold(label)])], width: { size: 28, type: WidthType.PERCENTAGE } }),
-        new TableCell({ children: [para([txt(':')])] , width: { size: 3, type: WidthType.PERCENTAGE } }),
-        new TableCell({ children: [para([txt(value)])] }),
-      ]
-    });
-
-    const pesertaRows = pesertaList.map((nama: string, idx: number) =>
-      new TableRow({
-        children: [
-          new TableCell({ children: [para([txt(String(idx + 1))], { alignment: AlignmentType.CENTER })], width: { size: 8, type: WidthType.PERCENTAGE } }),
-          new TableCell({ children: [para([txt(nama)])], width: { size: 42, type: WidthType.PERCENTAGE } }),
-          new TableCell({ children: [para([txt(guruMap[nama] || '')])], width: { size: 25, type: WidthType.PERCENTAGE } }),
-          new TableCell({ children: [para([txt('Hadir')])], width: { size: 25, type: WidthType.PERCENTAGE } }),
-        ]
-      })
-    );
-
-    // Ambil gambar kop
-    const kopRes = await fetch('/kop_surat_mts.png');
-    const kopBuffer = await kopRes.arrayBuffer();
-
-    // Ambil foto dokumentasi jika ada link (bisa lebih dari satu, dipisahkan oleh ||)
-    const fotoBuffers: ArrayBuffer[] = [];
-    if (n.dokumentasi) {
-      const urls = n.dokumentasi.split('||').map((u: string) => u.trim()).filter((u: string) => u.startsWith('http'));
-      for (const url of urls) {
-        try {
-          const fotoRes = await fetch(`/api/proxy-image?url=${encodeURIComponent(url)}`);
-          if (fotoRes.ok) {
-            const buf = await fotoRes.arrayBuffer();
-            fotoBuffers.push(buf);
-          }
-        } catch (e) { /* skip */ }
-      }
-    }
-
-    const pageChildren: any[] = [
-      // KOP GAMBAR
-      new Paragraph({
-        children: [
-          new ImageRun({
-            data: kopBuffer,
-            transformation: { width: 600, height: 129 },
-            type: 'png',
-          })
-        ],
-        alignment: AlignmentType.CENTER,
-        spacing: { after: 200 }
-      }),
-
-      // JUDUL
-      para([bold('NOTULEN RAPAT')], { alignment: AlignmentType.CENTER, spacing: { before: 100, after: 80 } }),
-      para([bold(n.agendaRapat.toUpperCase())], { alignment: AlignmentType.CENTER, spacing: { after: 300 } }),
-
-      // TABEL INFO
-      new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        borders: noBorder,
-        rows: [
-          makeInfoRow('Hari / Tanggal', n.tanggal),
-          makeInfoRow('Waktu', `${n.waktu} WIB`),
-          makeInfoRow('Tempat', n.tempatRapat),
-          makeInfoRow('Pimpinan Rapat', n.pimpinanRapat),
-          makeInfoRow('Notulis', n.notulis),
-        ]
-      }),
-
-      para([], { spacing: { before: 240, after: 80 } }),
-
-      // I. DAFTAR HADIR
-      para([bold('I.   DAFTAR HADIR')], { spacing: { after: 120 } }),
-      new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [
-          new TableRow({
-            tableHeader: true,
-            children: [
-              new TableCell({ children: [para([bold('No.')], { alignment: AlignmentType.CENTER })], width: { size: 8, type: WidthType.PERCENTAGE } }),
-              new TableCell({ children: [para([bold('Nama')])], width: { size: 40, type: WidthType.PERCENTAGE } }),
-              new TableCell({ children: [para([bold('Jabatan')])], width: { size: 27, type: WidthType.PERCENTAGE } }),
-              new TableCell({ children: [para([bold('Keterangan')])], width: { size: 25, type: WidthType.PERCENTAGE } }),
-            ]
-          }),
-          ...pesertaRows,
-        ]
-      }),
-
-      para([], { spacing: { before: 300, after: 80 } }),
-
-      // II. HASIL DAN KEPUTUSAN RAPAT
-      para([bold('II.  HASIL DAN KEPUTUSAN RAPAT')], { spacing: { after: 200 }, pageBreakBefore: true }),
-      ...n.hasilNotulen.split('\n').map((line: string) =>
-        para([txt(line)], { spacing: { after: 120 } })
-      ),
-
-      para([], { spacing: { before: 400, after: 80 } }),
-
-      // TANDA TANGAN - 3 kolom: kiri (Mengetahui), tengah kosong, kanan (Notulis)
-      new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        borders: noBorder,
-        rows: [
-          new TableRow({
-            children: [
-              new TableCell({
-                width: { size: 40, type: WidthType.PERCENTAGE },
-                children: [
-                  para([bold('Mengetahui,')], { alignment: AlignmentType.CENTER }),
-                  para([bold('Kepala Madrasah,')], { alignment: AlignmentType.CENTER }),
-                  para([txt('')], { spacing: { before: 1200, after: 0 } }),
-                  para([txt('Dwi Retno Palupi, M.Pd.')], { alignment: AlignmentType.CENTER }),
-                ]
-              }),
-              new TableCell({
-                width: { size: 20, type: WidthType.PERCENTAGE },
-                children: [para([txt('')])]
-              }),
-              new TableCell({
-                width: { size: 40, type: WidthType.PERCENTAGE },
-                children: [
-                  para([bold('Notulis,')], { alignment: AlignmentType.CENTER }),
-                  para([txt('')], { alignment: AlignmentType.CENTER }), // blank para so it matches 2 lines on the left
-                  para([txt('')], { spacing: { before: 1200, after: 0 } }),
-                  para([txt(n.notulis)], { alignment: AlignmentType.CENTER }),
-                ]
-              }),
-            ]
-          })
-        ]
-      }),
-    ];
-
-    // Lampiran foto dokumentasi di halaman baru jika ada
-    if (fotoBuffers.length > 0) {
-      pageChildren.push(
-        para([bold('DOKUMENTASI KEGIATAN')], { pageBreakBefore: true, alignment: AlignmentType.CENTER, spacing: { after: 200 } })
-      );
-      
-      for (const buf of fotoBuffers) {
-        pageChildren.push(
-          new Paragraph({
-            children: [
-              new ImageRun({
-                data: buf,
-                transformation: { width: 450, height: 300 },
-                type: 'jpg',
-              })
-            ],
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 200 }
-          })
-        );
-      }
-    }
-
-    const doc = new Document({
-      sections: [{
-        properties: {
-          page: {
-            size: { width: 11906, height: 16838 },
-            margin: { top: 1080, right: 1080, bottom: 1080, left: 1800 }
-          }
-        },
-        children: pageChildren,
-      }],
-    });
-
-    Packer.toBlob(doc).then((blob) => {
-      saveAs(blob, `Notulen_${n.tanggal}_${n.agendaRapat.substring(0, 20)}.docx`);
-    });
+  const handlePrintNotulen = (n: any) => {
+    setPrintNotulenData(n);
+    setIsPrintingNotulen(true);
+    setTimeout(() => {
+      window.print();
+      setIsPrintingNotulen(false);
+    }, 800);
   };
 
   return (
-    <div className={styles.container}>
+    <div className={`${styles.container} ${isPrintingNotulen ? styles.printingNotulen : ''}`}>
       <div className={styles.header} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '16px' }}>
         <h1 className={styles.title}><i className="fas fa-book-open"></i> Jurnal & LPJ Kegiatan</h1>
         
@@ -578,8 +387,8 @@ export default function JurnalKegiatanPage() {
                       <button className="btn btn-secondary btn-sm" onClick={() => { setUploadTarget(n); setShowUploadModal(true); }} title="Lampirkan Foto Tambahan">
                         <i className="fas fa-camera"></i> Foto
                       </button>
-                      <button className="btn btn-primary btn-sm" onClick={() => generateWord(n)} title="Download Word">
-                        <i className="fas fa-file-word"></i> Word
+                      <button className="btn btn-primary btn-sm" onClick={() => handlePrintNotulen(n)} title="Cetak Notulen">
+                        <i className="fas fa-print"></i> Cetak
                       </button>
                     </td>
                   </tr>
@@ -1147,6 +956,87 @@ export default function JurnalKegiatanPage() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {printNotulenData && (
+        <div className={styles.notulenPrintLayout}>
+          <div className={styles.kopSurat}>
+            <img src="/kop_surat_mts.png" alt="Kop Surat" />
+          </div>
+          <h3 style={{ textAlign: 'center', margin: '20px 0 10px 0' }}>NOTULEN RAPAT</h3>
+          <h4 style={{ textAlign: 'center', margin: '0 0 30px 0' }}>{printNotulenData.agendaRapat?.toUpperCase()}</h4>
+          
+          <table style={{ marginBottom: '30px' }}>
+            <tbody>
+              <tr><td style={{ width: '25%' }}><b>Hari / Tanggal</b></td><td style={{ width: '5%' }}>:</td><td>{printNotulenData.tanggal}</td></tr>
+              <tr><td><b>Waktu</b></td><td>:</td><td>{printNotulenData.waktu} WIB</td></tr>
+              <tr><td><b>Tempat</b></td><td>:</td><td>{printNotulenData.tempatRapat}</td></tr>
+              <tr><td><b>Pimpinan Rapat</b></td><td>:</td><td>{printNotulenData.pimpinanRapat}</td></tr>
+              <tr><td><b>Notulis</b></td><td>:</td><td>{printNotulenData.notulis}</td></tr>
+            </tbody>
+          </table>
+
+          <h4 style={{ margin: '0 0 15px 0' }}>I. DAFTAR HADIR</h4>
+          <table border={1} style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px', textAlign: 'left' }}>
+            <thead>
+              <tr>
+                <th style={{ padding: '8px', textAlign: 'center', width: '8%' }}>No.</th>
+                <th style={{ padding: '8px', width: '42%' }}>Nama</th>
+                <th style={{ padding: '8px', width: '25%' }}>Jabatan</th>
+                <th style={{ padding: '8px', width: '25%' }}>Keterangan</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(printNotulenData.dihadiriOleh === 'Seluruh GTK' ? gurus.map(g => g.nama) : printNotulenData.dihadiriOleh?.split(' || ').map((s: string) => s.trim()).filter(Boolean) || []).map((nama: string, idx: number) => {
+                const jabatan = gurus.find(g => g.nama === nama)?.jabatan || '';
+                return (
+                  <tr key={idx}>
+                    <td style={{ padding: '8px', textAlign: 'center' }}>{idx + 1}</td>
+                    <td style={{ padding: '8px' }}>{nama}</td>
+                    <td style={{ padding: '8px' }}>{jabatan}</td>
+                    <td style={{ padding: '8px' }}>Hadir</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          <h4 style={{ margin: '0 0 15px 0' }}>II. HASIL DAN KEPUTUSAN RAPAT</h4>
+          <div style={{ marginBottom: '40px', whiteSpace: 'pre-wrap' }}>
+            {printNotulenData.hasilNotulen}
+          </div>
+
+          <table style={{ width: '100%', textAlign: 'center', border: 'none' }}>
+            <tbody>
+              <tr>
+                <td style={{ width: '40%' }}>
+                  <p style={{ margin: 0 }}><b>Mengetahui,</b></p>
+                  <p style={{ margin: 0 }}><b>Kepala Madrasah,</b></p>
+                  <br /><br /><br /><br />
+                  <p style={{ margin: 0 }}>Dwi Retno Palupi, M.Pd.</p>
+                </td>
+                <td style={{ width: '20%' }}></td>
+                <td style={{ width: '40%' }}>
+                  <p style={{ margin: 0 }}><b>Notulis,</b></p>
+                  <p style={{ margin: 0 }}>&nbsp;</p>
+                  <br /><br /><br /><br />
+                  <p style={{ margin: 0 }}>{printNotulenData.notulis}</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          {printNotulenData.dokumentasi && (
+            <div style={{ pageBreakBefore: 'always', marginTop: '40px' }}>
+              <h4 style={{ textAlign: 'center', margin: '0 0 20px 0' }}>DOKUMENTASI KEGIATAN</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
+                {printNotulenData.dokumentasi.split('||').map((url: string, i: number) => url.trim() && (
+                  <img key={i} src={`/api/proxy-image?url=${encodeURIComponent(url.trim())}`} alt="Dokumentasi" style={{ maxWidth: '80%', maxHeight: '400px' }} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

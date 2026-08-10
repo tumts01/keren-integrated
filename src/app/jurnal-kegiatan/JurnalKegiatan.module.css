@@ -286,4 +286,29 @@
   .table td:last-child {
     display: none !important;
   }
+  
+  .printingNotulen .tableContainer {
+    display: none !important;
+  }
+  
+  .printingNotulen .notulenPrintLayout {
+    display: block !important;
+  }
+  
+  .notulenPrintLayout {
+    width: 100%;
+    font-family: "Times New Roman", Times, serif;
+    color: black;
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+  
+  .notulenPrintLayout table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+}
+
+.notulenPrintLayout {
+  display: none;
 }
