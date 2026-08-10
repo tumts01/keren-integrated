@@ -118,6 +118,8 @@ export default function PresensiPage() {
   const [filterTo, setFilterTo] = useState('');
   const [filterGuruRekap, setFilterGuruRekap] = useState('');
   const [guruListRekap, setGuruListRekap] = useState<string[]>([]);
+  const [filterKelasRekap, setFilterKelasRekap] = useState('');
+  const [kelasListRekap, setKelasListRekap] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUsername, setCurrentUsername] = useState('');
   const [fixUnknownLoading, setFixUnknownLoading] = useState(false);
@@ -392,6 +394,12 @@ export default function PresensiPage() {
         )) as string[];
         gurus.sort();
         setGuruListRekap(gurus);
+
+        const kelasList = Array.from(new Set(
+          json.data.map((r: any) => (r.kelas || '').trim()).filter(Boolean)
+        )) as string[];
+        kelasList.sort();
+        setKelasListRekap(kelasList);
       }
     } catch (e) { console.error(e); }
     finally { setRekapJurnalLoading(false); }
@@ -1749,9 +1757,17 @@ export default function PresensiPage() {
                   </select>
                 </div>
               )}
-              {(filterFrom || filterTo || (isAdmin && filterGuruRekap)) && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>Filter Kelas</label>
+                <select value={filterKelasRekap} onChange={e => setFilterKelasRekap(e.target.value)}
+                  style={{ padding: '7px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: '0.9rem', minWidth: 150 }}>
+                  <option value="">Semua Kelas</option>
+                  {kelasListRekap.map(k => <option key={k} value={k}>{k}</option>)}
+                </select>
+              </div>
+              {(filterFrom || filterTo || filterKelasRekap || (isAdmin && filterGuruRekap)) && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'flex-end' }}>
-                  <button onClick={() => { setFilterFrom(''); setFilterTo(''); if (isAdmin) setFilterGuruRekap(''); }}
+                  <button onClick={() => { setFilterFrom(''); setFilterTo(''); setFilterKelasRekap(''); if (isAdmin) setFilterGuruRekap(''); }}
                     style={{ padding: '7px 14px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>
                     <i className="fas fa-times"></i> Reset
                   </button>
@@ -1773,6 +1789,7 @@ export default function PresensiPage() {
               const filtered = rekapJurnalData.filter(r => {
                 if (!isAdmin && r.namaGuru !== currentUsername) return false;
                 if (filterGuruRekap && r.namaGuru !== filterGuruRekap) return false;
+                if (filterKelasRekap && r.kelas !== filterKelasRekap) return false;
                 if (filterFrom && r.tanggal < filterFrom) return false;
                 if (filterTo && r.tanggal > filterTo) return false;
                 return true;
