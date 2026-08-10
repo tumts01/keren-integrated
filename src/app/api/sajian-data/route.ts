@@ -125,13 +125,20 @@ export async function GET() {
     // 2. Data Siswa
     const sheetSiswa = doc.sheetsByTitle['DATABASE'];
     let siswaRows: any[] = [];
-    let headerDomisili = '';
-    let headerAsal = '';
+    let headerDomisili = 'DOMISILI';
+    let headerAsal = 'SD/MI';
     if (sheetSiswa) {
       await sheetSiswa.loadHeaderRow();
       siswaRows = await sheetSiswa.getRows();
-      headerDomisili = sheetSiswa.headerValues[10] || 'DOMISILI'; // Kolom K
-      headerAsal = sheetSiswa.headerValues[52] || 'ASAL SEKOLAH'; // Kolom BA
+      
+      const headers = sheetSiswa.headerValues.map((h: string) => (h || '').toString().toUpperCase().trim());
+      
+      // Temukan nama kolom yang tepat secara dinamis
+      const foundDom = headers.find((h: string) => h === 'DOMISILI' || h.includes('DOMISILI'));
+      if (foundDom) headerDomisili = foundDom;
+
+      const foundAsal = headers.find((h: string) => h === 'SD/MI' || h === 'ASAL SEKOLAH' || h.includes('SEKOLAH ASAL'));
+      if (foundAsal) headerAsal = foundAsal;
     }
 
     const siswaStats = {

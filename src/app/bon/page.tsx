@@ -1178,7 +1178,10 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
             <input type="date" className={styles.input} value={tanggal} onChange={e => setTanggal(e.target.value)} required />
           </div>
           <div className={styles.formGroup}>
-            <label>Jumlah Uang Diminta (Rp) <span className={styles.required}>*</span></label>
+            <label>
+              Jumlah Uang Diminta (Rp) 
+              {(!gunakanSaldo || Number(gunakanSaldo) === 0) && <span className={styles.required}>*</span>}
+            </label>
             <input
               type="text"
               inputMode="numeric"
@@ -1189,7 +1192,7 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
                 setJumlahDiminta(raw);
               }}
               placeholder="Contoh: 5.000.000"
-              required
+              required={(!gunakanSaldo || Number(gunakanSaldo) === 0)}
             />
           </div>
         </div>
