@@ -782,9 +782,10 @@ export default function JurnalKegiatanPage() {
                 </table>
               </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
+    </div>
 
       {showModal && (
         <div className={styles.modalOverlay} onClick={() => setShowModal(false)}>
