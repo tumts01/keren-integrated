@@ -713,7 +713,7 @@ export default function JurnalKegiatanPage() {
               </form>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <div className={styles.noPrint} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                   <div style={{ flex: '1 1 200px' }}>
                     <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Dari Tanggal</label>
                     <input type="date" style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }} value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
@@ -737,14 +737,7 @@ export default function JurnalKegiatanPage() {
                 </div>
                 {/* KOP SURAT (Hanya tampil saat print) */}
                 <div className={styles.printOnly} style={{ display: 'none', marginBottom: '20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', borderBottom: '3px solid black', paddingBottom: '15px', marginBottom: '20px' }}>
-                     <div style={{ flex: 1, textAlign: 'center' }}>
-                        <h2 style={{ margin: 0, fontSize: '1.2rem', textTransform: 'uppercase' }}>YAYASAN PENDIDIKAN ALMAARIF SINGOSARI</h2>
-                        <h1 style={{ margin: '5px 0', fontSize: '1.5rem', fontWeight: 'bold' }}>MTs ALMAARIF 01 SINGOSARI</h1>
-                        <p style={{ margin: 0, fontSize: '0.9rem' }}>Jl. Singosari No. 1, Kab. Malang, Jawa Timur</p>
-                     </div>
-                  </div>
-                  <h3 style={{ textAlign: 'center', margin: '20px 0', fontSize: '1.3rem' }}>REKAP JURNAL KEGIATAN GURU & STAF</h3>
+                  <h3 style={{ textAlign: 'center', margin: '20px 0', fontSize: '1.3rem', textTransform: 'uppercase', textDecoration: 'underline' }}>REKAP JURNAL KEGIATAN GURU & STAF</h3>
                   
                   <table style={{ width: '100%', marginBottom: '20px', fontWeight: 'bold', fontSize: '1.1rem' }}>
                     <tbody>
