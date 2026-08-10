@@ -51,9 +51,47 @@ export default function CetakLaporanKeuanganPage() {
   const sortedData = [...data].reverse();
   
   let currentSaldo = 0; // running saldo lintas semua bulan
+  const userBons = sortedData.filter(d => (d.Nama || d.nama || '').trim() === user);
 
-  sortedData.filter(d => (d.Nama || d.nama || '').trim() === user).forEach(bon => {
+  // Pass 1: Hitung saldo kumulatif sebelum bulan target
+  userBons.forEach(bon => {
+    if ((bon.Tanggal || '') >= bulan) return; // Hanya proses data SEBELUM bulan target
+
+    const requested = parseFloat(bon.JumlahDiminta || '0');
+    const saldoDipakai = parseFloat(bon.SaldoTerpakai || '0');
+    const isSaldoOnly = requested <= saldoDipakai && saldoDipakai > 0;
+
+    if (!isSaldoOnly && requested > 0) {
+      currentSaldo += Math.max(0, requested - saldoDipakai);
+    }
+
+    try {
+      const rincian = bon.RealisasiRincianJSON ? JSON.parse(bon.RealisasiRincianJSON) : (bon.RincianJSON ? JSON.parse(bon.RincianJSON) : []);
+      rincian.forEach((r: any) => {
+        const out = (Number(r.qty) || 0) * (Number(r.harga) || 0);
+        if (out > 0) currentSaldo -= out;
+      });
+    } catch(e){}
+  });
+
+  // Masukkan sisa saldo bulan lalu sebagai pemasukan pertama bulan ini
+  if (currentSaldo > 0) {
+    const d = new Date(`${bulan}-01`);
+    d.setMonth(d.getMonth() - 1);
+    const prevMonthName = d.toLocaleDateString('id-ID', { month: 'long' });
+
+    arrPemasukan.push({
+      uraian: `Sisa Saldo Bulan ${prevMonthName}`,
+      jumlah: currentSaldo
+    });
+    totalPemasukan += currentSaldo;
+  }
+
+  // Pass 2: Proses mutasi spesifik di bulan target
+  userBons.forEach(bon => {
     const isTargetMonth = (bon.Tanggal || '').startsWith(bulan);
+    if (!isTargetMonth) return;
+
     if (!jabatanUser && bon.Jabatan) jabatanUser = bon.Jabatan;
 
     const noBon = bon.NoBon || bon.ID || '';
@@ -62,14 +100,19 @@ export default function CetakLaporanKeuanganPage() {
     const saldoDipakai = parseFloat(bon.SaldoTerpakai || '0');
     const isSaldoOnly = requested <= saldoDipakai && saldoDipakai > 0;
 
-    // Running saldo: hitung untuk semua bulan (bukan hanya target bulan)
     let penerimaanKas = 0;
     if (!isSaldoOnly && requested > 0) {
       penerimaanKas = Math.max(0, requested - saldoDipakai);
-      currentSaldo += penerimaanKas;
     }
 
-    // Rincian pengeluaran untuk running saldo
+    if (penerimaanKas > 0 && !isSaldoEntry) {
+      arrPemasukan.push({
+        uraian: noBon || bon.Keperluan || '',
+        jumlah: penerimaanKas
+      });
+      totalPemasukan += penerimaanKas;
+    }
+
     let rincian: any[] = [];
     try {
       if (bon.RealisasiRincianJSON) rincian = JSON.parse(bon.RealisasiRincianJSON);
@@ -80,28 +123,11 @@ export default function CetakLaporanKeuanganPage() {
       const qty = Number(r.qty) || 0;
       const harga = Number(r.harga) || 0;
       const out = qty * harga;
-      if (out > 0) currentSaldo -= out;
-    });
-
-    // Kumpulkan data hanya untuk bulan target (ditampilkan di tabel)
-    if (isTargetMonth) {
-      if (penerimaanKas > 0 && !isSaldoEntry) {
-        arrPemasukan.push({
-          uraian: noBon || bon.Keperluan || '',
-          jumlah: penerimaanKas
-        });
-        totalPemasukan += penerimaanKas;
+      if (out > 0) {
+        arrPengeluaran.push({ uraian: r.barang, jumlah: out });
+        totalPengeluaran += out;
       }
-      rincian.forEach((r: any) => {
-        const qty = Number(r.qty) || 0;
-        const harga = Number(r.harga) || 0;
-        const out = qty * harga;
-        if (out > 0) {
-          arrPengeluaran.push({ uraian: r.barang, jumlah: out });
-          totalPengeluaran += out;
-        }
-      });
-    }
+    });
   });
 
   // Saldo debet bulan ini = pemasukan - pengeluaran (laporan per bulan, seimbang kedua sisi)

@@ -1335,11 +1335,54 @@ function TabLaporanKeuangan({ onPrint }: { onPrint: (url: string) => void }) {
 
   if (filterUser && filterBulan) {
     const sortedData = [...data].reverse();
+    const userBons = sortedData.filter(d => (d.Nama || d.nama || '').trim() === filterUser);
     
-    sortedData.filter(d => (d.Nama || d.nama || '').trim() === filterUser).forEach(bon => {
-      const isTargetMonth = (bon.Tanggal || '').startsWith(filterBulan);
-      const idBukti = bon.NoBon || bon.ID;
+    // Pass 1: Hitung saldo kumulatif sebelum bulan target
+    userBons.forEach(bon => {
+      if ((bon.Tanggal || '') >= filterBulan) return; // Hanya proses data SEBELUM bulan target
       
+      const requested = parseFloat(bon.JumlahDiminta || '0');
+      const saldoDipakai = parseFloat(bon.SaldoTerpakai || '0');
+      const isSaldoOnly = requested <= saldoDipakai && saldoDipakai > 0;
+      
+      if (!isSaldoOnly && requested > 0) {
+        currentSaldo += Math.max(0, requested - saldoDipakai);
+      }
+      try {
+        const rincian = bon.RealisasiRincianJSON ? JSON.parse(bon.RealisasiRincianJSON) : (bon.RincianJSON ? JSON.parse(bon.RincianJSON) : []);
+        rincian.forEach((r: any) => {
+          const out = (Number(r.qty) || 0) * (Number(r.harga) || 0);
+          if (out > 0) currentSaldo -= out;
+        });
+      } catch(e){}
+    });
+
+    // Masukkan sisa saldo bulan lalu sebagai pemasukan pertama bulan ini
+    if (currentSaldo > 0) {
+      // Dapatkan nama bulan sebelumnya (misal "Agustus" -> "Juli")
+      const d = new Date(`${filterBulan}-01`);
+      d.setMonth(d.getMonth() - 1);
+      const prevMonthName = d.toLocaleDateString('id-ID', { month: 'long' });
+
+      displaySaldo += currentSaldo;
+      totalTerima += currentSaldo;
+      mutasi.push({
+        id: `SISA-AWAL`,
+        tanggal: `${filterBulan}-01`,
+        noBukti: '-',
+        uraian: `Sisa Saldo Bulan ${prevMonthName}`,
+        terima: currentSaldo,
+        keluar: 0,
+        saldo: displaySaldo
+      });
+    }
+
+    // Pass 2: Proses mutasi spesifik di bulan target
+    userBons.forEach(bon => {
+      const isTargetMonth = (bon.Tanggal || '').startsWith(filterBulan);
+      if (!isTargetMonth) return;
+
+      const idBukti = bon.NoBon || bon.ID;
       const requested = parseFloat(bon.JumlahDiminta || '0');
       const saldoDipakai = parseFloat(bon.SaldoTerpakai || '0');
       const isSaldoOnly = requested <= saldoDipakai && saldoDipakai > 0;
@@ -1347,8 +1390,7 @@ function TabLaporanKeuangan({ onPrint }: { onPrint: (url: string) => void }) {
       let penerimaanKas = 0;
       if (!isSaldoOnly && requested > 0) {
         penerimaanKas = Math.max(0, requested - saldoDipakai);
-        currentSaldo += penerimaanKas;
-        if (isTargetMonth && penerimaanKas > 0) {
+        if (penerimaanKas > 0) {
           displaySaldo += penerimaanKas;
           totalTerima += penerimaanKas;
           mutasi.push({
@@ -1375,36 +1417,31 @@ function TabLaporanKeuangan({ onPrint }: { onPrint: (url: string) => void }) {
           const harga = Number(r.harga) || 0;
           const out = qty * harga;
           if (out > 0) {
-            currentSaldo -= out;
-            if (isTargetMonth) {
-              displaySaldo -= out;
-              totalKeluar += out;
-              mutasi.push({
-                id: `KLR-${idBukti}-${idx}`,
-                tanggal: bon.Tanggal,
-                noBukti: idBukti,
-                uraian: `Belanja: ${r.barang} (${qty} ${r.satuan})`,
-                terima: 0,
-                keluar: out,
-                saldo: displaySaldo
-              });
-            }
+            displaySaldo -= out;
+            totalKeluar += out;
+            mutasi.push({
+              id: `KLR-${idBukti}-${idx}`,
+              tanggal: bon.Tanggal,
+              noBukti: idBukti,
+              uraian: `Belanja: ${r.barang} (${qty} ${r.satuan})`,
+              terima: 0,
+              keluar: out,
+              saldo: displaySaldo
+            });
           }
         });
       }
       
       // Tambahkan baris khusus Sisa Saldo di akhir setiap BON
-      if (isTargetMonth) {
-        mutasi.push({
-          id: `SISA-${idBukti}`,
-          tanggal: bon.Tanggal,
-          noBukti: idBukti,
-          uraian: `*Sisa Saldo dari BON ini*`,
-          terima: 0,
-          keluar: 0,
-          saldo: displaySaldo
-        });
-      }
+      mutasi.push({
+        id: `SISA-${idBukti}`,
+        tanggal: bon.Tanggal,
+        noBukti: idBukti,
+        uraian: `*Sisa Saldo dari BON ini*`,
+        terima: 0,
+        keluar: 0,
+        saldo: displaySaldo
+      });
     });
   }
 
