@@ -56,11 +56,13 @@ export default function CetakLaporanKeuanganPage() {
     
     if (!jabatanUser && bon.Jabatan) jabatanUser = bon.Jabatan;
     
-    // Pemasukan dari nota bon
+    // Pemasukan dari nota bon — skip jika tipe SALDO (bukan penerimaan kas baru)
+    const noBon = bon.NoBon || bon.ID || '';
+    const isSaldoEntry = noBon.toUpperCase().startsWith('SALDO');
     const requested = parseFloat(bon.JumlahDiminta || '0');
-    if (requested > 0) {
+    if (requested > 0 && !isSaldoEntry) {
       arrPemasukan.push({
-        uraian: bon.NoBon || bon.ID || bon.Keperluan || '',
+        uraian: noBon || bon.Keperluan || '',
         jumlah: requested
       });
       totalPemasukan += requested;
