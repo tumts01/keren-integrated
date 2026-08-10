@@ -1322,7 +1322,8 @@ function TabLaporanKeuangan({ onPrint }: { onPrint: (url: string) => void }) {
   useEffect(() => { fetchData(); }, []);
 
   let mutasi: any[] = [];
-  let currentSaldo = 0;
+  let currentSaldo = 0;   // kumulatif semua bulan (tidak dipakai di display)
+  let displaySaldo = 0;  // saldo running hanya bulan target (untuk kolom saldo tabel)
   let totalTerima = 0;
   let totalKeluar = 0;
 
@@ -1342,6 +1343,7 @@ function TabLaporanKeuangan({ onPrint }: { onPrint: (url: string) => void }) {
         penerimaanKas = Math.max(0, requested - saldoDipakai);
         currentSaldo += penerimaanKas;
         if (isTargetMonth && penerimaanKas > 0) {
+          displaySaldo += penerimaanKas;
           totalTerima += penerimaanKas;
           mutasi.push({
             id: `TRM-${idBukti}`,
@@ -1350,7 +1352,7 @@ function TabLaporanKeuangan({ onPrint }: { onPrint: (url: string) => void }) {
             uraian: `Penerimaan Kas: ${bon.Keperluan}`,
             terima: penerimaanKas,
             keluar: 0,
-            saldo: currentSaldo
+            saldo: displaySaldo
           });
         }
       }
@@ -1369,6 +1371,7 @@ function TabLaporanKeuangan({ onPrint }: { onPrint: (url: string) => void }) {
           if (out > 0) {
             currentSaldo -= out;
             if (isTargetMonth) {
+              displaySaldo -= out;
               totalKeluar += out;
               mutasi.push({
                 id: `KLR-${idBukti}-${idx}`,
@@ -1377,7 +1380,7 @@ function TabLaporanKeuangan({ onPrint }: { onPrint: (url: string) => void }) {
                 uraian: `Belanja: ${r.barang} (${qty} ${r.satuan})`,
                 terima: 0,
                 keluar: out,
-                saldo: currentSaldo
+                saldo: displaySaldo
               });
             }
           }
@@ -1393,7 +1396,7 @@ function TabLaporanKeuangan({ onPrint }: { onPrint: (url: string) => void }) {
           uraian: `*Sisa Saldo dari BON ini*`,
           terima: 0,
           keluar: 0,
-          saldo: currentSaldo
+          saldo: displaySaldo
         });
       }
     });
