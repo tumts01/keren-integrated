@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import styles from './JurnalKegiatan.module.css';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, BorderStyle, WidthType, AlignmentType, HeadingLevel, ImageRun } from 'docx';
 import { saveAs } from 'file-saver';
+import Swal from 'sweetalert2';
 
 const compressImage = async (file: File): Promise<File> => {
   if (!file.type.startsWith('image/')) return file;
@@ -131,7 +132,7 @@ export default function JurnalKegiatanPage() {
   const handleLpjSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!lpjFile) {
-      alert("File LPJ wajib diupload");
+      Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'File LPJ wajib diupload' });
       return;
     }
     setSavingLpj(true);
@@ -159,10 +160,10 @@ export default function JurnalKegiatanPage() {
         setLpjFile(null);
         fetchData(); // refresh data
       } else {
-        alert('Gagal menyimpan LPJ: ' + json.error);
+        Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menyimpan LPJ: ' + json.error });
       }
     } catch (e) {
-      alert('Terjadi kesalahan saat menyimpan LPJ');
+      Swal.fire({ icon: 'error', title: 'Kesalahan', text: 'Terjadi kesalahan saat menyimpan LPJ' });
     }
     setSavingLpj(false);
   };
@@ -170,7 +171,7 @@ export default function JurnalKegiatanPage() {
   const handleJurnalStafSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!jurnalStafForm.namaStaf || !jurnalStafForm.kegiatan) {
-      alert("Nama dan Kegiatan wajib diisi");
+      Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Nama dan Kegiatan wajib diisi' });
       return;
     }
     
@@ -186,7 +187,7 @@ export default function JurnalKegiatanPage() {
         if (upJson.success) {
           fotoUrl = upJson.link;
         } else {
-          alert('Gagal mengupload foto jurnal staf');
+          Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal mengupload foto jurnal staf' });
           setSavingJurnalStaf(false);
           return;
         }
@@ -199,7 +200,7 @@ export default function JurnalKegiatanPage() {
       });
       const json = await res.json();
       if (json.success) {
-        alert("Jurnal Kegiatan berhasil disimpan!");
+        Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Jurnal Kegiatan berhasil disimpan!' });
         setJurnalStafForm({ ...jurnalStafForm, kegiatan: '', mulaiDari: '', sampaiDengan: '', keterangan: '' });
         setJurnalStafFile(null);
         // Refresh data
@@ -207,11 +208,11 @@ export default function JurnalKegiatanPage() {
         const jsJson = await jsRes.json();
         if (jsJson.success) setJurnalStafData(jsJson.data);
       } else {
-        alert(json.error || "Gagal menyimpan jurnal");
+        Swal.fire({ icon: 'error', title: 'Gagal', text: json.error || "Gagal menyimpan jurnal" });
       }
     } catch (error) {
       console.error(error);
-      alert("Terjadi kesalahan jaringan");
+      Swal.fire({ icon: 'error', title: 'Kesalahan', text: 'Terjadi kesalahan jaringan' });
     }
     setSavingJurnalStaf(false);
   };
@@ -296,10 +297,10 @@ export default function JurnalKegiatanPage() {
         if (fileInput) fileInput.value = '';
         fetchData();
       } else {
-        alert('Gagal menyimpan notulen: ' + json.error);
+        Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menyimpan notulen: ' + json.error });
       }
     } catch (err: any) {
-      alert('Error: ' + err.message);
+      Swal.fire({ icon: 'error', title: 'Error', text: err.message });
     }
     setSaving(false);
   };
@@ -953,10 +954,10 @@ export default function JurnalKegiatanPage() {
                   setUploadFiles([]);
                   fetchData();
                 } else {
-                  alert(json.error);
+                  Swal.fire({ icon: 'error', title: 'Gagal', text: json.error });
                 }
               } catch (err: any) {
-                alert(err.message);
+                Swal.fire({ icon: 'error', title: 'Error', text: err.message });
               }
               setSaving(false);
             }}>
