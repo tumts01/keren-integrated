@@ -961,9 +961,6 @@ export default function JurnalKegiatanPage() {
 
       {printNotulenData && (
         <div className={styles.notulenPrintLayout}>
-          <div className={styles.kopSurat}>
-            <img src="/kop_surat_mts.png" alt="Kop Surat" />
-          </div>
           <h3 style={{ textAlign: 'center', margin: '20px 0 10px 0' }}>NOTULEN RAPAT</h3>
           <h4 style={{ textAlign: 'center', margin: '0 0 30px 0' }}>{printNotulenData.agendaRapat?.toUpperCase()}</h4>
           
