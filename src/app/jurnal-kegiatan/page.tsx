@@ -746,6 +746,14 @@ export default function JurnalKegiatanPage() {
                         <td>: {filterName || 'Semua Staf'}</td>
                       </tr>
                       <tr>
+                        <td>Jabatan</td>
+                        <td>: {(() => {
+                          if (!filterName) return '-';
+                          const guru = gurus.find(g => g.nama.toLowerCase() === filterName.toLowerCase());
+                          return guru?.jabatan || '-';
+                        })()}</td>
+                      </tr>
+                      <tr>
                         <td>Rentang Tanggal</td>
                         <td>: {filterStartDate && filterEndDate ? `${filterStartDate} s/d ${filterEndDate}` : (filterStartDate || filterEndDate || 'Semua Tanggal')}</td>
                       </tr>
@@ -757,10 +765,10 @@ export default function JurnalKegiatanPage() {
                   <table className={styles.table}>
                   <thead>
                     <tr>
-                      <th style={{ width: '150px' }}>Waktu</th>
-                      <th>Nama Staf</th>
-                      <th>Kegiatan</th>
-                      <th style={{ width: '250px' }}>Keterangan</th>
+                      <th style={{ width: '50px', textAlign: 'center' }}>No</th>
+                      <th style={{ width: '150px', textAlign: 'center' }}>Waktu</th>
+                      <th style={{ textAlign: 'center' }}>Kegiatan</th>
+                      <th style={{ width: '250px', textAlign: 'center' }}>Keterangan</th>
                       <th style={{ width: '100px', textAlign: 'center' }}>Foto</th>
                     </tr>
                   </thead>
@@ -796,13 +804,13 @@ export default function JurnalKegiatanPage() {
                       });
                       return filtered.length > 0 ? filtered.map((j, i) => (
                       <tr key={i}>
+                        <td style={{ textAlign: 'center' }}>{i + 1}</td>
                         <td>
                           <div style={{ fontWeight: 600, color: '#334155' }}>{j.tanggal}</div>
                           <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
                             {j.mulaiDari && j.sampaiDengan ? `${j.mulaiDari} s/d ${j.sampaiDengan}` : j.mulaiDari || j.sampaiDengan || ''}
                           </div>
                         </td>
-                        <td style={{ fontWeight: 600, color: '#0f172a' }}>{j.namaStaf}</td>
                         <td>{j.kegiatan}</td>
                         <td>{j.keterangan || '-'}</td>
                         <td style={{ textAlign: 'center' }}>
