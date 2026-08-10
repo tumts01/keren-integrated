@@ -1417,7 +1417,7 @@ function TabLaporanKeuangan({ onPrint }: { onPrint: (url: string) => void }) {
         {[
           { icon: 'fa-arrow-down', color: '#10b981', num: formatRp(totalTerima), lbl: 'Penerimaan Bulan Ini' },
           { icon: 'fa-arrow-up', color: '#ef4444', num: formatRp(totalKeluar), lbl: 'Pengeluaran Bulan Ini' },
-          { icon: 'fa-wallet', color: '#3b82f6', num: formatRp(currentSaldo), lbl: 'Sisa Saldo Akhir' },
+          { icon: 'fa-wallet', color: '#3b82f6', num: formatRp(totalTerima - totalKeluar), lbl: 'Sisa Saldo Bulan Ini' },
         ].map((s, i) => (
           <div key={i} className={styles.statCard}>
             <div className={styles.statIcon} style={{ background: s.color + '20', color: s.color }}>
