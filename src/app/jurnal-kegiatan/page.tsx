@@ -58,7 +58,14 @@ const compressImage = async (file: File): Promise<File> => {
 };
 
 export default function JurnalKegiatanPage() {
-  const [activeTab, setActiveTab] = useState<'notulen' | 'lpj'>('notulen');
+  const [activeTab, setActiveTab] = useState<'notulen' | 'lpj' | 'jurnal-staf'>('notulen');
+  const [jurnalStafSubTab, setJurnalStafSubTab] = useState<'isi' | 'rekap'>('isi');
+  const [jurnalStafData, setJurnalStafData] = useState<any[]>([]);
+  const [savingJurnalStaf, setSavingJurnalStaf] = useState(false);
+  const [jurnalStafForm, setJurnalStafForm] = useState({
+    namaStaf: '', kegiatan: '', tanggal: new Date().toISOString().split('T')[0], mulaiDari: '', sampaiDengan: '', keterangan: ''
+  });
+  const [jurnalStafFile, setJurnalStafFile] = useState<File | null>(null);
   const [notulens, setNotulens] = useState<any[]>([]);
   const [lpjList, setLpjList] = useState<any[]>([]);
   const [gurus, setGurus] = useState<any[]>([]);
@@ -104,14 +111,17 @@ export default function JurnalKegiatanPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [resNotulen, resLpj] = await Promise.all([
+      const [resNotulen, resLpj, resJurnalStaf] = await Promise.all([
         fetch('/api/notulen'),
-        fetch('/api/lpj-kegiatan')
+        fetch('/api/lpj-kegiatan'),
+        fetch('/api/jurnal-staf')
       ]);
       const jsonNotulen = await resNotulen.json();
       const jsonLpj = await resLpj.json();
+      const jsonJurnalStaf = await resJurnalStaf.json();
       if (jsonNotulen.success) setNotulens(jsonNotulen.data);
       if (jsonLpj.success) setLpjList(jsonLpj.data);
+      if (jsonJurnalStaf.success) setJurnalStafData(jsonJurnalStaf.data);
     } catch (e) {
       console.error(e);
     }
@@ -155,6 +165,67 @@ export default function JurnalKegiatanPage() {
       alert('Terjadi kesalahan saat menyimpan LPJ');
     }
     setSavingLpj(false);
+  };
+
+  const handleJurnalStafSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!jurnalStafForm.namaStaf || !jurnalStafForm.kegiatan) {
+      alert("Nama dan Kegiatan wajib diisi");
+      return;
+    }
+    
+    setSavingJurnalStaf(true);
+    try {
+      let fotoUrl = '';
+      if (jurnalStafFile) {
+        const compressed = await compressImage(jurnalStafFile);
+        const formFile = new FormData();
+        formFile.append('file', compressed);
+        const upRes = await fetch('/api/jurnal-staf/upload', { method: 'POST', body: formFile });
+        const upJson = await upRes.json();
+        if (upJson.success) {
+          fotoUrl = upJson.link;
+        } else {
+          alert('Gagal mengupload foto jurnal staf');
+          setSavingJurnalStaf(false);
+          return;
+        }
+      }
+
+      const res = await fetch('/api/jurnal-staf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...jurnalStafForm, fotoKegiatan: fotoUrl })
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert("Jurnal Kegiatan berhasil disimpan!");
+        setJurnalStafForm({ ...jurnalStafForm, kegiatan: '', mulaiDari: '', sampaiDengan: '', keterangan: '' });
+        setJurnalStafFile(null);
+        // Refresh data
+        const jsRes = await fetch('/api/jurnal-staf');
+        const jsJson = await jsRes.json();
+        if (jsJson.success) setJurnalStafData(jsJson.data);
+      } else {
+        alert(json.error || "Gagal menyimpan jurnal");
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Terjadi kesalahan jaringan");
+    }
+    setSavingJurnalStaf(false);
+  };
+
+  const fetchGurus = async () => {
+    try {
+      const res = await fetch('/api/gurus');
+      const json = await res.json();
+      if (json.success) {
+        setGurus(json.data.filter((g: any) => ['aktif'].includes(g.status?.toLowerCase().trim())));
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const fetchGuru = async () => {
@@ -462,6 +533,12 @@ export default function JurnalKegiatanPage() {
             >
               <i className="fas fa-file-archive"></i> LPJ Kegiatan
             </button>
+            <button 
+              className={`btn ${activeTab === 'jurnal-staf' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setActiveTab('jurnal-staf')}
+            >
+              <i className="fas fa-user-clock"></i> Jurnal Guru & Staf
+            </button>
           </div>
           
           {activeTab === 'notulen' ? (
@@ -520,7 +597,7 @@ export default function JurnalKegiatanPage() {
               )}
             </tbody>
           </table>
-        ) : (
+        ) : activeTab === 'lpj' ? (
           <table className={styles.table}>
             <thead>
               <tr>
@@ -557,6 +634,119 @@ export default function JurnalKegiatanPage() {
               )}
             </tbody>
           </table>
+        ) : (
+          <div className={styles.card}>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+              <button 
+                onClick={() => setJurnalStafSubTab('isi')}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: jurnalStafSubTab === 'isi' ? '#eff6ff' : 'transparent', color: jurnalStafSubTab === 'isi' ? '#3b82f6' : '#64748b', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                <i className="fas fa-pen" style={{ marginRight: '8px' }}></i> Isi Jurnal Kegiatan
+              </button>
+              <button 
+                onClick={() => setJurnalStafSubTab('rekap')}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: jurnalStafSubTab === 'rekap' ? '#eff6ff' : 'transparent', color: jurnalStafSubTab === 'rekap' ? '#3b82f6' : '#64748b', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                <i className="fas fa-table" style={{ marginRight: '8px' }}></i> Rekap Jurnal Kegiatan
+              </button>
+            </div>
+            
+            {jurnalStafSubTab === 'isi' ? (
+              <form onSubmit={handleJurnalStafSubmit}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Nama Guru / Staf <span style={{ color: 'red' }}>*</span></label>
+                    <input list="gurus-list" type="text" required placeholder="Ketik atau pilih nama"
+                      value={jurnalStafForm.namaStaf} onChange={e => setJurnalStafForm({...jurnalStafForm, namaStaf: e.target.value})}
+                      style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Tanggal <span style={{ color: 'red' }}>*</span></label>
+                    <input type="date" required
+                      value={jurnalStafForm.tanggal} onChange={e => setJurnalStafForm({...jurnalStafForm, tanggal: e.target.value})}
+                      style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px' }} />
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Kegiatan <span style={{ color: 'red' }}>*</span></label>
+                    <input type="text" required placeholder="Contoh: Menginput absensi bulanan ke sistem"
+                      value={jurnalStafForm.kegiatan} onChange={e => setJurnalStafForm({...jurnalStafForm, kegiatan: e.target.value})}
+                      style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Waktu Mulai Dari</label>
+                    <input type="time"
+                      value={jurnalStafForm.mulaiDari} onChange={e => setJurnalStafForm({...jurnalStafForm, mulaiDari: e.target.value})}
+                      style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Waktu Sampai Dengan</label>
+                    <input type="time"
+                      value={jurnalStafForm.sampaiDengan} onChange={e => setJurnalStafForm({...jurnalStafForm, sampaiDengan: e.target.value})}
+                      style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px' }} />
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Keterangan</label>
+                    <textarea placeholder="Catatan tambahan (opsional)" rows={3}
+                      value={jurnalStafForm.keterangan} onChange={e => setJurnalStafForm({...jurnalStafForm, keterangan: e.target.value})}
+                      style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px', resize: 'vertical' }}></textarea>
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Upload Foto Kegiatan (Opsional)</label>
+                    <input type="file" accept="image/*"
+                      onChange={e => setJurnalStafFile(e.target.files ? e.target.files[0] : null)}
+                      style={{ width: '100%', padding: '10px', border: '1px dashed #3b82f6', borderRadius: '8px', background: '#eff6ff' }} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button type="submit" disabled={savingJurnalStaf} className="btn btn-primary" style={{ padding: '12px 24px', fontSize: '1rem', minWidth: '140px' }}>
+                    {savingJurnalStaf ? <><i className="fas fa-spinner fa-spin"></i> Menyimpan...</> : <><i className="fas fa-save"></i> Save Jurnal</>}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '150px' }}>Waktu</th>
+                      <th>Nama Staf</th>
+                      <th>Kegiatan</th>
+                      <th style={{ width: '250px' }}>Keterangan</th>
+                      <th style={{ width: '100px', textAlign: 'center' }}>Foto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {jurnalStafData.length > 0 ? jurnalStafData.map((j, i) => (
+                      <tr key={i}>
+                        <td>
+                          <div style={{ fontWeight: 600, color: '#334155' }}>{j.tanggal}</div>
+                          <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                            {j.mulaiDari || '-'} s/d {j.sampaiDengan || '-'}
+                          </div>
+                        </td>
+                        <td style={{ fontWeight: 600, color: '#0f172a' }}>{j.namaStaf}</td>
+                        <td>{j.kegiatan}</td>
+                        <td>{j.keterangan || '-'}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          {j.fotoKegiatan ? (
+                            <a href={j.fotoKegiatan} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', fontWeight: 600 }}>
+                              <i className="fas fa-image"></i> Lihat
+                            </a>
+                          ) : '-'}
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr>
+                        <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                          Tidak ada data jurnal kegiatan.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
