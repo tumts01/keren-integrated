@@ -225,3 +225,65 @@
     gap: 16px;
   }
 }
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 15mm;
+  }
+  
+  :global(body),
+  .container,
+  .card,
+  .tableContainer {
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+  }
+  
+  /* Hide UI elements that shouldn't be printed */
+  .header,
+  .sidebar,
+  :global(button),
+  :global(input),
+  .filterSection,
+  .tabButtons,
+  .modalOverlay,
+  .noPrint {
+    display: none !important;
+  }
+  
+  /* Show print-specific elements */
+  .printOnly {
+    display: block !important;
+  }
+  
+  /* Make table look good on print */
+  .table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 11pt !important;
+  }
+  
+  .table th,
+  .table td {
+    border: 1px solid black !important;
+    padding: 8px !important;
+    color: black !important;
+  }
+  
+  .table th {
+    background-color: #f3f4f6 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  
+  /* Hide action columns if needed */
+  .table th:last-child,
+  .table td:last-child {
+    display: none !important;
+  }
+}

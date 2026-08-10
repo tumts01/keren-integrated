@@ -726,9 +726,33 @@ export default function JurnalKegiatanPage() {
                     <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Cari Nama Guru / Staf</label>
                     <input type="text" placeholder="Ketik nama..." style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }} value={filterName} onChange={e => setFilterName(e.target.value)} />
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                    <button type="button" onClick={() => { setFilterStartDate(''); setFilterEndDate(''); setFilterName(''); }} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Reset Filter</button>
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+                    <button type="button" onClick={() => window.print()} className={styles.btnPrimary} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#3b82f6', color: 'white', fontWeight: 600, cursor: 'pointer' }}><i className="fas fa-print" style={{ marginRight: '8px' }}></i>Preview & Cetak</button>
                   </div>
+                </div>
+                {/* KOP SURAT (Hanya tampil saat print) */}
+                <div className={styles.printOnly} style={{ display: 'none', marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', borderBottom: '3px solid black', paddingBottom: '15px', marginBottom: '20px' }}>
+                     <div style={{ flex: 1, textAlign: 'center' }}>
+                        <h2 style={{ margin: 0, fontSize: '1.2rem', textTransform: 'uppercase' }}>YAYASAN PENDIDIKAN ALMAARIF SINGOSARI</h2>
+                        <h1 style={{ margin: '5px 0', fontSize: '1.5rem', fontWeight: 'bold' }}>MTs ALMAARIF 01 SINGOSARI</h1>
+                        <p style={{ margin: 0, fontSize: '0.9rem' }}>Jl. Singosari No. 1, Kab. Malang, Jawa Timur</p>
+                     </div>
+                  </div>
+                  <h3 style={{ textAlign: 'center', margin: '20px 0', fontSize: '1.3rem' }}>REKAP JURNAL KEGIATAN GURU & STAF</h3>
+                  
+                  <table style={{ width: '100%', marginBottom: '20px', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                    <tbody>
+                      <tr>
+                        <td style={{ width: '180px' }}>Nama Guru / Staf</td>
+                        <td>: {filterName || 'Semua Staf'}</td>
+                      </tr>
+                      <tr>
+                        <td>Rentang Tanggal</td>
+                        <td>: {filterStartDate && filterEndDate ? `${filterStartDate} s/d ${filterEndDate}` : (filterStartDate || filterEndDate || 'Semua Tanggal')}</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
                 
                 <div style={{ overflowX: 'auto' }}>
@@ -780,6 +804,25 @@ export default function JurnalKegiatanPage() {
                     })()}
                   </tbody>
                 </table>
+
+                {/* TANDA TANGAN (Hanya tampil saat print) */}
+                <div className={styles.printOnly} style={{ display: 'none', marginTop: '50px' }}>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.1rem' }}>
+                      <div style={{ textAlign: 'center' }}>
+                         <p>Mengetahui,</p>
+                         <p>Kepala Madrasah</p>
+                         <br/><br/><br/><br/>
+                         <p style={{ fontWeight: 'bold', textDecoration: 'underline' }}>Dwi Retno Palupi, S.Pd., M.Pd.</p>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                         <p>Singosari, {new Date().toLocaleDateString('id-ID')}</p>
+                         <p>Pembuat Jurnal</p>
+                         <br/><br/><br/><br/>
+                         <p style={{ fontWeight: 'bold', textDecoration: 'underline' }}>{filterName || '(..................................................)'}</p>
+                      </div>
+                   </div>
+                </div>
+
               </div>
             </div>
           )}
