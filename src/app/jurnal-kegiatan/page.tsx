@@ -216,17 +216,7 @@ export default function JurnalKegiatanPage() {
     setSavingJurnalStaf(false);
   };
 
-  const fetchGurus = async () => {
-    try {
-      const res = await fetch('/api/gurus');
-      const json = await res.json();
-      if (json.success) {
-        setGurus(json.data.filter((g: any) => ['aktif'].includes(g.status?.toLowerCase().trim())));
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
+
 
   const fetchGuru = async () => {
     try {
@@ -654,47 +644,54 @@ export default function JurnalKegiatanPage() {
             {jurnalStafSubTab === 'isi' ? (
               <form onSubmit={handleJurnalStafSubmit}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Nama Guru / Staf <span style={{ color: 'red' }}>*</span></label>
+                  <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                    <label>Nama Guru / Staf <span style={{ color: 'red' }}>*</span></label>
                     <input list="gurus-list" type="text" required placeholder="Ketik atau pilih nama"
-                      value={jurnalStafForm.namaStaf} onChange={e => setJurnalStafForm({...jurnalStafForm, namaStaf: e.target.value})}
-                      style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px' }} />
+                      value={jurnalStafForm.namaStaf} onChange={e => setJurnalStafForm({...jurnalStafForm, namaStaf: e.target.value})} />
                   </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Tanggal <span style={{ color: 'red' }}>*</span></label>
+                  <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                    <label>Tanggal <span style={{ color: 'red' }}>*</span></label>
                     <input type="date" required
-                      value={jurnalStafForm.tanggal} onChange={e => setJurnalStafForm({...jurnalStafForm, tanggal: e.target.value})}
-                      style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px' }} />
+                      value={jurnalStafForm.tanggal} onChange={e => setJurnalStafForm({...jurnalStafForm, tanggal: e.target.value})} />
                   </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Kegiatan <span style={{ color: 'red' }}>*</span></label>
+                  <div className={styles.formGroup} style={{ gridColumn: '1 / -1', marginBottom: 0 }}>
+                    <label>Kegiatan <span style={{ color: 'red' }}>*</span></label>
                     <input type="text" required placeholder="Contoh: Menginput absensi bulanan ke sistem"
-                      value={jurnalStafForm.kegiatan} onChange={e => setJurnalStafForm({...jurnalStafForm, kegiatan: e.target.value})}
-                      style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px' }} />
+                      value={jurnalStafForm.kegiatan} onChange={e => setJurnalStafForm({...jurnalStafForm, kegiatan: e.target.value})} />
                   </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Waktu Mulai Dari</label>
+                  <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                    <label>Waktu Mulai Dari</label>
                     <input type="time"
-                      value={jurnalStafForm.mulaiDari} onChange={e => setJurnalStafForm({...jurnalStafForm, mulaiDari: e.target.value})}
-                      style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px' }} />
+                      value={jurnalStafForm.mulaiDari} onChange={e => setJurnalStafForm({...jurnalStafForm, mulaiDari: e.target.value})} />
                   </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Waktu Sampai Dengan</label>
+                  <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                    <label>Waktu Sampai Dengan</label>
                     <input type="time"
-                      value={jurnalStafForm.sampaiDengan} onChange={e => setJurnalStafForm({...jurnalStafForm, sampaiDengan: e.target.value})}
-                      style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px' }} />
+                      value={jurnalStafForm.sampaiDengan} onChange={e => setJurnalStafForm({...jurnalStafForm, sampaiDengan: e.target.value})} />
                   </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Keterangan</label>
+                  <div className={styles.formGroup} style={{ gridColumn: '1 / -1', marginBottom: 0 }}>
+                    <label>Keterangan</label>
                     <textarea placeholder="Catatan tambahan (opsional)" rows={3}
-                      value={jurnalStafForm.keterangan} onChange={e => setJurnalStafForm({...jurnalStafForm, keterangan: e.target.value})}
-                      style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px', resize: 'vertical' }}></textarea>
+                      value={jurnalStafForm.keterangan} onChange={e => setJurnalStafForm({...jurnalStafForm, keterangan: e.target.value})}></textarea>
                   </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Upload Foto Kegiatan (Opsional)</label>
-                    <input type="file" accept="image/*"
-                      onChange={e => setJurnalStafFile(e.target.files ? e.target.files[0] : null)}
-                      style={{ width: '100%', padding: '10px', border: '1px dashed #3b82f6', borderRadius: '8px', background: '#eff6ff' }} />
+                  <div className={styles.formGroup} style={{ gridColumn: '1 / -1', marginBottom: 0 }}>
+                    <label>Upload Foto Kegiatan (Opsional)</label>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <label style={{ 
+                        flex: 1, padding: '16px', border: '2px dashed #3b82f6', borderRadius: '8px', 
+                        textAlign: 'center', cursor: 'pointer', color: '#3b82f6', fontWeight: 600, background: '#eff6ff' 
+                      }}>
+                        <i className="fas fa-camera" style={{ display: 'block', fontSize: '1.5rem', marginBottom: '8px' }}></i> 
+                        Pilih File Foto
+                        <input type="file" accept="image/*" style={{ display: 'none' }}
+                          onChange={e => setJurnalStafFile(e.target.files ? e.target.files[0] : null)} />
+                      </label>
+                    </div>
+                    {jurnalStafFile && (
+                      <div style={{ padding: '8px 12px', marginTop: '8px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.9rem', color: '#16a34a', fontWeight: 600 }}>
+                        ✅ {jurnalStafFile.name}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
