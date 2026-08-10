@@ -773,10 +773,31 @@ export default function JurnalKegiatanPage() {
                   </thead>
                   <tbody>
                     {(() => {
+                      const parseDateStr = (dStr: string) => {
+                        if (!dStr) return '';
+                        if (dStr.includes('-') && dStr.length === 10 && dStr.indexOf('-') === 4) return dStr; 
+                        
+                        const sep = dStr.includes('/') ? '/' : (dStr.includes('-') ? '-' : null);
+                        if (sep) {
+                          const parts = dStr.split(sep);
+                          if (parts.length === 3) {
+                             if (parts[2].length === 4) { 
+                               // Asumsi format indonesia: DD/MM/YYYY -> YYYY-MM-DD
+                               return `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+                             } else if (parts[0].length === 4) { 
+                               // Asumsi YYYY/MM/DD -> YYYY-MM-DD
+                               return `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
+                             }
+                          }
+                        }
+                        return dStr;
+                      };
+
                       const filtered = jurnalStafData.filter(j => {
                         let match = true;
-                        if (filterStartDate && j.tanggal < filterStartDate) match = false;
-                        if (filterEndDate && j.tanggal > filterEndDate) match = false;
+                        const jTgl = parseDateStr(j.tanggal);
+                        if (filterStartDate && jTgl < filterStartDate) match = false;
+                        if (filterEndDate && jTgl > filterEndDate) match = false;
                         if (filterName && !j.namaStaf?.toLowerCase().includes(filterName.toLowerCase())) match = false;
                         return match;
                       });
