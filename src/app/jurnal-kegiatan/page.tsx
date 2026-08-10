@@ -80,9 +80,9 @@ export default function JurnalKegiatanPage() {
   const [lpjForm, setLpjForm] = useState({
     tanggal: new Date().toISOString().split('T')[0],
     namaKegiatan: '',
-    pjKegiatan: ''
+    pjKegiatan: '',
+    fileLink: ''
   });
-  const [lpjFile, setLpjFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -134,22 +134,17 @@ export default function JurnalKegiatanPage() {
 
   const handleLpjSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!lpjFile) {
-      Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'File LPJ wajib diupload' });
+    if (!lpjForm.fileLink) {
+      Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Link Google Drive wajib diisi' });
       return;
     }
     setSavingLpj(true);
     
     try {
-      const payload = new FormData();
-      payload.append('tanggal', lpjForm.tanggal);
-      payload.append('namaKegiatan', lpjForm.namaKegiatan);
-      payload.append('pjKegiatan', lpjForm.pjKegiatan);
-      payload.append('file', lpjFile);
-      
       const res = await fetch('/api/lpj-kegiatan', {
         method: 'POST',
-        body: payload
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(lpjForm)
       });
       
       const json = await res.json();
@@ -158,9 +153,9 @@ export default function JurnalKegiatanPage() {
         setLpjForm({
           tanggal: new Date().toISOString().split('T')[0],
           namaKegiatan: '',
-          pjKegiatan: ''
+          pjKegiatan: '',
+          fileLink: ''
         });
-        setLpjFile(null);
         fetchData(); // refresh data
       } else {
         Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menyimpan LPJ: ' + json.error });
@@ -1139,8 +1134,9 @@ export default function JurnalKegiatanPage() {
                   </datalist>
                 </div>
                 <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>File LPJ (PDF/Scan) <span style={{ color: 'red' }}>*</span></label>
-                  <input type="file" accept=".pdf,image/*,.doc,.docx,.xls,.xlsx" onChange={e => setLpjFile(e.target.files ? e.target.files[0] : null)} style={{ width: '100%', padding: '10px', border: '1px dashed #3b82f6', borderRadius: '8px', background: '#eff6ff' }} required />
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Link Google Drive LPJ <span style={{ color: 'red' }}>*</span></label>
+                  <input type="url" value={lpjForm.fileLink} onChange={e => setLpjForm({...lpjForm, fileLink: e.target.value})} placeholder="https://drive.google.com/..." style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '8px' }} required />
+                  <small style={{ display: 'block', marginTop: '6px', color: '#64748b', fontSize: '0.8rem' }}>*Pastikan link Google Drive sudah disetting "Anyone with the link can view"</small>
                 </div>
               </div>
               <div className={styles.modalFooter}>

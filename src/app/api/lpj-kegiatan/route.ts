@@ -46,29 +46,11 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const formData = await req.formData();
-    const tanggal = formData.get('tanggal') as string;
-    const namaKegiatan = formData.get('namaKegiatan') as string;
-    const pjKegiatan = formData.get('pjKegiatan') as string;
-    const file = formData.get('file') as File;
+    const body = await req.json();
+    const { tanggal, namaKegiatan, pjKegiatan, fileLink } = body;
 
-    if (!tanggal || !namaKegiatan || !pjKegiatan || !file) {
-      return NextResponse.json({ success: false, error: 'Semua field dan file wajib diisi' }, { status: 400 });
-    }
-
-    const folderId = process.env.GOOGLE_DRIVE_PERSURATAN_FOLDER_ID;
-    if (!folderId) {
-      return NextResponse.json({ success: false, error: 'Folder ID Google Drive belum dikonfigurasi' }, { status: 500 });
-    }
-
-    // Upload to Google Drive
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const driveRes = await uploadFileToDrive(buffer, file.name, file.type, folderId);
-    
-    const fileUrl = driveRes.webViewLink;
-    if (!fileUrl) {
-      return NextResponse.json({ success: false, error: 'Gagal mendapatkan link dari Google Drive' }, { status: 500 });
+    if (!tanggal || !namaKegiatan || !pjKegiatan || !fileLink) {
+      return NextResponse.json({ success: false, error: 'Semua field dan link wajib diisi' }, { status: 400 });
     }
 
     // Save to Sheet
@@ -91,12 +73,12 @@ export async function POST(req: Request) {
       [hTanggal]: tanggal,
       [hNama]: namaKegiatan,
       [hPj]: pjKegiatan,
-      [hFile]: fileUrl
+      [hFile]: fileLink
     };
 
     await sheet.addRow(newRow);
 
-    return NextResponse.json({ success: true, url: fileUrl });
+    return NextResponse.json({ success: true, url: fileLink });
   } catch (error: any) {
     console.error('POST LPJ Kegiatan Error:', error);
     return NextResponse.json({ success: false, error: 'Gagal menyimpan LPJ Kegiatan: ' + error.message }, { status: 500 });
