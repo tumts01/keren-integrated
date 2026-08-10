@@ -183,12 +183,12 @@ export async function GET() {
         }
       }
 
-      // Domisili (Kolom K)
-      const dom = (r.get(headerDomisili) || '').toString().toLowerCase().trim();
+      // Domisili
+      const dom = (r.get('DOMISILI') || r.get('Domisili') || '').toString().toLowerCase().trim();
       let domKey = 'Belum terdata';
       if (!dom) {
         domKey = 'Belum terdata';
-      } else if (dom === 'rumah') {
+      } else if (dom === 'rumah' || dom.includes('rumah')) {
         domKey = 'Rumah';
       } else {
         domKey = 'Pesantren';
