@@ -34,6 +34,7 @@ export default function GuruPage() {
   const [selectedGuru, setSelectedGuru] = useState<Guru | null>(null);
   const [showDaftarHadir, setShowDaftarHadir] = useState(false);
   const [namaKegiatan, setNamaKegiatan] = useState('');
+  const [isPrintingAlbum, setIsPrintingAlbum] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -195,6 +196,9 @@ export default function GuruPage() {
             </button>
             <button onClick={() => setShowDaftarHadir(true)} className="btn btn-primary" style={{ marginRight: '8px', background: 'linear-gradient(135deg,#7c3aed,#6d28d9)', borderColor: '#7c3aed' }}>
               <i className="fas fa-clipboard-list"></i> Daftar Hadir
+            </button>
+            <button onClick={() => handleCetakAlbum()} className="btn btn-primary" style={{ marginRight: '8px', background: 'linear-gradient(135deg,#059669,#047857)', borderColor: '#059669' }}>
+              <i className="fas fa-id-card"></i> Cetak Album
             </button>
             <button className="btn btn-primary">
             <i className="fas fa-plus"></i> Tambah Data
@@ -559,6 +563,92 @@ export default function GuruPage() {
             <div class="line"></div>
             <p style="margin:0;font-weight:bold;text-decoration:underline;">DWI RETNO PALUPI, M.Pd.</p>
           </div>
+        </div>
+      </body>
+      </html>
+    `);
+    win.document.close();
+    setTimeout(() => win.print(), 500);
+  }
+  function handleCetakAlbum() {
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) return;
+
+    const cards = data.map((g) => {
+      const isAktif = g.status.toLowerCase().includes('aktif') && !g.status.toLowerCase().includes('non');
+      const fotoHtml = g.foto
+        ? `<img src="${g.foto}" alt="Foto" style="width:100%;height:100%;object-fit:cover;border-radius:8px 8px 0 0;" />`
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#e2e8f0;border-radius:8px 8px 0 0;font-size:2.5rem;font-weight:700;color:#94a3b8;">${g.nama.charAt(0).toUpperCase()}</div>`;
+      return `
+        <div class="guru-card">
+          <div class="foto-box">${fotoHtml}</div>
+          <div class="info-box">
+            <div class="field-label">NAMA LENGKAP</div>
+            <div class="field-val">${g.nama || '-'}</div>
+            <div class="field-row">
+              <div>
+                <div class="field-label">NIP</div>
+                <div class="field-val">${g.nip || '-'}</div>
+              </div>
+              <div>
+                <div class="field-label">JABATAN</div>
+                <div class="field-val">${g.jabatan || '-'}</div>
+              </div>
+            </div>
+            <div class="field-row">
+              <div>
+                <div class="field-label">PENDIDIKAN</div>
+                <div class="field-val">${g.pendidikan || '-'}</div>
+              </div>
+              <div>
+                <div class="field-label">STATUS</div>
+                <div class="field-val"><span class="badge ${isAktif ? 'badge-aktif' : 'badge-non'}">${g.status || '-'}</span></div>
+              </div>
+            </div>
+            <div class="field-label">NO. HP / WA</div>
+            <div class="field-val">${g.noHp || '-'}</div>
+            <div class="field-label">ALAMAT LENGKAP</div>
+            <div class="field-val addr">${g.alamat || '-'}</div>
+            <div class="field-row">
+              <div>
+                <div class="field-label">TEMPAT, TGL LAHIR</div>
+                <div class="field-val">${g.tempatLahir || '-'}, ${g.tanggalLahir || '-'}</div>
+              </div>
+              <div>
+                <div class="field-label">EMAIL</div>
+                <div class="field-val">${g.email || '-'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    win.document.write(`
+      <html>
+      <head>
+        <title>Album Guru &amp; Staf - MTs Almaarif 01</title>
+        <style>
+          @page { size: A4 portrait; margin: 15mm; }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9pt; color: #111; background: white; }
+          .album-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; }
+          .guru-card { border: 1px solid #d1d5db; border-radius: 10px; overflow: hidden; page-break-inside: avoid; break-inside: avoid; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+          .foto-box { height: 130px; overflow: hidden; }
+          .info-box { padding: 8px 10px; }
+          .field-label { font-size: 7pt; font-weight: 700; color: #64748b; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 5px; margin-bottom: 2px; }
+          .field-val { font-size: 8.5pt; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 5px; padding: 3px 7px; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .field-val.addr { white-space: normal; font-size: 8pt; }
+          .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+          .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 7.5pt; font-weight: 700; }
+          .badge-aktif { background: #dcfce7; color: #166534; }
+          .badge-non { background: #fee2e2; color: #991b1b; }
+          @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+        </style>
+      </head>
+      <body>
+        <div class="album-grid">
+          ${cards}
         </div>
       </body>
       </html>
