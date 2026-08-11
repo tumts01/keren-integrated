@@ -577,48 +577,23 @@ export default function GuruPage() {
     const cards = data.map((g) => {
       const isAktif = g.status.toLowerCase().includes('aktif') && !g.status.toLowerCase().includes('non');
       const fotoHtml = g.foto
-        ? `<img src="${g.foto}" alt="Foto" style="width:100%;height:100%;object-fit:cover;object-position:top center;border-radius:8px 8px 0 0;" />`
+        ? `<img src="${g.foto}" alt="Foto" />`
         : `<div class="placeholder">${g.nama.charAt(0).toUpperCase()}</div>`;
       return `
         <div class="guru-card">
           <div class="foto-box">${fotoHtml}</div>
           <div class="info-box">
-            <div class="field-label">NAMA LENGKAP</div>
-            <div class="field-val">${g.nama || '-'}</div>
-            <div class="field-row">
-              <div>
-                <div class="field-label">NIP</div>
-                <div class="field-val">${g.nip || '-'}</div>
-              </div>
-              <div>
-                <div class="field-label">JABATAN</div>
-                <div class="field-val">${g.jabatan || '-'}</div>
-              </div>
-            </div>
-            <div class="field-row">
-              <div>
-                <div class="field-label">PENDIDIKAN</div>
-                <div class="field-val">${g.pendidikan || '-'}</div>
-              </div>
-              <div>
-                <div class="field-label">STATUS</div>
-                <div class="field-val"><span class="badge ${isAktif ? 'badge-aktif' : 'badge-non'}">${g.status || '-'}</span></div>
-              </div>
-            </div>
-            <div class="field-label">NO. HP / WA</div>
-            <div class="field-val">${g.noHp || '-'}</div>
-            <div class="field-label">ALAMAT LENGKAP</div>
-            <div class="field-val addr">${g.alamat || '-'}</div>
-            <div class="field-row">
-              <div>
-                <div class="field-label">TEMPAT, TGL LAHIR</div>
-                <div class="field-val">${g.tempatLahir || '-'}, ${g.tanggalLahir || '-'}</div>
-              </div>
-              <div>
-                <div class="field-label">EMAIL</div>
-                <div class="field-val">${g.email || '-'}</div>
-              </div>
-            </div>
+            <table class="info-tbl">
+              <tr><td class="lbl">Nama</td><td class="sep">:</td><td class="val">${g.nama || '-'}</td></tr>
+              <tr><td class="lbl">NIP</td><td class="sep">:</td><td class="val">${g.nip || '-'}</td></tr>
+              <tr><td class="lbl">Jabatan</td><td class="sep">:</td><td class="val">${g.jabatan || '-'}</td></tr>
+              <tr><td class="lbl">Pendidikan</td><td class="sep">:</td><td class="val">${g.pendidikan || '-'}</td></tr>
+              <tr><td class="lbl">Status</td><td class="sep">:</td><td class="val"><span class="badge ${isAktif ? 'badge-aktif' : 'badge-non'}">${g.status || '-'}</span></td></tr>
+              <tr><td class="lbl">No. HP</td><td class="sep">:</td><td class="val">${g.noHp || '-'}</td></tr>
+              <tr><td class="lbl">Alamat</td><td class="sep">:</td><td class="val addr">${g.alamat || '-'}</td></tr>
+              <tr><td class="lbl">TTL</td><td class="sep">:</td><td class="val">${g.tempatLahir || '-'}, ${g.tanggalLahir || '-'}</td></tr>
+              <tr><td class="lbl">Email</td><td class="sep">:</td><td class="val">${g.email || '-'}</td></tr>
+            </table>
           </div>
         </div>
       `;
@@ -632,32 +607,33 @@ export default function GuruPage() {
           @page { size: A4 portrait; margin: 10mm 12mm; }
           * { box-sizing: border-box; margin: 0; padding: 0; }
           body { font-family: 'Segoe UI', Arial, sans-serif; color: #111; background: white; }
-          .album-grid { }
           .guru-card {
-            width: 48%; float: left; margin: 0 1% 8mm 1%;
-            border: 1px solid #ccc; border-radius: 8px; overflow: hidden;
+            display: flex; border: 1px solid #cbd5e1; border-radius: 8px;
+            overflow: hidden; margin-bottom: 6mm;
             page-break-inside: avoid; break-inside: avoid;
-            height: 127mm;
+            height: 42mm;
           }
-          .foto-box { width: 100%; height: 45mm; overflow: hidden; background: #e2e8f0; }
+          .foto-box {
+            width: 30mm; min-width: 30mm; height: 100%;
+            overflow: hidden; background: #e2e8f0; flex-shrink: 0;
+          }
           .foto-box img { width: 100%; height: 100%; object-fit: cover; object-position: top center; display: block; }
-          .foto-box .placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700; color: #94a3b8; }
-          .info-box { padding: 6px 8px; font-size: 8pt; }
-          .field-label { font-size: 6pt; font-weight: 700; color: #64748b; text-transform: uppercase; margin-top: 3px; }
-          .field-val { font-size: 7.5pt; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 3px; padding: 2px 5px; margin-bottom: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-          .field-val.addr { white-space: normal; }
-          .field-row { display: flex; gap: 4px; }
-          .field-row > div { flex: 1; }
-          .badge { display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 6.5pt; font-weight: 700; }
+          .foto-box .placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: 700; color: #94a3b8; }
+          .info-box { flex: 1; padding: 3px 8px; overflow: hidden; }
+          .info-tbl { width: 100%; border-collapse: collapse; font-size: 7.5pt; }
+          .info-tbl td { padding: 0.5px 2px; vertical-align: top; }
+          .info-tbl .lbl { width: 55px; font-weight: 700; color: #475569; white-space: nowrap; }
+          .info-tbl .sep { width: 8px; }
+          .info-tbl .val { color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 0; width: 100%; }
+          .info-tbl .val.addr { white-space: normal; font-size: 7pt; line-height: 1.2; }
+          .badge { display: inline-block; padding: 0px 6px; border-radius: 8px; font-size: 6.5pt; font-weight: 700; }
           .badge-aktif { background: #dcfce7; color: #166534; }
           .badge-non { background: #fee2e2; color: #991b1b; }
           @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
         </style>
       </head>
       <body>
-        <div class="album-grid">
-          ${cards}
-        </div>
+        ${cards}
       </body>
       </html>
     `);
