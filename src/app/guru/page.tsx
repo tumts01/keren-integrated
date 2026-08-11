@@ -577,7 +577,7 @@ export default function GuruPage() {
     const cards = data.map((g) => {
       const isAktif = g.status.toLowerCase().includes('aktif') && !g.status.toLowerCase().includes('non');
       const fotoHtml = g.foto
-        ? `<img src="${g.foto}" alt="Foto" style="width:100%;height:100%;object-fit:cover;border-radius:8px 8px 0 0;" />`
+        ? `<img src="${g.foto}" alt="Foto" style="width:100%;height:100%;object-fit:cover;object-position:top center;border-radius:8px 8px 0 0;" />`
         : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#e2e8f0;border-radius:8px 8px 0 0;font-size:2.5rem;font-weight:700;color:#94a3b8;">${g.nama.charAt(0).toUpperCase()}</div>`;
       return `
         <div class="guru-card">
@@ -632,15 +632,16 @@ export default function GuruPage() {
           @page { size: A4 portrait; margin: 15mm; }
           * { box-sizing: border-box; margin: 0; padding: 0; }
           body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9pt; color: #111; background: white; }
-          .album-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; }
-          .guru-card { border: 1px solid #d1d5db; border-radius: 10px; overflow: hidden; page-break-inside: avoid; break-inside: avoid; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-          .foto-box { height: 130px; overflow: hidden; }
-          .info-box { padding: 8px 10px; }
-          .field-label { font-size: 7pt; font-weight: 700; color: #64748b; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 5px; margin-bottom: 2px; }
-          .field-val { font-size: 8.5pt; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 5px; padding: 3px 7px; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-          .field-val.addr { white-space: normal; font-size: 8pt; }
-          .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-          .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 7.5pt; font-weight: 700; }
+          .album-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 8mm; height: 267mm; }
+          .guru-card { border: 1px solid #d1d5db; border-radius: 10px; overflow: hidden; page-break-inside: avoid; break-inside: avoid; box-shadow: 0 1px 4px rgba(0,0,0,0.08); display: flex; flex-direction: column; }
+          .foto-box { flex: 0 0 38%; overflow: hidden; }
+          .foto-box img { width: 100%; height: 100%; object-fit: cover; object-position: top center; border-radius: 8px 8px 0 0; }
+          .info-box { flex: 1; padding: 7px 9px; display: flex; flex-direction: column; gap: 2px; }
+          .field-label { font-size: 6.5pt; font-weight: 700; color: #64748b; letter-spacing: 0.4px; text-transform: uppercase; margin-top: 4px; margin-bottom: 1px; }
+          .field-val { font-size: 8pt; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px 6px; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .field-val.addr { white-space: normal; font-size: 7.5pt; }
+          .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+          .badge { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 7pt; font-weight: 700; }
           .badge-aktif { background: #dcfce7; color: #166534; }
           .badge-non { background: #fee2e2; color: #991b1b; }
           @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
