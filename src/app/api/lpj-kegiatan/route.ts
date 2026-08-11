@@ -11,7 +11,12 @@ export async function GET() {
       return NextResponse.json({ success: false, error: 'Tab "lpj kegiatan" tidak ditemukan di Spreadsheet' }, { status: 404 });
     }
 
-    await sheet.loadHeaderRow();
+    try {
+      await sheet.loadHeaderRow();
+    } catch (e) {
+      await sheet.setHeaderRow(['TANGGAL', 'NAMA KEGIATAN', 'PJ KEGIATAN', 'FILE (UPLOAD)']);
+      await sheet.loadHeaderRow();
+    }
     const headers = sheet.headerValues.map(h => h?.toUpperCase().trim() || '');
     
     // Mapping Header Dinamis
@@ -61,7 +66,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Tab "lpj kegiatan" tidak ditemukan di Spreadsheet' }, { status: 404 });
     }
 
-    await sheet.loadHeaderRow();
+    try {
+      await sheet.loadHeaderRow();
+    } catch (e) {
+      await sheet.setHeaderRow(['TANGGAL', 'NAMA KEGIATAN', 'PJ KEGIATAN', 'FILE (UPLOAD)']);
+      await sheet.loadHeaderRow();
+    }
     const headers = sheet.headerValues.map(h => h?.toUpperCase().trim() || '');
     
     const hTanggal = headers.find(h => h.includes('TANGGAL')) || 'TANGGAL';

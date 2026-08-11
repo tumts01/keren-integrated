@@ -184,7 +184,7 @@ export async function GET() {
       }
 
       // Domisili
-      const dom = (r.get('DOMISILI') || r.get('Domisili') || '').toString().toLowerCase().trim();
+      const dom = (r.get(headerDomisili) || '').toString().toLowerCase().trim();
       let domKey = 'Belum terdata';
       if (!dom) {
         domKey = 'Belum terdata';
