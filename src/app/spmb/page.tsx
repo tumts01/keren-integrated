@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import styles from './Spmb.module.css';
 
@@ -8,6 +8,18 @@ export default function SpmbPage() {
   const pathname = usePathname();
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
+  const [sekolahRef, setSekolahRef] = useState<{nama: string, alamat: string}[]>([]);
+
+  useEffect(() => {
+    fetch('/api/spmb/sekolah')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setSekolahRef(data.data);
+        }
+      })
+      .catch(err => console.error('Gagal memuat referensi sekolah', err));
+  }, []);
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -54,7 +66,19 @@ export default function SpmbPage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => {
+      const newData = { ...prev, [name]: value };
+      
+      // Auto-fill alamat sekolah jika asalSekolah dipilih dari referensi
+      if (name === 'asalSekolah') {
+        const selected = sekolahRef.find(s => s.nama === value);
+        if (selected && selected.alamat) {
+          newData.alamatSekolahAsal = selected.alamat;
+        }
+      }
+      
+      return newData;
+    });
   };
 
   const uploadToDrive = async (file: File, newName: string): Promise<string> => {
@@ -291,7 +315,12 @@ export default function SpmbPage() {
           <div className={styles.formGrid}>
             <div className={styles.formGroup}>
               <label className={styles.label}>Nama Asal Sekolah (SD/MI) <span>*</span></label>
-              <input type="text" name="asalSekolah" className={styles.input} placeholder="Contoh: MI Almaarif 01" value={formData.asalSekolah} onChange={handleInputChange} required />
+              <input type="text" name="asalSekolah" className={styles.input} placeholder="Contoh: MI Almaarif 01" value={formData.asalSekolah} onChange={handleInputChange} list="sekolah-list" required />
+              <datalist id="sekolah-list">
+                {sekolahRef.map((s, idx) => (
+                  <option key={idx} value={s.nama} />
+                ))}
+              </datalist>
             </div>
             <div className={styles.formGroup}>
               <label className={styles.label}>Alamat Sekolah Asal <span>*</span></label>
