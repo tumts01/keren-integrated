@@ -68,9 +68,9 @@ export default function Sidebar() {
         { name: 'Data Kelas', path: '/kelas', icon: 'fa-chalkboard' },
         { name: 'Presensi & Jurnal', path: '/presensi', icon: 'fa-calendar-check' },
         { name: 'Dispo Siswa', path: '/dispo', icon: 'fa-user-clock' },
+        { name: 'Nilai Siswa', path: '/nilai-siswa', icon: 'fa-star' },
         ...(isAdmin ? [
           { name: 'Jadwal Mengajar', path: '/jadwal-mengajar', icon: 'fa-clock' },
-          { name: 'Nilai Siswa', path: '/nilai-siswa', icon: 'fa-star' },
         ] : []),
         { name: 'Pengembalian Rapor', path: '/pengembalian-rapor', icon: 'fa-file-signature' },
         ...(isAdmin ? [
