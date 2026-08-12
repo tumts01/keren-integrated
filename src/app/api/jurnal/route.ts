@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { getPresensiDoc, getIndukDoc } from '@/lib/google-sheets';
 import crypto from 'crypto';
 
+// Bersihkan jam ke yang terformat jadi tanggal oleh Google Sheets
+// Misal: "6,7,2008" -> "6,7" atau "7,8,2009" -> "7,8"
+const cleanJamKe = (val: string) => val.replace(/,(19|20)\d{2}$/g, '').replace(/^'/, '').trim();
+
 // Convert kelas format "7A" → "VII_A" untuk lookup di jadwal
 function kelasToJadwalCol(kelas: string): string {
   const match = kelas.trim().match(/^(\d+)([A-Za-z]+)$/);
@@ -20,17 +24,26 @@ export async function GET() {
     if (!sheet) return NextResponse.json({ success: false, error: 'Sheet JURNAL MENGAJAR tidak ditemukan' }, { status: 404 });
 
     const rows = await sheet.getRows();
-    const data = rows.map(row => ({
+    const rawData = rows.map(row => ({
       id: row.get('ID') || '',
       timestamp: row.get('TIMESTAMP') || '',
       tanggal: row.get('TANGGAL') || '',
-      jamKe: row.get('JAM KE') || '',
+      jamKe: cleanJamKe(row.get('JAM KE') || ''),
       tahunAjaran: row.get('TAHUN AJARAN') || '',
       kelas: row.get('KELAS') || '',
       mapel: row.get('MAPEL') || '',
       namaGuru: row.get('NAMA GURU') || '',
       materi: row.get('MATERI') || '',
-    })).filter(r => r.tanggal || r.materi).reverse();
+    })).filter(r => r.tanggal || r.materi);
+
+    // Deduplikasi: berdasarkan tanggal+kelas+mapel+jamKe, ambil yang pertama (terbaru timestamp)
+    const seen = new Set<string>();
+    const data = rawData.filter(r => {
+      const key = `${r.tanggal}|${r.kelas}|${r.mapel}|${r.jamKe}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).reverse();
 
     return NextResponse.json({ success: true, data }, {
       headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
@@ -174,7 +187,7 @@ export async function POST(request: Request) {
       r.get('TANGGAL') === tanggal && 
       r.get('KELAS') === kelas && 
       r.get('MAPEL') === mapel && 
-      String(r.get('JAM KE')) === jamKeText
+      cleanJamKe(String(r.get('JAM KE'))) === cleanJamKe(jamKeText)
     );
 
     if (existing.length > 0) {
