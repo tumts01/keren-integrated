@@ -12,7 +12,7 @@ export async function GET() {
     
     rows.forEach(r => {
       // Kolom AY = index 50
-      const namaSekolah = (r._rawData[50] || r.get('SD/MI') || '').toString().trim();
+      const namaSekolah = ((r as any)._rawData[50] || r.get('SD/MI') || '').toString().trim();
       const alamatSekolah = (r.get('ALAMAT SD/MI') || '').toString().trim();
       
       if (namaSekolah && !sekolahMap.has(namaSekolah)) {
