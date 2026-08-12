@@ -1722,16 +1722,7 @@ export default function PresensiPage() {
                 >
                   <i className="fas fa-sync-alt"></i> Muat Data
                 </button>
-                {isAdmin && (
-                  <button
-                    onClick={handleFixUnknown}
-                    disabled={fixUnknownLoading}
-                    style={{ background: fixUnknownLoading ? '#ede9fe' : '#7c3aed', border: 'none', padding: '8px 16px', borderRadius: 8, cursor: fixUnknownLoading ? 'not-allowed' : 'pointer', fontSize: '0.85rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, opacity: fixUnknownLoading ? 0.7 : 1 }}
-                  >
-                    <i className={fixUnknownLoading ? 'fas fa-spinner fa-spin' : 'fas fa-magic'}></i>
-                    {fixUnknownLoading ? 'Memproses...' : 'Fix Unknown'}
-                  </button>
-                )}
+
               </div>
             </div>
 
