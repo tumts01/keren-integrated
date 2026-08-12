@@ -67,10 +67,28 @@ export async function POST(request: Request) {
     // Update BonData status to Selesai
     const bonSheet = doc.sheetsByTitle['BonData'];
     const rows = await bonSheet.getRows();
-    const bonRow = rows.find(r => r.get('NoBon') === noBon || r.get('ID') === bonId);
+    let bonRow = rows.find(r => r.get('NoBon') === noBon || r.get('ID') === bonId);
+
+    // Fallback: If it's a virtual SISA ID, find the corresponding empty row
+    if (!bonRow && bonId && bonId.startsWith('SISA-')) {
+      const match = bonId.match(/^SISA-(.+)-(\d+)$/);
+      if (match) {
+        bonRow = rows.find((r) => {
+          if (r.get('NoBon') || r.get('ID')) return false;
+          const nm = (r.get('Nama') || '').trim().split(' ')[0].toUpperCase();
+          return nm === match[1];
+        });
+      }
+    }
+
     if (bonRow) {
       bonRow.set('Status', 'Selesai');
       bonRow.set('JumlahRealisasi', jumlahRealisasi);
+      
+      // Save the generated virtual ID so it becomes permanent
+      if (!bonRow.get('NoBon')) bonRow.set('NoBon', noBon);
+      if (!bonRow.get('ID')) bonRow.set('ID', bonId);
+      
       await bonRow.save();
     }
 
@@ -141,9 +159,26 @@ export async function PATCH(request: Request) {
     // Update BonData with new JumlahRealisasi
     const bonSheet = doc.sheetsByTitle['BonData'];
     const bonRows = await bonSheet.getRows();
-    const bonRow = bonRows.find(r => r.get('NoBon') === buktiRow.get('NoBon') || r.get('ID') === buktiRow.get('BonID'));
+    const bonId = buktiRow.get('BonID') || buktiRow.get('NoBon');
+    let bonRow = bonRows.find(r => r.get('NoBon') === buktiRow.get('NoBon') || r.get('ID') === bonId);
+    
+    if (!bonRow && bonId && bonId.startsWith('SISA-')) {
+      const match = bonId.match(/^SISA-(.+)-(\d+)$/);
+      if (match) {
+        bonRow = bonRows.find((r) => {
+          if (r.get('NoBon') || r.get('ID')) return false;
+          const nm = (r.get('Nama') || '').trim().split(' ')[0].toUpperCase();
+          return nm === match[1];
+        });
+      }
+    }
+
     if (bonRow) {
       bonRow.set('JumlahRealisasi', jumlahRealisasi);
+      
+      if (!bonRow.get('NoBon')) bonRow.set('NoBon', buktiRow.get('NoBon'));
+      if (!bonRow.get('ID')) bonRow.set('ID', bonId);
+      
       await bonRow.save();
     }
 
