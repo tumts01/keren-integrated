@@ -9,6 +9,12 @@ export async function GET(request: Request) {
 
     const cleanNisn = (val: any) => String(val || '').replace(/^'/, '').trim().replace(/^0+/, '');
 
+    // Bersihkan jam ke yang terformat jadi tanggal oleh Google Sheets
+    // Misal: "6,7,2008" -> "6,7" atau "7,8,2009" -> "7,8"
+    const cleanJamKe = (val: string) => {
+      return val.replace(/,(19|20)\d{2}$/g, '').trim();
+    };
+
     // Ambil domisili dari DATABASE induk
     const docInduk = await getIndukDoc();
     const sheetInduk = docInduk.sheetsByTitle['DATABASE'];
@@ -36,7 +42,7 @@ export async function GET(request: Request) {
         tanggal: (r.get('TANGGAL') || '').trim(),
         tahunAjaran: (r.get('TAHUN AJARAN') || '').trim(),
         kelas: (r.get('KELAS') || '').trim(),
-        jamKe: (r.get('JAM KE') || '').trim(),
+        jamKe: cleanJamKe((r.get('JAM KE') || '').trim()),
         mapel: (r.get('MAPEL') || '').trim(),
         guruPenginput: (r.get('GURU PENGINPUT') || '').trim(),
         namaSiswa: (r.get('NAMA SISWA') || '').trim(),
@@ -180,7 +186,7 @@ export async function POST(request: Request) {
             'TANGGAL': tanggal,
             'TAHUN AJARAN': tahunAjaran || '',
             'KELAS': kelas,
-            'JAM KE': jamKe,
+            'JAM KE': "'" + jamKe,
             'MAPEL': mapel,
             'GURU PENGINPUT': guru || 'Unknown',
             'NAMA SISWA': siswa.nama,
