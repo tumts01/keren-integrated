@@ -20,6 +20,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [userRole, setUserRole] = useState<string>('');
+  const [userName, setUserName] = useState<string>('');
   const [hasNewPengumuman, setHasNewPengumuman] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -50,6 +51,8 @@ export default function Sidebar() {
   }, [pathname]);
 
   const isAdmin = userRole.toLowerCase() === 'admin';
+  const isIzzatul = userName.toLowerCase().includes('izzatul ulfa');
+  const showKeuangan = isAdmin || isIzzatul;
 
   const menuCategories: MenuCategory[] = [
     {
@@ -96,12 +99,14 @@ export default function Sidebar() {
         ] : []),
       ]
     },
-    ...(isAdmin ? [
+    ...(showKeuangan ? [
       {
         title: 'Keuangan',
         items: [
-          { name: 'Bendahara', path: '/bendahara', icon: 'fa-wallet' },
-          { name: 'Pembayaran', path: '/pembayaran', icon: 'fa-money-bill-wave' },
+          ...(isAdmin ? [
+            { name: 'Bendahara', path: '/bendahara', icon: 'fa-wallet' },
+            { name: 'Pembayaran', path: '/pembayaran', icon: 'fa-money-bill-wave' },
+          ] : []),
           { name: 'Nota Bon', path: '/bon', icon: 'fa-file-invoice-dollar' }
         ]
       }
@@ -135,7 +140,10 @@ export default function Sidebar() {
       try {
         const parsedUser = JSON.parse(storedUser);
         setUserRole(parsedUser.role || parsedUser.role || '');
+        setUserName(parsedUser.nama || localStorage.getItem('username') || '');
       } catch(e){}
+    } else {
+      setUserName(localStorage.getItem('username') || '');
     }
 
     const savedCollapse = localStorage.getItem('sidebar_is_collapsed');
