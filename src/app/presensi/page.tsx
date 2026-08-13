@@ -75,6 +75,12 @@ export default function PresensiPage() {
   const [selectedKelas, setSelectedKelas] = useState('');
   const [selectedMapel, setSelectedMapel] = useState('');
   const [selectedJam, setSelectedJam] = useState<number[]>([]);
+  const [jamTersedia, setJamTersedia] = useState<number[]>([1,2,3,4,5,6,7,8,9,10]);
+  const [jamConfigLoading, setJamConfigLoading] = useState(false);
+  const [showJamConfig, setShowJamConfig] = useState(false);
+  const [konfigJam, setKonfigJam] = useState<number[]>([1,2,3,4,5,6,7,8,9,10]);
+  const [konfigKeterangan, setKonfigKeterangan] = useState('');
+  const [hasJamConfig, setHasJamConfig] = useState(false); // ada config khusus untuk tanggal ini
   
   // Dummy/Mock data states for template
   const [kelasList, setKelasList] = useState<any[]>([]);
@@ -186,7 +192,7 @@ export default function PresensiPage() {
       try {
         const u = JSON.parse(storedUser);
         const role = (u.role || u.role || '').toLowerCase();
-        const namaLengkap = u.nama || usernameRaw; // ← nama lengkap untuk filter jurnal
+        const namaLengkap = u.nama || usernameRaw; 
         setCurrentUsername(namaLengkap);
         setIsAdmin(role === 'admin');
         if (role !== 'admin') setFilterGuruRekap(namaLengkap);
@@ -199,6 +205,26 @@ export default function PresensiPage() {
       setFilterGuruRekap(usernameRaw);
     }
   }, []);
+
+  // Fetch jam config setiap kali tanggal berubah
+  useEffect(() => {
+    if (!tanggal) return;
+    setJamConfigLoading(true);
+    fetch(`/api/jam-config?tanggal=${tanggal}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          setJamTersedia(data.jamTersedia);
+          const isDefault = data.jamTersedia.length === 10 && [1,2,3,4,5,6,7,8,9,10].every((j: number) => data.jamTersedia.includes(j));
+          setHasJamConfig(!isDefault);
+          setKonfigJam(data.jamTersedia);
+          setKonfigKeterangan(data.keterangan || '');
+          setSelectedJam(prev => prev.filter(j => data.jamTersedia.includes(j)));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setJamConfigLoading(false));
+  }, [tanggal]);
 
   // Auto-load rekap jurnal ketika tab rekap_jurnal dibuka
   useEffect(() => {
@@ -1196,19 +1222,116 @@ export default function PresensiPage() {
               </div>
               
               <div className={styles.filterGroup} style={{ flex: '1 1 100%' }}>
-                <label>Jam Ke (Bisa pilih lebih dari satu)</label>
-                <div className={styles.jamPills}>
-                  {[1,2,3,4,5,6,7,8,9,10].map(jam => (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <label style={{ margin: 0 }}>Jam Ke (Bisa pilih lebih dari satu)</label>
+                  {hasJamConfig && (
+                    <span style={{ fontSize: '0.72rem', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', borderRadius: 6, padding: '1px 8px', fontWeight: 600 }}>
+                      <i className="fas fa-cog" style={{ marginRight: 4 }}></i>Jam dikonfigurasi
+                    </span>
+                  )}
+                  {isAdmin && (
                     <button
-                      key={jam}
                       type="button"
-                      onClick={() => toggleJam(jam)}
-                      className={`${styles.jamPill} ${selectedJam.includes(jam) ? styles.jamPillActive : ''}`}
+                      onClick={() => setShowJamConfig(v => !v)}
+                      style={{ fontSize: '0.75rem', background: showJamConfig ? '#e0e7ff' : '#f1f5f9', border: '1px solid #c7d2fe', color: '#4338ca', borderRadius: 6, padding: '2px 10px', cursor: 'pointer', marginLeft: 'auto' }}
                     >
-                      {jam}
+                      <i className="fas fa-sliders-h" style={{ marginRight: 4 }}></i>{showJamConfig ? 'Tutup Pengaturan' : 'Atur Jam'}
                     </button>
-                  ))}
+                  )}
                 </div>
+                <div className={styles.jamPills}>
+                  {[1,2,3,4,5,6,7,8,9,10].map(jam => {
+                    const available = jamTersedia.includes(jam);
+                    return (
+                      <button
+                        key={jam}
+                        type="button"
+                        onClick={() => available ? toggleJam(jam) : null}
+                        className={`${styles.jamPill} ${selectedJam.includes(jam) ? styles.jamPillActive : ''}`}
+                        style={!available ? { opacity: 0.25, cursor: 'not-allowed', textDecoration: 'line-through' } : {}}
+                        title={!available ? `Jam ${jam} tidak tersedia untuk tanggal ini` : `Jam ${jam}`}
+                      >
+                        {jam}
+                      </button>
+                    );
+                  })}
+                  {jamConfigLoading && <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginLeft: 4 }}><i className="fas fa-spinner fa-spin"></i></span>}
+                </div>
+
+                {/* Panel konfigurasi jam — admin only */}
+                {isAdmin && showJamConfig && (
+                  <div style={{ marginTop: 12, background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, padding: 16 }}>
+                    <p style={{ margin: '0 0 10px', fontWeight: 700, color: '#0369a1', fontSize: '0.85rem' }}>
+                      <i className="fas fa-cog" style={{ marginRight: 6 }}></i>Atur Jam Tersedia untuk {tanggal || 'tanggal ini'}
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                      {[1,2,3,4,5,6,7,8,9,10].map(j => (
+                        <label key={j} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', padding: '4px 10px', background: konfigJam.includes(j) ? '#0284c7' : '#e2e8f0', color: konfigJam.includes(j) ? 'white' : '#475569', borderRadius: 8, fontWeight: 600, fontSize: '0.85rem', userSelect: 'none' }}>
+                          <input
+                            type="checkbox"
+                            checked={konfigJam.includes(j)}
+                            onChange={() => setKonfigJam(prev => prev.includes(j) ? prev.filter(x => x !== j) : [...prev, j].sort((a,b) => a-b))}
+                            style={{ display: 'none' }}
+                          />
+                          Jam {j}
+                        </label>
+                      ))}
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <input
+                        type="text"
+                        placeholder="Keterangan (opsional), contoh: Hari Pendek"
+                        value={konfigKeterangan}
+                        onChange={e => setKonfigKeterangan(e.target.value)}
+                        style={{ width: '100%', padding: '6px 10px', border: '1px solid #bae6fd', borderRadius: 6, fontSize: '0.85rem' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (konfigJam.length === 0) { alert('Pilih minimal 1 jam!'); return; }
+                          const res = await fetch('/api/jam-config', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ tanggal, jamTersedia: konfigJam, keterangan: konfigKeterangan })
+                          });
+                          const data = await res.json();
+                          if (data.success) {
+                            setJamTersedia(konfigJam);
+                            setHasJamConfig(true);
+                            setSelectedJam(prev => prev.filter(j => konfigJam.includes(j)));
+                            setShowJamConfig(false);
+                            Swal.fire({ icon: 'success', title: 'Tersimpan!', text: `Jam ${konfigJam.join(', ')} diatur untuk ${tanggal}`, timer: 1500, showConfirmButton: false });
+                          }
+                        }}
+                        style={{ background: '#0284c7', color: 'white', border: 'none', borderRadius: 8, padding: '6px 16px', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
+                      >
+                        <i className="fas fa-save" style={{ marginRight: 4 }}></i>Simpan Konfigurasi
+                      </button>
+                      {hasJamConfig && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const res = await fetch(`/api/jam-config?tanggal=${tanggal}`, { method: 'DELETE' });
+                            const data = await res.json();
+                            if (data.success) {
+                              setJamTersedia([1,2,3,4,5,6,7,8,9,10]);
+                              setKonfigJam([1,2,3,4,5,6,7,8,9,10]);
+                              setKonfigKeterangan('');
+                              setHasJamConfig(false);
+                              setShowJamConfig(false);
+                              Swal.fire({ icon: 'success', title: 'Direset!', text: `Konfigurasi jam untuk ${tanggal} dihapus`, timer: 1500, showConfirmButton: false });
+                            }
+                          }}
+                          style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: 8, padding: '6px 16px', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
+                        >
+                          <i className="fas fa-undo" style={{ marginRight: 4 }}></i>Reset (Semua Jam)
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
