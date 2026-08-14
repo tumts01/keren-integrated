@@ -879,14 +879,14 @@ export default function PersuratanPage() {
             </div>
             <div className={styles.statCard} style={{ borderLeftColor: '#10b981' }}>
               <div className={styles.statIcon} style={{ color: '#10b981', background: '#dcfce7' }}>
-                <i className="fas fa-award"></i>
+                <i className="fas fa-user-clock"></i>
               </div>
               <div className={styles.statInfo}>
-                <span className={styles.statLabel}>Guru Paling Sering Ditugaskan</span>
+                <span className={styles.statLabel}>GURU YANG SEDANG BERTUGAS</span>
                 <div style={{ fontSize: '0.8rem', color: '#334155', fontWeight: 500, marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                   {topGuru.length > 0 ? topGuru.map(([nama, count], idx) => (
-                    <span key={idx}>🏆 {nama} <span style={{ color: '#64748b' }}>({count} tugas)</span></span>
-                  )) : <span>Belum ada data tugas</span>}
+                    <span key={idx}><i className="fas fa-circle" style={{ fontSize: '0.4rem', color: '#10b981', marginRight: '6px', transform: 'translateY(-2px)' }}></i> {nama} <span style={{ color: '#64748b' }}>({count} tugas)</span></span>
+                  )) : <span>Belum ada data tugas aktif</span>}
                 </div>
               </div>
             </div>
