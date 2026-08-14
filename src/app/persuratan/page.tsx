@@ -455,7 +455,7 @@ export default function PersuratanPage() {
   const tugasMap: Record<string, typeof filteredKeluar> = {};
   filteredKeluar.forEach(s => {
     if (s.yangDitugaskan) {
-      const persons = s.yangDitugaskan.split(';').map(p => p.trim()).filter(Boolean).filter(p => p.toLowerCase() !== 'nama terlampir');
+      const persons = s.yangDitugaskan.split(';').map(p => p.trim()).filter(Boolean).filter(p => p.toLowerCase() !== 'nama terlampir' && p.toLowerCase() !== 'siswa');
       persons.forEach(p => {
         if (!tugasMap[p]) tugasMap[p] = [];
         tugasMap[p].push(s);
@@ -510,7 +510,7 @@ export default function PersuratanPage() {
 
       if (!isExpired) {
         // Split by semicolon if multiple people
-        const persons = s.yangDitugaskan.split(';').map(p => p.trim()).filter(Boolean).filter(p => p.toLowerCase() !== 'nama terlampir');
+        const persons = s.yangDitugaskan.split(';').map(p => p.trim()).filter(Boolean).filter(p => p.toLowerCase() !== 'nama terlampir' && p.toLowerCase() !== 'siswa');
         persons.forEach(p => {
           guruCounts[p] = (guruCounts[p] || 0) + 1;
         });
