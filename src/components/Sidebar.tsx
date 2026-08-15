@@ -76,9 +76,7 @@ export default function Sidebar() {
           { name: 'Jadwal Mengajar', path: '/jadwal-mengajar', icon: 'fa-clock' },
         ] : []),
         { name: 'Pengembalian Rapor', path: '/pengembalian-rapor', icon: 'fa-file-signature' },
-        ...(isAdmin ? [
-          { name: 'EMIS', path: '/emis', icon: 'fa-database' },
-        ] : []),
+        { name: 'EMIS', path: '/emis', icon: 'fa-database' },
       ]
     },
     {
