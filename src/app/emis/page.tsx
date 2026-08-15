@@ -282,9 +282,9 @@ export default function EmisPage() {
                     <th>Asal Sekolah</th>
                     <th style={{ width: 120 }}>NPSN Sekolah</th>
                     <th>Alamat Asal Sekolah</th>
-                    <th style={{ width: 175 }}>Data Masuk EMIS</th>
-                    <th style={{ width: 175 }}>Data EMIS Valid</th>
-                    <th style={{ width: 175 }}>Validasi Walkel</th>
+                    <th style={{ width: 110, textAlign: 'center' }}>Data Masuk</th>
+                    <th style={{ width: 110, textAlign: 'center' }}>EMIS Valid</th>
+                    <th style={{ width: 110, textAlign: 'center' }}>Validasi Walkel</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -307,37 +307,38 @@ export default function EmisPage() {
                       <td style={{ fontSize: '0.85rem' }}>{s.asalSekolah || '-'}</td>
                       <td style={{ fontFamily: 'monospace', fontSize: '0.85rem', color: '#0369a1' }}>{s.npsnSekolah || '-'}</td>
                       <td style={{ fontSize: '0.85rem', color: '#64748b' }}>{s.alamatSekolah || '-'}</td>
-                      <td>
+                      <td style={{ textAlign: 'center' }}>
                         <button
-                          className={`${styles.statusBtn} ${s.masukEMIS ? styles.statusBtnDone : styles.statusBtnPending} ${!isAdmin ? styles.statusBtnReadOnly : ''}`}
+                          className={`${styles.statusBtn} ${styles.iconOnly} ${s.masukEMIS ? styles.statusBtnDone : styles.statusBtnPending} ${!isAdmin ? styles.statusBtnReadOnly : ''}`}
                           onClick={() => handleToggle(s, 'masukEMIS')}
                           disabled={updating === `${s.nisn}-masukEMIS`}
-                          title={!isAdmin ? 'Hanya Admin yang dapat mengubah' : (s.tglMasukEMIS ? `Tanggal: ${s.tglMasukEMIS}` : '')}
+                          title={s.masukEMIS ? `Sudah Masuk (Tanggal: ${s.tglMasukEMIS})` : (!isAdmin ? 'Hanya Admin yang dapat mengubah' : 'Belum Masuk')}
                         >
                           {updating === `${s.nisn}-masukEMIS` ? (
                             <i className="fas fa-spinner fa-spin"></i>
                           ) : s.masukEMIS ? (
-                            <><i className="fas fa-check-circle"></i> Sudah Masuk</>  
+                            <i className="fas fa-check"></i>
                           ) : (
-                            <><i className={isAdmin ? 'fas fa-circle' : 'fas fa-lock'}></i> Belum Masuk</>
+                            <i className={isAdmin ? 'fas fa-minus' : 'fas fa-lock'}></i>
                           )}
                         </button>
                       </td>
-                      <td>
+                      <td style={{ textAlign: 'center' }}>
                         <div
-                          className={`${styles.statusBtn} ${s.emisValid === 'SAMA' ? styles.statusBtnValid : styles.statusBtnPending} ${styles.statusBtnReadOnly}`}
+                          className={`${styles.statusBtn} ${styles.iconOnly} ${s.emisValid === 'SAMA' ? styles.statusBtnValid : styles.statusBtnPending} ${styles.statusBtnReadOnly}`}
                           style={s.emisValid === 'BEDA' ? { background: '#fee2e2', color: '#ef4444', borderColor: '#fca5a5' } : {}}
+                          title={s.emisValid === 'SAMA' ? 'Data SAMA' : 'Data BEDA'}
                         >
                           {s.emisValid === 'SAMA' ? (
-                            <><i className="fas fa-check-double"></i> SAMA</>
+                            <i className="fas fa-check-double"></i>
                           ) : (
-                            <><i className="fas fa-times"></i> BEDA</>
+                            <i className="fas fa-times"></i>
                           )}
                         </div>
                       </td>
-                      <td>
+                      <td style={{ textAlign: 'center' }}>
                         <button
-                          className={`${styles.statusBtn} ${
+                          className={`${styles.statusBtn} ${styles.iconOnly} ${
                             s.validasiWalkel === 'VALID' ? styles.statusBtnValid 
                             : s.validasiWalkel === 'PERBAIKAN' ? styles.statusBtnError 
                             : styles.statusBtnPending
@@ -345,16 +346,16 @@ export default function EmisPage() {
                           style={s.validasiWalkel === 'PERBAIKAN' ? { background: '#fef2f2', color: '#b91c1c', borderColor: '#fca5a5' } : s.validasiWalkel === 'VALID' ? { background: '#dcfce7', color: '#15803d', borderColor: '#86efac' } : {}}
                           onClick={() => handleToggle(s, 'validasiWalkel')}
                           disabled={updating === `${s.nisn}-validasiWalkel`}
-                          title={s.tglValidasiWalkel ? `Divalidasi pada: ${s.tglValidasiWalkel}` : 'Klik untuk mengubah status'}
+                          title={s.validasiWalkel === 'VALID' ? `Data Valid (${s.tglValidasiWalkel})` : s.validasiWalkel === 'PERBAIKAN' ? `Perlu Perbaikan (${s.tglValidasiWalkel})` : 'Belum Validasi (Klik untuk ubah)'}
                         >
                           {updating === `${s.nisn}-validasiWalkel` ? (
                             <i className="fas fa-spinner fa-spin"></i>
                           ) : s.validasiWalkel === 'VALID' ? (
-                            <><i className="fas fa-check-circle"></i> Valid</>
+                            <i className="fas fa-check"></i>
                           ) : s.validasiWalkel === 'PERBAIKAN' ? (
-                            <><i className="fas fa-exclamation-triangle"></i> Perbaikan</>
+                            <i className="fas fa-exclamation"></i>
                           ) : (
-                            <><i className="fas fa-circle"></i> Belum Validasi</>
+                            <i className="fas fa-minus"></i>
                           )}
                         </button>
                       </td>
