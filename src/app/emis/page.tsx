@@ -95,12 +95,6 @@ export default function EmisPage() {
     const key = `${siswa.nisn}-${field}`;
     if (updating === key) return;
 
-    let label = 'Data';
-    let current = false;
-    
-    if (field === 'masukEMIS') { label = 'Data Masuk EMIS'; current = siswa.masukEMIS; }
-    else if (field === 'validasiWalkel') { label = 'Validasi Walkel'; current = siswa.validasiWalkel; }
-    else { label = 'Data EMIS Valid'; current = siswa.emisValid === 'SAMA'; }
 
     let action = '';
     let confirm = null;
@@ -126,6 +120,8 @@ export default function EmisPage() {
       if (!res.isConfirmed) return;
       selectedValue = res.value;
     } else {
+      let label = field === 'masukEMIS' ? 'Data Masuk EMIS' : 'Data EMIS Valid';
+      let current = field === 'masukEMIS' ? siswa.masukEMIS : siswa.emisValid === 'SAMA';
       action = current ? 'tandai BELUM' : 'tandai SUDAH';
       confirm = await Swal.fire({
         title: `${label}`,
