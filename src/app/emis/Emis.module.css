@@ -108,6 +108,14 @@
 .statusBtnValid:hover:not(:disabled) {
   background: #dcfce7; border-color: #ef4444; color: #dc2626;
 }
+.statusBtnError {
+  background: linear-gradient(135deg, #fef2f2, #fecaca);
+  color: #991b1b; border: 1.5px solid #fca5a5;
+  box-shadow: 0 1px 4px rgba(252,165,165,0.4);
+}
+.statusBtnError:hover:not(:disabled) {
+  background: #fef2f2; border-color: #ef4444; color: #dc2626;
+}
 .statusBtn:disabled { opacity: 0.6; cursor: not-allowed; }
 .statusBtnReadOnly { cursor: default !important; pointer-events: none; opacity: 0.75; }
 .statusBtnReadOnly:hover { transform: none !important; }

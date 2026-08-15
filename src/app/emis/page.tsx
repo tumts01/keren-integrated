@@ -13,7 +13,7 @@ interface SiswaEmis {
   emisValid: 'SAMA' | 'BEDA';
   tglMasukEMIS: string;
   tglEMISValid: string;
-  validasiWalkel: boolean;
+  validasiWalkel: string;
   tglValidasiWalkel: string;
   asalSekolah: string;
   npsnSekolah: string;
@@ -102,18 +102,42 @@ export default function EmisPage() {
     else if (field === 'validasiWalkel') { label = 'Validasi Walkel'; current = siswa.validasiWalkel; }
     else { label = 'Data EMIS Valid'; current = siswa.emisValid === 'SAMA'; }
 
-    const action = current ? 'tandai BELUM' : 'tandai SUDAH';
+    let action = '';
+    let confirm = null;
+    let selectedValue = '';
 
-    const confirm = await Swal.fire({
-      title: `${label}`,
-      text: `${action} untuk ${siswa.nama}?`,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'Ya',
-      cancelButtonText: 'Batal',
-      confirmButtonColor: current ? '#ef4444' : '#16a34a',
-    });
-    if (!confirm.isConfirmed) return;
+    if (field === 'validasiWalkel') {
+      const res = await Swal.fire({
+        title: 'Validasi Walkel',
+        text: `Pilih status validasi untuk ${siswa.nama}:`,
+        icon: 'question',
+        input: 'select',
+        inputOptions: {
+          'VALID': '✅ Data Valid',
+          'PERBAIKAN': '⚠️ Perlu Perbaikan',
+          '': 'Belum Validasi (Reset)'
+        },
+        inputPlaceholder: 'Pilih status...',
+        inputValue: siswa.validasiWalkel || '',
+        showCancelButton: true,
+        confirmButtonText: 'Simpan',
+        cancelButtonText: 'Batal'
+      });
+      if (!res.isConfirmed) return;
+      selectedValue = res.value;
+    } else {
+      action = current ? 'tandai BELUM' : 'tandai SUDAH';
+      confirm = await Swal.fire({
+        title: `${label}`,
+        text: `${action} untuk ${siswa.nama}?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: current ? '#ef4444' : '#16a34a',
+      });
+      if (!confirm.isConfirmed) return;
+    }
 
     setUpdating(key);
     try {
@@ -126,6 +150,7 @@ export default function EmisPage() {
           kelas: siswa.kelas,
           tahunAjaran: siswa.tahunAjaran,
           field,
+          value: selectedValue
         }),
       });
       const json = await res.json();
@@ -309,15 +334,22 @@ export default function EmisPage() {
                       </td>
                       <td>
                         <button
-                          className={`${styles.statusBtn} ${s.validasiWalkel ? styles.statusBtnDone : styles.statusBtnPending}`}
+                          className={`${styles.statusBtn} ${
+                            s.validasiWalkel === 'VALID' ? styles.statusBtnValid 
+                            : s.validasiWalkel === 'PERBAIKAN' ? styles.statusBtnError 
+                            : styles.statusBtnPending
+                          }`}
+                          style={s.validasiWalkel === 'PERBAIKAN' ? { background: '#fef2f2', color: '#b91c1c', borderColor: '#fca5a5' } : s.validasiWalkel === 'VALID' ? { background: '#dcfce7', color: '#15803d', borderColor: '#86efac' } : {}}
                           onClick={() => handleToggle(s, 'validasiWalkel')}
                           disabled={updating === `${s.nisn}-validasiWalkel`}
                           title={s.tglValidasiWalkel ? `Divalidasi pada: ${s.tglValidasiWalkel}` : 'Klik untuk mengubah status'}
                         >
                           {updating === `${s.nisn}-validasiWalkel` ? (
                             <i className="fas fa-spinner fa-spin"></i>
-                          ) : s.validasiWalkel ? (
-                            <><i className="fas fa-check-circle"></i> Sudah Validasi</>  
+                          ) : s.validasiWalkel === 'VALID' ? (
+                            <><i className="fas fa-check-circle"></i> Valid</>
+                          ) : s.validasiWalkel === 'PERBAIKAN' ? (
+                            <><i className="fas fa-exclamation-triangle"></i> Perbaikan</>
                           ) : (
                             <><i className="fas fa-circle"></i> Belum Validasi</>
                           )}

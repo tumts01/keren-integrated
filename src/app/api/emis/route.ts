@@ -93,10 +93,15 @@ export async function GET(request: Request) {
       const rawNisn = String(r.get('NISN') || '').replace(/^'/, '').trim();
       if (rawNisn) {
         const key = rawNisn.replace(/^0+/, '');
+        const val = String(r.get('ValidasiWalkel') || '');
+        let validStatus = '';
+        if (val.toUpperCase().includes('VALID')) validStatus = 'VALID';
+        else if (val.toUpperCase().includes('PERBAIKAN')) validStatus = 'PERBAIKAN';
+
         emisMap[key] = {
           masukEMIS: String(r.get('MasukEMIS') || '').toUpperCase() === 'YES',
-          validasiWalkel: !!r.get('ValidasiWalkel'), // boolean
-          tglValidasiWalkel: r.get('ValidasiWalkel') || '',
+          validasiWalkel: validStatus,
+          tglValidasiWalkel: val,
           tglMasukEMIS: r.get('TglMasukEMIS') || '',
         };
       }
@@ -119,7 +124,7 @@ export async function GET(request: Request) {
 
     const data = siswaAktif.map(s => {
       const key = s.nisn.replace(/^0+/, '');
-      const emis = emisMap[key] || { masukEMIS: false, validasiWalkel: false, tglValidasiWalkel: '', tglMasukEMIS: '' };
+      const emis = emisMap[key] || { masukEMIS: false, validasiWalkel: '', tglValidasiWalkel: '', tglMasukEMIS: '' };
       
       let emisValidStatus = 'BEDA';
       const namaDiEmis = namaEmisMap[key];
@@ -154,12 +159,11 @@ export async function POST(request: Request) {
     const existingRow = rows.find((r: any) => String(r.get('NISN') || '').replace(/^'/, '').trim().replace(/^0+/, '') === searchNisn);
 
     if (existingRow) {
-      let newVal = true;
+      let newVal: any = true;
       if (field === 'validasiWalkel') {
-        const currentVal = existingRow.get('ValidasiWalkel') || '';
-        const newValStr = currentVal ? '' : tglNow;
+        const newValStr = body.value ? `${body.value.toUpperCase()} (${tglNow})` : '';
         existingRow.set('ValidasiWalkel', newValStr);
-        newVal = !!newValStr;
+        newVal = body.value ? body.value.toUpperCase() : '';
       } else {
         const colName = field === 'masukEMIS' ? 'MasukEMIS' : 'EMISValid';
         const tglCol  = field === 'masukEMIS' ? 'TglMasukEMIS' : 'TglEMISValid';
@@ -176,11 +180,11 @@ export async function POST(request: Request) {
         NISN: `'${nisn}`, Nama: nama || '', Kelas: kelas || '', TahunAjaran: tahunAjaran || '',
         MasukEMIS: field === 'masukEMIS' ? 'YES' : 'NO',
         EMISValid:  field === 'emisValid'  ? 'YES' : 'NO',
-        ValidasiWalkel: field === 'validasiWalkel' ? tglNow : '',
+        ValidasiWalkel: field === 'validasiWalkel' && body.value ? `${body.value.toUpperCase()} (${tglNow})` : '',
         TglMasukEMIS: field === 'masukEMIS' ? tglNow : '',
         TglEMISValid:  field === 'emisValid'  ? tglNow : '',
       });
-      return NextResponse.json({ success: true, newValue: true });
+      return NextResponse.json({ success: true, newValue: field === 'validasiWalkel' ? (body.value || '') : true });
     }
   } catch (error: any) {
     console.error('EMIS POST error:', error);
