@@ -103,22 +103,29 @@ export default function EmisPage() {
     if (field === 'validasiWalkel') {
       const res = await Swal.fire({
         title: 'Validasi Walkel',
-        text: `Pilih status validasi untuk ${siswa.nama}:`,
+        text: `Tentukan status validasi untuk ${siswa.nama}:`,
         icon: 'question',
-        input: 'select',
-        inputOptions: {
-          'VALID': '✅ Data Valid',
-          'PERBAIKAN': '⚠️ Perlu Perbaikan',
-          '': 'Belum Validasi (Reset)'
-        },
-        inputPlaceholder: 'Pilih status...',
-        inputValue: siswa.validasiWalkel || '',
+        showDenyButton: true,
         showCancelButton: true,
-        confirmButtonText: 'Simpan',
-        cancelButtonText: 'Batal'
+        confirmButtonText: '✅ Valid',
+        denyButtonText: '⚠️ Perbaikan',
+        cancelButtonText: 'Reset (Belum)',
+        confirmButtonColor: '#16a34a',
+        denyButtonColor: '#ea580c',
+        cancelButtonColor: '#64748b'
       });
-      if (!res.isConfirmed) return;
-      selectedValue = res.value;
+      
+      if (res.isDismissed && (res.dismiss === Swal.DismissReason.backdrop || res.dismiss === Swal.DismissReason.esc || res.dismiss === Swal.DismissReason.close)) return;
+
+      if (res.isConfirmed) {
+        selectedValue = 'VALID';
+      } else if (res.isDenied) {
+        selectedValue = 'PERBAIKAN';
+      } else if (res.isDismissed && res.dismiss === Swal.DismissReason.cancel) {
+        selectedValue = '';
+      } else {
+        return;
+      }
     } else {
       let label = field === 'masukEMIS' ? 'Data Masuk EMIS' : 'Data EMIS Valid';
       let current = field === 'masukEMIS' ? siswa.masukEMIS : siswa.emisValid === 'SAMA';
