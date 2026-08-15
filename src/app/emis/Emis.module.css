@@ -1,4 +1,4 @@
-.container { max-width: 1400px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+.container { max-width: 100%; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
 
 /* Header */
 .header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
