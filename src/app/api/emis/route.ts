@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getIndukDoc } from '@/lib/google-sheets';
 
 const EMIS_SHEET = 'Data_EMIS';
-const EMIS_HEADERS = ['NISN', 'Nama', 'Kelas', 'TahunAjaran', 'MasukEMIS', 'EMISValid', 'TglMasukEMIS', 'TglEMISValid'];
+const EMIS_HEADERS = ['NISN', 'Nama', 'Kelas', 'TahunAjaran', 'MasukEMIS', 'EMISValid', 'TglMasukEMIS', 'TglEMISValid', 'ValidasiWalkel'];
 
 async function getOrCreateEmisSheet(doc: any) {
   if (doc.sheetsByTitle[EMIS_SHEET]) return doc.sheetsByTitle[EMIS_SHEET];
@@ -95,6 +95,8 @@ export async function GET(request: Request) {
         const key = rawNisn.replace(/^0+/, '');
         emisMap[key] = {
           masukEMIS: String(r.get('MasukEMIS') || '').toUpperCase() === 'YES',
+          validasiWalkel: !!r.get('ValidasiWalkel'), // boolean
+          tglValidasiWalkel: r.get('ValidasiWalkel') || '',
           tglMasukEMIS: r.get('TglMasukEMIS') || '',
         };
       }
@@ -117,7 +119,7 @@ export async function GET(request: Request) {
 
     const data = siswaAktif.map(s => {
       const key = s.nisn.replace(/^0+/, '');
-      const emis = emisMap[key] || { masukEMIS: false, tglMasukEMIS: '' };
+      const emis = emisMap[key] || { masukEMIS: false, validasiWalkel: false, tglValidasiWalkel: '', tglMasukEMIS: '' };
       
       let emisValidStatus = 'BEDA';
       const namaDiEmis = namaEmisMap[key];
@@ -152,19 +154,29 @@ export async function POST(request: Request) {
     const existingRow = rows.find((r: any) => String(r.get('NISN') || '').replace(/^'/, '').trim().replace(/^0+/, '') === searchNisn);
 
     if (existingRow) {
-      const colName = field === 'masukEMIS' ? 'MasukEMIS' : 'EMISValid';
-      const tglCol  = field === 'masukEMIS' ? 'TglMasukEMIS' : 'TglEMISValid';
-      const currentVal = String(existingRow.get(colName) || '').toUpperCase();
-      const newVal = currentVal === 'YES' ? 'NO' : 'YES';
-      existingRow.set(colName, newVal);
-      existingRow.set(tglCol, newVal === 'YES' ? tglNow : '');
+      let newVal = true;
+      if (field === 'validasiWalkel') {
+        const currentVal = existingRow.get('ValidasiWalkel') || '';
+        const newValStr = currentVal ? '' : tglNow;
+        existingRow.set('ValidasiWalkel', newValStr);
+        newVal = !!newValStr;
+      } else {
+        const colName = field === 'masukEMIS' ? 'MasukEMIS' : 'EMISValid';
+        const tglCol  = field === 'masukEMIS' ? 'TglMasukEMIS' : 'TglEMISValid';
+        const currentVal = String(existingRow.get(colName) || '').toUpperCase();
+        const newValStr = currentVal === 'YES' ? 'NO' : 'YES';
+        existingRow.set(colName, newValStr);
+        existingRow.set(tglCol, newValStr === 'YES' ? tglNow : '');
+        newVal = newValStr === 'YES';
+      }
       await existingRow.save();
-      return NextResponse.json({ success: true, newValue: newVal === 'YES' });
+      return NextResponse.json({ success: true, newValue: newVal });
     } else {
       await emisSheet.addRow({
         NISN: `'${nisn}`, Nama: nama || '', Kelas: kelas || '', TahunAjaran: tahunAjaran || '',
         MasukEMIS: field === 'masukEMIS' ? 'YES' : 'NO',
         EMISValid:  field === 'emisValid'  ? 'YES' : 'NO',
+        ValidasiWalkel: field === 'validasiWalkel' ? tglNow : '',
         TglMasukEMIS: field === 'masukEMIS' ? tglNow : '',
         TglEMISValid:  field === 'emisValid'  ? tglNow : '',
       });

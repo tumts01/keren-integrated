@@ -13,6 +13,8 @@ interface SiswaEmis {
   emisValid: 'SAMA' | 'BEDA';
   tglMasukEMIS: string;
   tglEMISValid: string;
+  validasiWalkel: boolean;
+  tglValidasiWalkel: string;
   asalSekolah: string;
   npsnSekolah: string;
   alamatSekolah: string;
@@ -85,16 +87,21 @@ export default function EmisPage() {
   const sudahMasuk = statsBase.filter(s => s.masukEMIS).length;
   const sudahValid = statsBase.filter(s => s.emisValid === 'SAMA').length;
 
-  const handleToggle = async (siswa: SiswaEmis, field: 'masukEMIS' | 'emisValid') => {
-    if (!isAdmin) {
+  const handleToggle = async (siswa: SiswaEmis, field: 'masukEMIS' | 'emisValid' | 'validasiWalkel') => {
+    if (!isAdmin && field !== 'validasiWalkel') {
       Swal.fire('Akses Ditolak', 'Hanya Admin yang dapat mengubah status EMIS.', 'warning');
       return;
     }
     const key = `${siswa.nisn}-${field}`;
     if (updating === key) return;
 
-    const label = field === 'masukEMIS' ? 'Data Masuk EMIS' : 'Data EMIS Valid';
-    const current = field === 'masukEMIS' ? siswa.masukEMIS : siswa.emisValid;
+    let label = 'Data';
+    let current = false;
+    
+    if (field === 'masukEMIS') { label = 'Data Masuk EMIS'; current = siswa.masukEMIS; }
+    else if (field === 'validasiWalkel') { label = 'Validasi Walkel'; current = siswa.validasiWalkel; }
+    else { label = 'Data EMIS Valid'; current = siswa.emisValid === 'SAMA'; }
+
     const action = current ? 'tandai BELUM' : 'tandai SUDAH';
 
     const confirm = await Swal.fire({
@@ -249,11 +256,12 @@ export default function EmisPage() {
                     <th>Alamat Asal Sekolah</th>
                     <th style={{ width: 175 }}>Data Masuk EMIS</th>
                     <th style={{ width: 175 }}>Data EMIS Valid</th>
+                    <th style={{ width: 175 }}>Validasi Walkel</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.length === 0 ? (
-                    <tr><td colSpan={9} style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
+                    <tr><td colSpan={10} style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
                       <i className="fas fa-folder-open" style={{ fontSize: '2rem', display: 'block', marginBottom: 8 }}></i>
                       Tidak ada data
                     </td></tr>
@@ -298,6 +306,22 @@ export default function EmisPage() {
                             <><i className="fas fa-times"></i> BEDA</>
                           )}
                         </div>
+                      </td>
+                      <td>
+                        <button
+                          className={`${styles.statusBtn} ${s.validasiWalkel ? styles.statusBtnDone : styles.statusBtnPending}`}
+                          onClick={() => handleToggle(s, 'validasiWalkel')}
+                          disabled={updating === `${s.nisn}-validasiWalkel`}
+                          title={s.tglValidasiWalkel ? `Divalidasi pada: ${s.tglValidasiWalkel}` : 'Klik untuk mengubah status'}
+                        >
+                          {updating === `${s.nisn}-validasiWalkel` ? (
+                            <i className="fas fa-spinner fa-spin"></i>
+                          ) : s.validasiWalkel ? (
+                            <><i className="fas fa-check-circle"></i> Sudah Validasi</>  
+                          ) : (
+                            <><i className="fas fa-circle"></i> Belum Validasi</>
+                          )}
+                        </button>
                       </td>
                     </tr>
                   ))}
