@@ -284,9 +284,9 @@ export default function EmisPage() {
                     <th>Asal Sekolah</th>
                     <th style={{ width: 120 }}>NPSN Sekolah</th>
                     <th>Alamat Asal Sekolah</th>
-                    <th style={{ width: 110, textAlign: 'center' }}>Data Masuk</th>
-                    <th style={{ width: 110, textAlign: 'center' }}>EMIS Valid</th>
-                    <th style={{ width: 110, textAlign: 'center' }}>Validasi Walkel</th>
+                    <th style={{ width: 70, textAlign: 'center', whiteSpace: 'normal', lineHeight: 1.2 }}>Data Masuk</th>
+                    <th style={{ width: 70, textAlign: 'center', whiteSpace: 'normal', lineHeight: 1.2 }}>EMIS Valid</th>
+                    <th style={{ width: 75, textAlign: 'center', whiteSpace: 'normal', lineHeight: 1.2 }}>Validasi Walkel</th>
                   </tr>
                 </thead>
                 <tbody>
