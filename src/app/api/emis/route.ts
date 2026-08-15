@@ -45,6 +45,7 @@ export async function GET(request: Request) {
         asalSekolah: row.get('SD/MI') || '',
         npsnSekolah: row.get('NPSN SD/MI') || '',
         alamatSekolah: row.get('ALAMAT SD/MI') || '',
+        ttl: row.get('TEMPAT, TANGGAL LAHIR') || '',
       };
 
       const records: SiswaRecord[] = [];

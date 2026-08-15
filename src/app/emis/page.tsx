@@ -15,6 +15,7 @@ interface SiswaEmis {
   tglEMISValid: string;
   validasiWalkel: string;
   tglValidasiWalkel: string;
+  ttl: string;
   asalSekolah: string;
   npsnSekolah: string;
   alamatSekolah: string;
@@ -278,6 +279,7 @@ export default function EmisPage() {
                     <th style={{ width: 40 }}>No</th>
                     <th>Nama Siswa</th>
                     <th style={{ width: 90 }}>Kelas</th>
+                    <th style={{ width: 140 }}>TTL</th>
                     <th style={{ width: 140 }}>NISN</th>
                     <th>Asal Sekolah</th>
                     <th style={{ width: 120 }}>NPSN Sekolah</th>
@@ -289,7 +291,7 @@ export default function EmisPage() {
                 </thead>
                 <tbody>
                   {filtered.length === 0 ? (
-                    <tr><td colSpan={10} style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
+                    <tr><td colSpan={11} style={{ textAlign: 'center', padding: 40, color: '#94a3b8' }}>
                       <i className="fas fa-folder-open" style={{ fontSize: '2rem', display: 'block', marginBottom: 8 }}></i>
                       Tidak ada data
                     </td></tr>
@@ -303,6 +305,7 @@ export default function EmisPage() {
                         </div>
                       </td>
                       <td style={{ fontWeight: 600 }}>{s.kelas || '-'}</td>
+                      <td style={{ fontSize: '0.85rem' }}>{s.ttl || '-'}</td>
                       <td style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{s.nisn || '-'}</td>
                       <td style={{ fontSize: '0.85rem' }}>{s.asalSekolah || '-'}</td>
                       <td style={{ fontFamily: 'monospace', fontSize: '0.85rem', color: '#0369a1' }}>{s.npsnSekolah || '-'}</td>
