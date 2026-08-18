@@ -156,7 +156,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!mounted) return null; // Prevent hydration mismatch
 
   // Halaman Publik (tanpa login)
-  const isPublicPage = pathname?.startsWith('/survey-madrasah');
+  const isPublicPage = pathname?.startsWith('/survey-madrasah') || pathname?.startsWith('/spmb');
   if (isPublicPage && !user) {
     return (
       <div style={{ minHeight: '100vh', background: '#f1f5f9', padding: '20px 0' }}>
