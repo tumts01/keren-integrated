@@ -105,7 +105,7 @@ export default function CetakSpmb() {
           <div className={styles.card}>
             
             {/* Kop Surat Image */}
-            <img src="/kop_surat_ mts.png" alt="Kop Surat" className={styles.kopImage} />
+            <img src="/kop_surat_mts.png" alt="Kop Surat" className={styles.kopImage} />
 
             <div className={styles.title}>
               KARTU BUKTI PENDAFTARAN SPMB<br/>
