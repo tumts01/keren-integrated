@@ -285,6 +285,13 @@ export default function Home() {
           
           <div className={styles.infoList}>
             <div className={styles.infoItem}>
+              <span className={styles.infoLabel}>PEG ID</span>
+              <div className={styles.infoValue}>
+                <i className="fas fa-id-badge" style={{ color: '#94a3b8' }}></i>
+                {profile.pegId || '-'}
+              </div>
+            </div>
+            <div className={styles.infoItem}>
               <span className={styles.infoLabel}>Tanggal SK Awal</span>
               <div className={styles.infoValue}>
                 <i className="fas fa-calendar-alt" style={{ color: '#94a3b8' }}></i>
