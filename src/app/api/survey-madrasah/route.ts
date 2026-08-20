@@ -15,7 +15,8 @@ export async function POST(request: Request) {
     const doc = await getSurveyDoc();
     
     let sheetTitle = '';
-    if (surveyType === 'ortu_siswa') sheetTitle = 'Survey_Ortu_Siswa';
+    if (surveyType === 'wali_murid') sheetTitle = 'Survey_Wali_Murid';
+    else if (surveyType === 'siswa') sheetTitle = 'Survey_Siswa';
     else if (surveyType === 'kepuasan_ortu') sheetTitle = 'Survey_Kepuasan_Ortu';
     else {
       return NextResponse.json({ success: false, error: 'Tipe survey tidak valid' }, { status: 400 });
