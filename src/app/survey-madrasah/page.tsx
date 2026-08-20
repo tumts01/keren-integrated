@@ -10,7 +10,7 @@ export default function SurveyMadrasahPage() {
   const [showSuggestionsWali, setShowSuggestionsWali] = useState(false);
   const [showSuggestionsSiswa, setShowSuggestionsSiswa] = useState(false);
   const [showSuggestionsOrtu, setShowSuggestionsOrtu] = useState(false);
-  const [mainTab, setMainTab] = useState<'humas'|'others'>('humas');
+  const [mainTab, setMainTab] = useState<'humas'|'pemetaan_kelas7'>('humas');
   const [activeTab, setActiveTab] = useState<'isi'|'monitor'>('isi');
   const [isAdmin, setIsAdmin] = useState(false);
   const [rekapData, setRekapData] = useState<any[]>([]);
@@ -230,6 +230,9 @@ export default function SurveyMadrasahPage() {
       <div className={styles.tabContainer}>
         <button className={`${styles.tabBtn} ${mainTab === 'humas' ? styles.activeTab : ''}`} onClick={() => { setMainTab('humas'); setActiveSurvey(null); }}>
           <i className="fas fa-bullhorn"></i> Survey Humas
+        </button>
+        <button className={`${styles.tabBtn} ${mainTab === 'pemetaan_kelas7' ? styles.activeTab : ''}`} onClick={() => { setMainTab('pemetaan_kelas7'); setActiveSurvey(null); }}>
+          <i className="fas fa-map"></i> Pemetaan Kelas 7
         </button>
       </div>
 
@@ -503,6 +506,14 @@ export default function SurveyMadrasahPage() {
         </div>
       )}
       </>
+      )}
+
+      {mainTab === 'pemetaan_kelas7' && (
+        <div style={{ textAlign: 'center', padding: '3rem', background: 'white', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+          <i className="fas fa-map" style={{ fontSize: '3rem', color: '#94a3b8', marginBottom: '1rem' }}></i>
+          <h2 style={{ color: '#475569', marginBottom: '0.5rem' }}>Pemetaan Latar Belakang Kelas 7</h2>
+          <p style={{ color: '#64748b' }}>Formulir pemetaan sedang dalam tahap pengembangan.</p>
+        </div>
       )}
 
     </div>
