@@ -8,12 +8,11 @@ export async function GET() {
     const doc = await getSurveyDoc();
     
     const rekap = [
-      { id: 'wali_murid', nama: 'Angket Persepsi Wali Murid', total: 0, latest: [] as any[] },
-      { id: 'siswa', nama: 'Angket Persepsi Siswa', total: 0, latest: [] as any[] },
+      { id: 'ortu_siswa', nama: 'Survey Ortu & Siswa', total: 0, latest: [] as any[] },
       { id: 'kepuasan_ortu', nama: 'Angket Kepuasan Orang Tua', total: 0, latest: [] as any[] },
     ];
 
-    const sheetTitles = ['Survey_Wali_Murid', 'Survey_Siswa', 'Survey_Kepuasan_Ortu'];
+    const sheetTitles = ['Survey_Ortu_Siswa', 'Survey_Kepuasan_Ortu'];
     
     for (let i = 0; i < sheetTitles.length; i++) {
       const sheet = doc.sheetsByTitle[sheetTitles[i]];

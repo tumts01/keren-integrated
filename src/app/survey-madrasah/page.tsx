@@ -69,22 +69,14 @@ export default function SurveyMadrasahPage() {
   }, []);
 
   // Form states
-  const [formDataWaliMurid, setFormDataWaliMurid] = useState({
-    nama: '',
-    alasanMemilih: [] as string[],
-    alasanLain: '',
-    sumberInfo: [] as string[],
-    sumberInfoLain: '',
-    saran: ''
-  });
-
-  const [formDataSiswa, setFormDataSiswa] = useState({
+  const [formDataOrtuSiswa, setFormDataOrtuSiswa] = useState({
     nama: '',
     kelas: '',
     alasanMemilih: [] as string[],
     alasanLain: '',
     sumberInfo: [] as string[],
-    harapan: ''
+    sumberInfoLain: '',
+    saran: ''
   });
 
   const [formDataOrtu, setFormDataOrtu] = useState({
@@ -155,29 +147,19 @@ export default function SurveyMadrasahPage() {
 
     let payloadData: any = {};
 
-    if (type === 'wali_murid') {
-      let finalInfo = [...formDataWaliMurid.sumberInfo];
-      if (formDataWaliMurid.sumberInfoLain) finalInfo.push(`Lainnya: ${formDataWaliMurid.sumberInfoLain}`);
+    if (type === 'ortu_siswa') {
+      let finalInfo = [...formDataOrtuSiswa.sumberInfo];
+      if (formDataOrtuSiswa.sumberInfoLain) finalInfo.push(`Lainnya: ${formDataOrtuSiswa.sumberInfoLain}`);
       
-      let finalAlasan = [...formDataWaliMurid.alasanMemilih];
-      if (formDataWaliMurid.alasanLain) finalAlasan.push(`Lainnya: ${formDataWaliMurid.alasanLain}`);
+      let finalAlasan = [...formDataOrtuSiswa.alasanMemilih];
+      if (formDataOrtuSiswa.alasanLain) finalAlasan.push(`Lainnya: ${formDataOrtuSiswa.alasanLain}`);
 
       payloadData = {
-        'Nama Wali Murid': formDataWaliMurid.nama,
+        'Nama Siswa': formDataOrtuSiswa.nama,
+        'Kelas': formDataOrtuSiswa.kelas,
         'Alasan Memilih MTs': finalAlasan.join(', '),
         'Sumber Informasi': finalInfo.join(', '),
-        'Saran & Masukan': formDataWaliMurid.saran
-      };
-    } else if (type === 'siswa') {
-      let finalAlasan = [...formDataSiswa.alasanMemilih];
-      if (formDataSiswa.alasanLain) finalAlasan.push(`Lainnya: ${formDataSiswa.alasanLain}`);
-
-      payloadData = {
-        'Nama Siswa': formDataSiswa.nama,
-        'Kelas': formDataSiswa.kelas,
-        'Alasan Memilih MTs': finalAlasan.join(', '),
-        'Sumber Informasi': formDataSiswa.sumberInfo.join(', '),
-        'Harapan Ke Depan': formDataSiswa.harapan
+        'Saran / Harapan': formDataOrtuSiswa.saran
       };
     } else if (type === 'kepuasan_ortu') {
       payloadData = {
@@ -214,8 +196,7 @@ export default function SurveyMadrasahPage() {
         });
         setActiveSurvey(null);
         // reset forms
-        setFormDataWaliMurid({ nama: '', alasanMemilih: [], alasanLain: '', sumberInfo: [], sumberInfoLain: '', saran: '' });
-        setFormDataSiswa({ nama: '', kelas: '', alasanMemilih: [], alasanLain: '', sumberInfo: [], harapan: '' });
+        setFormDataOrtuSiswa({ nama: '', kelas: '', alasanMemilih: [], alasanLain: '', sumberInfo: [], sumberInfoLain: '', saran: '' });
         setFormDataOrtu({ namaWali: '', namaSiswa: '', kelasSiswa: '', q1: '', q2: '', q3: '', q4: '', q5: '', q6: '', q7: '', q8: '', q9: '', q10: '' });
       } else {
         Swal.fire({
@@ -260,16 +241,10 @@ export default function SurveyMadrasahPage() {
         <>
           {!activeSurvey && (
         <div className={styles.gridContainer}>
-          <div className={styles.surveyCard} onClick={() => setActiveSurvey('wali_murid')}>
-            <div className={styles.iconWrapper}><i className="fas fa-user-friends"></i></div>
-            <h3>Angket Persepsi Wali Murid</h3>
-            <p>Berikan pendapat Bapak/Ibu mengapa memilih MTs Almaarif 01 Singosari.</p>
-            <button className={styles.btnAction}>Isi Angket</button>
-          </div>
-          <div className={styles.surveyCard} onClick={() => setActiveSurvey('siswa')}>
-            <div className={styles.iconWrapper}><i className="fas fa-user-graduate"></i></div>
-            <h3>Angket Persepsi Siswa</h3>
-            <p>Apa alasan Ananda memilih belajar di MTs Almaarif 01 Singosari?</p>
+          <div className={styles.surveyCard} onClick={() => setActiveSurvey('ortu_siswa')}>
+            <div className={styles.iconWrapper}><i className="fas fa-users"></i></div>
+            <h3>Survey Ortu & Siswa</h3>
+            <p>Berikan pendapat Bapak/Ibu dan Ananda mengapa memilih belajar di MTs Almaarif 01 Singosari.</p>
             <button className={styles.btnAction}>Isi Angket</button>
           </div>
           <div className={styles.surveyCard} onClick={() => setActiveSurvey('kepuasan_ortu')}>
@@ -281,106 +256,13 @@ export default function SurveyMadrasahPage() {
         </div>
       )}
 
-      {activeSurvey === 'wali_murid' && (
-        <form className={styles.surveyForm} onSubmit={(e) => submitSurvey(e, 'wali_murid')}>
+      {activeSurvey === 'ortu_siswa' && (
+        <form className={styles.surveyForm} onSubmit={(e) => submitSurvey(e, 'ortu_siswa')}>
           <div className={styles.formHeader}>
             <button type="button" className={styles.btnBack} onClick={() => setActiveSurvey(null)}>
               <i className="fas fa-arrow-left"></i> Kembali
             </button>
-            <h2>Angket Persepsi Wali Murid</h2>
-          </div>
-          
-          <div className={styles.formGroup} style={{ position: 'relative' }}>
-            <label>Nama Siswa <span style={{color: 'red'}}>*</span></label>
-            <input 
-              type="text" 
-              className={styles.input} 
-              value={formDataWaliMurid.nama} 
-              required
-              onChange={e => {
-                setFormDataWaliMurid({...formDataWaliMurid, nama: e.target.value});
-                setShowSuggestionsWali(true);
-              }} 
-              onFocus={() => setShowSuggestionsWali(true)}
-              onBlur={() => setTimeout(() => setShowSuggestionsWali(false), 200)}
-              placeholder="Masukkan nama siswa..." 
-            />
-            {showSuggestionsWali && formDataWaliMurid.nama.length > 1 && (
-              <ul className={styles.suggestionsList}>
-                {siswas
-                  .filter(s => s.isLatest && s.nama && s.nama.toLowerCase().includes(formDataWaliMurid.nama.toLowerCase()))
-                  .slice(0, 5)
-                  .map((s, idx) => {
-                    return (
-                      <li key={idx} onClick={() => {
-                        setFormDataWaliMurid({...formDataWaliMurid, nama: s.nama});
-                        setShowSuggestionsWali(false);
-                      }}>
-                        <strong>{s.nama}</strong> <br/>
-                        <small style={{color: '#64748b'}}>Kelas: {s.rombel || s.tahunAjaran}</small>
-                      </li>
-                    );
-                  })}
-              </ul>
-            )}
-          </div>
-
-          <div className={styles.formGroup}>
-            <label>A. Mengapa Bapak/Ibu memilih MTs Almaarif sebagai tempat pendidikan untuk putra putrinya? <br/><small style={{color: '#64748b', fontWeight: 'normal'}}>* Bisa memilih lebih dari satu jawaban</small></label>
-            <div className={styles.checkboxGrid}>
-              {alasanWaliMurid.map((item, idx) => (
-                <label key={idx} className={styles.checkboxLabel}>
-                  <input type="checkbox" value={item} checked={formDataWaliMurid.alasanMemilih.includes(item)} onChange={e => handleCheckboxChange(e, formDataWaliMurid, setFormDataWaliMurid, 'alasanMemilih')} />
-                  <span>{item}</span>
-                </label>
-              ))}
-              <div className={styles.customInputGroup}>
-                <label className={styles.checkboxLabel}>
-                  <input type="checkbox" checked={formDataWaliMurid.alasanLain.length > 0} onChange={() => {}} />
-                  Lainnya: 
-                </label>
-                <input type="text" className={styles.inputSmall} value={formDataWaliMurid.alasanLain} onChange={e => setFormDataWaliMurid({...formDataWaliMurid, alasanLain: e.target.value})} placeholder="Tulis alasan lain..." />
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.formGroup}>
-            <label>B. Bagaimana Bapak/Ibu mendapatkan informasi tentang MTs Almaarif? <br/><small style={{color: '#64748b', fontWeight: 'normal'}}>* Bisa memilih lebih dari satu jawaban</small></label>
-            <div className={styles.checkboxGrid}>
-              {infoWaliMurid.map((item, idx) => (
-                <label key={idx} className={styles.checkboxLabel}>
-                  <input type="checkbox" value={item} checked={formDataWaliMurid.sumberInfo.includes(item)} onChange={e => handleCheckboxChange(e, formDataWaliMurid, setFormDataWaliMurid, 'sumberInfo')} />
-                  <span>{item}</span>
-                </label>
-              ))}
-              <div className={styles.customInputGroup}>
-                <label className={styles.checkboxLabel}>
-                  <input type="checkbox" checked={formDataWaliMurid.sumberInfoLain.length > 0} onChange={() => {}} />
-                  Lain-lain: 
-                </label>
-                <input type="text" className={styles.inputSmall} value={formDataWaliMurid.sumberInfoLain} onChange={e => setFormDataWaliMurid({...formDataWaliMurid, sumberInfoLain: e.target.value})} placeholder="Tulis sumber info lain..." />
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.formGroup}>
-            <label>C. Apa saran Bapak/Ibu Wali Murid untuk MTs Almaarif 01 Singosari agar ke depan lebih baik dan unggul?</label>
-            <textarea className={styles.textarea} required value={formDataWaliMurid.saran} onChange={e => setFormDataWaliMurid({...formDataWaliMurid, saran: e.target.value})} rows={4} placeholder="Tulis saran Anda di sini..."></textarea>
-          </div>
-
-          <button type="submit" className={styles.btnSubmit} disabled={loading || (formDataWaliMurid.alasanMemilih.length === 0 && !formDataWaliMurid.alasanLain) || (formDataWaliMurid.sumberInfo.length === 0 && !formDataWaliMurid.sumberInfoLain)}>
-            {loading ? 'Mengirim...' : 'Kirim Survey'} <i className="fas fa-paper-plane"></i>
-          </button>
-        </form>
-      )}
-
-      {activeSurvey === 'siswa' && (
-        <form className={styles.surveyForm} onSubmit={(e) => submitSurvey(e, 'siswa')}>
-          <div className={styles.formHeader}>
-            <button type="button" className={styles.btnBack} onClick={() => setActiveSurvey(null)}>
-              <i className="fas fa-arrow-left"></i> Kembali
-            </button>
-            <h2>Angket Persepsi Siswa</h2>
+            <h2>Survey Ortu & Siswa</h2>
           </div>
           
           <div className={styles.formRow}>
@@ -389,25 +271,25 @@ export default function SurveyMadrasahPage() {
               <input 
                 type="text" 
                 className={styles.input} 
-                value={formDataSiswa.nama} 
+                value={formDataOrtuSiswa.nama} 
                 required
                 onChange={e => {
-                  setFormDataSiswa({...formDataSiswa, nama: e.target.value});
+                  setFormDataOrtuSiswa({...formDataOrtuSiswa, nama: e.target.value});
                   setShowSuggestionsSiswa(true);
                 }}
                 onFocus={() => setShowSuggestionsSiswa(true)}
                 onBlur={() => setTimeout(() => setShowSuggestionsSiswa(false), 200)}
                 placeholder="Masukkan nama siswa..." 
               />
-              {showSuggestionsSiswa && formDataSiswa.nama.length > 1 && (
+              {showSuggestionsSiswa && formDataOrtuSiswa.nama.length > 1 && (
                 <ul className={styles.suggestionsList}>
                   {siswas
-                    .filter(s => s.isLatest && s.nama && s.nama.toLowerCase().includes(formDataSiswa.nama.toLowerCase()))
+                    .filter(s => s.isLatest && s.nama && s.nama.toLowerCase().includes(formDataOrtuSiswa.nama.toLowerCase()))
                     .slice(0, 5)
                     .map((s, idx) => {
                       return (
                         <li key={idx} onClick={() => {
-                          setFormDataSiswa({...formDataSiswa, nama: s.nama, kelas: s.rombel || s.tahunAjaran || ''});
+                          setFormDataOrtuSiswa({...formDataOrtuSiswa, nama: s.nama, kelas: s.rombel || s.tahunAjaran || ''});
                           setShowSuggestionsSiswa(false);
                         }}>
                           <strong>{s.nama}</strong> <br/>
@@ -420,47 +302,54 @@ export default function SurveyMadrasahPage() {
             </div>
             <div className={styles.formGroup}>
               <label>Kelas (Otomatis)</label>
-              <input type="text" className={styles.input} value={formDataSiswa.kelas} readOnly onChange={e => setFormDataSiswa({...formDataSiswa, kelas: e.target.value})} placeholder="Contoh: 7A" />
+              <input type="text" className={styles.input} value={formDataOrtuSiswa.kelas} readOnly onChange={e => setFormDataOrtuSiswa({...formDataOrtuSiswa, kelas: e.target.value})} placeholder="Contoh: 7A" />
             </div>
           </div>
 
           <div className={styles.formGroup}>
-            <label>A. Mengapa Ananda memilih MTs Almaarif sebagai tempat belajar dan menuntut ilmu? Karena… <br/><small style={{color: '#64748b', fontWeight: 'normal'}}>* Bisa memilih lebih dari satu jawaban</small></label>
+            <label>A. Mengapa Bapak/Ibu dan Ananda memilih MTs Almaarif 01 Singosari sebagai tempat pendidikan? <br/><small style={{color: '#64748b', fontWeight: 'normal'}}>* Bisa memilih lebih dari satu jawaban</small></label>
             <div className={styles.checkboxGrid}>
-              {alasanSiswa.map((item, idx) => (
+              {alasanWaliMurid.map((item, idx) => (
                 <label key={idx} className={styles.checkboxLabel}>
-                  <input type="checkbox" value={item} checked={formDataSiswa.alasanMemilih.includes(item)} onChange={e => handleCheckboxChange(e, formDataSiswa, setFormDataSiswa, 'alasanMemilih')} />
+                  <input type="checkbox" value={item} checked={formDataOrtuSiswa.alasanMemilih.includes(item)} onChange={e => handleCheckboxChange(e, formDataOrtuSiswa, setFormDataOrtuSiswa, 'alasanMemilih')} />
                   <span>{item}</span>
                 </label>
               ))}
               <div className={styles.customInputGroup}>
                 <label className={styles.checkboxLabel}>
-                  <input type="checkbox" checked={formDataSiswa.alasanLain.length > 0} onChange={() => {}} />
+                  <input type="checkbox" checked={formDataOrtuSiswa.alasanLain.length > 0} onChange={() => {}} />
                   Lainnya: 
                 </label>
-                <input type="text" className={styles.inputSmall} value={formDataSiswa.alasanLain} onChange={e => setFormDataSiswa({...formDataSiswa, alasanLain: e.target.value})} placeholder="Tulis alasan lain..." />
+                <input type="text" className={styles.inputSmall} value={formDataOrtuSiswa.alasanLain} onChange={e => setFormDataOrtuSiswa({...formDataOrtuSiswa, alasanLain: e.target.value})} placeholder="Tulis alasan lain..." />
               </div>
             </div>
           </div>
 
           <div className={styles.formGroup}>
-            <label>B. Bagaimana Ananda mendapatkan informasi tentang MTs Almaarif 01 Singosari? <br/><small style={{color: '#64748b', fontWeight: 'normal'}}>* Bisa memilih lebih dari satu jawaban</small></label>
+            <label>B. Bagaimana Anda mendapatkan informasi tentang MTs Almaarif? <br/><small style={{color: '#64748b', fontWeight: 'normal'}}>* Bisa memilih lebih dari satu jawaban</small></label>
             <div className={styles.checkboxGrid}>
-              {infoSiswa.map((item, idx) => (
+              {infoWaliMurid.map((item, idx) => (
                 <label key={idx} className={styles.checkboxLabel}>
-                  <input type="checkbox" value={item} checked={formDataSiswa.sumberInfo.includes(item)} onChange={e => handleCheckboxChange(e, formDataSiswa, setFormDataSiswa, 'sumberInfo')} />
+                  <input type="checkbox" value={item} checked={formDataOrtuSiswa.sumberInfo.includes(item)} onChange={e => handleCheckboxChange(e, formDataOrtuSiswa, setFormDataOrtuSiswa, 'sumberInfo')} />
                   <span>{item}</span>
                 </label>
               ))}
+              <div className={styles.customInputGroup}>
+                <label className={styles.checkboxLabel}>
+                  <input type="checkbox" checked={formDataOrtuSiswa.sumberInfoLain.length > 0} onChange={() => {}} />
+                  Lain-lain: 
+                </label>
+                <input type="text" className={styles.inputSmall} value={formDataOrtuSiswa.sumberInfoLain} onChange={e => setFormDataOrtuSiswa({...formDataOrtuSiswa, sumberInfoLain: e.target.value})} placeholder="Tulis sumber info lain..." />
+              </div>
             </div>
           </div>
 
           <div className={styles.formGroup}>
-            <label>C. Apa harapan Ananda untuk MTs Almaarif ke depan?</label>
-            <textarea className={styles.textarea} required value={formDataSiswa.harapan} onChange={e => setFormDataSiswa({...formDataSiswa, harapan: e.target.value})} rows={4} placeholder="Tulis harapanmu di sini..."></textarea>
+            <label>C. Apa saran dan harapan Anda untuk MTs Almaarif 01 Singosari ke depan?</label>
+            <textarea className={styles.textarea} required value={formDataOrtuSiswa.saran} onChange={e => setFormDataOrtuSiswa({...formDataOrtuSiswa, saran: e.target.value})} rows={4} placeholder="Tulis saran / harapan di sini..."></textarea>
           </div>
 
-          <button type="submit" className={styles.btnSubmit} disabled={loading || (formDataSiswa.alasanMemilih.length === 0 && !formDataSiswa.alasanLain) || formDataSiswa.sumberInfo.length === 0}>
+          <button type="submit" className={styles.btnSubmit} disabled={loading || (formDataOrtuSiswa.alasanMemilih.length === 0 && !formDataOrtuSiswa.alasanLain) || (formDataOrtuSiswa.sumberInfo.length === 0 && !formDataOrtuSiswa.sumberInfoLain)}>
             {loading ? 'Mengirim...' : 'Kirim Survey'} <i className="fas fa-paper-plane"></i>
           </button>
         </form>
