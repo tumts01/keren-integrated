@@ -10,6 +10,7 @@ export default function SurveyMadrasahPage() {
   const [showSuggestionsWali, setShowSuggestionsWali] = useState(false);
   const [showSuggestionsSiswa, setShowSuggestionsSiswa] = useState(false);
   const [showSuggestionsOrtu, setShowSuggestionsOrtu] = useState(false);
+  const [mainTab, setMainTab] = useState<'humas'|'others'>('humas');
   const [activeTab, setActiveTab] = useState<'isi'|'monitor'>('isi');
   const [isAdmin, setIsAdmin] = useState(false);
   const [rekapData, setRekapData] = useState<any[]>([]);
@@ -226,16 +227,24 @@ export default function SurveyMadrasahPage() {
         Berikan masukan dan pendapat Anda untuk membangun MTs Almaarif 01 Singosari menjadi lebih baik.
       </p>
 
-      {isAdmin && (
-        <div className={styles.tabContainer}>
-          <button className={`${styles.tabBtn} ${activeTab === 'isi' ? styles.activeTab : ''}`} onClick={() => { setActiveTab('isi'); setActiveSurvey(null); }}>
-            <i className="fas fa-edit"></i> Isi Angket
-          </button>
-          <button className={`${styles.tabBtn} ${activeTab === 'monitor' ? styles.activeTab : ''}`} onClick={() => setActiveTab('monitor')}>
-            <i className="fas fa-chart-bar"></i> Monitoring (Admin)
-          </button>
-        </div>
-      )}
+      <div className={styles.tabContainer}>
+        <button className={`${styles.tabBtn} ${mainTab === 'humas' ? styles.activeTab : ''}`} onClick={() => { setMainTab('humas'); setActiveSurvey(null); }}>
+          <i className="fas fa-bullhorn"></i> Survey Humas
+        </button>
+      </div>
+
+      {mainTab === 'humas' && (
+        <>
+          {isAdmin && (
+            <div className={styles.tabContainer} style={{ marginTop: '-10px', transform: 'scale(0.9)' }}>
+              <button className={`${styles.tabBtn} ${activeTab === 'isi' ? styles.activeTab : ''}`} onClick={() => { setActiveTab('isi'); setActiveSurvey(null); }}>
+                <i className="fas fa-edit"></i> Isi Angket
+              </button>
+              <button className={`${styles.tabBtn} ${activeTab === 'monitor' ? styles.activeTab : ''}`} onClick={() => setActiveTab('monitor')}>
+                <i className="fas fa-chart-bar"></i> Monitoring (Admin)
+              </button>
+            </div>
+          )}
 
       {activeTab === 'isi' ? (
         <>
@@ -492,6 +501,8 @@ export default function SurveyMadrasahPage() {
             </div>
           )}
         </div>
+      )}
+      </>
       )}
 
     </div>
