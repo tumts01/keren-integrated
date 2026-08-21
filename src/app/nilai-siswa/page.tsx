@@ -73,6 +73,21 @@ export default function NilaiSiswaPage() {
 
   const saveScores = async () => {
     if (students.length === 0) return;
+    
+    const confirm = await Swal.fire({
+      title: 'Simpan Nilai?',
+      text: "Pastikan data nilai yang diinput sudah benar.",
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3b82f6',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: '<i class="fas fa-save"></i> Ya, Simpan',
+      cancelButtonText: 'Batal',
+      reverseButtons: true
+    });
+
+    if (!confirm.isConfirmed) return;
+
     setSaving(true);
     const finalMapel = mapel === 'Lainnya' ? mapelLain : mapel;
     try {
@@ -92,9 +107,21 @@ export default function NilaiSiswaPage() {
       });
       const result = await res.json();
       if (result.success) {
-        Swal.fire('Berhasil', 'Nilai berhasil disimpan', 'success');
+        Swal.fire({
+          title: 'Mantap Keren!',
+          text: 'Nilai berhasil disimpan ke spreadsheet.',
+          icon: 'success',
+          timer: 2500,
+          showConfirmButton: false,
+          timerProgressBar: true
+        });
       } else {
-        Swal.fire('Gagal', result.error || 'Gagal menyimpan nilai', 'error');
+        Swal.fire({
+          title: 'Gagal',
+          text: result.error || 'Gagal menyimpan nilai',
+          icon: 'error',
+          confirmButtonColor: '#ef4444'
+        });
       }
     } catch (err: any) {
       Swal.fire('Error', err.message, 'error');
