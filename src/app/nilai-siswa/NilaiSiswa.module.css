@@ -55,13 +55,14 @@
 
 .formGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
   gap: 15px;
   margin-bottom: 20px;
   background: #f8fafc;
   padding: 15px;
   border-radius: 12px;
   border: 1px solid #e2e8f0;
+  align-items: flex-end;
 }
 
 .formGroup {
@@ -102,7 +103,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 10px;
 }
 
 .btnSubmit:hover {
