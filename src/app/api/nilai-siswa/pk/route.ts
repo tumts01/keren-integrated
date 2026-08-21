@@ -67,7 +67,9 @@ export async function GET(req: Request) {
       });
     });
 
-    if (siswas.length === 0) {
+    const uniqueSiswas = Array.from(new Map(siswas.map(s => [s.induk, s])).values());
+
+    if (uniqueSiswas.length === 0) {
       return NextResponse.json({ success: true, data: [] });
     }
 
@@ -92,7 +94,7 @@ export async function GET(req: Request) {
       colIdx = getColumnIndex(tipe, materi || '', sub || '');
     }
 
-    const data = siswas.map(s => {
+    const data = uniqueSiswas.map(s => {
       const rowIdx = existingMap.get(s.induk);
       let score = '';
       if (rowIdx != null && tipe) {
