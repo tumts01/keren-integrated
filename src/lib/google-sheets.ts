@@ -108,3 +108,7 @@ export async function getSurveyDoc() {
 export async function getJurnalStafDoc() {
   return getDocWithFallback('1_4IRCPtY8pbz86pu5lfQ0c5RPTCWcosxMtwXqpgaPdE');
 }
+
+export async function getNilaiSiswaDoc() {
+  return getDocWithFallback('1xy6T1Ksnu4K4y9joqXjZ1ojiv2NMp7soYaHi2rosoNQ');
+}
