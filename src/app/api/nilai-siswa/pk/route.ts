@@ -4,16 +4,16 @@ import { getNilaiSiswaDoc, getIndukDoc } from '@/lib/google-sheets';
 export const dynamic = 'force-dynamic';
 
 function getColumnIndex(tipe: string, materi?: string, sub?: string) {
-  if (tipe === 'sts') return 25;
-  if (tipe === 'sas') return 26;
+  if (tipe === 'sts') return 26;
+  if (tipe === 'sas') return 27;
   if (tipe === 'materi_harian') {
     const mMatch = (materi || '').match(/\d+/);
     const m = mMatch ? parseInt(mMatch[0]) : 1;
     const sMatch = (sub || '').match(/\d+/);
     const s = sMatch ? parseInt(sMatch[0]) : 1;
-    return 7 + (m - 1) * 3 + (s - 1);
+    return 8 + (m - 1) * 3 + (s - 1);
   }
-  return 7;
+  return 8;
 }
 
 export async function GET(req: Request) {
@@ -82,14 +82,14 @@ export async function GET(req: Request) {
     const existingMap = new Map();
     for (let i = 2; i < 1000; i++) {
       const rowInduk = sheetPK.getCell(i, 1).value as string;
-      const rowMapel = sheetPK.getCell(i, 5).value as string;
+      const rowMapel = sheetPK.getCell(i, 6).value as string;
       if (!rowInduk) break;
       if (rowMapel === mapel) {
         existingMap.set(rowInduk, i);
       }
     }
 
-    let colIdx = 7;
+    let colIdx = 8;
     if (tipe) {
       colIdx = getColumnIndex(tipe, materi || '', sub || '');
     }
@@ -128,8 +128,8 @@ export async function POST(req: Request) {
     let maxRow = 1;
     for (let i = 2; i < 1000; i++) {
       const rowInduk = sheetPK.getCell(i, 1).value as string;
-      const rowMapel = sheetPK.getCell(i, 5).value as string;
-      const rowTa = sheetPK.getCell(i, 28).value as string;
+      const rowMapel = sheetPK.getCell(i, 6).value as string;
+      const rowTa = sheetPK.getCell(i, 29).value as string;
       
       if (!rowInduk) {
         if (i > maxRow) maxRow = i;
@@ -150,10 +150,11 @@ export async function POST(req: Request) {
         sheetPK.getCell(rowIdx, 0).value = rowIdx - 1; // No
         sheetPK.getCell(rowIdx, 1).value = student.induk;
         sheetPK.getCell(rowIdx, 2).value = student.nama;
-        sheetPK.getCell(rowIdx, 3).value = student.jk;
-        sheetPK.getCell(rowIdx, 4).value = guru || '';
-        sheetPK.getCell(rowIdx, 5).value = mapel;
-        sheetPK.getCell(rowIdx, 28).value = tahunAjaran;
+        sheetPK.getCell(rowIdx, 3).value = kelas; // Kelas 
+        sheetPK.getCell(rowIdx, 4).value = student.jk;
+        sheetPK.getCell(rowIdx, 5).value = guru || '';
+        sheetPK.getCell(rowIdx, 6).value = mapel;
+        sheetPK.getCell(rowIdx, 29).value = tahunAjaran;
       }
       
       // Update cell if score is provided, otherwise leave as is or null
@@ -165,7 +166,7 @@ export async function POST(req: Request) {
       
       // Update 'Materi' column if it's materi harian just to keep track
       if (tipe === 'materi_harian' && materi) {
-        sheetPK.getCell(rowIdx, 6).value = materi;
+        sheetPK.getCell(rowIdx, 7).value = materi;
       }
     }
 
