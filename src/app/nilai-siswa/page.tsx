@@ -19,6 +19,7 @@ export default function NilaiSiswaPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<any>(null);
+  const [mapelList, setMapelList] = useState<string[]>(['BTQ', 'Tahfidz', 'Madin', 'Sorogan']);
 
   useEffect(() => {
     const userStr = localStorage.getItem('keren_user_data');
@@ -27,6 +28,15 @@ export default function NilaiSiswaPage() {
         setProfile(JSON.parse(userStr));
       } catch (e) {}
     }
+
+    fetch('/api/jadwal/mapel')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data) {
+          setMapelList(data.data.map((m: any) => m.namaMapel));
+        }
+      })
+      .catch(console.error);
   }, []);
 
   const fetchStudents = async () => {
@@ -86,7 +96,6 @@ export default function NilaiSiswaPage() {
     setSaving(false);
   };
 
-  const mapelOptions = ['BTQ', 'Tahfidz', 'Madin', 'Sorogan', 'Lainnya'];
   const kelasOptions = ['7A','7B','7C','7D','7E','7F','7G','7H','7I','8A','8B','8C','8D','8E','8F','8G','8H','8I','9A','9B','9C','9D','9E','9F','9G','9H','9I'];
 
   return (
@@ -129,7 +138,8 @@ export default function NilaiSiswaPage() {
                 <div className={styles.formGroup}>
                   <label>Mata Pelajaran</label>
                   <select className={styles.select} value={mapel} onChange={e => setMapel(e.target.value)}>
-                    {mapelOptions.map(m => <option key={m} value={m}>{m}</option>)}
+                    {mapelList.map(m => <option key={m} value={m}>{m}</option>)}
+                    <option value="Lainnya">Lainnya...</option>
                   </select>
                 </div>
 
