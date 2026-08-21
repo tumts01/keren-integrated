@@ -24,24 +24,48 @@ export async function GET(req: Request) {
     const tipe = searchParams.get('tipe');
     const materi = searchParams.get('materi');
     const sub = searchParams.get('sub');
+    const tahunAjaran = searchParams.get('tahunAjaran');
 
-    if (!kelas || !mapel) {
-      return NextResponse.json({ success: false, error: 'Kelas dan Mapel wajib diisi' }, { status: 400 });
+    if (!kelas || !mapel || !tahunAjaran) {
+      return NextResponse.json({ success: false, error: 'Kelas, Mapel, dan Tahun Ajaran wajib diisi' }, { status: 400 });
     }
 
     // 1. Fetch Students
     const docInduk = await getIndukDoc();
     const sheetDb = docInduk.sheetsByTitle['DATABASE'];
     const rowsDb = await sheetDb.getRows();
-    const siswas = rowsDb
-      .map(r => ({
-        induk: r.get('NO INDUK') || '',
-        nama: r.get('NAMA LENGKAP') || '',
+    
+    const siswas: any[] = [];
+    rowsDb.forEach(r => {
+      const baseStudent = {
+        induk: r.get('ID SISWA') || '',
+        nama: r.get('NAMA') || '',
         jk: r.get('JENIS KELAMIN') || '',
-        kelas: r.get('KELAS') || '',
-        rombel: r.get('ROMBEL') || ''
-      }))
-      .filter(s => s.rombel === kelas || s.kelas === kelas);
+      };
+
+      const records = [];
+      const ta7 = (r.get('TA KELAS 7') || '').trim();
+      const rombel7 = (r.get('ROMBEL KELAS 7') || '').trim();
+      if (ta7 && rombel7) records.push({ ...baseStudent, tahunAjaran: ta7, rombel: rombel7 });
+
+      const ta8 = (r.get('TA KELAS 8') || '').trim();
+      const rombel8 = (r.get('ROMBEL KELAS 8') || '').trim();
+      if (ta8 && rombel8) records.push({ ...baseStudent, tahunAjaran: ta8, rombel: rombel8 });
+
+      const ta9 = (r.get('TA KELAS 9') || '').trim();
+      const rombel9 = (r.get('ROMBEL KELAS 9') || '').trim();
+      if (ta9 && rombel9) records.push({ ...baseStudent, tahunAjaran: ta9, rombel: rombel9 });
+
+      const currentTa = (r.get('TAHUN AJARAN') || '').trim();
+      const currentRombel = (r.get('ROMBEL') || '').trim();
+      if (currentTa && currentRombel) records.push({ ...baseStudent, tahunAjaran: currentTa, rombel: currentRombel });
+
+      records.forEach(rec => {
+        if (rec.tahunAjaran === tahunAjaran && rec.rombel === kelas) {
+          siswas.push(rec);
+        }
+      });
+    });
 
     if (siswas.length === 0) {
       return NextResponse.json({ success: true, data: [] });
@@ -88,9 +112,9 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { kelas, mapel, tipe, materi, sub, data, guru } = body;
+    const { kelas, mapel, tipe, materi, sub, data, guru, tahunAjaran } = body;
 
-    if (!kelas || !mapel || !tipe || !data || !Array.isArray(data)) {
+    if (!kelas || !mapel || !tipe || !data || !Array.isArray(data) || !tahunAjaran) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
     }
 
@@ -103,11 +127,13 @@ export async function POST(req: Request) {
     for (let i = 2; i < 1000; i++) {
       const rowInduk = sheetPK.getCell(i, 1).value as string;
       const rowMapel = sheetPK.getCell(i, 5).value as string;
+      const rowTa = sheetPK.getCell(i, 28).value as string;
+      
       if (!rowInduk) {
         if (i > maxRow) maxRow = i;
         break;
       }
-      if (rowMapel === mapel) {
+      if (rowMapel === mapel && rowTa === tahunAjaran) {
         existingMap.set(rowInduk, i);
       }
     }
@@ -125,6 +151,7 @@ export async function POST(req: Request) {
         sheetPK.getCell(rowIdx, 3).value = student.jk;
         sheetPK.getCell(rowIdx, 4).value = guru || '';
         sheetPK.getCell(rowIdx, 5).value = mapel;
+        sheetPK.getCell(rowIdx, 28).value = tahunAjaran;
       }
       
       // Update cell if score is provided, otherwise leave as is or null

@@ -15,6 +15,11 @@ export default function NilaiSiswaPage() {
   const [materi, setMateri] = useState('Materi 1');
   const [subMateri, setSubMateri] = useState('S1');
   
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth();
+  const defaultTA = currentMonth >= 6 ? `${currentYear}/${currentYear + 1}` : `${currentYear - 1}/${currentYear}`;
+  const [tahunAjaran, setTahunAjaran] = useState(defaultTA);
+  
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -40,14 +45,14 @@ export default function NilaiSiswaPage() {
   }, []);
 
   const fetchStudents = async () => {
-    if (!kelas) {
-      Swal.fire('Peringatan', 'Silakan pilih kelas terlebih dahulu', 'warning');
+    if (!kelas || !tahunAjaran) {
+      Swal.fire('Peringatan', 'Silakan pilih Kelas dan Tahun Ajaran terlebih dahulu', 'warning');
       return;
     }
     setLoading(true);
     const finalMapel = mapel === 'Lainnya' ? mapelLain : mapel;
     try {
-      const res = await fetch(`/api/nilai-siswa/pk?kelas=${encodeURIComponent(kelas)}&mapel=${encodeURIComponent(finalMapel)}&tipe=${tipe}&materi=${encodeURIComponent(materi)}&sub=${encodeURIComponent(subMateri)}`);
+      const res = await fetch(`/api/nilai-siswa/pk?kelas=${encodeURIComponent(kelas)}&mapel=${encodeURIComponent(finalMapel)}&tipe=${tipe}&materi=${encodeURIComponent(materi)}&sub=${encodeURIComponent(subMateri)}&tahunAjaran=${encodeURIComponent(tahunAjaran)}`);
       const result = await res.json();
       if (result.success) {
         setStudents(result.data);
@@ -81,7 +86,8 @@ export default function NilaiSiswaPage() {
           materi,
           sub: subMateri,
           data: students,
-          guru: profile?.nama || ''
+          guru: profile?.nama || '',
+          tahunAjaran
         })
       });
       const result = await res.json();
@@ -127,6 +133,17 @@ export default function NilaiSiswaPage() {
           {subTab === 'input' && (
             <div>
               <div className={styles.formGrid}>
+                <div className={styles.formGroup}>
+                  <label>Tahun Ajaran</label>
+                  <select className={styles.select} value={tahunAjaran} onChange={e => setTahunAjaran(e.target.value)}>
+                    <option value="2023/2024">2023/2024</option>
+                    <option value="2024/2025">2024/2025</option>
+                    <option value="2025/2026">2025/2026</option>
+                    <option value="2026/2027">2026/2027</option>
+                    <option value="2027/2028">2027/2028</option>
+                  </select>
+                </div>
+
                 <div className={styles.formGroup}>
                   <label>Kelas</label>
                   <select className={styles.select} value={kelas} onChange={e => setKelas(e.target.value)}>
