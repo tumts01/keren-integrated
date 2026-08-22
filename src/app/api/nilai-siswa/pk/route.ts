@@ -77,7 +77,7 @@ export async function GET(req: Request) {
     const docNilai = await getNilaiSiswaDoc();
     const sheetPK = docNilai.sheetsByTitle['PK'];
     // Assuming max 1000 rows is enough
-    await sheetPK.loadCells('A1:AC1000');
+    await sheetPK.loadCells('A1:AD1000');
 
     const existingMap = new Map();
     for (let i = 2; i < 1000; i++) {
@@ -122,7 +122,7 @@ export async function POST(req: Request) {
 
     const docNilai = await getNilaiSiswaDoc();
     const sheetPK = docNilai.sheetsByTitle['PK'];
-    await sheetPK.loadCells('A1:AC1000');
+    await sheetPK.loadCells('A1:AD1000');
 
     const existingMap = new Map();
     let maxRow = 1;
