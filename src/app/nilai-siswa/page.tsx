@@ -38,7 +38,14 @@ export default function NilaiSiswaPage() {
       .then(res => res.json())
       .then(data => {
         if (data.success && data.data) {
-          setMapelList(data.data.map((m: any) => m.namaMapel));
+          const list = data.data.map((m: any) => m.namaMapel);
+          setMapelList(list);
+          setMapel(prevMapel => {
+            if (!list.includes(prevMapel) && prevMapel !== 'Lainnya' && list.length > 0) {
+              return list[0];
+            }
+            return prevMapel;
+          });
         }
       })
       .catch(console.error);
