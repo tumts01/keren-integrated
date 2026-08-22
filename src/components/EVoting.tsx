@@ -13,6 +13,8 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
   const [loading, setLoading] = useState(false);
   const [voterName, setVoterName] = useState('');
   const [namesDb, setNamesDb] = useState<string[]>([]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [searchName, setSearchName] = useState('');
   
   useEffect(() => {
     // Fetch kandidat
@@ -177,20 +179,58 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
         <div className={styles.loginCard}>
           <i className="fas fa-fingerprint" style={{ fontSize: '4rem', color: '#cbd5e1', marginBottom: '1rem' }}></i>
           <h3>Verifikasi Pemilih</h3>
-          <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>Silakan masukkan nama lengkap Anda (Siswa/Guru) untuk mulai memilih.</p>
+          <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>Silakan cari nama lengkap Anda (Siswa/Guru) untuk mulai memilih.</p>
           <form onSubmit={handleLogin}>
-            <input 
-              type="text" 
-              className={styles.input} 
-              placeholder="Ketik Nama Anda..."
-              value={voterName}
-              onChange={(e) => setVoterName(e.target.value)}
-              list="nama-list"
-              required
-            />
-            <datalist id="nama-list">
-              {namesDb.map((n, i) => <option key={i} value={n} />)}
-            </datalist>
+            
+            <div className={styles.dropdownContainer}>
+              <div 
+                className={styles.dropdownButton} 
+                onClick={() => {
+                  setIsDropdownOpen(!isDropdownOpen);
+                  if (!isDropdownOpen) setSearchName('');
+                }}
+              >
+                <span style={{ color: voterName ? '#1e293b' : '#94a3b8' }}>
+                  {voterName || 'Pilih Nama Anda...'}
+                </span>
+                <i className="fas fa-chevron-down" style={{ color: '#94a3b8' }}></i>
+              </div>
+
+              {isDropdownOpen && (
+                <div className={styles.dropdownMenu}>
+                  <div className={styles.dropdownSearch}>
+                    <input 
+                      type="text" 
+                      placeholder="Cari nama..." 
+                      value={searchName}
+                      onChange={(e) => setSearchName(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                  <div className={styles.dropdownList}>
+                    {namesDb
+                      .filter(n => n.toLowerCase().includes(searchName.toLowerCase()))
+                      .slice(0, 50)
+                      .map((n, i) => (
+                        <div 
+                          key={i} 
+                          className={styles.dropdownItem}
+                          onClick={() => {
+                            setVoterName(n);
+                            setIsDropdownOpen(false);
+                          }}
+                        >
+                          {n}
+                        </div>
+                      ))}
+                    {namesDb.filter(n => n.toLowerCase().includes(searchName.toLowerCase())).length === 0 && (
+                      <div style={{ padding: '10px', textAlign: 'center', color: '#94a3b8' }}>Nama tidak ditemukan</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button type="submit" className={styles.btnPrimary}>
               Lanjut ke Surat Suara <i className="fas fa-arrow-right"></i>
             </button>
