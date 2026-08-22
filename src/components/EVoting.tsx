@@ -153,8 +153,16 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
 
   return (
     <div className={styles.container}>
-      <h2 className={styles.title}><i className="fas fa-vote-yea"></i> E-Voting Pemilihan Ketua OSIM</h2>
-      <p className={styles.subtitle}>Gunakan hak pilih Anda dengan bijak.</p>
+      <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+        <img src="/logo.png" alt="Logo MTs Almaarif 01 Singosari" style={{ height: '70px', width: 'auto', marginBottom: '10px' }} />
+        <div style={{ fontSize: '1rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '1px' }}>
+          MTs Almaarif 01 Singosari
+        </div>
+      </div>
+      <h2 className={styles.title} style={{ marginTop: '0.5rem' }}>
+        <i className="fas fa-vote-yea" style={{ color: '#3b82f6' }}></i> E-Voting Pemilihan Ketua OSIM
+      </h2>
+      <p className={styles.subtitle}>Gunakan hak pilih Anda dengan bijak dan rahasia.</p>
 
       {isAdmin && (
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
