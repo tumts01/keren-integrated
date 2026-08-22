@@ -11,7 +11,7 @@ export async function GET() {
     
     const kandidatList = rowsKandidat.map(r => ({
       noUrut: r.get('Nomor Urut') || '',
-      nama: r.get('Nama Paslon') || '',
+      nama: (r.get('Nama Paslon') || '').trim(),
       visi: r.get('Visi') || '',
       misi: r.get('Misi') || '',
       fotoKetua: r.get('Link Foto Ketua') || r.get('Link Foto') || '',
@@ -26,14 +26,14 @@ export async function GET() {
     const rowsSuara = await sheetSuara.getRows();
     
     const voteCounts: Record<string, number> = {};
-    kandidatList.forEach(k => voteCounts[k.nama] = 0);
+    kandidatList.forEach(k => voteCounts[k.nama.toUpperCase()] = 0);
     
     const pemilihSet = new Set<string>();
     
     rowsSuara.forEach(r => {
-      const p = r.get('Nama Pemilih');
-      const k = r.get('Nama Paslon');
-      if (p) pemilihSet.add(p.trim().toUpperCase());
+      const p = (r.get('Nama Pemilih') || '').trim();
+      const k = (r.get('Nama Paslon') || '').trim().toUpperCase();
+      if (p) pemilihSet.add(p.toUpperCase());
       if (k && voteCounts[k] !== undefined) {
         voteCounts[k]++;
       }
@@ -41,7 +41,7 @@ export async function GET() {
 
     const result = kandidatList.map(k => ({
       ...k,
-      suara: voteCounts[k.nama] || 0
+      suara: voteCounts[k.nama.toUpperCase()] || 0
     }));
 
     return NextResponse.json({ success: true, data: result, totalPemilih: pemilihSet.size }, {
