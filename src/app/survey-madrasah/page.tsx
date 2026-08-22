@@ -16,6 +16,7 @@ export default function SurveyMadrasahPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [rekapData, setRekapData] = useState<any[]>([]);
   const [loadingRekap, setLoadingRekap] = useState(false);
+  const [isStandaloneEVoting, setIsStandaloneEVoting] = useState(false);
 
   useEffect(() => {
     const userStr = localStorage.getItem('keren_user_data');
@@ -30,6 +31,7 @@ export default function SurveyMadrasahPage() {
     // Check URL parameters for direct linking
     if (typeof window !== 'undefined' && window.location.search.includes('e-voting')) {
       setMainTab('e_voting');
+      setIsStandaloneEVoting(true);
     }
   }, []);
 
@@ -245,24 +247,28 @@ export default function SurveyMadrasahPage() {
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>
-        <i className="fas fa-poll-h"></i> Survey Madrasah
-      </h1>
-      <p className={styles.subtitle}>
-        Berikan masukan dan pendapat Anda untuk membangun MTs Almaarif 01 Singosari menjadi lebih baik.
-      </p>
+      {!isStandaloneEVoting && (
+        <>
+          <h1 className={styles.title}>
+            <i className="fas fa-poll-h"></i> Survey Madrasah
+          </h1>
+          <p className={styles.subtitle}>
+            Berikan masukan dan pendapat Anda untuk membangun MTs Almaarif 01 Singosari menjadi lebih baik.
+          </p>
 
-      <div className={styles.tabContainer}>
-        <button className={`${styles.tabBtn} ${mainTab === 'humas' ? styles.activeTab : ''}`} onClick={() => { setMainTab('humas'); setActiveSurvey(null); }}>
-          <i className="fas fa-bullhorn"></i> Survey Humas
-        </button>
-        <button className={`${styles.tabBtn} ${mainTab === 'pemetaan_kelas7' ? styles.activeTab : ''}`} onClick={() => setMainTab('pemetaan_kelas7')}>
-          <i className="fas fa-map"></i> Pemetaan Kelas 7
-        </button>
-        <button className={`${styles.tabBtn} ${mainTab === 'e_voting' ? styles.activeTab : ''}`} onClick={() => setMainTab('e_voting')}>
-          <i className="fas fa-vote-yea"></i> E-Voting OSIM
-        </button>
-      </div>
+          <div className={styles.tabContainer}>
+            <button className={`${styles.tabBtn} ${mainTab === 'humas' ? styles.activeTab : ''}`} onClick={() => { setMainTab('humas'); setActiveSurvey(null); }}>
+              <i className="fas fa-bullhorn"></i> Survey Humas
+            </button>
+            <button className={`${styles.tabBtn} ${mainTab === 'pemetaan_kelas7' ? styles.activeTab : ''}`} onClick={() => setMainTab('pemetaan_kelas7')}>
+              <i className="fas fa-map"></i> Pemetaan Kelas 7
+            </button>
+            <button className={`${styles.tabBtn} ${mainTab === 'e_voting' ? styles.activeTab : ''}`} onClick={() => setMainTab('e_voting')}>
+              <i className="fas fa-vote-yea"></i> E-Voting OSIM
+            </button>
+          </div>
+        </>
+      )}
 
       {mainTab === 'humas' && (
         <>
