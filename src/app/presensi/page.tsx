@@ -76,6 +76,8 @@ export default function PresensiPage() {
   const [selectedMapel, setSelectedMapel] = useState('');
   const [isMapelDropdownOpen, setIsMapelDropdownOpen] = useState(false);
   const [searchMapel, setSearchMapel] = useState('');
+  const [isGuruDropdownOpen, setIsGuruDropdownOpen] = useState(false);
+  const [searchGuru, setSearchGuru] = useState('');
   const [selectedJam, setSelectedJam] = useState<number[]>([]);
   const [jamTersedia, setJamTersedia] = useState<number[]>([1,2,3,4,5,6,7,8,9,10]);
   const [jamConfigLoading, setJamConfigLoading] = useState(false);
@@ -1285,16 +1287,53 @@ export default function PresensiPage() {
 
               <div className={styles.filterGroup}>
                 <label>Guru yang Mengajar</label>
-                <select
-                  value={selectedGuru}
-                  onChange={(e) => setSelectedGuru(e.target.value)}
-                  className={styles.inputField}
-                >
-                  <option value="">-- Pilih Nama Guru --</option>
-                  {guruList.map((nama, i) => (
-                    <option key={i} value={nama}>{nama}</option>
-                  ))}
-                </select>
+                <div className={styles.dropdownContainer}>
+                  <div 
+                    className={styles.dropdownButton} 
+                    onClick={() => {
+                      setIsGuruDropdownOpen(!isGuruDropdownOpen);
+                      if (!isGuruDropdownOpen) setSearchGuru('');
+                    }}
+                  >
+                    <span style={{ color: selectedGuru ? '#1e293b' : '#94a3b8' }}>
+                      {selectedGuru || '-- Pilih Nama Guru --'}
+                    </span>
+                    <i className="fas fa-chevron-down" style={{ color: '#94a3b8' }}></i>
+                  </div>
+
+                  {isGuruDropdownOpen && (
+                    <div className={styles.dropdownMenu}>
+                      <div className={styles.dropdownSearch}>
+                        <input 
+                          type="text" 
+                          placeholder="Cari guru..." 
+                          value={searchGuru}
+                          onChange={(e) => setSearchGuru(e.target.value)}
+                          autoFocus
+                        />
+                      </div>
+                      <div className={styles.dropdownList}>
+                        {guruList
+                          .filter(g => g.toLowerCase().includes(searchGuru.toLowerCase()))
+                          .map((g, i) => (
+                            <div 
+                              key={i} 
+                              className={styles.dropdownItem}
+                              onClick={() => {
+                                setSelectedGuru(g);
+                                setIsGuruDropdownOpen(false);
+                              }}
+                            >
+                              {g}
+                            </div>
+                          ))}
+                        {guruList.filter(g => g.toLowerCase().includes(searchGuru.toLowerCase())).length === 0 && (
+                          <div style={{ padding: '10px', textAlign: 'center', color: '#94a3b8' }}>Guru tidak ditemukan</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               
               <div className={styles.filterGroup} style={{ flex: '1 1 100%' }}>
