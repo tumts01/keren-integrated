@@ -52,7 +52,9 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
       if (dataGuru.success) {
         allNames = [...allNames, ...dataGuru.data.map((g: any) => g.nama)];
       }
-      setNamesDb(allNames);
+      
+      const uniqueNames = Array.from(new Set(allNames.filter(Boolean)));
+      setNamesDb(uniqueNames);
     } catch (err) {
       console.error(err);
     }
