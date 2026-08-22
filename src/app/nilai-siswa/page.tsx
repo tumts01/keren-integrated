@@ -163,7 +163,7 @@ export default function NilaiSiswaPage() {
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>
-        <i className="fas fa-star"></i> Nilai Siswa
+        <i className="fas fa-award" style={{ color: '#f59e0b', filter: 'drop-shadow(0 2px 4px rgba(245,158,11,0.4))', fontSize: '1.2em' }}></i> Nilai Siswa
       </h1>
       <p className={styles.subtitle}>
         Input dan kelola nilai siswa madrasah.
