@@ -74,6 +74,8 @@ export default function PresensiPage() {
   const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
   const [selectedKelas, setSelectedKelas] = useState('');
   const [selectedMapel, setSelectedMapel] = useState('');
+  const [isMapelDropdownOpen, setIsMapelDropdownOpen] = useState(false);
+  const [searchMapel, setSearchMapel] = useState('');
   const [selectedJam, setSelectedJam] = useState<number[]>([]);
   const [jamTersedia, setJamTersedia] = useState<number[]>([1,2,3,4,5,6,7,8,9,10]);
   const [jamConfigLoading, setJamConfigLoading] = useState(false);
@@ -1057,16 +1059,53 @@ export default function PresensiPage() {
               ) : activeTab === 'absen' ? (
                 <div className={styles.filterGroup}>
                   <label>Mata Pelajaran</label>
-                  <select
-                    value={selectedMapel}
-                    onChange={(e) => setSelectedMapel(e.target.value)}
-                    className={styles.inputField}
-                  >
-                    <option value="">-- Pilih Mata Pelajaran --</option>
-                    {mapelList.map((mapel, i) => (
-                      <option key={i} value={mapel}>{mapel}</option>
-                    ))}
-                  </select>
+                  <div className={styles.dropdownContainer}>
+                    <div 
+                      className={styles.dropdownButton} 
+                      onClick={() => {
+                        setIsMapelDropdownOpen(!isMapelDropdownOpen);
+                        if (!isMapelDropdownOpen) setSearchMapel('');
+                      }}
+                    >
+                      <span style={{ color: selectedMapel ? '#1e293b' : '#94a3b8' }}>
+                        {selectedMapel || '-- Pilih Mata Pelajaran --'}
+                      </span>
+                      <i className="fas fa-chevron-down" style={{ color: '#94a3b8' }}></i>
+                    </div>
+
+                    {isMapelDropdownOpen && (
+                      <div className={styles.dropdownMenu}>
+                        <div className={styles.dropdownSearch}>
+                          <input 
+                            type="text" 
+                            placeholder="Cari mapel..." 
+                            value={searchMapel}
+                            onChange={(e) => setSearchMapel(e.target.value)}
+                            autoFocus
+                          />
+                        </div>
+                        <div className={styles.dropdownList}>
+                          {mapelList
+                            .filter(m => m.toLowerCase().includes(searchMapel.toLowerCase()))
+                            .map((m, i) => (
+                              <div 
+                                key={i} 
+                                className={styles.dropdownItem}
+                                onClick={() => {
+                                  setSelectedMapel(m);
+                                  setIsMapelDropdownOpen(false);
+                                }}
+                              >
+                                {m}
+                              </div>
+                            ))}
+                          {mapelList.filter(m => m.toLowerCase().includes(searchMapel.toLowerCase())).length === 0 && (
+                            <div style={{ padding: '10px', textAlign: 'center', color: '#94a3b8' }}>Mapel tidak ditemukan</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : null}
             </div>
@@ -1181,16 +1220,53 @@ export default function PresensiPage() {
               
               <div className={styles.filterGroup}>
                 <label>Mata Pelajaran</label>
-                <select
-                  value={selectedMapel}
-                  onChange={(e) => setSelectedMapel(e.target.value)}
-                  className={styles.inputField}
-                >
-                  <option value="">-- Pilih Mata Pelajaran --</option>
-                  {mapelList.map((mapel, i) => (
-                    <option key={i} value={mapel}>{mapel}</option>
-                  ))}
-                </select>
+                <div className={styles.dropdownContainer}>
+                  <div 
+                    className={styles.dropdownButton} 
+                    onClick={() => {
+                      setIsMapelDropdownOpen(!isMapelDropdownOpen);
+                      if (!isMapelDropdownOpen) setSearchMapel('');
+                    }}
+                  >
+                    <span style={{ color: selectedMapel ? '#1e293b' : '#94a3b8' }}>
+                      {selectedMapel || '-- Pilih Mata Pelajaran --'}
+                    </span>
+                    <i className="fas fa-chevron-down" style={{ color: '#94a3b8' }}></i>
+                  </div>
+
+                  {isMapelDropdownOpen && (
+                    <div className={styles.dropdownMenu}>
+                      <div className={styles.dropdownSearch}>
+                        <input 
+                          type="text" 
+                          placeholder="Cari mapel..." 
+                          value={searchMapel}
+                          onChange={(e) => setSearchMapel(e.target.value)}
+                          autoFocus
+                        />
+                      </div>
+                      <div className={styles.dropdownList}>
+                        {mapelList
+                          .filter(m => m.toLowerCase().includes(searchMapel.toLowerCase()))
+                          .map((m, i) => (
+                            <div 
+                              key={i} 
+                              className={styles.dropdownItem}
+                              onClick={() => {
+                                setSelectedMapel(m);
+                                setIsMapelDropdownOpen(false);
+                              }}
+                            >
+                              {m}
+                            </div>
+                          ))}
+                        {mapelList.filter(m => m.toLowerCase().includes(searchMapel.toLowerCase())).length === 0 && (
+                          <div style={{ padding: '10px', textAlign: 'center', color: '#94a3b8' }}>Mapel tidak ditemukan</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className={styles.filterGroup}>
