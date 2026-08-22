@@ -26,6 +26,11 @@ export default function SurveyMadrasahPage() {
         if (role === 'admin') setIsAdmin(true);
       } catch (e) {}
     }
+
+    // Check URL parameters for direct linking
+    if (typeof window !== 'undefined' && window.location.search.includes('e-voting')) {
+      setMainTab('e_voting');
+    }
   }, []);
 
   const fetchRekap = async (silent = false) => {
