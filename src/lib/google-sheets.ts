@@ -112,3 +112,7 @@ export async function getJurnalStafDoc() {
 export async function getNilaiSiswaDoc() {
   return getDocWithFallback('1xy6T1Ksnu4K4y9joqXjZ1ojiv2NMp7soYaHi2rosoNQ');
 }
+
+export async function getEVotingDoc() {
+  return getDocWithFallback('1cfMdNVk0iOKNq1MV05UJ07vXH0JTvhIYh_StZuNZd-4');
+}
