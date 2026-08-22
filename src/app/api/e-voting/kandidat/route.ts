@@ -14,7 +14,8 @@ export async function GET() {
       nama: r.get('Nama Paslon') || '',
       visi: r.get('Visi') || '',
       misi: r.get('Misi') || '',
-      foto: r.get('Link Foto') || ''
+      fotoKetua: r.get('Link Foto Ketua') || r.get('Link Foto') || '',
+      fotoWakil: r.get('Link Foto Wakil') || ''
     })).filter(k => k.nama);
 
     // Get votes from Suara Osim

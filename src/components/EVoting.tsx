@@ -207,7 +207,15 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
           <div className={styles.grid}>
             {kandidatList.map((k, idx) => (
               <div key={idx} className={styles.paslonCard}>
-                {k.foto && <img src={k.foto} alt={`Paslon ${k.noUrut}`} className={styles.paslonImg} />}
+                <div style={{ display: 'flex', width: '100%', height: '250px', background: '#f1f5f9' }}>
+                  {k.fotoKetua && <img src={k.fotoKetua} alt={`Ketua ${k.noUrut}`} style={{ flex: k.fotoWakil ? 1 : 'none', width: k.fotoWakil ? '50%' : '100%', objectFit: 'cover', borderRight: k.fotoWakil ? '2px solid white' : 'none' }} />}
+                  {k.fotoWakil && <img src={k.fotoWakil} alt={`Wakil ${k.noUrut}`} style={{ flex: 1, width: '50%', objectFit: 'cover' }} />}
+                  {!k.fotoKetua && !k.fotoWakil && (
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1' }}>
+                      <i className="fas fa-user-tie" style={{ fontSize: '4rem' }}></i>
+                    </div>
+                  )}
+                </div>
                 <div className={styles.paslonContent}>
                   <div className={styles.nomorUrut}>PASLON {k.noUrut}</div>
                   <div className={styles.namaPaslon}>{k.nama}</div>
