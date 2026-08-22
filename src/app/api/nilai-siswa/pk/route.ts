@@ -80,7 +80,7 @@ export async function GET(req: Request) {
     await sheetPK.loadCells('A1:AD1000');
 
     const existingMap = new Map();
-    for (let i = 2; i < 1000; i++) {
+    for (let i = 1; i < 1000; i++) {
       const rowInduk = sheetPK.getCell(i, 1).value as string;
       const rowMapel = sheetPK.getCell(i, 6).value as string;
       if (!rowInduk) break;
@@ -126,7 +126,7 @@ export async function POST(req: Request) {
 
     const existingMap = new Map();
     let maxRow = 1;
-    for (let i = 2; i < 1000; i++) {
+    for (let i = 1; i < 1000; i++) {
       const rowInduk = sheetPK.getCell(i, 1).value as string;
       const rowMapel = sheetPK.getCell(i, 6).value as string;
       const rowTa = sheetPK.getCell(i, 29).value as string;
