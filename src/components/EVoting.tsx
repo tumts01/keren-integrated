@@ -221,9 +221,9 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
                   <div className={styles.namaPaslon}>{k.nama}</div>
                   <div className={styles.visimisi}>
                     <h4>Visi</h4>
-                    <p>{k.visi || '-'}</p>
+                    <p style={{ whiteSpace: 'pre-line' }}>{k.visi || '-'}</p>
                     <h4>Misi</h4>
-                    <p>{k.misi || '-'}</p>
+                    <p style={{ whiteSpace: 'pre-line' }}>{k.misi || '-'}</p>
                   </div>
                   <button className={styles.btnCoblos} onClick={() => handleCoblos(k)} disabled={loading}>
                     <i className="fas fa-check-circle"></i> COBLOS
