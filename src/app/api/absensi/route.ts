@@ -129,6 +129,15 @@ export async function POST(request: Request) {
       r.get('Nama')?.toLowerCase() === nama.toLowerCase() && r.get('tanggal') === today
     );
 
+    // Cek apakah hari ini libur
+    const liburSheet = await getLiburSheet(doc);
+    const liburRows: any[] = await withRetry(() => liburSheet.getRows());
+    const isHoliday = liburRows.find((r: any) => r.get('tanggal') === today);
+
+    if (action === 'checkin' && isHoliday) {
+      return NextResponse.json({ success: false, error: `Absensi dikunci! Hari ini libur: ${isHoliday.get('keterangan')}` }, { status: 400 });
+    }
+
     if (action === 'checkin') {
       if (userRow && userRow.get('jam_masuk')) {
         return NextResponse.json({ success: false, error: 'Anda sudah Check-in hari ini!' }, { status: 400 });
