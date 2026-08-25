@@ -10,7 +10,7 @@ export default function AbsensiGTK() {
   const [time, setTime] = useState<Date | null>(null);
   
   // States for Attendance
-  const [status, setStatus] = useState<{ hasCheckedIn: boolean; hasCheckedOut: boolean; jamMasuk: string | null; jamPulang: string | null }>({ hasCheckedIn: false, hasCheckedOut: false, jamMasuk: null, jamPulang: null });
+  const [status, setStatus] = useState<{ hasCheckedIn: boolean; hasCheckedOut: boolean; jamMasuk: string | null; jamPulang: string | null; isHoliday?: boolean; holidayName?: string | null }>({ hasCheckedIn: false, hasCheckedOut: false, jamMasuk: null, jamPulang: null });
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -321,20 +321,29 @@ export default function AbsensiGTK() {
             <div style={{ textAlign: 'center', color: '#64748b' }}><i className="fas fa-spinner fa-spin"></i> Memeriksa status...</div>
           ) : (
             <div className={styles.actionContainer}>
-              <button 
-                className={styles.btnCheckIn} 
-                onClick={() => handleAbsen('checkin')}
-                disabled={status.hasCheckedIn || actionLoading}
-              >
-                <i className="fas fa-sign-in-alt"></i> Check In
-              </button>
-              <button 
-                className={styles.btnCheckOut} 
-                onClick={() => handleAbsen('checkout')}
-                disabled={!status.hasCheckedIn || status.hasCheckedOut || actionLoading}
-              >
-                <i className="fas fa-sign-out-alt"></i> Check Out
-              </button>
+              {status.isHoliday ? (
+                <div style={{ width: '100%', padding: '15px', background: '#fee2e2', color: '#ef4444', borderRadius: '8px', fontWeight: 'bold', border: '1px solid #fca5a5', textAlign: 'center' }}>
+                  <i className="fas fa-calendar-times" style={{ marginRight: '8px' }}></i>
+                  Absensi Libur: {status.holidayName}
+                </div>
+              ) : (
+                <>
+                  <button 
+                    className={styles.btnCheckIn} 
+                    onClick={() => handleAbsen('checkin')}
+                    disabled={status.hasCheckedIn || actionLoading}
+                  >
+                    <i className="fas fa-sign-in-alt"></i> Check In
+                  </button>
+                  <button 
+                    className={styles.btnCheckOut} 
+                    onClick={() => handleAbsen('checkout')}
+                    disabled={!status.hasCheckedIn || status.hasCheckedOut || actionLoading}
+                  >
+                    <i className="fas fa-sign-out-alt"></i> Check Out
+                  </button>
+                </>
+              )}
             </div>
           )}
 
