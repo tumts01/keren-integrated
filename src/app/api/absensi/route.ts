@@ -79,11 +79,12 @@ export async function GET(request: Request) {
     const liburSheet = await getLiburSheet(doc);
     const liburRows: any[] = await withRetry(() => liburSheet.getRows());
     const todayHoliday = liburRows.find((r: any) => r.get('tanggal') === today);
+    const isSunday = new Date().getDay() === 0;
 
     const finalTodayStatus = {
       ...todayStatus,
-      isHoliday: !!todayHoliday,
-      holidayName: todayHoliday ? todayHoliday.get('keterangan') : null
+      isHoliday: !!todayHoliday || isSunday,
+      holidayName: todayHoliday ? todayHoliday.get('keterangan') : (isSunday ? 'Libur Akhir Pekan (Minggu)' : null)
     };
 
     if (bulan && tahun) {
@@ -141,9 +142,11 @@ export async function POST(request: Request) {
     const liburSheet = await getLiburSheet(doc);
     const liburRows: any[] = await withRetry(() => liburSheet.getRows());
     const isHoliday = liburRows.find((r: any) => r.get('tanggal') === today);
+    const isSunday = new Date().getDay() === 0;
 
-    if (action === 'checkin' && isHoliday) {
-      return NextResponse.json({ success: false, error: `Absensi dikunci! Hari ini libur: ${isHoliday.get('keterangan')}` }, { status: 400 });
+    if (action === 'checkin' && (isHoliday || isSunday)) {
+      const reason = isHoliday ? isHoliday.get('keterangan') : 'Libur Akhir Pekan (Minggu)';
+      return NextResponse.json({ success: false, error: `Absensi dikunci! Hari ini libur: ${reason}` }, { status: 400 });
     }
 
     if (action === 'checkin') {
