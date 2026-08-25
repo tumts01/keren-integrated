@@ -235,8 +235,10 @@ export default function AbsensiGTK() {
     
     if (holidayInfo || isSunday) {
       recapRows.push(
-        <tr key={i}>
-          <td colSpan={8} className={styles.printHoliday} style={{ background: '#f1f5f9', textAlign: 'center', fontWeight: 'bold' }}>
+        <tr key={i} style={{ background: '#f1f5f9' }}>
+          <td>{i}</td>
+          <td>{dayName}, {dateStr}</td>
+          <td colSpan={7} className={styles.printHoliday} style={{ textAlign: 'center', fontWeight: 'bold' }}>
             {holidayInfo ? holidayInfo.keterangan : 'LIBUR AKHIR PEKAN'}
           </td>
         </tr>
