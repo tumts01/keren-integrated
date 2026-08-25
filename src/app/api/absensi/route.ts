@@ -76,6 +76,16 @@ export async function GET(request: Request) {
     let rekap: any[] = [];
     let holidays: any[] = [];
 
+    const liburSheet = await getLiburSheet(doc);
+    const liburRows: any[] = await withRetry(() => liburSheet.getRows());
+    const todayHoliday = liburRows.find((r: any) => r.get('tanggal') === today);
+
+    const finalTodayStatus = {
+      ...todayStatus,
+      isHoliday: !!todayHoliday,
+      holidayName: todayHoliday ? todayHoliday.get('keterangan') : null
+    };
+
     if (bulan && tahun) {
       rekap = rows.filter((r: any) => {
         const isUser = r.get('Nama')?.toLowerCase() === nama.toLowerCase();
@@ -89,8 +99,6 @@ export async function GET(request: Request) {
         status: r.get('status') || '-'
       }));
 
-      const liburSheet = await getLiburSheet(doc);
-      const liburRows: any[] = await withRetry(() => liburSheet.getRows());
       holidays = liburRows.map((r: any) => ({
         tanggal: r.get('tanggal'),
         keterangan: r.get('keterangan')
@@ -100,7 +108,7 @@ export async function GET(request: Request) {
       });
     }
 
-    return NextResponse.json({ success: true, todayStatus, rekap, holidays }, {
+    return NextResponse.json({ success: true, todayStatus: finalTodayStatus, rekap, holidays }, {
       headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' }
     });
 
