@@ -17,6 +17,7 @@ export default function SurveyMadrasahPage() {
   const [rekapData, setRekapData] = useState<any[]>([]);
   const [loadingRekap, setLoadingRekap] = useState(false);
   const [isStandaloneEVoting, setIsStandaloneEVoting] = useState(false);
+  const [isStandaloneHumas, setIsStandaloneHumas] = useState(false);
 
   useEffect(() => {
     const userStr = localStorage.getItem('keren_user_data');
@@ -29,9 +30,15 @@ export default function SurveyMadrasahPage() {
     }
 
     // Check URL parameters for direct linking
-    if (typeof window !== 'undefined' && window.location.search.includes('e-voting')) {
-      setMainTab('e_voting');
-      setIsStandaloneEVoting(true);
+    if (typeof window !== 'undefined') {
+      if (window.location.search.includes('e-voting')) {
+        setMainTab('e_voting');
+        setIsStandaloneEVoting(true);
+      }
+      if (window.location.search.includes('humas')) {
+        setMainTab('humas');
+        setIsStandaloneHumas(true);
+      }
     }
   }, []);
 
@@ -247,7 +254,7 @@ export default function SurveyMadrasahPage() {
 
   return (
     <div className={styles.container}>
-      {!isStandaloneEVoting && (
+      {!(isStandaloneEVoting || isStandaloneHumas) && (
         <>
           <h1 className={styles.title}>
             <i className="fas fa-poll-h"></i> Survey Madrasah
@@ -267,6 +274,17 @@ export default function SurveyMadrasahPage() {
               <i className="fas fa-vote-yea"></i> E-Voting OSIM
             </button>
           </div>
+        </>
+      )}
+
+      {isStandaloneHumas && (
+        <>
+          <h1 className={styles.title}>
+            <i className="fas fa-poll-h"></i> Survey MTs Almaarif 01
+          </h1>
+          <p className={styles.subtitle} style={{ marginBottom: '20px' }}>
+            Berikan masukan dan pendapat Anda untuk membangun MTs Almaarif 01 Singosari menjadi lebih baik.
+          </p>
         </>
       )}
 
