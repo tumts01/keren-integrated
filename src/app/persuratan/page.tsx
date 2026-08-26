@@ -517,7 +517,7 @@ export default function PersuratanPage() {
       }
     }
   });
-  const topGuru = Object.entries(guruCounts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const topGuru = Object.entries(guruCounts).sort((a, b) => b[1] - a[1]);
 
   // Reset page when switching tabs or searching
   useEffect(() => {
