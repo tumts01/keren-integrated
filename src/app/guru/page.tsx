@@ -144,7 +144,7 @@ export default function GuruPage() {
                 <div className={styles.infoGroup}>
                   <span className={styles.infoLabel}>Status</span>
                   <div className={styles.infoValue}>
-                    <span className={`${styles.badge} ${selectedGuru.status.toLowerCase().includes('aktif') && !selectedGuru.status.toLowerCase().includes('non') ? styles.badgeAktif : styles.badgeNon}`}>
+                    <span className={`${styles.badge} ${selectedGuru.status.toLowerCase().includes('aktif') && !selectedGuru.status.toLowerCase().includes('non') && !selectedGuru.status.toLowerCase().includes('tidak') ? styles.badgeAktif : styles.badgeNon}`}>
                       {selectedGuru.status || '-'}
                     </span>
                   </div>
@@ -303,7 +303,7 @@ export default function GuruPage() {
                         </div>
                       </td>
                       <td>
-                        <span className={`${styles.badge} ${guru.status.toLowerCase().includes('aktif') && !guru.status.toLowerCase().includes('non') ? styles.badgeAktif : styles.badgeNon}`}>
+                        <span className={`${styles.badge} ${guru.status.toLowerCase().includes('aktif') && !guru.status.toLowerCase().includes('non') && !guru.status.toLowerCase().includes('tidak') ? styles.badgeAktif : styles.badgeNon}`}>
                           {guru.status || 'Tidak Diketahui'}
                         </span>
                       </td>
@@ -575,7 +575,7 @@ export default function GuruPage() {
     if (!win) return;
 
     const cards = data.map((g) => {
-      const isAktif = g.status.toLowerCase().includes('aktif') && !g.status.toLowerCase().includes('non');
+      const isAktif = g.status.toLowerCase().includes('aktif') && !g.status.toLowerCase().includes('non') && !g.status.toLowerCase().includes('tidak');
       const fotoHtml = g.foto
         ? `<img src="${g.foto}" alt="Foto" />`
         : `<div class="placeholder">${g.nama.charAt(0).toUpperCase()}</div>`;
