@@ -178,6 +178,39 @@ export default function SajianDataPage() {
           </table>
         </div>
       </section>
+
+      {/* Top 10 Asal Sekolah Kelas 7 */}
+      {siswa.rincianAsalSekolah7 && siswa.rincianAsalSekolah7.length > 0 && (
+        <section className={styles.card} style={{ marginTop: '24px' }}>
+          <div className={styles.cardHeader}>
+            <div className={styles.iconWrapper} style={{ background: '#dcfce7', color: '#10b981' }}>
+              <i className="fas fa-school"></i>
+            </div>
+            <h2>Top 10 Asal SD/MI (Kelas 7)</h2>
+          </div>
+          
+          <div className={styles.tableResponsive}>
+            <table className={styles.dataTable}>
+              <thead>
+                <tr>
+                  <th className={styles.categoryCell} style={{ width: '60px', textAlign: 'center' }}>No</th>
+                  <th className={styles.categoryCell}>Asal Sekolah (SD/MI)</th>
+                  <th className={styles.totalCell}>Jumlah Siswa</th>
+                </tr>
+              </thead>
+              <tbody>
+                {siswa.rincianAsalSekolah7.slice(0, 10).map((item: any, idx: number) => (
+                  <tr key={idx}>
+                    <td className={styles.numberCell} style={{ textAlign: 'center' }}>{idx + 1}</td>
+                    <td className={styles.categoryCell} style={{ fontWeight: 500 }}>{item.nama}</td>
+                    <td className={styles.totalCell} style={{ color: '#0f172a', fontWeight: 'bold' }}>{item.jumlah}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

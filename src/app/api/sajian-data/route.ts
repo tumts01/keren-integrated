@@ -152,7 +152,8 @@ export async function GET() {
         Rumah: { L: 0, P: 0 },
         Pesantren: { L: 0, P: 0 },
         'Belum terdata': { L: 0, P: 0 }
-      }
+      },
+      rincianAsalSekolah7: {} as any
     };
 
     siswaRows.forEach(r => {
@@ -183,6 +184,17 @@ export async function GET() {
         }
       }
 
+      // Rincian Asal Sekolah Kelas 7
+      const ta7 = r.get('TA KELAS 7');
+      const ta8 = r.get('TA KELAS 8');
+      const ta9 = r.get('TA KELAS 9');
+      
+      if (ta7 && !ta8 && !ta9) {
+        let key = asal;
+        if (!key || key === '-') key = 'TIDAK DIKETAHUI';
+        siswaStats.rincianAsalSekolah7[key] = (siswaStats.rincianAsalSekolah7[key] || 0) + 1;
+      }
+
       // Domisili
       const dom = (r.get(headerDomisili) || '').toString().toLowerCase().trim();
       let domKey = 'Belum terdata';
@@ -197,6 +209,11 @@ export async function GET() {
         siswaStats.domisili[domKey as keyof typeof siswaStats.domisili][lp]++;
       }
     });
+
+    // Convert rincianAsalSekolah7 to sorted array
+    siswaStats.rincianAsalSekolah7 = Object.entries(siswaStats.rincianAsalSekolah7)
+      .map(([nama, jumlah]) => ({ nama, jumlah }))
+      .sort((a: any, b: any) => b.jumlah - a.jumlah);
 
     return NextResponse.json({
       success: true,
