@@ -430,26 +430,29 @@ export default function AbsensiGTK() {
                   <tr><td colSpan={7} style={{ textAlign: 'center' }}>Memuat data...</td></tr>
                 ) : (
                   recapRows.map((row, idx) => {
-                    // Extracting for UI display (simplifying from print logic)
-                    if (row.props.children.props?.colSpan === 8) {
+                    const children = Array.isArray(row.props.children) ? row.props.children : [row.props.children];
+                    // Holiday row: has background set (isHoliday) — check by row style
+                    const isHolidayRow = row.props.style?.background === '#f1f5f9';
+                    if (isHolidayRow) {
                       return (
-                        <tr key={idx}>
-                          <td colSpan={7} style={{ background: '#f1f5f9', textAlign: 'center', fontWeight: 'bold' }}>
-                            {row.props.children.props.children}
+                        <tr key={idx} style={{ background: '#f1f5f9' }}>
+                          <td>{children[0]?.props?.children}</td>
+                          <td>{children[1]?.props?.children}</td>
+                          <td colSpan={5} style={{ textAlign: 'center', fontWeight: 'bold', color: '#64748b' }}>
+                            {children[2]?.props?.children}
                           </td>
                         </tr>
                       );
                     }
-                    const children = row.props.children;
                     return (
                       <tr key={idx}>
-                        <td>{children[0].props.children}</td>
-                        <td>{children[1].props.children}</td>
-                        <td>{children[2].props.children}</td>
-                        <td><strong style={{ color: '#10b981' }}>{children[3].props.children}</strong></td>
-                        <td>{children[5].props.children}</td>
-                        <td><strong style={{ color: '#f59e0b' }}>{children[6].props.children}</strong></td>
-                        <td>{children[3].props.children !== '-' ? 'Hadir' : '-'}</td>
+                        <td>{children[0]?.props?.children}</td>
+                        <td>{children[1]?.props?.children}</td>
+                        <td>{children[2]?.props?.children}</td>
+                        <td><strong style={{ color: '#10b981' }}>{children[3]?.props?.children}</strong></td>
+                        <td>{children[5]?.props?.children}</td>
+                        <td><strong style={{ color: '#f59e0b' }}>{children[6]?.props?.children}</strong></td>
+                        <td>{children[3]?.props?.children !== '-' ? 'Hadir' : '-'}</td>
                       </tr>
                     );
                   })
