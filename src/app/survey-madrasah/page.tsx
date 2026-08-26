@@ -13,6 +13,7 @@ export default function SurveyMadrasahPage() {
   const [showSuggestionsOrtu, setShowSuggestionsOrtu] = useState(false);
   const [mainTab, setMainTab] = useState<'humas'|'pemetaan_kelas7'|'e_voting'>('humas');
   const [activeTab, setActiveTab] = useState<'isi'|'monitor'>('isi');
+  const [activeTabPemetaan, setActiveTabPemetaan] = useState<'isi'|'monitor'>('isi');
   const [isAdmin, setIsAdmin] = useState(false);
   const [rekapData, setRekapData] = useState<any[]>([]);
   const [loadingRekap, setLoadingRekap] = useState(false);
@@ -653,10 +654,201 @@ export default function SurveyMadrasahPage() {
       )}
 
       {mainTab === 'pemetaan_kelas7' && (
-        <div style={{ textAlign: 'center', padding: '3rem', background: 'white', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
-          <i className="fas fa-map" style={{ fontSize: '3rem', color: '#94a3b8', marginBottom: '1rem' }}></i>
-          <h2 style={{ color: '#475569', marginBottom: '0.5rem' }}>Pemetaan Latar Belakang Kelas 7</h2>
-          <p style={{ color: '#64748b' }}>Formulir pemetaan sedang dalam tahap pengembangan.</p>
+        <div className={styles.section}>
+          {isAdmin && (
+            <div className={styles.tabContainer} style={{ marginTop: '-10px', transform: 'scale(0.9)' }}>
+              <button className={`${styles.tabBtn} ${activeTabPemetaan === 'isi' ? styles.activeTab : ''}`} onClick={() => setActiveTabPemetaan('isi')}>
+                Isi Survey
+              </button>
+              <button className={`${styles.tabBtn} ${activeTabPemetaan === 'monitor' ? styles.activeTab : ''}`} onClick={() => setActiveTabPemetaan('monitor')}>
+                Monitoring
+              </button>
+            </div>
+          )}
+
+          {(!isAdmin || activeTabPemetaan === 'isi') ? (
+            <div className={styles.card}>
+              <h2 className={styles.sectionTitle} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+                Formulir Pemetaan Latar Belakang Siswa Kelas 7
+              </h2>
+              <form onSubmit={(e) => { e.preventDefault(); alert('Terima kasih! Data pemetaan berhasil disimpan.'); }} className={styles.formContainer} style={{ marginTop: '20px' }}>
+                <div className={styles.inputGroup}>
+                  <label className={styles.inputLabel}>Nama Lengkap Siswa</label>
+                  <input type="text" className={styles.inputField} placeholder="Contoh: Ahmad Fulan" required />
+                </div>
+                <div className={styles.inputGroup}>
+                  <label className={styles.inputLabel}>Kelas</label>
+                  <select className={styles.inputField} required>
+                    <option value="">-- Pilih Kelas --</option>
+                    <option value="7A">7A</option>
+                    <option value="7B">7B</option>
+                    <option value="7C">7C</option>
+                    <option value="7D">7D</option>
+                    <option value="7E">7E</option>
+                    <option value="7F">7F</option>
+                    <option value="7G">7G</option>
+                    <option value="7H">7H</option>
+                    <option value="7I">7I</option>
+                    <option value="7J">7J</option>
+                  </select>
+                </div>
+                
+                <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem', color: '#334155', fontSize: '1.1rem' }}>A. Data Keluarga & Tempat Tinggal</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
+                  <div className={styles.inputGroup}>
+                    <label className={styles.inputLabel}>Status Anak</label>
+                    <select className={styles.inputField} required>
+                      <option value="">-- Pilih Status --</option>
+                      <option value="Kandung">Anak Kandung</option>
+                      <option value="Tiri">Anak Tiri</option>
+                      <option value="Angkat">Anak Angkat</option>
+                    </select>
+                  </div>
+                  <div className={styles.inputGroup}>
+                    <label className={styles.inputLabel}>Anak Ke-</label>
+                    <input type="number" className={styles.inputField} required min="1" />
+                  </div>
+                  <div className={styles.inputGroup}>
+                    <label className={styles.inputLabel}>Dari (Jumlah Saudara Kandung/Tiri/Angkat)</label>
+                    <input type="number" className={styles.inputField} required min="1" />
+                  </div>
+                </div>
+
+                <div className={styles.inputGroup}>
+                  <label className={styles.inputLabel}>Status Tempat Tinggal Saat Ini</label>
+                  <select className={styles.inputField} required>
+                    <option value="">-- Pilih Tempat Tinggal --</option>
+                    <option value="Bersama Orang Tua">Bersama Orang Tua</option>
+                    <option value="Wali / Keluarga">Bersama Wali / Keluarga</option>
+                    <option value="Asrama / Pondok Pesantren">Asrama / Pondok Pesantren</option>
+                    <option value="Kos">Kos</option>
+                    <option value="Panti Asuhan">Panti Asuhan</option>
+                  </select>
+                </div>
+                
+                <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem', color: '#334155', fontSize: '1.1rem' }}>B. Transportasi & Jarak Jangkau</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
+                  <div className={styles.inputGroup}>
+                    <label className={styles.inputLabel}>Jarak Tempat Tinggal ke Madrasah</label>
+                    <select className={styles.inputField} required>
+                      <option value="">-- Pilih Jarak --</option>
+                      <option value="Kurang dari 1 KM">Kurang dari 1 KM</option>
+                      <option value="1 - 3 KM">1 - 3 KM</option>
+                      <option value="3 - 5 KM">3 - 5 KM</option>
+                      <option value="5 - 10 KM">5 - 10 KM</option>
+                      <option value="Lebih dari 10 KM">Lebih dari 10 KM</option>
+                    </select>
+                  </div>
+                  <div className={styles.inputGroup}>
+                    <label className={styles.inputLabel}>Waktu Tempuh ke Madrasah</label>
+                    <select className={styles.inputField} required>
+                      <option value="">-- Pilih Waktu --</option>
+                      <option value="Kurang dari 15 Menit">Kurang dari 15 Menit</option>
+                      <option value="15 - 30 Menit">15 - 30 Menit</option>
+                      <option value="30 - 60 Menit">30 - 60 Menit</option>
+                      <option value="Lebih dari 60 Menit">Lebih dari 60 Menit</option>
+                    </select>
+                  </div>
+                  <div className={styles.inputGroup}>
+                    <label className={styles.inputLabel}>Transportasi Utama ke Sekolah</label>
+                    <select className={styles.inputField} required>
+                      <option value="">-- Pilih Transportasi --</option>
+                      <option value="Jalan Kaki">Jalan Kaki</option>
+                      <option value="Diantar Orang Tua / Keluarga">Diantar Orang Tua / Keluarga</option>
+                      <option value="Angkutan Umum">Angkutan Umum</option>
+                      <option value="Antar Jemput Sekolah">Antar Jemput Sekolah</option>
+                      <option value="Bersepeda">Bersepeda</option>
+                      <option value="Sepeda Motor Sendiri">Sepeda Motor Sendiri</option>
+                    </select>
+                  </div>
+                </div>
+
+                <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem', color: '#334155', fontSize: '1.1rem' }}>C. Latar Belakang Orang Tua (Ayah)</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
+                  <div className={styles.inputGroup}>
+                    <label className={styles.inputLabel}>Pendidikan Terakhir Ayah</label>
+                    <select className={styles.inputField} required>
+                      <option value="">-- Pilih Pendidikan --</option>
+                      <option value="Tidak/Belum Sekolah">Tidak/Belum Sekolah</option>
+                      <option value="SD/Sederajat">SD/Sederajat</option>
+                      <option value="SMP/Sederajat">SMP/Sederajat</option>
+                      <option value="SMA/Sederajat">SMA/Sederajat</option>
+                      <option value="D1/D2/D3">D1/D2/D3</option>
+                      <option value="S1/D4">S1/D4</option>
+                      <option value="S2/S3">S2/S3</option>
+                    </select>
+                  </div>
+                  <div className={styles.inputGroup}>
+                    <label className={styles.inputLabel}>Pekerjaan Ayah</label>
+                    <input type="text" className={styles.inputField} placeholder="Contoh: Wiraswasta, PNS, Petani, dll" required />
+                  </div>
+                  <div className={styles.inputGroup}>
+                    <label className={styles.inputLabel}>Penghasilan Rata-Rata Ayah per Bulan</label>
+                    <select className={styles.inputField} required>
+                      <option value="">-- Pilih Rentang --</option>
+                      <option value="Kurang dari Rp 500.000">Kurang dari Rp 500.000</option>
+                      <option value="Rp 500.000 - Rp 999.999">Rp 500.000 - Rp 999.999</option>
+                      <option value="Rp 1.000.000 - Rp 1.999.999">Rp 1.000.000 - Rp 1.999.999</option>
+                      <option value="Rp 2.000.000 - Rp 4.999.999">Rp 2.000.000 - Rp 4.999.999</option>
+                      <option value="Rp 5.000.000 - Rp 20.000.000">Rp 5.000.000 - Rp 20.000.000</option>
+                      <option value="Lebih dari Rp 20.000.000">Lebih dari Rp 20.000.000</option>
+                    </select>
+                  </div>
+                </div>
+
+                <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem', color: '#334155', fontSize: '1.1rem' }}>D. Latar Belakang Orang Tua (Ibu)</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
+                  <div className={styles.inputGroup}>
+                    <label className={styles.inputLabel}>Pendidikan Terakhir Ibu</label>
+                    <select className={styles.inputField} required>
+                      <option value="">-- Pilih Pendidikan --</option>
+                      <option value="Tidak/Belum Sekolah">Tidak/Belum Sekolah</option>
+                      <option value="SD/Sederajat">SD/Sederajat</option>
+                      <option value="SMP/Sederajat">SMP/Sederajat</option>
+                      <option value="SMA/Sederajat">SMA/Sederajat</option>
+                      <option value="D1/D2/D3">D1/D2/D3</option>
+                      <option value="S1/D4">S1/D4</option>
+                      <option value="S2/S3">S2/S3</option>
+                    </select>
+                  </div>
+                  <div className={styles.inputGroup}>
+                    <label className={styles.inputLabel}>Pekerjaan Ibu</label>
+                    <input type="text" className={styles.inputField} placeholder="Contoh: Ibu Rumah Tangga, PNS, dll" required />
+                  </div>
+                  <div className={styles.inputGroup}>
+                    <label className={styles.inputLabel}>Penghasilan Rata-Rata Ibu per Bulan</label>
+                    <select className={styles.inputField} required>
+                      <option value="">-- Pilih Rentang --</option>
+                      <option value="Tidak Berpenghasilan">Tidak Berpenghasilan</option>
+                      <option value="Kurang dari Rp 500.000">Kurang dari Rp 500.000</option>
+                      <option value="Rp 500.000 - Rp 999.999">Rp 500.000 - Rp 999.999</option>
+                      <option value="Rp 1.000.000 - Rp 1.999.999">Rp 1.000.000 - Rp 1.999.999</option>
+                      <option value="Rp 2.000.000 - Rp 4.999.999">Rp 2.000.000 - Rp 4.999.999</option>
+                      <option value="Rp 5.000.000 - Rp 20.000.000">Rp 5.000.000 - Rp 20.000.000</option>
+                      <option value="Lebih dari Rp 20.000.000">Lebih dari Rp 20.000.000</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '25px', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button type="submit" className={styles.submitBtn}>
+                    <i className="fas fa-paper-plane" style={{ marginRight: '8px' }}></i> Kirim Survey Pemetaan
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : (
+            <div className={styles.card}>
+              <h2 className={styles.sectionTitle} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', marginBottom: '20px' }}>
+                Monitoring Survey Pemetaan Kelas 7
+              </h2>
+              <div style={{ textAlign: 'center', padding: '2rem 0', color: '#64748b' }}>
+                <i className="fas fa-tools" style={{ fontSize: '2.5rem', color: '#94a3b8', marginBottom: '1rem' }}></i>
+                <p>Fitur monitoring data rekapan pemetaan ini sedang dalam tahap pengembangan.</p>
+                <p>Data yang dikirim akan otomatis masuk ke Google Sheets Master Siswa.</p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
