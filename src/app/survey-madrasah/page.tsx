@@ -671,14 +671,14 @@ export default function SurveyMadrasahPage() {
               <h2 className={styles.sectionTitle} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
                 Formulir Pemetaan Latar Belakang Siswa Kelas 7
               </h2>
-              <form onSubmit={(e) => { e.preventDefault(); alert('Terima kasih! Data pemetaan berhasil disimpan.'); }} className={styles.formContainer} style={{ marginTop: '20px' }}>
-                <div className={styles.inputGroup}>
-                  <label className={styles.inputLabel}>Nama Siswa</label>
-                  <input type="text" className={styles.inputField} placeholder="Contoh: Ahmad Fulan" required />
+              <form onSubmit={(e) => { e.preventDefault(); alert('Terima kasih! Data pemetaan berhasil disimpan.'); }} className={styles.surveyForm} style={{ marginTop: '20px' }}>
+                <div className={styles.formGroup}>
+                  <label >Nama Siswa</label>
+                  <input type="text" className={styles.input} placeholder="Contoh: Ahmad Fulan" required />
                 </div>
-                <div className={styles.inputGroup}>
-                  <label className={styles.inputLabel}>Kelas</label>
-                  <select className={styles.inputField} required>
+                <div className={styles.formGroup}>
+                  <label >Kelas</label>
+                  <select className={styles.input} required>
                     <option value="">-- Pilih Kelas --</option>
                     <option value="7A">7A</option>
                     <option value="7B">7B</option>
@@ -695,52 +695,52 @@ export default function SurveyMadrasahPage() {
                 
                 <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem', color: '#334155', fontSize: '1.1rem' }}>A. Data Keluarga & Tempat Tinggal</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>Anak ke-</label>
-                    <input type="number" className={styles.inputField} required min="1" />
+                  <div className={styles.formGroup}>
+                    <label >Anak ke-</label>
+                    <input type="number" className={styles.input} required min="1" />
                   </div>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>Jumlah Saudara Kandung</label>
-                    <input type="number" className={styles.inputField} required min="0" />
+                  <div className={styles.formGroup}>
+                    <label >Jumlah Saudara Kandung</label>
+                    <input type="number" className={styles.input} required min="0" />
                   </div>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>Jumlah Saudara Tiri</label>
-                    <input type="number" className={styles.inputField} required min="0" />
+                  <div className={styles.formGroup}>
+                    <label >Jumlah Saudara Tiri</label>
+                    <input type="number" className={styles.input} required min="0" />
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>Tinggal Bersama</label>
-                    <input type="text" className={styles.inputField} placeholder="Contoh: Orang Tua, Wali, Kakek Nenek" required />
+                  <div className={styles.formGroup}>
+                    <label >Tinggal Bersama</label>
+                    <input type="text" className={styles.input} placeholder="Contoh: Orang Tua, Wali, Kakek Nenek" required />
                   </div>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>Status Ayah</label>
-                    <select className={styles.inputField} required>
+                  <div className={styles.formGroup}>
+                    <label >Status Ayah</label>
+                    <select className={styles.input} required>
                       <option value="">-- Pilih Status --</option>
                       <option value="Masih Hidup">Masih Hidup</option>
                       <option value="Meninggal">Meninggal</option>
                     </select>
                   </div>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>Status Ibu</label>
-                    <select className={styles.inputField} required>
+                  <div className={styles.formGroup}>
+                    <label >Status Ibu</label>
+                    <select className={styles.input} required>
                       <option value="">-- Pilih Status --</option>
                       <option value="Masih Hidup">Masih Hidup</option>
                       <option value="Meninggal">Meninggal</option>
                     </select>
                   </div>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>Kondisi Orang Tua</label>
-                    <select className={styles.inputField} required>
+                  <div className={styles.formGroup}>
+                    <label >Kondisi Orang Tua</label>
+                    <select className={styles.input} required>
                       <option value="">-- Pilih Kondisi --</option>
                       <option value="Utuh">Utuh</option>
                       <option value="Bercerai">Bercerai</option>
                     </select>
                   </div>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>Tinggal di</label>
-                    <select className={styles.inputField} required>
+                  <div className={styles.formGroup}>
+                    <label >Tinggal di</label>
+                    <select className={styles.input} required>
                       <option value="">-- Pilih Tempat Tinggal --</option>
                       <option value="Pesantren">Pesantren</option>
                       <option value="Rumah">Rumah (Non-Pesantren)</option>
@@ -750,86 +750,86 @@ export default function SurveyMadrasahPage() {
 
                 <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem', color: '#334155', fontSize: '1.1rem' }}>B. Keseharian & Psikologis Siswa</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>Perasaan di Pesantren (Jika Tinggal di Pesantren)</label>
-                    <input type="text" className={styles.inputField} placeholder="Contoh: Senang, Betah, Sering Rindu Rumah, dll" />
+                  <div className={styles.formGroup}>
+                    <label >Perasaan di Pesantren (Jika Tinggal di Pesantren)</label>
+                    <input type="text" className={styles.input} placeholder="Contoh: Senang, Betah, Sering Rindu Rumah, dll" />
                   </div>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>Uang Saku per-Hari</label>
-                    <input type="text" className={styles.inputField} placeholder="Contoh: Rp 15.000" required />
+                  <div className={styles.formGroup}>
+                    <label >Uang Saku per-Hari</label>
+                    <input type="text" className={styles.input} placeholder="Contoh: Rp 15.000" required />
                   </div>
                 </div>
 
-                <div className={styles.inputGroup}>
-                  <label className={styles.inputLabel}>Pernah Menjadi Korban Bullying?</label>
-                  <select className={styles.inputField} required>
+                <div className={styles.formGroup}>
+                  <label >Pernah Menjadi Korban Bullying?</label>
+                  <select className={styles.input} required>
                     <option value="">-- Pilih --</option>
                     <option value="Tidak Pernah">Tidak Pernah</option>
                     <option value="Pernah">Pernah</option>
                   </select>
                 </div>
-                <div className={styles.inputGroup}>
-                  <label className={styles.inputLabel}>Kenyamanan di Kelas</label>
-                  <textarea className={styles.inputField} rows={2} placeholder="Bagaimana perasaanmu belajar di kelas saat ini?" required></textarea>
+                <div className={styles.formGroup}>
+                  <label >Kenyamanan di Kelas</label>
+                  <textarea className={styles.input} rows={2} placeholder="Bagaimana perasaanmu belajar di kelas saat ini?" required></textarea>
                 </div>
-                <div className={styles.inputGroup}>
-                  <label className={styles.inputLabel}>Kendala di Kelas</label>
-                  <textarea className={styles.inputField} rows={2} placeholder="Apakah ada teman yang mengganggu, atau masalah lain?"></textarea>
+                <div className={styles.formGroup}>
+                  <label >Kendala di Kelas</label>
+                  <textarea className={styles.input} rows={2} placeholder="Apakah ada teman yang mengganggu, atau masalah lain?"></textarea>
                 </div>
-                <div className={styles.inputGroup}>
-                  <label className={styles.inputLabel}>Cara Menghabiskan Waktu Luang</label>
-                  <input type="text" className={styles.inputField} placeholder="Contoh: Bermain Game, Membaca, Olahraga, dll" required />
+                <div className={styles.formGroup}>
+                  <label >Cara Menghabiskan Waktu Luang</label>
+                  <input type="text" className={styles.input} placeholder="Contoh: Bermain Game, Membaca, Olahraga, dll" required />
                 </div>
-                <div className={styles.inputGroup}>
-                  <label className={styles.inputLabel}>Riwayat Sakit (Penyakit Bawaan/Sering Kambuh)</label>
-                  <input type="text" className={styles.inputField} placeholder="Isi 'Tidak ada' jika sehat" required />
+                <div className={styles.formGroup}>
+                  <label >Riwayat Sakit (Penyakit Bawaan/Sering Kambuh)</label>
+                  <input type="text" className={styles.input} placeholder="Isi 'Tidak ada' jika sehat" required />
                 </div>
 
                 <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem', color: '#334155', fontSize: '1.1rem' }}>C. Akademik, Minat & Bakat</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>Tipe Belajar (Visual/Auditori/Kinestetik)</label>
-                    <input type="text" className={styles.inputField} placeholder="Visual (Melihat) / Auditori (Mendengar) / Kinestetik (Praktek)" required />
+                  <div className={styles.formGroup}>
+                    <label >Tipe Belajar (Visual/Auditori/Kinestetik)</label>
+                    <input type="text" className={styles.input} placeholder="Visual (Melihat) / Auditori (Mendengar) / Kinestetik (Praktek)" required />
                   </div>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>Mata Pelajaran yang Paling Disukai</label>
-                    <input type="text" className={styles.inputField} placeholder="Contoh: Matematika, Penjas" required />
+                  <div className={styles.formGroup}>
+                    <label >Mata Pelajaran yang Paling Disukai</label>
+                    <input type="text" className={styles.input} placeholder="Contoh: Matematika, Penjas" required />
                   </div>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>Mata Pelajaran yang Paling Sulit</label>
-                    <input type="text" className={styles.inputField} placeholder="Contoh: Bahasa Inggris" required />
+                  <div className={styles.formGroup}>
+                    <label >Mata Pelajaran yang Paling Sulit</label>
+                    <input type="text" className={styles.input} placeholder="Contoh: Bahasa Inggris" required />
                   </div>
                 </div>
 
-                <div className={styles.inputGroup}>
-                  <label className={styles.inputLabel}>Kendala Belajar (Yang Dirasakan)</label>
-                  <textarea className={styles.inputField} rows={2} placeholder="Contoh: Susah konsentrasi, mudah ngantuk, dll"></textarea>
+                <div className={styles.formGroup}>
+                  <label >Kendala Belajar (Yang Dirasakan)</label>
+                  <textarea className={styles.input} rows={2} placeholder="Contoh: Susah konsentrasi, mudah ngantuk, dll"></textarea>
                 </div>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>Minat / Bakat</label>
-                    <input type="text" className={styles.inputField} placeholder="Contoh: Menyanyi, Menggambar, Melukis" required />
+                  <div className={styles.formGroup}>
+                    <label >Minat / Bakat</label>
+                    <input type="text" className={styles.input} placeholder="Contoh: Menyanyi, Menggambar, Melukis" required />
                   </div>
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>Bidang Olahraga yang Disukai</label>
-                    <input type="text" className={styles.inputField} placeholder="Contoh: Futsal, Voli, Badminton" required />
+                  <div className={styles.formGroup}>
+                    <label >Bidang Olahraga yang Disukai</label>
+                    <input type="text" className={styles.input} placeholder="Contoh: Futsal, Voli, Badminton" required />
                   </div>
                 </div>
 
-                <div className={styles.inputGroup}>
-                  <label className={styles.inputLabel}>Lomba yang Ingin Diikuti (Bila Ada)</label>
-                  <input type="text" className={styles.inputField} placeholder="Contoh: Lomba Pramuka, MTQ, dll" />
+                <div className={styles.formGroup}>
+                  <label >Lomba yang Ingin Diikuti (Bila Ada)</label>
+                  <input type="text" className={styles.input} placeholder="Contoh: Lomba Pramuka, MTQ, dll" />
                 </div>
-                <div className={styles.inputGroup}>
-                  <label className={styles.inputLabel}>Prestasi yang Pernah Diraih (Akademik/Non-Akademik)</label>
-                  <input type="text" className={styles.inputField} placeholder="Contoh: Juara 1 Lari antar SD tingkat kecamatan" />
+                <div className={styles.formGroup}>
+                  <label >Prestasi yang Pernah Diraih (Akademik/Non-Akademik)</label>
+                  <input type="text" className={styles.input} placeholder="Contoh: Juara 1 Lari antar SD tingkat kecamatan" />
                 </div>
 
                 <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem', color: '#334155', fontSize: '1.1rem' }}>D. Harapan Kepada Guru Bimbingan Konseling (BK)</h3>
-                <div className={styles.inputGroup}>
-                  <label className={styles.inputLabel}>Kesediaan Datang ke Ruang BK untuk Konseling</label>
-                  <select className={styles.inputField} required>
+                <div className={styles.formGroup}>
+                  <label >Kesediaan Datang ke Ruang BK untuk Konseling</label>
+                  <select className={styles.input} required>
                     <option value="">-- Pilih Kesediaan --</option>
                     <option value="Sangat Bersedia">Sangat Bersedia</option>
                     <option value="Bersedia">Bersedia</option>
@@ -837,18 +837,18 @@ export default function SurveyMadrasahPage() {
                     <option value="Tidak Bersedia">Tidak Bersedia</option>
                   </select>
                 </div>
-                <div className={styles.inputGroup}>
-                  <label className={styles.inputLabel}>Harapan untuk Guru BK</label>
-                  <textarea className={styles.inputField} rows={2} placeholder="Sampaikan saran, keluh kesah, atau harapanmu agar Guru BK lebih baik lagi." required></textarea>
+                <div className={styles.formGroup}>
+                  <label >Harapan untuk Guru BK</label>
+                  <textarea className={styles.input} rows={2} placeholder="Sampaikan saran, keluh kesah, atau harapanmu agar Guru BK lebih baik lagi." required></textarea>
                 </div>
 
-                <div className={styles.inputGroup}>
-                  <label className={styles.inputLabel}>Catatan Tambahan (Bila ada kondisi khusus)</label>
-                  <textarea className={styles.inputField} rows={2} placeholder="Isi bila ada info khusus yang perlu Guru BK ketahui..."></textarea>
+                <div className={styles.formGroup}>
+                  <label >Catatan Tambahan (Bila ada kondisi khusus)</label>
+                  <textarea className={styles.input} rows={2} placeholder="Isi bila ada info khusus yang perlu Guru BK ketahui..."></textarea>
                 </div>
 
                 <div style={{ marginTop: '25px', display: 'flex', justifyContent: 'flex-end' }}>
-                  <button type="submit" className={styles.submitBtn}>
+                  <button type="submit" className={styles.btnSubmit}>
                     <i className="fas fa-paper-plane" style={{ marginRight: '8px' }}></i> Kirim Survey Pemetaan
                   </button>
                 </div>
