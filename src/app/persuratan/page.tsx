@@ -1716,14 +1716,14 @@ export default function PersuratanPage() {
                       <tr><td style={{ padding: '4px 0' }}>Jabatan</td><td style={{ padding: '4px 0' }}>:</td><td style={{ padding: '4px 0' }}>Kepala Madrasah Tsanawiyah Almaarif 01 Singosari</td></tr>
                     </tbody>
                   </table>
-                  <p>Memberi tugas kepada:</p>
+                  <p style={{ margin: '0 0 10px 0' }}>Memberi tugas kepada:</p>
                   
                   {generateGuruTugas.some(g => g.guru.id === 'terlampir') ? (
                     <div style={{ padding: '0 20px', fontWeight: 'bold', fontStyle: 'italic', margin: '20px 0' }}>
                       Nama-nama terlampir
                     </div>
                   ) : (
-                    <div style={{ padding: '0 20px' }}>
+                    <div style={{ padding: '0 20px', marginTop: '8px', marginBottom: '16px' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '10px', fontSize: '12pt', fontFamily: 'Arial, sans-serif' }}>
                         <thead>
                           <tr>
