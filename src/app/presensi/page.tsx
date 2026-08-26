@@ -1639,7 +1639,7 @@ export default function PresensiPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                     <span style={{ fontSize: '0.82rem', color: '#64748b' }}>{rsSiaList.length} siswa dengan total S/I/A tercatat</span>
-                    <span style={{ fontSize: '0.78rem', background: '#fee2e2', color: '#dc2626', padding: '2px 8px', borderRadius: 20 }}>🔴 = total lebih dari 5 hari</span>
+                    <span style={{ fontSize: '0.78rem', background: '#fee2e2', color: '#dc2626', padding: '2px 8px', borderRadius: 20 }}>🔴 = lebih dari atau sama dengan 5 hari</span>
                   </div>
                   <button onClick={() => exportAlphaExcel(rsSiaList)}
                     style={{ background: '#16a34a', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
@@ -1667,20 +1667,21 @@ export default function PresensiPage() {
                       </thead>
                       <tbody>
                         {rsSiaList.map((s, i) => {
-                          const totalDays = (s.S + s.I + s.A) / 10;
-                          const isRed = totalDays > 5;
+                          const sDays = s.S / 10;
+                          const iDays = s.I / 10;
+                          const aDays = s.A / 10;
+                          
                           return (
-                            <tr key={s.nama} style={{ borderBottom: '1px solid #f1f5f9', background: isRed ? '#fff5f5' : i % 2 === 0 ? 'white' : '#f8fafc' }}>
+                            <tr key={s.nama} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? 'white' : '#f8fafc' }}>
                               <td style={{ padding: '9px 14px', textAlign: 'center', color: '#94a3b8' }}>{i + 1}</td>
-                              <td style={{ padding: '9px 14px', fontWeight: 600, color: isRed ? '#dc2626' : '#1e293b' }}>
-                                {isRed && <i className="fas fa-exclamation-triangle" style={{ color: '#dc2626', marginRight: 6, fontSize: '0.75rem' }}></i>}
+                              <td style={{ padding: '9px 14px', fontWeight: 600, color: '#1e293b' }}>
                                 {s.nama}
                               </td>
                               <td style={{ padding: '9px 14px', color: '#475569' }}>{s.kelas}</td>
                               <td style={{ padding: '9px 14px', color: '#64748b' }}>{s.domisili || '-'}</td>
-                              <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, color: s.S > 0 ? '#d97706' : '#94a3b8' }}>{s.S > 0 ? Number((s.S / 10).toFixed(1)) : '-'}</td>
-                              <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, color: s.I > 0 ? '#ea580c' : '#94a3b8' }}>{s.I > 0 ? Number((s.I / 10).toFixed(1)) : '-'}</td>
-                              <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, color: totalDays > 5 ? '#dc2626' : s.A > 0 ? '#7c3aed' : '#94a3b8', background: isRed ? '#fee2e2' : 'transparent', borderRadius: 6 }}>{s.A > 0 ? Number((s.A / 10).toFixed(1)) : '-'}</td>
+                              <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, color: sDays >= 5 ? '#dc2626' : s.S > 0 ? '#d97706' : '#94a3b8', background: sDays >= 5 ? '#fee2e2' : 'transparent' }}>{s.S > 0 ? Number(sDays.toFixed(1)) : '-'}</td>
+                              <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, color: iDays >= 5 ? '#dc2626' : s.I > 0 ? '#ea580c' : '#94a3b8', background: iDays >= 5 ? '#fee2e2' : 'transparent' }}>{s.I > 0 ? Number(iDays.toFixed(1)) : '-'}</td>
+                              <td style={{ padding: '9px 14px', textAlign: 'center', fontWeight: 700, color: aDays >= 5 ? '#dc2626' : s.A > 0 ? '#7c3aed' : '#94a3b8', background: aDays >= 5 ? '#fee2e2' : 'transparent' }}>{s.A > 0 ? Number(aDays.toFixed(1)) : '-'}</td>
                             </tr>
                           );
                         })}
