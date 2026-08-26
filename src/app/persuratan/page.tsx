@@ -883,7 +883,7 @@ export default function PersuratanPage() {
               </div>
               <div className={styles.statInfo}>
                 <span className={styles.statLabel}>GURU YANG SEDANG BERTUGAS</span>
-                <div style={{ fontSize: '0.8rem', color: '#334155', fontWeight: 500, marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <div style={{ fontSize: '0.8rem', color: '#334155', fontWeight: 500, marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '110px', overflowY: 'auto', paddingRight: '5px' }}>
                   {topGuru.length > 0 ? topGuru.map(([nama, count], idx) => (
                     <span key={idx}><i className="fas fa-circle" style={{ fontSize: '0.4rem', color: '#10b981', marginRight: '6px', transform: 'translateY(-2px)' }}></i> {nama} <span style={{ color: '#64748b' }}>({count} tugas)</span></span>
                   )) : <span>Belum ada data tugas aktif</span>}
