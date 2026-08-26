@@ -87,6 +87,7 @@ export default function EmisPage() {
   const totalSiswa = statsBase.length;
   const sudahMasuk = statsBase.filter(s => s.masukEMIS).length;
   const sudahValid = statsBase.filter(s => s.emisValid === 'SAMA').length;
+  const sudahValidWalkel = statsBase.filter(s => s.validasiWalkel === 'VALID').length;
 
   const handleToggle = async (siswa: SiswaEmis, field: 'masukEMIS' | 'emisValid' | 'validasiWalkel') => {
     if (!isAdmin && field !== 'validasiWalkel') {
@@ -224,6 +225,16 @@ export default function EmisPage() {
           <div className={styles.statInfo}>
             <span className={styles.statLabel}>Belum Masuk EMIS</span>
             <span className={styles.statValue} style={{ color: '#ef4444' }}>{totalSiswa - sudahMasuk}</span>
+          </div>
+        </div>
+        <div className={styles.statCard}>
+          <div className={styles.statIcon} style={{ background: '#f5f3ff', color: '#8b5cf6' }}>
+            <i className="fas fa-user-check"></i>
+          </div>
+          <div className={styles.statInfo}>
+            <span className={styles.statLabel}>Validasi Walkel</span>
+            <span className={styles.statValue} style={{ color: '#8b5cf6' }}>{sudahValidWalkel}</span>
+            <span className={styles.statSub}>{totalSiswa > 0 ? Math.round(sudahValidWalkel / totalSiswa * 100) : 0}%</span>
           </div>
         </div>
       </div>
