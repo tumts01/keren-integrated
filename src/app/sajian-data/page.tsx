@@ -181,29 +181,27 @@ export default function SajianDataPage() {
 
       {/* Top 10 Asal Sekolah Kelas 7 */}
       {siswa.rincianAsalSekolah7 && siswa.rincianAsalSekolah7.length > 0 && (
-        <section className={styles.card} style={{ marginTop: '24px' }}>
-          <div className={styles.cardHeader}>
-            <div className={styles.iconWrapper} style={{ background: '#dcfce7', color: '#10b981' }}>
-              <i className="fas fa-school"></i>
-            </div>
-            <h2>Top 10 Asal SD/MI (Kelas 7)</h2>
+        <section className={styles.section}>
+          <div className={styles.sectionTitle}>
+            <i className="fas fa-school" style={{ color: '#10b981' }}></i>
+            Top 10 Asal SD/MI (Siswa Kelas 7)
           </div>
           
-          <div className={styles.tableResponsive}>
+          <div className={styles.tableWrapper}>
             <table className={styles.dataTable}>
               <thead>
                 <tr>
-                  <th className={styles.categoryCell} style={{ width: '60px', textAlign: 'center' }}>No</th>
-                  <th className={styles.categoryCell}>Asal Sekolah (SD/MI)</th>
-                  <th className={styles.totalCell}>Jumlah Siswa</th>
+                  <th style={{ width: '60px', textAlign: 'center' }}>No</th>
+                  <th>Asal Sekolah (SD/MI)</th>
+                  <th style={{ textAlign: 'center' }}>Jumlah Siswa</th>
                 </tr>
               </thead>
               <tbody>
                 {siswa.rincianAsalSekolah7.slice(0, 10).map((item: any, idx: number) => (
                   <tr key={idx}>
-                    <td className={styles.numberCell} style={{ textAlign: 'center' }}>{idx + 1}</td>
-                    <td className={styles.categoryCell} style={{ fontWeight: 500 }}>{item.nama}</td>
-                    <td className={styles.totalCell} style={{ color: '#0f172a', fontWeight: 'bold' }}>{item.jumlah}</td>
+                    <td className={styles.numberCell}>{idx + 1}</td>
+                    <td className={styles.categoryCell} style={{ borderRight: 'none' }}>{item.nama}</td>
+                    <td className={styles.totalCell}>{item.jumlah}</td>
                   </tr>
                 ))}
               </tbody>
