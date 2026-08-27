@@ -847,10 +847,14 @@ export default function SurveyMadrasahPage() {
 
                 <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem', color: '#334155', fontSize: '1.1rem' }}>C. Akademik, Minat & Bakat</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
-                  <div className={styles.formGroup}>
-                    <label >Tipe Belajar (Visual/Auditori/Kinestetik)</label>
-                    <input type="text" name="Tipe Belajar" className={styles.input} placeholder="Visual (Melihat) / Auditori (Mendengar) / Kinestetik (Praktek)" required />
-                  </div>
+                    <div className={styles.formGroup}>
+                      <label>Tipe Belajar</label>
+                      <select name="Tipe Belajar" className={styles.input} required>
+                        <option value="">-- Pilih Tipe Belajar --</option>
+                        <option value="Berkelompok">Berkelompok</option>
+                        <option value="Sendiri">Sendiri</option>
+                      </select>
+                    </div>
                   <div className={styles.formGroup}>
                     <label >Mata Pelajaran yang Paling Disukai</label>
                     <input type="text" name="Mata pelajaran yang paling disukai" className={styles.input} placeholder="Contoh: Matematika, Penjas" required />
