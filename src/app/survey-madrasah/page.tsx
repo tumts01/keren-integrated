@@ -700,7 +700,7 @@ export default function SurveyMadrasahPage() {
                               <li key={idx} onClick={() => {
                                 setFormDataPemetaan({
                                   ...formDataPemetaan, 
-                                  nama: `${s.nama} - ${s.rombel || s.tahunAjaran || ''}`, 
+                                  nama: s.nama, 
                                   kelas: s.rombel || s.tahunAjaran || ''
                                 });
                                 setShowSuggestionsPemetaan(false);
