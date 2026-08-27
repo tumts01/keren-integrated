@@ -7,163 +7,130 @@ export default async function CetakPemetaanKelasPage({ params }: { params: Promi
   const resolvedParams = await params;
   const targetKelas = decodeURIComponent(resolvedParams.kelas).toUpperCase();
   
-  if (!targetKelas) {
-    notFound();
-  }
+  if (!targetKelas) { notFound(); }
 
   const doc = await getEVotingDoc();
   const sheet = doc.sheetsByTitle['LATAR BELAKANG'];
-  
-  if (!sheet) {
-    return <div>Sheet LATAR BELAKANG tidak ditemukan</div>;
-  }
+  if (!sheet) return <div>Sheet LATAR BELAKANG tidak ditemukan</div>;
 
   await sheet.loadHeaderRow();
   const rows = await sheet.getRows();
   
-  // Safely check header existence
-  const headers = sheet.headerValues;
-  const getVal = (r: any, keys: string[]) => {
-    for (const k of keys) {
-      if (headers.includes(k)) {
-        try { const v = r.get(k); if (v) return v; } catch(e) {}
-      }
-    }
-    return '';
+  // Safe getter - returns empty string if header not found
+  const g = (row: any, key: string) => {
+    try { return row.get(key) || ''; } catch(e) { return ''; }
   };
 
-  // Filter by class
-  const classRows = rows.filter(r => {
-    const k = getVal(r, ['Kelas', 'Kelas Saat Ini']).trim().toUpperCase();
-    return k === targetKelas;
-  });
+  const classRows = rows.filter(r => g(r, 'Kelas').trim().toUpperCase() === targetKelas);
 
   if (classRows.length === 0) {
     return (
-      <div style={{ padding: '20px', fontFamily: 'sans-serif', textAlign: 'center' }}>
+      <div style={{ padding: '40px', fontFamily: 'sans-serif', textAlign: 'center' }}>
         <h2>Belum ada data untuk kelas {targetKelas}</h2>
-        <button onClick={() => window.close()} style={{ padding: '10px 20px', cursor: 'pointer' }}>Tutup</button>
+        <a href="/survey-madrasah" style={{ padding: '10px 20px', background: '#2563eb', color: 'white', borderRadius: '6px', textDecoration: 'none' }}>Kembali</a>
       </div>
     );
   }
 
-  const allData = classRows.map(row => {
-    const tipeBelajar = getVal(row, ['Tipe Belajar']);
-    return {
-      nama: getVal(row, ['Nama Lengkap Anak', 'Nama Lengkap Siswa', 'Nama']) || '-',
-      kelas: getVal(row, ['Kelas', 'Kelas Saat Ini']) || '-',
-      items: [
-        { label: 'Anak ke-', value: getVal(row, ['Anak ke-']) || '-' },
-        { label: 'Saudara kandung', value: getVal(row, ['Saudara kandung']) || '-' },
-        { label: 'Saudara tiri', value: getVal(row, ['Saudara tiri']) || '-' },
-        { label: 'Tinggal bersama', value: getVal(row, ['Tinggal bersama']) || '-' },
-        { label: 'Status Ayah', value: getVal(row, ['Status Ayah']) || '-' },
-        { label: 'Status Ibu', value: getVal(row, ['Status Ibu']) || '-' },
-        { label: 'Kondisi orangtua', value: getVal(row, ['Kondisi Orangtua', 'Kondisi orangtua']) || '-' },
-        { label: 'Tinggal di', value: getVal(row, ['Alamat Lengkap', 'Tinggal di']) || '-' },
-        { label: 'Perasaan di pesantren', value: getVal(row, ['Perasaan saat ini tentang belajar di MTs / Pesantren']) || '-' },
-        { label: 'Riwayat sakit sejak kecil', value: getVal(row, ['Penyakit kronis / menular / riwayat sakit khusus sejak kecil']) || '-' },
-        { label: 'Uang saku/hari', value: getVal(row, ['Rata-rata Uang saku/hari']) || '-' },
-        { label: 'Pernah menjadi korban bullying', value: getVal(row, ['Pernah menjadi korban bullying/perundungan? Jika YA pada saat dijenjang apa?']) || '-' },
-        { label: 'Kenyamanan di kelas', value: getVal(row, ['Kenyamanan berada di lingkungan kelas / sekolah saat ini']) || '-' },
-        { label: 'Kendala di kelas', value: getVal(row, ['Kendala apa saja yang dialami selama disekolah saat ini']) || '-' },
-        { label: 'Menghabiskan waktu luang', value: getVal(row, ['Bagaimana Anda menghabiskan waktu luang']) || '-' },
-        { label: 'Lomba yang ingin diikuti', value: getVal(row, ['Lomba/kompetisi akademik maupun non akademik yang ingin diikuti']) || '-' },
-        { label: 'Cara belajar', value: (getVal(row, ['Cara belajar yang diinginkan/menyenangkan']) + ' ' + (tipeBelajar ? `(${tipeBelajar})` : '')).trim() || '-' },
-        { label: 'Catatan tambahan', value: getVal(row, ['Catatan Tambahan', 'Catatan tambahan']) || '-' },
-      ]
-    };
-  });
+  const allData = classRows.map(row => ({
+    nama: g(row, 'Nama Siswa') || '-',
+    kelas: g(row, 'Kelas') || '-',
+    items: [
+      { label: 'Anak ke-', value: g(row, 'Anak ke-') || '-' },
+      { label: 'Saudara kandung', value: g(row, 'Saudara Kandung') || '-' },
+      { label: 'Saudara tiri', value: g(row, 'Saudara tiri') || '-' },
+      { label: 'Tinggal bersama', value: g(row, 'Tinggal Bersama') || '-' },
+      { label: 'Status Ayah', value: g(row, 'Status Ayah') || '-' },
+      { label: 'Status Ibu', value: g(row, 'Status Ibu') || '-' },
+      { label: 'Kondisi orangtua', value: g(row, 'Kondisi Orang Tua') || '-' },
+      { label: 'Tinggal di', value: g(row, 'Tinggal di') || '-' },
+      { label: 'Perasaan di Pesantren', value: g(row, 'Perasaan di Pesantren') || '-' },
+      { label: 'Riwayat sakit sejak kecil', value: g(row, 'Riwayat Sakit') || '-' },
+      { label: 'Uang saku/hari', value: g(row, 'Uang Saku per-Hari') || '-' },
+      { label: 'Pernah menjadi korban bullying', value: g(row, 'Pernah menjadi korban bullying') || '-' },
+      { label: 'Kenyamanan di kelas', value: g(row, 'Kenyamanan di kelas') || '-' },
+      { label: 'Kendala di kelas', value: g(row, 'Kendala di kelas') || '-' },
+      { label: 'Menghabiskan waktu luang', value: g(row, 'Menghabiskan waktu luang') || '-' },
+      { label: 'Tipe belajar', value: g(row, 'Tipe Belajar') || '-' },
+      { label: 'Mata pelajaran disukai', value: g(row, 'Mata pelajaran yang paling disukai') || '-' },
+      { label: 'Mata pelajaran sulit', value: g(row, 'Mata pelajaran yang paling sulit') || '-' },
+      { label: 'Kendala belajar', value: g(row, 'Kendala belajar') || '-' },
+      { label: 'Minat / Bakat', value: g(row, 'Minat / Bakat') || '-' },
+      { label: 'Olahraga yang disukai', value: g(row, 'Bidang olahraga yang disukai') || '-' },
+      { label: 'Lomba yang ingin diikuti', value: g(row, 'Lomba yang ingin diikuti') || '-' },
+      { label: 'Prestasi yang pernah diraih', value: g(row, 'Prestasi yang pernah diraih') || '-' },
+      { label: 'Kesediaan ke ruang BK', value: g(row, 'Kesediaan datang ke ruang BK') || '-' },
+      { label: 'Harapan untuk Guru BK', value: g(row, 'Harapan untuk Guru BK') || '-' },
+      { label: 'Catatan tambahan', value: g(row, 'Catatan Tambahan') || '-' },
+    ]
+  }));
 
   return (
-    <div style={{
-      fontFamily: 'Arial, sans-serif',
-      background: '#f1f5f9',
-      margin: 0,
-      padding: 0,
-      color: 'black',
-      boxSizing: 'border-box',
-      minHeight: '100vh'
-    }}>
+    <div style={{ fontFamily: 'Arial, sans-serif', background: '#f1f5f9', margin: 0, padding: 0, color: 'black' }}>
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
-          @page { size: A4; margin: 0; }
+          @page { size: A4; margin: 15mm; }
           body { background: white; margin: 0; padding: 0; }
           .no-print { display: none !important; }
-          .page-break { page-break-after: always; margin-bottom: 0 !important; border: none !important; padding: 15mm !important; }
-          .page-break:last-child { page-break-after: avoid; }
+          .page-item { page-break-after: always; box-shadow: none !important; }
+          .page-item:last-child { page-break-after: avoid; }
         }
-        table, th, td {
-          border: 1px solid black;
-          border-collapse: collapse;
-        }
-        th, td {
-          padding: 6px 10px;
-          font-size: 10.5pt;
-        }
-        .page-break {
-          background: white;
-          max-width: 210mm;
-          margin: 0 auto 20px auto;
-          padding: 20mm;
-          box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-        }
+        table { border-collapse: collapse; width: 100%; }
+        table, th, td { border: 1px solid #333; }
+        th, td { padding: 5px 9px; font-size: 10pt; vertical-align: top; }
+        .page-item { background: white; max-width: 210mm; margin: 0 auto 20px; padding: 15mm 20mm; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
       `}} />
 
-      <div className="no-print" style={{ position: 'sticky', top: 0, background: 'white', padding: '15px 20px', borderBottom: '1px solid #cbd5e1', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 100 }}>
+      <div className="no-print" style={{ position: 'sticky', top: 0, background: 'white', padding: '12px 20px', borderBottom: '2px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 100, boxShadow: '0 2px 4px rgba(0,0,0,0.08)' }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: '1.2rem', color: '#334155' }}>Pemetaan Kelas {targetKelas}</h2>
-          <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '0.9rem' }}>Total: {allData.length} siswa</p>
+          <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#1e40af' }}>📄 Pemetaan Kelas {targetKelas}</span>
+          <span style={{ marginLeft: '12px', color: '#64748b', fontSize: '0.9rem' }}>{allData.length} siswa</span>
         </div>
-        <button onClick={() => window.print()} style={{
-          padding: '10px 20px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px'
-        }}>
-          <i className="fas fa-print"></i> Cetak PDF
+        <button onClick={() => window.print()} style={{ padding: '10px 22px', background: '#1d4ed8', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.95rem' }}>
+          🖨️ Cetak / Save PDF
         </button>
       </div>
 
-      <div style={{ padding: '20px' }} className="print-padding-zero">
+      <div style={{ padding: '20px' }}>
         {allData.map((data, idx) => (
-          <div key={idx} className="page-break">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '25px' }}>
-              <img src="/logo.png" alt="Logo" style={{ width: '65px', height: '65px', marginRight: '20px' }} />
+          <div key={idx} className="page-item">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', gap: '18px' }}>
+              <img src="/logo.png" alt="Logo" style={{ width: '60px', height: '60px', flexShrink: 0 }} />
               <div style={{ textAlign: 'center' }}>
-                <h2 style={{ margin: 0, fontSize: '13pt', fontWeight: 'bold' }}>DATA PRIBADI SISWA KELAS VII</h2>
-                <h3 style={{ margin: '4px 0', fontSize: '11pt', fontWeight: 'bold' }}>TH. AJARAN 2025/2026</h3>
-                <h3 style={{ margin: 0, fontSize: '13pt', fontWeight: 'bold' }}>MTs ALMAARIF 01 SINGOSARI</h3>
+                <div style={{ fontWeight: 'bold', fontSize: '12pt' }}>DATA PRIBADI SISWA KELAS VII</div>
+                <div style={{ fontWeight: 'bold', fontSize: '11pt', margin: '3px 0' }}>TH. AJARAN 2025/2026</div>
+                <div style={{ fontWeight: 'bold', fontSize: '12pt' }}>MTs ALMAARIF 01 SINGOSARI</div>
               </div>
-              <div style={{ width: '65px' }}></div>
+              <div style={{ width: '60px' }}></div>
             </div>
 
-            <div style={{ marginBottom: '15px' }}>
-              <table style={{ border: 'none', width: '100%', fontSize: '11pt', fontWeight: 'bold' }}>
-                <tbody>
-                  <tr>
-                    <td style={{ border: 'none', padding: '4px 0', width: '80px' }}>NAMA</td>
-                    <td style={{ border: 'none', padding: '4px 0', width: '20px' }}>:</td>
-                    <td style={{ border: 'none', padding: '4px 0' }}>{data.nama.toUpperCase()}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ border: 'none', padding: '4px 0' }}>KELAS</td>
-                    <td style={{ border: 'none', padding: '4px 0' }}>:</td>
-                    <td style={{ border: 'none', padding: '4px 0' }}>{data.kelas}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <table style={{ width: '100%', marginBottom: '20px' }}>
-              <thead>
+            <table style={{ border: 'none', marginBottom: '12px', fontSize: '11pt', fontWeight: 'bold' }}>
+              <tbody>
                 <tr>
-                  <th style={{ width: '40px', textAlign: 'center' }}>No</th>
-                  <th style={{ width: '230px', textAlign: 'center' }}>Item Pernyataan</th>
-                  <th style={{ textAlign: 'center' }}>Jawaban</th>
+                  <td style={{ border: 'none', width: '80px', padding: '3px 0' }}>NAMA</td>
+                  <td style={{ border: 'none', width: '15px', padding: '3px 0' }}>:</td>
+                  <td style={{ border: 'none', padding: '3px 0' }}>{data.nama.toUpperCase()}</td>
+                </tr>
+                <tr>
+                  <td style={{ border: 'none', padding: '3px 0' }}>KELAS</td>
+                  <td style={{ border: 'none', padding: '3px 0' }}>:</td>
+                  <td style={{ border: 'none', padding: '3px 0' }}>{data.kelas}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <table style={{ marginBottom: '18px' }}>
+              <thead>
+                <tr style={{ background: '#f0f4ff' }}>
+                  <th style={{ width: '35px', textAlign: 'center' }}>No</th>
+                  <th style={{ width: '220px' }}>Item Pernyataan</th>
+                  <th>Jawaban</th>
                 </tr>
               </thead>
               <tbody>
-                {data.items.map((item, index) => (
-                  <tr key={index}>
-                    <td style={{ textAlign: 'center' }}>{index + 1}</td>
+                {data.items.map((item, i) => (
+                  <tr key={i} style={{ background: i % 2 === 0 ? 'white' : '#f9fafb' }}>
+                    <td style={{ textAlign: 'center' }}>{i + 1}</td>
                     <td>{item.label}</td>
                     <td>{item.value}</td>
                   </tr>
@@ -171,9 +138,8 @@ export default async function CetakPemetaanKelasPage({ params }: { params: Promi
               </tbody>
             </table>
 
-            <div style={{ border: '1px solid black', padding: '15px', minHeight: '120px' }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '10px' }}>Catatan Wali Kelas:</div>
-              <div></div>
+            <div style={{ border: '1px solid #333', padding: '12px', minHeight: '100px' }}>
+              <strong>Catatan Wali Kelas:</strong>
             </div>
           </div>
         ))}
