@@ -44,6 +44,10 @@ export default function SurveyMadrasahPage() {
         setMainTab('humas');
         setIsStandaloneHumas(true);
       }
+      if (window.location.search.includes('pemetaan')) {
+        setMainTab('pemetaan_kelas7');
+        setIsStandalonePemetaan(true);
+      }
     }
   }, []);
 
