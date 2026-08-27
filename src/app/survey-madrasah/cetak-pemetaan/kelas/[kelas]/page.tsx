@@ -85,7 +85,7 @@ export default function CetakPemetaanKelasPage() {
     <div className="print-container" style={{ fontFamily: 'Arial, sans-serif', background: '#f1f5f9', margin: 0, padding: 0, color: 'black' }}>
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
-          @page { size: A4; margin: 12mm; }
+          @page { size: A4; margin: 8mm; }
           body { background: white !important; }
           .print-container { background: white !important; }
           .print-wrapper { padding: 0 !important; }
@@ -95,7 +95,7 @@ export default function CetakPemetaanKelasPage() {
         }
         table { border-collapse: collapse; width: 100%; }
         table, th, td { border: 1px solid #333; }
-        th, td { padding: 5px 9px; font-size: 10pt; vertical-align: top; }
+        th, td { padding: 3px 6px; font-size: 9pt; vertical-align: top; line-height: 1.2; }
         .page-item { background: white; max-width: 210mm; margin: 0 auto 20px; padding: 12mm 18mm; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
       `}} />
 
@@ -116,20 +116,20 @@ export default function CetakPemetaanKelasPage() {
           const kelasVal = getField(row, 'Kelas');
           return (
             <div key={idx} className="page-item">
-              <div style={{ textAlign: 'center', marginBottom: '18px', borderBottom: '2px solid #333', paddingBottom: '12px' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '13pt' }}>DATA PRIBADI SISWA KELAS VII</div>
-                <div style={{ fontWeight: 'bold', fontSize: '11pt', margin: '3px 0' }}>TAHUN AJARAN 2025/2026</div>
-                <div style={{ fontWeight: 'bold', fontSize: '13pt' }}>MTs ALMAARIF 01 SINGOSARI</div>
+              <div style={{ textAlign: 'center', marginBottom: '8px', borderBottom: '2px solid #333', paddingBottom: '6px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '12pt' }}>DATA PRIBADI SISWA KELAS VII</div>
+                <div style={{ fontWeight: 'bold', fontSize: '10pt', margin: '2px 0' }}>TAHUN AJARAN 2025/2026</div>
+                <div style={{ fontWeight: 'bold', fontSize: '12pt' }}>MTs ALMAARIF 01 SINGOSARI</div>
               </div>
 
-              <table style={{ border: 'none', marginBottom: '10px', fontSize: '11pt', fontWeight: 'bold' }}>
+              <table style={{ border: 'none', marginBottom: '4px', fontSize: '10pt', fontWeight: 'bold' }}>
                 <tbody>
                   <tr><td style={{ border: 'none', width: '80px', padding: '2px 0' }}>NAMA</td><td style={{ border: 'none', width: '12px', padding: '2px 0' }}>:</td><td style={{ border: 'none', padding: '2px 0' }}>{nama.toUpperCase()}</td></tr>
                   <tr><td style={{ border: 'none', padding: '2px 0' }}>KELAS</td><td style={{ border: 'none', padding: '2px 0' }}>:</td><td style={{ border: 'none', padding: '2px 0' }}>{kelasVal}</td></tr>
                 </tbody>
               </table>
 
-              <table style={{ marginBottom: '15px' }}>
+              <table style={{ marginBottom: '8px' }}>
                 <thead>
                   <tr style={{ background: '#f0f4ff' }}>
                     <th style={{ width: '35px', textAlign: 'center' }}>No</th>
@@ -148,7 +148,7 @@ export default function CetakPemetaanKelasPage() {
                 </tbody>
               </table>
 
-              <div style={{ border: '1px solid #333', padding: '12px', minHeight: '90px' }}>
+              <div style={{ border: '1px solid #333', padding: '8px', minHeight: '60px', fontSize: '9pt' }}>
                 <strong>Catatan Wali Kelas:</strong>
               </div>
             </div>
