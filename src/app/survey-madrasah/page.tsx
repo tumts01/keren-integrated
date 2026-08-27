@@ -937,17 +937,68 @@ export default function SurveyMadrasahPage() {
               </form>
             </div>
           ) : (
-            <div className={styles.card}>
-              <h2 className={styles.sectionTitle} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', marginBottom: '20px' }}>
-                Monitoring Survey Pemetaan Kelas 7
-              </h2>
-              <div style={{ textAlign: 'center', padding: '2rem 0', color: '#64748b' }}>
-                <i className="fas fa-tools" style={{ fontSize: '2.5rem', color: '#94a3b8', marginBottom: '1rem' }}></i>
-                <p>Fitur monitoring data rekapan pemetaan ini sedang dalam tahap pengembangan.</p>
-                <p>Data yang dikirim akan otomatis masuk ke Google Sheets Master Siswa.</p>
+              <div className={styles.card}>
+                <h2 className={styles.sectionTitle} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Data Survey Pemetaan Kelas 7</span>
+                  <button onClick={() => {
+                    setLoadingPemetaan(true);
+                    fetch('/api/survey-madrasah/pemetaan').then(res=>res.json()).then(data=>{
+                      if(data.success) setRekapPemetaan(data.data);
+                    }).finally(()=>setLoadingPemetaan(false));
+                  }} className={styles.btnAction} style={{ background: '#f1f5f9', color: '#475569', fontSize: '0.85rem' }}>
+                    <i className="fas fa-sync-alt"></i> Refresh
+                  </button>
+                </h2>
+                
+                {loadingPemetaan ? (
+                  <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+                    <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', color: '#0ea5e9' }}></i>
+                    <p style={{ marginTop: '10px', color: '#64748b' }}>Memuat data pemetaan...</p>
+                  </div>
+                ) : rekapPemetaan.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '2rem 0', color: '#64748b' }}>
+                    <i className="fas fa-inbox" style={{ fontSize: '2.5rem', color: '#cbd5e1', marginBottom: '1rem' }}></i>
+                    <p>Belum ada data pemetaan yang masuk.</p>
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                      <thead>
+                        <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                          <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Tanggal</th>
+                          <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Nama Siswa</th>
+                          <th style={{ padding: '12px', textAlign: 'center', color: '#475569' }}>Kelas</th>
+                          <th style={{ padding: '12px', textAlign: 'center', color: '#475569' }}>Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rekapPemetaan.map((row, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                            <td style={{ padding: '12px' }}>{row['Timestamp'] || '-'}</td>
+                            <td style={{ padding: '12px', fontWeight: 'bold' }}>{row['Nama Lengkap Anak'] || row['Nama Lengkap Siswa'] || row['Nama'] || '-'}</td>
+                            <td style={{ padding: '12px', textAlign: 'center' }}>
+                              <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                                {row['Kelas'] || row['Kelas Saat Ini'] || '-'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px', textAlign: 'center' }}>
+                              <a 
+                                href={`/survey-madrasah/cetak-pemetaan/${row._rowIndex}`} 
+                                target="_blank" 
+                                className={styles.btnSubmit}
+                                style={{ background: '#0ea5e9', padding: '6px 12px', fontSize: '0.85rem', width: 'auto', display: 'inline-block' }}
+                              >
+                                <i className="fas fa-print"></i> Cetak
+                              </a>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            )}
         </div>
       )}
 
