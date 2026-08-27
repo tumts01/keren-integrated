@@ -705,7 +705,7 @@ export default function SurveyMadrasahPage() {
                                 });
                                 setShowSuggestionsPemetaan(false);
                               }}>
-                                <strong>{s.nama} - {s.rombel || s.tahunAjaran}</strong>
+                                <strong>{s.nama}</strong>
                               </li>
                             );
                           })}
