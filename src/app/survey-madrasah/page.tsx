@@ -22,6 +22,7 @@ export default function SurveyMadrasahPage() {
   const [loadingRekap, setLoadingRekap] = useState(false);
   const [isStandaloneEVoting, setIsStandaloneEVoting] = useState(false);
   const [isStandaloneHumas, setIsStandaloneHumas] = useState(false);
+  const [isStandalonePemetaan, setIsStandalonePemetaan] = useState(false);
 
   useEffect(() => {
     const userStr = localStorage.getItem('keren_user_data');
@@ -267,7 +268,7 @@ export default function SurveyMadrasahPage() {
 
   return (
     <div className={styles.container}>
-      {!(isStandaloneEVoting || isStandaloneHumas) && (
+      {!(isStandaloneEVoting || isStandaloneHumas || isStandalonePemetaan) && (
         <>
           <h1 className={styles.title}>
             <i className="fas fa-poll-h"></i> Survey Madrasah
@@ -291,15 +292,26 @@ export default function SurveyMadrasahPage() {
       )}
 
       {isStandaloneHumas && (
-        <>
-          <h1 className={styles.title}>
-            <i className="fas fa-poll-h"></i> Survey MTs Almaarif 01
-          </h1>
-          <p className={styles.subtitle} style={{ marginBottom: '20px' }}>
-            Berikan masukan dan pendapat Anda untuk membangun MTs Almaarif 01 Singosari menjadi lebih baik.
-          </p>
-        </>
-      )}
+          <>
+            <h1 className={styles.title}>
+              <i className="fas fa-poll-h"></i> Survey MTs Almaarif 01
+            </h1>
+            <p className={styles.subtitle} style={{ marginBottom: '20px' }}>
+              Berikan masukan dan pendapat Anda untuk membangun MTs Almaarif 01 Singosari menjadi lebih baik.
+            </p>
+          </>
+        )}
+        
+        {isStandalonePemetaan && (
+          <>
+            <h1 className={styles.title}>
+              <i className="fas fa-id-card"></i> Pemetaan Siswa Kelas 7
+            </h1>
+            <p className={styles.subtitle} style={{ marginBottom: '20px' }}>
+              Silakan lengkapi formulir pemetaan latar belakang dan minat bakat ini.
+            </p>
+          </>
+        )}
 
       {mainTab === 'humas' && (
         <>
