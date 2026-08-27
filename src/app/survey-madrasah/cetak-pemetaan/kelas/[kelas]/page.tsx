@@ -21,9 +21,20 @@ export default async function CetakPemetaanKelasPage({ params }: { params: Promi
   await sheet.loadHeaderRow();
   const rows = await sheet.getRows();
   
-  // Filter by class (checking multiple possible column names for class)
+  // Safely check header existence
+  const headers = sheet.headerValues;
+  const getVal = (r: any, keys: string[]) => {
+    for (const k of keys) {
+      if (headers.includes(k)) {
+        try { const v = r.get(k); if (v) return v; } catch(e) {}
+      }
+    }
+    return '';
+  };
+
+  // Filter by class
   const classRows = rows.filter(r => {
-    const k = (r.get('Kelas') || r.get('Kelas Saat Ini') || '').trim().toUpperCase();
+    const k = getVal(r, ['Kelas', 'Kelas Saat Ini']).trim().toUpperCase();
     return k === targetKelas;
   });
 
@@ -36,30 +47,33 @@ export default async function CetakPemetaanKelasPage({ params }: { params: Promi
     );
   }
 
-  const allData = classRows.map(row => ({
-    nama: row.get('Nama Lengkap Anak') || row.get('Nama Lengkap Siswa') || row.get('Nama') || '-',
-    kelas: row.get('Kelas') || row.get('Kelas Saat Ini') || '-',
-    items: [
-      { label: 'Anak ke-', value: row.get('Anak ke-') || '-' },
-      { label: 'Saudara kandung', value: row.get('Saudara kandung') || '-' },
-      { label: 'Saudara tiri', value: row.get('Saudara tiri') || '-' },
-      { label: 'Tinggal bersama', value: row.get('Tinggal bersama') || '-' },
-      { label: 'Status Ayah', value: row.get('Status Ayah') || '-' },
-      { label: 'Status Ibu', value: row.get('Status Ibu') || '-' },
-      { label: 'Kondisi orangtua', value: row.get('Kondisi Orangtua') || row.get('Kondisi orangtua') || '-' },
-      { label: 'Tinggal di', value: row.get('Alamat Lengkap') || row.get('Tinggal di') || '-' },
-      { label: 'Perasaan di pesantren', value: row.get('Perasaan saat ini tentang belajar di MTs / Pesantren') || '-' },
-      { label: 'Riwayat sakit sejak kecil', value: row.get('Penyakit kronis / menular / riwayat sakit khusus sejak kecil') || '-' },
-      { label: 'Uang saku/hari', value: row.get('Rata-rata Uang saku/hari') || '-' },
-      { label: 'Pernah menjadi korban bullying', value: row.get('Pernah menjadi korban bullying/perundungan? Jika YA pada saat dijenjang apa?') || '-' },
-      { label: 'Kenyamanan di kelas', value: row.get('Kenyamanan berada di lingkungan kelas / sekolah saat ini') || '-' },
-      { label: 'Kendala di kelas', value: row.get('Kendala apa saja yang dialami selama disekolah saat ini') || '-' },
-      { label: 'Menghabiskan waktu luang', value: row.get('Bagaimana Anda menghabiskan waktu luang') || '-' },
-      { label: 'Lomba yang ingin diikuti', value: row.get('Lomba/kompetisi akademik maupun non akademik yang ingin diikuti') || '-' },
-      { label: 'Cara belajar', value: (row.get('Cara belajar yang diinginkan/menyenangkan') || '') + ' ' + (row.get('Tipe Belajar') ? `(${row.get('Tipe Belajar')})` : '') },
-      { label: 'Catatan tambahan', value: row.get('Catatan Tambahan') || row.get('Catatan tambahan') || '-' },
-    ]
-  }));
+  const allData = classRows.map(row => {
+    const tipeBelajar = getVal(row, ['Tipe Belajar']);
+    return {
+      nama: getVal(row, ['Nama Lengkap Anak', 'Nama Lengkap Siswa', 'Nama']) || '-',
+      kelas: getVal(row, ['Kelas', 'Kelas Saat Ini']) || '-',
+      items: [
+        { label: 'Anak ke-', value: getVal(row, ['Anak ke-']) || '-' },
+        { label: 'Saudara kandung', value: getVal(row, ['Saudara kandung']) || '-' },
+        { label: 'Saudara tiri', value: getVal(row, ['Saudara tiri']) || '-' },
+        { label: 'Tinggal bersama', value: getVal(row, ['Tinggal bersama']) || '-' },
+        { label: 'Status Ayah', value: getVal(row, ['Status Ayah']) || '-' },
+        { label: 'Status Ibu', value: getVal(row, ['Status Ibu']) || '-' },
+        { label: 'Kondisi orangtua', value: getVal(row, ['Kondisi Orangtua', 'Kondisi orangtua']) || '-' },
+        { label: 'Tinggal di', value: getVal(row, ['Alamat Lengkap', 'Tinggal di']) || '-' },
+        { label: 'Perasaan di pesantren', value: getVal(row, ['Perasaan saat ini tentang belajar di MTs / Pesantren']) || '-' },
+        { label: 'Riwayat sakit sejak kecil', value: getVal(row, ['Penyakit kronis / menular / riwayat sakit khusus sejak kecil']) || '-' },
+        { label: 'Uang saku/hari', value: getVal(row, ['Rata-rata Uang saku/hari']) || '-' },
+        { label: 'Pernah menjadi korban bullying', value: getVal(row, ['Pernah menjadi korban bullying/perundungan? Jika YA pada saat dijenjang apa?']) || '-' },
+        { label: 'Kenyamanan di kelas', value: getVal(row, ['Kenyamanan berada di lingkungan kelas / sekolah saat ini']) || '-' },
+        { label: 'Kendala di kelas', value: getVal(row, ['Kendala apa saja yang dialami selama disekolah saat ini']) || '-' },
+        { label: 'Menghabiskan waktu luang', value: getVal(row, ['Bagaimana Anda menghabiskan waktu luang']) || '-' },
+        { label: 'Lomba yang ingin diikuti', value: getVal(row, ['Lomba/kompetisi akademik maupun non akademik yang ingin diikuti']) || '-' },
+        { label: 'Cara belajar', value: (getVal(row, ['Cara belajar yang diinginkan/menyenangkan']) + ' ' + (tipeBelajar ? `(${tipeBelajar})` : '')).trim() || '-' },
+        { label: 'Catatan tambahan', value: getVal(row, ['Catatan Tambahan', 'Catatan tambahan']) || '-' },
+      ]
+    };
+  });
 
   return (
     <div style={{
