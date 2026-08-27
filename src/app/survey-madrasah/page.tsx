@@ -13,6 +13,7 @@ export default function SurveyMadrasahPage() {
   const [showSuggestionsOrtu, setShowSuggestionsOrtu] = useState(false);
   const [showSuggestionsPemetaan, setShowSuggestionsPemetaan] = useState(false);
   const [formDataPemetaan, setFormDataPemetaan] = useState({ nama: '', kelas: '' });
+  const [searchPemetaan, setSearchPemetaan] = useState('');
   const [mainTab, setMainTab] = useState<'humas'|'pemetaan_kelas7'|'e_voting'>('humas');
   const [activeTab, setActiveTab] = useState<'isi'|'monitor'>('isi');
   const [activeTabPemetaan, setActiveTabPemetaan] = useState<'isi'|'monitor'>('isi');
