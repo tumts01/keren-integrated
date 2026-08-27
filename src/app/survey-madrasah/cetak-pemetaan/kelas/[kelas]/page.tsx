@@ -82,11 +82,13 @@ export default function CetakPemetaanKelasPage() {
   ];
 
   return (
-    <div style={{ fontFamily: 'Arial, sans-serif', background: '#f1f5f9', margin: 0, padding: 0, color: 'black' }}>
+    <div className="print-container" style={{ fontFamily: 'Arial, sans-serif', background: '#f1f5f9', margin: 0, padding: 0, color: 'black' }}>
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           @page { size: A4; margin: 12mm; }
           body { background: white !important; }
+          .print-container { background: white !important; }
+          .print-wrapper { padding: 0 !important; }
           .no-print { display: none !important; }
           .page-item { page-break-after: always; box-shadow: none !important; margin: 0 !important; padding: 0 !important; }
           .page-item:last-child { page-break-after: avoid; }
@@ -107,7 +109,7 @@ export default function CetakPemetaanKelasPage() {
         </button>
       </div>
 
-      <div style={{ padding: '20px' }}>
+      <div className="print-wrapper" style={{ padding: '20px' }}>
         {data.map((row, idx) => {
           const items = buildItems(row);
           const nama = getField(row, 'Nama Siswa', 'Nama Lengkap Anak', 'Nama');
