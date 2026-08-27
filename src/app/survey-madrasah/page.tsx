@@ -200,22 +200,31 @@ export default function SurveyMadrasahPage() {
         'Harapan Ke Depan': formDataSiswa.harapan
       };
     } else if (type === 'kepuasan_ortu') {
-      payloadData = {
-        'Nama Wali Murid': formDataOrtu.namaWali,
-        'Nama Siswa': formDataOrtu.namaSiswa,
-        'Kelas Siswa': formDataOrtu.kelasSiswa,
-        'Q1: Administrasi Ramah': formDataOrtu.q1,
-        'Q2: Pelayanan Cepat': formDataOrtu.q2,
-        'Q3: Lingkungan Bersih': formDataOrtu.q3,
-        'Q4: Keamanan Baik': formDataOrtu.q4,
-        'Q5: Perhatian Guru': formDataOrtu.q5,
-        'Q6: Guru Adil': formDataOrtu.q6,
-        'Q7: Info Jelas': formDataOrtu.q7,
-        'Q8: Wali Kelas Dihubungi': formDataOrtu.q8,
-        'Q9: Melibatkan Ortu': formDataOrtu.q9,
-        'Q10: Anak Aman Nyaman': formDataOrtu.q10,
-      };
-    }
+        payloadData = {
+          'Nama Wali Murid': formDataOrtu.namaWali,
+          'Nama Siswa': formDataOrtu.namaSiswa,
+          'Kelas Siswa': formDataOrtu.kelasSiswa,
+          'Q1: Administrasi Ramah': formDataOrtu.q1,
+          'Q2: Pelayanan Cepat': formDataOrtu.q2,
+          'Q3: Lingkungan Bersih': formDataOrtu.q3,
+          'Q4: Keamanan Baik': formDataOrtu.q4,
+          'Q5: Perhatian Guru': formDataOrtu.q5,
+          'Q6: Guru Adil': formDataOrtu.q6,
+          'Q7: Info Jelas': formDataOrtu.q7,
+          'Q8: Wali Kelas Dihubungi': formDataOrtu.q8,
+          'Q9: Melibatkan Ortu': formDataOrtu.q9,
+          'Q10: Anak Aman Nyaman': formDataOrtu.q10,
+        };
+      } else if (type === 'pemetaan_kelas7') {
+        const formData = new FormData(e.target as HTMLFormElement);
+        payloadData = {
+          'Kelas': formDataPemetaan.kelas,
+          'Nama Siswa': formDataPemetaan.nama,
+        };
+        formData.forEach((value, key) => {
+          if (key !== 'searchPemetaan') payloadData[key] = value;
+        });
+      }
 
     try {
       const res = await fetch('/api/survey-madrasah', {
@@ -674,7 +683,7 @@ export default function SurveyMadrasahPage() {
               <h2 className={styles.sectionTitle} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
                 Formulir Pemetaan Latar Belakang Siswa Kelas 7
               </h2>
-              <form onSubmit={(e) => { e.preventDefault(); alert('Terima kasih! Data pemetaan berhasil disimpan.'); }} className={styles.surveyForm} style={{ marginTop: '20px' }}>
+              <form onSubmit={(e) => submitSurvey(e, 'pemetaan_kelas7')} className={styles.surveyForm} style={{ marginTop: '20px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
                                       <div className={styles.formGroup} style={{ position: 'relative' }}>
                       <label>Nama Siswa <span style={{color: 'red'}}>*</span></label>
@@ -748,26 +757,26 @@ export default function SurveyMadrasahPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
                   <div className={styles.formGroup}>
                     <label >Anak ke-</label>
-                    <input type="number" className={styles.input} required min="1" />
+                    <input type="number" name="Anak ke-" className={styles.input} required min="1" />
                   </div>
                   <div className={styles.formGroup}>
                     <label >Jumlah Saudara Kandung</label>
-                    <input type="number" className={styles.input} required min="0" />
+                    <input type="number" name="Saudara Kandung" className={styles.input} required min="0" />
                   </div>
                   <div className={styles.formGroup}>
                     <label >Jumlah Saudara Tiri</label>
-                    <input type="number" className={styles.input} required min="0" />
+                    <input type="number" name="Saudara tiri" className={styles.input} required min="0" />
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
                   <div className={styles.formGroup}>
                     <label >Tinggal Bersama</label>
-                    <input type="text" className={styles.input} placeholder="Contoh: Orang Tua, Wali, Kakek Nenek" required />
+                    <input type="text" name="Tinggal Bersama" className={styles.input} placeholder="Contoh: Orang Tua, Wali, Kakek Nenek" required />
                   </div>
                   <div className={styles.formGroup}>
                     <label >Status Ayah</label>
-                    <select className={styles.input} required>
+                    <select name="Status Ayah" className={styles.input} required>
                       <option value="">-- Pilih Status --</option>
                       <option value="Masih Hidup">Masih Hidup</option>
                       <option value="Meninggal">Meninggal</option>
@@ -775,7 +784,7 @@ export default function SurveyMadrasahPage() {
                   </div>
                   <div className={styles.formGroup}>
                     <label >Status Ibu</label>
-                    <select className={styles.input} required>
+                    <select name="Status Ibu" className={styles.input} required>
                       <option value="">-- Pilih Status --</option>
                       <option value="Masih Hidup">Masih Hidup</option>
                       <option value="Meninggal">Meninggal</option>
@@ -783,7 +792,7 @@ export default function SurveyMadrasahPage() {
                   </div>
                   <div className={styles.formGroup}>
                     <label >Kondisi Orang Tua</label>
-                    <select className={styles.input} required>
+                    <select name="Kondisi Orang Tua" className={styles.input} required>
                       <option value="">-- Pilih Kondisi --</option>
                       <option value="Utuh">Utuh</option>
                       <option value="Bercerai">Bercerai</option>
@@ -791,7 +800,7 @@ export default function SurveyMadrasahPage() {
                   </div>
                   <div className={styles.formGroup}>
                     <label >Tinggal di</label>
-                    <select className={styles.input} required>
+                    <select name="Tinggal di" className={styles.input} required>
                       <option value="">-- Pilih Tempat Tinggal --</option>
                       <option value="Pesantren">Pesantren</option>
                       <option value="Rumah">Rumah (Non-Pesantren)</option>
@@ -803,17 +812,17 @@ export default function SurveyMadrasahPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
                   <div className={styles.formGroup}>
                     <label >Perasaan di Pesantren (Jika Tinggal di Pesantren)</label>
-                    <input type="text" className={styles.input} placeholder="Contoh: Senang, Betah, Sering Rindu Rumah, dll" />
+                    <input type="text" name="Perasaan di Pesantren" className={styles.input} placeholder="Contoh: Senang, Betah, Sering Rindu Rumah, dll" />
                   </div>
                   <div className={styles.formGroup}>
                     <label >Uang Saku per-Hari</label>
-                    <input type="text" className={styles.input} placeholder="Contoh: Rp 15.000" required />
+                    <input type="text" name="Uang Saku per-Hari" className={styles.input} placeholder="Contoh: Rp 15.000" required />
                   </div>
                 </div>
 
                 <div className={styles.formGroup}>
                   <label >Pernah Menjadi Korban Bullying?</label>
-                  <select className={styles.input} required>
+                  <select name="Pernah menjadi korban bullying" className={styles.input} required>
                     <option value="">-- Pilih --</option>
                     <option value="Tidak Pernah">Tidak Pernah</option>
                     <option value="Pernah">Pernah</option>
@@ -821,66 +830,66 @@ export default function SurveyMadrasahPage() {
                 </div>
                 <div className={styles.formGroup}>
                   <label >Kenyamanan di Kelas</label>
-                  <textarea className={styles.input} rows={2} placeholder="Bagaimana perasaanmu belajar di kelas saat ini?" required></textarea>
+                  <textarea name="Kenyamanan di kelas" className={styles.input} rows={2} placeholder="Bagaimana perasaanmu belajar di kelas saat ini?" required></textarea>
                 </div>
                 <div className={styles.formGroup}>
                   <label >Kendala di Kelas</label>
-                  <textarea className={styles.input} rows={2} placeholder="Apakah ada teman yang mengganggu, atau masalah lain?"></textarea>
+                  <textarea name="Kendala di kelas" className={styles.input} rows={2} placeholder="Apakah ada teman yang mengganggu, atau masalah lain?"></textarea>
                 </div>
                 <div className={styles.formGroup}>
                   <label >Cara Menghabiskan Waktu Luang</label>
-                  <input type="text" className={styles.input} placeholder="Contoh: Bermain Game, Membaca, Olahraga, dll" required />
+                  <input type="text" name="Menghabiskan waktu luang" className={styles.input} placeholder="Contoh: Bermain Game, Membaca, Olahraga, dll" required />
                 </div>
                 <div className={styles.formGroup}>
                   <label >Riwayat Sakit (Penyakit Bawaan/Sering Kambuh)</label>
-                  <input type="text" className={styles.input} placeholder="Isi 'Tidak ada' jika sehat" required />
+                  <input type="text" name="Riwayat Sakit" className={styles.input} placeholder="Isi 'Tidak ada' jika sehat" required />
                 </div>
 
                 <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem', color: '#334155', fontSize: '1.1rem' }}>C. Akademik, Minat & Bakat</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
                   <div className={styles.formGroup}>
                     <label >Tipe Belajar (Visual/Auditori/Kinestetik)</label>
-                    <input type="text" className={styles.input} placeholder="Visual (Melihat) / Auditori (Mendengar) / Kinestetik (Praktek)" required />
+                    <input type="text" name="Tipe Belajar" className={styles.input} placeholder="Visual (Melihat) / Auditori (Mendengar) / Kinestetik (Praktek)" required />
                   </div>
                   <div className={styles.formGroup}>
                     <label >Mata Pelajaran yang Paling Disukai</label>
-                    <input type="text" className={styles.input} placeholder="Contoh: Matematika, Penjas" required />
+                    <input type="text" name="Mata pelajaran yang paling disukai" className={styles.input} placeholder="Contoh: Matematika, Penjas" required />
                   </div>
                   <div className={styles.formGroup}>
                     <label >Mata Pelajaran yang Paling Sulit</label>
-                    <input type="text" className={styles.input} placeholder="Contoh: Bahasa Inggris" required />
+                    <input type="text" name="Mata pelajaran yang paling sulit" className={styles.input} placeholder="Contoh: Bahasa Inggris" required />
                   </div>
                 </div>
 
                 <div className={styles.formGroup}>
                   <label >Kendala Belajar (Yang Dirasakan)</label>
-                  <textarea className={styles.input} rows={2} placeholder="Contoh: Susah konsentrasi, mudah ngantuk, dll"></textarea>
+                  <textarea name="Kendala belajar" className={styles.input} rows={2} placeholder="Contoh: Susah konsentrasi, mudah ngantuk, dll"></textarea>
                 </div>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
                   <div className={styles.formGroup}>
                     <label >Minat / Bakat</label>
-                    <input type="text" className={styles.input} placeholder="Contoh: Menyanyi, Menggambar, Melukis" required />
+                    <input type="text" name="Minat / Bakat" className={styles.input} placeholder="Contoh: Menyanyi, Menggambar, Melukis" required />
                   </div>
                   <div className={styles.formGroup}>
                     <label >Bidang Olahraga yang Disukai</label>
-                    <input type="text" className={styles.input} placeholder="Contoh: Futsal, Voli, Badminton" required />
+                    <input type="text" name="Bidang olahraga yang disukai" className={styles.input} placeholder="Contoh: Futsal, Voli, Badminton" required />
                   </div>
                 </div>
 
                 <div className={styles.formGroup}>
                   <label >Lomba yang Ingin Diikuti (Bila Ada)</label>
-                  <input type="text" className={styles.input} placeholder="Contoh: Lomba Pramuka, MTQ, dll" />
+                  <input type="text" name="Lomba yang ingin diikuti" className={styles.input} placeholder="Contoh: Lomba Pramuka, MTQ, dll" />
                 </div>
                 <div className={styles.formGroup}>
                   <label >Prestasi yang Pernah Diraih (Akademik/Non-Akademik)</label>
-                  <input type="text" className={styles.input} placeholder="Contoh: Juara 1 Lari antar SD tingkat kecamatan" />
+                  <input type="text" name="Prestasi yang pernah diraih" className={styles.input} placeholder="Contoh: Juara 1 Lari antar SD tingkat kecamatan" />
                 </div>
 
                 <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem', color: '#334155', fontSize: '1.1rem' }}>D. Harapan Kepada Guru Bimbingan Konseling (BK)</h3>
                 <div className={styles.formGroup}>
                   <label >Kesediaan Datang ke Ruang BK untuk Konseling</label>
-                  <select className={styles.input} required>
+                  <select name="Kesediaan datang ke ruang BK" className={styles.input} required>
                     <option value="">-- Pilih Kesediaan --</option>
                     <option value="Sangat Bersedia">Sangat Bersedia</option>
                     <option value="Bersedia">Bersedia</option>
@@ -890,12 +899,12 @@ export default function SurveyMadrasahPage() {
                 </div>
                 <div className={styles.formGroup}>
                   <label >Harapan untuk Guru BK</label>
-                  <textarea className={styles.input} rows={2} placeholder="Sampaikan saran, keluh kesah, atau harapanmu agar Guru BK lebih baik lagi." required></textarea>
+                  <textarea name="Harapan untuk Guru BK" className={styles.input} rows={2} placeholder="Sampaikan saran, keluh kesah, atau harapanmu agar Guru BK lebih baik lagi." required></textarea>
                 </div>
 
                 <div className={styles.formGroup}>
                   <label >Catatan Tambahan (Bila ada kondisi khusus)</label>
-                  <textarea className={styles.input} rows={2} placeholder="Isi bila ada info khusus yang perlu Guru BK ketahui..."></textarea>
+                  <textarea name="Catatan Tambahan" className={styles.input} rows={2} placeholder="Isi bila ada info khusus yang perlu Guru BK ketahui..."></textarea>
                 </div>
 
                 <div style={{ marginTop: '25px', display: 'flex', justifyContent: 'flex-end' }}>

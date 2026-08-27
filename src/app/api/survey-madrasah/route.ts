@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getSurveyDoc } from '@/lib/google-sheets';
+import { getSurveyDoc, getEVotingDoc } from '@/lib/google-sheets';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +10,26 @@ export async function POST(request: Request) {
 
     if (!surveyType || !data) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
+    }
+
+    // Special case for Pemetaan Kelas 7 which goes to a different document
+    if (surveyType === 'pemetaan_kelas7') {
+      const doc = await getEVotingDoc();
+      const sheet = doc.sheetsByTitle['LATAR BELAKANG'];
+      
+      if (!sheet) {
+        return NextResponse.json({ success: false, error: 'Sheet LATAR BELAKANG tidak ditemukan' }, { status: 500 });
+      }
+
+      await sheet.loadHeaderRow();
+
+      const rowData = {
+        Timestamp: new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
+        ...data
+      };
+
+      await sheet.addRow(rowData);
+      return NextResponse.json({ success: true, message: 'Survey berhasil dikirim' });
     }
 
     const doc = await getSurveyDoc();
