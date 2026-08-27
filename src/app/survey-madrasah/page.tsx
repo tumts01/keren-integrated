@@ -672,25 +672,55 @@ export default function SurveyMadrasahPage() {
                 Formulir Pemetaan Latar Belakang Siswa Kelas 7
               </h2>
               <form onSubmit={(e) => { e.preventDefault(); alert('Terima kasih! Data pemetaan berhasil disimpan.'); }} className={styles.surveyForm} style={{ marginTop: '20px' }}>
-                <div className={styles.formGroup}>
-                  <label >Nama Siswa</label>
-                  <input type="text" className={styles.input} placeholder="Contoh: Ahmad Fulan" required />
-                </div>
-                <div className={styles.formGroup}>
-                  <label >Kelas</label>
-                  <select className={styles.input} required>
-                    <option value="">-- Pilih Kelas --</option>
-                    <option value="7A">7A</option>
-                    <option value="7B">7B</option>
-                    <option value="7C">7C</option>
-                    <option value="7D">7D</option>
-                    <option value="7E">7E</option>
-                    <option value="7F">7F</option>
-                    <option value="7G">7G</option>
-                    <option value="7H">7H</option>
-                    <option value="7I">7I</option>
-                    <option value="7J">7J</option>
-                  </select>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px' }}>
+                  <div className={styles.formGroup} style={{ position: 'relative' }}>
+                    <label>Nama Siswa <span style={{color: 'red'}}>*</span></label>
+                    <input 
+                      type="text" 
+                      className={styles.input} 
+                      value={formDataPemetaan.nama} 
+                      required
+                      onChange={e => {
+                        setFormDataPemetaan({...formDataPemetaan, nama: e.target.value});
+                        setShowSuggestionsPemetaan(true);
+                      }}
+                      onFocus={() => setShowSuggestionsPemetaan(true)}
+                      onBlur={() => setTimeout(() => setShowSuggestionsPemetaan(false), 200)}
+                      placeholder="Ketik nama siswa..." 
+                    />
+                    {showSuggestionsPemetaan && formDataPemetaan.nama.length > 1 && (
+                      <ul className={styles.suggestionsList}>
+                        {siswas
+                          .filter(s => s.isLatest && s.nama && s.nama.toLowerCase().includes(formDataPemetaan.nama.toLowerCase()))
+                          .slice(0, 5)
+                          .map((s, idx) => {
+                            return (
+                              <li key={idx} onClick={() => {
+                                setFormDataPemetaan({
+                                  ...formDataPemetaan, 
+                                  nama: \`\${s.nama} - \${s.rombel || s.tahunAjaran || ''}\`, 
+                                  kelas: s.rombel || s.tahunAjaran || ''
+                                });
+                                setShowSuggestionsPemetaan(false);
+                              }}>
+                                <strong>{s.nama} - {s.rombel || s.tahunAjaran}</strong>
+                              </li>
+                            );
+                          })}
+                      </ul>
+                    )}
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>Kelas (Otomatis)</label>
+                    <input 
+                      type="text" 
+                      className={styles.input} 
+                      value={formDataPemetaan.kelas} 
+                      readOnly 
+                      onChange={e => setFormDataPemetaan({...formDataPemetaan, kelas: e.target.value})} 
+                      placeholder="Contoh: 7A" 
+                    />
+                  </div>
                 </div>
                 
                 <h3 style={{ marginTop: '1.5rem', marginBottom: '1rem', color: '#334155', fontSize: '1.1rem' }}>A. Data Keluarga & Tempat Tinggal</h3>
