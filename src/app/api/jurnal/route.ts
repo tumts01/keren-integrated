@@ -181,35 +181,52 @@ export async function POST(request: Request) {
     // Contoh: "6, 7, 8" bisa diinterpretasikan sebagai tanggal 6 Juli 2008
     const jamKeText = String(jamKe); // pastikan string
 
-    // ── LOGIKA ANTI-DOBEL ──
+    // 🚨 LOGIKA ANTI-DOBEL 🚨
+    const submittedJams = jamKeText.split(',').map(j => j.trim()).filter(Boolean);
     const rows = await sheet.getRows();
-    const existing = rows.filter(r => 
-      r.get('TANGGAL') === tanggal && 
-      r.get('KELAS') === kelas && 
-      r.get('MAPEL') === mapel && 
-      cleanJamKe(String(r.get('JAM KE'))) === cleanJamKe(jamKeText)
-    );
+    
+    let overlappingRow = null;
+    let isExactMatch = false;
 
-    if (existing.length > 0) {
-      // Jika sudah ada, update datanya saja
-      existing[0].assign({
-        'TIMESTAMP': timestamp,
-        'TAHUN AJARAN': tahunAjaran || '-',
-        'NAMA GURU': guru || 'Unknown',
-        'MATERI': materi
-      });
-      await existing[0].save();
-
-      // Opsional: Hapus sisa duplikat jika terlanjur ada dari sebelumnya (reverse order)
-      if (existing.length > 1) {
-        for (let i = existing.length - 1; i >= 1; i--) {
-          try { await existing[i].delete(); } catch(e) {}
+    // Cari dari belakang (terbaru) untuk efisiensi
+    for (let i = rows.length - 1; i >= 0; i--) {
+      const r = rows[i];
+      if (r.get('TANGGAL') === tanggal && r.get('KELAS') === kelas) {
+        const existingJamKeStr = cleanJamKe(String(r.get('JAM KE') || ''));
+        const existingJams = existingJamKeStr.split(',').map(j => j.trim()).filter(Boolean);
+        
+        const hasOverlap = submittedJams.some(j => existingJams.includes(j));
+        if (hasOverlap) {
+          overlappingRow = r;
+          // Anggap exact match jika MAPEL sama dan JAM KE persis sama
+          if (existingJamKeStr === cleanJamKe(jamKeText) && r.get('MAPEL') === mapel) {
+            isExactMatch = true;
+          }
+          break;
         }
       }
+    }
 
-      return NextResponse.json({ success: true, message: 'Jurnal berhasil diperbarui (Anti-Dobel)' });
-    } else {
-      // Jika belum ada, buat baru
+    if (overlappingRow) {
+      if (isExactMatch) {
+        // Jika Mapel & Jam sama persis, perbarui datanya (update materi dsb)
+        overlappingRow.assign({
+          'TIMESTAMP': timestamp,
+          'TAHUN AJARAN': tahunAjaran || '-',
+          'NAMA GURU': guru || 'Unknown',
+          'MATERI': materi
+        });
+        await overlappingRow.save();
+        return NextResponse.json({ success: true, message: 'Jurnal berhasil diperbarui' });
+      } else {
+        // Jika beda mapel atau ada irisan jam, TOLAK!
+        return NextResponse.json({ 
+          success: false, 
+          error: `Gagal! Jam ${overlappingRow.get('JAM KE')} di kelas ${kelas} sudah terisi oleh Guru ${overlappingRow.get('NAMA GURU')} (Mapel: ${overlappingRow.get('MAPEL')})` 
+        }, { status: 400 });
+      }
+    }
+    // Jika belum ada, buat baru
       await sheet.addRow({
         'ID': id,
         'TIMESTAMP': timestamp,
@@ -223,7 +240,6 @@ export async function POST(request: Request) {
       }, { raw: true });
 
       return NextResponse.json({ success: true, message: 'Jurnal berhasil disimpan' });
-    }
   } catch (error: any) {
     console.error('Submit Jurnal Error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
