@@ -3,8 +3,9 @@ import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-export default async function CetakPemetaanKelasPage({ params }: { params: { kelas: string } }) {
-  const targetKelas = decodeURIComponent(params.kelas).toUpperCase();
+export default async function CetakPemetaanKelasPage({ params }: { params: Promise<{ kelas: string }> }) {
+  const resolvedParams = await params;
+  const targetKelas = decodeURIComponent(resolvedParams.kelas).toUpperCase();
   
   if (!targetKelas) {
     notFound();
