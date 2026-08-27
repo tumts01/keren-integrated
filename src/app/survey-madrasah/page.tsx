@@ -20,6 +20,8 @@ export default function SurveyMadrasahPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [rekapData, setRekapData] = useState<any[]>([]);
   const [loadingRekap, setLoadingRekap] = useState(false);
+  const [rekapPemetaan, setRekapPemetaan] = useState<any[]>([]);
+  const [loadingPemetaan, setLoadingPemetaan] = useState(false);
   const [isStandaloneEVoting, setIsStandaloneEVoting] = useState(false);
   const [isStandaloneHumas, setIsStandaloneHumas] = useState(false);
   const [isStandalonePemetaan, setIsStandalonePemetaan] = useState(false);
@@ -689,7 +691,7 @@ export default function SurveyMadrasahPage() {
                 Isi Survey
               </button>
               <button className={`${styles.tabBtn} ${activeTabPemetaan === 'monitor' ? styles.activeTab : ''}`} onClick={() => setActiveTabPemetaan('monitor')}>
-                Monitoring
+                <i className="fas fa-print"></i> Data & Cetak Survey
               </button>
             </div>
           )}
