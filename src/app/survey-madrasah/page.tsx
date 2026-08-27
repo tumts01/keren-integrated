@@ -23,6 +23,7 @@ export default function SurveyMadrasahPage() {
   const [rekapPemetaan, setRekapPemetaan] = useState<any[]>([]);
   const [loadingPemetaan, setLoadingPemetaan] = useState(false);
   const [selectedKelasPemetaan, setSelectedKelasPemetaan] = useState('7A');
+  const [showPrintModal, setShowPrintModal] = useState(false);
   const [isStandaloneEVoting, setIsStandaloneEVoting] = useState(false);
   const [isStandaloneHumas, setIsStandaloneHumas] = useState(false);
   const [isStandalonePemetaan, setIsStandalonePemetaan] = useState(false);
@@ -956,14 +957,41 @@ export default function SurveyMadrasahPage() {
                     ))}
                   </select>
                   
-                  <a 
-                    href={`/survey-madrasah/cetak-pemetaan/kelas/${selectedKelasPemetaan}`}
-                    target="_blank"
+                  <button
+                    onClick={() => setShowPrintModal(true)}
                     className={styles.btnSubmit}
-                    style={{ textAlign: 'center', display: 'block', textDecoration: 'none' }}
+                    style={{ textAlign: 'center', display: 'block', width: '100%', cursor: 'pointer' }}
                   >
                     <i className="fas fa-file-pdf"></i> Generate PDF Kelas {selectedKelasPemetaan}
-                  </a>
+                  </button>
+
+                  {showPrintModal && (
+                    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ background: 'white', padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+                        <span style={{ fontWeight: 'bold', fontSize: '1rem' }}>
+                          <i className="fas fa-file-pdf" style={{ color: '#e11d48', marginRight: '8px' }}></i>
+                          Preview Pemetaan Kelas {selectedKelasPemetaan}
+                        </span>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <a
+                            href={`/survey-madrasah/cetak-pemetaan/kelas/${selectedKelasPemetaan}`}
+                            target="_blank"
+                            style={{ padding: '6px 14px', background: '#2563eb', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 'bold' }}
+                          >
+                            <i className="fas fa-external-link-alt"></i> Buka Tab Baru
+                          </a>
+                          <button onClick={() => setShowPrintModal(false)} style={{ padding: '6px 14px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                            <i className="fas fa-times"></i> Tutup
+                          </button>
+                        </div>
+                      </div>
+                      <iframe
+                        src={`/survey-madrasah/cetak-pemetaan/kelas/${selectedKelasPemetaan}`}
+                        style={{ flex: 1, border: 'none', width: '100%' }}
+                        title="Preview Pemetaan"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             )}
