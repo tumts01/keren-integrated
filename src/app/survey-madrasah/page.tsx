@@ -687,18 +687,16 @@ export default function SurveyMadrasahPage() {
 
       {mainTab === 'pemetaan_kelas7' && (
         <div className={styles.section}>
-          {isAdmin && (
-            <div className={styles.tabContainer} style={{ marginTop: '-10px', transform: 'scale(0.9)' }}>
-              <button className={`${styles.tabBtn} ${activeTabPemetaan === 'isi' ? styles.activeTab : ''}`} onClick={() => setActiveTabPemetaan('isi')}>
-                Isi Survey
-              </button>
-              <button className={`${styles.tabBtn} ${activeTabPemetaan === 'monitor' ? styles.activeTab : ''}`} onClick={() => setActiveTabPemetaan('monitor')}>
-                <i className="fas fa-print"></i> Data & Cetak Survey
-              </button>
-            </div>
-          )}
+          <div className={styles.tabContainer} style={{ marginTop: '-10px', transform: 'scale(0.9)' }}>
+                <button className={`${styles.tabBtn} ${activeTabPemetaan === 'isi' ? styles.activeTab : ''}`} onClick={() => setActiveTabPemetaan('isi')}>
+                  Isi Survey
+                </button>
+                <button className={`${styles.tabBtn} ${activeTabPemetaan === 'monitor' ? styles.activeTab : ''}`} onClick={() => setActiveTabPemetaan('monitor')}>
+                  <i className="fas fa-print"></i> Data & Cetak Survey
+                </button>
+              </div>
 
-          {(!isAdmin || activeTabPemetaan === 'isi') ? (
+          {(activeTabPemetaan === 'isi') ? (
             <div className={styles.card}>
               <h2 className={styles.sectionTitle} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
                 Formulir Pemetaan Latar Belakang Siswa Kelas 7
