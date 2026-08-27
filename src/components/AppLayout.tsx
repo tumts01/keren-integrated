@@ -153,7 +153,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   };
 
-  if (!mounted) return null; // Prevent hydration mismatch
+  if (!mounted) return null;
+
+  const isPrintPage = pathname?.includes('/cetak') || pathname?.includes('/cetak-realisasi');
+  if (isPrintPage) {
+    return <>{children}</>;
+  }
+ // Prevent hydration mismatch
 
   // Halaman Publik (tanpa login)
   const isPublicPage = pathname?.startsWith('/survey-madrasah') || pathname?.startsWith('/spmb');
@@ -312,10 +318,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const isPrintPage = pathname?.includes('/cetak/') || pathname?.includes('/cetak-realisasi/');
-  if (isPrintPage) {
-    return <>{children}</>;
-  }
+  
 
   return (
     <div className="app-container">
