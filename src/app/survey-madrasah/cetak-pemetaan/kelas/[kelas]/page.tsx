@@ -114,14 +114,10 @@ export default function CetakPemetaanKelasPage() {
           const kelasVal = getField(row, 'Kelas');
           return (
             <div key={idx} className="page-item">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '18px', gap: '15px' }}>
-                <img src="/logo.png" alt="Logo" style={{ width: '55px', height: '55px', flexShrink: 0 }} />
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontWeight: 'bold', fontSize: '12pt' }}>DATA PRIBADI SISWA KELAS VII</div>
-                  <div style={{ fontWeight: 'bold', fontSize: '11pt', margin: '2px 0' }}>TH. AJARAN 2025/2026</div>
-                  <div style={{ fontWeight: 'bold', fontSize: '12pt' }}>MTs ALMAARIF 01 SINGOSARI</div>
-                </div>
-                <div style={{ width: '55px' }}></div>
+              <div style={{ textAlign: 'center', marginBottom: '18px', borderBottom: '2px solid #333', paddingBottom: '12px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '13pt' }}>DATA PRIBADI SISWA KELAS VII</div>
+                <div style={{ fontWeight: 'bold', fontSize: '11pt', margin: '3px 0' }}>TAHUN AJARAN 2025/2026</div>
+                <div style={{ fontWeight: 'bold', fontSize: '13pt' }}>MTs ALMAARIF 01 SINGOSARI</div>
               </div>
 
               <table style={{ border: 'none', marginBottom: '10px', fontSize: '11pt', fontWeight: 'bold' }}>
