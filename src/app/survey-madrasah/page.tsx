@@ -22,6 +22,7 @@ export default function SurveyMadrasahPage() {
   const [loadingRekap, setLoadingRekap] = useState(false);
   const [rekapPemetaan, setRekapPemetaan] = useState<any[]>([]);
   const [loadingPemetaan, setLoadingPemetaan] = useState(false);
+  const [selectedKelasPemetaan, setSelectedKelasPemetaan] = useState('7A');
   const [isStandaloneEVoting, setIsStandaloneEVoting] = useState(false);
   const [isStandaloneHumas, setIsStandaloneHumas] = useState(false);
   const [isStandalonePemetaan, setIsStandalonePemetaan] = useState(false);
@@ -938,65 +939,32 @@ export default function SurveyMadrasahPage() {
             </div>
           ) : (
               <div className={styles.card}>
-                <h2 className={styles.sectionTitle} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Data Survey Pemetaan Kelas 7</span>
-                  <button onClick={() => {
-                    setLoadingPemetaan(true);
-                    fetch('/api/survey-madrasah/pemetaan').then(res=>res.json()).then(data=>{
-                      if(data.success) setRekapPemetaan(data.data);
-                    }).finally(()=>setLoadingPemetaan(false));
-                  }} className={styles.btnAction} style={{ background: '#f1f5f9', color: '#475569', fontSize: '0.85rem' }}>
-                    <i className="fas fa-sync-alt"></i> Refresh
-                  </button>
+                <h2 className={styles.sectionTitle} style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', marginBottom: '20px' }}>
+                  <span>Cetak Survey Pemetaan Kelas 7</span>
                 </h2>
                 
-                {loadingPemetaan ? (
-                  <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-                    <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', color: '#0ea5e9' }}></i>
-                    <p style={{ marginTop: '10px', color: '#64748b' }}>Memuat data pemetaan...</p>
-                  </div>
-                ) : rekapPemetaan.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '2rem 0', color: '#64748b' }}>
-                    <i className="fas fa-inbox" style={{ fontSize: '2.5rem', color: '#cbd5e1', marginBottom: '1rem' }}></i>
-                    <p>Belum ada data pemetaan yang masuk.</p>
-                  </div>
-                ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                      <thead>
-                        <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                          <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Tanggal</th>
-                          <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Nama Siswa</th>
-                          <th style={{ padding: '12px', textAlign: 'center', color: '#475569' }}>Kelas</th>
-                          <th style={{ padding: '12px', textAlign: 'center', color: '#475569' }}>Aksi</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rekapPemetaan.map((row, idx) => (
-                          <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                            <td style={{ padding: '12px' }}>{row['Timestamp'] || '-'}</td>
-                            <td style={{ padding: '12px', fontWeight: 'bold' }}>{row['Nama Lengkap Anak'] || row['Nama Lengkap Siswa'] || row['Nama'] || '-'}</td>
-                            <td style={{ padding: '12px', textAlign: 'center' }}>
-                              <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold' }}>
-                                {row['Kelas'] || row['Kelas Saat Ini'] || '-'}
-                              </span>
-                            </td>
-                            <td style={{ padding: '12px', textAlign: 'center' }}>
-                              <a 
-                                href={`/survey-madrasah/cetak-pemetaan/${row._rowIndex}`} 
-                                target="_blank" 
-                                className={styles.btnSubmit}
-                                style={{ background: '#0ea5e9', padding: '6px 12px', fontSize: '0.85rem', width: 'auto', display: 'inline-block' }}
-                              >
-                                <i className="fas fa-print"></i> Cetak
-                              </a>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                <div style={{ padding: '1rem 0', display: 'flex', flexDirection: 'column', gap: '15px', maxWidth: '400px', margin: '0 auto' }}>
+                  <p style={{ color: '#64748b', textAlign: 'center', margin: 0 }}>Pilih kelas untuk mencetak semua data pemetaan dalam format PDF.</p>
+                  
+                  <select 
+                    value={selectedKelasPemetaan} 
+                    onChange={e => setSelectedKelasPemetaan(e.target.value)}
+                    style={{ padding: '10px 15px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '1rem', width: '100%' }}
+                  >
+                    {['7A', '7B', '7C', '7D', '7E', '7F', '7G', '7H', '7I'].map(k => (
+                      <option key={k} value={k}>Kelas {k}</option>
+                    ))}
+                  </select>
+                  
+                  <a 
+                    href={`/survey-madrasah/cetak-pemetaan/kelas/${selectedKelasPemetaan}`}
+                    target="_blank"
+                    className={styles.btnSubmit}
+                    style={{ textAlign: 'center', display: 'block', textDecoration: 'none' }}
+                  >
+                    <i className="fas fa-file-pdf"></i> Generate PDF Kelas {selectedKelasPemetaan}
+                  </a>
+                </div>
               </div>
             )}
         </div>
