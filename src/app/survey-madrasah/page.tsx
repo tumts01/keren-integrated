@@ -13,7 +13,6 @@ export default function SurveyMadrasahPage() {
   const [showSuggestionsOrtu, setShowSuggestionsOrtu] = useState(false);
   const [showSuggestionsPemetaan, setShowSuggestionsPemetaan] = useState(false);
   const [formDataPemetaan, setFormDataPemetaan] = useState({ nama: '', kelas: '' });
-  const [searchPemetaan, setSearchPemetaan] = useState('');
   const [mainTab, setMainTab] = useState<'humas'|'pemetaan_kelas7'|'e_voting'>('humas');
   const [activeTab, setActiveTab] = useState<'isi'|'monitor'>('isi');
   const [activeTabPemetaan, setActiveTabPemetaan] = useState<'isi'|'monitor'>('isi');
@@ -339,61 +338,40 @@ export default function SurveyMadrasahPage() {
             <h2>Angket Persepsi Wali Murid</h2>
           </div>
           
-                              <div className={styles.formGroup} style={{ position: 'relative' }}>
-                      <label>Nama Siswa <span style={{color: 'red'}}>*</span></label>
-                      <div className={styles.dropdownContainer}>
-                        <div 
-                          className={styles.dropdownButton} 
-                          onClick={() => {
-                            setShowSuggestionsPemetaan(!showSuggestionsPemetaan);
-                            if (!showSuggestionsPemetaan) setSearchPemetaan('');
-                          }}
-                        >
-                          <span style={{ color: formDataPemetaan.nama ? '#1e293b' : '#94a3b8' }}>
-                            {formDataPemetaan.nama || '-- Pilih Siswa --'}
-                          </span>
-                          <i className="fas fa-chevron-down" style={{ color: '#94a3b8' }}></i>
-                        </div>
-    
-                        {showSuggestionsPemetaan && (
-                          <div className={styles.dropdownMenu}>
-                            <div className={styles.dropdownSearch}>
-                              <input 
-                                type="text" 
-                                placeholder="Cari nama siswa..." 
-                                value={searchPemetaan}
-                                onChange={(e) => setSearchPemetaan(e.target.value)}
-                                autoFocus
-                              />
-                            </div>
-                            <div className={styles.dropdownList}>
-                              {siswas
-                                .filter(s => s.isLatest && s.nama && s.nama.toLowerCase().includes(searchPemetaan.toLowerCase()))
-                                .slice(0, 20)
-                                .map((s, idx) => (
-                                  <div 
-                                    key={idx} 
-                                    className={styles.dropdownItem}
-                                    onClick={() => {
-                                      setFormDataPemetaan({
-                                        ...formDataPemetaan, 
-                                        nama: s.nama, 
-                                        kelas: s.rombel || s.tahunAjaran || ''
-                                      });
-                                      setShowSuggestionsPemetaan(false);
-                                    }}
-                                  >
-                                    {s.nama}
-                                  </div>
-                                ))}
-                              {siswas.filter(s => s.isLatest && s.nama && s.nama.toLowerCase().includes(searchPemetaan.toLowerCase())).length === 0 && (
-                                <div style={{ padding: '10px', textAlign: 'center', color: '#94a3b8' }}>Siswa tidak ditemukan</div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+          <div className={styles.formGroup} style={{ position: 'relative' }}>
+            <label>Nama Siswa <span style={{color: 'red'}}>*</span></label>
+            <input 
+              type="text" 
+              className={styles.input} 
+              value={formDataWaliMurid.nama} 
+              required
+              onChange={e => {
+                setFormDataWaliMurid({...formDataWaliMurid, nama: e.target.value});
+                setShowSuggestionsWali(true);
+              }} 
+              onFocus={() => setShowSuggestionsWali(true)}
+              onBlur={() => setTimeout(() => setShowSuggestionsWali(false), 200)}
+              placeholder="Masukkan nama siswa..." 
+            />
+            {showSuggestionsWali && formDataWaliMurid.nama.length > 1 && (
+              <ul className={styles.suggestionsList}>
+                {siswas
+                  .filter(s => s.isLatest && s.nama && s.nama.toLowerCase().includes(formDataWaliMurid.nama.toLowerCase()))
+                  .slice(0, 5)
+                  .map((s, idx) => {
+                    return (
+                      <li key={idx} onClick={() => {
+                        setFormDataWaliMurid({...formDataWaliMurid, nama: s.nama});
+                        setShowSuggestionsWali(false);
+                      }}>
+                        <strong>{s.nama}</strong> <br/>
+                        <small style={{color: '#64748b'}}>Kelas: {s.rombel || s.tahunAjaran}</small>
+                      </li>
+                    );
+                  })}
+              </ul>
+            )}
+          </div>
 
           <div className={styles.formGroup}>
             <label>A. Mengapa Bapak/Ibu memilih MTs Almaarif sebagai tempat pendidikan untuk putra putrinya? <br/><small style={{color: '#64748b', fontWeight: 'normal'}}>* Bisa memilih lebih dari satu jawaban</small></label>
