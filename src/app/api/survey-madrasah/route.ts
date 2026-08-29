@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSurveyDoc, getEVotingDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +30,44 @@ export async function POST(request: Request) {
       };
 
       await sheet.addRow(rowData);
+
+      // INSERT KE SUPABASE JUGA (Dual-write)
+      try {
+        const payload = {
+          kelas: data['Kelas'] || '',
+          nama_siswa: data['Nama Siswa'] || '',
+          anak_ke: data['Anak ke-'] || '',
+          saudara_kandung: data['Saudara Kandung'] || '',
+          saudara_tiri: data['Saudara tiri'] || '',
+          tinggal_bersama: data['Tinggal Bersama'] || '',
+          status_ayah: data['Status Ayah'] || '',
+          status_ibu: data['Status Ibu'] || '',
+          kondisi_orang_tua: data['Kondisi Orang Tua'] || '',
+          tinggal_di: data['Tinggal di'] || '',
+          perasaan_di_pesantren: data['Perasaan di Pesantren'] || '',
+          riwayat_sakit: data['Riwayat Sakit'] || '',
+          uang_saku: data['Uang Saku per-Hari'] || '',
+          pernah_di_bully: data['Pernah menjadi korban bullying'] || '',
+          kenyamanan_di_kelas: data['Kenyamanan di kelas'] || '',
+          kendala_di_kelas: data['Kendala di kelas'] || '',
+          menghabiskan_waktu_luang: data['Menghabiskan waktu luang'] || '',
+          tipe_belajar: data['Tipe Belajar'] || '',
+          mapel_disukai: data['Mata pelajaran yang paling disukai'] || '',
+          mapel_sulit: data['Mata pelajaran yang paling sulit'] || '',
+          kendala_belajar: data['Kendala belajar'] || '',
+          minat_bakat: data['Minat / Bakat'] || '',
+          olahraga_disukai: data['Bidang olahraga yang disukai'] || '',
+          lomba_diikuti: data['Lomba yang ingin diikuti'] || '',
+          prestasi_diraih: data['Prestasi yang pernah diraih'] || '',
+          kesediaan_ke_bk: data['Kesediaan datang ke ruang BK'] || '',
+          harapan_guru_bk: data['Harapan untuk Guru BK'] || '',
+          catatan_tambahan: data['Catatan Tambahan'] || ''
+        };
+        await supabase.from('pemetaan_siswa').insert(payload);
+      } catch (sbError) {
+        console.error('Gagal dual-write ke Supabase:', sbError);
+      }
+
       return NextResponse.json({ success: true, message: 'Survey berhasil dikirim' });
     }
 

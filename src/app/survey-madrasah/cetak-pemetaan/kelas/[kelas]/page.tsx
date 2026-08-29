@@ -15,7 +15,7 @@ export default function CetakPemetaanKelasPage() {
       .then(res => {
         if (!res.success) throw new Error(res.error || 'Gagal memuat data');
         const filtered = res.data.filter((row: any) =>
-          (row['Kelas'] || '').trim().toUpperCase() === kelas
+          (row.kelas || '').trim().toUpperCase() === kelas
         );
         setData(filtered);
       })
@@ -53,32 +53,32 @@ export default function CetakPemetaanKelasPage() {
   };
 
   const buildItems = (row: any) => [
-    { label: 'Anak ke-', value: getField(row, 'Anak ke-') },
-    { label: 'Saudara kandung', value: getField(row, 'Saudara Kandung', 'Saudara kandung') },
-    { label: 'Saudara tiri', value: getField(row, 'Saudara tiri') },
-    { label: 'Tinggal bersama', value: getField(row, 'Tinggal Bersama', 'Tinggal bersama') },
-    { label: 'Status Ayah', value: getField(row, 'Status Ayah') },
-    { label: 'Status Ibu', value: getField(row, 'Status Ibu') },
-    { label: 'Kondisi orangtua', value: getField(row, 'Kondisi Orang Tua', 'Kondisi Orangtua') },
-    { label: 'Tinggal di', value: getField(row, 'Tinggal di') },
-    { label: 'Perasaan di Pesantren', value: getField(row, 'Perasaan di Pesantren') },
-    { label: 'Riwayat sakit sejak kecil', value: getField(row, 'Riwayat Sakit') },
-    { label: 'Uang saku/hari', value: getField(row, 'Uang Saku per-Hari', 'Rata-rata Uang saku/hari') },
-    { label: 'Pernah menjadi korban bullying', value: getField(row, 'Pernah menjadi korban bullying') },
-    { label: 'Kenyamanan di kelas', value: getField(row, 'Kenyamanan di kelas') },
-    { label: 'Kendala di kelas', value: getField(row, 'Kendala di kelas') },
-    { label: 'Menghabiskan waktu luang', value: getField(row, 'Menghabiskan waktu luang') },
-    { label: 'Tipe belajar', value: getField(row, 'Tipe Belajar') },
-    { label: 'Mata pelajaran disukai', value: getField(row, 'Mata pelajaran yang paling disukai') },
-    { label: 'Mata pelajaran sulit', value: getField(row, 'Mata pelajaran yang paling sulit') },
-    { label: 'Kendala belajar', value: getField(row, 'Kendala belajar') },
-    { label: 'Minat / Bakat', value: getField(row, 'Minat / Bakat') },
-    { label: 'Olahraga yang disukai', value: getField(row, 'Bidang olahraga yang disukai') },
-    { label: 'Lomba yang ingin diikuti', value: getField(row, 'Lomba yang ingin diikuti') },
-    { label: 'Prestasi yang pernah diraih', value: getField(row, 'Prestasi yang pernah diraih') },
-    { label: 'Kesediaan ke ruang BK', value: getField(row, 'Kesediaan datang ke ruang BK') },
-    { label: 'Harapan untuk Guru BK', value: getField(row, 'Harapan untuk Guru BK') },
-    { label: 'Catatan tambahan', value: getField(row, 'Catatan Tambahan', 'Catatan tambahan') },
+    { label: 'Anak ke-', value: row.anak_ke || '-' },
+    { label: 'Saudara kandung', value: row.saudara_kandung || '-' },
+    { label: 'Saudara tiri', value: row.saudara_tiri || '-' },
+    { label: 'Tinggal bersama', value: row.tinggal_bersama || '-' },
+    { label: 'Status Ayah', value: row.status_ayah || '-' },
+    { label: 'Status Ibu', value: row.status_ibu || '-' },
+    { label: 'Kondisi orangtua', value: row.kondisi_orang_tua || '-' },
+    { label: 'Tinggal di', value: row.tinggal_di || '-' },
+    { label: 'Perasaan di Pesantren', value: row.perasaan_di_pesantren || '-' },
+    { label: 'Riwayat sakit sejak kecil', value: row.riwayat_sakit || '-' },
+    { label: 'Uang saku/hari', value: row.uang_saku || '-' },
+    { label: 'Pernah menjadi korban bullying', value: row.pernah_di_bully || '-' },
+    { label: 'Kenyamanan di kelas', value: row.kenyamanan_di_kelas || '-' },
+    { label: 'Kendala di kelas', value: row.kendala_di_kelas || '-' },
+    { label: 'Menghabiskan waktu luang', value: row.menghabiskan_waktu_luang || '-' },
+    { label: 'Tipe belajar', value: row.tipe_belajar || '-' },
+    { label: 'Mata pelajaran disukai', value: row.mapel_disukai || '-' },
+    { label: 'Mata pelajaran sulit', value: row.mapel_sulit || '-' },
+    { label: 'Kendala belajar', value: row.kendala_belajar || '-' },
+    { label: 'Minat / Bakat', value: row.minat_bakat || '-' },
+    { label: 'Olahraga yang disukai', value: row.olahraga_disukai || '-' },
+    { label: 'Lomba yang ingin diikuti', value: row.lomba_diikuti || '-' },
+    { label: 'Prestasi yang pernah diraih', value: row.prestasi_diraih || '-' },
+    { label: 'Kesediaan ke ruang BK', value: row.kesediaan_ke_bk || '-' },
+    { label: 'Harapan untuk Guru BK', value: row.harapan_guru_bk || '-' },
+    { label: 'Catatan tambahan', value: row.catatan_tambahan || '-' },
   ];
 
   return (
@@ -112,8 +112,8 @@ export default function CetakPemetaanKelasPage() {
       <div className="print-wrapper" style={{ padding: '20px' }}>
         {data.map((row, idx) => {
           const items = buildItems(row);
-          const nama = getField(row, 'Nama Siswa', 'Nama Lengkap Anak', 'Nama');
-          const kelasVal = getField(row, 'Kelas');
+          const nama = row.nama_siswa || '-';
+          const kelasVal = row.kelas || '-';
           return (
             <div key={idx} className="page-item">
               <div style={{ textAlign: 'center', marginBottom: '8px', borderBottom: '2px solid #333', paddingBottom: '6px' }}>
