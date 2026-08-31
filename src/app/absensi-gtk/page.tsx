@@ -30,6 +30,52 @@ export default function AbsensiGTK() {
   const [liburTanggal, setLiburTanggal] = useState('');
   const [liburKeterangan, setLiburKeterangan] = useState('');
 
+  // States for Geolocation
+  const [geoStatus, setGeoStatus] = useState<'idle' | 'checking' | 'allowed' | 'denied' | 'error'>('idle');
+  const [geoDistance, setGeoDistance] = useState<number | null>(null);
+
+  // Koordinat sekolah (MTs Almaarif 01 Singosari)
+  const SCHOOL_LAT = -7.909974;
+  const SCHOOL_LNG = 112.669623;
+  const MAX_RADIUS_METER = 500;
+
+  // Haversine formula – menghitung jarak dua titik GPS dalam meter
+  const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  // Cek apakah device ada dalam radius sekolah
+  const checkGeoLocation = (): Promise<{ allowed: boolean; distance: number; error?: string }> => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve({ allowed: false, distance: -1, error: 'Perangkat tidak mendukung GPS.' });
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const dist = getDistance(pos.coords.latitude, pos.coords.longitude, SCHOOL_LAT, SCHOOL_LNG);
+          resolve({ allowed: dist <= MAX_RADIUS_METER, distance: Math.round(dist) });
+        },
+        (err) => {
+          if (err.code === err.PERMISSION_DENIED) {
+            resolve({ allowed: false, distance: -1, error: 'Izin akses lokasi ditolak. Aktifkan lokasi di browser Anda.' });
+          } else {
+            resolve({ allowed: false, distance: -1, error: 'Gagal mendapatkan lokasi GPS. Pastikan GPS aktif.' });
+          }
+        },
+        { timeout: 10000, maximumAge: 0, enableHighAccuracy: true }
+      );
+    });
+  };
+
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
@@ -102,6 +148,29 @@ export default function AbsensiGTK() {
 
   const handleAbsen = async (action: 'checkin' | 'checkout') => {
     if (!user || actionLoading) return; // proteksi double submit
+
+    // ── GEOLOCATION CHECK ─────────────────────────────────────────────────
+    // Admin bypass geo check; user biasa harus dalam radius 500m sekolah
+    const isAdmin = user.role?.toLowerCase() === 'admin';
+    if (!isAdmin) {
+      setGeoStatus('checking');
+      setMessage('📍 Memeriksa lokasi GPS...');
+      const geo = await checkGeoLocation();
+      setGeoDistance(geo.distance);
+      if (!geo.allowed) {
+        setGeoStatus('denied');
+        if (geo.error) {
+          setMessage(`❌ ${geo.error}`);
+        } else {
+          setMessage(`❌ Lokasi Anda terlalu jauh dari sekolah (${geo.distance} m). Absensi hanya bisa dilakukan dalam radius ${MAX_RADIUS_METER} m dari sekolah.`);
+        }
+        setTimeout(() => { setMessage(''); setGeoStatus('idle'); }, 6000);
+        return;
+      }
+      setGeoStatus('allowed');
+    }
+    // ──────────────────────────────────────────────────────────────────────
+
     setActionLoading(true);
     setMessage('');
 
@@ -322,6 +391,7 @@ export default function AbsensiGTK() {
           {loading ? (
             <div style={{ textAlign: 'center', color: '#64748b' }}><i className="fas fa-spinner fa-spin"></i> Memeriksa status...</div>
           ) : (
+            <>
             <div className={styles.actionContainer}>
               {status.isHoliday ? (
                 <div style={{ width: '100%', padding: '15px', background: '#fee2e2', color: '#ef4444', borderRadius: '8px', fontWeight: 'bold', border: '1px solid #fca5a5', textAlign: 'center' }}>
@@ -333,20 +403,32 @@ export default function AbsensiGTK() {
                   <button 
                     className={styles.btnCheckIn} 
                     onClick={() => handleAbsen('checkin')}
-                    disabled={status.hasCheckedIn || actionLoading}
+                    disabled={status.hasCheckedIn || actionLoading || geoStatus === 'checking'}
                   >
-                    <i className="fas fa-sign-in-alt"></i> Check In
+                    {geoStatus === 'checking' ? <><i className="fas fa-spinner fa-spin"></i> Cek Lokasi...</> : <><i className="fas fa-sign-in-alt"></i> Check In</>}
                   </button>
                   <button 
                     className={styles.btnCheckOut} 
                     onClick={() => handleAbsen('checkout')}
-                    disabled={!status.hasCheckedIn || status.hasCheckedOut || actionLoading}
+                    disabled={!status.hasCheckedIn || status.hasCheckedOut || actionLoading || geoStatus === 'checking'}
                   >
-                    <i className="fas fa-sign-out-alt"></i> Check Out
+                    {geoStatus === 'checking' ? <><i className="fas fa-spinner fa-spin"></i> Cek Lokasi...</> : <><i className="fas fa-sign-out-alt"></i> Check Out</>}
                   </button>
                 </>
               )}
             </div>
+
+            {/* Geo Status Indicator */}
+            {user.role?.toLowerCase() !== 'admin' && (
+              <div style={{ marginTop: '12px', textAlign: 'center', fontSize: '0.8rem', color: geoStatus === 'allowed' ? '#10b981' : geoStatus === 'denied' ? '#ef4444' : '#94a3b8' }}>
+                {geoStatus === 'idle' && <><i className="fas fa-map-marker-alt" style={{ marginRight: '4px' }}></i> Lokasi GPS akan dicek saat absen</>}
+                {geoStatus === 'checking' && <><i className="fas fa-spinner fa-spin" style={{ marginRight: '4px' }}></i> Memverifikasi lokasi...</>}
+                {geoStatus === 'allowed' && geoDistance !== null && <><i className="fas fa-check-circle" style={{ marginRight: '4px' }}></i> Lokasi valid – {geoDistance} m dari sekolah</>}
+                {geoStatus === 'denied' && geoDistance !== null && geoDistance > 0 && <><i className="fas fa-times-circle" style={{ marginRight: '4px' }}></i> Di luar radius – {geoDistance} m dari sekolah</>}
+                {geoStatus === 'error' && <><i className="fas fa-exclamation-triangle" style={{ marginRight: '4px' }}></i> GPS tidak tersedia</>}
+              </div>
+            )}
+          </>
           )}
 
           {message && (
