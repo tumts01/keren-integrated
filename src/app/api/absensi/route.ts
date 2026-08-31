@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getIndukDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
 // Paksa route ini selalu di-fetch langsung (tidak di-cache Vercel)
 export const dynamic = 'force-dynamic';
