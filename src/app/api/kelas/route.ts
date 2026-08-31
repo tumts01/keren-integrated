@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { getIndukDoc } from '@/lib/google-sheets';
 import { supabase } from '@/lib/supabase';
 
 export async function GET() {
@@ -20,10 +19,10 @@ export async function GET() {
 
     // Map Wali Kelas
     const waliMap: Record<string, string> = {};
-    (rowsKelas || []).forEach(r => {
-      const rombel = r.get('ROMBEL');
+    (rowsKelas || []).forEach((r: any) => {
+      const rombel = r.metadata?.['ROMBEL'];
       if (rombel) {
-        waliMap[rombel.trim().toUpperCase()] = r.wali_kelas || '';
+        waliMap[rombel.trim().toUpperCase()] = r.metadata?.['WALI KELAS'] || '';
       }
     });
 
@@ -37,7 +36,7 @@ export async function GET() {
       totalAktif: number
     }> = {};
 
-    rowsSiswa.forEach(rawR => {
+    rowsSiswa.forEach((rawR: any) => {
       const r = { get: (k: string) => rawR.metadata ? (rawR.metadata[k] || '') : '' };
       const status = (r.get('STATUS SISWA') || '').toLowerCase().trim();
       const jk = (r.get('JENIS KELAMIN') || '').toLowerCase();
@@ -98,7 +97,7 @@ export async function GET() {
 
     // Format to array and attach Wali Kelas
     const data = Object.values(rombelStats)
-      .filter(r => r.totalAktif > 0) // Only show classes with active students, or show all? We will show all that have students
+      .filter(r => r.totalAktif > 0)
       .map(r => ({
         ...r,
         waliKelas: waliMap[r.rombel] || ''
@@ -110,9 +109,10 @@ export async function GET() {
     return NextResponse.json({ success: true, data }, {
       headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' }
     });
+
   } catch (error: any) {
-    console.error('Fetch Kelas Error:', error);
-    return NextResponse.json({ success: false, error: 'Gagal mengambil data dari Database' }, { status: 500 });
+    console.error('Kelas Fetch Error:', error);
+    return NextResponse.json({ success: false, error: 'Gagal memuat data kelas' }, { status: 500 });
   }
 }
 
@@ -125,40 +125,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Rombel wajib diisi' }, { status: 400 });
     }
 
-    const doc = await getIndukDoc();
-    const sheetKelas = doc.sheetsByTitle['db_Kelas'];
-    
-    if (!sheetKelas) {
-      return NextResponse.json({ success: false, error: 'Tab db_Kelas tidak ditemukan' }, { status: 404 });
-    }
+    const { data: rowsKelas, error: errKelas } = await supabase.from('data_kelas').select('*');
+    if (errKelas) throw errKelas;
 
-    // Load header row if necessary, or just load rows
-    const rowsKelas = await sheetKelas.getRows();
-    
-    // Cari apakah rombel sudah ada
     let foundRow = null;
-    for (const r of rowsKelas) {
-      if ((r.get('ROMBEL') || '').trim().toUpperCase() === rombel.trim().toUpperCase()) {
-        foundRow = r;
-        break;
+    if (rowsKelas) {
+      for (const r of rowsKelas) {
+        if ((r.metadata?.['ROMBEL'] || '').trim().toUpperCase() === rombel.trim().toUpperCase()) {
+          foundRow = r;
+          break;
+        }
       }
     }
 
     if (foundRow) {
-      // Update
-      foundRow.set('WALI KELAS', waliKelas);
-      await foundRow.save();
+      const { error } = await supabase.from('data_kelas').update({
+        metadata: { ...foundRow.metadata, 'WALI KELAS': waliKelas }
+      }).eq('id', foundRow.id);
+      if (error) throw error;
     } else {
-      // Create new
-      await sheetKelas.addRow({
-        'ROMBEL': rombel.trim().toUpperCase(),
-        'WALI KELAS': waliKelas
-      });
+      const { error } = await supabase.from('data_kelas').insert([{
+        metadata: {
+          'ROMBEL': rombel.trim().toUpperCase(),
+          'WALI KELAS': waliKelas
+        }
+      }]);
+      if (error) throw error;
     }
 
-    return NextResponse.json({ success: true, message: 'Wali Kelas berhasil disimpan' });
+    return NextResponse.json({ success: true, message: 'Data kelas berhasil disimpan' });
+
   } catch (error: any) {
-    console.error('Update Wali Kelas Error:', error);
-    return NextResponse.json({ success: false, error: 'Gagal menyimpan data Wali Kelas' }, { status: 500 });
+    console.error('POST Kelas Error:', error);
+    return NextResponse.json({ success: false, error: 'Gagal menyimpan data kelas' }, { status: 500 });
   }
 }
