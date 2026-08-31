@@ -1,35 +1,31 @@
 import { NextResponse } from 'next/server';
-import { getNotulenDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
+import { uploadFileToDrive } from '@/lib/google-drive';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    const doc = await getNotulenDoc();
-    // Gunakan sheet pertama atau cari berdasarkan judul
-    let sheet = doc.sheetsByTitle['notulen'] || doc.sheetsByTitle['Notulen'];
+    const { data: rows, error } = await supabase.from('data_notulen').select('*').order('id', { ascending: false });
     
-    if (!sheet) {
-      // Fallback ke sheet pertama
-      sheet = doc.sheetsByIndex[0];
-      if (!sheet) {
-        return NextResponse.json({ success: false, error: 'Sheet tidak ditemukan' }, { status: 404 });
-      }
-    }
+    if (error) throw error;
 
-    const rows = await sheet.getRows();
-    const data = rows.map((row: any) => ({
-      id: row.get('ID') || '',
-      tanggal: row.get('Tanggal') || '',
-      waktu: row.get('Waktu') || '',
-      tempatRapat: row.get('Tempat Rapat') || '',
-      agendaRapat: row.get('Agenda Rapat') || '',
-      pimpinanRapat: row.get('Pimpinan Rapat') || '',
-      dihadiriOleh: row.get('Dihadiri Oleh') || '',
-      notulis: row.get('Notulis') || '',
-      hasilNotulen: row.get('Hasil Notulen') || '',
-      dokumentasi: row.get('Dokumentasi') || '',
-    })).reverse(); // Balik urutan agar yang terbaru di atas
+    const data = (rows || []).map((row: any) => {
+      const meta = row.metadata || {};
+      return {
+        id: meta['ID'] || row.id.toString(),
+        db_id: row.id,
+        tanggal: meta['Tanggal'] || '',
+        waktu: meta['Waktu'] || '',
+        tempatRapat: meta['Tempat Rapat'] || '',
+        agendaRapat: meta['Agenda Rapat'] || '',
+        pimpinanRapat: meta['Pimpinan Rapat'] || '',
+        dihadiriOleh: meta['Dihadiri Oleh'] || '',
+        notulis: meta['Notulis'] || '',
+        hasilNotulen: meta['Hasil Notulen'] || '',
+        dokumentasi: meta['Dokumentasi'] || '',
+      };
+    });
 
     return NextResponse.json({ success: true, data }, {
       headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
@@ -39,8 +35,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
-
-import { uploadFileToDrive } from '@/lib/google-drive';
 
 export async function POST(request: Request) {
   try {
@@ -55,12 +49,11 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
       }
 
-      const doc = await getNotulenDoc();
-      let sheet = doc.sheetsByTitle['notulen'] || doc.sheetsByTitle['Notulen'];
-      if (!sheet) sheet = doc.sheetsByIndex[0];
+      // Cari berdasarkan meta ID
+      const { data: targetRows, error: findErr } = await supabase.from('data_notulen').select('*').contains('metadata', { 'ID': idToUpdate });
+      if (findErr) throw findErr;
       
-      const rows = await sheet.getRows();
-      const targetRow = rows.find((r: any) => r.get('ID') === idToUpdate);
+      const targetRow = targetRows && targetRows.length > 0 ? targetRows[0] : null;
       
       if (!targetRow) {
         return NextResponse.json({ success: false, error: 'Data notulen tidak ditemukan' }, { status: 404 });
@@ -81,13 +74,19 @@ export async function POST(request: Request) {
       }
       
       if (urls.length > 0) {
-        const existingUrl = targetRow.get('Dokumentasi') || '';
+        const existingUrl = targetRow.metadata['Dokumentasi'] || '';
+        let newUrl = '';
         if (existingUrl) {
-          targetRow.set('Dokumentasi', existingUrl + ' || ' + urls.join(' || '));
+          newUrl = existingUrl + ' || ' + urls.join(' || ');
         } else {
-          targetRow.set('Dokumentasi', urls.join(' || '));
+          newUrl = urls.join(' || ');
         }
-        await targetRow.save();
+        
+        const { error: updateErr } = await supabase.from('data_notulen').update({
+          metadata: { ...targetRow.metadata, 'Dokumentasi': newUrl }
+        }).eq('id', targetRow.id);
+        
+        if (updateErr) throw updateErr;
       }
       
       return NextResponse.json({ success: true, message: 'Dokumentasi berhasil ditambahkan' });
@@ -122,7 +121,6 @@ export async function POST(request: Request) {
       }
       
       if (urls.length > 0) {
-        // Jika sebelumnya ada dokumentasiUrl manual, tambahkan juga
         if (dokumentasiUrl) {
           dokumentasiUrl = dokumentasiUrl + ' || ' + urls.join(' || ');
         } else {
@@ -131,36 +129,24 @@ export async function POST(request: Request) {
       }
     }
 
-    const doc = await getNotulenDoc();
-    let sheet = doc.sheetsByTitle['notulen'] || doc.sheetsByTitle['Notulen'];
-    if (!sheet) {
-      sheet = doc.sheetsByIndex[0];
-    }
-
     const id = Date.now().toString();
 
-    // Pastikan header ada. Jika belum ada, set.
-    try {
-      await sheet.loadHeaderRow();
-    } catch (e) {
-      await sheet.setHeaderRow([
-        'ID', 'Tanggal', 'Waktu', 'Tempat Rapat', 'Agenda Rapat', 
-        'Pimpinan Rapat', 'Dihadiri Oleh', 'Notulis', 'Hasil Notulen', 'Dokumentasi'
-      ]);
-    }
+    const { error: insertErr } = await supabase.from('data_notulen').insert([{
+      metadata: {
+        'ID': id,
+        'Tanggal': tanggal,
+        'Waktu': waktu,
+        'Tempat Rapat': tempatRapat,
+        'Agenda Rapat': agendaRapat,
+        'Pimpinan Rapat': pimpinanRapat,
+        'Dihadiri Oleh': dihadiriOleh,
+        'Notulis': notulis || 'Admin',
+        'Hasil Notulen': hasilNotulen,
+        'Dokumentasi': dokumentasiUrl
+      }
+    }]);
 
-    await sheet.addRow({
-      'ID': id,
-      'Tanggal': tanggal,
-      'Waktu': waktu,
-      'Tempat Rapat': tempatRapat,
-      'Agenda Rapat': agendaRapat,
-      'Pimpinan Rapat': pimpinanRapat,
-      'Dihadiri Oleh': dihadiriOleh,
-      'Notulis': notulis || 'Admin',
-      'Hasil Notulen': hasilNotulen,
-      'Dokumentasi': dokumentasiUrl
-    });
+    if (insertErr) throw insertErr;
 
     return NextResponse.json({ success: true, message: 'Notulen berhasil ditambahkan' });
   } catch (error: any) {
