@@ -1385,7 +1385,7 @@ export default function SiswaPage() {
         {loading ? (
           <div className={styles.loading}>
             <i className={`fas fa-circle-notch ${styles.spinner}`}></i>
-            <p>Memuat Data Siswa dari Spreadsheet...</p>
+            <p>Memuat Data Siswa dari Database (Supabase)...</p>
           </div>
         ) : error ? (
           <div className={styles.loading} style={{ color: 'var(--danger)' }}>
