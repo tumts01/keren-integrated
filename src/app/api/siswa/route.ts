@@ -1,18 +1,23 @@
 import { NextResponse } from 'next/server';
 import { getIndukDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const doc = await getIndukDoc();
-    const sheet = doc.sheetsByTitle['DATABASE'];
+    const { data: sbRows, error } = await supabase.from('data_induk').select('*');
+    if (error) throw error;
     
-    if (!sheet) {
-      return NextResponse.json({ success: false, error: 'Tab DATABASE tidak ditemukan' }, { status: 404 });
-    }
-
-    const rows = await sheet.getRows();
+    // Mock Google Sheet row interface
+    const rows = sbRows.map((sbRow: any, index: number) => ({
+      rowNumber: index + 2,
+      get: (key: string) => {
+        if (key === 'ID SISWA') return sbRow.id_siswa;
+        if (key === 'NAMA') return sbRow.nama;
+        return sbRow.metadata ? (sbRow.metadata[key] || '') : '';
+      }
+    }));
     
     // Helper untuk mengubah link gdrive menjadi raw image link
     const getImageUrl = (url: string) => {
@@ -159,6 +164,18 @@ export async function POST(request: Request) {
 
     // Simpan
     await sheet.saveUpdatedCells();
+
+    // DUAL-WRITE KE SUPABASE
+    try {
+      const payload = {
+        id_siswa: fields.nis || '',
+        nama: (fields.nama || '').trim(),
+        metadata: rowData
+      };
+      await supabase.from('data_induk').insert(payload);
+    } catch (sbError) {
+      console.error('Error insert mutasi ke Supabase:', sbError);
+    }
 
     return NextResponse.json({ success: true, message: 'Siswa mutasi masuk berhasil ditambahkan.' });
   } catch (error: any) {
