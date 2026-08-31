@@ -619,6 +619,26 @@ function PrintSiswaModal({
     setTimeout(() => { win.focus(); win.print(); }, 400);
   };
 
+  
+  const handleSyncSupabase = async () => {
+    if (!confirm('Tarik ulang semua data siswa dari Google Sheets ke Supabase? Ini membutuhkan waktu sekitar 15-20 detik.')) return;
+    setIsSyncing(true);
+    try {
+      const res = await fetch('/api/siswa/sync', { method: 'POST' });
+      const json = await res.json();
+      if (json.success) {
+        alert('Sinkronisasi berhasil! Halaman akan dimuat ulang.');
+        window.location.reload();
+      } else {
+        alert('Gagal: ' + json.error);
+      }
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+  
   const handleExportExcel = () => {
     if (mode === 'angkatan') {
       // Export per angkatan: 1 sheet per kelas
@@ -934,6 +954,7 @@ function PrintSiswaModal({
 
 export default function SiswaPage() {
   const [data, setData] = useState<Siswa[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState('');
@@ -1301,7 +1322,10 @@ export default function SiswaPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <button onClick={handleExportExcel} className="btn btn-gold" style={{ marginRight: '8px' }}>
+            <button onClick={handleSyncSupabase} className="btn" disabled={isSyncing} style={{ background: '#3b82f6', color: 'white', borderColor: '#3b82f6', marginRight: '8px' }}>
+                {isSyncing ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-sync"></i>} {isSyncing ? 'Menyinkronkan...' : 'Sync Supabase'}
+              </button>
+              <button onClick={handleExportExcel} className="btn btn-gold" style={{ marginRight: '8px' }}>
               <i className="fas fa-file-excel"></i> Export Excel
             </button>
             <button onClick={handleExportMissingNisnNik} className="btn" style={{ marginRight: '8px', background: '#ef4444', color: 'white', borderColor: '#ef4444' }} title="Cetak data siswa yang NISN atau NIK nya kosong">
