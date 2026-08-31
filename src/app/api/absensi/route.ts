@@ -4,6 +4,12 @@ import { getIndukDoc } from '@/lib/google-sheets';
 // Paksa route ini selalu di-fetch langsung (tidak di-cache Vercel)
 export const dynamic = 'force-dynamic';
 
+function isSundayInJakarta() {
+  const date = new Date();
+  const jakartaDateStr = date.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' });
+  const jakartaDate = new Date(jakartaDateStr);
+  return jakartaDate.getDay() === 0;
+}
 function getCurrentDateString() {
   const date = new Date();
   return date.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -79,7 +85,7 @@ export async function GET(request: Request) {
     const liburSheet = await getLiburSheet(doc);
     const liburRows: any[] = await withRetry(() => liburSheet.getRows());
     const todayHoliday = liburRows.find((r: any) => r.get('tanggal') === today);
-    const isSunday = new Date().getDay() === 0;
+    const isSunday = isSundayInJakarta();
 
     const finalTodayStatus = {
       ...todayStatus,
@@ -142,7 +148,7 @@ export async function POST(request: Request) {
     const liburSheet = await getLiburSheet(doc);
     const liburRows: any[] = await withRetry(() => liburSheet.getRows());
     const isHoliday = liburRows.find((r: any) => r.get('tanggal') === today);
-    const isSunday = new Date().getDay() === 0;
+    const isSunday = isSundayInJakarta();
 
     if (action === 'checkin' && (isHoliday || isSunday)) {
       const reason = isHoliday ? isHoliday.get('keterangan') : 'Libur Akhir Pekan (Minggu)';
