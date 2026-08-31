@@ -14,7 +14,6 @@ export async function GET(request: Request) {
     };
 
     // Ambil domisili dari Supabase data_induk
-    
     let rowsInduk: any[] = [];
     let page = 0;
     while (true) {
@@ -36,7 +35,6 @@ export async function GET(request: Request) {
       });
     }
 
-    
     let rows: any[] = [];
     let pageP = 0;
     while (true) {
@@ -50,7 +48,6 @@ export async function GET(request: Request) {
       if (data.length < 1000) break;
       pageP++;
     }
-
 
     let data = (rows || []).map((r: any) => {
       const rawNisn = (r.metadata?.['NISN'] || '').trim();
@@ -87,25 +84,76 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { listSiswa, tahunAjaran, mapel, kelas, jamKe, guru, timestamp, tanggal } = await request.json();
+    const body = await request.json();
+
+    // Handle action: update dari Rekap Siswa
+    if (body.action === 'update') {
+      const { id, status, jamKe } = body;
+      if (!id) return NextResponse.json({ success: false, error: 'ID tidak valid' }, { status: 400 });
+      
+      const { data: foundRow } = await supabase.from('data_presensi_siswa').select('*').contains('metadata', { 'ID': id }).single();
+      if (!foundRow) return NextResponse.json({ success: false, error: 'Data tidak ditemukan' }, { status: 404 });
+      
+      const { error } = await supabase.from('data_presensi_siswa').update({
+        metadata: { ...foundRow.metadata, 'KEHADIRAN': status, 'JAM KE': jamKe || foundRow.metadata?.['JAM KE'] }
+      }).eq('id', foundRow.id);
+      if (error) throw error;
+      return NextResponse.json({ success: true });
+    }
+
+    // Handle action: delete dari Rekap Siswa
+    if (body.action === 'delete') {
+      const { id } = body;
+      if (!id) return NextResponse.json({ success: false, error: 'ID tidak valid' }, { status: 400 });
+      const { data: foundRow } = await supabase.from('data_presensi_siswa').select('id').contains('metadata', { 'ID': id }).single();
+      if (foundRow) {
+        const { error } = await supabase.from('data_presensi_siswa').delete().eq('id', foundRow.id);
+        if (error) throw error;
+      }
+      return NextResponse.json({ success: true });
+    }
+
+    // Submit presensi baru
+    // Format lama: { listSiswa: [{nama, nisn, status}], ... }
+    // Format baru (dari frontend): { siswaList: [{nama, nisn, ...}], presensi: {nisn: 'H'|'S'|'I'|'A'}, ... }
+    const { tahunAjaran, mapel, kelas, jamKe, guru, timestamp, tanggal } = body;
+
+    let listSiswa = body.listSiswa;
+
+    // Konversi format baru ke format lama
+    if (!listSiswa && body.siswaList) {
+      const presensiMap: Record<string, string> = body.presensi || {};
+      listSiswa = body.siswaList.map((s: any) => {
+        const nisnKey = (s.nisn || s.NISN || '').toString().replace(/^'/, '').trim();
+        const namaKey = s.nama || s.namaSiswa || '';
+        const status = presensiMap[nisnKey] || presensiMap[namaKey] || 'H';
+        return {
+          nama: namaKey,
+          nisn: nisnKey,
+          status
+        };
+      });
+    }
 
     if (!listSiswa || listSiswa.length === 0) {
       return NextResponse.json({ success: false, error: 'Data absensi kosong' }, { status: 400 });
     }
 
+    const nowTimestamp = timestamp || new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
+
     const payload = listSiswa.map((s: any) => {
       const uniqueId = crypto.randomUUID();
       const metadata = {
         'ID': uniqueId,
-        'TIMESTAMP': timestamp,
+        'TIMESTAMP': nowTimestamp,
         'TANGGAL': tanggal,
-        'TAHUN AJARAN': tahunAjaran,
+        'TAHUN AJARAN': tahunAjaran || '2026/2027',
         'KELAS': kelas,
         'JAM KE': jamKe,
         'MAPEL': mapel,
         'GURU PENGINPUT': guru,
         'NAMA SISWA': s.nama,
-        'NISN': `'${s.nisn}`,
+        'NISN': s.nisn ? `'${s.nisn}` : '',
         'KEHADIRAN': s.status
       };
       return { tanggal, kelas, metadata };
@@ -118,7 +166,7 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('Submit Presensi Error:', error);
-    return NextResponse.json({ success: false, error: 'Gagal menyimpan absensi' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Gagal menyimpan absensi: ' + error.message }, { status: 500 });
   }
 }
 
@@ -131,11 +179,9 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: 'ID tidak diberikan' }, { status: 400 });
     }
 
-    // Try deleting by Supabase ID first, if not found or if ID is a UUID, find by JSONB ID
     let deleteId = parseInt(id, 10);
     
     if (isNaN(deleteId)) {
-      // Find row by UUID in metadata
       const { data: foundRow } = await supabase.from('data_presensi_siswa').select('id').contains('metadata', { 'ID': id }).single();
       if (foundRow) {
         deleteId = foundRow.id;
