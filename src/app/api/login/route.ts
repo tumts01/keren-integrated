@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getIndukDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
 export async function POST(request: Request) {
   try {
@@ -9,20 +9,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Username harus diisi' }, { status: 400 });
     }
 
-    const doc = await getIndukDoc();
-    // Assuming the tab is named 'Users'. We can also try by index if the name is slightly different.
-    let sheet = doc.sheetsByTitle['Users'];
-    
-    if (!sheet) {
-      // Fallback to first sheet if 'Users' tab is not found
-      sheet = doc.sheetsByIndex[0];
-    }
-
-    const rows = await sheet.getRows();
+    const { data: rows, error } = await supabase.from('data_users').select('*');
+    if (error) throw error;
     
     // Find user by Username (case-insensitive for convenience)
-    const userRow = rows.find(row => {
-      const dbUsername = row.get('Username');
+    const userRow = (rows || []).find((r: any) => {
+      const dbUsername = r.metadata?.['Username'];
       return dbUsername && dbUsername.toString().toLowerCase().trim() === username.toLowerCase().trim();
     });
 
@@ -30,16 +22,8 @@ export async function POST(request: Request) {
       // Attempt to log last login time
       try {
         const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
-        
-        // Ensure the header exists
-        await sheet.loadHeaderRow();
-        if (!sheet.headerValues.includes('Terakhir Login')) {
-          const newHeaders = [...sheet.headerValues, 'Terakhir Login'];
-          await sheet.setHeaderRow(newHeaders);
-        }
-        
-        userRow.set('Terakhir Login', timestamp);
-        await userRow.save();
+        const updatedMetadata = { ...userRow.metadata, 'Terakhir Login': timestamp };
+        await supabase.from('data_users').update({ metadata: updatedMetadata }).eq('id', userRow.id);
       } catch (logError) {
         console.error('Failed to log last login time:', logError);
       }
@@ -48,19 +32,18 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true,
         user: {
-          nama: userRow.get('Nama') || '',
-          username: userRow.get('Username') || '',
-          foto: userRow.get('Foto') || '',
-          role: userRow.get('Role') || 'Staf', // Default to Staf if empty
-          sudahGantiUsername: userRow.get('Sudah Ganti Username')?.toString().toLowerCase() === 'true' || false,
+          nama: userRow.nama || userRow.metadata?.['Nama'] || '',
+          username: userRow.metadata?.['Username'] || '',
+          role: userRow.metadata?.['Role'] || '',
+          whatsapp: userRow.metadata?.['Whatsapp'] || '',
+          pin: userRow.metadata?.['PIN'] || ''
         }
       });
-    } else {
-      return NextResponse.json({ success: false, error: 'Username tidak ditemukan di Database' }, { status: 401 });
     }
 
-  } catch (error: any) {
+    return NextResponse.json({ success: false, error: 'User tidak ditemukan' }, { status: 401 });
+  } catch (error) {
     console.error('Login Error:', error);
-    return NextResponse.json({ success: false, error: 'Gagal terhubung ke Database. Cek ID Spreadsheet Anda.' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Terjadi kesalahan saat login' }, { status: 500 });
   }
 }

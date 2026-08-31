@@ -1,34 +1,28 @@
 import { NextResponse } from 'next/server';
-import { getIndukDoc } from '@/lib/google-sheets';
-
-const SHEET_TITLE = 'JadwalMengajar';
+import { supabase } from '@/lib/supabase';
 
 export async function POST(request: Request) {
   try {
-    const { id } = await request.json();
+    const data = await request.json();
     
-    if (!id) {
+    if (!data.id) {
       return NextResponse.json({ success: false, error: 'ID tidak ditemukan' }, { status: 400 });
     }
 
-    const doc = await getIndukDoc();
-    const sheet = doc.sheetsByTitle[SHEET_TITLE];
-    if (!sheet) {
-      return NextResponse.json({ success: false, error: 'Tabel jadwal belum dibuat' }, { status: 404 });
-    }
+    const { data: rows, error: fetchError } = await supabase.from('jadwal_mengajar').select('*');
+    if (fetchError) throw fetchError;
 
-    const rows = await sheet.getRows();
-    const row = rows.find(r => r.get('id') === id);
+    const row = (rows || []).find((r: any) => r.id === data.id || r.metadata?.id === data.id);
     
-    if (!row) {
-      return NextResponse.json({ success: false, error: 'Data jadwal tidak ditemukan' }, { status: 404 });
+    if (row) {
+      const { error } = await supabase.from('jadwal_mengajar').delete().eq('id', row.id);
+      if (error) throw error;
+      return NextResponse.json({ success: true });
+    } else {
+      return NextResponse.json({ success: false, error: 'Data tidak ditemukan' }, { status: 404 });
     }
-
-    await row.delete();
-    return NextResponse.json({ success: true, message: 'Jadwal berhasil dihapus' });
-
-  } catch (error) {
-    console.error('Error deleting Jadwal Mengajar:', error);
-    return NextResponse.json({ success: false, error: 'Gagal menghapus jadwal mengajar' }, { status: 500 });
+  } catch (error: any) {
+    console.error('Error in DELETE Jadwal:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

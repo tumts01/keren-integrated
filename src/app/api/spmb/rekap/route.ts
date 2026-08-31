@@ -1,22 +1,16 @@
 import { NextResponse } from 'next/server';
-import { getIndukDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
 export async function GET() {
   try {
-    const doc = await getIndukDoc();
-    const sheet = doc.sheetsByTitle['SPMB'];
+    const { data: rows, error } = await supabase.from('data_spmb').select('*');
+    if (error) throw error;
 
-    if (!sheet) {
-      return NextResponse.json({ success: true, data: [] }, {
-        headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
-      });
-    }
-
-    const rows = await sheet.getRows();
-    const data = rows.map((row, index) => {
+    const data = (rows || []).map((r: any, index: number) => {
+      const row = { get: (k: string) => r.metadata?.[k] || '' };
       return {
         id: index,
-        rowNumber: row.rowNumber,
+        rowNumber: r.id,
         timestamp: row.get('Timestamp') || '',
         jalurPendaftaran: row.get('Jalur Pendaftaran') || '',
         namaLengkap: row.get('Nama Lengkap') || '',
@@ -35,7 +29,7 @@ export async function GET() {
         linkKk: row.get('File KK') || '',
         linkAkta: row.get('File Akta') || ''
       };
-    }).filter(item => item.namaLengkap !== ''); // filter out empty rows
+    }).filter((item: any) => item.namaLengkap !== ''); // filter out empty rows
 
     // Reverse to show newest first
     return NextResponse.json({ success: true, data: data.reverse() }, {

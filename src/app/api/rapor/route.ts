@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getIndukDoc, getRaporDoc } from '@/lib/google-sheets';
+import { getRaporDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
 function excelDateToJSDate(serial: number) {
   const utc_days  = Math.floor(serial - 25569);
@@ -10,25 +11,23 @@ function excelDateToJSDate(serial: number) {
 
 export async function GET() {
   try {
-    // 1. Fetch Students
-    const indukDoc = await getIndukDoc();
-    const sheetSiswa = indukDoc.sheetsByTitle['DATABASE'];
-    if (!sheetSiswa) throw new Error("Tab DATABASE Siswa tidak ditemukan");
+    // 1. Fetch Students from Supabase
+    const { data: rawSiswa, error } = await supabase.from('data_induk').select('*');
+    if (error) throw error;
     
-    const rowsSiswa = await sheetSiswa.getRows();
-    const activeStudents = rowsSiswa.map(row => {
-        let rombel = (row.get('ROMBEL KELAS 9') || '').trim();
-        if (!rombel) rombel = (row.get('ROMBEL KELAS 8') || '').trim();
-        if (!rombel) rombel = (row.get('ROMBEL KELAS 7') || '').trim();
-        if (!rombel) rombel = (row.get('ROMBEL') || '').trim();
+    const activeStudents = (rawSiswa || []).map((row: any) => {
+        let rombel = (row.metadata?.['ROMBEL KELAS 9'] || '').trim();
+        if (!rombel) rombel = (row.metadata?.['ROMBEL KELAS 8'] || '').trim();
+        if (!rombel) rombel = (row.metadata?.['ROMBEL KELAS 7'] || '').trim();
+        if (!rombel) rombel = (row.metadata?.['ROMBEL'] || '').trim();
 
         return {
-           nis: row.get('ID SISWA') || '',
-           nama: row.get('NAMA') || '',
+           nis: row.metadata?.['ID SISWA'] || row.id_siswa || '',
+           nama: row.metadata?.['NAMA'] || row.nama || '',
            kelas: rombel,
-           status: (row.get('STATUS SISWA') || '').toLowerCase().trim()
+           status: (row.metadata?.['STATUS SISWA'] || '').toLowerCase().trim()
         }
-    }).filter(s => s.status === 'aktif' && s.kelas && s.nis);
+    }).filter((s: any) => s.status === 'aktif' && s.kelas && s.nis);
 
     // 2. Fetch Config
     const raporDoc = await getRaporDoc();
@@ -48,151 +47,39 @@ export async function GET() {
     }
 
     // 3. Fetch Returned Report Cards
-    const sheetBalekno = raporDoc.sheetsByTitle['BALEKNO'];
-    let returnedNis = new Set();
-    
-    if (sheetBalekno) {
-       try {
-         // Use loadCells instead of getRows to bypass header mapping issues
-         await sheetBalekno.loadCells(`B1:C${sheetBalekno.rowCount}`);
-         
-         for (let r = 0; r < sheetBalekno.rowCount; r++) {
-           const namaKolom = sheetBalekno.getCell(r, 1).value; // Column B
-           const tglVal = sheetBalekno.getCell(r, 2).value;    // Column C
-           
-           if (!namaKolom || typeof namaKolom !== 'string') continue;
-           if (namaKolom.trim().toUpperCase() === 'NAMA') continue;
-           
-           // Extract NIS (first token)
-           const nis = namaKolom.split(' ')[0];
-           
-           // Validate Date
-           let isValidDate = true;
-           if (startDate || endDate) {
-             let jsDate: Date | null = null;
-             try {
-               if (!isNaN(Number(tglVal))) {
-                 jsDate = excelDateToJSDate(Number(tglVal));
-               } else if (typeof tglVal === 'string') {
-                 // Clean up comma e.g. "19/7/2026, 11:14:00"
-                 const cleanTgl = tglVal.replace(',', '');
-                 const datePart = cleanTgl.split(' ')[0];
-                 const parts = datePart.split(/[\/\-]/);
-                 if (parts.length === 3 && parts[2].length === 4) {
-                   // Convert DD/MM/YYYY to YYYY-MM-DD
-                   jsDate = new Date(`${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}T12:00:00Z`);
-                 } else {
-                   jsDate = new Date(cleanTgl);
-                 }
-               }
-               
-               if (jsDate && !isNaN(jsDate.getTime())) {
-                 const yyyy = jsDate.getUTCFullYear();
-                 const mm = String(jsDate.getUTCMonth() + 1).padStart(2, '0');
-                 const dd = String(jsDate.getUTCDate()).padStart(2, '0');
-                 const yyyymmdd = `${yyyy}-${mm}-${dd}`;
-                 
-                 if (startDate && yyyymmdd < startDate) isValidDate = false;
-                 if (endDate && yyyymmdd > endDate) isValidDate = false;
-               }
-             } catch (e) {
-               console.error("Date parsing error for", tglVal, e);
-             }
-           }
-           
-           if (isValidDate) {
-             returnedNis.add(nis);
-           }
-         }
-       } catch (e) {
-         console.error('Error fetching Balekno rows:', e);
-       }
+    let returnedSheet = raporDoc.sheetsByTitle['PENGEMBALIAN'];
+    let returnedMap: Record<string, string> = {};
+    if (!returnedSheet) {
+      returnedSheet = await raporDoc.addSheet({ title: 'PENGEMBALIAN', headerValues: ['NIS', 'TANGGAL KEMBALI'] });
+    } else {
+      const returnedRows = await returnedSheet.getRows();
+      returnedRows.forEach(r => {
+        const nis = (r.get('NIS') || '').toString().trim();
+        let tgl = (r.get('TANGGAL KEMBALI') || '').trim();
+        
+        // Handle Excel numeric date format if any
+        if (tgl && !isNaN(Number(tgl))) {
+          const jsDate = excelDateToJSDate(Number(tgl));
+          tgl = jsDate.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        }
+        
+        if (nis) returnedMap[nis] = tgl;
+      });
     }
 
-    // 4. Calculate Missing Report Cards
-    const missingStudents = activeStudents.filter(s => !returnedNis.has(s.nis));
-    
-    // 5. Aggregate by Class
-    const rekap: Record<string, {total: number, missing: number}> = {};
-    for (const s of activeStudents) {
-      if (!rekap[s.kelas]) {
-        rekap[s.kelas] = { total: 0, missing: 0 };
-      }
-      rekap[s.kelas].total += 1;
-    }
-    
-    for (const s of missingStudents) {
-      if (rekap[s.kelas]) {
-        rekap[s.kelas].missing += 1;
-      }
-    }
+    // 4. Combine Data
+    const data = activeStudents.map((s: any) => ({
+      ...s,
+      tanggalKembali: returnedMap[s.nis] || null,
+      isReturned: !!returnedMap[s.nis]
+    }));
 
-    const rekapArray = Object.keys(rekap).map(k => ({
-      kelas: k,
-      total: rekap[k].total,
-      missing: rekap[k].missing,
-      returned: rekap[k].total - rekap[k].missing
-    })).sort((a, b) => a.kelas.localeCompare(b.kelas));
-
-    return NextResponse.json({ 
-      success: true, 
-      startDate, 
-      endDate,
-      rekap: rekapArray,
-      missingList: missingStudents,
-      allActive: activeStudents
-    }, {
+    return NextResponse.json({ success: true, data, config: { startDate, endDate } }, {
       headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' }
     });
 
   } catch (error: any) {
-    console.error('Rapor GET Error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
-}
-
-export async function POST(request: Request) {
-  try {
-    const { nis, nama, kelas } = await request.json();
-    if (!nis || !nama) return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
-
-    const raporDoc = await getRaporDoc();
-    const sheetBalekno = raporDoc.sheetsByTitle['BALEKNO'];
-    if (!sheetBalekno) throw new Error('Tab BALEKNO tidak ditemukan');
-
-    const dateStr = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
-    
-    // Add raw array [NO, NAMA, TANGGAL] to avoid header issues
-    await sheetBalekno.addRow(['', `${nis} ${nama} ${kelas}`, dateStr]);
-
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
-}
-
-export async function PUT(request: Request) {
-  try {
-    const { startDate, endDate } = await request.json();
-    
-    const raporDoc = await getRaporDoc();
-    let configSheet = raporDoc.sheetsByTitle['CONFIG'];
-    if (!configSheet) {
-      configSheet = await raporDoc.addSheet({ title: 'CONFIG', headerValues: ['Key', 'Value'] });
-    }
-
-    const rows = await configSheet.getRows();
-    let startRow = rows.find(r => r.get('Key') === 'StartDate');
-    let endRow = rows.find(r => r.get('Key') === 'EndDate');
-
-    if (startRow) { startRow.set('Value', startDate || ''); await startRow.save(); }
-    else { await configSheet.addRow({ Key: 'StartDate', Value: startDate || '' }); }
-
-    if (endRow) { endRow.set('Value', endDate || ''); await endRow.save(); }
-    else { await configSheet.addRow({ Key: 'EndDate', Value: endDate || '' }); }
-
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('Fetch Rapor Error:', error);
+    return NextResponse.json({ success: false, error: 'Gagal memuat data rapor' }, { status: 500 });
   }
 }

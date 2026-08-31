@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getNilaiSiswaDoc, getIndukDoc } from '@/lib/google-sheets';
+import { getNilaiSiswaDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,34 +15,35 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: false, error: 'Kelas, Mapel, dan Tahun Ajaran wajib diisi' }, { status: 400 });
     }
 
-    // 1. Fetch Students
-    const docInduk = await getIndukDoc();
-    const sheetDb = docInduk.sheetsByTitle['DATABASE'];
-    const rowsDb = await sheetDb.getRows();
+    // 1. Fetch Students from Supabase
+    const { data: rowsDb, error } = await supabase.from('data_induk').select('*');
+    if (error) throw error;
     
     const siswas: any[] = [];
-    rowsDb.forEach(r => {
+    (rowsDb || []).forEach((r: any) => {
+      const getVal = (k: string) => k === 'ID SISWA' ? r.id_siswa : k === 'NAMA' ? r.nama : (r.metadata?.[k] || '');
+
       const baseStudent = {
-        induk: r.get('ID SISWA') || '',
-        nama: r.get('NAMA') || '',
-        jk: r.get('JENIS KELAMIN') || '',
+        induk: getVal('ID SISWA') || '',
+        nama: getVal('NAMA') || '',
+        jk: getVal('JENIS KELAMIN') || '',
       };
 
       const records = [];
-      const ta7 = (r.get('TA KELAS 7') || '').trim();
-      const rombel7 = (r.get('ROMBEL KELAS 7') || '').trim();
+      const ta7 = (getVal('TA KELAS 7') || '').trim();
+      const rombel7 = (getVal('ROMBEL KELAS 7') || '').trim();
       if (ta7 && rombel7) records.push({ ...baseStudent, tahunAjaran: ta7, rombel: rombel7 });
 
-      const ta8 = (r.get('TA KELAS 8') || '').trim();
-      const rombel8 = (r.get('ROMBEL KELAS 8') || '').trim();
+      const ta8 = (getVal('TA KELAS 8') || '').trim();
+      const rombel8 = (getVal('ROMBEL KELAS 8') || '').trim();
       if (ta8 && rombel8) records.push({ ...baseStudent, tahunAjaran: ta8, rombel: rombel8 });
 
-      const ta9 = (r.get('TA KELAS 9') || '').trim();
-      const rombel9 = (r.get('ROMBEL KELAS 9') || '').trim();
+      const ta9 = (getVal('TA KELAS 9') || '').trim();
+      const rombel9 = (getVal('ROMBEL KELAS 9') || '').trim();
       if (ta9 && rombel9) records.push({ ...baseStudent, tahunAjaran: ta9, rombel: rombel9 });
 
-      const currentTa = (r.get('TAHUN AJARAN') || '').trim();
-      const currentRombel = (r.get('ROMBEL') || '').trim();
+      const currentTa = (getVal('TAHUN AJARAN') || '').trim();
+      const currentRombel = (getVal('ROMBEL') || '').trim();
       if (currentTa && currentRombel) records.push({ ...baseStudent, tahunAjaran: currentTa, rombel: currentRombel });
 
       records.forEach(rec => {
@@ -51,84 +53,53 @@ export async function GET(req: Request) {
       });
     });
 
-    const uniqueSiswas = Array.from(new Map(siswas.map(s => [s.induk, s])).values());
+    const activeSiswa = siswas;
 
-    if (uniqueSiswas.length === 0) {
-      return NextResponse.json({ success: true, data: [] });
-    }
-
-    // 2. Fetch PK scores
+    // 2. Fetch Grades from NilaiSiswaDoc
     const docNilai = await getNilaiSiswaDoc();
-    const sheetPK = docNilai.sheetsByTitle['PK'];
-    // Assuming max 1000 rows is enough
-    await sheetPK.loadCells('A1:AD1000');
+    const sheetName = `${kelas}_${mapel}`;
+    let sheetNilai = docNilai.sheetsByTitle[sheetName];
 
-    const existingMap = new Map();
-    for (let i = 1; i < 1000; i++) {
-      const rowInduk = sheetPK.getCell(i, 1).value as string;
-      const rowMapel = sheetPK.getCell(i, 6).value as string;
-      const rowTa = sheetPK.getCell(i, 29).value as string;
-      if (!rowInduk) break;
-      if (rowMapel === mapel && rowTa === tahunAjaran) {
-        existingMap.set(rowInduk, i);
+    let nilaiMap: Record<string, { mh1: string, mh2: string, mh3: string, mh4: string, mh5: string, mh6: string, sts: string, sas: string }> = {};
+
+    if (sheetNilai) {
+      await sheetNilai.loadCells({
+        startRowIndex: 8,
+        endRowIndex: sheetNilai.rowCount,
+        startColumnIndex: 0,
+        endColumnIndex: 28 // 0 to 27
+      });
+
+      for (let i = 8; i < sheetNilai.rowCount; i++) {
+        const idSiswa = sheetNilai.getCell(i, 2).value;
+        if (idSiswa) {
+          const key = idSiswa.toString().trim();
+          nilaiMap[key] = {
+            mh1: (sheetNilai.getCell(i, 8).value || '').toString(),
+            mh2: (sheetNilai.getCell(i, 11).value || '').toString(),
+            mh3: (sheetNilai.getCell(i, 14).value || '').toString(),
+            mh4: (sheetNilai.getCell(i, 17).value || '').toString(),
+            mh5: (sheetNilai.getCell(i, 20).value || '').toString(),
+            mh6: (sheetNilai.getCell(i, 23).value || '').toString(),
+            sts: (sheetNilai.getCell(i, 26).value || '').toString(),
+            sas: (sheetNilai.getCell(i, 27).value || '').toString()
+          };
+        }
       }
     }
 
-    const data = uniqueSiswas.map(s => {
-      const rowIdx = existingMap.get(s.induk);
-      const scores = {
-        m1s1: '', m1s2: '', m1s3: '',
-        m2s1: '', m2s2: '', m2s3: '',
-        m3s1: '', m3s2: '', m3s3: '',
-        m4s1: '', m4s2: '', m4s3: '',
-        m5s1: '', m5s2: '', m5s3: '',
-        m6s1: '', m6s2: '', m6s3: '',
-        sts: '', sas: '', rata: ''
-      };
+    const data = activeSiswa.map((s, index) => ({
+      no: index + 1,
+      induk: s.induk,
+      nama: s.nama,
+      jk: s.jk,
+      nilai: nilaiMap[s.induk] || { mh1: '', mh2: '', mh3: '', mh4: '', mh5: '', mh6: '', sts: '', sas: '' }
+    }));
 
-      if (rowIdx != null) {
-        // Read all 18 materi harian + sts + sas + rata
-        const getStr = (idx: number) => {
-          const val = sheetPK.getCell(rowIdx, idx).value;
-          return val != null ? String(val) : '';
-        };
+    return NextResponse.json({ success: true, data });
 
-        scores.m1s1 = getStr(8);
-        scores.m1s2 = getStr(9);
-        scores.m1s3 = getStr(10);
-        
-        scores.m2s1 = getStr(11);
-        scores.m2s2 = getStr(12);
-        scores.m2s3 = getStr(13);
-
-        scores.m3s1 = getStr(14);
-        scores.m3s2 = getStr(15);
-        scores.m3s3 = getStr(16);
-
-        scores.m4s1 = getStr(17);
-        scores.m4s2 = getStr(18);
-        scores.m4s3 = getStr(19);
-
-        scores.m5s1 = getStr(20);
-        scores.m5s2 = getStr(21);
-        scores.m5s3 = getStr(22);
-
-        scores.m6s1 = getStr(23);
-        scores.m6s2 = getStr(24);
-        scores.m6s3 = getStr(25);
-
-        scores.sts = getStr(26);
-        scores.sas = getStr(27);
-        scores.rata = getStr(28);
-      }
-      return { ...s, scores };
-    });
-
-    return NextResponse.json({ success: true, data }, {
-      headers: { 'Cache-Control': 'public, s-maxage=0, stale-while-revalidate=5' }
-    });
-  } catch (err: any) {
-    console.error('Error GET PK Rekap:', err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  } catch (error: any) {
+    console.error('API Nilai PK Rekap GET Error:', error);
+    return NextResponse.json({ success: false, error: 'Gagal mengambil rekap data' }, { status: 500 });
   }
 }

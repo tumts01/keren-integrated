@@ -1,19 +1,16 @@
 import { NextResponse } from 'next/server';
-import { getIndukDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
 export async function GET() {
   try {
-    const doc = await getIndukDoc();
-    const sheet = doc.sheetsByTitle['DATABASE'];
-    if (!sheet) return NextResponse.json({ success: false, error: 'Tab DATABASE tidak ditemukan' }, { status: 404 });
-
-    const rows = await sheet.getRows();
+    const { data: rows, error } = await supabase.from('data_induk').select('*');
+    if (error) throw error;
+    
     const sekolahMap = new Map<string, string>();
     
-    rows.forEach(r => {
-      // Kolom AY = index 50
-      const namaSekolah = ((r as any)._rawData[50] || r.get('SD/MI') || '').toString().trim();
-      const alamatSekolah = (r.get('ALAMAT SD/MI') || '').toString().trim();
+    (rows || []).forEach((r: any) => {
+      const namaSekolah = (r.metadata?.['SD/MI'] || '').toString().trim();
+      const alamatSekolah = (r.metadata?.['ALAMAT SD/MI'] || '').toString().trim();
       
       if (namaSekolah && !sekolahMap.has(namaSekolah)) {
         sekolahMap.set(namaSekolah, alamatSekolah);

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getNilaiSiswaDoc, getIndukDoc } from '@/lib/google-sheets';
+import { getNilaiSiswaDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,151 +31,138 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: false, error: 'Kelas, Mapel, dan Tahun Ajaran wajib diisi' }, { status: 400 });
     }
 
-    // 1. Fetch Students
-    const docInduk = await getIndukDoc();
-    const sheetDb = docInduk.sheetsByTitle['DATABASE'];
-    const rowsDb = await sheetDb.getRows();
+    // 1. Fetch Students from Supabase
+    const { data: rowsDb, error } = await supabase.from('data_induk').select('*');
+    if (error) throw error;
     
     const siswas: any[] = [];
-    rowsDb.forEach(r => {
+    (rowsDb || []).forEach((r: any) => {
+      const getVal = (k: string) => k === 'ID SISWA' ? r.id_siswa : k === 'NAMA' ? r.nama : (r.metadata?.[k] || '');
+      
       const baseStudent = {
-        induk: r.get('ID SISWA') || '',
-        nama: r.get('NAMA') || '',
-        jk: r.get('JENIS KELAMIN') || '',
+        induk: getVal('ID SISWA') || '',
+        nama: getVal('NAMA') || '',
+        jk: getVal('JENIS KELAMIN') || '',
       };
 
       const records = [];
-      const ta7 = (r.get('TA KELAS 7') || '').trim();
-      const rombel7 = (r.get('ROMBEL KELAS 7') || '').trim();
+      const ta7 = (getVal('TA KELAS 7') || '').trim();
+      const rombel7 = (getVal('ROMBEL KELAS 7') || '').trim();
       if (ta7 && rombel7) records.push({ ...baseStudent, tahunAjaran: ta7, rombel: rombel7 });
 
-      const ta8 = (r.get('TA KELAS 8') || '').trim();
-      const rombel8 = (r.get('ROMBEL KELAS 8') || '').trim();
+      const ta8 = (getVal('TA KELAS 8') || '').trim();
+      const rombel8 = (getVal('ROMBEL KELAS 8') || '').trim();
       if (ta8 && rombel8) records.push({ ...baseStudent, tahunAjaran: ta8, rombel: rombel8 });
 
-      const ta9 = (r.get('TA KELAS 9') || '').trim();
-      const rombel9 = (r.get('ROMBEL KELAS 9') || '').trim();
+      const ta9 = (getVal('TA KELAS 9') || '').trim();
+      const rombel9 = (getVal('ROMBEL KELAS 9') || '').trim();
       if (ta9 && rombel9) records.push({ ...baseStudent, tahunAjaran: ta9, rombel: rombel9 });
 
-      const currentTa = (r.get('TAHUN AJARAN') || '').trim();
-      const currentRombel = (r.get('ROMBEL') || '').trim();
-      if (currentTa && currentRombel) records.push({ ...baseStudent, tahunAjaran: currentTa, rombel: currentRombel });
+      if (records.length === 0) {
+        records.push({
+          ...baseStudent,
+          tahunAjaran: (getVal('TAHUN AJARAN') || '').trim(),
+          rombel: (getVal('ROMBEL') || '').trim()
+        });
+      }
 
-      records.forEach(rec => {
-        if (rec.tahunAjaran === tahunAjaran && rec.rombel === kelas) {
-          siswas.push(rec);
-        }
-      });
+      records.forEach(rec => siswas.push(rec));
     });
 
-    const uniqueSiswas = Array.from(new Map(siswas.map(s => [s.induk, s])).values());
+    const activeSiswa = siswas.filter(s => s.tahunAjaran === tahunAjaran && s.rombel === kelas);
 
-    if (uniqueSiswas.length === 0) {
-      return NextResponse.json({ success: true, data: [] });
-    }
-
-    // 2. Fetch PK scores
+    // 2. Fetch Grades from NilaiSiswaDoc
     const docNilai = await getNilaiSiswaDoc();
-    const sheetPK = docNilai.sheetsByTitle['PK'];
-    // Assuming max 1000 rows is enough
-    await sheetPK.loadCells('A1:AD1000');
+    const sheetName = `${kelas}_${mapel}`;
+    let sheetNilai = docNilai.sheetsByTitle[sheetName];
 
-    const existingMap = new Map();
-    for (let i = 1; i < 1000; i++) {
-      const rowInduk = sheetPK.getCell(i, 1).value as string;
-      const rowMapel = sheetPK.getCell(i, 6).value as string;
-      if (!rowInduk) break;
-      if (rowMapel === mapel) {
-        existingMap.set(rowInduk, i);
+    let nilaiMap: Record<string, string> = {};
+
+    if (sheetNilai && tipe) {
+      const colIndex = getColumnIndex(tipe, materi || undefined, sub || undefined);
+      
+      await sheetNilai.loadCells({
+        startRowIndex: 8,
+        endRowIndex: sheetNilai.rowCount,
+        startColumnIndex: 0,
+        endColumnIndex: colIndex + 1
+      });
+
+      for (let i = 8; i < sheetNilai.rowCount; i++) {
+        const idSiswa = sheetNilai.getCell(i, 2).value;
+        if (idSiswa) {
+          const val = sheetNilai.getCell(i, colIndex).value;
+          nilaiMap[idSiswa.toString().trim()] = val ? val.toString() : '';
+        }
       }
     }
 
-    let colIdx = 8;
-    if (tipe) {
-      colIdx = getColumnIndex(tipe, materi || '', sub || '');
-    }
-
-    const data = uniqueSiswas.map(s => {
-      const rowIdx = existingMap.get(s.induk);
-      let score = '';
-      if (rowIdx != null && tipe) {
-        const val = sheetPK.getCell(rowIdx, colIdx).value;
-        score = val != null ? String(val) : '';
-      }
-      return { ...s, score };
-    });
+    const data = activeSiswa.map((s, index) => ({
+      no: index + 1,
+      induk: s.induk,
+      nama: s.nama,
+      jk: s.jk,
+      nilai: nilaiMap[s.induk] || ''
+    }));
 
     return NextResponse.json({ success: true, data });
-  } catch (err: any) {
-    console.error('Error GET PK Nilai:', err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+
+  } catch (error: any) {
+    console.error('API Nilai PK GET Error:', error);
+    return NextResponse.json({ success: false, error: 'Gagal mengambil data' }, { status: 500 });
   }
 }
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { kelas, mapel, tipe, materi, sub, data, guru, tahunAjaran } = body;
+    const { kelas, mapel, tipe, materi, sub, data, tahunAjaran } = await req.json();
 
-    if (!kelas || !mapel || !tipe || !data || !Array.isArray(data) || !tahunAjaran) {
+    if (!kelas || !mapel || !tipe || !data || !Array.isArray(data)) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
     }
 
     const docNilai = await getNilaiSiswaDoc();
-    const sheetPK = docNilai.sheetsByTitle['PK'];
-    await sheetPK.loadCells('A1:AD1000');
+    const sheetName = `${kelas}_${mapel}`;
+    let sheetNilai = docNilai.sheetsByTitle[sheetName];
 
-    const existingMap = new Map();
-    let maxRow = 1;
-    for (let i = 1; i < 1000; i++) {
-      const rowInduk = sheetPK.getCell(i, 1).value as string;
-      const rowMapel = sheetPK.getCell(i, 6).value as string;
-      const rowTa = sheetPK.getCell(i, 29).value as string;
-      
-      if (!rowInduk) {
-        if (i > maxRow) maxRow = i;
-        break;
+    if (!sheetNilai) {
+      return NextResponse.json({ success: false, error: 'Format master nilai untuk kelas/mapel ini belum dibuat' }, { status: 404 });
+    }
+
+    const colIndex = getColumnIndex(tipe, materi, sub);
+
+    await sheetNilai.loadCells({
+      startRowIndex: 8,
+      endRowIndex: sheetNilai.rowCount,
+      startColumnIndex: 0,
+      endColumnIndex: colIndex + 1
+    });
+
+    for (const item of data) {
+      let rowIndex = -1;
+      for (let i = 8; i < sheetNilai.rowCount; i++) {
+        const cellVal = sheetNilai.getCell(i, 2).value;
+        if (cellVal && cellVal.toString().trim() === item.induk.toString().trim()) {
+          rowIndex = i;
+          break;
+        }
       }
-      if (rowMapel === mapel && rowTa === tahunAjaran) {
-        existingMap.set(rowInduk, i);
+
+      if (rowIndex !== -1) {
+        const cell = sheetNilai.getCell(rowIndex, colIndex);
+        if (item.nilai === '' || item.nilai === null) {
+          cell.value = null; // Clear if empty
+        } else {
+          cell.value = Number(item.nilai);
+        }
       }
     }
 
-    let nextEmpty = maxRow;
-    const colIdx = getColumnIndex(tipe, materi, sub);
+    await sheetNilai.saveUpdatedCells();
+    return NextResponse.json({ success: true });
 
-    for (const student of data) {
-      let rowIdx = existingMap.get(student.induk);
-      if (rowIdx == null) {
-        rowIdx = nextEmpty++;
-        sheetPK.getCell(rowIdx, 0).value = rowIdx - 1; // No
-        sheetPK.getCell(rowIdx, 1).value = student.induk;
-        sheetPK.getCell(rowIdx, 2).value = student.nama;
-        sheetPK.getCell(rowIdx, 3).value = kelas; // Kelas 
-        sheetPK.getCell(rowIdx, 4).value = student.jk;
-        sheetPK.getCell(rowIdx, 5).value = guru || '';
-        sheetPK.getCell(rowIdx, 6).value = mapel;
-        sheetPK.getCell(rowIdx, 29).value = tahunAjaran;
-      }
-      
-      // Update cell if score is provided, otherwise leave as is or null
-      if (student.score !== undefined && student.score !== '') {
-        sheetPK.getCell(rowIdx, colIdx).value = Number(student.score) || student.score;
-      } else {
-        sheetPK.getCell(rowIdx, colIdx).value = null;
-      }
-      
-      // Update 'Materi' column if it's materi harian just to keep track
-      if (tipe === 'materi_harian' && materi) {
-        sheetPK.getCell(rowIdx, 7).value = materi;
-      }
-    }
-
-    await sheetPK.saveUpdatedCells();
-
-    return NextResponse.json({ success: true, message: 'Nilai berhasil disimpan' });
-  } catch (err: any) {
-    console.error('Error POST PK Nilai:', err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  } catch (error: any) {
+    console.error('API Nilai PK POST Error:', error);
+    return NextResponse.json({ success: false, error: 'Gagal menyimpan nilai' }, { status: 500 });
   }
 }

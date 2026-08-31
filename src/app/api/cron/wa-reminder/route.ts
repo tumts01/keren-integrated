@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getIndukDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
 function getCurrentDateString() {
   const date = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));

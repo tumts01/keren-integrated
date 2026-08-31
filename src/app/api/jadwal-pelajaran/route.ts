@@ -1,23 +1,22 @@
 import { NextResponse } from 'next/server';
-import { getPresensiDoc, getIndukDoc } from '@/lib/google-sheets';
+import { getPresensiDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
 const DAYS = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU'];
 
 export async function GET() {
   try {
-    const [presensiDoc, indukDoc] = await Promise.all([getPresensiDoc(), getIndukDoc()]);
+    const [presensiDoc, { data: jadwalMengajar }] = await Promise.all([getPresensiDoc(), supabase.from('jadwal_mengajar').select('*')]);
     
-    // 1. Ambil Data Guru & Mapel dari Induk (JadwalMengajar)
-    const sheetMengajar = indukDoc.sheetsByTitle['JadwalMengajar'];
+    // 1. Ambil Data Guru & Mapel dari Induk (JadwalMengajar) via Supabase
     const mapKodeGuru: Record<string, { namaGuru: string, mataPelajaran: string }> = {};
-    if (sheetMengajar) {
-      const rows = await sheetMengajar.getRows();
-      rows.forEach(r => {
-        const kode = (r.get('kodeGuru') || '').toString().trim();
+    if (jadwalMengajar) {
+      jadwalMengajar.forEach((r: any) => {
+        const kode = (r.metadata?.['kodeGuru'] || '').toString().trim();
         if (kode) {
           mapKodeGuru[kode] = {
-            namaGuru: r.get('namaGuru') || '',
-            mataPelajaran: r.get('mataPelajaran') || ''
+            namaGuru: r.metadata?.['namaGuru'] || '',
+            mataPelajaran: r.metadata?.['mataPelajaran'] || ''
           };
         }
       });

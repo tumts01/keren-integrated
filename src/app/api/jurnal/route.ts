@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getPresensiDoc, getIndukDoc } from '@/lib/google-sheets';
+import { getPresensiDoc } from '@/lib/google-sheets';
 import crypto from 'crypto';
 
 // Bersihkan jam ke yang terformat jadi tanggal oleh Google Sheets

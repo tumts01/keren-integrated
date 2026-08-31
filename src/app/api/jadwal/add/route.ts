@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getIndukDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
-const SHEET_TITLE = 'JadwalMengajar';
 const EXPECTED_HEADERS = [
   'id', 'kodeGuru', 'namaGuru', 'statusGuru', 'mataPelajaran',
   'VII_A', 'VII_B', 'VII_C', 'VII_D', 'VII_E', 'VII_F', 'VII_G', 'VII_H', 'VII_I',
@@ -18,55 +17,40 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap (Kode Guru, Nama, dan Mapel wajib diisi)' }, { status: 400 });
     }
 
-    const doc = await getIndukDoc();
-    let sheet = doc.sheetsByTitle[SHEET_TITLE];
-    if (!sheet) {
-      sheet = await doc.addSheet({ headerValues: EXPECTED_HEADERS, title: SHEET_TITLE });
-    } else {
-      // Sheet ada tapi mungkin header-nya kosong — pastikan header terisi
-      try {
-        await sheet.loadHeaderRow();
-        if (!sheet.headerValues || sheet.headerValues.length === 0) {
-          await sheet.resize({ rowCount: Math.max(sheet.rowCount, 2), columnCount: EXPECTED_HEADERS.length });
-          await sheet.setHeaderRow(EXPECTED_HEADERS);
-        }
-      } catch {
-        // loadHeaderRow gagal = baris pertama kosong → resize lalu set header
-        await sheet.resize({ rowCount: Math.max(sheet.rowCount, 2), columnCount: EXPECTED_HEADERS.length });
-        await sheet.setHeaderRow(EXPECTED_HEADERS);
-      }
-    }
+    const { data: rows, error: fetchError } = await supabase.from('jadwal_mengajar').select('*');
+    if (fetchError) throw fetchError;
 
-    const rows = await sheet.getRows();
-
-    // Data payload from frontend might contain 'id' if it's an edit
     if (data.id) {
-      const row = rows.find(r => r.get('id') === data.id);
+      const row = (rows || []).find((r: any) => r.id === data.id || r.metadata?.id === data.id);
       if (row) {
+        const newMetadata = { ...row.metadata };
         EXPECTED_HEADERS.forEach(header => {
           if (header !== 'id' && data[header] !== undefined) {
-            row.set(header, data[header]);
+            newMetadata[header] = data[header];
           }
         });
-        await row.save();
-        return NextResponse.json({ success: true, message: 'Jadwal berhasil diperbarui' });
+        const { error } = await supabase.from('jadwal_mengajar').update({ metadata: newMetadata }).eq('id', row.id);
+        if (error) throw error;
+        return NextResponse.json({ success: true });
       }
     }
 
-    // Add new
-    const newId = `JDWL-${Date.now()}`;
-    const rowData: Record<string, any> = { id: newId };
+    // Jika tidak ada ID atau row tidak ditemukan, buat baris baru
+    const newId = Date.now().toString();
+    const newMetadata: Record<string, any> = { id: newId };
+    
     EXPECTED_HEADERS.forEach(header => {
       if (header !== 'id') {
-        rowData[header] = data[header] || '';
+        newMetadata[header] = data[header] !== undefined ? data[header] : '';
       }
     });
 
-    await sheet.addRow(rowData);
-    return NextResponse.json({ success: true, message: 'Jadwal berhasil ditambahkan' });
+    const { error: insertError } = await supabase.from('jadwal_mengajar').insert([{ metadata: newMetadata }]);
+    if (insertError) throw insertError;
 
+    return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('Error adding Jadwal Mengajar:', error);
-    return NextResponse.json({ success: false, error: error.message || 'Gagal menyimpan data jadwal mengajar' }, { status: 500 });
+    console.error('Error in POST Jadwal:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
