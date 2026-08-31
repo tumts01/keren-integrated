@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
     // Ambil domisili dari Supabase data_induk
     
-    let rowsInduk = [];
+    let rowsInduk: any[] = [];
     let page = 0;
     while (true) {
       const { data, error } = await supabase.from('data_induk').select('metadata').range(page * 1000, (page + 1) * 1000 - 1);
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     }
 
     
-    let rows = [];
+    let rows: any[] = [];
     let pageP = 0;
     while (true) {
       let query = supabase.from('data_presensi_siswa').select('*').range(pageP * 1000, (pageP + 1) * 1000 - 1);

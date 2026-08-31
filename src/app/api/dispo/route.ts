@@ -5,7 +5,7 @@ import crypto from 'crypto';
 export async function GET() {
   try {
     
-    let rows = [];
+    let rows: any[] = [];
     let page = 0;
     while (true) {
       const { data, error } = await supabase.from('data_dispo_siswa').select('*').range(page * 1000, (page + 1) * 1000 - 1);

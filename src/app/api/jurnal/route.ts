@@ -17,7 +17,7 @@ function kelasToJadwalCol(kelas: string): string {
 export async function GET() {
   try {
     
-    let rows = [];
+    let rows: any[] = [];
     let page = 0;
     while (true) {
       const { data, error } = await supabase.from('data_jurnal_mengajar').select('*').range(page * 1000, (page + 1) * 1000 - 1);
