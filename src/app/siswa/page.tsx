@@ -620,25 +620,6 @@ function PrintSiswaModal({
   };
 
   
-  const handleSyncSupabase = async () => {
-    if (!confirm('Tarik ulang semua data siswa dari Google Sheets ke Supabase? Ini membutuhkan waktu sekitar 15-20 detik.')) return;
-    setIsSyncing(true);
-    try {
-      const res = await fetch('/api/siswa/sync', { method: 'POST' });
-      const json = await res.json();
-      if (json.success) {
-        alert('Sinkronisasi berhasil! Halaman akan dimuat ulang.');
-        window.location.reload();
-      } else {
-        alert('Gagal: ' + json.error);
-      }
-    } catch (err: any) {
-      alert('Error: ' + err.message);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-  
   const handleExportExcel = () => {
     if (mode === 'angkatan') {
       // Export per angkatan: 1 sheet per kelas
@@ -1070,7 +1051,26 @@ export default function SiswaPage() {
     XLSX.writeFile(workbook, `Data_Siswa_${selectedTahun === 'Semua' ? 'All' : selectedTahun}.xlsx`);
   };
 
-  const handleExportMissingNisnNik = () => {
+    const handleSyncSupabase = async () => {
+    if (!confirm('Tarik ulang semua data siswa dari Google Sheets ke Supabase? Ini membutuhkan waktu sekitar 15-20 detik.')) return;
+    setIsSyncing(true);
+    try {
+      const res = await fetch('/api/siswa/sync', { method: 'POST' });
+      const json = await res.json();
+      if (json.success) {
+        alert('Sinkronisasi berhasil! Halaman akan dimuat ulang.');
+        window.location.reload();
+      } else {
+        alert('Gagal: ' + json.error);
+      }
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+const handleExportMissingNisnNik = () => {
     const missingData = filteredData.filter(s => !s.nisn || s.nisn.trim() === '' || !s.nik || s.nik.trim() === '');
     if (missingData.length === 0) {
       alert('Tidak ada siswa dengan NISN atau NIK kosong pada filter saat ini.');
