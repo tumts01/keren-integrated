@@ -130,7 +130,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: 'Anda sudah Check-in hari ini!' }, { status: 400 });
       }
       if (!userRow) {
-        const { error: insertError } = await supabase.from('absen_gtk').insert([{
+        const { error: insertError } = await supabase.from('absen_gtk').insert([{ nama, tanggal: today,
           metadata: {
             Nama: nama,
             tanggal: today,
@@ -141,7 +141,7 @@ export async function POST(request: Request) {
         }]);
         if (insertError) throw insertError;
       } else {
-        const { error: updateError } = await supabase.from('absen_gtk').update({
+        const { error: updateError } = await supabase.from('absen_gtk').update({ nama, tanggal: today,
           metadata: { ...userRow.metadata, jam_masuk: currentTime, status: 'Hadir' }
         }).eq('id', userRow.id);
         if (updateError) throw updateError;
@@ -156,7 +156,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: 'Anda sudah Check-out hari ini!' }, { status: 400 });
       }
       
-      const { error: updateError } = await supabase.from('absen_gtk').update({
+      const { error: updateError } = await supabase.from('absen_gtk').update({ nama, tanggal: today,
         metadata: { ...userRow.metadata, jam_pulang: currentTime }
       }).eq('id', userRow.id);
       if (updateError) throw updateError;

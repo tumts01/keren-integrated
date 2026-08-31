@@ -19,7 +19,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: 'Tanggal ini sudah diatur sebagai hari libur' }, { status: 400 });
       }
       
-      const { error } = await supabase.from('libur_gtk').insert([{ metadata: { tanggal, keterangan: keterangan || '' } }]);
+      const { error } = await supabase.from('libur_gtk').insert([{ tanggal, keterangan, metadata: { tanggal, keterangan: keterangan || '' } }]);
       if (error) throw error;
       
       return NextResponse.json({ success: true, message: 'Hari libur berhasil ditambahkan' });
