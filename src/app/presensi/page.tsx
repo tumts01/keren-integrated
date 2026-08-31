@@ -129,6 +129,8 @@ export default function PresensiPage() {
   const [filterGuruRekap, setFilterGuruRekap] = useState('');
   const [guruListRekap, setGuruListRekap] = useState<string[]>([]);
   const [filterKelasRekap, setFilterKelasRekap] = useState('');
+  const [isGuruRekapDropdownOpen, setIsGuruRekapDropdownOpen] = useState(false);
+  const [searchGuruRekap, setSearchGuruRekap] = useState('');
   const [kelasListRekap, setKelasListRekap] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUsername, setCurrentUsername] = useState('');
@@ -1978,13 +1980,55 @@ export default function PresensiPage() {
                   style={{ padding: '7px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: '0.9rem' }} />
               </div>
               {isAdmin && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, position: 'relative' }}>
                   <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>Filter Guru</label>
-                  <select value={filterGuruRekap} onChange={e => setFilterGuruRekap(e.target.value)}
-                    style={{ padding: '7px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: '0.9rem', minWidth: 200 }}>
-                    <option value="">Semua Guru</option>
-                    {guruListRekap.map(g => <option key={g} value={g}>{g}</option>)}
-                  </select>
+                  <div style={{ position: 'relative', minWidth: 220 }}>
+                    <div
+                      onClick={() => { setIsGuruRekapDropdownOpen(!isGuruRekapDropdownOpen); if (!isGuruRekapDropdownOpen) setSearchGuruRekap(''); }}
+                      style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: '0.9rem', background: 'white', cursor: 'pointer', minWidth: 220 }}
+                    >
+                      <span style={{ color: filterGuruRekap ? '#1e293b' : '#94a3b8' }}>
+                        {filterGuruRekap || 'Semua Guru'}
+                      </span>
+                      <i className="fas fa-chevron-down" style={{ color: '#94a3b8', fontSize: '0.75rem' }}></i>
+                    </div>
+                    {isGuruRekapDropdownOpen && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 999, background: 'white', border: '1px solid #e2e8f0', borderRadius: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', marginTop: 2 }}>
+                        <div style={{ padding: '8px' }}>
+                          <input
+                            type="text"
+                            placeholder="Cari guru..."
+                            value={searchGuruRekap}
+                            onChange={e => setSearchGuruRekap(e.target.value)}
+                            autoFocus
+                            style={{ width: '100%', padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: '0.85rem', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                        <div style={{ maxHeight: 220, overflowY: 'auto' }}>
+                          <div
+                            onClick={() => { setFilterGuruRekap(''); setIsGuruRekapDropdownOpen(false); }}
+                            style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '0.88rem', color: '#64748b', background: !filterGuruRekap ? '#f1f5f9' : 'white' }}
+                            onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
+                            onMouseLeave={e => (e.currentTarget.style.background = !filterGuruRekap ? '#f1f5f9' : 'white')}
+                          >Semua Guru</div>
+                          {guruListRekap
+                            .filter(g => g.toLowerCase().includes(searchGuruRekap.toLowerCase()))
+                            .map((g, i) => (
+                              <div
+                                key={i}
+                                onClick={() => { setFilterGuruRekap(g); setIsGuruRekapDropdownOpen(false); }}
+                                style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '0.88rem', color: '#1e293b', background: filterGuruRekap === g ? '#eff6ff' : 'white' }}
+                                onMouseEnter={e => (e.currentTarget.style.background = '#f1f5f9')}
+                                onMouseLeave={e => (e.currentTarget.style.background = filterGuruRekap === g ? '#eff6ff' : 'white')}
+                              >{g}</div>
+                            ))}
+                          {guruListRekap.filter(g => g.toLowerCase().includes(searchGuruRekap.toLowerCase())).length === 0 && (
+                            <div style={{ padding: '10px', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>Guru tidak ditemukan</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
