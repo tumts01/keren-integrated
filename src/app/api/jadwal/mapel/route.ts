@@ -1,41 +1,25 @@
 import { NextResponse } from 'next/server';
-import { getIndukDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
-// Sheet asli di spreadsheet bernama 'Mapel' dengan kolom tunggal 'MataPelajaran'
-// Fallback ke 'MataPelajaran' jika pernah dibuat oleh kode lama
-const SHEET_TITLES = ['Mapel', 'MataPelajaran'];
-
-async function getMapelSheet(doc: any) {
-  // Coba cari sheet dengan nama-nama yang mungkin
-  for (const title of SHEET_TITLES) {
-    if (doc.sheetsByTitle[title]) return { sheet: doc.sheetsByTitle[title], title };
-  }
-  // Tidak ada — buat baru dengan nama 'Mapel' sesuai sheet asli
-  const sheet = await doc.addSheet({ title: 'Mapel' });
-  await sheet.setHeaderRow(['MataPelajaran']);
-  return { sheet, title: 'Mapel' };
-}
+const getMapelName = (r: any) => {
+  if (!r.metadata) return '';
+  const keys = Object.keys(r.metadata);
+  const key = keys.find(k => {
+    const lower = k.toLowerCase().replace(/[\s_]/g, '');
+    return lower === 'namamapel' || lower === 'mapel' || lower === 'matapelajaran' || lower === 'pelajaran' || lower === 'namapelajaran';
+  }) || 'MataPelajaran';
+  return (r.metadata[key] || '').toString().trim();
+};
 
 export async function GET() {
   try {
-    const doc = await getIndukDoc();
-    const { sheet } = await getMapelSheet(doc);
+    const { data: rows, error } = await supabase.from('mata_pelajaran').select('*');
+    if (error) throw error;
 
-    await sheet.loadHeaderRow();
-    const headers: string[] = sheet.headerValues || [];
-
-    // Cari kolom nama mapel secara fleksibel
-    const mapelColKey = headers.find(h => {
-      const lower = h.toLowerCase().replace(/[\s_]/g, '');
-      return lower === 'namamapel' || lower === 'mapel' || lower === 'matapelajaran'
-        || lower === 'pelajaran' || lower === 'namapelajaran';
-    }) || headers[0] || 'MataPelajaran'; // fallback ke kolom pertama
-
-    const rows = await sheet.getRows();
-    const data = rows
+    const data = (rows || [])
       .map((r: any, i: number) => ({
-        id: r.get('id') || r.get('ID') || `row-${i}`,
-        namaMapel: (r.get(mapelColKey) || '').trim()
+        id: r.id || r.metadata?.['id'] || r.metadata?.['ID'] || `row-${i}`,
+        namaMapel: getMapelName(r)
       }))
       .filter((r: any) => r.namaMapel);
 
@@ -53,45 +37,48 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { action, id, namaMapel } = body;
 
-    const doc = await getIndukDoc();
-    const { sheet } = await getMapelSheet(doc);
-
-    await sheet.loadHeaderRow();
-    const headers: string[] = sheet.headerValues || [];
-
-    const mapelColKey = headers.find(h => {
-      const lower = h.toLowerCase().replace(/[\s_]/g, '');
-      return lower === 'namamapel' || lower === 'mapel' || lower === 'matapelajaran'
-        || lower === 'pelajaran' || lower === 'namapelajaran';
-    }) || headers[0] || 'MataPelajaran';
-
-    const rows = await sheet.getRows();
-
     if (action === 'add') {
       if (!namaMapel) return NextResponse.json({ success: false, error: 'Nama Mapel harus diisi' }, { status: 400 });
-      const newRow: any = {};
-      newRow[mapelColKey] = namaMapel;
-      await sheet.addRow(newRow);
+      const { error } = await supabase.from('mata_pelajaran').insert([{ metadata: { MataPelajaran: namaMapel } }]);
+      if (error) throw error;
       return NextResponse.json({ success: true, message: 'Mata pelajaran berhasil ditambahkan' });
 
     } else if (action === 'edit') {
       if (!namaMapel) return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
-      // Cari berdasarkan id atau nilai yang sama
-      const row = rows.find((r: any) =>
-        r.get('id') === id || r.get('ID') === id || r.get(mapelColKey) === id
-      );
+      
+      const { data: rows, error: fetchError } = await supabase.from('mata_pelajaran').select('*');
+      if (fetchError) throw fetchError;
+      
+      const row = (rows || []).find((r: any) => r.id === id || r.metadata?.['id'] === id || r.metadata?.['ID'] === id || getMapelName(r) === id);
       if (!row) return NextResponse.json({ success: false, error: 'Data tidak ditemukan' }, { status: 404 });
-      row.set(mapelColKey, namaMapel);
-      await row.save();
+      
+      const updatedMetadata = { ...row.metadata, MataPelajaran: namaMapel };
+      const keys = Object.keys(row.metadata || {});
+      const existingKey = keys.find(k => {
+        const lower = k.toLowerCase().replace(/[\s_]/g, '');
+        return lower === 'namamapel' || lower === 'mapel' || lower === 'matapelajaran' || lower === 'pelajaran' || lower === 'namapelajaran';
+      });
+      if (existingKey) {
+        updatedMetadata[existingKey] = namaMapel;
+      }
+      
+      const { error } = await supabase.from('mata_pelajaran').update({ metadata: updatedMetadata }).eq('id', row.id);
+      if (error) throw error;
+      
       return NextResponse.json({ success: true, message: 'Mata pelajaran berhasil diperbarui' });
 
     } else if (action === 'delete') {
       if (!id) return NextResponse.json({ success: false, error: 'ID tidak ditemukan' }, { status: 400 });
-      const row = rows.find((r: any) =>
-        r.get('id') === id || r.get('ID') === id || r.get(mapelColKey) === id
-      );
+      
+      const { data: rows, error: fetchError } = await supabase.from('mata_pelajaran').select('*');
+      if (fetchError) throw fetchError;
+      
+      const row = (rows || []).find((r: any) => r.id === id || r.metadata?.['id'] === id || r.metadata?.['ID'] === id || getMapelName(r) === id);
       if (!row) return NextResponse.json({ success: false, error: 'Data tidak ditemukan' }, { status: 404 });
-      await row.delete();
+      
+      const { error } = await supabase.from('mata_pelajaran').delete().eq('id', row.id);
+      if (error) throw error;
+      
       return NextResponse.json({ success: true, message: 'Mata pelajaran berhasil dihapus' });
     }
 

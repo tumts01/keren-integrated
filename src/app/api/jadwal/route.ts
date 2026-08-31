@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getIndukDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
-const SHEET_TITLE = 'JadwalMengajar';
 const EXPECTED_HEADERS = [
   'id', 'kodeGuru', 'namaGuru', 'statusGuru', 'mataPelajaran',
   'VII_A', 'VII_B', 'VII_C', 'VII_D', 'VII_E', 'VII_F', 'VII_G', 'VII_H', 'VII_I',
@@ -12,29 +11,17 @@ const EXPECTED_HEADERS = [
 
 export async function GET() {
   try {
-    const doc = await getIndukDoc();
-    let sheet = doc.sheetsByTitle[SHEET_TITLE];
-    if (!sheet) {
-      sheet = await doc.addSheet({ headerValues: EXPECTED_HEADERS, title: SHEET_TITLE });
-    } else {
-      try {
-        await sheet.loadHeaderRow();
-        if (!sheet.headerValues || sheet.headerValues.length === 0) {
-          await sheet.resize({ rowCount: Math.max(sheet.rowCount, 2), columnCount: EXPECTED_HEADERS.length });
-          await sheet.setHeaderRow(EXPECTED_HEADERS);
-        }
-      } catch {
-        await sheet.resize({ rowCount: Math.max(sheet.rowCount, 2), columnCount: EXPECTED_HEADERS.length });
-        await sheet.setHeaderRow(EXPECTED_HEADERS);
-      }
-    }
+    const { data: rows, error } = await supabase.from('jadwal_mengajar').select('*');
+    if (error) throw error;
 
-    const rows = await sheet.getRows();
-    const data = rows.map(r => {
+    const data = (rows || []).map((r: any) => {
       const rowData: Record<string, any> = {};
       EXPECTED_HEADERS.forEach(header => {
-        rowData[header] = r.get(header) || '';
+        rowData[header] = r.metadata?.[header] || '';
       });
+      if (!rowData['id']) {
+        rowData['id'] = r.id;
+      }
       return rowData;
     });
 

@@ -16,8 +16,7 @@ export async function GET() {
       if (uNama && uFoto) {
         userPhotos[uNama.trim().toLowerCase()] = uFoto;
       }
-    }););
-    }
+    });
 
     // Helper untuk mengubah link gdrive menjadi raw image link
     const getImageUrl = (url: string) => {

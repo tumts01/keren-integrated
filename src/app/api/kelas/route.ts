@@ -21,7 +21,7 @@ export async function GET() {
     // Map Wali Kelas
     const waliMap: Record<string, string> = {};
     (rowsKelas || []).forEach(r => {
-      const rombel = r.rombel;
+      const rombel = r.get('ROMBEL');
       if (rombel) {
         waliMap[rombel.trim().toUpperCase()] = r.wali_kelas || '';
       }
@@ -57,7 +57,7 @@ export async function GET() {
 
       if (records.length === 0) {
         const taMain = (r.get('TAHUN AJARAN') || '').trim();
-        const rombelMain = (r.rombel || '').trim();
+        const rombelMain = (r.get('ROMBEL') || '').trim();
         if (taMain && rombelMain) records.push({ ta: taMain, rombel: rombelMain });
       }
 
@@ -138,7 +138,7 @@ export async function POST(request: Request) {
     // Cari apakah rombel sudah ada
     let foundRow = null;
     for (const r of rowsKelas) {
-      if ((r.rombel || '').trim().toUpperCase() === rombel.trim().toUpperCase()) {
+      if ((r.get('ROMBEL') || '').trim().toUpperCase() === rombel.trim().toUpperCase()) {
         foundRow = r;
         break;
       }
