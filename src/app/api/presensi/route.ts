@@ -14,7 +14,18 @@ export async function GET(request: Request) {
     };
 
     // Ambil domisili dari Supabase data_induk
-    const { data: rowsInduk } = await supabase.from('data_induk').select('metadata');
+    
+    let rowsInduk = [];
+    let page = 0;
+    while (true) {
+      const { data, error } = await supabase.from('data_induk').select('metadata').range(page * 1000, (page + 1) * 1000 - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      rowsInduk = rowsInduk.concat(data);
+      if (data.length < 1000) break;
+      page++;
+    }
+
     const mapDomisili: Record<string, string> = {};
     if (rowsInduk) {
       rowsInduk.forEach((r: any) => {
@@ -25,13 +36,21 @@ export async function GET(request: Request) {
       });
     }
 
-    let query = supabase.from('data_presensi_siswa').select('*');
-    if (filterTanggal) {
-      query = query.eq('tanggal', filterTanggal);
-    }
     
-    const { data: rows, error } = await query;
-    if (error) throw error;
+    let rows = [];
+    let pageP = 0;
+    while (true) {
+      let query = supabase.from('data_presensi_siswa').select('*').range(pageP * 1000, (pageP + 1) * 1000 - 1);
+      if (filterTanggal) query = query.eq('tanggal', filterTanggal);
+      
+      const { data, error } = await query;
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      rows = rows.concat(data);
+      if (data.length < 1000) break;
+      pageP++;
+    }
+
 
     let data = (rows || []).map((r: any) => {
       const rawNisn = (r.metadata?.['NISN'] || '').trim();

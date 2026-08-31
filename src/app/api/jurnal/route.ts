@@ -16,8 +16,18 @@ function kelasToJadwalCol(kelas: string): string {
 
 export async function GET() {
   try {
-    const { data: rows, error } = await supabase.from('data_jurnal_mengajar').select('*');
-    if (error) throw error;
+    
+    let rows = [];
+    let page = 0;
+    while (true) {
+      const { data, error } = await supabase.from('data_jurnal_mengajar').select('*').range(page * 1000, (page + 1) * 1000 - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      rows = rows.concat(data);
+      if (data.length < 1000) break;
+      page++;
+    }
+
 
     const rawData = (rows || []).map((r: any) => ({
       id: r.metadata?.['ID'] || r.id.toString(),
