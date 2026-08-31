@@ -1,38 +1,23 @@
 import { NextResponse } from 'next/server';
-import { getIndukDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const doc = await getIndukDoc();
+    // 1. Data Guru & Staf (menggunakan data_guru sebagai ganti db_GTK dan JadwalMengajar)
+    const { data: profilLembaga, error: errorProfil } = await supabase.from('data_guru').select('*');
+    if (errorProfil) throw errorProfil;
     
-    // 1. Data Guru & Staf
-    const sheetGtk = doc.sheetsByTitle['db_GTK'];
-    const sheetJadwal = doc.sheetsByTitle['JadwalMengajar'];
-    
-    let gtkRows: any[] = [];
-    if (sheetGtk) {
-      await sheetGtk.loadHeaderRow();
-      gtkRows = await sheetGtk.getRows();
-    }
-    
-    let jadwalRows: any[] = [];
-    let headerSertifikasi = '';
-    let headerNamaJadwal = '';
-    if (sheetJadwal) {
-      await sheetJadwal.loadHeaderRow();
-      jadwalRows = await sheetJadwal.getRows();
-      headerNamaJadwal = sheetJadwal.headerValues[2] || 'NAMA'; // Kolom C
-      headerSertifikasi = sheetJadwal.headerValues[33] || 'SERTIFIKASI'; // Kolom AH
-    }
+    const gtkRows = profilLembaga || [];
 
-    // Map sertifikasi dari JadwalMengajar by nama guru
     const sertifikasiMap: Record<string, boolean> = {};
-    jadwalRows.forEach(r => {
-      const nama = (r.get(headerNamaJadwal) || '').trim().toLowerCase();
-      const isSertifikasi = (r.get(headerSertifikasi) || '').trim().toLowerCase() === 'ya' || 
-                            (r.get(headerSertifikasi) || '').trim().toLowerCase() === 'sudah' || 
-                            (r.get(headerSertifikasi) || '').trim() !== ''; 
-      // Asumsi jika diisi berarti sertifikasi, atau cari teks spesifik
+    gtkRows.forEach((r: any) => {
+      const nama = (r.nama || '').trim().toLowerCase();
+      
+      const sertifikasiVal = (r.metadata?.['SERTIFIKASI'] || r.metadata?.['Sertifikasi'] || '').trim().toLowerCase();
+      const isSertifikasi = sertifikasiVal === 'ya' || sertifikasiVal === 'sudah' || sertifikasiVal !== ''; 
+      
       if (nama) {
         sertifikasiMap[nama] = isSertifikasi;
       }
@@ -63,15 +48,18 @@ export async function GET() {
       }
     };
 
-    gtkRows.forEach(r => {
-      // Pastikan guru aktif (jika ada kolom status aktif)
-      const statusAktif = (r.get('Status') || r.get('STATUS') || '').toString().toLowerCase();
+    gtkRows.forEach((r: any) => {
+      const getVal = (key1: string, key2?: string, key3?: string) => {
+        return (r.metadata?.[key1] || (key2 ? r.metadata?.[key2] : '') || (key3 ? r.metadata?.[key3] : ''))?.toString() || '';
+      };
+
+      const statusAktif = getVal('Status', 'STATUS', 'Status Guru').toLowerCase();
       if (statusAktif === 'tidak aktif' || statusAktif === 'nonaktif') return;
 
-      const nama = (r.get('Nama') || r.get('NAMA') || '').toString().trim();
+      const nama = (r.nama || '').trim();
       if (!nama) return;
 
-      const lpRaw = (r.get('L/P') || r.get('Jenis Kelamin') || r.get('JENIS KELAMIN') || '').toString().trim().toUpperCase();
+      const lpRaw = getVal('L/P', 'Jenis Kelamin', 'JENIS KELAMIN').trim().toUpperCase();
       const lp = lpRaw === 'L' || lpRaw === 'LAKI-LAKI' ? 'L' : (lpRaw === 'P' || lpRaw === 'PEREMPUAN' ? 'P' : 'Lainnya');
       
       if (lp === 'L' || lp === 'P') {
@@ -79,8 +67,7 @@ export async function GET() {
         gtkStats.total.Total++;
       }
 
-      // Pendidikan
-      const pend = (r.get('Pendidikan') || r.get('PENDIDIKAN') || '').toString().toUpperCase().trim();
+      const pend = getVal('Pendidikan', 'PENDIDIKAN').toUpperCase().trim();
       let pendKey = 'Lainnya';
       if (pend.includes('S3')) pendKey = 'S3';
       else if (pend.includes('S2')) pendKey = 'S2';
@@ -91,20 +78,17 @@ export async function GET() {
         gtkStats.pendidikan[pendKey as keyof typeof gtkStats.pendidikan][lp]++;
       }
 
-      // Domisili (kolom S) -> ambil dari get('Domisili') atau fallback ke get() manual?
-      // User said "barusan saya tambahkan di kolom S dengan nama Domisili"
-      const dom = (r.get('Domisili') || r.get('DOMISILI') || '').toString().trim().toLowerCase();
+      const dom = getVal('Domisili', 'DOMISILI').trim().toLowerCase();
       let domKey = 'Belum terdata';
       if (dom === 'malang' || dom.includes('malang raya')) domKey = 'Malang Raya';
       else if (dom === 'luar malang' || dom.includes('luar')) domKey = 'Non Malang Raya';
-      else if (dom !== '') domKey = 'Belum terdata'; // fallback
+      else if (dom !== '') domKey = 'Belum terdata';
 
       if ((lp === 'L' || lp === 'P') && gtkStats.domisili[domKey as keyof typeof gtkStats.domisili]) {
         gtkStats.domisili[domKey as keyof typeof gtkStats.domisili][lp]++;
       }
 
-      // Status Guru
-      const stat = (r.get('Status Guru') || r.get('STATUS GURU') || '').toString().toUpperCase().trim();
+      const stat = getVal('Status Guru', 'STATUS GURU').toUpperCase().trim();
       let statKey = 'Lainnya';
       if (stat.includes('DPK')) statKey = 'DPK';
       else if (stat.includes('GTY')) statKey = 'GTY';
@@ -116,30 +100,26 @@ export async function GET() {
         gtkStats.status[statKey as keyof typeof gtkStats.status][lp]++;
       }
 
-      // Sertifikasi
       if ((lp === 'L' || lp === 'P') && sertifikasiMap[nama.toLowerCase()]) {
         gtkStats.sertifikasi[lp]++;
       }
     });
 
     // 2. Data Siswa
-    const sheetSiswa = doc.sheetsByTitle['DATABASE'];
-    let siswaRows: any[] = [];
-    let headerDomisili = 'DOMISILI';
-    let headerAsal = 'SD/MI';
-    if (sheetSiswa) {
-      await sheetSiswa.loadHeaderRow();
-      siswaRows = await sheetSiswa.getRows();
-      
-      const headers = sheetSiswa.headerValues.map((h: string) => (h || '').toString().toUpperCase().trim());
-      
-      // Temukan nama kolom yang tepat secara dinamis
-      const foundDom = headers.find((h: string) => h === 'DOMISILI' || h.includes('DOMISILI'));
-      if (foundDom) headerDomisili = foundDom;
-
-      const foundAsal = headers.find((h: string) => h === 'SD/MI' || h === 'ASAL SEKOLAH' || h.includes('SEKOLAH ASAL'));
-      if (foundAsal) headerAsal = foundAsal;
+    const pageSize = 1000;
+    const pages = [0, 1, 2, 3];
+    const siswaResults = await Promise.all(
+      pages.map(page => 
+        supabase
+          .from('data_induk')
+          .select('*')
+          .range(page * pageSize, (page + 1) * pageSize - 1)
+      )
+    );
+    for (const res of siswaResults) {
+      if (res.error) throw res.error;
     }
+    const siswaRows = siswaResults.flatMap(r => r.data || []);
 
     const siswaStats = {
       total: { L: 0, P: 0, Total: 0 },
@@ -156,15 +136,18 @@ export async function GET() {
       rincianAsalSekolah7: {} as any
     };
 
-    siswaRows.forEach(r => {
-      // Pastikan siswa aktif
-      const statusAktif = (r.get('Status Siswa') || r.get('STATUS SISWA') || r.get('Ket') || r.get('KETERANGAN') || '').toString().toLowerCase().trim();
+    siswaRows.forEach((r: any) => {
+      const getVal = (key1: string, key2?: string, key3?: string, key4?: string) => {
+        return (r.metadata?.[key1] || (key2 ? r.metadata?.[key2] : '') || (key3 ? r.metadata?.[key3] : '') || (key4 ? r.metadata?.[key4] : ''))?.toString() || '';
+      };
+
+      const statusAktif = getVal('Status Siswa', 'STATUS SISWA', 'Ket', 'KETERANGAN').toLowerCase().trim();
       if (statusAktif !== 'aktif') return;
 
-      const nama = (r.get('Nama') || r.get('NAMA') || r.get('Nama Siswa') || r.get('NAMA SISWA') || '').toString().trim();
-      if (!nama) return; // Skip row kosong
+      const nama = r.nama;
+      if (!nama) return; 
 
-      const lpRaw = (r.get('L/P') || r.get('Jenis Kelamin') || r.get('JENIS KELAMIN') || '').toString().trim().toUpperCase();
+      const lpRaw = getVal('L/P', 'Jenis Kelamin', 'JENIS KELAMIN').trim().toUpperCase();
       const lp = lpRaw === 'L' || lpRaw === 'LAKI-LAKI' ? 'L' : (lpRaw === 'P' || lpRaw === 'PEREMPUAN' ? 'P' : 'Lainnya');
       
       siswaStats.total.Total++;
@@ -172,8 +155,7 @@ export async function GET() {
         siswaStats.total[lp]++;
       }
 
-      // Asal Sekolah (Kolom BA)
-      const asal = (r.get(headerAsal) || '').toString().toUpperCase().trim();
+      const asal = getVal('SD/MI', 'ASAL SEKOLAH').toUpperCase().trim();
       let asalKey = 'Tanpa Keterangan';
       if (asal.includes('SD')) asalKey = 'SD';
       else if (asal.includes('MI')) asalKey = 'MI';
@@ -184,10 +166,9 @@ export async function GET() {
         }
       }
 
-      // Rincian Asal Sekolah Kelas 7
-      const ta7 = r.get('TA KELAS 7');
-      const ta8 = r.get('TA KELAS 8');
-      const ta9 = r.get('TA KELAS 9');
+      const ta7 = getVal('TA KELAS 7');
+      const ta8 = getVal('TA KELAS 8');
+      const ta9 = getVal('TA KELAS 9');
       
       if (ta7 && !ta8 && !ta9) {
         let key = asal;
@@ -195,8 +176,7 @@ export async function GET() {
         siswaStats.rincianAsalSekolah7[key] = (siswaStats.rincianAsalSekolah7[key] || 0) + 1;
       }
 
-      // Domisili
-      const dom = (r.get(headerDomisili) || '').toString().toLowerCase().trim();
+      const dom = getVal('DOMISILI', 'Domisili').toLowerCase().trim();
       let domKey = 'Belum terdata';
       if (!dom) {
         domKey = 'Belum terdata';
@@ -210,7 +190,6 @@ export async function GET() {
       }
     });
 
-    // Convert rincianAsalSekolah7 to sorted array
     siswaStats.rincianAsalSekolah7 = Object.entries(siswaStats.rincianAsalSekolah7)
       .map(([nama, jumlah]) => ({ nama, jumlah }))
       .sort((a: any, b: any) => b.jumlah - a.jumlah);

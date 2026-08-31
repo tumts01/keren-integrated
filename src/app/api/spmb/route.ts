@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getIndukDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
 const SPMB_HEADERS = [
   'Timestamp',
@@ -26,27 +27,12 @@ const SPMB_HEADERS = [
 export async function POST(req: Request) {
   try {
     const payload = await req.json();
-    const doc = await getIndukDoc();
-    
-    let sheet = doc.sheetsByTitle['SPMB'];
-    
-    if (!sheet) {
-      // If SPMB sheet doesn't exist, create it with headers
-      sheet = await doc.addSheet({ title: 'SPMB', headerValues: SPMB_HEADERS });
-    } else {
-      // Check if it has headers
-      try {
-        await sheet.loadHeaderRow();
-      } catch (err: any) {
-        // "No values in the header row" error means it's empty
-        await sheet.setHeaderRow(SPMB_HEADERS);
-      }
-    }
-
     const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
-
-    // Add new row
-    await sheet.addRow({
+    
+    const { error } = await supabase.from('data_spmb').insert({
+      nama: payload.namaLengkap || '',
+      nisn: payload.nisn || '',
+      metadata: {
       'Timestamp': timestamp,
       'Jalur Pendaftaran': payload.jalurPendaftaran || '',
       'Nama Lengkap': payload.namaLengkap || '',
@@ -66,6 +52,7 @@ export async function POST(req: Request) {
       'Prestasi (Jika Ada)': payload.prestasi || '',
       'File KK': payload.linkKk || '',
       'File Akta': payload.linkAkta || ''
+      }
     });
 
     return NextResponse.json({ success: true });
