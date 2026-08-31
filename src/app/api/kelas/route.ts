@@ -1,25 +1,29 @@
 import { NextResponse } from 'next/server';
 import { getIndukDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
 export async function GET() {
   try {
-    const doc = await getIndukDoc();
-    const sheetSiswa = doc.sheetsByTitle['DATABASE'];
-    const sheetKelas = doc.sheetsByTitle['db_Kelas'];
-    
-    if (!sheetSiswa || !sheetKelas) {
-      return NextResponse.json({ success: false, error: 'Tab DATABASE atau db_Kelas tidak ditemukan' }, { status: 404 });
+    let rowsSiswa: any[] = [];
+    let page = 0;
+    while (true) {
+      const { data, error } = await supabase.from('data_induk').select('*').range(page * 1000, (page + 1) * 1000 - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      rowsSiswa = rowsSiswa.concat(data);
+      if (data.length < 1000) break;
+      page++;
     }
-
-    const rowsSiswa = await sheetSiswa.getRows();
-    const rowsKelas = await sheetKelas.getRows();
+    
+    const { data: rowsKelas, error: errKelas } = await supabase.from('data_kelas').select('*');
+    if (errKelas) throw errKelas;
 
     // Map Wali Kelas
     const waliMap: Record<string, string> = {};
-    rowsKelas.forEach(r => {
-      const rombel = r.get('ROMBEL');
+    (rowsKelas || []).forEach(r => {
+      const rombel = r.rombel;
       if (rombel) {
-        waliMap[rombel.trim().toUpperCase()] = r.get('WALI KELAS') || '';
+        waliMap[rombel.trim().toUpperCase()] = r.wali_kelas || '';
       }
     });
 
@@ -33,7 +37,8 @@ export async function GET() {
       totalAktif: number
     }> = {};
 
-    rowsSiswa.forEach(r => {
+    rowsSiswa.forEach(rawR => {
+      const r = { get: (k: string) => rawR.metadata ? (rawR.metadata[k] || '') : '' };
       const status = (r.get('STATUS SISWA') || '').toLowerCase().trim();
       const jk = (r.get('JENIS KELAMIN') || '').toLowerCase();
       
@@ -52,7 +57,7 @@ export async function GET() {
 
       if (records.length === 0) {
         const taMain = (r.get('TAHUN AJARAN') || '').trim();
-        const rombelMain = (r.get('ROMBEL') || '').trim();
+        const rombelMain = (r.rombel || '').trim();
         if (taMain && rombelMain) records.push({ ta: taMain, rombel: rombelMain });
       }
 
@@ -133,7 +138,7 @@ export async function POST(request: Request) {
     // Cari apakah rombel sudah ada
     let foundRow = null;
     for (const r of rowsKelas) {
-      if ((r.get('ROMBEL') || '').trim().toUpperCase() === rombel.trim().toUpperCase()) {
+      if ((r.rombel || '').trim().toUpperCase() === rombel.trim().toUpperCase()) {
         foundRow = r;
         break;
       }

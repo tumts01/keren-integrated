@@ -1,22 +1,16 @@
 import { NextResponse } from 'next/server';
-import { getIndukDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
 export async function GET() {
   try {
-    const doc = await getIndukDoc();
-    let sheet = doc.sheetsByTitle['Users'];
+    const { data: rows, error } = await supabase.from('data_users').select('*');
+    if (error) throw error;
     
-    if (!sheet) {
-      sheet = doc.sheetsByIndex[0];
-    }
-
-    const rows = await sheet.getRows();
-    
-    const users = rows.map((row) => ({
-      nama: row.get('Nama') || '',
-      username: row.get('Username') || '',
-      role: row.get('Role') || 'Staf',
-    })).filter(u => u.nama); // Filter out empty rows
+    const users = (rows || []).map(row => ({
+      nama: row.nama || '',
+      username: row.username || '',
+      role: row.role || 'Staf',
+    })).filter(u => u.nama);
 
     return NextResponse.json({ success: true, data: users }, {
       headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' }

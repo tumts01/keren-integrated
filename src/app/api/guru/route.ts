@@ -1,29 +1,22 @@
 import { NextResponse } from 'next/server';
-import { getIndukDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
 export async function GET() {
   try {
-    const doc = await getIndukDoc();
-    const sheet = doc.sheetsByTitle['db_GTK'];
-    const sheetUsers = doc.sheetsByTitle['Users']; // Ambil data users untuk foto
-    
-    if (!sheet) {
-      return NextResponse.json({ success: false, error: 'Tab db_GTK tidak ditemukan' }, { status: 404 });
-    }
-
-    const rows = await sheet.getRows();
+    const { data: rowsGuru, error: errGuru } = await supabase.from('data_guru').select('*');
+    if (errGuru) throw errGuru;
+    const { data: rowsUsers, error: errUsers } = await supabase.from('data_users').select('*');
+    if (errUsers) throw errUsers;
     
     // Buat pemetaan foto dari tab Users berdasarkan Nama
     const userPhotos: Record<string, string> = {};
-    if (sheetUsers) {
-      const userRows = await sheetUsers.getRows();
-      userRows.forEach(uRow => {
-        const uNama = uRow.get('Nama');
-        const uFoto = uRow.get('Foto');
-        if (uNama && uFoto) {
-          userPhotos[uNama.trim().toLowerCase()] = uFoto;
-        }
-      });
+    (rowsUsers || []).forEach((u: any) => {
+      const uNama = u.nama;
+      const uFoto = u.metadata?.['Foto'] || u.metadata?.['foto'];
+      if (uNama && uFoto) {
+        userPhotos[uNama.trim().toLowerCase()] = uFoto;
+      }
+    }););
     }
 
     // Helper untuk mengubah link gdrive menjadi raw image link
@@ -37,8 +30,8 @@ export async function GET() {
     };
 
     // Map data to array of objects
-    const data = rows.map((row, index) => {
-      const nama = row.get('Nama') || '';
+    const data = (rowsGuru || []).map((row, index) => {
+      const nama = row.nama || '';
       const rawFoto = userPhotos[nama.trim().toLowerCase()] || '';
       const foto = getImageUrl(rawFoto);
 
@@ -46,21 +39,21 @@ export async function GET() {
         id: index,
         nama,
         foto,
-        status: row.get('Status') || '',
-        nip: row.get('Nomor Induk Pegawai') || '',
-        pegId: row.get('PEG ID') || '',
-        passEmisHijau: row.get('Pass EMIS Hijau') || '',
-        passEmisDev: row.get('Pass EMIS DEV') || '',
-        jenisKelamin: row.get('Jenis Kelamin') || '',
-        jabatan: row.get('Jabatan') || '',
-        tempatLahir: row.get('Tempat Lahir') || '',
-        tanggalLahir: row.get('Tanggal Lahir') || '',
-        nik: row.get('NIK') || '',
-        noHp: row.get('No WA') || '',
-        alamat: row.get('Alamat') || '',
-        tanggalSk: row.get('Tanggal SK Awal') || '',
-        email: row.get('Email') || '',
-        pendidikan: row.get('Pendidikan') || ''
+        status: (row.metadata?.['Status'] || '') || '',
+        nip: row.nomor_induk || '',
+        pegId: (row.metadata?.['PEG ID'] || '') || '',
+        passEmisHijau: (row.metadata?.['Pass EMIS Hijau'] || '') || '',
+        passEmisDev: (row.metadata?.['Pass EMIS DEV'] || '') || '',
+        jenisKelamin: (row.metadata?.['Jenis Kelamin'] || '') || '',
+        jabatan: (row.metadata?.['Jabatan'] || '') || '',
+        tempatLahir: (row.metadata?.['Tempat Lahir'] || '') || '',
+        tanggalLahir: (row.metadata?.['Tanggal Lahir'] || '') || '',
+        nik: (row.metadata?.['NIK'] || '') || '',
+        noHp: (row.metadata?.['No WA'] || '') || '',
+        alamat: (row.metadata?.['Alamat'] || '') || '',
+        tanggalSk: (row.metadata?.['Tanggal SK Awal'] || '') || '',
+        email: (row.metadata?.['Email'] || '') || '',
+        pendidikan: (row.metadata?.['Pendidikan'] || '') || ''
       };
     });
 
