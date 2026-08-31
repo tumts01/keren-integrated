@@ -11,47 +11,73 @@ export async function GET() {
     const sheetKeluar = doc.sheetsByTitle['NO SURAT KELUAR'];
     const sheetMasuk = doc.sheetsByTitle['ARSIP SURAT MASUK'];
     const sheetKode = doc.sheetsByTitle['KODE SURAT'];
+    const sheetRiwayat = doc.sheetsByTitle['RIWAYAT_CETAK'];
 
     if (!sheetKeluar) {
       return NextResponse.json({ success: false, error: 'Tab NO SURAT KELUAR tidak ditemukan. Tab yang ada: ' + sheetTitles.join(', ') }, { status: 404 });
     }
 
-    const rowsKeluar = await sheetKeluar.getRows();
-    const dataKeluar = rowsKeluar.map((row, index) => {
+    // Prepare promises to load everything in parallel
+    const promises: Promise<any>[] = [];
+    
+    // 0: Keluar
+    promises.push(sheetKeluar.getRows());
+    
+    // 1 & 2: Masuk (Header & Rows)
+    if (sheetMasuk) {
+      promises.push(sheetMasuk.loadHeaderRow().then(() => sheetMasuk.getRows()));
+    } else {
+      promises.push(Promise.resolve(null));
+    }
+
+    // 3: Kode (Cells)
+    if (sheetKode) {
+      promises.push(sheetKode.loadCells('A1:B100'));
+    } else {
+      promises.push(Promise.resolve(null));
+    }
+    
+    // 4: Riwayat
+    if (sheetRiwayat) {
+      promises.push(sheetRiwayat.getRows());
+    } else {
+      promises.push(Promise.resolve([]));
+    }
+
+    // Wait for all Google Sheets requests to finish simultaneously
+    const [rowsKeluar, rowsMasuk, _, riwayatRows] = await Promise.all(promises);
+
+    const dataKeluar = rowsKeluar.map((row: any, index: number) => {
       return {
         id: index,
         rowNumber: row.rowNumber,
         no: row.get('NO') || '',
         tanggal: row.get('TANGGAL') || '',
         namaSurat: row.get('NAMA SURAT') || '',
-        yangDitugaskan: row.get('yang Ditugaskan') || row.get('YANG DITUGASKAN') || row.get('NAMA KORBAN') || '', // Handle variations in column names
+        yangDitugaskan: row.get('yang Ditugaskan') || row.get('YANG DITUGASKAN') || row.get('NAMA KORBAN') || '',
         topik: row.get('TOPIK') || '',
         pj: row.get('PJ') || '',
         noSurat: row.get('NO. SURAT') || '',
         batasWaktu: row.get('BATAS WAKTU TUGAS') || '',
         fileScan: (() => {
           const val = row.get('FILE/SCAN SURAT') || '';
-          // Ignore placeholder texts that are not actual links
           if (val.toLowerCase().includes('klik disini') || !val.includes('http')) {
             return '';
           }
           return val;
         })(),
       };
-    }).filter(item => item.noSurat || item.namaSurat); // Filter out empty rows
+    }).filter((item: any) => item.noSurat || item.namaSurat); // Filter out empty rows
 
     let dataMasuk: any[] = [];
-    if (sheetMasuk) {
-      await sheetMasuk.loadHeaderRow();
+    if (sheetMasuk && rowsMasuk) {
       const headers = sheetMasuk.headerValues.map(h => h?.toUpperCase().trim() || '');
-      const rowsMasuk = await sheetMasuk.getRows();
-      
       const headerTanggal = headers.find(h => h.includes('TANGGAL') || h.includes('TGL')) || 'TANGGAL';
       const headerNamaSurat = headers.find(h => h.includes('NAMA SURAT') || h.includes('PERIHAL')) || 'NAMA SURAT';
       const headerPengirim = headers.find(h => h.includes('INSTANSI') || h.includes('ASAL') || h.includes('PENGIRIM')) || 'NAMA INSTANSI';
       const headerFile = headers.find(h => h.includes('FILE') || h.includes('SCAN')) || 'FILE/SCAN SURAT';
 
-      dataMasuk = rowsMasuk.map((row, index) => {
+      dataMasuk = rowsMasuk.map((row: any, index: number) => {
         return {
           id: index,
           rowNumber: row.rowNumber,
@@ -66,12 +92,11 @@ export async function GET() {
             return val;
           })()
         };
-      }).filter(item => item.namaSurat || item.pengirim || item.fileScan);
+      }).filter((item: any) => item.namaSurat || item.pengirim || item.fileScan);
     }
 
     let listTopik: string[] = [];
     if (sheetKode) {
-      await sheetKode.loadCells('A1:B100');
       for (let i = 2; i < 100; i++) {
         const kodeVal = sheetKode.getCell(i, 0).value;
         const topikVal = sheetKode.getCell(i, 1).value;
@@ -81,40 +106,53 @@ export async function GET() {
       }
     }
 
-    // Ambil riwayat cetak dari sheet RIWAYAT_CETAK
     let riwayatCetak: any[] = [];
-    if (doc.sheetsByTitle['RIWAYAT_CETAK']) {
-      const riwayatRows = await doc.sheetsByTitle['RIWAYAT_CETAK'].getRows();
+    if (riwayatRows) {
       riwayatCetak = riwayatRows.map((r: any) => {
         try { return JSON.parse(r.get('DataJSON') || '{}'); } catch { return null; }
-      }).filter(Boolean).reverse(); // terbaru di atas
+      }).filter(Boolean).reverse();
     }
 
-    const instansiList = Array.from(new Set(dataMasuk.map(item => item.pengirim).filter(Boolean))).sort();
+    const instansiList = Array.from(new Set(dataMasuk.map((item: any) => item.pengirim).filter(Boolean))).sort();
 
     return NextResponse.json({ 
       success: true, 
       suratKeluar: dataKeluar,
-      suratMasuk: dataMasuk.reverse(), // Urutkan dari yang terbaru (bawah ke atas)
+      suratMasuk: dataMasuk.reverse(),
       topikList: listTopik,
       instansiList,
       riwayatCetak,
-      sheetTitles
     }, {
       headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
     });
+
   } catch (error: any) {
-    console.error('Fetch Persuratan Error:', error);
-    return NextResponse.json({ success: false, error: 'Gagal mengambil data dari Database: ' + error.message }, { status: 500 });
+    console.error('API Persuratan Error:', error);
+    return NextResponse.json({ success: false, error: 'Gagal memuat data dari Spreadsheet: ' + error.message }, { status: 500 });
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const body = await req.json();
-    const { action, payload } = body;
+    const payload = await request.json();
+    const { action, noSurat, ...data } = payload;
 
-    if (action === 'generate') {
+    if (action === 'delete') {
+      const doc = await getPersuratanDoc();
+      const sheet = doc.sheetsByTitle['NO SURAT KELUAR'];
+      if (!sheet) return NextResponse.json({ success: false, error: 'Tab NO SURAT KELUAR tidak ditemukan' }, { status: 404 });
+      
+      const rows = await sheet.getRows();
+      const targetRow = rows.find(r => r.rowNumber === payload.rowNumber);
+      
+      if (!targetRow) return NextResponse.json({ success: false, error: 'Surat tidak ditemukan' }, { status: 404 });
+      
+      await targetRow.delete();
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === 'generate_no_surat') {
+      const { topik, targetNoSurat } = data;
       const doc = await getPersuratanDoc();
       const sheetKeluar = doc.sheetsByTitle['NO SURAT KELUAR'];
       const sheetKode = doc.sheetsByTitle['KODE SURAT'];
@@ -122,96 +160,71 @@ export async function POST(req: Request) {
       if (!sheetKeluar || !sheetKode) {
         return NextResponse.json({ success: false, error: 'Tab NO SURAT KELUAR atau KODE SURAT tidak ditemukan' }, { status: 404 });
       }
-      
-      // Auto-add column BATAS WAKTU TUGAS if missing
-      await sheetKeluar.loadHeaderRow();
-      if (!sheetKeluar.headerValues.includes('BATAS WAKTU TUGAS')) {
-        await sheetKeluar.setHeaderRow([...sheetKeluar.headerValues, 'BATAS WAKTU TUGAS']);
-      }
 
-      const { tanggal, namaSurat, yangDitugaskan, topik, pj, batasWaktu } = payload;
-      
-      // Parse Date for Roman Month and Year
-      // Assume tanggal is YYYY-MM-DD
-      const dateObj = new Date(tanggal);
-      const romanMonths = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"];
-      const romanMonth = romanMonths[dateObj.getMonth()];
-      const year = dateObj.getFullYear();
-
-      // Load all rows — ambil nomor urut langsung dari string NO. SURAT
-      // Format: "322/YPA/MTs-01.X/VII/2026" → ambil angka di depan "/"
-      const rowsKeluar = await sheetKeluar.getRows();
-      let maxNo = 0;
-      rowsKeluar.forEach(row => {
-        const rowNoSurat = (row.get('NO. SURAT') || '').trim();
-        if (!rowNoSurat) return; // skip baris kosong / formula saja
-
-        // Pastikan surat tahun yang sama
-        if (!rowNoSurat.endsWith('/' + year.toString())) return;
-
-        // Ekstrak angka di depan "/" pertama: "322/YPA/..." → 322
-        const match = rowNoSurat.match(/^(\d+)\//);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (!isNaN(num) && num > maxNo) maxNo = num;
-        }
-      });
-      const nextNo = maxNo + 1;
-
-      // Find KODE SURAT mapping
-      let kodeSurat = '';
       await sheetKode.loadCells('A1:B100');
+      let kodeTopik = '';
       for (let i = 2; i < 100; i++) {
-        const kodeVal = sheetKode.getCell(i, 0).value;
-        const topikVal = sheetKode.getCell(i, 1).value;
-        if (kodeVal && topikVal && topikVal.toString().trim() === topik) {
-          kodeSurat = kodeVal.toString().trim();
+        if (sheetKode.getCell(i, 1).value?.toString().trim() === topik) {
+          kodeTopik = sheetKode.getCell(i, 0).value?.toString().trim() || '';
           break;
         }
       }
 
-      if (!kodeSurat) {
+      if (!kodeTopik) {
         return NextResponse.json({ success: false, error: `Kode surat tidak ditemukan untuk topik: ${topik}` }, { status: 400 });
       }
 
-      // Format NO with leading zeros: 000
-      const formattedNo = String(nextNo).padStart(3, '0');
+      const currentDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+      const monthRoman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'][currentDate.getMonth()];
+      const year = currentDate.getFullYear();
 
-      // Build NO. SURAT
-      // Formula: TEXT(A2;"000")&"/YPA/MTs-01."&FILTER(...)&"/"&ROMAN(MONTH)&"/"&YEAR
-      const noSurat = `${formattedNo}/YPA/MTs-01.${kodeSurat}/${romanMonth}/${year}`;
-
-      // Date format for sheets: DD/MM/YYYY
-      const formattedDate = `${String(dateObj.getDate()).padStart(2, '0')}/${String(dateObj.getMonth() + 1).padStart(2, '0')}/${year}`;
-      
-      // Date format for batas waktu
-      let formattedBatasWaktu = '';
-      if (batasWaktu) {
-        const batasObj = new Date(batasWaktu);
-        formattedBatasWaktu = `${String(batasObj.getDate()).padStart(2, '0')}/${String(batasObj.getMonth() + 1).padStart(2, '0')}/${batasObj.getFullYear()}`;
-      }
-
-      // Add Row to Spreadsheet
-      await sheetKeluar.addRow({
-        'NO': nextNo,
-        'TANGGAL': formattedDate,
-        'NAMA SURAT': namaSurat,
-        'NAMA KORBAN': yangDitugaskan, // User's custom column name (old)
-        'YANG DITUGASKAN': yangDitugaskan, // Try uppercase
-        'yang Ditugaskan': yangDitugaskan, // Try exact match from user's sheet
+      const newRow = await sheetKeluar.addRow({
+        'NO': targetNoSurat,
+        'TANGGAL': data.tanggal,
+        'NAMA SURAT': data.namaSurat,
+        'yang Ditugaskan': data.yangDitugaskan,
         'TOPIK': topik,
-        'PJ': pj,
-        'NO. SURAT': noSurat,
-        'BATAS WAKTU TUGAS': formattedBatasWaktu,
-        'FILE/SCAN SURAT': ''
+        'PJ': data.pj,
+        'BATAS WAKTU TUGAS': data.batasWaktu,
+        'NO. SURAT': `${targetNoSurat}/${kodeTopik}/${monthRoman}/${year}`
       });
 
-      return NextResponse.json({ success: true, nextNo, noSurat });
+      return NextResponse.json({ success: true, newRowNumber: newRow.rowNumber });
+    }
+
+    if (action === 'edit') {
+      const doc = await getPersuratanDoc();
+      const sheet = doc.sheetsByTitle['NO SURAT KELUAR'];
+      const rows = await sheet.getRows();
+      const targetRow = rows.find(r => r.rowNumber === payload.rowNumber);
+      
+      if (!targetRow) return NextResponse.json({ success: false, error: 'Surat tidak ditemukan' }, { status: 404 });
+
+      targetRow.set('NAMA SURAT', data.namaSurat);
+      targetRow.set('yang Ditugaskan', data.yangDitugaskan);
+      targetRow.set('TOPIK', data.topik);
+      targetRow.set('PJ', data.pj);
+      targetRow.set('BATAS WAKTU TUGAS', data.batasWaktu);
+      
+      await targetRow.save();
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === 'upload_scan') {
+      const doc = await getPersuratanDoc();
+      const sheet = doc.sheetsByTitle['NO SURAT KELUAR'];
+      const rows = await sheet.getRows();
+      const targetRow = rows.find(r => r.rowNumber === payload.rowNumber);
+      
+      if (!targetRow) return NextResponse.json({ success: false, error: 'Surat tidak ditemukan' }, { status: 404 });
+
+      targetRow.set('FILE/SCAN SURAT', data.fileScan);
+      await targetRow.save();
+      return NextResponse.json({ success: true });
     }
 
     if (action === 'save_riwayat') {
       const doc = await getPersuratanDoc();
-      // Buat sheet RIWAYAT_CETAK jika belum ada
       let riwayatSheet = doc.sheetsByTitle['RIWAYAT_CETAK'];
       if (!riwayatSheet) {
         riwayatSheet = await doc.addSheet({ title: 'RIWAYAT_CETAK', headerValues: ['DataJSON'] });

@@ -14,117 +14,101 @@ function formatPhone(rawHp: string) {
 
 export async function GET(request: Request) {
   try {
-    // 1. Validasi Auth (Vercel Cron otomatis kirim header ini)
     const authHeader = request.headers.get('authorization');
     if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 2. Cek hari WIB
     const dateWIB = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
-    const dayOfWeek = dateWIB.getDay(); // 0=Minggu, 1=Senin, ... 6=Sabtu
+    const dayOfWeek = dateWIB.getDay();
 
-    // Skip hari Minggu
     if (dayOfWeek === 0) {
       return NextResponse.json({ skipped: true, reason: 'Hari Minggu libur.' });
     }
 
     const todayStr = getCurrentDateString();
 
-    const doc = await getIndukDoc();
-
-    // 3. Cek hari libur manual dari sheet Libur_GTK
-    const liburSheet = doc.sheetsByTitle['Libur_GTK'];
-    if (liburSheet) {
-      const liburRows = await liburSheet.getRows();
-      const isLibur = liburRows.some(r => {
-        const tgl = (r.get('tanggal') || '').trim();
-        return tgl === todayStr;
-      });
+    const { data: liburRows } = await supabase.from('libur_gtk').select('*');
+    if (liburRows) {
+      const isLibur = liburRows.some((r: any) => r.metadata?.tanggal === todayStr);
       if (isLibur) {
-        const info = liburRows.find(r => (r.get('tanggal') || '').trim() === todayStr);
+        const info = liburRows.find((r: any) => r.metadata?.tanggal === todayStr);
         return NextResponse.json({
           skipped: true,
-          reason: `Hari ini libur: ${info?.get('keterangan') || 'Hari Libur'}`
+          reason: `Hari ini libur: ${info?.metadata?.keterangan || 'Hari Libur'}`
         });
       }
     }
 
-    // 4. Dapatkan daftar GTK aktif + No WA
-    const sheetGtk = doc.sheetsByTitle['db_GTK'];
-    const sheetAbsen = doc.sheetsByTitle['Absen_GTK'];
+    const { data: rowsGtk } = await supabase.from('data_guru').select('*');
+    const { data: rowsAbsen } = await supabase.from('absen_gtk').select('*').eq('tanggal', todayStr);
 
-    if (!sheetGtk || !sheetAbsen) {
-      return NextResponse.json({ error: 'Sheet db_GTK atau Absen_GTK tidak ditemukan' }, { status: 500 });
+    if (!rowsGtk || !rowsAbsen) {
+      return NextResponse.json({ error: 'Data tidak ditemukan' }, { status: 500 });
     }
 
-    const rowsGtk = await sheetGtk.getRows();
     const activeGtk = rowsGtk
-      .filter(r => (r.get('Status') || '').toLowerCase().trim() === 'aktif')
-      .map(r => ({
-        nama: (r.get('Nama') || '').trim(),
-        noHp: (r.get('No WA') || '').trim()
+      .filter((r: any) => (r.metadata?.Status || r.metadata?.STATUS || '').toLowerCase().trim() === 'aktif')
+      .map((r: any) => ({
+        nama: (r.nama || '').trim(),
+        noHp: (r.metadata?.['No WA'] || r.metadata?.['Whatsapp'] || '').trim()
       }))
-      .filter(g => g.nama && g.noHp);
+      .filter((g: any) => g.nama && g.noHp);
 
-    // 5. Cek siapa yang sudah absen hari ini
-    const rowsAbsen = await sheetAbsen.getRows();
     const sudahAbsenSet = new Set(
       rowsAbsen
-        .filter(r => r.get('tanggal') === todayStr && r.get('jam_masuk'))
-        .map(r => (r.get('Nama') || '').trim().toLowerCase())
+        .filter((r: any) => r.tanggal === todayStr && r.jam_masuk)
+        .map((r: any) => (r.nama || '').trim().toLowerCase())
     );
 
-    // 6. Filter yang belum absen
-    const belumAbsen = activeGtk.filter(g => !sudahAbsenSet.has(g.nama.toLowerCase()));
+    const belumAbsen = activeGtk.filter((g: any) => !sudahAbsenSet.has(g.nama.toLowerCase()));
 
     if (belumAbsen.length === 0) {
-      return NextResponse.json({ success: true, message: 'Semua GTK sudah absen hari ini!' });
+      return NextResponse.json({ success: true, message: 'Semua guru sudah absen masuk.' });
     }
 
-    // 7. Kirim WA via Fonnte
-    const token = process.env.FONNTE_TOKEN;
-    if (!token) {
-      return NextResponse.json({ error: 'FONNTE_TOKEN belum dikonfigurasi' }, { status: 500 });
+    const FONTEND_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://keren-integrated.vercel.app';
+    const wablasEndpoint = process.env.WABLAS_DOMAIN;
+    const wablasToken = process.env.WABLAS_TOKEN;
+    const results = [];
+
+    if (wablasEndpoint && wablasToken) {
+      for (const g of belumAbsen) {
+        const phone = formatPhone(g.noHp);
+        const msg = `Assalamu'alaikum Bapak/Ibu *${g.nama}*\n\nIni adalah pengingat otomatis dari *Sistem Absensi KEREN*.\n\nSaat ini Anda belum melakukan absensi MASUK pada tanggal ${todayStr}.\nMohon segera klik link berikut untuk melakukan absensi (pastikan lokasi Anda berada di madrasah):\n\n${FONTEND_URL}/absensi\n\nAbaikan pesan ini jika Anda sedang berhalangan hadir atau sudah melakukan izin.\nTerima kasih, selamat bertugas!`;
+
+        try {
+          const payload = {
+            data: [
+              { phone, message: msg }
+            ]
+          };
+
+          const res = await fetch(`${wablasEndpoint}/api/v2/send-message`, {
+            method: 'POST',
+            headers: {
+              'Authorization': wablasToken,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          });
+          const json = await res.json();
+          results.push({ nama: g.nama, success: true, response: json });
+        } catch (e: any) {
+          results.push({ nama: g.nama, success: false, error: e.message });
+        }
+      }
     }
-
-    const targets = belumAbsen
-      .map(g => formatPhone(g.noHp))
-      .filter(hp => hp.length >= 10)
-      .join(',');
-
-    if (!targets) {
-      return NextResponse.json({ message: 'Tidak ada nomor HP valid' });
-    }
-
-    const jamSekarang = dateWIB.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    const message = `Halo Bapak/Ibu Guru & Staf KEREN 🏫\n\nPengingat otomatis: Anda *belum melakukan Absensi Masuk (Check In)* pada hari ini (${todayStr}) pukul ${jamSekarang} WIB.\n\nMohon segera absen melalui aplikasi KEREN → menu *Absensi GTK*.\n\nTerima kasih! ✨`;
-
-    const response = await fetch('https://api.fonnte.com/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': token,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        target: targets,
-        message,
-        delay: '15-30'
-      })
-    });
-
-    const result = await response.json();
 
     return NextResponse.json({
       success: true,
-      tanggal: todayStr,
-      message: `Pengingat terkirim ke ${belumAbsen.length} GTK`,
-      penerima: belumAbsen.map(g => g.nama),
-      fonnteResponse: result
+      notified: belumAbsen.length,
+      details: results
     });
 
   } catch (error: any) {
-    console.error('Cron WA Reminder Error:', error);
+    console.error('WA Reminder Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

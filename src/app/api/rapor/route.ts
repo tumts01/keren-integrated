@@ -29,43 +29,44 @@ export async function GET() {
         }
     }).filter((s: any) => s.status === 'aktif' && s.kelas && s.nis);
 
-    // 2. Fetch Config
+    // 2. Fetch Config & Returned Report Cards in Parallel
     const raporDoc = await getRaporDoc();
     let configSheet = raporDoc.sheetsByTitle['CONFIG'];
-    let startDate = '', endDate = '';
+    let returnedSheet = raporDoc.sheetsByTitle['PENGEMBALIAN'];
     
+    // Create them if missing
     if (!configSheet) {
       configSheet = await raporDoc.addSheet({ title: 'CONFIG', headerValues: ['Key', 'Value'] });
       await configSheet.addRow({ Key: 'StartDate', Value: '' });
       await configSheet.addRow({ Key: 'EndDate', Value: '' });
-    } else {
-      const configRows = await configSheet.getRows();
-      const startRow = configRows.find(r => r.get('Key') === 'StartDate');
-      const endRow = configRows.find(r => r.get('Key') === 'EndDate');
-      if (startRow) startDate = startRow.get('Value') || '';
-      if (endRow) endDate = endRow.get('Value') || '';
     }
-
-    // 3. Fetch Returned Report Cards
-    let returnedSheet = raporDoc.sheetsByTitle['PENGEMBALIAN'];
-    let returnedMap: Record<string, string> = {};
     if (!returnedSheet) {
       returnedSheet = await raporDoc.addSheet({ title: 'PENGEMBALIAN', headerValues: ['NIS', 'TANGGAL KEMBALI'] });
-    } else {
-      const returnedRows = await returnedSheet.getRows();
-      returnedRows.forEach(r => {
-        const nis = (r.get('NIS') || '').toString().trim();
-        let tgl = (r.get('TANGGAL KEMBALI') || '').trim();
-        
-        // Handle Excel numeric date format if any
-        if (tgl && !isNaN(Number(tgl))) {
-          const jsDate = excelDateToJSDate(Number(tgl));
-          tgl = jsDate.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        }
-        
-        if (nis) returnedMap[nis] = tgl;
-      });
     }
+
+    const [configRows, returnedRows] = await Promise.all([
+      configSheet.getRows(),
+      returnedSheet.getRows()
+    ]);
+
+    let startDate = '', endDate = '';
+    const startRow = configRows.find(r => r.get('Key') === 'StartDate');
+    const endRow = configRows.find(r => r.get('Key') === 'EndDate');
+    if (startRow) startDate = startRow.get('Value') || '';
+    if (endRow) endDate = endRow.get('Value') || '';
+
+    let returnedMap: Record<string, string> = {};
+    returnedRows.forEach(r => {
+      const nis = (r.get('NIS') || '').toString().trim();
+      let tgl = (r.get('TANGGAL KEMBALI') || '').trim();
+      
+      if (tgl && !isNaN(Number(tgl))) {
+        const jsDate = excelDateToJSDate(Number(tgl));
+        tgl = jsDate.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      }
+      
+      if (nis) returnedMap[nis] = tgl;
+    });
 
     // 4. Combine Data
     const data = activeStudents.map((s: any) => ({
