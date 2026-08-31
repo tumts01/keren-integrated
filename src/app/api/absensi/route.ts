@@ -106,15 +106,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
     }
 
-    const { data: rows, error: absenError } = await supabase.from('absen_gtk').select('*');
-    if (absenError) throw absenError;
-
     const today = getCurrentDateString();
     const currentTime = getCurrentTimeString();
 
-    let userRow = (rows || []).find((r: any) =>
-      r.metadata?.['Nama']?.toLowerCase() === nama.toLowerCase() && r.metadata?.['tanggal'] === today
-    );
+    // Query filtered langsung per nama & tanggal - hindari batas 1000 baris
+    const { data: userRows, error: absenError } = await supabase
+      .from('absen_gtk')
+      .select('*')
+      .eq('nama', nama)
+      .eq('tanggal', today);
+    if (absenError) throw absenError;
+
+    let userRow = (userRows || [])[0] || null;
 
     // Cek apakah hari ini libur
     const { data: liburRows, error: liburError } = await supabase.from('libur_gtk').select('*');
