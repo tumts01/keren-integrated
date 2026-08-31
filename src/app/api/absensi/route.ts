@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { getIndukDoc } from '@/lib/google-sheets';
 import { supabase } from '@/lib/supabase';
 
 // Paksa route ini selalu di-fetch langsung (tidak di-cache Vercel)
@@ -11,6 +10,7 @@ function isSundayInJakarta() {
   const jakartaDate = new Date(jakartaDateStr);
   return jakartaDate.getDay() === 0;
 }
+
 function getCurrentDateString() {
   const date = new Date();
   return date.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -19,39 +19,6 @@ function getCurrentDateString() {
 function getCurrentTimeString() {
   const date = new Date();
   return date.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' });
-}
-
-async function getAbsenSheet(doc: any) {
-  const expectedHeaders = ['Nama', 'tanggal', 'jam_masuk', 'jam_pulang', 'status'];
-  let sheet = doc.sheetsByTitle['Absen_GTK'];
-  if (!sheet) {
-    sheet = await doc.addSheet({ headerValues: expectedHeaders, title: 'Absen_GTK' });
-  }
-  return sheet;
-}
-
-async function getLiburSheet(doc: any) {
-  const liburExpectedHeaders = ['tanggal', 'keterangan'];
-  let sheet = doc.sheetsByTitle['Libur_GTK'];
-  if (!sheet) {
-    sheet = await doc.addSheet({ headerValues: liburExpectedHeaders, title: 'Libur_GTK' });
-  }
-  return sheet;
-}
-
-async function withRetry(fn: () => Promise<any>, maxRetries = 3, delayMs = 800): Promise<any> {
-  let lastError: any;
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await fn();
-    } catch (err: any) {
-      lastError = err;
-      if (i < maxRetries - 1) {
-        await new Promise(r => setTimeout(r, delayMs * (i + 1)));
-      }
-    }
-  }
-  throw lastError;
 }
 
 export async function GET(request: Request) {
@@ -65,51 +32,52 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'Parameter nama harus diisi' }, { status: 400 });
     }
 
-    const doc = await withRetry(() => getIndukDoc());
-    const sheet = await getAbsenSheet(doc);
-    const rows: any[] = await withRetry(() => sheet.getRows());
+    const { data: rows, error: absenError } = await supabase.from('absen_gtk').select('*');
+    if (absenError) throw absenError;
+
     const today = getCurrentDateString();
 
-    const todayRecord = rows.find((r: any) =>
-      r.get('Nama')?.toLowerCase() === nama.toLowerCase() && r.get('tanggal') === today
+    const todayRecord = (rows || []).find((r: any) =>
+      r.metadata?.['Nama']?.toLowerCase() === nama.toLowerCase() && r.metadata?.['tanggal'] === today
     );
     const todayStatus = {
-      hasCheckedIn: !!todayRecord?.get('jam_masuk'),
-      hasCheckedOut: !!todayRecord?.get('jam_pulang'),
-      jamMasuk: todayRecord?.get('jam_masuk') || null,
-      jamPulang: todayRecord?.get('jam_pulang') || null
+      hasCheckedIn: !!todayRecord?.metadata?.['jam_masuk'],
+      hasCheckedOut: !!todayRecord?.metadata?.['jam_pulang'],
+      jamMasuk: todayRecord?.metadata?.['jam_masuk'] || null,
+      jamPulang: todayRecord?.metadata?.['jam_pulang'] || null
     };
 
     let rekap: any[] = [];
     let holidays: any[] = [];
 
-    const liburSheet = await getLiburSheet(doc);
-    const liburRows: any[] = await withRetry(() => liburSheet.getRows());
-    const todayHoliday = liburRows.find((r: any) => r.get('tanggal') === today);
+    const { data: liburRows, error: liburError } = await supabase.from('libur_gtk').select('*');
+    if (liburError) throw liburError;
+
+    const todayHoliday = (liburRows || []).find((r: any) => r.metadata?.['tanggal'] === today);
     const isSunday = isSundayInJakarta();
 
     const finalTodayStatus = {
       ...todayStatus,
       isHoliday: !!todayHoliday || isSunday,
-      holidayName: todayHoliday ? todayHoliday.get('keterangan') : (isSunday ? 'Libur Akhir Pekan (Minggu)' : null)
+      holidayName: todayHoliday ? todayHoliday.metadata?.['keterangan'] : (isSunday ? 'Libur Akhir Pekan (Minggu)' : null)
     };
 
     if (bulan && tahun) {
-      rekap = rows.filter((r: any) => {
-        const isUser = r.get('Nama')?.toLowerCase() === nama.toLowerCase();
-        const tgl = r.get('tanggal') || '';
+      rekap = (rows || []).filter((r: any) => {
+        const isUser = r.metadata?.['Nama']?.toLowerCase() === nama.toLowerCase();
+        const tgl = r.metadata?.['tanggal'] || '';
         const parts = tgl.split('/');
         return parts.length === 3 && isUser && parts[1] === bulan && parts[2] === tahun;
       }).map((r: any) => ({
-        tanggal: r.get('tanggal'),
-        jam_masuk: r.get('jam_masuk') || '-',
-        jam_pulang: r.get('jam_pulang') || '-',
-        status: r.get('status') || '-'
+        tanggal: r.metadata?.['tanggal'],
+        jam_masuk: r.metadata?.['jam_masuk'] || '-',
+        jam_pulang: r.metadata?.['jam_pulang'] || '-',
+        status: r.metadata?.['status'] || '-'
       }));
 
-      holidays = liburRows.map((r: any) => ({
-        tanggal: r.get('tanggal'),
-        keterangan: r.get('keterangan')
+      holidays = (liburRows || []).map((r: any) => ({
+        tanggal: r.metadata?.['tanggal'],
+        keterangan: r.metadata?.['keterangan']
       })).filter((h: any) => {
         const parts = h.tanggal?.split('/') || [];
         return parts[1] === bulan && parts[2] === tahun;
@@ -135,55 +103,64 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
     }
 
-    const doc = await withRetry(() => getIndukDoc());
-    const sheet = await getAbsenSheet(doc);
-    const rows: any[] = await withRetry(() => sheet.getRows());
+    const { data: rows, error: absenError } = await supabase.from('absen_gtk').select('*');
+    if (absenError) throw absenError;
+
     const today = getCurrentDateString();
     const currentTime = getCurrentTimeString();
 
-    let userRow = rows.find((r: any) =>
-      r.get('Nama')?.toLowerCase() === nama.toLowerCase() && r.get('tanggal') === today
+    let userRow = (rows || []).find((r: any) =>
+      r.metadata?.['Nama']?.toLowerCase() === nama.toLowerCase() && r.metadata?.['tanggal'] === today
     );
 
     // Cek apakah hari ini libur
-    const liburSheet = await getLiburSheet(doc);
-    const liburRows: any[] = await withRetry(() => liburSheet.getRows());
-    const isHoliday = liburRows.find((r: any) => r.get('tanggal') === today);
+    const { data: liburRows, error: liburError } = await supabase.from('libur_gtk').select('*');
+    if (liburError) throw liburError;
+
+    const isHoliday = (liburRows || []).find((r: any) => r.metadata?.['tanggal'] === today);
     const isSunday = isSundayInJakarta();
 
     if (action === 'checkin' && (isHoliday || isSunday)) {
-      const reason = isHoliday ? isHoliday.get('keterangan') : 'Libur Akhir Pekan (Minggu)';
+      const reason = isHoliday ? isHoliday.metadata?.['keterangan'] : 'Libur Akhir Pekan (Minggu)';
       return NextResponse.json({ success: false, error: `Absensi dikunci! Hari ini libur: ${reason}` }, { status: 400 });
     }
 
     if (action === 'checkin') {
-      if (userRow && userRow.get('jam_masuk')) {
+      if (userRow && userRow.metadata?.['jam_masuk']) {
         return NextResponse.json({ success: false, error: 'Anda sudah Check-in hari ini!' }, { status: 400 });
       }
       if (!userRow) {
-        await withRetry(() => sheet.addRow({
-          Nama: nama,
-          tanggal: today,
-          jam_masuk: currentTime,
-          jam_pulang: '',
-          status: 'Hadir'
-        }));
+        const { error: insertError } = await supabase.from('absen_gtk').insert([{
+          metadata: {
+            Nama: nama,
+            tanggal: today,
+            jam_masuk: currentTime,
+            jam_pulang: '',
+            status: 'Hadir'
+          }
+        }]);
+        if (insertError) throw insertError;
       } else {
-        userRow.set('jam_masuk', currentTime);
-        userRow.set('status', 'Hadir');
-        await withRetry(() => userRow.save());
+        const { error: updateError } = await supabase.from('absen_gtk').update({
+          metadata: { ...userRow.metadata, jam_masuk: currentTime, status: 'Hadir' }
+        }).eq('id', userRow.id);
+        if (updateError) throw updateError;
       }
       return NextResponse.json({ success: true, message: `Berhasil Check-in pukul ${currentTime}!`, time: currentTime });
 
     } else if (action === 'checkout') {
-      if (!userRow || !userRow.get('jam_masuk')) {
+      if (!userRow || !userRow.metadata?.['jam_masuk']) {
         return NextResponse.json({ success: false, error: 'Anda belum Check-in, tidak bisa Check-out!' }, { status: 400 });
       }
-      if (userRow.get('jam_pulang')) {
+      if (userRow.metadata?.['jam_pulang']) {
         return NextResponse.json({ success: false, error: 'Anda sudah Check-out hari ini!' }, { status: 400 });
       }
-      userRow.set('jam_pulang', currentTime);
-      await withRetry(() => userRow.save());
+      
+      const { error: updateError } = await supabase.from('absen_gtk').update({
+        metadata: { ...userRow.metadata, jam_pulang: currentTime }
+      }).eq('id', userRow.id);
+      if (updateError) throw updateError;
+      
       return NextResponse.json({ success: true, message: `Berhasil Check-out pukul ${currentTime}!`, time: currentTime });
 
     } else {
