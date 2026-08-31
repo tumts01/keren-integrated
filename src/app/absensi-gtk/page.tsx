@@ -35,8 +35,8 @@ export default function AbsensiGTK() {
   const [geoDistance, setGeoDistance] = useState<number | null>(null);
 
   // Koordinat sekolah (MTs Almaarif 01 Singosari)
-  const SCHOOL_LAT = -7.909974;
-  const SCHOOL_LNG = 112.669623;
+  const SCHOOL_LAT = -7.8926;
+  const SCHOOL_LNG = 112.6649;
   const MAX_RADIUS_METER = 500;
 
   // Haversine formula – menghitung jarak dua titik GPS dalam meter
