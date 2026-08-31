@@ -1,38 +1,42 @@
 import { NextResponse } from 'next/server';
-import { getEVotingDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const doc = await getEVotingDoc();
-    const sheetKandidat = doc.sheetsByTitle['Kandidat Osim'];
-    const rowsKandidat = await sheetKandidat.getRows();
-    
-    const kandidatList = rowsKandidat.map(r => ({
-      noUrut: r.get('Nomor Urut') || '',
-      nama: (r.get('Nama Paslon') || '').trim(),
-      visi: r.get('Visi') || '',
-      misi: r.get('Misi') || '',
-      fotoKetua: r.get('Link Foto Ketua') || r.get('Link Foto') || '',
-      fotoWakil: r.get('Link Foto Wakil') || ''
-    })).filter(k => k.nama);
+    // 1. Ambil data kandidat
+    const { data: rowsKandidat, error: errKandidat } = await supabase
+      .from('kandidat_osim')
+      .select('*')
+      .order('id', { ascending: true });
 
-    // Get votes from Suara Osim
-    let sheetSuara = doc.sheetsByTitle['Suara Osim'];
-    if (!sheetSuara) {
-      sheetSuara = await doc.addSheet({ title: 'Suara Osim', headerValues: ['Waktu', 'Nama Pemilih', 'Nama Paslon'] });
-    }
-    const rowsSuara = await sheetSuara.getRows();
-    
+    if (errKandidat) throw errKandidat;
+
+    const kandidatList = (rowsKandidat || []).map(r => ({
+      noUrut: r.nomor_urut || '',
+      nama: (r.nama_paslon || '').trim(),
+      visi: r.visi || '',
+      misi: r.misi || '',
+      fotoKetua: r.foto_ketua || '',
+      fotoWakil: r.foto_wakil || ''
+    }));
+
+    // 2. Ambil data suara
+    const { data: rowsSuara, error: errSuara } = await supabase
+      .from('suara_osim')
+      .select('*');
+
+    if (errSuara) throw errSuara;
+
     const voteCounts: Record<string, number> = {};
     kandidatList.forEach(k => voteCounts[k.nama.toUpperCase()] = 0);
     
     const pemilihSet = new Set<string>();
     
-    rowsSuara.forEach(r => {
-      const p = (r.get('Nama Pemilih') || '').trim();
-      const k = (r.get('Nama Paslon') || '').trim().toUpperCase();
+    (rowsSuara || []).forEach(r => {
+      const p = (r.nama_pemilih || '').trim();
+      const k = (r.nama_paslon || '').trim().toUpperCase();
       if (p) pemilihSet.add(p.toUpperCase());
       if (k && voteCounts[k] !== undefined) {
         voteCounts[k]++;
@@ -48,7 +52,7 @@ export async function GET() {
       headers: { 'Cache-Control': 'public, s-maxage=0, stale-while-revalidate=5' }
     });
   } catch (err: any) {
-    console.error('Error GET E-Voting:', err);
+    console.error('Error GET E-Voting Supabase:', err);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }

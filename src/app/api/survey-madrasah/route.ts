@@ -15,23 +15,6 @@ export async function POST(request: Request) {
 
     // Special case for Pemetaan Kelas 7 which goes to a different document
     if (surveyType === 'pemetaan_kelas7') {
-      const doc = await getEVotingDoc();
-      const sheet = doc.sheetsByTitle['LATAR BELAKANG'];
-      
-      if (!sheet) {
-        return NextResponse.json({ success: false, error: 'Sheet LATAR BELAKANG tidak ditemukan' }, { status: 500 });
-      }
-
-      await sheet.loadHeaderRow();
-
-      const rowData = {
-        Timestamp: new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
-        ...data
-      };
-
-      await sheet.addRow(rowData);
-
-      // INSERT KE SUPABASE JUGA (Dual-write)
       try {
         const payload = {
           kelas: data['Kelas'] || '',
@@ -63,9 +46,11 @@ export async function POST(request: Request) {
           harapan_guru_bk: data['Harapan untuk Guru BK'] || '',
           catatan_tambahan: data['Catatan Tambahan'] || ''
         };
-        await supabase.from('pemetaan_siswa').insert(payload);
-      } catch (sbError) {
-        console.error('Gagal dual-write ke Supabase:', sbError);
+        const { error } = await supabase.from('pemetaan_siswa').insert(payload);
+        if (error) throw error;
+      } catch (sbError: any) {
+        console.error('Gagal insert ke Supabase:', sbError);
+        return NextResponse.json({ success: false, error: 'Gagal menyimpan: ' + sbError.message }, { status: 500 });
       }
 
       return NextResponse.json({ success: true, message: 'Survey berhasil dikirim' });
