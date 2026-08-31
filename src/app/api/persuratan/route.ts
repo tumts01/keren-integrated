@@ -68,7 +68,10 @@ export async function GET() {
 
     const listTopik = (kodeRes.data || []).map((row: any) => row.topik?.trim()).filter(Boolean);
 
-    const riwayatCetak = (riwayatRes.data || []).map((row: any) => row.data_json);
+    const riwayatCetak = (riwayatRes.data || []).map((row: any) => {
+      const parsed = row.data_json;
+      return parsed.payload ? parsed.payload : parsed;
+    });
 
     const instansiList = Array.from(new Set(dataMasuk.map((item: any) => item.pengirim).filter(Boolean))).sort();
 
@@ -180,7 +183,7 @@ export async function POST(request: Request) {
     }
 
     if (action === 'save_riwayat') {
-      const { error } = await supabase.from('data_riwayat_cetak_surat').insert([{ data_json: payload }]);
+      const { error } = await supabase.from('data_riwayat_cetak_surat').insert([{ data_json: data.payload }]);
       if (error) throw error;
       return NextResponse.json({ success: true });
     }
