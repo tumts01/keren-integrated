@@ -32,13 +32,17 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'Parameter nama harus diisi' }, { status: 400 });
     }
 
-    const { data: rows, error: absenError } = await supabase.from('absen_gtk').select('*');
-    if (absenError) throw absenError;
-
     const today = getCurrentDateString();
 
-    const todayRecord = (rows || []).find((r: any) =>
-      r.metadata?.['Nama']?.toLowerCase() === nama.toLowerCase() && r.metadata?.['tanggal'] === today
+    // Query filtered langsung per nama - efisien & tidak kena batas 1000 baris
+    const { data: userRows, error: absenError } = await supabase
+      .from('absen_gtk')
+      .select('*')
+      .eq('nama', nama);
+    if (absenError) throw absenError;
+
+    const todayRecord = (userRows || []).find((r: any) =>
+      (r.metadata?.['tanggal'] || r.tanggal) === today
     );
     const todayStatus = {
       hasCheckedIn: !!todayRecord?.metadata?.['jam_masuk'],
@@ -63,13 +67,12 @@ export async function GET(request: Request) {
     };
 
     if (bulan && tahun) {
-      rekap = (rows || []).filter((r: any) => {
-        const isUser = r.metadata?.['Nama']?.toLowerCase() === nama.toLowerCase();
-        const tgl = r.metadata?.['tanggal'] || '';
+      rekap = (userRows || []).filter((r: any) => {
+        const tgl = r.metadata?.['tanggal'] || r.tanggal || '';
         const parts = tgl.split('/');
-        return parts.length === 3 && isUser && parts[1] === bulan && parts[2] === tahun;
+        return parts.length === 3 && parts[1] === bulan && parts[2] === tahun;
       }).map((r: any) => ({
-        tanggal: r.metadata?.['tanggal'],
+        tanggal: r.metadata?.['tanggal'] || r.tanggal,
         jam_masuk: r.metadata?.['jam_masuk'] || '-',
         jam_pulang: r.metadata?.['jam_pulang'] || '-',
         status: r.metadata?.['status'] || '-'
