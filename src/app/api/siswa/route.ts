@@ -6,22 +6,22 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    let sbRows: any[] = [];
-    let page = 0;
     const pageSize = 1000;
-    while (true) {
-      const { data, error } = await supabase
-        .from('data_induk')
-        .select('*')
-        .range(page * pageSize, (page + 1) * pageSize - 1);
-      
-      if (error) throw error;
-      if (!data || data.length === 0) break;
-      
-      sbRows = sbRows.concat(data);
-      if (data.length < pageSize) break;
-      page++;
+    const pages = [0, 1, 2, 3]; // 4000 rows max, cukup untuk 3200+ siswa
+    const results = await Promise.all(
+      pages.map(page => 
+        supabase
+          .from('data_induk')
+          .select('*')
+          .range(page * pageSize, (page + 1) * pageSize - 1)
+      )
+    );
+    
+    for (const res of results) {
+      if (res.error) throw res.error;
     }
+    
+    const sbRows = results.flatMap(r => r.data || []);
     
     // Mock Google Sheet row interface
     const rows = sbRows.map((sbRow: any, index: number) => ({
@@ -108,7 +108,7 @@ export async function GET() {
     });
 
     return NextResponse.json({ success: true, data }, {
-      headers: { 'Cache-Control': 'no-store, no-cache' }
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' }
     });
   } catch (error: any) {
     console.error('Fetch Siswa Error:', error);
