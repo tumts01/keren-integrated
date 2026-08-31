@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getIndukDoc, getPresensiDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 import { uploadFileToDrive } from '@/lib/google-drive';
 
 function formatPhone(rawHp: string) {
-  let hp = rawHp.replace(/\D/g, ''); // Remove non-numeric
+  let hp = rawHp.replace(/\D/g, ''); 
   if (hp.startsWith('0')) {
     hp = '62' + hp.substring(1);
   }
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const target = fd.get('target') as string;
     const phonesStr = fd.get('phones') as string;
     const phones = phonesStr ? JSON.parse(phonesStr) : [];
-    const viaAppOnly = true; // Selalu true, WA dinonaktifkan
+    const viaAppOnly = true; 
     const file = fd.get('file') as File | null;
 
     if (!pesan && !file) {
@@ -38,174 +38,84 @@ export async function POST(request: Request) {
       }
     }
 
-    // 1. Dapatkan daftar GTK dari db_GTK (build nama -> noWA map)
-    const indukDoc = await getIndukDoc();
-    const sheetGtk = indukDoc.sheetsByTitle['db_GTK'];
-    if (!sheetGtk) {
-      return NextResponse.json({ success: false, error: 'Tab db_GTK tidak ditemukan' }, { status: 500 });
-    }
+    const { data: rowsGtk } = await supabase.from('data_guru').select('*');
+    
+    const mapGtk = new Map<string, string>();
+    (rowsGtk || []).forEach((r: any) => {
+      const isAktif = (r.metadata?.['STATUS'] || r.metadata?.['Status'] || '').toLowerCase().trim() === 'aktif';
+      if (isAktif) {
+        mapGtk.set((r.nama || '').trim(), (r.metadata?.['No WA'] || r.metadata?.['Whatsapp'] || '').trim());
+      }
+    });
 
-    const rowsGtk = await sheetGtk.getRows();
-
-    // Build map nama -> noWA (hanya GTK aktif)
-    const gtkMap: Record<string, string> = {};
-    rowsGtk
-      .filter(r => (r.get('Status') || '').toLowerCase().trim() === 'aktif')
-      .forEach(r => {
-        const nama = (r.get('Nama') || '').toLowerCase().trim();
-        const hp = (r.get('No WA') || '').trim();
-        if (nama && hp.length >= 8) gtkMap[nama] = hp;
-      });
-
-    let targets = '';
-    let count = 0;
-
+    let selectedPhones: string[] = [];
     if (target === 'pimpinan') {
-      // 2a. Ambil daftar user dengan role Pimpinan
-      const usersSheet = indukDoc.sheetsByTitle['Users'];
-      if (!usersSheet) {
-        return NextResponse.json({ success: false, error: 'Sheet Users tidak ditemukan' }, { status: 500 });
-      }
-      const userRows = await usersSheet.getRows();
-      const pimpinanNames = userRows
-        .filter(r => (r.get('Role') || '').toLowerCase().trim() === 'pimpinan')
-        .map(r => (r.get('Nama') || '').toLowerCase().trim())
-        .filter(Boolean);
-
-      if (pimpinanNames.length === 0 && !viaAppOnly) {
-        return NextResponse.json({ success: false, error: 'Tidak ada user dengan role Pimpinan ditemukan' }, { status: 404 });
-      }
-
-      // Match nama pimpinan ke db_GTK
-      const phonesArr: string[] = [];
-      pimpinanNames.forEach(pn => {
-        if (gtkMap[pn]) { phonesArr.push(formatPhone(gtkMap[pn])); return; }
-        const key = Object.keys(gtkMap).find(k => k.includes(pn) || pn.includes(k));
-        if (key) phonesArr.push(formatPhone(gtkMap[key]));
+      const pimpinan = (rowsGtk || []).filter((r: any) => {
+        const status = (r.metadata?.['STATUS'] || r.metadata?.['Status'] || '').toLowerCase().trim();
+        const tupoksi = (r.metadata?.['Tupoksi Pokok'] || '').toLowerCase();
+        return status === 'aktif' && (tupoksi.includes('kepala') || tupoksi.includes('waka'));
       });
-
-      if (phonesArr.length === 0) {
-        userRows
-          .filter(r => (r.get('Role') || '').toLowerCase().trim() === 'pimpinan')
-          .forEach(r => {
-            const hp = (r.get('No WA') || r.get('HP') || r.get('NoHP') || '').trim();
-            if (hp.length >= 8) phonesArr.push(formatPhone(hp));
-          });
-      }
-
-      if (phonesArr.length === 0 && !viaAppOnly) {
-        return NextResponse.json({ success: false, error: 'Nomor WA pimpinan tidak ditemukan.' }, { status: 404 });
-      }
-
-      targets = [...new Set(phonesArr)].join(',');
-      count = phonesArr.length;
-    } else if (target === 'custom' && Array.isArray(phones) && phones.length > 0) {
-      // 2b. Custom — kirim ke nomor-nomor yang dipilih
-      const formatted = phones.map((hp: string) => formatPhone(hp)).filter(hp => hp.length >= 8);
-      if (formatted.length === 0 && !viaAppOnly) {
-        return NextResponse.json({ success: false, error: 'Tidak ada nomor WA yang valid' }, { status: 400 });
-      }
-      targets = [...new Set(formatted)].join(',');
-      count = formatted.length;
+      selectedPhones = pimpinan.map((r: any) => mapGtk.get(r.nama?.trim())).filter(Boolean) as string[];
+    } else if (target === 'custom') {
+      selectedPhones = phones.map((nama: string) => mapGtk.get(nama?.trim())).filter(Boolean);
     } else {
-      // 2b. Kirim ke semua GTK aktif
-      const allPhones = Object.values(gtkMap).map(hp => formatPhone(hp));
-      if (allPhones.length === 0 && !viaAppOnly) {
-        return NextResponse.json({ success: false, error: 'Tidak ada nomor WA GTK aktif yang ditemukan' }, { status: 404 });
-      }
-      targets = allPhones.join(',');
-      count = allPhones.length;
+      selectedPhones = Array.from(mapGtk.values()).filter(Boolean);
     }
 
-    // 3. Simpan Riwayat ke Spreadsheet
+    const count = selectedPhones.length;
+
     try {
-      const presensiDoc = await getPresensiDoc();
-      const expectedHeaders = ['Tanggal', 'Jam', 'Pengirim', 'Pesan', 'Target', 'Lampiran'];
-      let sheetPengumuman = presensiDoc.sheetsByTitle['PENGUMUMAN'];
-
-      if (!sheetPengumuman) {
-        sheetPengumuman = await presensiDoc.addSheet({ headerValues: expectedHeaders, title: 'PENGUMUMAN' });
-      } else {
-        try { await sheetPengumuman.loadHeaderRow(); } catch(e) {}
-        await sheetPengumuman.setHeaderRow(expectedHeaders);
-      }
-
       const dateWIB = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
       const tanggal = dateWIB.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
       const jam = dateWIB.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-
       const targetLabel = viaAppOnly ? (target === 'pimpinan' ? 'Aplikasi: Pimpinan' : 'Aplikasi: Semua GTK') : (target === 'pimpinan' ? 'Pimpinan' : target === 'custom' ? `${count} Guru Pilihan` : 'Semua GTK');
-      await sheetPengumuman.addRow({
-        Tanggal: tanggal,
-        Jam: jam,
-        Pengirim: pengirim || 'Admin',
-        Pesan: pesan,
-        Target: targetLabel,
-        Lampiran: lampiranUrl
-      });
-    } catch (sheetError) {
-      console.error('Gagal menyimpan log ke Spreadsheet:', sheetError);
+
+      const metadata = {
+        'Tanggal': tanggal,
+        'Jam': jam,
+        'Pengirim': pengirim,
+        'Pesan': pesan,
+        'Target': targetLabel,
+        'Lampiran': lampiranUrl
+      };
+
+      await supabase.from('data_pengumuman').insert([{ tanggal, metadata }]);
+    } catch (e: any) {
+      console.error('Failed to log to Supabase PENGUMUMAN', e);
     }
 
-    // 4. Selesai (Hanya via Aplikasi)
-    return NextResponse.json({
-      success: true,
-      message: `Pengumuman berhasil diposting di aplikasi.`,
-      data: { status: true }
+    return NextResponse.json({ 
+      success: true, 
+      message: `Pengumuman ${viaAppOnly ? 'disimpan ke aplikasi' : 'dikirim via WA dan aplikasi'} (${count} target)`
     });
-
   } catch (error: any) {
-    console.error('API Pengumuman Error:', error);
-    return NextResponse.json({ success: false, error: 'Terjadi kesalahan sistem internal.' }, { status: 500 });
+    console.error('Pengumuman Error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const listType = searchParams.get('list');
+    const limit = parseInt(searchParams.get('limit') || '50');
 
-    // Kembalikan daftar GTK aktif beserta nomor WA untuk custom send
-    if (listType === 'gtk') {
-      const indukDoc = await getIndukDoc();
-      const sheetGtk = indukDoc.sheetsByTitle['db_GTK'];
-      if (!sheetGtk) return NextResponse.json({ success: false, data: [] });
-      const rows = await sheetGtk.getRows();
-      const data = rows
-        .filter(r => (r.get('Status') || '').toLowerCase().trim() === 'aktif')
-        .map(r => ({
-          nama: r.get('Nama') || '',
-          noWA: r.get('No WA') || '',
-          jabatan: r.get('Jabatan') || r.get('Pangkat') || ''
-        }))
-        .filter(r => r.nama && r.noWA.length >= 8)
-        .sort((a, b) => a.nama.localeCompare(b.nama));
-      return NextResponse.json({ success: true, data }, {
-        headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
-      });
-    }
+    const { data: rows, error } = await supabase.from('data_pengumuman').select('*').order('id', { ascending: false }).limit(limit);
+    if (error) throw error;
 
-    // Default: kembalikan riwayat pengumuman
-    const presensiDoc = await getPresensiDoc();
-    const sheetPengumuman = presensiDoc.sheetsByTitle['PENGUMUMAN'];
-    if (!sheetPengumuman) return NextResponse.json({ success: true, data: [], total: 0 }, {
-      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
-    });
-
-    const rows = await sheetPengumuman.getRows();
-    const data = rows.map(r => ({
-      tanggal: r.get('Tanggal'),
-      jam: r.get('Jam'),
-      pengirim: r.get('Pengirim'),
-      pesan: r.get('Pesan'),
-      target: r.get('Target') || 'Semua GTK',
-      lampiran: r.get('Lampiran') || ''
-    })).reverse();
+    const data = (rows || []).map((r: any) => ({
+      tanggal: r.metadata?.['Tanggal'] || r.tanggal || '',
+      jam: r.metadata?.['Jam'] || '',
+      pengirim: r.metadata?.['Pengirim'] || '',
+      pesan: r.metadata?.['Pesan'] || '',
+      target: r.metadata?.['Target'] || 'Semua GTK',
+      lampiran: r.metadata?.['Lampiran'] || ''
+    }));
 
     return NextResponse.json({ success: true, data, total: data.length }, {
       headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
     });
-  } catch (error) {
-    return NextResponse.json({ success: false, data: [], total: 0 });
+  } catch (error: any) {
+    console.error('GET Pengumuman error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }

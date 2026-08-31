@@ -1,36 +1,23 @@
 import { NextResponse } from 'next/server';
-import { getPresensiDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
-// GET: ambil konfigurasi jam per tanggal
-// Query: ?tanggal=2026-08-13  → cari config untuk tanggal tsb
-// Tanpa param → ambil semua
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const tanggal = searchParams.get('tanggal');
 
-    const doc = await getPresensiDoc();
+    const { data: rows, error } = await supabase.from('data_jam_config').select('*');
+    if (error) throw error;
 
-    // Auto-create sheet JamConfig jika belum ada
-    let sheet = doc.sheetsByTitle['JamConfig'];
-    if (!sheet) {
-      sheet = await doc.addSheet({
-        title: 'JamConfig',
-        headerValues: ['Tanggal', 'JamTersedia', 'Keterangan', 'UpdatedAt']
-      });
-    }
-
-    const rows = await sheet.getRows();
-    const data = rows.map(r => ({
-      tanggal: r.get('Tanggal') || '',
-      jamTersedia: r.get('JamTersedia') || '',
-      keterangan: r.get('Keterangan') || '',
-      updatedAt: r.get('UpdatedAt') || '',
-    })).filter(r => r.tanggal);
+    const data = (rows || []).map((r: any) => ({
+      tanggal: r.metadata?.['Tanggal'] || r.tanggal || '',
+      jamTersedia: r.metadata?.['JamTersedia'] || '',
+      keterangan: r.metadata?.['Keterangan'] || '',
+      updatedAt: r.metadata?.['UpdatedAt'] || '',
+    })).filter((r: any) => r.tanggal);
 
     if (tanggal) {
-      const found = data.find(r => r.tanggal === tanggal);
-      // Kalau tidak ada config → semua jam (1–10) tersedia
+      const found = data.find((r: any) => r.tanggal === tanggal);
       if (!found) {
         return NextResponse.json({ success: true, jamTersedia: [1,2,3,4,5,6,7,8,9,10], keterangan: '' });
       }
@@ -46,66 +33,37 @@ export async function GET(request: Request) {
   }
 }
 
-// POST: simpan / update konfigurasi jam untuk tanggal tertentu
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { tanggal, jamTersedia, keterangan } = body;
 
-    if (!tanggal || !Array.isArray(jamTersedia)) {
+    if (!tanggal || !jamTersedia || !Array.isArray(jamTersedia)) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
     }
 
-    const doc = await getPresensiDoc();
-    let sheet = doc.sheetsByTitle['JamConfig'];
-    if (!sheet) {
-      sheet = await doc.addSheet({
-        title: 'JamConfig',
-        headerValues: ['Tanggal', 'JamTersedia', 'Keterangan', 'UpdatedAt']
-      });
-    }
-
-    const rows = await sheet.getRows();
-    const existingRow = rows.find(r => r.get('Tanggal') === tanggal);
-    const jamStr = jamTersedia.sort((a: number, b: number) => a - b).join(',');
+    const jamStr = jamTersedia.join(', ');
     const updatedAt = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
 
+    // Check existing
+    const { data: existingRow } = await supabase.from('data_jam_config').select('*').eq('tanggal', tanggal).single();
+
+    const metadata = {
+      'Tanggal': tanggal,
+      'JamTersedia': jamStr,
+      'Keterangan': keterangan || '',
+      'UpdatedAt': updatedAt
+    };
+
     if (existingRow) {
-      existingRow.set('JamTersedia', jamStr);
-      existingRow.set('Keterangan', keterangan || '');
-      existingRow.set('UpdatedAt', updatedAt);
-      await existingRow.save();
+      const { error } = await supabase.from('data_jam_config').update({ metadata }).eq('id', existingRow.id);
+      if (error) throw error;
     } else {
-      await sheet.addRow({
-        Tanggal: tanggal,
-        JamTersedia: jamStr,
-        Keterangan: keterangan || '',
-        UpdatedAt: updatedAt,
-      });
+      const { error } = await supabase.from('data_jam_config').insert([{ tanggal, metadata }]);
+      if (error) throw error;
     }
 
-    return NextResponse.json({ success: true, message: 'Konfigurasi jam berhasil disimpan' });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
-}
-
-// DELETE: reset config untuk tanggal tertentu (kembali ke semua jam)
-export async function DELETE(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const tanggal = searchParams.get('tanggal');
-    if (!tanggal) return NextResponse.json({ success: false, error: 'Tanggal wajib diisi' }, { status: 400 });
-
-    const doc = await getPresensiDoc();
-    const sheet = doc.sheetsByTitle['JamConfig'];
-    if (!sheet) return NextResponse.json({ success: true, message: 'Tidak ada konfigurasi' });
-
-    const rows = await sheet.getRows();
-    const row = rows.find(r => r.get('Tanggal') === tanggal);
-    if (row) await row.delete();
-
-    return NextResponse.json({ success: true, message: 'Konfigurasi jam direset' });
+    return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

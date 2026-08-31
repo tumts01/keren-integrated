@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getPresensiDoc, getIndukDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 import crypto from 'crypto';
 
 export async function GET(request: Request) {
@@ -9,212 +9,129 @@ export async function GET(request: Request) {
 
     const cleanNisn = (val: any) => String(val || '').replace(/^'/, '').trim().replace(/^0+/, '');
 
-    // Bersihkan jam ke yang terformat jadi tanggal oleh Google Sheets
-    // Misal: "6,7,2008" -> "6,7" atau "7,8,2009" -> "7,8"
     const cleanJamKe = (val: string) => {
       return val.replace(/,(19|20)\d{2}$/g, '').trim();
     };
 
-    // Ambil domisili dari DATABASE induk
-    const docInduk = await getIndukDoc();
-    const sheetInduk = docInduk.sheetsByTitle['DATABASE'];
+    // Ambil domisili dari Supabase data_induk
+    const { data: rowsInduk } = await supabase.from('data_induk').select('metadata');
     const mapDomisili: Record<string, string> = {};
-    if (sheetInduk) {
-      const rowsInduk = await sheetInduk.getRows();
-      rowsInduk.forEach(r => {
-        const nisn = cleanNisn(r.get('NISN'));
+    if (rowsInduk) {
+      rowsInduk.forEach((r: any) => {
+        const nisn = cleanNisn(r.metadata?.['NISN']);
         if (nisn) {
-          mapDomisili[nisn] = (r.get('DOMISILI') || '').trim();
+          mapDomisili[nisn] = (r.metadata?.['DOMISILI'] || '').trim();
         }
       });
     }
 
-    const doc = await getPresensiDoc();
-    const sheet = doc.sheetsByTitle['PRESENSI SISWA'];
-    if (!sheet) return NextResponse.json({ success: false, error: 'Sheet PRESENSI SISWA tidak ditemukan' }, { status: 404 });
+    let query = supabase.from('data_presensi_siswa').select('*');
+    if (filterTanggal) {
+      query = query.eq('tanggal', filterTanggal);
+    }
+    
+    const { data: rows, error } = await query;
+    if (error) throw error;
 
-    const rows = await sheet.getRows();
-    let data = rows.map(r => {
-      const rawNisn = (r.get('NISN') || '').trim();
+    let data = (rows || []).map((r: any) => {
+      const rawNisn = (r.metadata?.['NISN'] || '').trim();
       const safeNisn = cleanNisn(rawNisn);
       return {
-        id: r.get('ID') || '',
-        tanggal: (r.get('TANGGAL') || '').trim(),
-        tahunAjaran: (r.get('TAHUN AJARAN') || '').trim(),
-        kelas: (r.get('KELAS') || '').trim(),
-        jamKe: cleanJamKe((r.get('JAM KE') || '').trim()),
-        mapel: (r.get('MAPEL') || '').trim(),
-        guruPenginput: (r.get('GURU PENGINPUT') || '').trim(),
-        namaSiswa: (r.get('NAMA SISWA') || '').trim(),
+        id: r.metadata?.['ID'] || r.id.toString(),
+        tanggal: (r.metadata?.['TANGGAL'] || r.tanggal || '').trim(),
+        tahunAjaran: (r.metadata?.['TAHUN AJARAN'] || '').trim(),
+        kelas: (r.metadata?.['KELAS'] || r.kelas || '').trim(),
+        jamKe: cleanJamKe((r.metadata?.['JAM KE'] || '').trim()),
+        mapel: (r.metadata?.['MAPEL'] || '').trim(),
+        guruPenginput: (r.metadata?.['GURU PENGINPUT'] || '').trim(),
+        namaSiswa: (r.metadata?.['NAMA SISWA'] || '').trim(),
         nisn: rawNisn,
         domisili: mapDomisili[safeNisn] || '',
-        kehadiran: (r.get('KEHADIRAN') || '').trim(),
+        kehadiran: (r.metadata?.['KEHADIRAN'] || '').trim(),
+        timestamp: (r.metadata?.['TIMESTAMP'] || '').trim(),
       };
-    }).filter(r => r.namaSiswa && r.kehadiran);
+    });
 
     if (filterTanggal) {
-      data = data.filter(r => r.tanggal === filterTanggal);
+      data = data.filter((d: any) => d.tanggal === filterTanggal);
     }
 
     return NextResponse.json({ success: true, data }, {
       headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
     });
-  } catch (error: any) {
-    console.error('GET Presensi Error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
-}
 
-// Retry dengan exponential backoff — penting untuk handle quota 429
-async function withRetry<T>(fn: () => Promise<T>, maxRetries = 4, baseDelayMs = 2000): Promise<T> {
-  let lastError: any;
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await fn();
-    } catch (err: any) {
-      lastError = err;
-      const is429 = err?.message?.includes('429') || err?.status === 429 || err?.code === 429;
-      if (i < maxRetries - 1 && is429) {
-        // Exponential backoff: 2s, 4s, 8s
-        const delay = baseDelayMs * Math.pow(2, i);
-        console.log(`Quota exceeded, retry ${i + 1}/${maxRetries} after ${delay}ms...`);
-        await new Promise(r => setTimeout(r, delay));
-      } else if (!is429) {
-        throw err; // Error bukan 429, langsung lempar
-      }
-    }
+  } catch (error: any) {
+    console.error('Fetch Presensi Error:', error);
+    return NextResponse.json({ success: false, error: 'Gagal memuat data presensi: ' + error.message }, { status: 500 });
   }
-  throw lastError;
 }
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { tanggal, jamKe, kelas, mapel, guru, tahunAjaran, presensi, siswaList } = body;
+    const { listSiswa, tahunAjaran, mapel, kelas, jamKe, guru, timestamp, tanggal } = await request.json();
 
-    if (body.action === 'delete' && body.id) {
-      const doc = await withRetry(() => getPresensiDoc());
-      const sheet = doc.sheetsByTitle['PRESENSI SISWA'];
-      if (!sheet) return NextResponse.json({ success: false, error: 'Tab tidak ditemukan' }, { status: 404 });
-      const rows = await withRetry(() => sheet.getRows());
-      const rowToDelete = rows.find(r => r.get('ID') === body.id);
-      if (rowToDelete) {
-        await withRetry(() => rowToDelete.delete());
-        return NextResponse.json({ success: true, message: 'Berhasil dihapus' });
-      }
-      return NextResponse.json({ success: false, error: 'Data tidak ditemukan' }, { status: 404 });
+    if (!listSiswa || listSiswa.length === 0) {
+      return NextResponse.json({ success: false, error: 'Data absensi kosong' }, { status: 400 });
     }
 
-    if (body.action === 'update' && body.id && body.status) {
-      const doc = await withRetry(() => getPresensiDoc());
-      const sheet = doc.sheetsByTitle['PRESENSI SISWA'];
-      if (!sheet) return NextResponse.json({ success: false, error: 'Tab tidak ditemukan' }, { status: 404 });
-      const rows = await withRetry(() => sheet.getRows());
-      const rowToUpdate = rows.find(r => r.get('ID') === body.id);
-      if (rowToUpdate) {
-        if (body.status === 'H') {
-          await withRetry(() => rowToUpdate.delete()); // If Hadir, remove from record
-        } else {
-          rowToUpdate.set('KEHADIRAN', body.status);
-          if (body.jamKe) {
-            rowToUpdate.set('JAM KE', body.jamKe);
-          }
-          await withRetry(() => rowToUpdate.save());
-        }
-        return NextResponse.json({ success: true, message: 'Berhasil diupdate' });
-      }
-      return NextResponse.json({ success: false, error: 'Data tidak ditemukan' }, { status: 404 });
-    }
-
-
-
-    if (!tanggal || !jamKe || !kelas || !mapel || !presensi || !siswaList) {
-      return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
-    }
-
-    const doc = await withRetry(() => getPresensiDoc());
-    const sheet = doc.sheetsByTitle['PRESENSI SISWA'];
-
-    if (!sheet) {
-      return NextResponse.json({ success: false, error: 'Tab PRESENSI SISWA tidak ditemukan' }, { status: 404 });
-    }
-
-    const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
-    const batchId = crypto.randomUUID().substring(0, 8);
-
-    const allRows = await withRetry(() => sheet.getRows());
-    const existingRecords = allRows.filter(r => 
-      r.get('TANGGAL') === tanggal && 
-      r.get('KELAS') === kelas &&
-      r.get('JAM KE') === jamKe &&
-      r.get('MAPEL') === mapel
-    );
-
-    // Hanya simpan data S, I, A — Hadir tidak perlu dicatat
-    const rowsToAdd: any[] = [];
-    for (const siswa of siswaList) {
-      const status = presensi[siswa.id] || 'H';
-      
-      const existingStudentRows = existingRecords.filter(r => r.get('NISN') === siswa.nisn || r.get('NAMA SISWA') === siswa.nama);
-
-      if (existingStudentRows.length > 0) {
-        if (status === 'H') {
-          // Hapus semua record duplikat jika sekarang diset Hadir
-          for (const row of existingStudentRows) {
-            await withRetry(() => row.delete());
-          }
-        } else {
-          // Update record pertama, hapus sisanya (duplikat)
-          const [firstRow, ...restRows] = existingStudentRows;
-          if (firstRow.get('KEHADIRAN') !== status) {
-            firstRow.assign({
-              'KEHADIRAN': status,
-              'TIMESTAMP': timestamp,
-              'GURU PENGINPUT': guru || 'Unknown'
-            });
-            await withRetry(() => firstRow.save());
-          }
-          for (const row of restRows) {
-            await withRetry(() => row.delete());
-          }
-        }
-      } else {
-        if (status !== 'H') {
-          rowsToAdd.push({
-            'ID': `${batchId}-${siswa.nisn}`,
-            'TIMESTAMP': timestamp,
-            'TANGGAL': tanggal,
-            'TAHUN AJARAN': tahunAjaran || '',
-            'KELAS': kelas,
-            'JAM KE': "'" + jamKe,
-            'MAPEL': mapel,
-            'GURU PENGINPUT': guru || 'Unknown',
-            'NAMA SISWA': siswa.nama,
-            'NISN': siswa.nisn,
-            'KEHADIRAN': status
-          });
-        }
-      }
-    }
-
-    if (rowsToAdd.length > 0) {
-      await withRetry(() => sheet.addRows(rowsToAdd));
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Presensi berhasil disimpan',
-      totalSaved: rowsToAdd.length
+    const payload = listSiswa.map((s: any) => {
+      const uniqueId = crypto.randomUUID();
+      const metadata = {
+        'ID': uniqueId,
+        'TIMESTAMP': timestamp,
+        'TANGGAL': tanggal,
+        'TAHUN AJARAN': tahunAjaran,
+        'KELAS': kelas,
+        'JAM KE': jamKe,
+        'MAPEL': mapel,
+        'GURU PENGINPUT': guru,
+        'NAMA SISWA': s.nama,
+        'NISN': `'${s.nisn}`,
+        'KEHADIRAN': s.status
+      };
+      return { tanggal, kelas, metadata };
     });
 
+    const { error } = await supabase.from('data_presensi_siswa').insert(payload);
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
+
   } catch (error: any) {
-    console.error('Save Presensi Error:', error);
-    const isQuota = error?.message?.includes('429') || error?.message?.includes('Quota');
-    return NextResponse.json({
-      success: false,
-      error: isQuota
-        ? 'Server sedang sibuk (limit Google API). Coba lagi dalam 1-2 menit.'
-        : (error.message || 'Terjadi kesalahan')
-    }, { status: isQuota ? 429 : 500 });
+    console.error('Submit Presensi Error:', error);
+    return NextResponse.json({ success: false, error: 'Gagal menyimpan absensi' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'ID tidak diberikan' }, { status: 400 });
+    }
+
+    // Try deleting by Supabase ID first, if not found or if ID is a UUID, find by JSONB ID
+    let deleteId = parseInt(id, 10);
+    
+    if (isNaN(deleteId)) {
+      // Find row by UUID in metadata
+      const { data: foundRow } = await supabase.from('data_presensi_siswa').select('id').contains('metadata', { 'ID': id }).single();
+      if (foundRow) {
+        deleteId = foundRow.id;
+      }
+    }
+
+    if (!isNaN(deleteId)) {
+      const { error } = await supabase.from('data_presensi_siswa').delete().eq('id', deleteId);
+      if (error) throw error;
+    }
+
+    return NextResponse.json({ success: true });
+
+  } catch (error: any) {
+    console.error('Delete Presensi Error:', error);
+    return NextResponse.json({ success: false, error: 'Gagal menghapus presensi' }, { status: 500 });
   }
 }

@@ -1,39 +1,31 @@
 import { NextResponse } from 'next/server';
-import { getSurveyDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const doc = await getSurveyDoc();
-    
+    const { data: allRows, error } = await supabase.from('data_survey').select('*');
+    if (error) throw error;
+
     const rekap = [
       { id: 'wali_murid', nama: 'Angket Persepsi Wali Murid', total: 0, latest: [] as any[] },
       { id: 'siswa', nama: 'Angket Persepsi Siswa', total: 0, latest: [] as any[] },
       { id: 'kepuasan_ortu', nama: 'Angket Kepuasan Orang Tua', total: 0, latest: [] as any[] },
     ];
 
-    const sheetTitles = ['Survey_Wali_Murid', 'Survey_Siswa', 'Survey_Kepuasan_Ortu'];
-    
-    for (let i = 0; i < sheetTitles.length; i++) {
-      const sheet = doc.sheetsByTitle[sheetTitles[i]];
-      if (sheet) {
-        try {
-          const rows = await sheet.getRows();
-          rekap[i].total = rows.length;
-          
-          // Ambil 10 data terakhir untuk detail ringkas
-          const lastRows = rows.slice(-10).reverse();
-          rekap[i].latest = lastRows.map(r => ({
-            timestamp: r.get('Timestamp') || '-',
-            nama: r.get('Nama Wali Murid') || r.get('Nama Siswa') || r.get('Nama Anak / Siswa') || '-',
-            kelas: r.get('Kelas') || r.get('Kelas Siswa') || '-'
-          }));
-        } catch (e) {
-          console.error(`Error loading rows for sheet ${sheetTitles[i]}:`, e);
-          // Biarkan total 0 dan latest kosong
-        }
-      }
+    const mappedRows = (allRows || []).map((r: any) => ({
+      tipe: r.tipe_survey,
+      timestamp: r.metadata?.['Timestamp'] || '-',
+      nama: r.metadata?.['Nama Wali Murid'] || r.metadata?.['Nama Siswa'] || r.metadata?.['Nama Anak / Siswa'] || '-',
+      kelas: r.metadata?.['Kelas'] || r.metadata?.['Kelas Siswa'] || '-'
+    }));
+
+    for (let i = 0; i < rekap.length; i++) {
+      const tipeId = rekap[i].id;
+      const filtered = mappedRows.filter(r => r.tipe === tipeId);
+      rekap[i].total = filtered.length;
+      rekap[i].latest = filtered.slice(-10).reverse(); // Assuming original order is chronological
     }
 
     return NextResponse.json({ success: true, data: rekap }, {

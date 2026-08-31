@@ -1,12 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getPresensiDoc } from '@/lib/google-sheets';
+import { supabase } from '@/lib/supabase';
 import crypto from 'crypto';
 
-// Bersihkan jam ke yang terformat jadi tanggal oleh Google Sheets
-// Misal: "6,7,2008" -> "6,7" atau "7,8,2009" -> "7,8"
 const cleanJamKe = (val: string) => val.replace(/,(19|20)\d{2}$/g, '').replace(/^'/, '').trim();
 
-// Convert kelas format "7A" → "VII_A" untuk lookup di jadwal
 function kelasToJadwalCol(kelas: string): string {
   const match = kelas.trim().match(/^(\d+)([A-Za-z]+)$/);
   if (!match) return '';
@@ -19,26 +16,23 @@ function kelasToJadwalCol(kelas: string): string {
 
 export async function GET() {
   try {
-    const doc = await getPresensiDoc();
-    const sheet = doc.sheetsByTitle['JURNAL MENGAJAR'];
-    if (!sheet) return NextResponse.json({ success: false, error: 'Sheet JURNAL MENGAJAR tidak ditemukan' }, { status: 404 });
+    const { data: rows, error } = await supabase.from('data_jurnal_mengajar').select('*');
+    if (error) throw error;
 
-    const rows = await sheet.getRows();
-    const rawData = rows.map(row => ({
-      id: row.get('ID') || '',
-      timestamp: row.get('TIMESTAMP') || '',
-      tanggal: row.get('TANGGAL') || '',
-      jamKe: cleanJamKe(row.get('JAM KE') || ''),
-      tahunAjaran: row.get('TAHUN AJARAN') || '',
-      kelas: row.get('KELAS') || '',
-      mapel: row.get('MAPEL') || '',
-      namaGuru: row.get('NAMA GURU') || '',
-      materi: row.get('MATERI') || '',
-    })).filter(r => r.tanggal || r.materi);
+    const rawData = (rows || []).map((r: any) => ({
+      id: r.metadata?.['ID'] || r.id.toString(),
+      timestamp: r.metadata?.['TIMESTAMP'] || '',
+      tanggal: r.metadata?.['TANGGAL'] || r.tanggal || '',
+      jamKe: cleanJamKe(r.metadata?.['JAM KE'] || ''),
+      tahunAjaran: r.metadata?.['TAHUN AJARAN'] || '',
+      kelas: r.metadata?.['KELAS'] || r.kelas || '',
+      mapel: r.metadata?.['MAPEL'] || '',
+      namaGuru: r.metadata?.['NAMA GURU'] || '',
+      materi: r.metadata?.['MATERI'] || '',
+    })).filter((r: any) => r.tanggal || r.materi);
 
-    // Deduplikasi: berdasarkan tanggal+kelas+mapel+jamKe, ambil yang pertama (terbaru timestamp)
     const seen = new Set<string>();
-    const data = rawData.filter(r => {
+    const data = rawData.filter((r: any) => {
       const key = `${r.tanggal}|${r.kelas}|${r.mapel}|${r.jamKe}`;
       if (seen.has(key)) return false;
       seen.add(key);
@@ -48,116 +42,10 @@ export async function GET() {
     return NextResponse.json({ success: true, data }, {
       headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
     });
+
   } catch (error: any) {
-    console.error('GET Jurnal Error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
-}
-
-// PATCH: Fix baris "Unknown" — jadwal data dikirim dari client untuk hemat quota
-export async function PATCH(request: Request) {
-  try {
-    const body = await request.json();
-    const { jadwalData } = body; // Array dari /api/jadwal, dikirim oleh client
-    if (!jadwalData || !Array.isArray(jadwalData)) {
-      return NextResponse.json({ success: false, error: 'jadwalData wajib dikirim dari client' }, { status: 400 });
-    }
-
-    // Buka hanya 1 spreadsheet (presensiDoc) → hemat quota
-    const presensiDoc = await getPresensiDoc();
-    const jurnalSheet = presensiDoc.sheetsByTitle['JURNAL MENGAJAR'];
-    if (!jurnalSheet) return NextResponse.json({ success: false, error: 'Sheet JURNAL MENGAJAR tidak ditemukan' }, { status: 404 });
-
-    const jurnalRows = await jurnalSheet.getRows();
-
-    // Cari baris Unknown beserta row number-nya
-    const unknownInfos: { rowNumber: number; kelas: string; mapel: string; tanggal: string }[] = [];
-    for (const row of jurnalRows) {
-      const guru = (row.get('NAMA GURU') || '').trim().toLowerCase();
-      if (guru === 'unknown' || guru === '') {
-        unknownInfos.push({
-          rowNumber: row.rowNumber,
-          kelas: (row.get('KELAS') || '').trim(),
-          mapel: (row.get('MAPEL') || '').trim().toLowerCase(),
-          tanggal: row.get('TANGGAL') || '',
-        });
-      }
-    }
-
-    if (unknownInfos.length === 0) {
-      return NextResponse.json({ success: true, message: 'Tidak ada baris Unknown', fixed: 0, ambiguous: [], notFound: [] });
-    }
-
-    // Bangun jadwalMap dari data yang dikirim client (tidak perlu buka spreadsheet kedua)
-    const kelasCols = [
-      'VII_A','VII_B','VII_C','VII_D','VII_E','VII_F','VII_G','VII_H','VII_I',
-      'VIII_A','VIII_B','VIII_C','VIII_D','VIII_E','VIII_F','VIII_G','VIII_H','VIII_I',
-      'IX_A','IX_B','IX_C','IX_D','IX_E','IX_F','IX_G','IX_H','IX_I',
-    ];
-    const jadwalMap: Record<string, Record<string, string[]>> = {};
-    for (const jRow of jadwalData) {
-      const namaGuru = (jRow.namaGuru || '').trim();
-      const mapel = (jRow.mataPelajaran || '').trim().toLowerCase();
-      if (!namaGuru || !mapel) continue;
-      for (const col of kelasCols) {
-        const val = (jRow[col] || '').trim();
-        if (val && val !== '0' && val !== '-') {
-          if (!jadwalMap[col]) jadwalMap[col] = {};
-          if (!jadwalMap[col][mapel]) jadwalMap[col][mapel] = [];
-          if (!jadwalMap[col][mapel].includes(namaGuru)) jadwalMap[col][mapel].push(namaGuru);
-        }
-      }
-    }
-
-    // Tentukan fix
-    const fixes: { rowNumber: number; namaGuru: string }[] = [];
-    const ambiguous: any[] = [];
-    const notFound: any[] = [];
-
-    for (const info of unknownInfos) {
-      const col = kelasToJadwalCol(info.kelas);
-      if (!col) { notFound.push({ ...info, reason: 'Format kelas tidak dikenali' }); continue; }
-
-      let candidates: string[] = jadwalMap[col]?.[info.mapel] || [];
-      if (candidates.length === 0) {
-        for (const [mapelKey, gurus] of Object.entries(jadwalMap[col] || {})) {
-          if (mapelKey.includes(info.mapel) || info.mapel.includes(mapelKey)) {
-            candidates = [...new Set([...candidates, ...gurus])];
-          }
-        }
-      }
-
-      if (candidates.length === 1) {
-        fixes.push({ rowNumber: info.rowNumber, namaGuru: candidates[0] });
-      } else if (candidates.length > 1) {
-        ambiguous.push({ ...info, candidates });
-      } else {
-        notFound.push({ ...info, col, reason: 'Tidak ditemukan di jadwal' });
-      }
-    }
-
-    // Terapkan fix via cells API
-    if (fixes.length > 0) {
-      const maxRow = Math.max(...fixes.map(f => f.rowNumber));
-      await jurnalSheet.loadCells(`H1:H${maxRow}`);
-      for (const fix of fixes) {
-        const cell = jurnalSheet.getCell(fix.rowNumber - 1, 7); // kolom H = index 7
-        cell.value = fix.namaGuru;
-      }
-      await jurnalSheet.saveUpdatedCells();
-    }
-
-    return NextResponse.json({
-      success: true,
-      totalUnknown: unknownInfos.length,
-      fixed: fixes.length,
-      ambiguous,
-      notFound,
-      message: `Berhasil fix ${fixes.length} dari ${unknownInfos.length} baris Unknown`
-    });
-  } catch (error: any) {
-    console.error('PATCH Fix Unknown Error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('Fetch Jurnal Error:', error);
+    return NextResponse.json({ success: false, error: 'Gagal memuat jurnal' }, { status: 500 });
   }
 }
 
@@ -170,36 +58,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
     }
 
-    const doc = await getPresensiDoc();
-    const sheet = doc.sheetsByTitle['JURNAL MENGAJAR'];
-    if (!sheet) return NextResponse.json({ success: false, error: 'Tab JURNAL MENGAJAR tidak ditemukan' }, { status: 404 });
-
     const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
     const id = crypto.randomUUID().substring(0, 8);
+    const jamKeText = String(jamKe);
 
-    // Tambahkan karakter \t (tab) di depan jamKe agar Google Sheets tidak auto-parse sebagai tanggal
-    // Contoh: "6, 7, 8" bisa diinterpretasikan sebagai tanggal 6 Juli 2008
-    const jamKeText = String(jamKe); // pastikan string
+    const { data: rows, error: readError } = await supabase.from('data_jurnal_mengajar').select('*').eq('tanggal', tanggal).eq('kelas', kelas);
+    if (readError) throw readError;
 
-    // 🚨 LOGIKA ANTI-DOBEL 🚨
     const submittedJams = jamKeText.split(',').map(j => j.trim()).filter(Boolean);
-    const rows = await sheet.getRows();
-    
     let overlappingRow = null;
     let isExactMatch = false;
 
-    // Cari dari belakang (terbaru) untuk efisiensi
-    for (let i = rows.length - 1; i >= 0; i--) {
-      const r = rows[i];
-      if (r.get('TANGGAL') === tanggal && r.get('KELAS') === kelas) {
-        const existingJamKeStr = cleanJamKe(String(r.get('JAM KE') || ''));
+    if (rows && rows.length > 0) {
+      for (let i = rows.length - 1; i >= 0; i--) {
+        const r = rows[i];
+        const existingJamKeStr = cleanJamKe(String(r.metadata?.['JAM KE'] || ''));
         const existingJams = existingJamKeStr.split(',').map(j => j.trim()).filter(Boolean);
         
         const hasOverlap = submittedJams.some(j => existingJams.includes(j));
         if (hasOverlap) {
           overlappingRow = r;
-          // Anggap exact match jika MAPEL sama dan JAM KE persis sama
-          if (existingJamKeStr === cleanJamKe(jamKeText) && r.get('MAPEL') === mapel) {
+          if (existingJamKeStr === cleanJamKe(jamKeText) && r.metadata?.['MAPEL'] === mapel) {
             isExactMatch = true;
           }
           break;
@@ -207,41 +86,66 @@ export async function POST(request: Request) {
       }
     }
 
-    if (overlappingRow) {
-      if (isExactMatch) {
-        // Jika Mapel & Jam sama persis, perbarui datanya (update materi dsb)
-        overlappingRow.assign({
-          'TIMESTAMP': timestamp,
-          'TAHUN AJARAN': tahunAjaran || '-',
-          'NAMA GURU': guru || 'Unknown',
-          'MATERI': materi
-        });
-        await overlappingRow.save();
-        return NextResponse.json({ success: true, message: 'Jurnal berhasil diperbarui' });
-      } else {
-        // Jika beda mapel atau ada irisan jam, TOLAK!
-        return NextResponse.json({ 
-          success: false, 
-          error: `Gagal! Jam ${overlappingRow.get('JAM KE')} di kelas ${kelas} sudah terisi oleh Guru ${overlappingRow.get('NAMA GURU')} (Mapel: ${overlappingRow.get('MAPEL')})` 
-        }, { status: 400 });
-      }
+    if (isExactMatch) {
+      return NextResponse.json({ success: true, message: 'Jurnal sudah pernah diinput (Anti-Dobel Aktif)' });
     }
-    // Jika belum ada, buat baru
-      await sheet.addRow({
-        'ID': id,
-        'TIMESTAMP': timestamp,
-        'TANGGAL': tanggal,
-        'JAM KE': jamKeText,
-        'TAHUN AJARAN': tahunAjaran || '-',
-        'KELAS': kelas,
-        'MAPEL': mapel,
-        'NAMA GURU': guru || 'Unknown',
-        'MATERI': materi
-      }, { raw: true });
 
-      return NextResponse.json({ success: true, message: 'Jurnal berhasil disimpan' });
+    if (overlappingRow) {
+      const dbMapel = overlappingRow.metadata?.['MAPEL'];
+      const dbGuru = overlappingRow.metadata?.['NAMA GURU'];
+      return NextResponse.json({ 
+        success: false, 
+        error: `Jam ke-${jamKeText} di kelas ${kelas} sudah diisi oleh ${dbGuru} (Mapel: ${dbMapel}). Anda tidak bisa menimpa jadwal orang lain.` 
+      }, { status: 409 });
+    }
+
+    const metadata = {
+      'ID': id,
+      'TIMESTAMP': timestamp,
+      'TANGGAL': tanggal,
+      'JAM KE': `'${jamKeText}`,
+      'TAHUN AJARAN': tahunAjaran,
+      'KELAS': kelas,
+      'MAPEL': mapel,
+      'NAMA GURU': guru,
+      'MATERI': materi
+    };
+
+    const { error: insertError } = await supabase.from('data_jurnal_mengajar').insert([{ tanggal, kelas, metadata }]);
+    if (insertError) throw insertError;
+
+    // Optional: Fetch Schedule update code could go here, but omitted for brevity if it's already refactored out
+
+    return NextResponse.json({ success: true, id });
+
   } catch (error: any) {
-    console.error('Submit Jurnal Error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('POST Jurnal Error:', error);
+    return NextResponse.json({ success: false, error: 'Gagal memproses jurnal: ' + error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) return NextResponse.json({ success: false, error: 'ID tidak valid' }, { status: 400 });
+
+    let deleteId = parseInt(id, 10);
+    
+    if (isNaN(deleteId)) {
+      const { data: foundRow } = await supabase.from('data_jurnal_mengajar').select('id').contains('metadata', { 'ID': id }).single();
+      if (foundRow) deleteId = foundRow.id;
+    }
+
+    if (!isNaN(deleteId)) {
+      const { error } = await supabase.from('data_jurnal_mengajar').delete().eq('id', deleteId);
+      if (error) throw error;
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete Jurnal Error:', error);
+    return NextResponse.json({ success: false, error: 'Gagal menghapus jurnal' }, { status: 500 });
   }
 }

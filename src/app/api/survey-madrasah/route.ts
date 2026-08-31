@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { getSurveyDoc, getEVotingDoc } from '@/lib/google-sheets';
 import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -13,7 +12,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
     }
 
-    // Special case for Pemetaan Kelas 7 which goes to a different document
     if (surveyType === 'pemetaan_kelas7') {
       try {
         const payload = {
@@ -52,62 +50,23 @@ export async function POST(request: Request) {
         console.error('Gagal insert ke Supabase:', sbError);
         return NextResponse.json({ success: false, error: 'Gagal menyimpan: ' + sbError.message }, { status: 500 });
       }
-
       return NextResponse.json({ success: true, message: 'Survey berhasil dikirim' });
     }
 
-    const doc = await getSurveyDoc();
-    
-    let sheetTitle = '';
-    if (surveyType === 'wali_murid') sheetTitle = 'Survey_Wali_Murid';
-    else if (surveyType === 'siswa') sheetTitle = 'Survey_Siswa';
-    else if (surveyType === 'kepuasan_ortu') sheetTitle = 'Survey_Kepuasan_Ortu';
-    else {
-      return NextResponse.json({ success: false, error: 'Tipe survey tidak valid' }, { status: 400 });
-    }
-
-    let sheet = doc.sheetsByTitle[sheetTitle];
-    if (!sheet) {
-      // Create sheet if it doesn't exist
-      const headers = Object.keys(data);
-      if (!headers.includes('Timestamp')) headers.unshift('Timestamp');
+    if (surveyType === 'wali_murid' || surveyType === 'siswa' || surveyType === 'kepuasan_ortu') {
+      const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
+      const metadata = { ...data, 'Timestamp': timestamp };
       
-      try {
-        sheet = await doc.addSheet({
-          title: sheetTitle,
-          headerValues: headers
-        });
-      } catch (err: any) {
-        // sometimes it fails if someone created it concurrently or without headers
-        // just fallback
-      }
-    } 
-    
-    // Check again
-    sheet = doc.sheetsByTitle[sheetTitle];
-    if (sheet) {
-      try {
-        await sheet.loadHeaderRow();
-      } catch (e) {
-        const headers = Object.keys(data);
-        if (!headers.includes('Timestamp')) headers.unshift('Timestamp');
-        await sheet.setHeaderRow(headers);
-      }
-    } else {
-       return NextResponse.json({ success: false, error: 'Sheet tidak bisa dibuat' }, { status: 500 });
+      const { error } = await supabase.from('data_survey').insert([{ tipe_survey: surveyType, metadata }]);
+      if (error) throw error;
+      
+      return NextResponse.json({ success: true, message: 'Survey berhasil dikirim' });
     }
 
-    // Add Timestamp
-    const rowData = {
-      Timestamp: new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' }),
-      ...data
-    };
+    return NextResponse.json({ success: false, error: 'Tipe survey tidak valid' }, { status: 400 });
 
-    await sheet.addRow(rowData);
-
-    return NextResponse.json({ success: true, message: 'Survey berhasil dikirim' });
   } catch (error: any) {
-    console.error('API Survey Madrasah POST Error:', error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error('POST Survey Error:', error);
+    return NextResponse.json({ success: false, error: 'Terjadi kesalahan pada server' }, { status: 500 });
   }
 }
