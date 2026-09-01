@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getPersuratanDoc } from '@/lib/google-sheets';
 import { uploadFileToDrive } from '@/lib/google-drive';
+import { supabase } from '@/lib/supabase';
 
 export async function POST(req: Request) {
   try {
@@ -33,31 +33,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Gagal mendapatkan link dari Google Drive' }, { status: 500 });
     }
 
-    // Update Spreadsheet
-    const doc = await getPersuratanDoc();
-    const sheet = doc.sheetsByTitle['ARSIP SURAT MASUK'];
-
-    if (!sheet) {
-      return NextResponse.json({ success: false, error: 'Tab ARSIP SURAT MASUK tidak ditemukan di Spreadsheet' }, { status: 404 });
-    }
-
-    await sheet.loadHeaderRow();
-    const headers = sheet.headerValues.map(h => h?.toUpperCase().trim() || '');
-
-    // Map headers intelligently
-    const headerTanggal = headers.find(h => h.includes('TANGGAL') || h.includes('TGL')) || 'TANGGAL TERIMA';
-    const headerNamaSurat = headers.find(h => h.includes('NAMA SURAT') || h.includes('PERIHAL') || h.includes('RINGKAS')) || 'NAMA SURAT';
-    const headerAsalSurat = headers.find(h => h.includes('INSTANSI') || h.includes('ASAL') || h.includes('PENGIRIM')) || 'NAMA INSTANSI';
-    const headerFile = headers.find(h => h.includes('FILE') || h.includes('SCAN')) || 'FILE/SCAN SURAT';
-
     const newRow = {
-      [headerTanggal]: tanggal,
-      [headerNamaSurat]: namaSurat,
-      [headerAsalSurat]: asalSurat,
-      [headerFile]: fileUrl
+      'TANGGAL TERIMA': tanggal,
+      'NAMA SURAT': namaSurat,
+      'NAMA INSTANSI': asalSurat,
+      'FILE/SCAN SURAT': fileUrl
     };
 
-    await sheet.addRow(newRow);
+    const { error } = await supabase.from('data_surat_masuk').insert([{ metadata: newRow }]);
+
+    if (error) throw error;
 
     return NextResponse.json({ success: true, url: fileUrl });
   } catch (error: any) {
