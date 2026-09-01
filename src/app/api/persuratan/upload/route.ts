@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getPersuratanDoc } from '@/lib/google-sheets';
 import { uploadFileToDrive } from '@/lib/google-drive';
+import { supabase } from '@/lib/supabase';
 
 export async function POST(req: Request) {
   try {
@@ -32,25 +32,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Gagal mendapatkan link dari Google Drive' }, { status: 500 });
     }
 
-    // Update Spreadsheet
-    const doc = await getPersuratanDoc();
-    const sheetName = type === 'keluar' ? 'NO SURAT KELUAR' : 'ARSIP SURAT MASUK';
-    const sheet = doc.sheetsByTitle[sheetName];
+    // Update Supabase
+    const tableName = type === 'keluar' ? 'data_surat_keluar' : 'data_surat_masuk';
+    const targetId = parseInt(rowNumber as string, 10);
 
-    if (!sheet) {
-      return NextResponse.json({ success: false, error: `Tab ${sheetName} tidak ditemukan di Spreadsheet` }, { status: 404 });
+    // Fetch existing metadata first
+    const { data: existing, error: getErr } = await supabase.from(tableName).select('metadata').eq('id', targetId).single();
+
+    if (getErr || !existing) {
+      return NextResponse.json({ success: false, error: 'Baris surat tidak ditemukan di Database' }, { status: 404 });
     }
 
-    const rows = await sheet.getRows();
-    const targetRow = rows.find(r => r.rowNumber === parseInt(rowNumber as string, 10));
+    const newMeta = {
+      ...existing.metadata,
+      'FILE/SCAN SURAT': fileUrl
+    };
 
-    if (!targetRow) {
-      return NextResponse.json({ success: false, error: 'Baris surat tidak ditemukan di Spreadsheet' }, { status: 404 });
-    }
+    const { error: updateErr } = await supabase.from(tableName).update({ metadata: newMeta }).eq('id', targetId);
 
-    // Set the file URL to the column
-    targetRow.set('FILE/SCAN SURAT', fileUrl);
-    await targetRow.save();
+    if (updateErr) throw updateErr;
 
     return NextResponse.json({ success: true, url: fileUrl });
   } catch (error: any) {
