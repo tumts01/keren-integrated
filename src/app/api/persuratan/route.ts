@@ -107,8 +107,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    if (action === 'generate_no_surat') {
-      const { topik, targetNoSurat } = data;
+    if (action === 'generate' || action === 'generate_no_surat') {
+      const { topik } = data;
       
       // Ambil kode surat
       const { data: kodeRows, error: kodeErr } = await supabase.from('data_kode_surat').select('*').eq('topik', topik).single();
@@ -117,15 +117,28 @@ export async function POST(request: Request) {
       }
       const kodeTopik = kodeRows.kode;
 
-      const currentDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
-      const monthRoman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'][currentDate.getMonth()];
-      const year = currentDate.getFullYear();
+      // Cari nomor surat terakhir (NO max)
+      const { data: allSurat } = await supabase.from('data_surat_keluar').select('metadata');
+      let maxNo = 0;
+      allSurat?.forEach(s => {
+        const currentNo = parseInt(s.metadata?.['NO'], 10);
+        if (!isNaN(currentNo) && currentNo > maxNo) {
+          maxNo = currentNo;
+        }
+      });
+      const nextNo = maxNo + 1;
+      const formattedNo = String(nextNo).padStart(3, '0');
 
-      const newNoSurat = `${targetNoSurat}/${kodeTopik}/${monthRoman}/${year}`;
+      const dateObj = data.tanggal ? new Date(data.tanggal) : new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+      const monthRoman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'][dateObj.getMonth()];
+      const year = dateObj.getFullYear();
+
+      // Format resmi: 000/YPA/MTs-01.KODE/BULAN/TAHUN
+      const newNoSurat = `${formattedNo}/YPA/MTs-01.${kodeTopik}/${monthRoman}/${year}`;
 
       const { data: inserted, error: insertErr } = await supabase.from('data_surat_keluar').insert([{
         metadata: {
-          'NO': targetNoSurat,
+          'NO': nextNo,
           'TANGGAL': data.tanggal,
           'NAMA SURAT': data.namaSurat,
           'yang Ditugaskan': data.yangDitugaskan,
@@ -139,7 +152,7 @@ export async function POST(request: Request) {
 
       if (insertErr) throw insertErr;
 
-      return NextResponse.json({ success: true, newRowNumber: inserted.id });
+      return NextResponse.json({ success: true, newRowNumber: inserted.id, noSurat: newNoSurat });
     }
 
     if (action === 'edit') {
