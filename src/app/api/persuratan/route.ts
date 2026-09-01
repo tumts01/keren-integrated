@@ -108,7 +108,8 @@ export async function POST(request: Request) {
     }
 
     if (action === 'generate' || action === 'generate_no_surat') {
-      const { topik } = data;
+      const reqData = data.payload || data;
+      const { topik } = reqData;
       
       // Ambil kode surat
       const { data: kodeRows, error: kodeErr } = await supabase.from('data_kode_surat').select('*').eq('topik', topik).single();
@@ -129,7 +130,7 @@ export async function POST(request: Request) {
       const nextNo = maxNo + 1;
       const formattedNo = String(nextNo).padStart(3, '0');
 
-      const dateObj = data.tanggal ? new Date(data.tanggal) : new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+      const dateObj = reqData.tanggal ? new Date(reqData.tanggal) : new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
       const monthRoman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'][dateObj.getMonth()];
       const year = dateObj.getFullYear();
 
@@ -139,12 +140,12 @@ export async function POST(request: Request) {
       const { data: inserted, error: insertErr } = await supabase.from('data_surat_keluar').insert([{
         metadata: {
           'NO': nextNo,
-          'TANGGAL': data.tanggal,
-          'NAMA SURAT': data.namaSurat,
-          'yang Ditugaskan': data.yangDitugaskan,
+          'TANGGAL': reqData.tanggal,
+          'NAMA SURAT': reqData.namaSurat,
+          'yang Ditugaskan': reqData.yangDitugaskan,
           'TOPIK': topik,
-          'PJ': data.pj,
-          'BATAS WAKTU TUGAS': data.batasWaktu,
+          'PJ': reqData.pj,
+          'BATAS WAKTU TUGAS': reqData.batasWaktu,
           'NO. SURAT': newNoSurat,
           'FILE/SCAN SURAT': ''
         }
@@ -159,16 +160,18 @@ export async function POST(request: Request) {
       const targetId = payload.id || payload.rowNumber;
       if (!targetId) return NextResponse.json({ success: false, error: 'ID tidak valid' }, { status: 400 });
 
+      const reqData = data.payload || data;
+
       const { data: existing, error: getErr } = await supabase.from('data_surat_keluar').select('*').eq('id', targetId).single();
       if (getErr || !existing) return NextResponse.json({ success: false, error: 'Surat tidak ditemukan' }, { status: 404 });
 
       const newMeta = {
         ...existing.metadata,
-        'NAMA SURAT': data.namaSurat,
-        'yang Ditugaskan': data.yangDitugaskan,
-        'TOPIK': data.topik,
-        'PJ': data.pj,
-        'BATAS WAKTU TUGAS': data.batasWaktu,
+        'NAMA SURAT': reqData.namaSurat,
+        'yang Ditugaskan': reqData.yangDitugaskan,
+        'TOPIK': reqData.topik,
+        'PJ': reqData.pj,
+        'BATAS WAKTU TUGAS': reqData.batasWaktu,
       };
 
       const { error: updateErr } = await supabase.from('data_surat_keluar').update({ metadata: newMeta }).eq('id', targetId);
