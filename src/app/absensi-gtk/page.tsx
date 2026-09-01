@@ -71,7 +71,7 @@ export default function AbsensiGTK() {
             resolve({ allowed: false, distance: -1, error: 'Gagal mendapatkan lokasi GPS. Pastikan GPS aktif.' });
           }
         },
-        { timeout: 10000, maximumAge: 0, enableHighAccuracy: true }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     });
   };
