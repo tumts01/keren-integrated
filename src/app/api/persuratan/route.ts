@@ -118,21 +118,29 @@ export async function POST(request: Request) {
       }
       const kodeTopik = kodeRows.kode;
 
-      // Cari nomor surat terakhir (NO max)
+      const dateObj = reqData.tanggal ? new Date(reqData.tanggal) : new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+      const monthRoman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'][dateObj.getMonth()];
+      const year = dateObj.getFullYear();
+
+      // Cari nomor surat terakhir (NO max) untuk tahun yang sama
       const { data: allSurat } = await supabase.from('data_surat_keluar').select('metadata');
       let maxNo = 0;
       allSurat?.forEach(s => {
-        const currentNo = parseInt(s.metadata?.['NO'], 10);
-        if (!isNaN(currentNo) && currentNo > maxNo) {
-          maxNo = currentNo;
+        const rowNoSurat = (s.metadata?.['NO. SURAT'] || '').trim();
+        if (!rowNoSurat) return;
+
+        // Pastikan surat tahun yang sama
+        if (!rowNoSurat.endsWith('/' + year.toString())) return;
+
+        // Ekstrak angka di depan "/" pertama: "322/YPA/..." → 322
+        const match = rowNoSurat.match(/^(\d+)\//);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (!isNaN(num) && num > maxNo) maxNo = num;
         }
       });
       const nextNo = maxNo + 1;
       const formattedNo = String(nextNo).padStart(3, '0');
-
-      const dateObj = reqData.tanggal ? new Date(reqData.tanggal) : new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
-      const monthRoman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'][dateObj.getMonth()];
-      const year = dateObj.getFullYear();
 
       // Format resmi: 000/YPA/MTs-01.KODE/BULAN/TAHUN
       const newNoSurat = `${formattedNo}/YPA/MTs-01.${kodeTopik}/${monthRoman}/${year}`;
