@@ -201,33 +201,58 @@ export default function PerangkatUjianPage() {
         // Draw background template
         ctx.drawImage(bgImg, 0, 0, cW, cH);
 
-        // Draw photo
+        // Draw photo or placeholder
         const photo = photos[i];
-        if (photo) {
-          // Dynamic sizing based on layout state
-          const photoW = cW * (layout.photoW / 100);
-          const photoH = cH * (layout.photoH / 100);
-          const photoX = (cW - photoW) / 2;
-          const photoY = cH * (layout.photoY / 100);
+        
+        // Dynamic sizing based on layout state
+        const photoW = cW * (layout.photoW / 100);
+        const photoH = cH * (layout.photoH / 100);
+        const photoX = (cW - photoW) / 2;
+        const photoY = cH * (layout.photoY / 100);
 
-          // Draw rounded rect clip
-          const radius = 15; // 15px radius for 600px width
-          ctx.save();
-          ctx.beginPath();
-          ctx.moveTo(photoX + radius, photoY);
-          ctx.lineTo(photoX + photoW - radius, photoY);
-          ctx.quadraticCurveTo(photoX + photoW, photoY, photoX + photoW, photoY + radius);
-          ctx.lineTo(photoX + photoW, photoY + photoH - radius);
-          ctx.quadraticCurveTo(photoX + photoW, photoY + photoH, photoX + photoW - radius, photoY + photoH);
-          ctx.lineTo(photoX + radius, photoY + photoH);
-          ctx.quadraticCurveTo(photoX, photoY + photoH, photoX, photoY + photoH - radius);
-          ctx.lineTo(photoX, photoY + radius);
-          ctx.quadraticCurveTo(photoX, photoY, photoX + radius, photoY);
-          ctx.closePath();
-          ctx.clip();
+        // Draw rounded rect clip
+        const radius = 15; // 15px radius for 600px width
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(photoX + radius, photoY);
+        ctx.lineTo(photoX + photoW - radius, photoY);
+        ctx.quadraticCurveTo(photoX + photoW, photoY, photoX + photoW, photoY + radius);
+        ctx.lineTo(photoX + photoW, photoY + photoH - radius);
+        ctx.quadraticCurveTo(photoX + photoW, photoY + photoH, photoX + photoW - radius, photoY + photoH);
+        ctx.lineTo(photoX + radius, photoY + photoH);
+        ctx.quadraticCurveTo(photoX, photoY + photoH, photoX, photoY + photoH - radius);
+        ctx.lineTo(photoX, photoY + radius);
+        ctx.quadraticCurveTo(photoX, photoY, photoX + radius, photoY);
+        ctx.closePath();
+        ctx.clip();
+
+        if (photo) {
           ctx.drawImage(photo, photoX, photoY, photoW, photoH);
-          ctx.restore();
+        } else {
+          // Draw silhouette placeholder
+          ctx.fillStyle = '#e2e8f0'; // Light gray background
+          ctx.fillRect(photoX, photoY, photoW, photoH);
+          
+          ctx.fillStyle = '#94a3b8'; // Darker gray for silhouette
+          
+          // Head
+          const headRadius = photoW * 0.25;
+          const headX = photoX + photoW / 2;
+          const headY = photoY + photoH * 0.35;
+          ctx.beginPath();
+          ctx.arc(headX, headY, headRadius, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Body (shoulders)
+          const bodyRadius = photoW * 0.45;
+          const bodyX = photoX + photoW / 2;
+          const bodyY = photoY + photoH * 1.05; // Positioned low
+          ctx.beginPath();
+          // Draw a semi-circle for shoulders
+          ctx.arc(bodyX, bodyY, bodyRadius, Math.PI, 0); 
+          ctx.fill();
         }
+        ctx.restore();
 
         // Draw name text
         const p = participants[i];
@@ -388,7 +413,9 @@ export default function PerangkatUjianPage() {
                           {p.foto ? (
                             <img src={getPhotoUrl(p.foto)} alt="foto" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '50%', border: '2px solid #e2e8f0' }} />
                           ) : (
-                            <span style={{ color: '#94a3b8', fontSize: '12px' }}>Kosong</span>
+                            <div style={{ width: '40px', height: '40px', background: '#e2e8f0', borderRadius: '50%', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', border: '2px solid #e2e8f0' }}>
+                              <i className="fas fa-user"></i>
+                            </div>
                           )}
                         </td>
                       </tr>
