@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
 import styles from './Absensi.module.css';
 
 export default function AbsensiGTK() {
@@ -263,16 +264,16 @@ export default function AbsensiGTK() {
       });
       const data = await res.json();
       if (data.success) {
-        alert('Hari libur berhasil disimpan!');
+        Swal.fire('Berhasil!', 'Hari libur berhasil disimpan.', 'success');
         setShowModalLibur(false);
         setLiburTanggal('');
         setLiburKeterangan('');
         if (activeTab === 'rekap') fetchRekap();
       } else {
-        alert(data.error);
+        Swal.fire('Gagal', data.error, 'error');
       }
     } catch (err) {
-      alert('Gagal menyimpan hari libur.');
+      Swal.fire('Error', 'Gagal menyimpan hari libur.', 'error');
     }
   };
 
@@ -298,13 +299,20 @@ export default function AbsensiGTK() {
       });
       const data = await res.json();
       if (data.success) {
+        Swal.fire({
+          title: 'Berhasil!',
+          text: 'Data absensi berhasil diupdate.',
+          icon: 'success',
+          timer: 1500,
+          showConfirmButton: false
+        });
         setEditingRow(null);
         fetchRekap(); // refresh table
       } else {
-        alert(data.error);
+        Swal.fire('Gagal', data.error, 'error');
       }
     } catch (err) {
-      alert('Gagal mengupdate absensi.');
+      Swal.fire('Error', 'Gagal mengupdate absensi.', 'error');
     }
   };
 
@@ -338,14 +346,20 @@ export default function AbsensiGTK() {
       });
       const data = await res.json();
       if (data.success) {
-        alert('Semua data absensi berhasil diperbarui!');
+        Swal.fire({
+          title: 'Berhasil!',
+          text: 'Semua data absensi berhasil diperbarui.',
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false
+        });
         setIsBulkEditing(false);
         fetchRekap(); // refresh table
       } else {
-        alert(data.error);
+        Swal.fire('Gagal', data.error, 'error');
       }
     } catch (err) {
-      alert('Gagal mengupdate absensi.');
+      Swal.fire('Error', 'Gagal mengupdate absensi.', 'error');
     }
   };
 
