@@ -3,6 +3,7 @@ import { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
+import { jsPDF } from 'jspdf';
 
 interface Participant {
   nisn: string;
@@ -17,10 +18,22 @@ function getPhotoUrl(url?: string) {
   return '/api/proxy-image?url=' + encodeURIComponent(url);
 }
 
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Failed to load: ' + src));
+    img.src = src;
+  });
+}
+
 export default function PerangkatUjianPage() {
   const [activeTab, setActiveTab] = useState<'nopes' | 'nobang'>('nopes');
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [progress, setProgress] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const downloadTemplate = () => {
@@ -56,7 +69,7 @@ export default function PerangkatUjianPage() {
       const pageSize = 1000;
       const pages = [0, 1, 2, 3];
       const results = await Promise.all(
-        pages.map(page => 
+        pages.map(page =>
           supabase
             .from('data_induk')
             .select('metadata')
@@ -66,12 +79,12 @@ export default function PerangkatUjianPage() {
 
       let hasError = false;
       let dbData: { metadata: Record<string, string> }[] = [];
-      
+
       for (const res of results) {
         if (res.error) hasError = true;
         if (res.data) dbData = [...dbData, ...res.data];
       }
-      
+
       if (hasError) {
         Swal.fire('Error', 'Gagal memuat sebagian atau seluruh data dari Supabase', 'error');
       } else {
@@ -93,101 +106,143 @@ export default function PerangkatUjianPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handlePrint = () => {
+  const generatePDF = async () => {
     if (participants.length === 0) {
       Swal.fire('Oops', 'Data peserta masih kosong!', 'warning');
       return;
     }
-    window.print();
+
+    setGenerating(true);
+    setProgress('Memuat template...');
+
+    try {
+      // Card dimensions in mm (5.58cm x 9.5cm)
+      const cardW = 55.8;
+      const cardH = 95;
+      const cols = 3;
+      const rows = 3;
+      const cardsPerPage = cols * rows;
+
+      // A4 size in mm: 210 x 297
+      const pageW = 210;
+      const pageH = 297;
+      const marginX = (pageW - cols * cardW) / 2;
+      const marginY = (pageH - rows * cardH) / 2;
+
+      // Canvas pixel dimensions (2x for quality)
+      const scale = 4;
+      const cW = Math.round(cardW * scale);
+      const cH = Math.round(cardH * scale);
+
+      // Load template background once
+      const bgImg = await loadImage('/nopes%20sts%20ganjil.png');
+
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      // Pre-load all photos in parallel
+      setProgress('Memuat foto siswa...');
+      const photoPromises = participants.map(p => {
+        if (!p.foto) return Promise.resolve(null);
+        return loadImage(getPhotoUrl(p.foto)).catch(() => null);
+      });
+      const photos = await Promise.all(photoPromises);
+
+      const totalPages = Math.ceil(participants.length / cardsPerPage);
+
+      for (let i = 0; i < participants.length; i++) {
+        const pageIdx = Math.floor(i / cardsPerPage);
+        const posInPage = i % cardsPerPage;
+
+        if (posInPage === 0 && i > 0) {
+          pdf.addPage();
+        }
+
+        setProgress(`Merender kartu ${i + 1} / ${participants.length} (Hal ${pageIdx + 1}/${totalPages})`);
+
+        const col = posInPage % cols;
+        const row = Math.floor(posInPage / cols);
+
+        // Draw card on canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = cW;
+        canvas.height = cH;
+        const ctx = canvas.getContext('2d')!;
+
+        // Draw background template
+        ctx.drawImage(bgImg, 0, 0, cW, cH);
+
+        // Draw photo
+        const photo = photos[i];
+        if (photo) {
+          const photoW = cW * 0.48;
+          const photoH = cH * 0.36;
+          const photoX = (cW - photoW) / 2;
+          const photoY = cH * 0.32;
+
+          // Draw rounded rect clip
+          const radius = 4 * scale;
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(photoX + radius, photoY);
+          ctx.lineTo(photoX + photoW - radius, photoY);
+          ctx.quadraticCurveTo(photoX + photoW, photoY, photoX + photoW, photoY + radius);
+          ctx.lineTo(photoX + photoW, photoY + photoH - radius);
+          ctx.quadraticCurveTo(photoX + photoW, photoY + photoH, photoX + photoW - radius, photoY + photoH);
+          ctx.lineTo(photoX + radius, photoY + photoH);
+          ctx.quadraticCurveTo(photoX, photoY + photoH, photoX, photoY + photoH - radius);
+          ctx.lineTo(photoX, photoY + radius);
+          ctx.quadraticCurveTo(photoX, photoY, photoX + radius, photoY);
+          ctx.closePath();
+          ctx.clip();
+          ctx.drawImage(photo, photoX, photoY, photoW, photoH);
+          ctx.restore();
+        }
+
+        // Draw name text
+        const p = participants[i];
+        ctx.fillStyle = '#000';
+        ctx.font = `bold ${9 * scale}px Arial, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const nameText = (p.nama || '').toUpperCase();
+        const maxTextWidth = cW * 0.80;
+        let displayName = nameText;
+        if (ctx.measureText(nameText).width > maxTextWidth) {
+          while (ctx.measureText(displayName + '...').width > maxTextWidth && displayName.length > 0) {
+            displayName = displayName.slice(0, -1);
+          }
+          displayName += '...';
+        }
+        ctx.fillText(displayName, cW / 2, cH * 0.74);
+
+        // Draw No Ujian | Ruang
+        ctx.fillStyle = '#1e40af';
+        ctx.font = `bold ${10 * scale}px Arial, sans-serif`;
+        ctx.fillText(`${p.noUjian} | ${p.ruang}`, cW / 2, cH * 0.86);
+
+        // Add card to PDF as compressed JPEG
+        const imgData = canvas.toDataURL('image/jpeg', 0.85);
+        const x = marginX + col * cardW;
+        const y = marginY + row * cardH;
+        pdf.addImage(imgData, 'JPEG', x, y, cardW, cardH);
+      }
+
+      setProgress('Menyimpan PDF...');
+      pdf.save('Kartu_Nopes_Ujian.pdf');
+
+      Swal.fire('Berhasil!', `PDF berhasil digenerate (${participants.length} kartu, ${totalPages} halaman)`, 'success');
+    } catch (err) {
+      console.error(err);
+      Swal.fire('Error', 'Gagal generate PDF: ' + String(err), 'error');
+    }
+
+    setGenerating(false);
+    setProgress('');
   };
 
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <style>{`
-          @media screen {
-            .print-area {
-              display: none;
-            }
-          }
-          @media print {
-            body * {
-              visibility: hidden;
-            }
-            .print-area, .print-area * {
-              visibility: visible;
-            }
-            .print-area {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 100%;
-              background: white;
-            }
-            @page {
-              size: A4 portrait;
-              margin: 0.5cm;
-            }
-            .nopes-grid {
-              display: flex;
-              flex-wrap: wrap;
-              gap: 0;
-              justify-content: flex-start;
-              align-content: flex-start;
-            }
-            .nopes-card {
-              page-break-inside: avoid;
-              width: 5.58cm;
-              height: 9.5cm;
-              position: relative;
-              box-sizing: border-box;
-              overflow: hidden;
-              background-image: url('/nopes%20sts%20ganjil.png');
-              background-size: cover;
-              background-position: center;
-              background-repeat: no-repeat;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            .nopes-photo {
-              position: absolute;
-              top: 32%;
-              left: 50%;
-              transform: translateX(-50%);
-              width: 2.8cm;
-              height: 3.5cm;
-              object-fit: cover;
-              border-radius: 4px;
-              z-index: 2;
-            }
-            .nopes-name {
-              position: absolute;
-              top: 74%;
-              left: 8%;
-              width: 84%;
-              text-align: center;
-              font-size: 8.5px;
-              font-weight: bold;
-              color: #000;
-              text-transform: uppercase;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              z-index: 2;
-            }
-            .nopes-detail {
-              position: absolute;
-              top: 86%;
-              left: 8%;
-              width: 84%;
-              text-align: center;
-              font-size: 10px;
-              font-weight: bold;
-              color: #1e40af;
-              z-index: 2;
-            }
-          }
-        `}</style>
-
       <div style={{ marginBottom: '20px' }}>
         <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e293b', marginBottom: '8px' }}>
           Perangkat Ujian
@@ -199,14 +254,14 @@ export default function PerangkatUjianPage() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #e2e8f0', marginBottom: '20px' }}>
-        <button 
+        <button
           onClick={() => setActiveTab('nopes')}
           style={{ padding: '12px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'nopes' ? '3px solid #0ea5e9' : '3px solid transparent', color: activeTab === 'nopes' ? '#0ea5e9' : '#64748b', fontWeight: activeTab === 'nopes' ? 'bold' : 'normal', cursor: 'pointer', fontSize: '15px' }}
         >
           <i className="fas fa-id-badge" style={{ marginRight: '8px' }}></i>
           Generate Nopes
         </button>
-        <button 
+        <button
           onClick={() => setActiveTab('nobang')}
           style={{ padding: '12px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'nobang' ? '3px solid #0ea5e9' : '3px solid transparent', color: activeTab === 'nobang' ? '#0ea5e9' : '#64748b', fontWeight: activeTab === 'nobang' ? 'bold' : 'normal', cursor: 'pointer', fontSize: '15px' }}
         >
@@ -232,8 +287,9 @@ export default function PerangkatUjianPage() {
                   <input type="file" accept=".xlsx, .xls" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileUpload} disabled={loading} />
                 </label>
                 {participants.length > 0 && (
-                  <button onClick={handlePrint} style={{ padding: '8px 16px', background: '#10b981', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
-                    <i className="fas fa-print"></i> Cetak {participants.length} Kartu
+                  <button onClick={generatePDF} disabled={generating} style={{ padding: '8px 16px', background: generating ? '#94a3b8' : '#10b981', border: 'none', borderRadius: '6px', cursor: generating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
+                    <i className={generating ? 'fas fa-spinner fa-spin' : 'fas fa-file-pdf'}></i>
+                    {generating ? progress : `Download PDF (${participants.length} Kartu)`}
                   </button>
                 )}
               </div>
@@ -280,7 +336,7 @@ export default function PerangkatUjianPage() {
             )}
           </div>
         )}
-        
+
         {activeTab === 'nobang' && (
           <div>
             <h2 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', color: '#334155' }}>
@@ -289,19 +345,6 @@ export default function PerangkatUjianPage() {
             <p style={{ color: '#64748b' }}>Fitur untuk cetak Nobang akan ditambahkan di sini.</p>
           </div>
         )}
-      </div>
-
-      {/* Print Area (Hidden in UI) */}
-      <div className="print-area">
-        <div className="nopes-grid">
-          {participants.map((p, idx) => (
-            <div key={idx} className="nopes-card">
-              {p.foto && <img src={getPhotoUrl(p.foto)} alt="Foto" className="nopes-photo" />}
-              <div className="nopes-name">{p.nama}</div>
-              <div className="nopes-detail">{p.noUjian} | {p.ruang}</div>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );
