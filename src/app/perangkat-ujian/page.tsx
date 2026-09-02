@@ -203,7 +203,7 @@ export default function PerangkatUjianPage() {
         const p = participants[i];
         ctx.fillStyle = '#000';
         // Base font size on canvas width so it scales perfectly
-        ctx.font = `bold ${Math.round(cW * 0.055)}px Arial, sans-serif`;
+        ctx.font = `bold ${Math.round(cW * 0.050)}px Arial, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
@@ -216,12 +216,14 @@ export default function PerangkatUjianPage() {
           }
           displayName += '...';
         }
-        ctx.fillText(displayName, cW / 2, cH * 0.74);
+        // Moved down into the first box
+        ctx.fillText(displayName, cW / 2, cH * 0.765);
 
         // Draw No Ujian | Ruang
         ctx.fillStyle = '#1e40af';
-        ctx.font = `bold ${Math.round(cW * 0.065)}px Arial, sans-serif`;
-        ctx.fillText(`${p.noUjian} | ${p.ruang}`, cW / 2, cH * 0.86);
+        ctx.font = `bold ${Math.round(cW * 0.050)}px Arial, sans-serif`;
+        // Moved up into the second box
+        ctx.fillText(`${p.noUjian} | ${p.ruang}`, cW / 2, cH * 0.825);
 
         // Add card to PDF as compressed JPEG
         const imgData = canvas.toDataURL('image/jpeg', 0.85);
