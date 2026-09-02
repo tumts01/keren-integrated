@@ -718,6 +718,7 @@ export default function AbsensiGTK() {
                 <label className={styles.label}>Jam Check In</label>
                 <input 
                   type="time" 
+                  lang="en-GB"
                   className={styles.input} 
                   value={editJamMasuk}
                   onChange={e => setEditJamMasuk(e.target.value)}
@@ -727,6 +728,7 @@ export default function AbsensiGTK() {
                 <label className={styles.label}>Jam Check Out</label>
                 <input 
                   type="time" 
+                  lang="en-GB"
                   className={styles.input} 
                   value={editJamPulang}
                   onChange={e => setEditJamPulang(e.target.value)}
