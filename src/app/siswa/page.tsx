@@ -955,6 +955,7 @@ export default function SiswaPage() {
   const [showMutasiModal, setShowMutasiModal] = useState(false);
 
   useEffect(() => {
+    const fetchData = async () => {
       try {
         const res = await fetch('/api/siswa');
         const result = await res.json();
