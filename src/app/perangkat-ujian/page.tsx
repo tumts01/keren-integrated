@@ -141,15 +141,12 @@ export default function PerangkatUjianPage() {
               position: relative;
               box-sizing: border-box;
               overflow: hidden;
-            }
-            .nopes-bg {
-              position: absolute;
-              top: 0;
-              left: 0;
-              width: 100%;
-              height: 100%;
-              z-index: 1;
-              object-fit: cover;
+              background-image: url('/nopes%20sts%20ganjil.png');
+              background-size: cover;
+              background-position: center;
+              background-repeat: no-repeat;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
             }
             .nopes-photo {
               position: absolute;
@@ -299,7 +296,6 @@ export default function PerangkatUjianPage() {
         <div className="nopes-grid">
           {participants.map((p, idx) => (
             <div key={idx} className="nopes-card">
-              <img src="/nopes%20sts%20ganjil.png" alt="Template" className="nopes-bg" />
               {p.foto && <img src={getPhotoUrl(p.foto)} alt="Foto" className="nopes-photo" />}
               <div className="nopes-name">{p.nama}</div>
               <div className="nopes-detail">{p.noUjian} | {p.ruang}</div>
