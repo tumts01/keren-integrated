@@ -164,11 +164,11 @@ export default function PerangkatUjianPage() {
             }
             .nopes-name {
               position: absolute;
-              top: 69.5%;
-              left: 10%;
-              width: 80%;
+              top: 72%;
+              left: 8%;
+              width: 84%;
               text-align: center;
-              font-size: 9px;
+              font-size: 8.5px;
               font-weight: bold;
               color: #000;
               text-transform: uppercase;
@@ -179,13 +179,13 @@ export default function PerangkatUjianPage() {
             }
             .nopes-detail {
               position: absolute;
-              top: 81%;
-              left: 10%;
-              width: 80%;
+              top: 84%;
+              left: 8%;
+              width: 84%;
               text-align: center;
               font-size: 10px;
               font-weight: bold;
-              color: #000;
+              color: #1e40af;
               z-index: 2;
             }
           }

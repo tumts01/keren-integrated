@@ -8,13 +8,18 @@ export async function GET(req: Request) {
 
   try {
     let fetchUrl = url;
-    // Convert Google Drive view link to direct download link
-    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+    // Extract Google Drive file ID and use thumbnail (sz=w400) for small, fast images
+    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/(?:\?id=|&id=|open\?id=)([a-zA-Z0-9_-]+)/);
     if (url.includes('drive.google.com') && match && match[1]) {
-      fetchUrl = `https://drive.google.com/uc?export=download&id=${match[1]}`;
+      // Use Google Drive thumbnail API - much smaller, no auth required for public files
+      fetchUrl = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w400`;
     }
 
-    const res = await fetch(fetchUrl);
+    const res = await fetch(fetchUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
     if (!res.ok) throw new Error(`Failed to fetch image: ${res.statusText}`);
 
     const buffer = await res.arrayBuffer();
@@ -25,7 +30,7 @@ export async function GET(req: Request) {
         'Access-Control-Allow-Origin': '*'
       }
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 }
