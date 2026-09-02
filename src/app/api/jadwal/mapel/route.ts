@@ -11,6 +11,8 @@ const getMapelName = (r: any) => {
   return (r.metadata[key] || '').toString().trim();
 };
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const { data: rows, error } = await supabase.from('mata_pelajaran').select('*');
