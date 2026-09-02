@@ -50,7 +50,7 @@ export default function PerangkatUjianPage() {
 
   const downloadTemplate = () => {
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet([{ NISN: '1234567890', KELAS: '9A', 'NO UJIAN': '001-01', RUANG: 'Ruang 1' }]);
+    const ws = XLSX.utils.json_to_sheet([{ NISN: '1234567890', 'NO UJIAN': '001-01', RUANG: 'Ruang 1' }]);
     XLSX.utils.book_append_sheet(wb, ws, 'Template Nopes');
     XLSX.writeFile(wb, 'Template_Import_Nopes.xlsx');
   };
