@@ -91,7 +91,7 @@ export default function PerangkatUjianPage() {
 
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <style>{\
+      <style>{`
           @media screen {
             .print-area {
               display: none;
