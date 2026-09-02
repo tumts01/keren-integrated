@@ -36,6 +36,17 @@ export default function PerangkatUjianPage() {
   const [progress, setProgress] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Default layout settings in percentages
+  const [layout, setLayout] = useState({
+    photoW: 45,
+    photoH: 33,
+    photoY: 32,
+    nameY: 72.5,
+    nameSize: 5.0,
+    detailY: 81.5,
+    detailSize: 5.0,
+  });
+
   const downloadTemplate = () => {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet([{ NISN: '1234567890', 'NO UJIAN': '001-01', RUANG: 'Ruang 1' }]);
@@ -174,11 +185,11 @@ export default function PerangkatUjianPage() {
         // Draw photo
         const photo = photos[i];
         if (photo) {
-          // Adjust to fit well within the template box
-          const photoW = cW * 0.45;
-          const photoH = cH * 0.33;
+          // Dynamic sizing based on layout state
+          const photoW = cW * (layout.photoW / 100);
+          const photoH = cH * (layout.photoH / 100);
           const photoX = (cW - photoW) / 2;
-          const photoY = cH * 0.31;
+          const photoY = cH * (layout.photoY / 100);
 
           // Draw rounded rect clip
           const radius = 15; // 15px radius for 600px width
@@ -202,8 +213,7 @@ export default function PerangkatUjianPage() {
         // Draw name text
         const p = participants[i];
         ctx.fillStyle = '#000';
-        // Base font size on canvas width so it scales perfectly
-        ctx.font = `bold ${Math.round(cW * 0.050)}px Arial, sans-serif`;
+        ctx.font = `bold ${Math.round(cW * (layout.nameSize / 100))}px Arial, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
@@ -216,14 +226,12 @@ export default function PerangkatUjianPage() {
           }
           displayName += '...';
         }
-        // Moved down into the first box
-        ctx.fillText(displayName, cW / 2, cH * 0.765);
+        ctx.fillText(displayName, cW / 2, cH * (layout.nameY / 100));
 
         // Draw No Ujian | Ruang
         ctx.fillStyle = '#1e40af';
-        ctx.font = `bold ${Math.round(cW * 0.050)}px Arial, sans-serif`;
-        // Moved up into the second box
-        ctx.fillText(`${p.noUjian} | ${p.ruang}`, cW / 2, cH * 0.825);
+        ctx.font = `bold ${Math.round(cW * (layout.detailSize / 100))}px Arial, sans-serif`;
+        ctx.fillText(`${p.noUjian} | ${p.ruang}`, cW / 2, cH * (layout.detailY / 100));
 
         // Add card to PDF as compressed JPEG
         const imgData = canvas.toDataURL('image/jpeg', 0.85);
@@ -255,6 +263,43 @@ export default function PerangkatUjianPage() {
           Generate Nomor Peserta (Nopes) dan Nomor Bangku (Nobang) untuk Ujian.
         </p>
       </div>
+
+      <details style={{ marginBottom: '20px', background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+        <summary style={{ fontWeight: 'bold', cursor: 'pointer', color: '#334155' }}>
+          <i className="fas fa-sliders-h" style={{ marginRight: '8px' }}></i>
+          Atur Posisi Desain (Klik untuk membuka)
+        </summary>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '16px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Lebar Foto (%)</label>
+            <input type="number" step="0.5" value={layout.photoW} onChange={e => setLayout({...layout, photoW: parseFloat(e.target.value)})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Tinggi Foto (%)</label>
+            <input type="number" step="0.5" value={layout.photoH} onChange={e => setLayout({...layout, photoH: parseFloat(e.target.value)})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Posisi Y Foto (%)</label>
+            <input type="number" step="0.5" value={layout.photoY} onChange={e => setLayout({...layout, photoY: parseFloat(e.target.value)})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Posisi Y Nama (%)</label>
+            <input type="number" step="0.5" value={layout.nameY} onChange={e => setLayout({...layout, nameY: parseFloat(e.target.value)})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Ukuran Font Nama (%)</label>
+            <input type="number" step="0.5" value={layout.nameSize} onChange={e => setLayout({...layout, nameSize: parseFloat(e.target.value)})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Posisi Y Detail (%)</label>
+            <input type="number" step="0.5" value={layout.detailY} onChange={e => setLayout({...layout, detailY: parseFloat(e.target.value)})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Ukuran Font Detail (%)</label>
+            <input type="number" step="0.5" value={layout.detailSize} onChange={e => setLayout({...layout, detailSize: parseFloat(e.target.value)})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+          </div>
+        </div>
+      </details>
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #e2e8f0', marginBottom: '20px' }}>
