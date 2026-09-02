@@ -30,11 +30,10 @@ export default function AbsensiGTK() {
   const [liburTanggal, setLiburTanggal] = useState('');
   const [liburKeterangan, setLiburKeterangan] = useState('');
 
-  // States for Admin Edit Absen
-  const [showModalEdit, setShowModalEdit] = useState(false);
-  const [editTanggal, setEditTanggal] = useState('');
-  const [editJamMasuk, setEditJamMasuk] = useState('');
-  const [editJamPulang, setEditJamPulang] = useState('');
+  // States for Admin Edit Absen (Inline)
+  const [editingRow, setEditingRow] = useState<string | null>(null);
+  const [inlineJamMasuk, setInlineJamMasuk] = useState('');
+  const [inlineJamPulang, setInlineJamPulang] = useState('');
 
   // States for Admin Searchable Dropdown
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -271,15 +270,13 @@ export default function AbsensiGTK() {
     }
   };
 
-  const handleOpenEdit = (tanggal: string, jamMasuk: string, jamPulang: string) => {
-    setEditTanggal(tanggal);
-    setEditJamMasuk(jamMasuk && jamMasuk !== '-' ? jamMasuk : '');
-    setEditJamPulang(jamPulang && jamPulang !== '-' ? jamPulang : '');
-    setShowModalEdit(true);
+  const handleEditInline = (tanggal: string, jamMasuk: string, jamPulang: string) => {
+    setEditingRow(tanggal);
+    setInlineJamMasuk(jamMasuk && jamMasuk !== '-' ? jamMasuk : '');
+    setInlineJamPulang(jamPulang && jamPulang !== '-' ? jamPulang : '');
   };
 
-  const handleSaveEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveInline = async (tanggal: string) => {
     const targetUser = rekapUser || user.nama;
     try {
       const res = await fetch('/api/absensi', {
@@ -288,15 +285,14 @@ export default function AbsensiGTK() {
         body: JSON.stringify({ 
           action: 'edit', 
           nama: targetUser, 
-          tanggal: editTanggal, 
-          jam_masuk: editJamMasuk, 
-          jam_pulang: editJamPulang 
+          tanggal: tanggal, 
+          jam_masuk: inlineJamMasuk, 
+          jam_pulang: inlineJamPulang 
         })
       });
       const data = await res.json();
       if (data.success) {
-        alert('Data absensi berhasil diupdate!');
-        setShowModalEdit(false);
+        setEditingRow(null);
         fetchRekap(); // refresh table
       } else {
         alert(data.error);
@@ -632,29 +628,75 @@ export default function AbsensiGTK() {
                         </tr>
                       );
                     }
+                    const dateStr = row.props['data-date'];
+                    const isEditing = editingRow === dateStr;
+
                     return (
                       <tr key={idx}>
                         <td>{children[0]?.props?.children}</td>
                         <td>{children[1]?.props?.children}</td>
                         <td>{children[2]?.props?.children}</td>
-                        <td><strong style={{ color: '#10b981' }}>{children[3]?.props?.children}</strong></td>
+                        <td>
+                          {isEditing ? (
+                            <input 
+                              type="time" 
+                              lang="en-GB" 
+                              value={inlineJamMasuk} 
+                              onChange={e => setInlineJamMasuk(e.target.value)} 
+                              style={{ width: '100px', padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', textAlign: 'center' }}
+                            />
+                          ) : (
+                            <strong style={{ color: '#10b981' }}>{children[3]?.props?.children}</strong>
+                          )}
+                        </td>
                         <td>{children[5]?.props?.children}</td>
-                        <td><strong style={{ color: '#f59e0b' }}>{children[6]?.props?.children}</strong></td>
+                        <td>
+                          {isEditing ? (
+                            <input 
+                              type="time" 
+                              lang="en-GB" 
+                              value={inlineJamPulang} 
+                              onChange={e => setInlineJamPulang(e.target.value)} 
+                              style={{ width: '100px', padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', textAlign: 'center' }}
+                            />
+                          ) : (
+                            <strong style={{ color: '#f59e0b' }}>{children[6]?.props?.children}</strong>
+                          )}
+                        </td>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                             <span>{children[3]?.props?.children !== '-' ? 'Hadir' : '-'}</span>
                             {user.role?.toLowerCase() === 'admin' && (
-                              <button 
-                                onClick={() => handleOpenEdit(
-                                  row.props['data-date'], 
-                                  children[3]?.props?.children, 
-                                  children[6]?.props?.children
-                                )}
-                                style={{ background: '#e2e8f0', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', color: '#475569' }}
-                                title="Edit Absensi"
-                              >
-                                <i className="fas fa-edit"></i>
-                              </button>
+                              isEditing ? (
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                  <button 
+                                    onClick={() => handleSaveInline(dateStr)}
+                                    style={{ background: '#10b981', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
+                                    title="Simpan"
+                                  >
+                                    <i className="fas fa-check"></i>
+                                  </button>
+                                  <button 
+                                    onClick={() => setEditingRow(null)}
+                                    style={{ background: '#ef4444', color: 'white', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
+                                    title="Batal"
+                                  >
+                                    <i className="fas fa-times"></i>
+                                  </button>
+                                </div>
+                              ) : (
+                                <button 
+                                  onClick={() => handleEditInline(
+                                    dateStr, 
+                                    children[3]?.props?.children, 
+                                    children[6]?.props?.children
+                                  )}
+                                  style={{ background: '#e2e8f0', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', color: '#475569' }}
+                                  title="Edit Absensi"
+                                >
+                                  <i className="fas fa-edit"></i>
+                                </button>
+                              )
                             )}
                           </div>
                         </td>
@@ -697,45 +739,6 @@ export default function AbsensiGTK() {
               </div>
               <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
                 <button type="button" className="btn" style={{ flex: 1, background: '#cbd5e1' }} onClick={() => setShowModalLibur(false)}>Batal</button>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Simpan</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Admin Edit Absen Modal */}
-      {showModalEdit && (
-        <div className={styles.modalOverlay}>
-          <div className={styles.modalCard}>
-            <h3 style={{ margin: '0 0 20px 0' }}>Edit Absensi</h3>
-            <p style={{ marginBottom: '16px', color: '#64748b' }}>
-              Nama: <strong>{rekapUser || user.nama}</strong><br/>
-              Tanggal: <strong>{editTanggal}</strong>
-            </p>
-            <form onSubmit={handleSaveEdit}>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Jam Check In</label>
-                <input 
-                  type="time" 
-                  lang="en-GB"
-                  className={styles.input} 
-                  value={editJamMasuk}
-                  onChange={e => setEditJamMasuk(e.target.value)}
-                />
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Jam Check Out</label>
-                <input 
-                  type="time" 
-                  lang="en-GB"
-                  className={styles.input} 
-                  value={editJamPulang}
-                  onChange={e => setEditJamPulang(e.target.value)}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: '10px', marginTop: '24px' }}>
-                <button type="button" className="btn" style={{ flex: 1, background: '#cbd5e1' }} onClick={() => setShowModalEdit(false)}>Batal</button>
                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Simpan</button>
               </div>
             </form>
