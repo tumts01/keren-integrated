@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
@@ -47,6 +47,22 @@ export default function PerangkatUjianPage() {
     detailY: 81.5,
     detailSize: 5.0,
   });
+
+  // Load saved layout on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('nopesLayoutConfig');
+    if (saved) {
+      try {
+        setLayout(JSON.parse(saved));
+      } catch(e) {}
+    }
+  }, []);
+
+  const updateLayout = (key: keyof typeof layout, value: number) => {
+    const newLayout = { ...layout, [key]: value };
+    setLayout(newLayout);
+    localStorage.setItem('nopesLayoutConfig', JSON.stringify(newLayout));
+  };
 
   const downloadTemplate = () => {
     const wb = XLSX.utils.book_new();
@@ -275,31 +291,31 @@ export default function PerangkatUjianPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '16px' }}>
           <div>
             <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Lebar Foto (%)</label>
-            <input type="number" step="0.5" value={layout.photoW} onChange={e => setLayout({...layout, photoW: parseFloat(e.target.value)})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            <input type="number" step="0.5" value={layout.photoW} onChange={e => updateLayout('photoW', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Tinggi Foto (%)</label>
-            <input type="number" step="0.5" value={layout.photoH} onChange={e => setLayout({...layout, photoH: parseFloat(e.target.value)})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            <input type="number" step="0.5" value={layout.photoH} onChange={e => updateLayout('photoH', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Posisi Y Foto (%)</label>
-            <input type="number" step="0.5" value={layout.photoY} onChange={e => setLayout({...layout, photoY: parseFloat(e.target.value)})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            <input type="number" step="0.5" value={layout.photoY} onChange={e => updateLayout('photoY', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Posisi Y Nama (%)</label>
-            <input type="number" step="0.5" value={layout.nameY} onChange={e => setLayout({...layout, nameY: parseFloat(e.target.value)})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            <input type="number" step="0.5" value={layout.nameY} onChange={e => updateLayout('nameY', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Ukuran Font Nama (%)</label>
-            <input type="number" step="0.5" value={layout.nameSize} onChange={e => setLayout({...layout, nameSize: parseFloat(e.target.value)})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            <input type="number" step="0.5" value={layout.nameSize} onChange={e => updateLayout('nameSize', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Posisi Y Detail (%)</label>
-            <input type="number" step="0.5" value={layout.detailY} onChange={e => setLayout({...layout, detailY: parseFloat(e.target.value)})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            <input type="number" step="0.5" value={layout.detailY} onChange={e => updateLayout('detailY', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Ukuran Font Detail (%)</label>
-            <input type="number" step="0.5" value={layout.detailSize} onChange={e => setLayout({...layout, detailSize: parseFloat(e.target.value)})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            <input type="number" step="0.5" value={layout.detailSize} onChange={e => updateLayout('detailSize', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
           </div>
         </div>
       </details>
