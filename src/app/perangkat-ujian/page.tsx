@@ -57,11 +57,27 @@ export default function PerangkatUjianPage() {
         ruang: String(r['RUANG'] || '')
       })).filter(p => p.nisn);
 
-      const { data: dbData, error } = await supabase.from('data_induk').select('metadata');
+      const pageSize = 1000;
+      const pages = [0, 1, 2, 3];
+      const results = await Promise.all(
+        pages.map(page => 
+          supabase
+            .from('data_induk')
+            .select('metadata')
+            .range(page * pageSize, (page + 1) * pageSize - 1)
+        )
+      );
+
+      let hasError = false;
+      let dbData: Record<string, any>[] = [];
       
-      if (error) {
-        console.error(error);
-        Swal.fire('Error', 'Gagal memuat data dari Supabase', 'error');
+      for (const res of results) {
+        if (res.error) hasError = true;
+        if (res.data) dbData = [...dbData, ...res.data];
+      }
+      
+      if (hasError) {
+        Swal.fire('Error', 'Gagal memuat sebagian atau seluruh data dari Supabase', 'error');
       } else {
         const enriched = parsed.map(p => {
           const match = dbData.find(d => String(d.metadata?.['NISN']) === p.nisn);
