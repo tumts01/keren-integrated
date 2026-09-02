@@ -14,7 +14,7 @@ interface Participant {
 
 function getDriveDirectLink(url?: string) {
   if (!url) return 'https://via.placeholder.com/150';
-  const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  const match = url.match(/(?:\/d\/|\?id=|&id=)([a-zA-Z0-9_-]+)/);
   if (match && match[1]) {
     return 'https://drive.google.com/uc?export=view&id=' + match[1];
   }
@@ -299,7 +299,7 @@ export default function PerangkatUjianPage() {
         <div className="nopes-grid">
           {participants.map((p, idx) => (
             <div key={idx} className="nopes-card">
-              <img src="/nopes sts ganjil.png" alt="Template" className="nopes-bg" />
+              <img src="/nopes%20sts%20ganjil.png" alt="Template" className="nopes-bg" />
               <img src={getDriveDirectLink(p.foto)} alt="Foto" className="nopes-photo" />
               <div className="nopes-name">{p.nama}</div>
               <div className="nopes-detail">{p.noUjian} | {p.ruang}</div>
