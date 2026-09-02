@@ -43,7 +43,7 @@ export default function PerangkatUjianPage() {
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<any>(sheet);
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet);
 
       if (rows.length === 0) {
         Swal.fire('Error', 'File Excel kosong', 'error');
@@ -73,7 +73,7 @@ export default function PerangkatUjianPage() {
         });
         setParticipants(enriched);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
       Swal.fire('Error', 'Gagal membaca file Excel', 'error');
     }
