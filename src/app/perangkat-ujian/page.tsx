@@ -129,10 +129,10 @@ export default function PerangkatUjianPage() {
       const marginX = (pageW - cols * cardW) / 2;
       const marginY = (pageH - rows * cardH) / 2;
 
-      // Canvas pixel dimensions (2x for quality)
-      const scale = 4;
-      const cW = Math.round(cardW * scale);
-      const cH = Math.round(cardH * scale);
+      // Canvas pixel dimensions (300 DPI = ~11.81 pixels per mm)
+      const scale = 11.81;
+      const cW = Math.round(cardW * scale); // ~659px
+      const cH = Math.round(cardH * scale); // ~1122px
 
       // Load template background once
       const bgImg = await loadImage('/nopes%20sts%20ganjil.png');
@@ -174,13 +174,14 @@ export default function PerangkatUjianPage() {
         // Draw photo
         const photo = photos[i];
         if (photo) {
-          const photoW = cW * 0.48;
-          const photoH = cH * 0.36;
+          // Adjust to fit well within the template box
+          const photoW = cW * 0.45;
+          const photoH = cH * 0.33;
           const photoX = (cW - photoW) / 2;
-          const photoY = cH * 0.32;
+          const photoY = cH * 0.31;
 
           // Draw rounded rect clip
-          const radius = 4 * scale;
+          const radius = 15; // 15px radius for 600px width
           ctx.save();
           ctx.beginPath();
           ctx.moveTo(photoX + radius, photoY);
@@ -201,12 +202,13 @@ export default function PerangkatUjianPage() {
         // Draw name text
         const p = participants[i];
         ctx.fillStyle = '#000';
-        ctx.font = `bold ${9 * scale}px Arial, sans-serif`;
+        // Base font size on canvas width so it scales perfectly
+        ctx.font = `bold ${Math.round(cW * 0.055)}px Arial, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
         const nameText = (p.nama || '').toUpperCase();
-        const maxTextWidth = cW * 0.80;
+        const maxTextWidth = cW * 0.84;
         let displayName = nameText;
         if (ctx.measureText(nameText).width > maxTextWidth) {
           while (ctx.measureText(displayName + '...').width > maxTextWidth && displayName.length > 0) {
@@ -218,7 +220,7 @@ export default function PerangkatUjianPage() {
 
         // Draw No Ujian | Ruang
         ctx.fillStyle = '#1e40af';
-        ctx.font = `bold ${10 * scale}px Arial, sans-serif`;
+        ctx.font = `bold ${Math.round(cW * 0.065)}px Arial, sans-serif`;
         ctx.fillText(`${p.noUjian} | ${p.ruang}`, cW / 2, cH * 0.86);
 
         // Add card to PDF as compressed JPEG
