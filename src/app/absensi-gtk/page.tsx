@@ -36,6 +36,10 @@ export default function AbsensiGTK() {
   const [editJamMasuk, setEditJamMasuk] = useState('');
   const [editJamPulang, setEditJamPulang] = useState('');
 
+  // States for Admin Searchable Dropdown
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [dropdownSearch, setDropdownSearch] = useState('');
+
   // States for Geolocation
   const [geoStatus, setGeoStatus] = useState<'idle' | 'checking' | 'allowed' | 'denied' | 'error'>('idle');
   const [geoDistance, setGeoDistance] = useState<number | null>(null);
@@ -503,16 +507,77 @@ export default function AbsensiGTK() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <div style={{ display: 'flex', gap: '12px' }}>
               {user.role?.toLowerCase() === 'admin' && (
-                <select 
-                  className={styles.input} 
-                  style={{ width: '200px' }} 
-                  value={rekapUser || user.nama} 
-                  onChange={e => setRekapUser(e.target.value)}
-                >
-                  {guruList.map((g, idx) => (
-                    <option key={idx} value={g.nama}>{g.nama}</option>
-                  ))}
-                </select>
+                <div style={{ position: 'relative', width: '250px' }}>
+                  <div 
+                    className={styles.input} 
+                    style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%', userSelect: 'none' }}
+                    onClick={() => {
+                      setDropdownOpen(!dropdownOpen);
+                      setDropdownSearch('');
+                    }}
+                  >
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {rekapUser || user.nama}
+                    </span>
+                    <i className={`fas fa-chevron-${dropdownOpen ? 'up' : 'down'}`} style={{ fontSize: '12px', color: '#64748b', marginLeft: '8px' }}></i>
+                  </div>
+                  
+                  {dropdownOpen && (
+                    <>
+                      <div 
+                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }} 
+                        onClick={() => setDropdownOpen(false)}
+                      />
+                      <div style={{ 
+                        position: 'absolute', top: '100%', left: 0, right: 0, 
+                        background: 'white', border: '1px solid #cbd5e1', 
+                        borderRadius: '8px', marginTop: '4px', zIndex: 50,
+                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                        display: 'flex', flexDirection: 'column'
+                      }}>
+                        <div style={{ padding: '8px', borderBottom: '1px solid #e2e8f0' }}>
+                          <input 
+                            type="text" 
+                            autoFocus
+                            placeholder="Ketik untuk mencari..." 
+                            value={dropdownSearch}
+                            onChange={e => setDropdownSearch(e.target.value)}
+                            style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '14px' }}
+                          />
+                        </div>
+                        <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
+                          {guruList
+                            .filter(g => g.nama.toLowerCase().includes(dropdownSearch.toLowerCase()))
+                            .map((g, idx) => (
+                            <div 
+                              key={idx} 
+                              onClick={() => {
+                                setRekapUser(g.nama);
+                                setDropdownOpen(false);
+                                setDropdownSearch('');
+                              }}
+                              style={{ 
+                                padding: '10px 12px', cursor: 'pointer', fontSize: '14px',
+                                background: (rekapUser || user.nama) === g.nama ? '#f1f5f9' : 'transparent',
+                                borderBottom: '1px solid #f8fafc',
+                                color: '#334155'
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
+                              onMouseLeave={e => e.currentTarget.style.background = (rekapUser || user.nama) === g.nama ? '#f1f5f9' : 'transparent'}
+                            >
+                              {g.nama}
+                            </div>
+                          ))}
+                          {guruList.filter(g => g.nama.toLowerCase().includes(dropdownSearch.toLowerCase())).length === 0 && (
+                            <div style={{ padding: '10px 12px', color: '#94a3b8', fontSize: '14px', textAlign: 'center' }}>
+                              Tidak ditemukan
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
               <select className={styles.input} style={{ width: '150px' }} value={rekapBulan} onChange={e => setRekapBulan(Number(e.target.value))}>
                 {Array.from({ length: 12 }, (_, i) => (
