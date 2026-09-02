@@ -48,8 +48,20 @@ export default function PerangkatUjianPage() {
     detailSize: 5.0,
   });
 
+  const [isAdmin, setIsAdmin] = useState(false);
+
   // Load saved layout on mount
   useEffect(() => {
+    const storedUser = localStorage.getItem('keren_user_data');
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        if ((parsedUser.role || '').toLowerCase() === 'admin') {
+          setIsAdmin(true);
+        }
+      } catch(e) {}
+    }
+
     const saved = localStorage.getItem('nopesLayoutConfig');
     if (saved) {
       try {
@@ -308,7 +320,8 @@ export default function PerangkatUjianPage() {
         </p>
       </div>
 
-      <details style={{ marginBottom: '20px', background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+      {isAdmin && (
+        <details style={{ marginBottom: '20px', background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
         <summary style={{ fontWeight: 'bold', cursor: 'pointer', color: '#334155' }}>
           <i className="fas fa-sliders-h" style={{ marginRight: '8px' }}></i>
           Atur Posisi Desain (Klik untuk membuka)
@@ -344,6 +357,7 @@ export default function PerangkatUjianPage() {
           </div>
         </div>
       </details>
+      )}
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #e2e8f0', marginBottom: '20px' }}>
