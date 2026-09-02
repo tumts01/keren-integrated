@@ -100,7 +100,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { action, nama } = body;
+    const { action, nama, tanggal: inputTanggal, jam_masuk, jam_pulang } = body;
 
     if (!nama || !action) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
@@ -108,22 +108,48 @@ export async function POST(request: Request) {
 
     const today = getCurrentDateString();
     const currentTime = getCurrentTimeString();
+    const targetDate = inputTanggal || today;
 
     // Query filtered langsung per nama & tanggal - hindari batas 1000 baris
     const { data: userRows, error: absenError } = await supabase
       .from('absen_gtk')
       .select('*')
       .eq('nama', nama)
-      .eq('tanggal', today);
+      .eq('tanggal', targetDate);
     if (absenError) throw absenError;
 
     let userRow = (userRows || [])[0] || null;
+
+    if (action === 'edit') {
+      if (!userRow) {
+        // If row doesn't exist for that day, insert it
+        const { error: insertError } = await supabase.from('absen_gtk').insert([{
+          nama, 
+          tanggal: targetDate,
+          metadata: {
+            Nama: nama,
+            tanggal: targetDate,
+            jam_masuk: jam_masuk || '',
+            jam_pulang: jam_pulang || '',
+            status: 'Hadir'
+          }
+        }]);
+        if (insertError) throw insertError;
+      } else {
+        // Update existing row
+        const { error: updateError } = await supabase.from('absen_gtk').update({
+          metadata: { ...userRow.metadata, jam_masuk: jam_masuk || '', jam_pulang: jam_pulang || '' }
+        }).eq('id', userRow.id);
+        if (updateError) throw updateError;
+      }
+      return NextResponse.json({ success: true, message: 'Data absensi berhasil diperbarui!' });
+    }
 
     // Cek apakah hari ini libur
     const { data: liburRows, error: liburError } = await supabase.from('libur_gtk').select('*');
     if (liburError) throw liburError;
 
-    const isHoliday = (liburRows || []).find((r: any) => r.metadata?.['tanggal'] === today);
+    const isHoliday = (liburRows || []).find((r: any) => r.metadata?.['tanggal'] === targetDate);
     const isSunday = isSundayInJakarta();
 
     if (action === 'checkin' && (isHoliday || isSunday)) {
@@ -136,10 +162,10 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: 'Anda sudah Check-in hari ini!' }, { status: 400 });
       }
       if (!userRow) {
-        const { error: insertError } = await supabase.from('absen_gtk').insert([{ nama, tanggal: today,
+        const { error: insertError } = await supabase.from('absen_gtk').insert([{ nama, tanggal: targetDate,
           metadata: {
             Nama: nama,
-            tanggal: today,
+            tanggal: targetDate,
             jam_masuk: currentTime,
             jam_pulang: '',
             status: 'Hadir'
@@ -147,7 +173,7 @@ export async function POST(request: Request) {
         }]);
         if (insertError) throw insertError;
       } else {
-        const { error: updateError } = await supabase.from('absen_gtk').update({ nama, tanggal: today,
+        const { error: updateError } = await supabase.from('absen_gtk').update({ nama, tanggal: targetDate,
           metadata: { ...userRow.metadata, jam_masuk: currentTime, status: 'Hadir' }
         }).eq('id', userRow.id);
         if (updateError) throw updateError;
@@ -162,7 +188,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: 'Anda sudah Check-out hari ini!' }, { status: 400 });
       }
       
-      const { error: updateError } = await supabase.from('absen_gtk').update({ nama, tanggal: today,
+      const { error: updateError } = await supabase.from('absen_gtk').update({ nama, tanggal: targetDate,
         metadata: { ...userRow.metadata, jam_pulang: currentTime }
       }).eq('id', userRow.id);
       if (updateError) throw updateError;
