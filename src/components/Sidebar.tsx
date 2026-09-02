@@ -77,6 +77,7 @@ export default function Sidebar() {
         ] : []),
         { name: 'Pengembalian Rapor', path: '/pengembalian-rapor', icon: 'fa-file-signature' },
         { name: 'EMIS', path: '/emis', icon: 'fa-database' },
+        { name: 'Perangkat Ujian', path: '/perangkat-ujian', icon: 'fa-file-alt' },
       ]
     },
     {
