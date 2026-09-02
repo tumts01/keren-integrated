@@ -35,6 +35,10 @@ export default function AbsensiGTK() {
   const [inlineJamMasuk, setInlineJamMasuk] = useState('');
   const [inlineJamPulang, setInlineJamPulang] = useState('');
 
+  // States for Admin Bulk Edit
+  const [isBulkEditing, setIsBulkEditing] = useState(false);
+  const [bulkData, setBulkData] = useState<Record<string, { jam_masuk: string, jam_pulang: string }>>({});
+
   // States for Admin Searchable Dropdown
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [dropdownSearch, setDropdownSearch] = useState('');
@@ -152,6 +156,8 @@ export default function AbsensiGTK() {
   useEffect(() => {
     if (activeTab === 'rekap') {
       fetchRekap();
+      setIsBulkEditing(false); // Reset bulk edit on tab/filter change
+      setEditingRow(null);
     }
   }, [activeTab, rekapBulan, rekapTahun, rekapUser]);
 
@@ -293,6 +299,47 @@ export default function AbsensiGTK() {
       const data = await res.json();
       if (data.success) {
         setEditingRow(null);
+        fetchRekap(); // refresh table
+      } else {
+        alert(data.error);
+      }
+    } catch (err) {
+      alert('Gagal mengupdate absensi.');
+    }
+  };
+
+  const handleStartBulkEdit = () => {
+    setIsBulkEditing(true);
+    setEditingRow(null); // Clear any single row edit
+    const initialBulk: Record<string, { jam_masuk: string, jam_pulang: string }> = {};
+    const daysInMonth = new Date(rekapTahun, rekapBulan, 0).getDate();
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dateStr = `${i.toString().padStart(2, '0')}/${rekapBulan.toString().padStart(2, '0')}/${rekapTahun}`;
+      const d = rekapData.find(r => r.tanggal === dateStr);
+      initialBulk[dateStr] = {
+        jam_masuk: d && d.jam_masuk !== '-' ? d.jam_masuk : '',
+        jam_pulang: d && d.jam_pulang !== '-' ? d.jam_pulang : ''
+      };
+    }
+    setBulkData(initialBulk);
+  };
+
+  const handleSaveBulkEdit = async () => {
+    const targetUser = rekapUser || user.nama;
+    try {
+      const res = await fetch('/api/absensi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          action: 'bulk_edit', 
+          nama: targetUser, 
+          bulkData
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Semua data absensi berhasil diperbarui!');
+        setIsBulkEditing(false);
         fetchRekap(); // refresh table
       } else {
         alert(data.error);
@@ -586,9 +633,25 @@ export default function AbsensiGTK() {
             </div>
             <div style={{ display: 'flex', gap: '12px' }}>
               {user.role?.toLowerCase() === 'admin' && (
-                <button className="btn" style={{ background: '#3b82f6', color: 'white' }} onClick={() => setShowModalLibur(true)}>
-                  <i className="fas fa-calendar-alt"></i> Set Hari Libur
-                </button>
+                <>
+                  <button className="btn" style={{ background: '#3b82f6', color: 'white' }} onClick={() => setShowModalLibur(true)}>
+                    <i className="fas fa-calendar-alt"></i> Set Hari Libur
+                  </button>
+                  {isBulkEditing ? (
+                    <>
+                      <button className="btn" style={{ background: '#10b981', color: 'white' }} onClick={handleSaveBulkEdit}>
+                        <i className="fas fa-check"></i> Simpan Semua
+                      </button>
+                      <button className="btn" style={{ background: '#ef4444', color: 'white' }} onClick={() => setIsBulkEditing(false)}>
+                        <i className="fas fa-times"></i> Batal
+                      </button>
+                    </>
+                  ) : (
+                    <button className="btn" style={{ background: '#f59e0b', color: 'white' }} onClick={handleStartBulkEdit}>
+                      <i className="fas fa-edit"></i> Edit Semua
+                    </button>
+                  )}
+                </>
               )}
               <button className="btn btn-primary" onClick={() => window.print()}>
                 <i className="fas fa-print"></i> Cetak Rekap
@@ -629,7 +692,10 @@ export default function AbsensiGTK() {
                       );
                     }
                     const dateStr = row.props['data-date'];
-                    const isEditing = editingRow === dateStr;
+                    const isEditing = editingRow === dateStr || isBulkEditing;
+                    
+                    const jamMasukVal = isBulkEditing ? bulkData[dateStr]?.jam_masuk || '' : inlineJamMasuk;
+                    const jamPulangVal = isBulkEditing ? bulkData[dateStr]?.jam_pulang || '' : inlineJamPulang;
 
                     return (
                       <tr key={idx}>
@@ -642,11 +708,15 @@ export default function AbsensiGTK() {
                               type="text" 
                               placeholder="07:00"
                               maxLength={5}
-                              value={inlineJamMasuk} 
+                              value={jamMasukVal} 
                               onChange={e => {
                                 let val = e.target.value.replace(/[^0-9:\.]/g, '').replace('.', ':');
                                 if (val.length === 4 && !val.includes(':')) val = val.slice(0, 2) + ':' + val.slice(2);
-                                setInlineJamMasuk(val);
+                                if (isBulkEditing) {
+                                  setBulkData(prev => ({ ...prev, [dateStr]: { ...prev[dateStr], jam_masuk: val } }));
+                                } else {
+                                  setInlineJamMasuk(val);
+                                }
                               }} 
                               style={{ width: '80px', padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', textAlign: 'center' }}
                             />
@@ -661,11 +731,15 @@ export default function AbsensiGTK() {
                               type="text" 
                               placeholder="14:05"
                               maxLength={5}
-                              value={inlineJamPulang} 
+                              value={jamPulangVal} 
                               onChange={e => {
                                 let val = e.target.value.replace(/[^0-9:\.]/g, '').replace('.', ':');
                                 if (val.length === 4 && !val.includes(':')) val = val.slice(0, 2) + ':' + val.slice(2);
-                                setInlineJamPulang(val);
+                                if (isBulkEditing) {
+                                  setBulkData(prev => ({ ...prev, [dateStr]: { ...prev[dateStr], jam_pulang: val } }));
+                                } else {
+                                  setInlineJamPulang(val);
+                                }
                               }} 
                               style={{ width: '80px', padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', textAlign: 'center' }}
                             />
@@ -676,8 +750,8 @@ export default function AbsensiGTK() {
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
                             <span>{children[3]?.props?.children !== '-' ? 'Hadir' : '-'}</span>
-                            {user.role?.toLowerCase() === 'admin' && (
-                              isEditing ? (
+                            {user.role?.toLowerCase() === 'admin' && !isBulkEditing && (
+                              editingRow === dateStr ? (
                                 <div style={{ display: 'flex', gap: '4px' }}>
                                   <button 
                                     onClick={() => handleSaveInline(dateStr)}

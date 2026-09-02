@@ -120,6 +120,45 @@ export async function POST(request: Request) {
 
     let userRow = (userRows || [])[0] || null;
 
+    if (action === 'bulk_edit') {
+      const { bulkData } = body;
+      
+      const { data: allUserRows, error: fetchErr } = await supabase
+        .from('absen_gtk')
+        .select('*')
+        .eq('nama', nama);
+      
+      if (fetchErr) throw fetchErr;
+
+      const promises = Object.entries(bulkData).map(async ([tgl, data]) => {
+        const { jam_masuk, jam_pulang } = data as any;
+        const existingRow = allUserRows?.find(r => r.tanggal === tgl);
+        
+        if (!existingRow && !jam_masuk && !jam_pulang) return Promise.resolve();
+
+        if (!existingRow) {
+          return supabase.from('absen_gtk').insert([{
+            nama, 
+            tanggal: tgl,
+            metadata: {
+              Nama: nama,
+              tanggal: tgl,
+              jam_masuk: jam_masuk || '',
+              jam_pulang: jam_pulang || '',
+              status: 'Hadir'
+            }
+          }]);
+        } else {
+          return supabase.from('absen_gtk').update({
+            metadata: { ...existingRow.metadata, jam_masuk: jam_masuk || '', jam_pulang: jam_pulang || '' }
+          }).eq('id', existingRow.id);
+        }
+      });
+
+      await Promise.all(promises);
+      return NextResponse.json({ success: true, message: 'Semua data absensi berhasil diperbarui!' });
+    }
+
     if (action === 'edit') {
       if (!userRow) {
         // If row doesn't exist for that day, insert it
