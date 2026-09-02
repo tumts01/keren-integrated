@@ -5,6 +5,8 @@ import * as XLSX from 'xlsx';
 
 interface Siswa {
   id: number;
+  supabaseId?: number;
+  rawMetadata?: Record<string, string>;
   nis: string;
   nisn: string;
   nik: string;
@@ -941,6 +943,9 @@ export default function SiswaPage() {
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedSiswa, setSelectedSiswa] = useState<Siswa | null>(null);
+  const [editingSiswa, setEditingSiswa] = useState<Siswa | null>(null);
+  const [editMetadata, setEditMetadata] = useState<Record<string, string>>({});
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [selectedTahun, setSelectedTahun] = useState<string>('Semua');
   const [selectedTingkat, setSelectedTingkat] = useState<string>('Semua');
   const [selectedRombel, setSelectedRombel] = useState<string>('Semua');
@@ -950,7 +955,6 @@ export default function SiswaPage() {
   const [showMutasiModal, setShowMutasiModal] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
       try {
         const res = await fetch('/api/siswa');
         const result = await res.json();
@@ -972,6 +976,44 @@ export default function SiswaPage() {
     };
     fetchData();
   }, []);
+
+  const handleEditClick = (siswa: Siswa) => {
+    setEditingSiswa(siswa);
+    setEditMetadata(siswa.rawMetadata ? { ...siswa.rawMetadata } : {});
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingSiswa?.supabaseId) {
+      alert('Error: Data siswa ini tidak memiliki ID Supabase valid.');
+      return;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      const res = await fetch('/api/siswa/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          supabaseId: editingSiswa.supabaseId,
+          rawMetadata: editMetadata,
+          nama: editMetadata['NAMA'] || editingSiswa.nama,
+          nis: editMetadata['ID SISWA'] || editingSiswa.nis
+        })
+      });
+      const result = await res.json();
+      if (result.success) {
+        alert('Data siswa berhasil diperbarui!');
+        setEditingSiswa(null);
+        window.location.reload();
+      } else {
+        alert('Gagal: ' + result.error);
+      }
+    } catch (err) {
+      alert('Error: Gagal menyimpan perubahan.');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
 
   const uniqueTahun = Array.from(new Set(data.map(s => s.tahunAjaran).filter(Boolean))).sort((a, b) => b.localeCompare(a));
 
@@ -1452,15 +1494,24 @@ const handleExportMissingNisnNik = () => {
                       <td>{siswa.noHp || '-'}</td>
                       <td>{siswa.nrp || '-'}</td>
                       <td>{siswa.tahunAjaran || '-'}</td>
-                      <td>
-                        <button
-                          className="btn btn-primary"
-                          style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                          onClick={() => setSelectedSiswa(siswa)}
-                        >
-                          Detail
-                        </button>
-                      </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            <button
+                              className="btn btn-primary"
+                              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                              onClick={() => setSelectedSiswa(siswa)}
+                            >
+                              Detail
+                            </button>
+                            <button
+                              className="btn"
+                              style={{ padding: '6px 12px', fontSize: '0.8rem', background: '#f59e0b', color: 'white' }}
+                              onClick={() => handleEditClick(siswa)}
+                            >
+                              <i className="fas fa-edit"></i>
+                            </button>
+                          </div>
+                        </td>
                     </tr>
                   ))
                 ) : (
@@ -1517,6 +1568,70 @@ const handleExportMissingNisnNik = () => {
         </>
         )}
       </div>
+
+      {editingSiswa && (
+        <div className={styles.modalOverlay} onClick={() => !isSavingEdit && setEditingSiswa(null)} style={{ zIndex: 100 }}>
+          <div className={styles.modalCard} onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className={styles.modalHeader}>
+              <h2><i className="fas fa-edit"></i> Edit Semua Data Siswa</h2>
+              <button className={styles.closeBtn} onClick={() => !isSavingEdit && setEditingSiswa(null)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            
+            <div style={{ padding: '20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontSize: '0.9rem' }}>
+              Anda mengedit data mentah Supabase dari: <strong>{editingSiswa.nama}</strong>.<br/>
+              Harap berhati-hati saat mengubah nama kolom (key) atau menghapus data.
+            </div>
+
+            <div className={styles.modalBody} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {Object.keys(editMetadata).map((key) => (
+                <div key={key} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                  <div style={{ flex: '0 0 250px' }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
+                      {key}
+                    </label>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <input
+                      type="text"
+                      value={editMetadata[key]}
+                      onChange={(e) => setEditMetadata(prev => ({ ...prev, [key]: e.target.value }))}
+                      style={{
+                        width: '100%', padding: '8px 12px', borderRadius: '6px',
+                        border: '1px solid #cbd5e1', outline: 'none', color: '#0f172a'
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', padding: '20px', borderTop: '1px solid #e2e8f0' }}>
+              <button
+                className="btn"
+                style={{ background: '#cbd5e1', color: '#334155' }}
+                onClick={() => setEditingSiswa(null)}
+                disabled={isSavingEdit}
+              >
+                Batal
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleSaveEdit}
+                disabled={isSavingEdit}
+              >
+                {isSavingEdit ? (
+                  <><i className="fas fa-spinner fa-spin" style={{ marginRight: '8px' }}></i> Menyimpan...</>
+                ) : (
+                  <><i className="fas fa-save" style={{ marginRight: '8px' }}></i> Simpan Perubahan</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

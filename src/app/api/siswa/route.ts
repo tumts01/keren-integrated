@@ -61,6 +61,8 @@ export async function GET() {
 
       const baseStudent = {
         id: index,
+        supabaseId: sbRows[index]?.id,
+        rawMetadata: sbRows[index]?.metadata || {},
         nis: row.get('ID SISWA') || '',
         nisn: row.get('NISN') || '',
         nik: row.get('NIK') || '',
