@@ -639,11 +639,16 @@ export default function AbsensiGTK() {
                         <td>
                           {isEditing ? (
                             <input 
-                              type="time" 
-                              lang="en-GB" 
+                              type="text" 
+                              placeholder="07:00"
+                              maxLength={5}
                               value={inlineJamMasuk} 
-                              onChange={e => setInlineJamMasuk(e.target.value)} 
-                              style={{ width: '100px', padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', textAlign: 'center' }}
+                              onChange={e => {
+                                let val = e.target.value.replace(/[^0-9:\.]/g, '').replace('.', ':');
+                                if (val.length === 4 && !val.includes(':')) val = val.slice(0, 2) + ':' + val.slice(2);
+                                setInlineJamMasuk(val);
+                              }} 
+                              style={{ width: '80px', padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', textAlign: 'center' }}
                             />
                           ) : (
                             <strong style={{ color: '#10b981' }}>{children[3]?.props?.children}</strong>
@@ -653,11 +658,16 @@ export default function AbsensiGTK() {
                         <td>
                           {isEditing ? (
                             <input 
-                              type="time" 
-                              lang="en-GB" 
+                              type="text" 
+                              placeholder="14:05"
+                              maxLength={5}
                               value={inlineJamPulang} 
-                              onChange={e => setInlineJamPulang(e.target.value)} 
-                              style={{ width: '100px', padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', textAlign: 'center' }}
+                              onChange={e => {
+                                let val = e.target.value.replace(/[^0-9:\.]/g, '').replace('.', ':');
+                                if (val.length === 4 && !val.includes(':')) val = val.slice(0, 2) + ':' + val.slice(2);
+                                setInlineJamPulang(val);
+                              }} 
+                              style={{ width: '80px', padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1', textAlign: 'center' }}
                             />
                           ) : (
                             <strong style={{ color: '#f59e0b' }}>{children[6]?.props?.children}</strong>
