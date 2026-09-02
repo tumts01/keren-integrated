@@ -9,6 +9,7 @@ interface Participant {
   nisn: string;
   noUjian: string;
   ruang: string;
+  kelas?: string;
   nama?: string;
   foto?: string;
 }
@@ -49,7 +50,7 @@ export default function PerangkatUjianPage() {
 
   const downloadTemplate = () => {
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet([{ NISN: '1234567890', 'NO UJIAN': '001-01', RUANG: 'Ruang 1' }]);
+    const ws = XLSX.utils.json_to_sheet([{ NISN: '1234567890', KELAS: '9A', 'NO UJIAN': '001-01', RUANG: 'Ruang 1' }]);
     XLSX.utils.book_append_sheet(wb, ws, 'Template Nopes');
     XLSX.writeFile(wb, 'Template_Import_Nopes.xlsx');
   };
@@ -73,6 +74,7 @@ export default function PerangkatUjianPage() {
 
       const parsed: Participant[] = rows.map(r => ({
         nisn: String(r['NISN'] || ''),
+        kelas: String(r['KELAS'] || ''),
         noUjian: String(r['NO UJIAN'] || ''),
         ruang: String(r['RUANG'] || '')
       })).filter(p => p.nisn);
@@ -104,6 +106,7 @@ export default function PerangkatUjianPage() {
           return {
             ...p,
             nama: match?.metadata?.['NAMA'] || 'TIDAK DITEMUKAN',
+            kelas: p.kelas || match?.metadata?.['ROMBEL'] || '-',
             foto: match?.metadata?.['LINK FOTO TERBARU'] || match?.metadata?.['LINK URL FOTO 1'] || ''
           };
         });
@@ -228,10 +231,10 @@ export default function PerangkatUjianPage() {
         }
         ctx.fillText(displayName, cW / 2, cH * (layout.nameY / 100));
 
-        // Draw No Ujian | Ruang
+        // Draw Kelas | No Ujian | Ruang
         ctx.fillStyle = '#1e40af';
         ctx.font = `bold ${Math.round(cW * (layout.detailSize / 100))}px Arial, sans-serif`;
-        ctx.fillText(`${p.noUjian} | ${p.ruang}`, cW / 2, cH * (layout.detailY / 100));
+        ctx.fillText(`${p.kelas} | ${p.noUjian} | ${p.ruang}`, cW / 2, cH * (layout.detailY / 100));
 
         // Add card to PDF as compressed JPEG
         const imgData = canvas.toDataURL('image/jpeg', 0.85);
