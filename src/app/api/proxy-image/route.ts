@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const url = searchParams.get('url');
@@ -8,14 +10,15 @@ export async function GET(req: Request) {
 
   try {
     let fetchUrl = url;
-    // Extract Google Drive file ID and use thumbnail (sz=w400) for small, fast images
+    // Extract Google Drive file ID and use thumbnail (sz=w200) for small, fast images
     const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/(?:\?id=|&id=|open\?id=)([a-zA-Z0-9_-]+)/);
     if (url.includes('drive.google.com') && match && match[1]) {
-      // Use Google Drive thumbnail API - much smaller, no auth required for public files
-      fetchUrl = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w400`;
+      // Use Google Drive thumbnail API - much smaller
+      fetchUrl = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w200`;
     }
 
     const res = await fetch(fetchUrl, {
+      cache: 'no-store',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }

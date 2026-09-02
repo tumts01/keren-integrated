@@ -164,7 +164,7 @@ export default function PerangkatUjianPage() {
             }
             .nopes-name {
               position: absolute;
-              top: 72%;
+              top: 74%;
               left: 8%;
               width: 84%;
               text-align: center;
@@ -179,7 +179,7 @@ export default function PerangkatUjianPage() {
             }
             .nopes-detail {
               position: absolute;
-              top: 84%;
+              top: 86%;
               left: 8%;
               width: 84%;
               text-align: center;
