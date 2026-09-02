@@ -12,13 +12,9 @@ interface Participant {
   foto?: string;
 }
 
-function getDriveDirectLink(url?: string) {
-  if (!url) return 'https://via.placeholder.com/150';
-  const match = url.match(/(?:\/d\/|\?id=|&id=)([a-zA-Z0-9_-]+)/);
-  if (match && match[1]) {
-    return 'https://drive.google.com/uc?export=view&id=' + match[1];
-  }
-  return url;
+function getPhotoUrl(url?: string) {
+  if (!url) return '';
+  return '/api/proxy-image?url=' + encodeURIComponent(url);
 }
 
 export default function PerangkatUjianPage() {
@@ -69,7 +65,7 @@ export default function PerangkatUjianPage() {
       );
 
       let hasError = false;
-      let dbData: Record<string, any>[] = [];
+      let dbData: { metadata: Record<string, string> }[] = [];
       
       for (const res of results) {
         if (res.error) hasError = true;
@@ -144,6 +140,7 @@ export default function PerangkatUjianPage() {
               height: 9.5cm;
               position: relative;
               box-sizing: border-box;
+              overflow: hidden;
             }
             .nopes-bg {
               position: absolute;
@@ -151,7 +148,7 @@ export default function PerangkatUjianPage() {
               left: 0;
               width: 100%;
               height: 100%;
-              z-index: -1;
+              z-index: 1;
               object-fit: cover;
             }
             .nopes-photo {
@@ -163,6 +160,7 @@ export default function PerangkatUjianPage() {
               height: 3.5cm;
               object-fit: cover;
               border-radius: 4px;
+              z-index: 2;
             }
             .nopes-name {
               position: absolute;
@@ -177,6 +175,7 @@ export default function PerangkatUjianPage() {
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
+              z-index: 2;
             }
             .nopes-detail {
               position: absolute;
@@ -187,6 +186,7 @@ export default function PerangkatUjianPage() {
               font-size: 10px;
               font-weight: bold;
               color: #000;
+              z-index: 2;
             }
           }
         `}</style>
@@ -265,7 +265,7 @@ export default function PerangkatUjianPage() {
                         <td style={{ padding: '12px' }}>{p.ruang}</td>
                         <td style={{ padding: '12px', textAlign: 'center' }}>
                           {p.foto ? (
-                            <img src={getDriveDirectLink(p.foto)} alt="foto" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '50%', border: '2px solid #e2e8f0' }} />
+                            <img src={getPhotoUrl(p.foto)} alt="foto" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '50%', border: '2px solid #e2e8f0' }} />
                           ) : (
                             <span style={{ color: '#94a3b8', fontSize: '12px' }}>Kosong</span>
                           )}
@@ -300,7 +300,7 @@ export default function PerangkatUjianPage() {
           {participants.map((p, idx) => (
             <div key={idx} className="nopes-card">
               <img src="/nopes%20sts%20ganjil.png" alt="Template" className="nopes-bg" />
-              <img src={getDriveDirectLink(p.foto)} alt="Foto" className="nopes-photo" />
+              {p.foto && <img src={getPhotoUrl(p.foto)} alt="Foto" className="nopes-photo" />}
               <div className="nopes-name">{p.nama}</div>
               <div className="nopes-detail">{p.noUjian} | {p.ruang}</div>
             </div>
