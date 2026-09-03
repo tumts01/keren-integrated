@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     if (tanggal) {
       const found = data.find((r: any) => r.tanggal === tanggal);
       if (!found) {
-        return NextResponse.json({ success: true, jamTersedia: [1,2,3,4,5,6,7,8,9,10], keterangan: '' });
+        return NextResponse.json({ success: true, jamTersedia: [1,2,3,4,5,6,7,8,9,10,11,12,13], keterangan: '' });
       }
       const jams = found.jamTersedia.split(',').map((s: string) => parseInt(s.trim())).filter((n: number) => !isNaN(n));
       return NextResponse.json({ success: true, jamTersedia: jams, keterangan: found.keterangan });

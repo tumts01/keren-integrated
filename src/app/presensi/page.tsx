@@ -79,10 +79,10 @@ export default function PresensiPage() {
   const [isGuruDropdownOpen, setIsGuruDropdownOpen] = useState(false);
   const [searchGuru, setSearchGuru] = useState('');
   const [selectedJam, setSelectedJam] = useState<number[]>([]);
-  const [jamTersedia, setJamTersedia] = useState<number[]>([1,2,3,4,5,6,7,8,9,10]);
+  const [jamTersedia, setJamTersedia] = useState<number[]>([1,2,3,4,5,6,7,8,9,10,11,12,13]);
   const [jamConfigLoading, setJamConfigLoading] = useState(false);
   const [showJamConfig, setShowJamConfig] = useState(false);
-  const [konfigJam, setKonfigJam] = useState<number[]>([1,2,3,4,5,6,7,8,9,10]);
+  const [konfigJam, setKonfigJam] = useState<number[]>([1,2,3,4,5,6,7,8,9,10,11,12,13]);
   const [konfigKeterangan, setKonfigKeterangan] = useState('');
   const [hasJamConfig, setHasJamConfig] = useState(false); // ada config khusus untuk tanggal ini
   
@@ -242,7 +242,7 @@ export default function PresensiPage() {
       .then(data => {
         if (data.success) {
           setJamTersedia(data.jamTersedia);
-          const isDefault = data.jamTersedia.length === 10 && [1,2,3,4,5,6,7,8,9,10].every((j: number) => data.jamTersedia.includes(j));
+          const isDefault = data.jamTersedia.length === 13 && [1,2,3,4,5,6,7,8,9,10,11,12,13].every((j: number) => data.jamTersedia.includes(j));
           setHasJamConfig(!isDefault);
           setKonfigJam(data.jamTersedia);
           setKonfigKeterangan(data.keterangan || '');
@@ -1554,7 +1554,7 @@ export default function PresensiPage() {
                       <i className="fas fa-cog" style={{ marginRight: 6 }}></i>Atur Jam Tersedia untuk {tanggal || 'tanggal ini'}
                     </p>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
-                      {[1,2,3,4,5,6,7,8,9,10].map(j => (
+                      {[1,2,3,4,5,6,7,8,9,10,11,12,13].map(j => (
                         <label key={j} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', padding: '4px 10px', background: konfigJam.includes(j) ? '#0284c7' : '#e2e8f0', color: konfigJam.includes(j) ? 'white' : '#475569', borderRadius: 8, fontWeight: 600, fontSize: '0.85rem', userSelect: 'none' }}>
                           <input
                             type="checkbox"
@@ -1605,8 +1605,8 @@ export default function PresensiPage() {
                             const res = await fetch(`/api/jam-config?tanggal=${tanggal}`, { method: 'DELETE' });
                             const data = await res.json();
                             if (data.success) {
-                              setJamTersedia([1,2,3,4,5,6,7,8,9,10]);
-                              setKonfigJam([1,2,3,4,5,6,7,8,9,10]);
+                              setJamTersedia([1,2,3,4,5,6,7,8,9,10,11,12,13]);
+                              setKonfigJam([1,2,3,4,5,6,7,8,9,10,11,12,13]);
                               setKonfigKeterangan('');
                               setHasJamConfig(false);
                               setShowJamConfig(false);
