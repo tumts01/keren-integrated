@@ -49,6 +49,18 @@ export default function PerangkatUjianPage() {
     }
   };
 
+  const [nobangDesign, setNobangDesign] = useState<string | null>(null);
+  const handleNobangDesignUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setNobangDesign(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   // Default layout settings in percentages
   const [layout, setLayout] = useState({
     photoW: 45,
@@ -59,7 +71,20 @@ export default function PerangkatUjianPage() {
     detailY: 81.5,
     detailSize: 5.0,
   });
+  const [layoutNobang, setLayoutNobang] = useState({
+    nameX: 58,
+    nameY: 55,
+    nameSize: 7.0,
+    detailX: 58,
+    detailY: 75,
+    detailSize: 7.0,
+  });
 
+  const updateLayoutNobang = (key: string, value: number) => {
+    const newLayout = { ...layoutNobang, [key]: value };
+    setLayoutNobang(newLayout);
+    localStorage.setItem('nopes_layout_nobang', JSON.stringify(newLayout));
+  };
   const [isAdmin, setIsAdmin] = useState(false);
 
   // Load saved layout on mount
@@ -79,6 +104,13 @@ export default function PerangkatUjianPage() {
       try {
         setLayout(JSON.parse(saved));
       } catch(e) {}
+    }
+
+    const savedNobang = localStorage.getItem('nopes_layout_nobang');
+    if (savedNobang) {
+      try {
+        setLayoutNobang(JSON.parse(savedNobang));
+      } catch (e) {}
     }
   }, []);
 
@@ -158,6 +190,137 @@ export default function PerangkatUjianPage() {
     }
     setLoading(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const generateNobangPDF = async () => {
+    if (participants.length === 0) {
+      Swal.fire('Oops', 'Data peserta masih kosong!', 'warning');
+      return;
+    }
+
+    if (!nobangDesign) {
+      Swal.fire('Oops', 'Silakan impor design Nobang terlebih dahulu!', 'warning');
+      return;
+    }
+
+    setGenerating(true);
+    setProgress('Memuat template Nobang...');
+
+    try {
+      // Card dimensions in mm (10cm x 3.5cm)
+      const cardW = 100;
+      const cardH = 35;
+      const cols = 2;
+      const rows = 8;
+      const cardsPerPage = cols * rows; // 16
+
+      // A4 size in mm: 210 x 297
+      const pageW = 210;
+      const pageH = 297;
+      const marginX = (pageW - cols * cardW) / 2; // (210 - 200)/2 = 5
+      const marginY = (pageH - rows * cardH) / 2; // (297 - 280)/2 = 8.5
+
+      // Canvas pixel dimensions (300 DPI = ~11.81 pixels per mm)
+      const scale = 11.81;
+      const cW = Math.round(cardW * scale); // ~1181px
+      const cH = Math.round(cardH * scale); // ~413px
+
+      // Load template background once
+      const bgImg = await loadImage(nobangDesign);
+
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      // Helper to draw crop marks (garis bantu potong)
+      const drawCropMarks = (doc: any) => {
+        doc.setDrawColor(100, 100, 100);
+        doc.setLineWidth(0.2);
+        const markLen = 3; // 3mm length since margins are small
+
+        // Vertical marks (top and bottom)
+        for (let c = 0; c <= cols; c++) {
+          const vx = marginX + c * cardW;
+          doc.line(vx, marginY - markLen, vx, marginY);
+          doc.line(vx, pageH - marginY, vx, pageH - marginY + markLen);
+        }
+
+        // Horizontal marks (left and right)
+        for (let r = 0; r <= rows; r++) {
+          const hy = marginY + r * cardH;
+          doc.line(marginX - markLen, hy, marginX, hy);
+          doc.line(pageW - marginX, hy, pageW - marginX + markLen, hy);
+        }
+      };
+
+      // Draw crop marks on the first page
+      drawCropMarks(pdf);
+
+      const totalPages = Math.ceil(participants.length / cardsPerPage);
+
+      for (let i = 0; i < participants.length; i++) {
+        const pageIdx = Math.floor(i / cardsPerPage);
+        const posInPage = i % cardsPerPage;
+
+        if (posInPage === 0 && i > 0) {
+          pdf.addPage();
+          drawCropMarks(pdf);
+        }
+
+        setProgress(`Merender nobang ${i + 1} / ${participants.length} (Hal ${pageIdx + 1}/${totalPages})`);
+
+        const col = posInPage % cols;
+        const row = Math.floor(posInPage / cols);
+
+        // Draw card on canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = cW;
+        canvas.height = cH;
+        const ctx = canvas.getContext('2d')!;
+
+        // Draw background template
+        ctx.drawImage(bgImg, 0, 0, cW, cH);
+
+        // Draw Text
+        const p = participants[i];
+        ctx.fillStyle = '#000';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // NAME
+        ctx.font = `bold ${Math.round(cH * (layoutNobang.nameSize / 100))}px Arial, sans-serif`;
+        const nameText = (p.nama || '').toUpperCase();
+        const maxTextWidth = cW * 0.8;
+        let displayName = nameText;
+        if (ctx.measureText(nameText).width > maxTextWidth) {
+          while (ctx.measureText(displayName + '...').width > maxTextWidth && displayName.length > 0) {
+            displayName = displayName.slice(0, -1);
+          }
+          displayName += '...';
+        }
+        ctx.fillText(displayName, cW * (layoutNobang.nameX / 100), cH * (layoutNobang.nameY / 100));
+
+        // DETAIL (Kelas | No Ujian | Ruang)
+        ctx.fillStyle = '#1e40af';
+        ctx.font = `bold ${Math.round(cH * (layoutNobang.detailSize / 100))}px Arial, sans-serif`;
+        ctx.fillText(`${p.kelas || ''} | ${p.noUjian || ''} | ${p.ruang || ''}`, cW * (layoutNobang.detailX / 100), cH * (layoutNobang.detailY / 100));
+
+        // Add card to PDF as compressed JPEG
+        const imgData = canvas.toDataURL('image/jpeg', 0.85);
+        const x = marginX + col * cardW;
+        const y = marginY + row * cardH;
+        pdf.addImage(imgData, 'JPEG', x, y, cardW, cardH);
+      }
+
+      setProgress('Menyimpan PDF...');
+      pdf.save('Kartu_Nobang_Ujian.pdf');
+
+      Swal.fire('Berhasil!', `PDF Nobang berhasil digenerate (${participants.length} kartu, ${totalPages} halaman)`, 'success');
+    } catch (err) {
+      console.error(err);
+      Swal.fire('Error', 'Gagal generate PDF: ' + String(err), 'error');
+    }
+
+    setGenerating(false);
+    setProgress('');
   };
 
   const generatePDF = async () => {
@@ -369,43 +532,78 @@ export default function PerangkatUjianPage() {
         </p>
       </div>
 
-      {isAdmin && (
+      {isAdmin && activeTab === 'nopes' && (
         <details style={{ marginBottom: '20px', background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-        <summary style={{ fontWeight: 'bold', cursor: 'pointer', color: '#334155' }}>
-          <i className="fas fa-sliders-h" style={{ marginRight: '8px' }}></i>
-          Atur Posisi Desain (Klik untuk membuka)
-        </summary>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '16px' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Lebar Foto (%)</label>
-            <input type="number" step="0.5" value={layout.photoW} onChange={e => updateLayout('photoW', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+          <summary style={{ fontWeight: 'bold', cursor: 'pointer', color: '#334155' }}>
+            <i className="fas fa-sliders-h" style={{ marginRight: '8px' }}></i>
+            Atur Posisi Desain Nopes (Klik untuk membuka)
+          </summary>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '16px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Lebar Foto (%)</label>
+              <input type="number" step="0.5" value={layout.photoW} onChange={e => updateLayout('photoW', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Tinggi Foto (%)</label>
+              <input type="number" step="0.5" value={layout.photoH} onChange={e => updateLayout('photoH', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Posisi Y Foto (%)</label>
+              <input type="number" step="0.5" value={layout.photoY} onChange={e => updateLayout('photoY', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Posisi Y Nama (%)</label>
+              <input type="number" step="0.5" value={layout.nameY} onChange={e => updateLayout('nameY', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Ukuran Font Nama (%)</label>
+              <input type="number" step="0.5" value={layout.nameSize} onChange={e => updateLayout('nameSize', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Posisi Y Detail (%)</label>
+              <input type="number" step="0.5" value={layout.detailY} onChange={e => updateLayout('detailY', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Ukuran Font Detail (%)</label>
+              <input type="number" step="0.5" value={layout.detailSize} onChange={e => updateLayout('detailSize', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            </div>
           </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Tinggi Foto (%)</label>
-            <input type="number" step="0.5" value={layout.photoH} onChange={e => updateLayout('photoH', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+        </details>
+      )}
+
+      {isAdmin && activeTab === 'nobang' && (
+        <details style={{ marginBottom: '20px', background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+          <summary style={{ fontWeight: 'bold', cursor: 'pointer', color: '#334155' }}>
+            <i className="fas fa-sliders-h" style={{ marginRight: '8px' }}></i>
+            Atur Posisi Desain Nobang (Klik untuk membuka)
+          </summary>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '16px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Posisi X Nama (%)</label>
+              <input type="number" step="0.5" value={layoutNobang.nameX} onChange={e => updateLayoutNobang('nameX', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Posisi Y Nama (%)</label>
+              <input type="number" step="0.5" value={layoutNobang.nameY} onChange={e => updateLayoutNobang('nameY', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Ukuran Font Nama (%)</label>
+              <input type="number" step="0.5" value={layoutNobang.nameSize} onChange={e => updateLayoutNobang('nameSize', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Posisi X Detail (%)</label>
+              <input type="number" step="0.5" value={layoutNobang.detailX} onChange={e => updateLayoutNobang('detailX', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Posisi Y Detail (%)</label>
+              <input type="number" step="0.5" value={layoutNobang.detailY} onChange={e => updateLayoutNobang('detailY', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Ukuran Font Detail (%)</label>
+              <input type="number" step="0.5" value={layoutNobang.detailSize} onChange={e => updateLayoutNobang('detailSize', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            </div>
           </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Posisi Y Foto (%)</label>
-            <input type="number" step="0.5" value={layout.photoY} onChange={e => updateLayout('photoY', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Posisi Y Nama (%)</label>
-            <input type="number" step="0.5" value={layout.nameY} onChange={e => updateLayout('nameY', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Ukuran Font Nama (%)</label>
-            <input type="number" step="0.5" value={layout.nameSize} onChange={e => updateLayout('nameSize', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Posisi Y Detail (%)</label>
-            <input type="number" step="0.5" value={layout.detailY} onChange={e => updateLayout('detailY', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Ukuran Font Detail (%)</label>
-            <input type="number" step="0.5" value={layout.detailSize} onChange={e => updateLayout('detailSize', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
-          </div>
-        </div>
-      </details>
+        </details>
       )}
 
       {/* Tabs */}
@@ -501,10 +699,60 @@ export default function PerangkatUjianPage() {
 
         {activeTab === 'nobang' && (
           <div>
-            <h2 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '16px', color: '#334155' }}>
-              Generate Nomor Bangku (Nobang)
-            </h2>
-            <p style={{ color: '#64748b' }}>Fitur untuk cetak Nobang akan ditambahkan di sini.</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: 0 }}>
+                Daftar Nomor Bangku
+              </h2>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={downloadTemplate} style={{ padding: '8px 16px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: '#475569' }}>
+                  <i className="fas fa-download"></i> Template Excel
+                </button>
+                <label style={{ padding: '8px 16px', background: nobangDesign ? '#10b981' : '#f59e0b', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
+                  <i className="fas fa-image"></i> {nobangDesign ? 'Design OK' : 'Import Design'}
+                  <input type="file" accept="image/png, image/jpeg" style={{ display: 'none' }} onChange={handleNobangDesignUpload} disabled={loading || generating} />
+                </label>
+                <label style={{ padding: '8px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
+                  <i className="fas fa-upload"></i> {loading ? 'Memproses...' : 'Import Data'}
+                  <input type="file" accept=".xlsx, .xls" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileUpload} disabled={loading} />
+                </label>
+                {(participants.length > 0 && nobangDesign) && (
+                  <button onClick={generateNobangPDF} disabled={generating} style={{ padding: '8px 16px', background: generating ? '#94a3b8' : '#10b981', border: 'none', borderRadius: '6px', cursor: generating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
+                    <i className={generating ? 'fas fa-spinner fa-spin' : 'fas fa-file-pdf'}></i>
+                    {generating ? progress : `Download PDF (${participants.length} Kartu)`}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {participants.length > 0 ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>NISN</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Nama Siswa</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>No Ujian</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Ruang</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {participants.map((p, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ padding: '12px' }}>{p.nisn}</td>
+                        <td style={{ padding: '12px', fontWeight: 'bold', color: '#334155' }}>{p.nama}</td>
+                        <td style={{ padding: '12px' }}>{p.noUjian}</td>
+                        <td style={{ padding: '12px' }}>{p.ruang}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+                <i className="fas fa-users" style={{ fontSize: '48px', marginBottom: '16px' }}></i>
+                <p>Belum ada data. Silakan import dari Excel.</p>
+              </div>
+            )}
           </div>
         )}
       </div>
