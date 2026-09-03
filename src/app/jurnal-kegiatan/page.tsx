@@ -64,7 +64,7 @@ export default function JurnalKegiatanPage() {
   const [jurnalStafForm, setJurnalStafForm] = useState({
     namaStaf: '', kegiatan: '', tanggal: new Date().toISOString().split('T')[0], mulaiDari: '', sampaiDengan: '', keterangan: ''
   });
-  const [jurnalStafFile, setJurnalStafFile] = useState<File | null>(null);
+  const [jurnalStafFiles, setJurnalStafFiles] = useState<File[]>([]);
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
   const [filterName, setFilterName] = useState('');
@@ -175,32 +175,43 @@ export default function JurnalKegiatanPage() {
     
     setSavingJurnalStaf(true);
     try {
-      let fotoUrl = '';
-      if (jurnalStafFile) {
-        const compressed = await compressImage(jurnalStafFile);
-        const formFile = new FormData();
-        formFile.append('file', compressed);
-        const upRes = await fetch('/api/jurnal-staf/upload', { method: 'POST', body: formFile });
-        const upJson = await upRes.json();
-        if (upJson.success) {
-          fotoUrl = upJson.link;
-        } else {
-          Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal mengupload foto jurnal staf' });
+      let fotoUrls: string[] = [];
+      if (jurnalStafFiles.length > 0) {
+        const uploadPromises = jurnalStafFiles.map(async (f) => {
+          const compressed = await compressImage(f);
+          const formFile = new FormData();
+          formFile.append('file', compressed);
+          const upRes = await fetch('/api/jurnal-staf/upload', { method: 'POST', body: formFile });
+          const upJson = await upRes.json();
+          if (upJson.success) {
+            return upJson.link;
+          } else {
+            throw new Error('Gagal mengupload file: ' + f.name);
+          }
+        });
+
+        try {
+          const links = await Promise.all(uploadPromises);
+          fotoUrls = links.filter(Boolean) as string[];
+        } catch (err: any) {
+          Swal.fire({ icon: 'error', title: 'Gagal Upload', text: err.message });
           setSavingJurnalStaf(false);
           return;
         }
       }
 
+      const fotoUrlStr = fotoUrls.join(', ');
+
       const res = await fetch('/api/jurnal-staf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...jurnalStafForm, fotoKegiatan: fotoUrl })
+        body: JSON.stringify({ ...jurnalStafForm, fotoKegiatan: fotoUrlStr })
       });
       const json = await res.json();
       if (json.success) {
         Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Jurnal Kegiatan berhasil disimpan!' });
         setJurnalStafForm({ ...jurnalStafForm, kegiatan: '', mulaiDari: '', sampaiDengan: '', keterangan: '' });
-        setJurnalStafFile(null);
+        setJurnalStafFiles([]);
         // Refresh data
         const jsRes = await fetch('/api/jurnal-staf');
         const jsJson = await jsRes.json();
@@ -498,14 +509,25 @@ export default function JurnalKegiatanPage() {
                       }}>
                         <i className="fas fa-camera" style={{ fontSize: '1.5rem', marginBottom: '8px' }}></i> 
                         <span>Pilih File Foto</span>
-                        <input type="file" accept="image/*" 
+                        <input type="file" accept="image/*" multiple
                           style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', borderWidth: 0 }}
-                          onChange={e => setJurnalStafFile(e.target.files ? e.target.files[0] : null)} />
+                          onChange={e => {
+                            if (e.target.files) {
+                              setJurnalStafFiles(Array.from(e.target.files));
+                            }
+                          }} />
                       </label>
                     </div>
-                    {jurnalStafFile && (
-                      <div style={{ padding: '8px 12px', marginTop: '8px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.9rem', color: '#16a34a', fontWeight: 600 }}>
-                        ✅ {jurnalStafFile.name}
+                    {jurnalStafFiles.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '12px' }}>
+                        {jurnalStafFiles.map((file, i) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.9rem', color: '#16a34a', fontWeight: 600 }}>
+                            <span>✅ {file.name}</span>
+                            <button type="button" onClick={() => setJurnalStafFiles(prev => prev.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}>
+                              <i className="fas fa-times"></i>
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -622,9 +644,13 @@ export default function JurnalKegiatanPage() {
                         <td>{j.keterangan || '-'}</td>
                         <td style={{ textAlign: 'center' }}>
                           {j.fotoKegiatan ? (
-                            <a href={j.fotoKegiatan} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', fontWeight: 600 }}>
-                              <i className="fas fa-image"></i> Lihat
-                            </a>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                              {j.fotoKegiatan.split(', ').map((url: string, idx: number) => (
+                                <a key={idx} href={url} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', fontWeight: 600 }}>
+                                  <i className="fas fa-image"></i> {j.fotoKegiatan.split(', ').length > 1 ? `Foto ${idx + 1}` : 'Lihat'}
+                                </a>
+                              ))}
+                            </div>
                           ) : '-'}
                         </td>
                       </tr>
