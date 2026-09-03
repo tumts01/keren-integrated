@@ -949,6 +949,8 @@ export default function SiswaPage() {
   const [selectedTahun, setSelectedTahun] = useState<string>('Semua');
   const [selectedTingkat, setSelectedTingkat] = useState<string>('Semua');
   const [selectedRombel, setSelectedRombel] = useState<string>('Semua');
+  const [selectedDomisili, setSelectedDomisili] = useState<string>('Semua');
+  const [selectedAsalSekolah, setSelectedAsalSekolah] = useState<string>('Semua');
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showPresensiModal, setShowPresensiModal] = useState(false);
@@ -1033,6 +1035,16 @@ export default function SiswaPage() {
     ).map(s => (s.rombel || '').trim()).filter(Boolean)
   )).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
+  const uniqueDomisili = Array.from(new Set(
+    data.filter(s => selectedTahun === 'Semua' ? s.isLatest : s.tahunAjaran === selectedTahun)
+        .map(s => (s.domisili || '').trim()).filter(Boolean)
+  )).sort((a, b) => a.localeCompare(b));
+
+  const uniqueAsalSekolah = Array.from(new Set(
+    data.filter(s => selectedTahun === 'Semua' ? s.isLatest : s.tahunAjaran === selectedTahun)
+        .map(s => (s.rawMetadata?.['SD/MI'] || s.rawMetadata?.['ASAL SEKOLAH'] || '').trim()).filter(Boolean)
+  )).sort((a, b) => a.localeCompare(b));
+
   const filteredData = data.filter(s => {
     const matchSearch = s.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         s.nisn.includes(searchTerm) ||
@@ -1041,7 +1053,10 @@ export default function SiswaPage() {
     const matchTahun = selectedTahun === 'Semua' ? s.isLatest : s.tahunAjaran === selectedTahun;
     const matchTingkat = selectedTingkat === 'Semua' ? true : s.rombel.startsWith(selectedTingkat);
     const matchRombel = selectedRombel === 'Semua' ? true : (s.rombel || '').trim() === selectedRombel;
-    return matchSearch && matchTahun && matchTingkat && matchRombel;
+    const matchDomisili = selectedDomisili === 'Semua' ? true : (s.domisili || '').trim() === selectedDomisili;
+    const asalSekolah = (s.rawMetadata?.['SD/MI'] || s.rawMetadata?.['ASAL SEKOLAH'] || '').trim();
+    const matchAsalSekolah = selectedAsalSekolah === 'Semua' ? true : asalSekolah === selectedAsalSekolah;
+    return matchSearch && matchTahun && matchTingkat && matchRombel && matchDomisili && matchAsalSekolah;
   });
 
   const statsData = data.filter(s => selectedTahun === 'Semua' ? s.isLatest : s.tahunAjaran === selectedTahun);
@@ -1332,7 +1347,7 @@ const handleExportMissingNisnNik = () => {
             Data Siswa
           </div>
 
-          <div className={styles.actions}>
+          <div className={styles.actions} style={{ flexWrap: 'wrap' }}>
             <select
               className={styles.filterSelect}
               value={selectedTahun}
@@ -1361,6 +1376,26 @@ const handleExportMissingNisnNik = () => {
               <option value="Semua">Semua Rombel</option>
               {uniqueRombel.map(r => (
                 <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+            <select
+              className={styles.filterSelect}
+              value={selectedDomisili}
+              onChange={(e) => setSelectedDomisili(e.target.value)}
+            >
+              <option value="Semua">Semua Domisili</option>
+              {uniqueDomisili.map(d => (
+                <option key={d} value={d}>{d}</option>
+              ))}
+            </select>
+            <select
+              className={styles.filterSelect}
+              value={selectedAsalSekolah}
+              onChange={(e) => setSelectedAsalSekolah(e.target.value)}
+            >
+              <option value="Semua">Semua Asal Sekolah</option>
+              {uniqueAsalSekolah.map(a => (
+                <option key={a} value={a}>{a}</option>
               ))}
             </select>
             <div className={styles.searchBox}>
