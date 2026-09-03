@@ -102,6 +102,8 @@ export default function PresensiPage() {
   const [piketRows, setPiketRows] = useState<Array<{ id: string; nama: string; status: string }>>([
     { id: `row_${Date.now()}`, nama: '', status: 'A' }
   ]);
+  const [piketDropdownOpenId, setPiketDropdownOpenId] = useState<string | null>(null);
+  const [piketSearchSiswa, setPiketSearchSiswa] = useState('');
 
   useEffect(() => {
     if (!tanggal || !selectedKelas) {
@@ -1184,13 +1186,54 @@ export default function PresensiPage() {
                       <tr key={row.id}>
                         <td style={{ textAlign: 'center', color: '#94a3b8' }}>{i + 1}</td>
                         <td>
-                          <input
-                            list="siswa-datalist"
-                            value={row.nama}
-                            onChange={e => setPiketRows(prev => prev.map(r => r.id === row.id ? { ...r, nama: e.target.value } : r))}
-                            placeholder="Cari nama siswa..."
-                            style={{ width: '100%', padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '14px' }}
-                          />
+                          <div className={styles.dropdownContainer}>
+                            <div 
+                              className={styles.dropdownButton} 
+                              onClick={() => {
+                                setPiketDropdownOpenId(piketDropdownOpenId === row.id ? null : row.id);
+                                setPiketSearchSiswa('');
+                              }}
+                              style={{ padding: '8px 10px', fontSize: '14px', borderRadius: '6px' }}
+                            >
+                              <span style={{ color: row.nama ? '#1e293b' : '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {row.nama || 'Cari nama siswa...'}
+                              </span>
+                              <i className="fas fa-chevron-down" style={{ color: '#94a3b8' }}></i>
+                            </div>
+
+                            {piketDropdownOpenId === row.id && (
+                              <div className={styles.dropdownMenu} style={{ minWidth: '300px' }}>
+                                <div className={styles.dropdownSearch}>
+                                  <input 
+                                    type="text" 
+                                    placeholder="Cari siswa..." 
+                                    value={piketSearchSiswa}
+                                    onChange={(e) => setPiketSearchSiswa(e.target.value)}
+                                    autoFocus
+                                  />
+                                </div>
+                                <div className={styles.dropdownList} style={{ maxHeight: '200px' }}>
+                                  {siswaList
+                                    .filter((s: any) => s.nama.toLowerCase().includes(piketSearchSiswa.toLowerCase()))
+                                    .map((s: any, idx: number) => (
+                                      <div 
+                                        key={idx} 
+                                        className={styles.dropdownItem}
+                                        onClick={() => {
+                                          setPiketRows(prev => prev.map(r => r.id === row.id ? { ...r, nama: s.nama } : r));
+                                          setPiketDropdownOpenId(null);
+                                        }}
+                                      >
+                                        {s.nama}
+                                      </div>
+                                    ))}
+                                  {siswaList.filter((s: any) => s.nama.toLowerCase().includes(piketSearchSiswa.toLowerCase())).length === 0 && (
+                                    <div style={{ padding: '10px', textAlign: 'center', color: '#94a3b8' }}>Nama tidak ditemukan</div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td>
                           <div className={styles.radioGroup}>
@@ -1226,9 +1269,7 @@ export default function PresensiPage() {
                     ))}
                   </tbody>
                 </table>
-                <datalist id="siswa-datalist">
-                  {siswaList.map((s: any) => <option key={s.id} value={s.nama} />)}
-                </datalist>
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
                   <button
                     onClick={() => setPiketRows(prev => [...prev, { id: `row_${Date.now()}`, nama: '', status: 'A' }])}
