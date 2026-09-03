@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import styles from './JurnalKegiatan.module.css';
 import Swal from 'sweetalert2';
+import JurnalMgmpTab from '@/components/JurnalMgmpTab';
 
 const compressImage = async (file: File): Promise<File> => {
   if (!file.type.startsWith('image/')) return file;
@@ -57,7 +58,7 @@ const compressImage = async (file: File): Promise<File> => {
 };
 
 export default function JurnalKegiatanPage() {
-  const [activeTab, setActiveTab] = useState<'notulen' | 'lpj' | 'jurnal-staf'>('notulen');
+  const [activeTab, setActiveTab] = useState<'notulen' | 'lpj' | 'jurnal-staf' | 'jurnal-mgmp'>('notulen');
   const [jurnalStafSubTab, setJurnalStafSubTab] = useState<'isi' | 'rekap'>('isi');
   const [jurnalStafData, setJurnalStafData] = useState<any[]>([]);
   const [savingJurnalStaf, setSavingJurnalStaf] = useState(false);
@@ -348,6 +349,12 @@ export default function JurnalKegiatanPage() {
             >
               <i className="fas fa-user-clock"></i> Jurnal Guru & Staf
             </button>
+            <button 
+              className={`btn ${activeTab === 'jurnal-mgmp' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setActiveTab('jurnal-mgmp')}
+            >
+              <i className="fas fa-users-cog"></i> Jurnal MGMP
+            </button>
           </div>
           
           {activeTab === 'notulen' && (
@@ -444,7 +451,7 @@ export default function JurnalKegiatanPage() {
               )}
             </tbody>
           </table>
-        ) : (
+        ) : activeTab === 'jurnal-staf' ? (
           <div className={styles.card}>
             <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
               <button 
@@ -687,7 +694,9 @@ export default function JurnalKegiatanPage() {
             </div>
           )}
         </div>
-      )}
+      ) : activeTab === 'jurnal-mgmp' ? (
+        <JurnalMgmpTab />
+      ) : null}
     </div>
 
       {showModal && (
