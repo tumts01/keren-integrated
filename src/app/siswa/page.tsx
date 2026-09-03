@@ -1457,6 +1457,7 @@ const handleExportMissingNisnNik = () => {
                   <th>Tanggal Lahir</th>
                   <th>Jenis Kelamin</th>
                   <th>Rombel</th>
+                  <th>Asal Sekolah</th>
                   <th>Domisili</th>
                   <th>Alamat</th>
                   <th>Nama Ayah</th>
@@ -1496,6 +1497,7 @@ const handleExportMissingNisnNik = () => {
                       <td>{siswa.tanggalLahir || '-'}</td>
                       <td>{siswa.jenisKelamin || '-'}</td>
                       <td>{siswa.rombel || '-'}</td>
+                      <td>{siswa.rawMetadata?.['ASAL SD/MI'] || siswa.rawMetadata?.['ASAL SEKOLAH'] || '-'}</td>
                       <td>{siswa.domisili || '-'}</td>
                       <td>{siswa.alamat || '-'}</td>
                       <td>{siswa.namaAyah || '-'}</td>
