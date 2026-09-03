@@ -953,6 +953,14 @@ export default function SiswaPage() {
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showPresensiModal, setShowPresensiModal] = useState(false);
   const [showMutasiModal, setShowMutasiModal] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('keren_user_data');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -1504,13 +1512,15 @@ const handleExportMissingNisnNik = () => {
                             >
                               Detail
                             </button>
-                            <button
-                              className="btn"
-                              style={{ padding: '6px 12px', fontSize: '0.8rem', background: '#f59e0b', color: 'white' }}
-                              onClick={() => handleEditClick(siswa)}
-                            >
-                              <i className="fas fa-edit"></i>
-                            </button>
+                            {user?.role?.toLowerCase() === 'admin' && (
+                              <button
+                                className="btn"
+                                style={{ padding: '6px 12px', fontSize: '0.8rem', background: '#f59e0b', color: 'white' }}
+                                onClick={() => handleEditClick(siswa)}
+                              >
+                                <i className="fas fa-edit"></i>
+                              </button>
+                            )}
                           </div>
                         </td>
                     </tr>
