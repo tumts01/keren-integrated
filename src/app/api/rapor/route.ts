@@ -5,9 +5,17 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    // 1. Fetch Students from Supabase
-    const { data: rawSiswa, error: errorSiswa } = await supabase.from('data_induk').select('*');
-    if (errorSiswa) throw errorSiswa;
+    // 1. Fetch Students from Supabase (handle >1000 rows)
+    let rawSiswa: any[] = [];
+    let page = 0;
+    while (true) {
+      const { data, error } = await supabase.from('data_induk').select('*').range(page * 1000, (page + 1) * 1000 - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      rawSiswa.push(...data);
+      if (data.length < 1000) break;
+      page++;
+    }
     
     const activeStudents = (rawSiswa || []).map((row: any) => {
         let rombel = (row.metadata?.['ROMBEL KELAS 9'] || '').trim();
@@ -24,10 +32,18 @@ export async function GET() {
     }).filter((s: any) => s.status === 'aktif' && s.kelas && s.nis);
 
     // 2. Fetch Config & Returned Report Cards from Supabase in Parallel
-    const [configRes, returnedRes] = await Promise.all([
-      supabase.from('rapor_config').select('*'),
-      supabase.from('rapor_pengembalian').select('*')
-    ]);
+    const configRes = await supabase.from('rapor_config').select('*');
+    
+    let returnedResData: any[] = [];
+    let rPage = 0;
+    while (true) {
+      const { data, error } = await supabase.from('rapor_pengembalian').select('*').range(rPage * 1000, (rPage + 1) * 1000 - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      returnedResData.push(...data);
+      if (data.length < 1000) break;
+      rPage++;
+    }
 
     let startDate = '', endDate = '';
     if (configRes.data) {
@@ -38,8 +54,8 @@ export async function GET() {
     }
 
     let returnedNis = new Set<string>();
-    if (returnedRes.data) {
-      returnedRes.data.forEach(r => {
+    if (returnedResData.length > 0) {
+      returnedResData.forEach(r => {
         const scanData = (r.scan_data || '').trim();
         const nis = scanData.split(' ')[0]; // Extract NIS from first word
         
