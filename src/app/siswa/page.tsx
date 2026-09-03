@@ -638,6 +638,7 @@ function PrintSiswaModal({
           'Tempat Lahir': s.tempatLahir,
           'Tanggal Lahir': s.tanggalLahir,
           'Kelas': s.rombel,
+          'Asal Sekolah': s.rawMetadata?.['SD/MI'] || s.rawMetadata?.['ASAL SEKOLAH'] || '',
           'Alamat': s.alamat,
           'No. HP / WA': s.noHp,
           'Nama Ayah': s.namaAyah,
@@ -660,6 +661,7 @@ function PrintSiswaModal({
         'Tempat Lahir': s.tempatLahir || '',
         'Tanggal Lahir': s.tanggalLahir || '',
         'Kelas': s.rombel || '',
+        'Asal Sekolah': s.rawMetadata?.['SD/MI'] || s.rawMetadata?.['ASAL SEKOLAH'] || '',
         'Domisili': s.domisili || '',
         'Alamat': s.alamat || '',
         'No. HP / WA': s.noHp || '',
@@ -1095,6 +1097,7 @@ export default function SiswaPage() {
       'Tempat Lahir': s.tempatLahir,
       'Tanggal Lahir': s.tanggalLahir,
       'Rombel/Kelas': s.rombel,
+      'Asal Sekolah': s.rawMetadata?.['SD/MI'] || s.rawMetadata?.['ASAL SEKOLAH'] || '',
       'Status': s.status,
       'Tahun Ajaran': s.tahunAjaran,
       'Domisili': s.domisili,
@@ -1111,7 +1114,7 @@ export default function SiswaPage() {
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Data Siswa');
     worksheet['!cols'] = [
       { wch: 5 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 35 },
-      { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 12 },
+      { wch: 15 }, { wch: 20 }, { wch: 15 }, { wch: 12 }, { wch: 30 },
       { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 40 },
       { wch: 25 }, { wch: 20 }, { wch: 25 }, { wch: 20 }, { wch: 18 }
     ];
