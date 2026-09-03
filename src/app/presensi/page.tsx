@@ -1227,7 +1227,7 @@ export default function PresensiPage() {
                   </tbody>
                 </table>
                 <datalist id="siswa-datalist">
-                  {allSiswaNames.map((nama: string, i: number) => <option key={i} value={nama} />)}
+                  {siswaList.map((s: any) => <option key={s.id} value={s.nama} />)}
                 </datalist>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
                   <button
