@@ -35,7 +35,19 @@ export default function PerangkatUjianPage() {
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState('');
+  const [customDesign, setCustomDesign] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDesignUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setCustomDesign(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Default layout settings in percentages
   const [layout, setLayout] = useState({
@@ -176,8 +188,16 @@ export default function PerangkatUjianPage() {
       const cW = Math.round(cardW * scale); // ~659px
       const cH = Math.round(cardH * scale); // ~1122px
 
+      // Require custom design
+      if (!customDesign) {
+        Swal.fire('Oops', 'Silakan impor design terlebih dahulu!', 'warning');
+        setGenerating(false);
+        setProgress('');
+        return;
+      }
+
       // Load template background once
-      const bgImg = await loadImage('/nopes%20sts%20ganjil.png');
+      const bgImg = await loadImage(customDesign);
 
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
@@ -418,11 +438,15 @@ export default function PerangkatUjianPage() {
                 <button onClick={downloadTemplate} style={{ padding: '8px 16px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: '#475569' }}>
                   <i className="fas fa-download"></i> Template Excel
                 </button>
+                <label style={{ padding: '8px 16px', background: customDesign ? '#10b981' : '#f59e0b', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
+                  <i className="fas fa-image"></i> {customDesign ? 'Design OK' : 'Import Design'}
+                  <input type="file" accept="image/png, image/jpeg" style={{ display: 'none' }} onChange={handleDesignUpload} disabled={loading || generating} />
+                </label>
                 <label style={{ padding: '8px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
                   <i className="fas fa-upload"></i> {loading ? 'Memproses...' : 'Import Data'}
                   <input type="file" accept=".xlsx, .xls" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileUpload} disabled={loading} />
                 </label>
-                {participants.length > 0 && (
+                {(participants.length > 0 && customDesign) && (
                   <button onClick={generatePDF} disabled={generating} style={{ padding: '8px 16px', background: generating ? '#94a3b8' : '#10b981', border: 'none', borderRadius: '6px', cursor: generating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
                     <i className={generating ? 'fas fa-spinner fa-spin' : 'fas fa-file-pdf'}></i>
                     {generating ? progress : `Download PDF (${participants.length} Kartu)`}
