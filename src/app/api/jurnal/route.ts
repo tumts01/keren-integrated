@@ -134,6 +134,88 @@ export async function POST(request: Request) {
   }
 }
 
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, tanggal, jamKe, kelas, mapel, guru, materi, tahunAjaran } = body;
+
+    if (!id || !tanggal || !jamKe || !kelas || !mapel || !materi) {
+      return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
+    }
+
+    const jamKeText = String(jamKe);
+
+    // Get all rows for that date and class to check for overlap
+    const { data: rows, error: readError } = await supabase
+      .from('data_jurnal_mengajar')
+      .select('*')
+      .eq('tanggal', tanggal)
+      .eq('kelas', kelas);
+
+    if (readError) throw readError;
+
+    // Check for overlap, excluding the row being edited
+    const submittedJams = jamKeText.split(',').map(j => j.trim()).filter(Boolean);
+    let overlappingRow = null;
+
+    if (rows && rows.length > 0) {
+      for (const r of rows) {
+        // Skip self (compare by supabase id or metadata ID)
+        if (r.id.toString() === id.toString() || r.metadata?.['ID'] === id) continue;
+
+        const existingJamKeStr = cleanJamKe(String(r.metadata?.['JAM KE'] || ''));
+        const existingJams = existingJamKeStr.split(',').map(j => j.trim()).filter(Boolean);
+        
+        const hasOverlap = submittedJams.some(j => existingJams.includes(j));
+        if (hasOverlap) {
+          overlappingRow = r;
+          break;
+        }
+      }
+    }
+
+    if (overlappingRow) {
+      const dbMapel = overlappingRow.metadata?.['MAPEL'];
+      const dbGuru = overlappingRow.metadata?.['NAMA GURU'];
+      return NextResponse.json({ 
+        success: false, 
+        error: `Jam ke-${jamKeText} di kelas ${kelas} bertabrakan dengan isian milik ${dbGuru} (Mapel: ${dbMapel}).` 
+      }, { status: 409 });
+    }
+
+    // Find the actual DB row to update
+    let dbId = parseInt(id, 10);
+    if (isNaN(dbId)) {
+      const { data: foundRow } = await supabase.from('data_jurnal_mengajar').select('id, metadata').contains('metadata', { 'ID': id }).single();
+      if (!foundRow) return NextResponse.json({ success: false, error: 'Jurnal tidak ditemukan' }, { status: 404 });
+      dbId = foundRow.id;
+    }
+
+    // Fetch existing metadata to preserve fields like TIMESTAMP
+    const { data: existingRow } = await supabase.from('data_jurnal_mengajar').select('metadata').eq('id', dbId).single();
+
+    const metadata = {
+      ...(existingRow?.metadata || {}),
+      'TANGGAL': tanggal,
+      'JAM KE': `'${jamKeText}`,
+      'TAHUN AJARAN': tahunAjaran,
+      'KELAS': kelas,
+      'MAPEL': mapel,
+      'NAMA GURU': guru,
+      'MATERI': materi
+    };
+
+    const { error: updateError } = await supabase.from('data_jurnal_mengajar').update({ tanggal, kelas, metadata }).eq('id', dbId);
+    if (updateError) throw updateError;
+
+    return NextResponse.json({ success: true, message: 'Jurnal berhasil diperbarui' });
+
+  } catch (error: any) {
+    console.error('PUT Jurnal Error:', error);
+    return NextResponse.json({ success: false, error: 'Gagal memperbarui jurnal: ' + error.message }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
