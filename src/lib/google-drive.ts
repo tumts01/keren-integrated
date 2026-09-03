@@ -52,11 +52,13 @@ export const uploadFileToDrive = async (
   params.append('folderId', folderId);
 
   try {
+    const bodyString = params.toString();
     const response = await fetch(gasUrl, {
       method: 'POST',
-      body: params,
+      body: bodyString,
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(bodyString).toString(),
       },
     });
 
