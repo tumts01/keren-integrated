@@ -1,6 +1,8 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Swal from 'sweetalert2';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface JurnalMgmp {
   id: number;
@@ -63,6 +65,7 @@ export default function JurnalMgmpTab() {
   const [filterBulan, setFilterBulan] = useState('');
 
   // Form state
+  const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState({
     namaGuru: '',
     bidangStudi: '',
@@ -100,12 +103,32 @@ export default function JurnalMgmpTab() {
   useEffect(() => { fetchData(); }, []);
 
   const resetForm = () => {
+    setEditId(null);
     setForm({ namaGuru: '', bidangStudi: '', namaKegiatan: '', tempat: '', tanggal: '', penyelenggara: '', agenda: '', notulen: '' });
     setSuratTugasFile(null);
     setDokumentasiFiles([]);
     setUploadProgress('');
     if (suratTugasRef.current) suratTugasRef.current.value = '';
     if (dokumentasiRef.current) dokumentasiRef.current.value = '';
+  };
+
+  const handleEdit = (item: JurnalMgmp) => {
+    setEditId(item.id);
+    setForm({
+      namaGuru: item.namaGuru,
+      bidangStudi: item.bidangStudi,
+      namaKegiatan: item.namaKegiatan,
+      tempat: item.tempat,
+      tanggal: item.tanggal,
+      penyelenggara: item.penyelenggara,
+      agenda: item.agenda,
+      notulen: item.notulen,
+    });
+    setSuratTugasFile(null);
+    setDokumentasiFiles([]);
+    if (suratTugasRef.current) suratTugasRef.current.value = '';
+    if (dokumentasiRef.current) dokumentasiRef.current.value = '';
+    setShowModal(true);
   };
 
   const uploadFile = async (file: File): Promise<string> => {
@@ -125,8 +148,8 @@ export default function JurnalMgmpTab() {
 
     setSubmitting(true);
     try {
-      let suratTugasUrl = '';
-      let dokumentasiUrls: string[] = [];
+      let suratTugasUrl = editId ? data.find(d => d.id === editId)?.suratTugas || '' : '';
+      let dokumentasiUrlsStr = editId ? data.find(d => d.id === editId)?.dokumentasi || '' : '';
 
       if (suratTugasFile) {
         setUploadProgress('Mengunggah surat tugas...');
@@ -137,6 +160,7 @@ export default function JurnalMgmpTab() {
       }
 
       if (dokumentasiFiles.length > 0) {
+        let dokumentasiUrls: string[] = [];
         for (let i = 0; i < dokumentasiFiles.length; i++) {
           setUploadProgress(`Mengunggah foto dokumentasi ${i + 1}/${dokumentasiFiles.length}...`);
           const file = dokumentasiFiles[i];
@@ -144,16 +168,18 @@ export default function JurnalMgmpTab() {
           const url = await uploadFile(new File([compressed], file.name, { type: 'image/jpeg' }));
           dokumentasiUrls.push(url);
         }
+        dokumentasiUrlsStr = dokumentasiUrls.join(' || ');
       }
 
       setUploadProgress('Menyimpan data...');
       const res = await fetch('/api/jurnal-mgmp', {
-        method: 'POST',
+        method: editId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...form,
+          id: editId,
           suratTugas: suratTugasUrl,
-          dokumentasi: dokumentasiUrls.join(' || '),
+          dokumentasi: dokumentasiUrlsStr,
         }),
       });
       const json = await res.json();
@@ -191,7 +217,72 @@ export default function JurnalMgmpTab() {
       Swal.fire('Error', json.error, 'error');
     }
   };
+  const handleDownloadPDF = (jurnal: JurnalMgmp) => {
+    const doc = new jsPDF('p', 'mm', 'a4');
+    
+    // Kop Surat
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text('LAPORAN HASIL MGMP', 105, 20, { align: 'center' });
+    doc.setLineWidth(0.5);
+    doc.line(20, 28, 190, 28);
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    
+    // Data Table using autotable for easy alignment
+    const tableData = [
+      ['Nama Guru', ':', jurnal.namaGuru],
+      ['Bidang Studi', ':', jurnal.bidangStudi || '-'],
+      ['Nama Kegiatan', ':', jurnal.namaKegiatan],
+      ['Tanggal', ':', formatDate(jurnal.tanggal)],
+      ['Tempat', ':', jurnal.tempat || '-'],
+      ['Penyelenggara', ':', jurnal.penyelenggara || '-'],
+      ['Agenda', ':', jurnal.agenda || '-'],
+    ];
 
+    autoTable(doc, {
+      startY: 35,
+      head: [],
+      body: tableData,
+      theme: 'plain',
+      styles: { cellPadding: 2, fontSize: 11, font: 'helvetica' },
+      columnStyles: {
+        0: { cellWidth: 40, fontStyle: 'bold' },
+        1: { cellWidth: 5 },
+        2: { cellWidth: 'auto' }
+      }
+    });
+
+    // Notulen
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    doc.setFont('helvetica', 'bold');
+    doc.text('Notulen:', 14, finalY);
+    doc.setFont('helvetica', 'normal');
+    
+    // Handle multiline text properly
+    const notulenLines = doc.splitTextToSize(jurnal.notulen || '-', 180);
+    doc.text(notulenLines, 14, finalY + 6);
+    
+    // Attachment Links info
+    let attachmentY = finalY + 6 + (notulenLines.length * 5) + 10;
+    if (jurnal.suratTugas || jurnal.dokumentasi) {
+      doc.setFont('helvetica', 'bold');
+      doc.text('Lampiran (Lihat di Aplikasi):', 14, attachmentY);
+      doc.setFont('helvetica', 'normal');
+      if (jurnal.suratTugas) {
+        attachmentY += 6;
+        doc.text('- Surat Tugas (Terlampir)', 14, attachmentY);
+      }
+      if (jurnal.dokumentasi) {
+        const count = jurnal.dokumentasi.split(' || ').length;
+        attachmentY += 6;
+        doc.text(`- Dokumentasi (${count} Foto terlampir)`, 14, attachmentY);
+      }
+    }
+
+    doc.save(`Laporan_MGMP_${jurnal.namaGuru}_${jurnal.tanggal}.pdf`);
+  };
   // Filter logic
   const filtered = data.filter(d => {
     const matchGuru = !filterGuru || d.namaGuru.toLowerCase().includes(filterGuru.toLowerCase());
@@ -279,9 +370,15 @@ export default function JurnalMgmpTab() {
                     <td style={{ padding: '14px 16px', color: '#475569', fontSize: '13px' }}>{item.tempat || '-'}</td>
                     <td style={{ padding: '14px 16px', color: '#475569', fontSize: '13px' }}>{item.penyelenggara || '-'}</td>
                     <td style={{ padding: '14px 16px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
                         <button onClick={() => setSelectedDetail(item)} style={{ padding: '6px 12px', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
                           <i className="fas fa-eye" style={{ marginRight: '4px' }}></i> Detail
+                        </button>
+                        <button onClick={() => handleDownloadPDF(item)} style={{ padding: '6px 12px', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
+                          <i className="fas fa-file-pdf" style={{ marginRight: '4px' }}></i> PDF
+                        </button>
+                        <button onClick={() => handleEdit(item)} style={{ padding: '6px 12px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
+                          <i className="fas fa-edit"></i>
                         </button>
                         <button onClick={() => handleDelete(item.id)} style={{ padding: '6px 12px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
                           <i className="fas fa-trash"></i>
@@ -302,8 +399,8 @@ export default function JurnalMgmpTab() {
           <div style={{ background: 'white', borderRadius: '12px', padding: '28px', width: '100%', maxWidth: '700px', margin: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>
-                <i className="fas fa-plus-circle" style={{ marginRight: '8px', color: '#0ea5e9' }}></i>
-                Tambah Jurnal MGMP
+                <i className={`fas ${editId ? 'fa-edit' : 'fa-plus-circle'}`} style={{ marginRight: '8px', color: '#0ea5e9' }}></i>
+                {editId ? 'Edit Jurnal MGMP' : 'Tambah Jurnal MGMP'}
               </h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#94a3b8' }}>
                 <i className="fas fa-times"></i>
@@ -411,7 +508,7 @@ export default function JurnalMgmpTab() {
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
                     <i className="fas fa-file-alt" style={{ marginRight: '6px', color: '#6366f1' }}></i>
-                    Upload Surat Tugas (file/foto)
+                    Upload Surat Tugas (file/foto) {editId && <span style={{ color: '#ef4444', fontWeight: 'normal' }}>(Opsional, biarkan kosong jika tidak diubah)</span>}
                   </label>
                   <input
                     type="file"
@@ -432,7 +529,7 @@ export default function JurnalMgmpTab() {
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
                     <i className="fas fa-images" style={{ marginRight: '6px', color: '#f59e0b' }}></i>
-                    Upload Foto Dokumentasi (bisa lebih dari 1)
+                    Upload Foto Dokumentasi (bisa lebih dari 1) {editId && <span style={{ color: '#ef4444', fontWeight: 'normal' }}>(Opsional, biarkan kosong jika tidak diubah)</span>}
                   </label>
                   <input
                     type="file"
