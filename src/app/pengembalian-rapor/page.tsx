@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
+import Swal from 'sweetalert2';
 import styles from './rapor.module.css';
 
 export default function PengembalianRaporPage() {
@@ -57,15 +58,30 @@ export default function PengembalianRaporPage() {
         body: JSON.stringify({ startDate, endDate })
       });
       setShowConfigModal(false);
+      Swal.fire({
+        icon: 'success',
+        title: 'Berhasil',
+        text: 'Pengaturan tanggal berhasil disimpan!',
+        timer: 2000,
+        showConfirmButton: false
+      });
       setLoading(true);
       fetchData();
-    } catch(e) {}
+    } catch(e) {
+      Swal.fire('Error', 'Gagal menyimpan pengaturan', 'error');
+    }
     setIsSubmitting(false);
   };
 
   const handleSaveInput = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedStudent) return alert("Pilih siswa terlebih dahulu!");
+    if (!selectedStudent) {
+      return Swal.fire({
+        icon: 'warning',
+        title: 'Peringatan',
+        text: 'Pilih siswa terlebih dahulu!'
+      });
+    }
     
     setIsSubmitting(true);
     try {
@@ -73,18 +89,26 @@ export default function PengembalianRaporPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          nis: selectedStudent.nis,
-          nama: selectedStudent.nama,
-          kelas: selectedStudent.kelas
+           nis: selectedStudent.nis,
+           nama: selectedStudent.nama,
+           kelas: selectedStudent.kelas
         })
       });
       setShowInputModal(false);
       setInputSearch('');
       setSelectedStudent(null);
-      alert(`Sukses! Data pengembalian rapor atas nama ${selectedStudent.nama} berhasil disimpan.`);
+      Swal.fire({
+        icon: 'success',
+        title: 'Sukses',
+        text: `Data pengembalian rapor atas nama ${selectedStudent.nama} berhasil disimpan.`,
+        timer: 2500,
+        showConfirmButton: false
+      });
       setLoading(true);
       fetchData();
-    } catch(e) {}
+    } catch(e) {
+      Swal.fire('Error', 'Gagal menyimpan data pengembalian rapor', 'error');
+    }
     setIsSubmitting(false);
   };
 
