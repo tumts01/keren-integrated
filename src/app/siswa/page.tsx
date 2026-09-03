@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import styles from './Siswa.module.css';
 import * as XLSX from 'xlsx';
+import Swal from 'sweetalert2';
 
 interface Siswa {
   id: number;
@@ -46,7 +47,7 @@ function PrintPresensiModal({
 
   const handlePrint = () => {
     if (!tglMulai || !tglSelesai) {
-      alert('Pilih tanggal mulai dan tanggal selesai');
+      Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Pilih tanggal mulai dan tanggal selesai' });
       return;
     }
 
@@ -62,7 +63,7 @@ function PrintPresensiModal({
 
     const rombels = Object.keys(grouped).sort();
     if (rombels.length === 0) {
-      alert('Tidak ada data siswa aktif untuk tingkat ini');
+      Swal.fire({ icon: 'warning', title: 'Data Kosong', text: 'Tidak ada data siswa aktif untuk tingkat ini' });
       return;
     }
 
@@ -77,7 +78,7 @@ function PrintPresensiModal({
     }
 
     if (dates.length === 0) {
-      alert('Rentang tanggal tidak valid (atau hanya berisi hari Minggu)');
+      Swal.fire({ icon: 'error', title: 'Tidak Valid', text: 'Rentang tanggal tidak valid (atau hanya berisi hari Minggu)' });
       return;
     }
 
@@ -995,7 +996,7 @@ export default function SiswaPage() {
 
   const handleSaveEdit = async () => {
     if (!editingSiswa?.supabaseId) {
-      alert('Error: Data siswa ini tidak memiliki ID Supabase valid.');
+      Swal.fire({ icon: 'error', title: 'Oops...', text: 'Data siswa ini tidak memiliki ID Supabase valid.' });
       return;
     }
 
@@ -1013,14 +1014,14 @@ export default function SiswaPage() {
       });
       const result = await res.json();
       if (result.success) {
-        alert('Data siswa berhasil diperbarui!');
+        await Swal.fire({ icon: 'success', title: 'Berhasil!', text: 'Data siswa berhasil diperbarui!' });
         setEditingSiswa(null);
         window.location.reload();
       } else {
-        alert('Gagal: ' + result.error);
+        Swal.fire({ icon: 'error', title: 'Gagal', text: result.error });
       }
     } catch (err) {
-      alert('Error: Gagal menyimpan perubahan.');
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal menyimpan perubahan.' });
     } finally {
       setIsSavingEdit(false);
     }
@@ -1124,13 +1125,13 @@ export default function SiswaPage() {
       const res = await fetch('/api/siswa/sync', { method: 'POST' });
       const json = await res.json();
       if (json.success) {
-        alert('Sinkronisasi berhasil! Halaman akan dimuat ulang.');
+        await Swal.fire({ icon: 'success', title: 'Sukses', text: 'Sinkronisasi berhasil! Halaman akan dimuat ulang.' });
         window.location.reload();
       } else {
-        alert('Gagal: ' + json.error);
+        Swal.fire({ icon: 'error', title: 'Gagal', text: json.error });
       }
     } catch (err: any) {
-      alert('Error: ' + err.message);
+      Swal.fire({ icon: 'error', title: 'Error', text: err.message });
     } finally {
       setIsSyncing(false);
     }
@@ -1139,7 +1140,7 @@ export default function SiswaPage() {
 const handleExportMissingNisnNik = () => {
     const missingData = filteredData.filter(s => !s.nisn || s.nisn.trim() === '' || !s.nik || s.nik.trim() === '');
     if (missingData.length === 0) {
-      alert('Tidak ada siswa dengan NISN atau NIK kosong pada filter saat ini.');
+      Swal.fire({ icon: 'info', title: 'Data Lengkap', text: 'Tidak ada siswa dengan NISN atau NIK kosong pada filter saat ini.' });
       return;
     }
 
