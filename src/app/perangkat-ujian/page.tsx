@@ -181,6 +181,34 @@ export default function PerangkatUjianPage() {
 
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
+      // Helper to draw crop marks (garis bantu potong)
+      const drawCropMarks = (doc: any) => {
+        doc.setDrawColor(100, 100, 100); // gray
+        doc.setLineWidth(0.2); // thin line
+        const markLen = 6; // 6mm length
+
+        // Vertical marks (top and bottom)
+        for (let c = 0; c <= cols; c++) {
+          const vx = marginX + c * cardW;
+          // Top
+          doc.line(vx, marginY - markLen, vx, marginY);
+          // Bottom
+          doc.line(vx, pageH - marginY, vx, pageH - marginY + markLen);
+        }
+
+        // Horizontal marks (left and right)
+        for (let r = 0; r <= rows; r++) {
+          const hy = marginY + r * cardH;
+          // Left
+          doc.line(marginX - markLen, hy, marginX, hy);
+          // Right
+          doc.line(pageW - marginX, hy, pageW - marginX + markLen, hy);
+        }
+      };
+
+      // Draw crop marks on the first page
+      drawCropMarks(pdf);
+
       // Pre-load all photos in parallel
       setProgress('Memuat foto siswa...');
       const photoPromises = participants.map(p => {
@@ -197,6 +225,7 @@ export default function PerangkatUjianPage() {
 
         if (posInPage === 0 && i > 0) {
           pdf.addPage();
+          drawCropMarks(pdf);
         }
 
         setProgress(`Merender kartu ${i + 1} / ${participants.length} (Hal ${pageIdx + 1}/${totalPages})`);
