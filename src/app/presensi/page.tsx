@@ -1515,15 +1515,29 @@ export default function PresensiPage() {
                   )}
                 </div>
                 <div className={styles.jamPills}>
-                  {[1,2,3,4,5,6,7,8,9,10].map(jam => {
+                  {[1,2,3,4,5,6,7,8,9,10,11,12,13].map(jam => {
                     const available = jamTersedia.includes(jam);
+                    const isExtra = jam >= 11;
+                    const isActive = selectedJam.includes(jam);
+                    
+                    let customStyle: any = {};
+                    if (!available) {
+                      customStyle = { opacity: 0.25, cursor: 'not-allowed', textDecoration: 'line-through' };
+                    } else if (isExtra) {
+                      customStyle = {
+                        background: isActive ? '#ef4444' : '#fee2e2',
+                        color: isActive ? 'white' : '#ef4444',
+                        borderColor: isActive ? '#ef4444' : '#fca5a5'
+                      };
+                    }
+
                     return (
                       <button
                         key={jam}
                         type="button"
                         onClick={() => available ? toggleJam(jam) : null}
-                        className={`${styles.jamPill} ${selectedJam.includes(jam) ? styles.jamPillActive : ''}`}
-                        style={!available ? { opacity: 0.25, cursor: 'not-allowed', textDecoration: 'line-through' } : {}}
+                        className={`${styles.jamPill} ${isActive && !isExtra ? styles.jamPillActive : ''}`}
+                        style={customStyle}
                         title={!available ? `Jam ${jam} tidak tersedia untuk tanggal ini` : `Jam ${jam}`}
                       >
                         {jam}
@@ -2280,7 +2294,7 @@ export default function PresensiPage() {
                               <td style={{ padding: '10px 14px', whiteSpace: 'nowrap', fontWeight: 600, color: '#1e293b' }}>{r.kelas}</td>
                               <td style={{ padding: '10px 14px', whiteSpace: 'nowrap', color: '#475569' }}>{r.mapel}</td>
                               <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                                <span style={{ background: '#dcfce7', color: '#16a34a', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600 }}>Jam {r.jamKe}</span>
+                                <span style={{ background: /(11|12|13)/.test(r.jamKe) ? '#fee2e2' : '#dcfce7', color: /(11|12|13)/.test(r.jamKe) ? '#ef4444' : '#16a34a', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600 }}>Jam {r.jamKe}</span>
                               </td>
                               <td style={{ padding: '10px 14px', color: '#475569', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.materi}>{r.materi}</td>
                               {isAdmin && (
