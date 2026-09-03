@@ -285,12 +285,22 @@ export default function JurnalPage() {
             <div className={styles.filterGroup} style={{ flex: '1 1 100%' }}>
               <label>Jam Ke (Pilih satu atau lebih)</label>
               <div className={styles.jamPills}>
-                {[1,2,3,4,5,6,7,8,9,10].map(jam => (
-                  <button key={jam} type="button" onClick={() => toggleJam(jam)}
-                    className={`${styles.jamPill} ${selectedJam.includes(jam) ? styles.jamPillActive : ''}`}>
-                    {jam}
-                  </button>
-                ))}
+                {[1,2,3,4,5,6,7,8,9,10,11,12,13].map(jam => {
+                  const isExtra = jam >= 11;
+                  const isActive = selectedJam.includes(jam);
+                  return (
+                    <button key={jam} type="button" onClick={() => toggleJam(jam)}
+                      className={`${styles.jamPill} ${isActive && !isExtra ? styles.jamPillActive : ''}`}
+                      style={isExtra ? {
+                        background: isActive ? '#ef4444' : '#fee2e2',
+                        color: isActive ? 'white' : '#ef4444',
+                        borderColor: isActive ? '#ef4444' : '#fca5a5'
+                      } : {}}
+                    >
+                      {jam}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -427,7 +437,7 @@ export default function JurnalPage() {
                       <td style={{ padding: '10px 14px', whiteSpace: 'nowrap', fontWeight: 600, color: '#1e293b' }}>{r.kelas}</td>
                       <td style={{ padding: '10px 14px', whiteSpace: 'nowrap', color: '#475569' }}>{r.mapel}</td>
                       <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                        <span style={{ background: '#dcfce7', color: '#16a34a', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600 }}>Jam {r.jamKe}</span>
+                        <span style={{ background: /(11|12|13)/.test(r.jamKe) ? '#fee2e2' : '#dcfce7', color: /(11|12|13)/.test(r.jamKe) ? '#ef4444' : '#16a34a', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600 }}>Jam {r.jamKe}</span>
                       </td>
                       <td style={{ padding: '10px 14px', color: '#475569', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.materi}>{r.materi}</td>
                       {isAdmin && (
