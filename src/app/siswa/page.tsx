@@ -1055,7 +1055,7 @@ export default function SiswaPage() {
     const matchRombel = selectedRombel === 'Semua' ? true : (s.rombel || '').trim() === selectedRombel;
     const matchDomisili = selectedDomisili === 'Semua' ? true : (s.domisili || '').trim() === selectedDomisili;
     const asalSekolah = (s.rawMetadata?.['SD/MI'] || s.rawMetadata?.['ASAL SEKOLAH'] || '').trim();
-    const matchAsalSekolah = selectedAsalSekolah === 'Semua' ? true : asalSekolah === selectedAsalSekolah;
+    const matchAsalSekolah = selectedAsalSekolah === 'Semua' ? true : asalSekolah.toLowerCase().includes(selectedAsalSekolah.toLowerCase());
     return matchSearch && matchTahun && matchTingkat && matchRombel && matchDomisili && matchAsalSekolah;
   });
 
@@ -1388,16 +1388,21 @@ const handleExportMissingNisnNik = () => {
                 <option key={d} value={d}>{d}</option>
               ))}
             </select>
-            <select
-              className={styles.filterSelect}
-              value={selectedAsalSekolah}
-              onChange={(e) => setSelectedAsalSekolah(e.target.value)}
-            >
-              <option value="Semua">Semua Asal Sekolah</option>
-              {uniqueAsalSekolah.map(a => (
-                <option key={a} value={a}>{a}</option>
-              ))}
-            </select>
+            <div style={{ position: 'relative' }}>
+              <input
+                list="asalSekolahList"
+                className={styles.filterSelect}
+                placeholder="Semua Asal Sekolah"
+                value={selectedAsalSekolah === 'Semua' ? '' : selectedAsalSekolah}
+                onChange={(e) => setSelectedAsalSekolah(e.target.value || 'Semua')}
+              />
+              <datalist id="asalSekolahList">
+                <option value="Semua">Semua Asal Sekolah</option>
+                {uniqueAsalSekolah.map(a => (
+                  <option key={a} value={a} />
+                ))}
+              </datalist>
+            </div>
             <div className={styles.searchBox}>
               <i className={`fas fa-search ${styles.searchIcon}`}></i>
               <input
