@@ -123,6 +123,8 @@ export default function PresensiPage() {
 
   // Rekap Jurnal
   const [rekapJurnalData, setRekapJurnalData] = useState<any[]>([]);
+  const [editingJurnal, setEditingJurnal] = useState<any>(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [rekapJurnalLoading, setRekapJurnalLoading] = useState(false);
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
@@ -410,6 +412,30 @@ export default function PresensiPage() {
   };
 
   // ── Rekap Jurnal Helper ──────────────────────────────────────────────────
+
+  const handleSaveEditJurnal = async () => {
+    if (!editingJurnal) return;
+    setIsSavingEdit(true);
+    try {
+      const res = await fetch('/api/jurnal', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingJurnal)
+      });
+      const data = await res.json();
+      if (data.success) {
+        Swal.fire('Berhasil!', 'Jurnal berhasil diperbarui.', 'success');
+        setEditingJurnal(null);
+        fetchRekapJurnal();
+      } else {
+        Swal.fire('Gagal', data.error, 'error');
+      }
+    } catch (err) {
+      Swal.fire('Error', 'Gagal memperbarui jurnal.', 'error');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
 
   const fetchRekapJurnal = async () => {
     setRekapJurnalLoading(true);
@@ -2104,6 +2130,7 @@ export default function PresensiPage() {
                             <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>Mata Pelajaran</th>
                             <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>Jam Ke</th>
                             <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, color: '#475569' }}>Materi</th>
+                            {isAdmin && <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>Aksi</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -2124,6 +2151,16 @@ export default function PresensiPage() {
                                 <span style={{ background: '#dcfce7', color: '#16a34a', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600 }}>Jam {r.jamKe}</span>
                               </td>
                               <td style={{ padding: '10px 14px', color: '#475569', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.materi}>{r.materi}</td>
+                              {isAdmin && (
+                                <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                                  <button
+                                    style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
+                                    onClick={() => setEditingJurnal(r)}
+                                  >
+                                    <i className="fas fa-edit"></i> Edit
+                                  </button>
+                                </td>
+                              )}
                             </tr>
                           ))}
                         </tbody>
@@ -2140,6 +2177,59 @@ export default function PresensiPage() {
           </div>
         )}
       </div>
+
+      {editingJurnal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'white', padding: '24px', borderRadius: '12px', width: '90%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#1e293b' }}><i className="fas fa-edit"></i> Edit Jurnal Mengajar</h3>
+              <button onClick={() => !isSavingEdit && setEditingJurnal(null)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#64748b' }}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Tanggal</label>
+                <input type="date" value={editingJurnal.tanggal} onChange={e => setEditingJurnal({ ...editingJurnal, tanggal: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Kelas</label>
+                  <input type="text" value={editingJurnal.kelas} onChange={e => setEditingJurnal({ ...editingJurnal, kelas: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Jam Ke (pisahkan dengan koma)</label>
+                  <input type="text" value={editingJurnal.jamKe} onChange={e => setEditingJurnal({ ...editingJurnal, jamKe: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                </div>
+              </div>
+              
+              <div>
+                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Nama Guru</label>
+                <input type="text" value={editingJurnal.namaGuru} onChange={e => setEditingJurnal({ ...editingJurnal, namaGuru: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Mata Pelajaran</label>
+                <input type="text" value={editingJurnal.mapel} onChange={e => setEditingJurnal({ ...editingJurnal, mapel: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Materi</label>
+                <textarea rows={4} value={editingJurnal.materi} onChange={e => setEditingJurnal({ ...editingJurnal, materi: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', resize: 'vertical' }} />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '10px' }}>
+                <button onClick={() => setEditingJurnal(null)} disabled={isSavingEdit} style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f1f5f9', cursor: 'pointer', fontWeight: 600 }}>Batal</button>
+                <button onClick={handleSaveEditJurnal} disabled={isSavingEdit} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#0ea5e9', color: 'white', cursor: 'pointer', fontWeight: 600 }}>
+                  {isSavingEdit ? 'Menyimpan...' : 'Simpan Perubahan'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
