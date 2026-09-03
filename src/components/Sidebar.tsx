@@ -93,6 +93,7 @@ export default function Sidebar() {
         { name: 'Arsip Foto', path: '/arsip-foto', icon: 'fa-images' },
         { name: 'Sajian Data', path: '/sajian-data', icon: 'fa-chart-pie' },
         { name: 'Jurnal Kegiatan', path: '/jurnal-kegiatan', icon: 'fa-book-open' },
+        { name: 'Jurnal MGMP', path: '/jurnal-mgmp', icon: 'fa-users-cog' },
         { name: 'Survey Madrasah', path: '/survey-madrasah', icon: 'fa-poll-h' },
       ]
     },
