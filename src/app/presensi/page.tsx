@@ -94,6 +94,8 @@ export default function PresensiPage() {
   const [loadingSiswa, setLoadingSiswa] = useState(false);
   // Cache siswa per kelas agar tidak refetch ulang ke server
   const siswaCache = useRef<Record<string, any[]>>({});
+  // Semua nama siswa aktif (untuk datalist piket, tidak terbatas kelas)
+  const [allSiswaNames, setAllSiswaNames] = useState<string[]>([]);
 
   const [piketStudents, setPiketStudents] = useState<string[]>([]);
   // Piket: dynamic rows (1 row = 1 siswa, bisa tambah)
@@ -216,6 +218,17 @@ export default function PresensiPage() {
       setCurrentUsername(usernameRaw);
       setFilterGuruRekap(usernameRaw);
     }
+    // Load semua nama siswa aktif untuk datalist piket
+    fetch('/api/siswa').then(res => res.json()).then(data => {
+      if (data.success && data.data) {
+        const names = data.data
+          .filter((s: any) => s.isLatest && (s.status || '').toLowerCase().trim() === 'aktif')
+          .map((s: any) => s.nama)
+          .filter(Boolean)
+          .sort();
+        setAllSiswaNames(names);
+      }
+    }).catch(() => {});
   }, []);
 
   // Fetch jam config setiap kali tanggal berubah
@@ -1214,7 +1227,7 @@ export default function PresensiPage() {
                   </tbody>
                 </table>
                 <datalist id="siswa-datalist">
-                  {siswaList.map((s: any) => <option key={s.id} value={s.nama} />)}
+                  {allSiswaNames.map((nama: string, i: number) => <option key={i} value={nama} />)}
                 </datalist>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
                   <button
