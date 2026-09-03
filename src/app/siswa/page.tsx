@@ -1497,7 +1497,7 @@ const handleExportMissingNisnNik = () => {
                       <td>{siswa.tanggalLahir || '-'}</td>
                       <td>{siswa.jenisKelamin || '-'}</td>
                       <td>{siswa.rombel || '-'}</td>
-                      <td>{JSON.stringify(Object.keys(siswa.rawMetadata || {}).filter(k => k.toLowerCase().includes('asal')))}</td>
+                      <td>{siswa.rawMetadata?.['SD/MI'] || siswa.rawMetadata?.['ASAL SEKOLAH'] || '-'}</td>
                       <td>{siswa.domisili || '-'}</td>
                       <td>{siswa.alamat || '-'}</td>
                       <td>{siswa.namaAyah || '-'}</td>
