@@ -96,6 +96,10 @@ export default function PresensiPage() {
   const siswaCache = useRef<Record<string, any[]>>({});
 
   const [piketStudents, setPiketStudents] = useState<string[]>([]);
+  // Piket: dynamic rows (1 row = 1 siswa, bisa tambah)
+  const [piketRows, setPiketRows] = useState<Array<{ id: string; nama: string; status: string }>>([
+    { id: `row_${Date.now()}`, nama: '', status: 'A' }
+  ]);
 
   useEffect(() => {
     if (!tanggal || !selectedKelas) {
@@ -694,20 +698,21 @@ export default function PresensiPage() {
   const handleSubmit = async () => {
     const finalMapel = activeTab === 'piket' ? 'PIKET' : selectedMapel;
     if (!selectedKelas || !finalMapel) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Oops...',
-        text: 'Mohon pilih Kelas dan Mata Pelajaran terlebih dahulu!'
-      });
+      Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Mohon pilih Kelas dan Mata Pelajaran terlebih dahulu!' });
       return;
     }
     if (selectedJam.length === 0) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Oops...',
-        text: 'Mohon pilih Jam Ke!'
-      });
+      Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Mohon pilih Jam Ke!' });
       return;
+    }
+
+    // Piket: validasi minimal 1 baris ada nama siswa
+    if (activeTab === 'piket') {
+      const validRows = piketRows.filter(r => r.nama.trim() !== '');
+      if (validRows.length === 0) {
+        Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Mohon pilih minimal satu siswa!' });
+        return;
+      }
     }
 
     const result = await Swal.fire({
@@ -726,6 +731,19 @@ export default function PresensiPage() {
     setIsSubmitting(true);
     const guru = currentUsername || 'Unknown';
     try {
+      let siswaPayload: any[];
+      let presensiPayload: Record<string, string>;
+
+      if (activeTab === 'piket') {
+        // Build from piketRows: only rows with a name
+        const validRows = piketRows.filter(r => r.nama.trim() !== '');
+        siswaPayload = validRows.map(r => ({ id: r.id, nama: r.nama, nisn: '' }));
+        presensiPayload = Object.fromEntries(validRows.map(r => [r.id, r.status]));
+      } else {
+        siswaPayload = displaySiswa;
+        presensiPayload = presensi;
+      }
+
       const res = await fetch('/api/presensi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -736,8 +754,8 @@ export default function PresensiPage() {
           mapel: finalMapel,
           guru,
           tahunAjaran: '2024/2025',
-          presensi,
-          siswaList: displaySiswa
+          presensi: presensiPayload,
+          siswaList: siswaPayload
         })
       });
       const data = await res.json();
@@ -748,19 +766,15 @@ export default function PresensiPage() {
           title: 'Berhasil!',
           text: `Berhasil menyimpan presensi! ${data.totalSaved > 0 ? (data.totalSaved + ' data S/I/A tercatat.') : 'Semua siswa Hadir (tidak ada data absen ke sheet).'}`
         });
+        if (activeTab === 'piket') {
+          // reset piket rows after save
+          setPiketRows([{ id: `row_${Date.now()}`, nama: '', status: 'A' }]);
+        }
       } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Gagal',
-          text: 'Gagal menyimpan: ' + (data.error || 'Terjadi kesalahan')
-        });
+        Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menyimpan: ' + (data.error || 'Terjadi kesalahan') });
       }
     } catch (error: any) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Terjadi kesalahan sistem: ' + error.message
-      });
+      Swal.fire({ icon: 'error', title: 'Error', text: 'Terjadi kesalahan sistem: ' + error.message });
     } finally {
       setIsSubmitting(false);
     }
@@ -1140,95 +1154,159 @@ export default function PresensiPage() {
               ) : null}
             </div>
 
-            {loadingSiswa ? (
-              <div className={styles.loading}>Memuat data siswa...</div>
-            ) : displaySiswa.length > 0 ? (
+            {/* PIKET: Dynamic row input */}
+            {activeTab === 'piket' && selectedKelas && (
               <div className={styles.tableContainer}>
                 <table className={styles.table}>
                   <thead>
                     <tr>
                       <th style={{ width: '50px', textAlign: 'center' }}>No</th>
-                      <th>NISN</th>
                       <th>Nama Siswa</th>
-                      <th style={{ textAlign: 'center', width: '200px' }}>Kehadiran</th>
+                      <th style={{ textAlign: 'center', width: '220px' }}>Keterangan</th>
+                      <th style={{ width: '50px' }}></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {displaySiswa.map((siswa: any, i: number) => (
-                      <tr key={siswa.id}>
-                        <td style={{ textAlign: 'center' }}>{i + 1}</td>
-                        <td className={styles.nisn}>{siswa.nisn}</td>
-                        <td className={styles.nama}>{siswa.nama}</td>
+                    {piketRows.map((row, i) => (
+                      <tr key={row.id}>
+                        <td style={{ textAlign: 'center', color: '#94a3b8' }}>{i + 1}</td>
+                        <td>
+                          <input
+                            list="siswa-datalist"
+                            value={row.nama}
+                            onChange={e => setPiketRows(prev => prev.map(r => r.id === row.id ? { ...r, nama: e.target.value } : r))}
+                            placeholder="Cari nama siswa..."
+                            style={{ width: '100%', padding: '8px 10px', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '14px' }}
+                          />
+                        </td>
                         <td>
                           <div className={styles.radioGroup}>
-                            <label className={`${styles.radioLabel} ${presensi[siswa.id] === 'H' ? styles.radioCheckedH : ''}`}>
-                              <input 
-                                type="radio" 
-                                name={`presensi_${siswa.id}`} 
-                                value="H" 
-                                checked={presensi[siswa.id] === 'H'}
-                                onChange={() => handlePresensiChange(siswa.id, 'H')}
-                              />
-                              H
-                            </label>
-                            <label className={`${styles.radioLabel} ${presensi[siswa.id] === 'S' ? styles.radioCheckedS : ''}`}>
-                              <input 
-                                type="radio" 
-                                name={`presensi_${siswa.id}`} 
-                                value="S" 
-                                checked={presensi[siswa.id] === 'S'}
-                                onChange={() => handlePresensiChange(siswa.id, 'S')}
-                              />
-                              S
-                            </label>
-                            <label className={`${styles.radioLabel} ${presensi[siswa.id] === 'I' ? styles.radioCheckedI : ''}`}>
-                              <input 
-                                type="radio" 
-                                name={`presensi_${siswa.id}`} 
-                                value="I" 
-                                checked={presensi[siswa.id] === 'I'}
-                                onChange={() => handlePresensiChange(siswa.id, 'I')}
-                              />
-                              I
-                            </label>
-                            <label className={`${styles.radioLabel} ${presensi[siswa.id] === 'A' ? styles.radioCheckedA : ''}`}>
-                              <input 
-                                type="radio" 
-                                name={`presensi_${siswa.id}`} 
-                                value="A" 
-                                checked={presensi[siswa.id] === 'A'}
-                                onChange={() => handlePresensiChange(siswa.id, 'A')}
-                              />
-                              A
-                            </label>
+                            {['S', 'I', 'A'].map(status => (
+                              <label
+                                key={status}
+                                className={`${styles.radioLabel} ${row.status === status ? (status === 'S' ? styles.radioCheckedS : status === 'I' ? styles.radioCheckedI : styles.radioCheckedA) : ''}`}
+                              >
+                                <input
+                                  type="radio"
+                                  name={`piket_${row.id}`}
+                                  value={status}
+                                  checked={row.status === status}
+                                  onChange={() => setPiketRows(prev => prev.map(r => r.id === row.id ? { ...r, status } : r))}
+                                />
+                                {status}
+                              </label>
+                            ))}
                           </div>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          {piketRows.length > 1 && (
+                            <button
+                              onClick={() => setPiketRows(prev => prev.filter(r => r.id !== row.id))}
+                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px', padding: '4px' }}
+                              title="Hapus baris"
+                            >
+                              <i className="fas fa-times-circle"></i>
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
-                  <button 
-                    className={styles.submitBtn} 
+                <datalist id="siswa-datalist">
+                  {siswaList.map((s: any) => <option key={s.id} value={s.nama} />)}
+                </datalist>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
+                  <button
+                    onClick={() => setPiketRows(prev => [...prev, { id: `row_${Date.now()}`, nama: '', status: 'A' }])}
+                    style={{ padding: '8px 16px', background: '#f0f9ff', border: '1px solid #7dd3fc', borderRadius: '8px', cursor: 'pointer', color: '#0369a1', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <i className="fas fa-plus"></i> Tambah Siswa
+                  </button>
+                  <button
+                    className={styles.submitBtn}
                     onClick={handleSubmit}
                     disabled={isSubmitting}
                     style={{ opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
                   >
-                    <i className={isSubmitting ? "fas fa-spinner fa-spin" : "fas fa-save"} style={{ marginRight: '8px' }}></i>
+                    <i className={isSubmitting ? 'fas fa-spinner fa-spin' : 'fas fa-save'} style={{ marginRight: '8px' }}></i>
                     {isSubmitting ? 'Menyimpan...' : 'Simpan Presensi'}
                   </button>
                 </div>
               </div>
-            ) : selectedKelas ? (
-              <div className={styles.emptyState}>
-                <i className="fas fa-users-slash"></i>
-                <p>{activeTab === 'absen' && piketStudents.length > 0 ? `Semua siswa di kelas ${selectedKelas} telah diabsen S/I/A oleh Guru Piket hari ini.` : `Data siswa kelas ${selectedKelas} tidak ditemukan.`}</p>
-              </div>
-            ) : (
+            )}
+
+            {activeTab === 'piket' && !selectedKelas && (
               <div className={styles.emptyState}>
                 <i className="fas fa-chalkboard-user"></i>
-                <p>Silakan pilih kelas terlebih dahulu untuk melihat daftar siswa.</p>
+                <p>Silakan pilih kelas terlebih dahulu.</p>
               </div>
+            )}
+
+            {/* ABSEN: full student list */}
+            {activeTab === 'absen' && (
+              loadingSiswa ? (
+                <div className={styles.loading}>Memuat data siswa...</div>
+              ) : displaySiswa.length > 0 ? (
+                <div className={styles.tableContainer}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: '50px', textAlign: 'center' }}>No</th>
+                        <th>NISN</th>
+                        <th>Nama Siswa</th>
+                        <th style={{ textAlign: 'center', width: '200px' }}>Kehadiran</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displaySiswa.map((siswa: any, i: number) => (
+                        <tr key={siswa.id}>
+                          <td style={{ textAlign: 'center' }}>{i + 1}</td>
+                          <td className={styles.nisn}>{siswa.nisn}</td>
+                          <td className={styles.nama}>{siswa.nama}</td>
+                          <td>
+                            <div className={styles.radioGroup}>
+                              {['H', 'S', 'I', 'A'].map(status => (
+                                <label key={status} className={`${styles.radioLabel} ${presensi[siswa.id] === status ? (status === 'H' ? styles.radioCheckedH : status === 'S' ? styles.radioCheckedS : status === 'I' ? styles.radioCheckedI : styles.radioCheckedA) : ''}`}>
+                                  <input
+                                    type="radio"
+                                    name={`presensi_${siswa.id}`}
+                                    value={status}
+                                    checked={presensi[siswa.id] === status}
+                                    onChange={() => handlePresensiChange(siswa.id, status)}
+                                  />
+                                  {status}
+                                </label>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
+                    <button
+                      className={styles.submitBtn}
+                      onClick={handleSubmit}
+                      disabled={isSubmitting}
+                      style={{ opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
+                    >
+                      <i className={isSubmitting ? 'fas fa-spinner fa-spin' : 'fas fa-save'} style={{ marginRight: '8px' }}></i>
+                      {isSubmitting ? 'Menyimpan...' : 'Simpan Presensi'}
+                    </button>
+                  </div>
+                </div>
+              ) : selectedKelas ? (
+                <div className={styles.emptyState}>
+                  <i className="fas fa-users-slash"></i>
+                  <p>{piketStudents.length > 0 ? `Semua siswa di kelas ${selectedKelas} telah diabsen S/I/A oleh Guru Piket hari ini.` : `Data siswa kelas ${selectedKelas} tidak ditemukan.`}</p>
+                </div>
+              ) : (
+                <div className={styles.emptyState}>
+                  <i className="fas fa-chalkboard-user"></i>
+                  <p>Silakan pilih kelas terlebih dahulu untuk melihat daftar siswa.</p>
+                </div>
+              )
             )}
           </div>
         )}
