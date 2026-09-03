@@ -299,7 +299,7 @@ export default function PerangkatUjianPage() {
         ctx.fillText(displayName, cW * (layoutNobang.nameX / 100), cH * (layoutNobang.nameY / 100));
 
         // DETAIL (Kelas | No Ujian | Ruang)
-        ctx.fillStyle = '#1e40af';
+        ctx.fillStyle = '#000000';
         ctx.font = `bold ${Math.round(cH * (layoutNobang.detailSize / 100))}px Arial, sans-serif`;
         ctx.fillText(`${p.kelas || ''} | ${p.noUjian || ''} | ${p.ruang || ''}`, cW * (layoutNobang.detailX / 100), cH * (layoutNobang.detailY / 100));
 
