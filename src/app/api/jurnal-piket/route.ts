@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     

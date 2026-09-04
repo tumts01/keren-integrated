@@ -44,10 +44,11 @@ const getCachedJurnal = unstable_cache(
   { tags: ['jurnal'], revalidate: 3600 }
 );
 
+export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const data = await getCachedJurnal();
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
   } catch (error: any) {
     console.error('Fetch Jurnal Error:', error);
     return NextResponse.json({ success: false, error: 'Gagal memuat jurnal' }, { status: 500 });

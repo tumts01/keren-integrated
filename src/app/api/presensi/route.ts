@@ -67,6 +67,7 @@ const getCachedPresensi = unstable_cache(
   { tags: ['presensi'], revalidate: 3600 }
 );
 
+export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -78,7 +79,7 @@ export async function GET(request: Request) {
       data = data.filter((d: any) => d.tanggal === filterTanggal);
     }
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
   } catch (error: any) {
     console.error('Fetch Presensi Error:', error);
     return NextResponse.json({ success: false, error: 'Gagal memuat data presensi: ' + error.message }, { status: 500 });
