@@ -456,6 +456,32 @@ export default function PresensiPage() {
     }
   };
 
+  const handleDeleteJurnal = async (id: string) => {
+    const confirm = await Swal.fire({
+      title: 'Hapus Jurnal?',
+      text: 'Data jurnal ini akan dihapus secara permanen.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonText: 'Batal',
+      confirmButtonText: 'Ya, Hapus!'
+    });
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const res = await fetch(`/api/jurnal?id=${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        Swal.fire('Terhapus!', 'Data jurnal berhasil dihapus.', 'success');
+        fetchRekapJurnal();
+      } else {
+        Swal.fire('Gagal', data.error || 'Terjadi kesalahan.', 'error');
+      }
+    } catch (err) {
+      Swal.fire('Error', 'Gagal menghapus jurnal.', 'error');
+    }
+  };
+
   const fetchRekapJurnal = async () => {
     setRekapJurnalLoading(true);
     try {
@@ -2299,12 +2325,20 @@ export default function PresensiPage() {
                               <td style={{ padding: '10px 14px', color: '#475569', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.materi}>{r.materi}</td>
                               {isAdmin && (
                                 <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                                  <button
-                                    style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
-                                    onClick={() => setEditingJurnal(r)}
-                                  >
-                                    <i className="fas fa-edit"></i> Edit
-                                  </button>
+                                  <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                                    <button
+                                      style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
+                                      onClick={() => setEditingJurnal(r)}
+                                    >
+                                      <i className="fas fa-edit"></i> Edit
+                                    </button>
+                                    <button
+                                      style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
+                                      onClick={() => handleDeleteJurnal(r.id)}
+                                    >
+                                      <i className="fas fa-trash"></i> Hapus
+                                    </button>
+                                  </div>
                                 </td>
                               )}
                             </tr>
