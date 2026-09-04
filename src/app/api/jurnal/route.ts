@@ -187,14 +187,20 @@ export async function PUT(request: Request) {
 
     // Find the actual DB row to update
     let dbId: number | null = null;
-    if (/^\d+$/.test(id.toString())) {
-      dbId = parseInt(id.toString(), 10);
+    
+    // Prioritize metadata ID lookup
+    const { data: foundRow } = await supabase.from('data_jurnal_mengajar').select('id, metadata').contains('metadata', { 'ID': id }).single();
+    if (foundRow) {
+      dbId = foundRow.id;
+    } else if (/^\d+$/.test(id.toString())) {
+      // Fallback to Supabase ID if numeric
+      const numericId = parseInt(id.toString(), 10);
+      const { data: checkRow } = await supabase.from('data_jurnal_mengajar').select('id').eq('id', numericId).single();
+      if (checkRow) dbId = checkRow.id;
     }
     
     if (dbId === null) {
-      const { data: foundRow } = await supabase.from('data_jurnal_mengajar').select('id, metadata').contains('metadata', { 'ID': id }).single();
-      if (!foundRow) return NextResponse.json({ success: false, error: 'Jurnal tidak ditemukan' }, { status: 404 });
-      dbId = foundRow.id;
+      return NextResponse.json({ success: false, error: 'Jurnal tidak ditemukan' }, { status: 404 });
     }
 
     // Fetch existing metadata to preserve fields like TIMESTAMP
@@ -231,17 +237,23 @@ export async function DELETE(request: Request) {
 
     let deleteId: number | null = null;
     
-    if (/^\d+$/.test(id.toString())) {
-      deleteId = parseInt(id.toString(), 10);
-    } else {
-      const { data: foundRow } = await supabase.from('data_jurnal_mengajar').select('id').contains('metadata', { 'ID': id }).single();
-      if (foundRow) deleteId = foundRow.id;
+    // Prioritize metadata ID lookup
+    const { data: foundRow } = await supabase.from('data_jurnal_mengajar').select('id').contains('metadata', { 'ID': id }).single();
+    if (foundRow) {
+      deleteId = foundRow.id;
+    } else if (/^\d+$/.test(id.toString())) {
+      // Fallback to Supabase ID if numeric
+      const numericId = parseInt(id.toString(), 10);
+      const { data: checkRow } = await supabase.from('data_jurnal_mengajar').select('id').eq('id', numericId).single();
+      if (checkRow) deleteId = checkRow.id;
     }
 
-    if (deleteId !== null) {
-      const { error } = await supabase.from('data_jurnal_mengajar').delete().eq('id', deleteId);
-      if (error) throw error;
+    if (deleteId === null) {
+      return NextResponse.json({ success: false, error: 'Data jurnal tidak ditemukan (mungkin sudah terhapus)' }, { status: 404 });
     }
+
+    const { error } = await supabase.from('data_jurnal_mengajar').delete().eq('id', deleteId);
+    if (error) throw error;
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
