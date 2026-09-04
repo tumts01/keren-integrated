@@ -137,9 +137,11 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, tanggal, jamKe, kelas, mapel, guru, materi, tahunAjaran } = body;
+    const { id, tanggal, jamKe, kelas, mapel, guru, namaGuru, materi, tahunAjaran } = body;
 
-    if (!id || !tanggal || !jamKe || !kelas || !mapel || !materi) {
+    const actualGuru = guru || namaGuru;
+
+    if (!id || !tanggal || !jamKe || !kelas || !mapel || !materi || !actualGuru) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
     }
 
@@ -184,8 +186,12 @@ export async function PUT(request: Request) {
     }
 
     // Find the actual DB row to update
-    let dbId = parseInt(id, 10);
-    if (isNaN(dbId)) {
+    let dbId: number | null = null;
+    if (/^\d+$/.test(id.toString())) {
+      dbId = parseInt(id.toString(), 10);
+    }
+    
+    if (dbId === null) {
       const { data: foundRow } = await supabase.from('data_jurnal_mengajar').select('id, metadata').contains('metadata', { 'ID': id }).single();
       if (!foundRow) return NextResponse.json({ success: false, error: 'Jurnal tidak ditemukan' }, { status: 404 });
       dbId = foundRow.id;
@@ -201,7 +207,7 @@ export async function PUT(request: Request) {
       'TAHUN AJARAN': tahunAjaran,
       'KELAS': kelas,
       'MAPEL': mapel,
-      'NAMA GURU': guru,
+      'NAMA GURU': actualGuru,
       'MATERI': materi
     };
 
@@ -223,14 +229,16 @@ export async function DELETE(request: Request) {
 
     if (!id) return NextResponse.json({ success: false, error: 'ID tidak valid' }, { status: 400 });
 
-    let deleteId = parseInt(id, 10);
+    let deleteId: number | null = null;
     
-    if (isNaN(deleteId)) {
+    if (/^\d+$/.test(id.toString())) {
+      deleteId = parseInt(id.toString(), 10);
+    } else {
       const { data: foundRow } = await supabase.from('data_jurnal_mengajar').select('id').contains('metadata', { 'ID': id }).single();
       if (foundRow) deleteId = foundRow.id;
     }
 
-    if (!isNaN(deleteId)) {
+    if (deleteId !== null) {
       const { error } = await supabase.from('data_jurnal_mengajar').delete().eq('id', deleteId);
       if (error) throw error;
     }
