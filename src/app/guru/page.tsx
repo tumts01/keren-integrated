@@ -22,12 +22,14 @@ interface Guru {
   tanggalSk: string;
   email: string;
   pendidikan: string;
+  isSertifikasi?: boolean;
 }
 
 export default function GuruPage() {
   const [data, setData] = useState<Guru[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterSertifikasi, setFilterSertifikasi] = useState('Semua');
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -55,11 +57,17 @@ export default function GuruPage() {
     fetchData();
   }, []);
 
-  const filteredData = data.filter(g => 
-    g.nama.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    g.nip.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    g.jabatan.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredData = data.filter(g => {
+    const matchSearch = g.nama.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      g.nip.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      g.jabatan.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchSertifikasi = filterSertifikasi === 'Semua' 
+      ? true 
+      : (filterSertifikasi === 'Sertifikasi' ? g.isSertifikasi : !g.isSertifikasi);
+
+    return matchSearch && matchSertifikasi;
+  });
 
   // Kalkulasi Rekapan Data
   const totalGuru = data.filter(g => g.jabatan.toLowerCase().includes('guru') || g.jabatan.toLowerCase().includes('kepala')).length;
@@ -74,13 +82,14 @@ export default function GuruPage() {
   // Reset page to 1 when search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, filterSertifikasi]);
 
   const handleExportExcel = () => {
     const dataToExport = filteredData.map((g, index) => ({
       'No': index + 1,
       'Nama Lengkap': g.nama,
       'Status': g.status,
+      'Sertifikasi': g.isSertifikasi ? 'Sertifikasi' : '-',
       'NIP': g.nip,
       'Peg ID': g.pegId,
       'Pass Emis (Hijau)': g.passEmisHijau,
@@ -181,6 +190,15 @@ export default function GuruPage() {
         </div>
         
         <div className={styles.actions}>
+              <select
+                value={filterSertifikasi}
+                onChange={(e) => setFilterSertifikasi(e.target.value)}
+                style={{ padding: '10px 16px', borderRadius: '12px', border: '1px solid #cbd5e1', color: '#1e293b', outline: 'none', background: 'white' }}
+              >
+                <option value="Semua">Semua Sertifikasi</option>
+                <option value="Sertifikasi">Sertifikasi</option>
+                <option value="Non Sertifikasi">Non Sertifikasi</option>
+              </select>
             <div className={styles.searchBox}>
               <i className={`fas fa-search ${styles.searchIcon}`}></i>
               <input 
@@ -267,6 +285,7 @@ export default function GuruPage() {
                 <tr>
                   <th>Profil (Nama)</th>
                   <th>Status</th>
+                  <th>Sertifikasi</th>
                   <th>Nomor Induk Pegawai</th>
                   <th>PEG ID</th>
                   <th>Jabatan</th>
@@ -306,6 +325,15 @@ export default function GuruPage() {
                         <span className={`${styles.badge} ${guru.status.toLowerCase().includes('aktif') && !guru.status.toLowerCase().includes('non') && !guru.status.toLowerCase().includes('tidak') ? styles.badgeAktif : styles.badgeNon}`}>
                           {guru.status || 'Tidak Diketahui'}
                         </span>
+                      </td>
+                      <td>
+                        {guru.isSertifikasi ? (
+                          <span style={{ background: '#dcfce7', color: '#16a34a', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600 }}>
+                            <i className="fas fa-check-circle" style={{ marginRight: '4px' }}></i> Sertifikasi
+                          </span>
+                        ) : (
+                          <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>-</span>
+                        )}
                       </td>
                       <td>{guru.nip || '-'}</td>
                       <td>{guru.pegId || '-'}</td>

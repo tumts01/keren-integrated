@@ -7,6 +7,8 @@ export async function GET() {
     if (errGuru) throw errGuru;
     const { data: rowsUsers, error: errUsers } = await supabase.from('data_users').select('*');
     if (errUsers) throw errUsers;
+    const { data: rowsJadwal, error: errJadwal } = await supabase.from('jadwal_mengajar').select('*');
+    if (errJadwal) throw errJadwal;
     
     // Buat pemetaan foto dari tab Users berdasarkan Nama
     const userPhotos: Record<string, string> = {};
@@ -15,6 +17,16 @@ export async function GET() {
       const uFoto = u.metadata?.['Foto'] || u.metadata?.['foto'];
       if (uNama && uFoto) {
         userPhotos[uNama.trim().toLowerCase()] = uFoto;
+      }
+    });
+
+    // Buat pemetaan status sertifikasi dari jadwal_mengajar
+    const sertifikasiMap: Record<string, boolean> = {};
+    (rowsJadwal || []).forEach((j: any) => {
+      const jNama = j.metadata?.['namaGuru'];
+      const keterangan = (j.metadata?.['keterangan'] || '').toLowerCase();
+      if (jNama && keterangan.includes('sertifikasi')) {
+        sertifikasiMap[jNama.trim().toLowerCase()] = true;
       }
     });
 
@@ -33,11 +45,13 @@ export async function GET() {
       const nama = row.nama || '';
       const rawFoto = userPhotos[nama.trim().toLowerCase()] || '';
       const foto = getImageUrl(rawFoto);
+      const isSertifikasi = sertifikasiMap[nama.trim().toLowerCase()] || false;
 
       return {
         id: index,
         nama,
         foto,
+        isSertifikasi,
         status: (row.metadata?.['Status'] || '') || '',
         nip: row.nomor_induk || '',
         pegId: (row.metadata?.['PEG ID'] || '') || '',
