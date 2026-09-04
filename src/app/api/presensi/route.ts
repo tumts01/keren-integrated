@@ -139,6 +139,58 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Data absensi kosong' }, { status: 400 });
     }
 
+    const jamKeText = String(jamKe);
+    const submittedJams = jamKeText.split(',').map(j => j.trim()).filter(Boolean);
+
+    // Get presensi for that date and class to check for overlap
+    const { data: existingPresensi, error: readError } = await supabase
+      .from('data_presensi_siswa')
+      .select('metadata')
+      .eq('tanggal', tanggal)
+      .eq('kelas', kelas);
+
+    if (readError) throw readError;
+
+    let overlappingMapel = null;
+    let overlappingGuru = null;
+    let isExactMatch = false;
+
+    if (existingPresensi && existingPresensi.length > 0) {
+      for (const r of existingPresensi) {
+        const existingJamKeStr = String(r.metadata?.['JAM KE'] || '');
+        const existingJams = existingJamKeStr.split(',').map(j => j.trim()).filter(Boolean);
+        
+        const hasOverlap = submittedJams.some(j => existingJams.includes(j));
+        if (hasOverlap) {
+          const dbMapel = r.metadata?.['MAPEL'];
+          const dbGuru = r.metadata?.['GURU PENGINPUT'];
+          
+          if (existingJamKeStr === jamKeText && dbMapel === mapel) {
+            isExactMatch = true;
+            break; // Exactly same submission
+          }
+          
+          if (dbMapel !== 'PIKET' && mapel !== 'PIKET') {
+            overlappingMapel = dbMapel;
+            overlappingGuru = dbGuru;
+            break; // Conflict found
+          }
+        }
+      }
+    }
+
+    if (isExactMatch) {
+      return NextResponse.json({ success: true, message: 'Absensi sudah pernah diinput (Anti-Dobel Aktif)' });
+    }
+
+    if (overlappingMapel && overlappingMapel !== 'PIKET' && mapel !== 'PIKET') {
+      return NextResponse.json({ 
+        success: false, 
+        error: `Jam ke-${jamKeText} di kelas ${kelas} sudah diabsen oleh ${overlappingGuru || 'guru lain'} (Mapel: ${overlappingMapel}). Anda tidak bisa menimpa absensi.` 
+      }, { status: 409 });
+    }
+
+
     const nowTimestamp = timestamp || new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
 
     const payload = listSiswa.map((s: any) => {
