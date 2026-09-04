@@ -1,22 +1,12 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import crypto from 'crypto';
+import { unstable_cache, revalidateTag } from 'next/cache';
 
 const cleanJamKe = (val: string) => val.replace(/,(19|20)\d{2}$/g, '').replace(/^'/, '').trim();
 
-function kelasToJadwalCol(kelas: string): string {
-  const match = kelas.trim().match(/^(\d+)([A-Za-z]+)$/);
-  if (!match) return '';
-  const num = parseInt(match[1]);
-  const suffix = match[2].toUpperCase();
-  const roman: Record<number, string> = { 7: 'VII', 8: 'VIII', 9: 'IX', 10: 'X', 11: 'XI', 12: 'XII' };
-  const r = roman[num] || '';
-  return r ? `${r}_${suffix}` : '';
-}
-
-export async function GET() {
-  try {
-    
+const getCachedJurnal = unstable_cache(
+  async () => {
     let rows: any[] = [];
     let page = 0;
     while (true) {
@@ -28,9 +18,8 @@ export async function GET() {
       page++;
     }
 
-
     const rawData = (rows || []).map((r: any) => ({
-      id: r.metadata?.['ID'] || r.id.toString(),
+      id: r.metadata?.['ID'] || r.id?.toString() || '',
       timestamp: r.metadata?.['TIMESTAMP'] || '',
       tanggal: r.metadata?.['TANGGAL'] || r.tanggal || '',
       jamKe: cleanJamKe(r.metadata?.['JAM KE'] || ''),
@@ -49,10 +38,16 @@ export async function GET() {
       return true;
     }).reverse();
 
-    return NextResponse.json({ success: true, data }, {
-      headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
-    });
+    return data;
+  },
+  ['jurnal-data-all'],
+  { tags: ['jurnal'], revalidate: 3600 }
+);
 
+export async function GET() {
+  try {
+    const data = await getCachedJurnal();
+    return NextResponse.json({ success: true, data });
   } catch (error: any) {
     console.error('Fetch Jurnal Error:', error);
     return NextResponse.json({ success: false, error: 'Gagal memuat jurnal' }, { status: 500 });
@@ -124,8 +119,7 @@ export async function POST(request: Request) {
     const { error: insertError } = await supabase.from('data_jurnal_mengajar').insert([{ tanggal, kelas, metadata }]);
     if (insertError) throw insertError;
 
-    // Optional: Fetch Schedule update code could go here, but omitted for brevity if it's already refactored out
-
+    revalidateTag('', {});
     return NextResponse.json({ success: true, id });
 
   } catch (error: any) {
@@ -156,13 +150,11 @@ export async function PUT(request: Request) {
 
     if (readError) throw readError;
 
-    // Check for overlap, excluding the row being edited
     const submittedJams = jamKeText.split(',').map(j => j.trim()).filter(Boolean);
     let overlappingRow = null;
 
     if (rows && rows.length > 0) {
       for (const r of rows) {
-        // Skip self (compare by supabase id or metadata ID)
         if (r.id.toString() === id.toString() || r.metadata?.['ID'] === id) continue;
 
         const existingJamKeStr = cleanJamKe(String(r.metadata?.['JAM KE'] || ''));
@@ -185,15 +177,12 @@ export async function PUT(request: Request) {
       }, { status: 409 });
     }
 
-    // Find the actual DB row to update
     let dbId: number | null = null;
     
-    // Prioritize metadata ID lookup
     const { data: foundRow } = await supabase.from('data_jurnal_mengajar').select('id, metadata').contains('metadata', { 'ID': id }).single();
     if (foundRow) {
       dbId = foundRow.id;
     } else if (/^\d+$/.test(id.toString())) {
-      // Fallback to Supabase ID if numeric
       const numericId = parseInt(id.toString(), 10);
       const { data: checkRow } = await supabase.from('data_jurnal_mengajar').select('id').eq('id', numericId).single();
       if (checkRow) dbId = checkRow.id;
@@ -203,7 +192,6 @@ export async function PUT(request: Request) {
       return NextResponse.json({ success: false, error: 'Jurnal tidak ditemukan' }, { status: 404 });
     }
 
-    // Fetch existing metadata to preserve fields like TIMESTAMP
     const { data: existingRow } = await supabase.from('data_jurnal_mengajar').select('metadata').eq('id', dbId).single();
 
     const metadata = {
@@ -220,6 +208,7 @@ export async function PUT(request: Request) {
     const { error: updateError } = await supabase.from('data_jurnal_mengajar').update({ tanggal, kelas, metadata }).eq('id', dbId);
     if (updateError) throw updateError;
 
+    revalidateTag('', {});
     return NextResponse.json({ success: true, message: 'Jurnal berhasil diperbarui' });
 
   } catch (error: any) {
@@ -237,24 +226,23 @@ export async function DELETE(request: Request) {
 
     let deleteId: number | null = null;
     
-    // Prioritize metadata ID lookup
     const { data: foundRow } = await supabase.from('data_jurnal_mengajar').select('id').contains('metadata', { 'ID': id }).single();
     if (foundRow) {
       deleteId = foundRow.id;
     } else if (/^\d+$/.test(id.toString())) {
-      // Fallback to Supabase ID if numeric
       const numericId = parseInt(id.toString(), 10);
       const { data: checkRow } = await supabase.from('data_jurnal_mengajar').select('id').eq('id', numericId).single();
       if (checkRow) deleteId = checkRow.id;
     }
 
     if (deleteId === null) {
-      return NextResponse.json({ success: false, error: 'Data jurnal tidak ditemukan (mungkin sudah terhapus)' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'Data jurnal tidak ditemukan' }, { status: 404 });
     }
 
     const { error } = await supabase.from('data_jurnal_mengajar').delete().eq('id', deleteId);
     if (error) throw error;
 
+    revalidateTag('', {});
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Delete Jurnal Error:', error);
