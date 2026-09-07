@@ -120,7 +120,7 @@ export async function POST(request: Request) {
     const { error: insertError } = await supabase.from('data_jurnal_mengajar').insert([{ tanggal, kelas, metadata }]);
     if (insertError) throw insertError;
 
-    revalidateTag('', {});
+    revalidateTag('jurnal', {});
     return NextResponse.json({ success: true, id });
 
   } catch (error: any) {
@@ -209,7 +209,7 @@ export async function PUT(request: Request) {
     const { error: updateError } = await supabase.from('data_jurnal_mengajar').update({ tanggal, kelas, metadata }).eq('id', dbId);
     if (updateError) throw updateError;
 
-    revalidateTag('', {});
+    revalidateTag('jurnal', {});
     return NextResponse.json({ success: true, message: 'Jurnal berhasil diperbarui' });
 
   } catch (error: any) {
@@ -243,7 +243,7 @@ export async function DELETE(request: Request) {
     const { error } = await supabase.from('data_jurnal_mengajar').delete().eq('id', deleteId);
     if (error) throw error;
 
-    revalidateTag('', {});
+    revalidateTag('jurnal', {});
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Delete Jurnal Error:', error);

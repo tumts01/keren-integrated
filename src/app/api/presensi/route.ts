@@ -102,7 +102,7 @@ export async function POST(request: Request) {
       }).eq('id', foundRow.id);
       if (error) throw error;
 
-      revalidateTag('', {});
+      revalidateTag('presensi', {});
       return NextResponse.json({ success: true });
     }
 
@@ -115,7 +115,7 @@ export async function POST(request: Request) {
         if (error) throw error;
       }
 
-      revalidateTag('', {});
+      revalidateTag('presensi', {});
       return NextResponse.json({ success: true });
     }
 
@@ -214,7 +214,7 @@ export async function POST(request: Request) {
     const { error } = await supabase.from('data_presensi_siswa').insert(payload);
     if (error) throw error;
 
-    revalidateTag('', {});
+    revalidateTag('presensi', {});
     return NextResponse.json({ success: true });
 
   } catch (error: any) {
@@ -246,7 +246,7 @@ export async function DELETE(request: Request) {
       if (error) throw error;
     }
 
-    revalidateTag('', {});
+    revalidateTag('presensi', {});
     return NextResponse.json({ success: true });
 
   } catch (error: any) {
