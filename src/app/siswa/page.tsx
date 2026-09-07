@@ -642,7 +642,11 @@ function PrintSiswaModal({
           'Alamat': s.alamat,
           'No. HP / WA': s.noHp,
           'Nama Ayah': s.namaAyah,
+            'NIK Ayah': s.rawMetadata?.['NIK AYAH KANDUNG'] || '',
+            'TTL Ayah': s.rawMetadata?.['TTL AYAH KANDUNG'] || '',
           'Nama Ibu': s.namaIbu,
+            'NIK Ibu': s.rawMetadata?.['NIK IBU KANDUNG'] || '',
+            'TTL Ibu': s.rawMetadata?.['TTL IBU KANDUNG'] || '',
           'Tahun Ajaran': s.tahunAjaran,
         }));
         const ws = XLSX.utils.json_to_sheet(rows);
@@ -666,7 +670,11 @@ function PrintSiswaModal({
         'Alamat': s.alamat || '',
         'No. HP / WA': s.noHp || '',
         'Nama Ayah': s.namaAyah || '',
+          'NIK Ayah': s.rawMetadata?.['NIK AYAH KANDUNG'] || '',
+          'TTL Ayah': s.rawMetadata?.['TTL AYAH KANDUNG'] || '',
         'Nama Ibu': s.namaIbu || '',
+          'NIK Ibu': s.rawMetadata?.['NIK IBU KANDUNG'] || '',
+          'TTL Ibu': s.rawMetadata?.['TTL IBU KANDUNG'] || '',
         'Tahun Ajaran': s.tahunAjaran || '',
       }));
       const ws = XLSX.utils.json_to_sheet(rows);
@@ -1103,8 +1111,12 @@ export default function SiswaPage() {
       'Domisili': s.domisili,
       'Alamat': s.alamat,
       'Nama Ayah': s.namaAyah,
+            'NIK Ayah': s.rawMetadata?.['NIK AYAH KANDUNG'] || '',
+            'TTL Ayah': s.rawMetadata?.['TTL AYAH KANDUNG'] || '',
       'Pekerjaan Ayah': s.pekerjaanAyah,
       'Nama Ibu': s.namaIbu,
+            'NIK Ibu': s.rawMetadata?.['NIK IBU KANDUNG'] || '',
+            'TTL Ibu': s.rawMetadata?.['TTL IBU KANDUNG'] || '',
       'Pekerjaan Ibu': s.pekerjaanIbu,
       'No. HP / WA': s.noHp
     }));
