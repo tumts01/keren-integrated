@@ -59,10 +59,8 @@ export default function SpmbPage() {
   });
 
   const [fileKk, setFileKk] = useState<File | null>(null);
-  const [fileAkta, setFileAkta] = useState<File | null>(null);
 
   const fileKkRef = useRef<HTMLInputElement>(null);
-  const fileAktaRef = useRef<HTMLInputElement>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -105,8 +103,8 @@ export default function SpmbPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fileKk || !fileAkta) {
-      showToast('File Kartu Keluarga dan Akta Kelahiran wajib diunggah!', 'error');
+    if (!fileKk) {
+      showToast('File Kartu Keluarga wajib diunggah!', 'error');
       return;
     }
 
@@ -122,9 +120,6 @@ export default function SpmbPage() {
 
       // 1. Upload KK dengan rename otomatis
       const linkKk = await uploadToDrive(fileKk, `KK_${safeName}`);
-      
-      // 2. Upload Akta dengan rename otomatis
-      const linkAkta = await uploadToDrive(fileAkta, `AKTA_${safeName}`);
 
       // 3. Save to Database
       const tempatTanggalLahir = `${formData.tempatLahir}, ${formData.tanggalLahir}`;
@@ -146,8 +141,7 @@ export default function SpmbPage() {
         nomorWaIbu: formData.nomorWaIbu,
         alamatLengkap: formData.alamatLengkap,
         prestasi: formData.prestasi,
-        linkKk: linkKk,
-        linkAkta: linkAkta
+        linkKk: linkKk
       };
 
       const res = await fetch('/api/spmb', {
@@ -182,9 +176,7 @@ export default function SpmbPage() {
           prestasi: ''
         });
         setFileKk(null);
-        setFileAkta(null);
         if (fileKkRef.current) fileKkRef.current.value = '';
-        if (fileAktaRef.current) fileAktaRef.current.value = '';
 
       } else {
         showToast(`Gagal mendaftar: ${result.error}`, 'error');
@@ -380,24 +372,6 @@ export default function SpmbPage() {
               <div className={styles.fileTitle}>Kartu Keluarga (KK) <span>*</span></div>
               {fileKk ? (
                 <div className={styles.fileName}><i className="fas fa-check"></i> {fileKk.name}</div>
-              ) : (
-                <div className={styles.fileDesc}>Klik untuk memilih file PDF atau Gambar</div>
-              )}
-            </div>
-
-            {/* Akta Upload */}
-            <div className={`${styles.fileUploadBox} ${fileAkta ? styles.hasFile : ''}`} onClick={() => fileAktaRef.current?.click()}>
-              <input 
-                type="file" 
-                accept="image/*,.pdf" 
-                className={styles.hiddenInput} 
-                ref={fileAktaRef} 
-                onChange={(e) => setFileAkta(e.target.files?.[0] || null)}
-              />
-              <i className={`fas fa-child ${styles.fileIcon}`}></i>
-              <div className={styles.fileTitle}>Akta Kelahiran <span>*</span></div>
-              {fileAkta ? (
-                <div className={styles.fileName}><i className="fas fa-check"></i> {fileAkta.name}</div>
               ) : (
                 <div className={styles.fileDesc}>Klik untuk memilih file PDF atau Gambar</div>
               )}
