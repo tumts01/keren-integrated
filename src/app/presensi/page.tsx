@@ -94,6 +94,8 @@ export default function PresensiPage() {
   const [loadingSiswa, setLoadingSiswa] = useState(false);
   // Cache siswa per kelas agar tidak refetch ulang ke server
   const siswaCache = useRef<Record<string, any[]>>({});
+  // Cache SEMUA siswa aktif — fetch sekali, pakai berkali-kali
+  const allSiswaRef = useRef<any[]>([]);
   // Semua nama siswa aktif (untuk datalist piket, tidak terbatas kelas)
   const [allSiswaNames, setAllSiswaNames] = useState<string[]>([]);
 
@@ -220,14 +222,12 @@ export default function PresensiPage() {
       setCurrentUsername(usernameRaw);
       setFilterGuruRekap(usernameRaw);
     }
-    // Load semua nama siswa aktif untuk datalist piket
+    // Load semua siswa aktif SEKALI — derivasi per kelas dilakukan lokal (tidak fetch ulang)
     fetch('/api/siswa').then(res => res.json()).then(data => {
       if (data.success && data.data) {
-        const names = data.data
-          .filter((s: any) => s.isLatest && (s.status || '').toLowerCase().trim() === 'aktif')
-          .map((s: any) => s.nama)
-          .filter(Boolean)
-          .sort();
+        const aktif = data.data.filter((s: any) => s.isLatest && (s.status || '').toLowerCase().trim() === 'aktif');
+        allSiswaRef.current = aktif; // simpan semua di ref
+        const names = aktif.map((s: any) => s.nama).filter(Boolean).sort();
         setAllSiswaNames(names);
       }
     }).catch(() => {});
@@ -692,26 +692,36 @@ export default function PresensiPage() {
       setLoadingSiswa(true);
       setSiswaList([]);
       setPresensi({});
-      fetch('/api/siswa').then(res => res.json()).then(data => {
-        if (data.success) {
-          const filtered = data.data.filter((s: any) =>
-            s.rombel === selectedKelas &&
-            s.isLatest &&
-            (s.status || '').toLowerCase().trim() === 'aktif'
-          );
-          // Simpan ke cache
-          siswaCache.current[selectedKelas] = filtered;
-          if (filtered.length > 0) {
-            setSiswaList(filtered);
-            const defaultPresensi: Record<string, string> = {};
-            filtered.forEach((s: any) => { defaultPresensi[s.id] = 'H'; });
-            setPresensi(defaultPresensi);
+      // Derivasi dari data yang sudah di-cache saat mount — tidak perlu fetch ulang!
+      const applyFilter = (allData: any[]) => {
+        const filtered = allData.filter((s: any) =>
+          s.rombel === selectedKelas &&
+          s.isLatest &&
+          (s.status || '').toLowerCase().trim() === 'aktif'
+        );
+        siswaCache.current[selectedKelas] = filtered;
+        setSiswaList(filtered);
+        const defaultPresensi: Record<string, string> = {};
+        filtered.forEach((s: any) => { defaultPresensi[s.id] = 'H'; });
+        setPresensi(defaultPresensi);
+        setLoadingSiswa(false);
+      };
+
+      if (allSiswaRef.current.length > 0) {
+        // Data sudah tersedia di memori — langsung filter
+        applyFilter(allSiswaRef.current);
+      } else {
+        // Fallback: jika ref belum terisi (race condition pada mount), fetch sekali
+        fetch('/api/siswa').then(res => res.json()).then(data => {
+          if (data.success && data.data) {
+            const aktif = data.data.filter((s: any) => s.isLatest && (s.status || '').toLowerCase().trim() === 'aktif');
+            allSiswaRef.current = aktif;
+            applyFilter(aktif);
           } else {
-            setSiswaList([]);
-            setPresensi({});
+            setLoadingSiswa(false);
           }
-        }
-      }).finally(() => setLoadingSiswa(false));
+        }).catch(() => setLoadingSiswa(false));
+      }
     } else {
       setSiswaList([]);
       setPresensi({});

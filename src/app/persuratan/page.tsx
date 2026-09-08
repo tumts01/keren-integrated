@@ -47,6 +47,8 @@ export default function PersuratanPage() {
   const [uploadTarget, setUploadTarget] = useState<{ id: number, rowNumber: number, type: 'keluar' | 'masuk' } | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Cache semua siswa aktif sekali — digunakan untuk search tanpa refetch
+  const allSiswaRef = useRef<any[]>([]);
 
   // Add Surat Masuk states
   const [showAddMasukModal, setShowAddMasukModal] = useState(false);
@@ -115,7 +117,7 @@ export default function PersuratanPage() {
   const [isSearchingSiswa, setIsSearchingSiswa] = useState(false);
   const [showSiswaDropdown, setShowSiswaDropdown] = useState(false);
 
-  // Debounced search for Siswa
+  // Search siswa — filter lokal dari data yang sudah di-preload saat mount
   useEffect(() => {
     if (!searchSiswaTerm || searchSiswaTerm.length < 3 || (generateSiswa && generateSiswa.nama === searchSiswaTerm)) {
       setSiswaOptions([]);
@@ -123,27 +125,31 @@ export default function PersuratanPage() {
       return;
     }
 
-    const searchSiswa = async () => {
-      setIsSearchingSiswa(true);
-      try {
-        const res = await fetch('/api/siswa');
-        const json = await res.json();
-        if (json.success) {
-          const latestStudents = json.data.filter((s: any) => s.isLatest);
-          const filtered = latestStudents.filter((s: any) => 
-            s.nama.toLowerCase().includes(searchSiswaTerm.toLowerCase())
-          ).slice(0, 50); // Max 50 results
-          setSiswaOptions(filtered);
-          setShowSiswaDropdown(true);
-        }
-      } catch (error) {
-        console.error('Error searching siswa:', error);
-      } finally {
-        setIsSearchingSiswa(false);
+    const doSearch = () => {
+      if (allSiswaRef.current.length > 0) {
+        // Data sudah tersedia — filter lokal, nol request ke server
+        const filtered = allSiswaRef.current
+          .filter((s: any) => s.nama.toLowerCase().includes(searchSiswaTerm.toLowerCase()))
+          .slice(0, 50);
+        setSiswaOptions(filtered);
+        setShowSiswaDropdown(filtered.length > 0);
+      } else {
+        // Fallback jika preload belum selesai
+        setIsSearchingSiswa(true);
+        fetch('/api/siswa').then(res => res.json()).then(json => {
+          if (json.success) {
+            allSiswaRef.current = json.data.filter((s: any) => s.isLatest);
+            const filtered = allSiswaRef.current
+              .filter((s: any) => s.nama.toLowerCase().includes(searchSiswaTerm.toLowerCase()))
+              .slice(0, 50);
+            setSiswaOptions(filtered);
+            setShowSiswaDropdown(filtered.length > 0);
+          }
+        }).catch(console.error).finally(() => setIsSearchingSiswa(false));
       }
     };
 
-    const delay = setTimeout(searchSiswa, 500);
+    const delay = setTimeout(doSearch, 300);
     return () => clearTimeout(delay);
   }, [searchSiswaTerm, generateSiswa]);
 
@@ -218,6 +224,12 @@ export default function PersuratanPage() {
 
   useEffect(() => {
     fetchData();
+    // Preload semua siswa aktif ke memori — search lokal tanpa refetch
+    fetch('/api/siswa').then(r => r.json()).then(d => {
+      if (d.success && d.data) {
+        allSiswaRef.current = d.data.filter((s: any) => s.isLatest);
+      }
+    }).catch(() => {});
   }, []);
 
   const repopulateForm = (record: any) => {
