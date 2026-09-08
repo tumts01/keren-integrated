@@ -99,20 +99,55 @@ export default function PerangkatUjianPage() {
       } catch(e) {}
     }
 
-    const saved = localStorage.getItem('nopesLayoutConfig');
-    if (saved) {
+    const loadGlobalConfig = async () => {
       try {
-        setLayout(JSON.parse(saved));
-      } catch(e) {}
-    }
+        // Coba load dari Supabase (Global)
+        const { data, error } = await supabase.from('rapor_config').select('*').in('key', ['nopes_layout', 'nobang_layout']);
+        
+        let loadedNopes = false;
+        let loadedNobang = false;
 
-    const savedNobang = localStorage.getItem('nopes_layout_nobang');
-    if (savedNobang) {
-      try {
-        setLayoutNobang(JSON.parse(savedNobang));
-      } catch (e) {}
-    }
+        if (!error && data) {
+          const nopesCfg = data.find((d: any) => d.key === 'nopes_layout');
+          if (nopesCfg && nopesCfg.value) {
+            setLayout(JSON.parse(nopesCfg.value));
+            loadedNopes = true;
+          }
+          
+          const nobangCfg = data.find((d: any) => d.key === 'nobang_layout');
+          if (nobangCfg && nobangCfg.value) {
+            setLayoutNobang(JSON.parse(nobangCfg.value));
+            loadedNobang = true;
+          }
+        }
+
+        // Fallback ke local storage jika di Supabase belum ada
+        if (!loadedNopes) {
+          const saved = localStorage.getItem('nopesLayoutConfig');
+          if (saved) setLayout(JSON.parse(saved));
+        }
+        if (!loadedNobang) {
+          const savedNobang = localStorage.getItem('nopes_layout_nobang');
+          if (savedNobang) setLayoutNobang(JSON.parse(savedNobang));
+        }
+      } catch (err) {}
+    };
+
+    loadGlobalConfig();
   }, []);
+
+  const saveLayoutGlobal = async () => {
+    try {
+      Swal.fire({ title: 'Menyimpan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      const { error: e1 } = await supabase.from('rapor_config').upsert({ key: 'nopes_layout', value: JSON.stringify(layout) }, { onConflict: 'key' });
+      if (e1) throw e1;
+      const { error: e2 } = await supabase.from('rapor_config').upsert({ key: 'nobang_layout', value: JSON.stringify(layoutNobang) }, { onConflict: 'key' });
+      if (e2) throw e2;
+      Swal.fire('Berhasil', 'Posisi layout telah disimpan secara global untuk semua pengguna.', 'success');
+    } catch (error: any) {
+      Swal.fire('Error', error.message, 'error');
+    }
+  };
 
   const updateLayout = (key: keyof typeof layout, value: number) => {
     const newLayout = { ...layout, [key]: value };
@@ -568,6 +603,11 @@ export default function PerangkatUjianPage() {
               <input type="number" step="0.5" value={layout.detailSize} onChange={e => updateLayout('detailSize', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
             </div>
           </div>
+          <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+            <button onClick={saveLayoutGlobal} style={{ background: '#3b82f6', color: 'white', padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
+              <i className="fas fa-save" style={{ marginRight: '8px' }}></i> Simpan Posisi ke Semua PC
+            </button>
+          </div>
         </details>
       )}
 
@@ -602,6 +642,11 @@ export default function PerangkatUjianPage() {
               <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '4px' }}>Ukuran Font Detail (%)</label>
               <input type="number" step="0.5" value={layoutNobang.detailSize} onChange={e => updateLayoutNobang('detailSize', parseFloat(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
             </div>
+          </div>
+          <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+            <button onClick={saveLayoutGlobal} style={{ background: '#3b82f6', color: 'white', padding: '8px 16px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}>
+              <i className="fas fa-save" style={{ marginRight: '8px' }}></i> Simpan Posisi ke Semua PC
+            </button>
           </div>
         </details>
       )}
