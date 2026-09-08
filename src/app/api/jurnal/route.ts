@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import crypto from 'crypto';
 import { unstable_cache, revalidateTag } from 'next/cache';
@@ -7,10 +7,21 @@ const cleanJamKe = (val: string) => val.replace(/,(19|20)\d{2}$/g, '').replace(/
 
 const getCachedJurnal = unstable_cache(
   async () => {
+    // Ambil hanya 2 tahun ajaran terakhir — hindari menarik histori bertahun-tahun
+    const currentYear = new Date().getFullYear();
+    const taList = [
+      `${currentYear - 1}/${currentYear}`,
+      `${currentYear}/${currentYear + 1}`
+    ];
+
     let rows: any[] = [];
     let page = 0;
     while (true) {
-      const { data, error } = await supabase.from('data_jurnal_mengajar').select('*').range(page * 1000, (page + 1) * 1000 - 1);
+      const { data, error } = await supabase
+        .from('data_jurnal_mengajar')
+        .select('*')
+        .in('metadata->>TAHUN AJARAN', taList)
+        .range(page * 1000, (page + 1) * 1000 - 1);
       if (error) throw error;
       if (!data || data.length === 0) break;
       rows = rows.concat(data);

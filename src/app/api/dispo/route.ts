@@ -5,10 +5,19 @@ import crypto from 'crypto';
 export async function GET() {
   try {
     
+    // Ambil hanya 12 bulan terakhir — hindari seluruh histori
+    const cutoff = new Date();
+    cutoff.setFullYear(cutoff.getFullYear() - 1);
+    const cutoffStr = cutoff.toISOString().split('T')[0];
+
     let rows: any[] = [];
     let page = 0;
     while (true) {
-      const { data, error } = await supabase.from('data_dispo_siswa').select('*').range(page * 1000, (page + 1) * 1000 - 1);
+      const { data, error } = await supabase
+        .from('data_dispo_siswa')
+        .select('*')
+        .gte('metadata->>TANGGAL', cutoffStr)
+        .range(page * 1000, (page + 1) * 1000 - 1);
       if (error) throw error;
       if (!data || data.length === 0) break;
       rows = rows.concat(data);

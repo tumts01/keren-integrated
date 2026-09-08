@@ -3,20 +3,28 @@ import { supabase } from '@/lib/supabase';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
-    
+    // Ambil hanya 12 bulan terakhir — hindari seluruh histori
+    const cutoff = new Date();
+    cutoff.setFullYear(cutoff.getFullYear() - 1);
+    const cutoffStr = cutoff.toISOString().split('T')[0]; // YYYY-MM-DD
+
     let rows: any[] = [];
     let page = 0;
     while (true) {
-      const { data, error } = await supabase.from('data_jurnal_piket').select('*').range(page * 1000, (page + 1) * 1000 - 1);
+      const { data, error } = await supabase
+        .from('data_jurnal_piket')
+        .select('*')
+        .gte('metadata->>TANGGAL', cutoffStr)
+        .range(page * 1000, (page + 1) * 1000 - 1);
       if (error) throw error;
       if (!data || data.length === 0) break;
       rows = rows.concat(data);
       if (data.length < 1000) break;
       page++;
     }
-
 
     const data = (rows || []).map((r: any) => ({
       id: r.metadata?.['ID'] || r.id.toString(),
@@ -43,58 +51,40 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const {
-      tanggal, 
-      petugasPiket, 
-      guruDispo,
-      entries
-    } = body;
+    const { tanggal, petugasPiket, guruDispo, entries } = body;
 
     if (!tanggal || !petugasPiket) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap. Tanggal dan Petugas Piket wajib diisi.' }, { status: 400 });
     }
 
     const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
-    
-    // Process entries or single submission
     const rowsToInsert = [];
-    
+
     if (entries && Array.isArray(entries) && entries.length > 0) {
       for (const entry of entries) {
         if (!entry.guruIzin) continue;
         const id = crypto.randomUUID().substring(0, 8);
-        const metadata = {
-          'ID': id,
-          'TIMESTAMP': timestamp,
-          'TANGGAL': tanggal,
-          'PETUGAS PIKET': petugasPiket,
-          'GURU IZIN': entry.guruIzin,
-          'ALASAN IZIN': entry.alasanIzin || '',
-          'KELAS DITINGGALKAN': entry.kelasDitinggalkan || '',
-          'MATERI': entry.materi || '',
-          'GURU PENGGANTI': entry.guruPengganti || '',
-          'GURU DISPO': guruDispo || ''
-        };
-        rowsToInsert.push({ tanggal, metadata });
+        rowsToInsert.push({
+          tanggal,
+          metadata: {
+            'ID': id, 'TIMESTAMP': timestamp, 'TANGGAL': tanggal,
+            'PETUGAS PIKET': petugasPiket, 'GURU IZIN': entry.guruIzin,
+            'ALASAN IZIN': entry.alasanIzin || '', 'KELAS DITINGGALKAN': entry.kelasDitinggalkan || '',
+            'MATERI': entry.materi || '', 'GURU PENGGANTI': entry.guruPengganti || '', 'GURU DISPO': guruDispo || ''
+          }
+        });
       }
-    } else {
-      // Fallback for single legacy entry if needed
-      if (body.guruIzin) {
-        const id = crypto.randomUUID().substring(0, 8);
-        const metadata = {
-          'ID': id,
-          'TIMESTAMP': timestamp,
-          'TANGGAL': tanggal,
-          'PETUGAS PIKET': petugasPiket,
-          'GURU IZIN': body.guruIzin,
-          'ALASAN IZIN': body.alasanIzin || '',
-          'KELAS DITINGGALKAN': body.kelasDitinggalkan || '',
-          'MATERI': body.materi || '',
-          'GURU PENGGANTI': body.guruPengganti || '',
-          'GURU DISPO': guruDispo || ''
-        };
-        rowsToInsert.push({ tanggal, metadata });
-      }
+    } else if (body.guruIzin) {
+      const id = crypto.randomUUID().substring(0, 8);
+      rowsToInsert.push({
+        tanggal,
+        metadata: {
+          'ID': id, 'TIMESTAMP': timestamp, 'TANGGAL': tanggal,
+          'PETUGAS PIKET': petugasPiket, 'GURU IZIN': body.guruIzin,
+          'ALASAN IZIN': body.alasanIzin || '', 'KELAS DITINGGALKAN': body.kelasDitinggalkan || '',
+          'MATERI': body.materi || '', 'GURU PENGGANTI': body.guruPengganti || '', 'GURU DISPO': guruDispo || ''
+        }
+      });
     }
 
     if (rowsToInsert.length > 0) {
@@ -103,7 +93,6 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true, message: `Berhasil menyimpan ${rowsToInsert.length} data jurnal piket` });
-
   } catch (error: any) {
     console.error('POST Jurnal Piket Error:', error);
     return NextResponse.json({ success: false, error: 'Gagal memproses jurnal piket' }, { status: 500 });
