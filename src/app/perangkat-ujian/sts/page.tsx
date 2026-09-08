@@ -38,6 +38,9 @@ export default function StsPage() {
   const [gradesData, setGradesData] = useState<any[]>([]);
   const [isFetchingGrades, setIsFetchingGrades] = useState(false);
 
+  const kelasOptions = Array.from(new Set(siswaList.filter(s => s.tahunAjaran === tahunAjaran && s.status?.toLowerCase().includes('aktif')).map(s => s.rombel))).filter(Boolean).sort();
+  const siswaKelasSelected = siswaList.filter(s => s.rombel === kelas && s.tahunAjaran === tahunAjaran && s.status?.toLowerCase().includes('aktif')).sort((a, b) => a.nama.localeCompare(b.nama));
+
   useEffect(() => {
     fetchDataAwal();
   }, []);
@@ -315,11 +318,7 @@ export default function StsPage() {
     }
   };
 
-  const kelasOptions = Array.from(new Set(siswaList.filter(s => s.tahunAjaran === tahunAjaran && s.status?.toLowerCase().includes('aktif')).map(s => s.rombel))).filter(Boolean).sort();
 
-  const siswaKelasSelected = siswaList
-    .filter(s => s.rombel === kelas && s.tahunAjaran === tahunAjaran && s.status?.toLowerCase().includes('aktif'))
-    .sort((a, b) => a.nama.localeCompare(b.nama));
 
   return (
     <div className={styles.container}>
