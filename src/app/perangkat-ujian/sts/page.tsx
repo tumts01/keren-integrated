@@ -65,7 +65,7 @@ export default function StsPage() {
       const resMapel = await fetch('/api/jadwal/mapel');
       const jsonMapel = await resMapel.json();
       if (jsonMapel.success && jsonMapel.data) {
-        const mapels = jsonMapel.data.map((m: any) => m.nama_mapel).sort();
+        const mapels = jsonMapel.data.map((m: any) => m.namaMapel).filter(Boolean).sort();
         setAllMapel(mapels);
         if (mapels.length > 0) setMapel(mapels[0]);
       }
