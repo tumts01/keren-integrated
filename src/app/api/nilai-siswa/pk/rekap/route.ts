@@ -60,40 +60,52 @@ export async function GET(req: Request) {
     const sheetName = `${kelas}_${mapel}`;
     let sheetNilai = docNilai.sheetsByTitle[sheetName];
 
-    let nilaiMap: Record<string, { mh1: string, mh2: string, mh3: string, mh4: string, mh5: string, mh6: string, sts: string, sas: string }> = {};
+    let nilaiMap: Record<string, Record<string, string>> = {};
 
     if (sheetNilai) {
       await sheetNilai.loadCells({
         startRowIndex: 8,
         endRowIndex: sheetNilai.rowCount,
         startColumnIndex: 0,
-        endColumnIndex: 28 // 0 to 27
+        endColumnIndex: 29 // 0 to 28
       });
 
       for (let i = 8; i < sheetNilai.rowCount; i++) {
         const idSiswa = sheetNilai.getCell(i, 2).value;
         if (idSiswa) {
           const key = idSiswa.toString().trim();
+          const getVal = (c: number) => (sheetNilai.getCell(i, c).value || '').toString();
           nilaiMap[key] = {
-            mh1: (sheetNilai.getCell(i, 8).value || '').toString(),
-            mh2: (sheetNilai.getCell(i, 11).value || '').toString(),
-            mh3: (sheetNilai.getCell(i, 14).value || '').toString(),
-            mh4: (sheetNilai.getCell(i, 17).value || '').toString(),
-            mh5: (sheetNilai.getCell(i, 20).value || '').toString(),
-            mh6: (sheetNilai.getCell(i, 23).value || '').toString(),
-            sts: (sheetNilai.getCell(i, 26).value || '').toString(),
-            sas: (sheetNilai.getCell(i, 27).value || '').toString()
+            m1s1: getVal(8), m1s2: getVal(9), m1s3: getVal(10),
+            m2s1: getVal(11), m2s2: getVal(12), m2s3: getVal(13),
+            m3s1: getVal(14), m3s2: getVal(15), m3s3: getVal(16),
+            m4s1: getVal(17), m4s2: getVal(18), m4s3: getVal(19),
+            m5s1: getVal(20), m5s2: getVal(21), m5s3: getVal(22),
+            m6s1: getVal(23), m6s2: getVal(24), m6s3: getVal(25),
+            sts: getVal(26),
+            sas: getVal(27),
+            rata: getVal(28)
           };
         }
       }
     }
+
+    const emptyScores = {
+      m1s1: '', m1s2: '', m1s3: '',
+      m2s1: '', m2s2: '', m2s3: '',
+      m3s1: '', m3s2: '', m3s3: '',
+      m4s1: '', m4s2: '', m4s3: '',
+      m5s1: '', m5s2: '', m5s3: '',
+      m6s1: '', m6s2: '', m6s3: '',
+      sts: '', sas: '', rata: ''
+    };
 
     const data = activeSiswa.map((s, index) => ({
       no: index + 1,
       induk: s.induk,
       nama: s.nama,
       jk: s.jk,
-      nilai: nilaiMap[s.induk] || { mh1: '', mh2: '', mh3: '', mh4: '', mh5: '', mh6: '', sts: '', sas: '' }
+      scores: nilaiMap[s.induk] || emptyScores
     }));
 
     return NextResponse.json({ success: true, data }, {
