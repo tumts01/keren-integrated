@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     
     // Konversi nisns ke Set untuk lookup O(1)
     const nisnSet = new Set(nisns);
-    const matchedData: Record<string, { nama: string; foto: string }> = {};
+    const matchedData: Record<string, { nama: string; rombel: string; foto: string }> = {};
 
     for (const row of allData) {
       if (!row.metadata) continue;
