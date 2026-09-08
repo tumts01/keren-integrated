@@ -71,7 +71,6 @@ export default function Sidebar() {
         { name: 'Data Kelas', path: '/kelas', icon: 'fa-chalkboard' },
         { name: 'Presensi & Jurnal', path: '/presensi', icon: 'fa-calendar-check' },
         { name: 'Dispo Siswa', path: '/dispo', icon: 'fa-user-clock' },
-        { name: 'Nilai Siswa', path: '/nilai-siswa', icon: 'fa-star' },
         ...(isAdmin ? [
           { name: 'Jadwal Mengajar', path: '/jadwal-mengajar', icon: 'fa-clock' },
         ] : []),
@@ -83,7 +82,8 @@ export default function Sidebar() {
           icon: 'fa-file-alt',
           subItems: [
             { name: 'Sekretaris', path: '/perangkat-ujian' },
-            { name: 'STS', path: '/perangkat-ujian/sts' }
+            { name: 'STS', path: '/perangkat-ujian/sts' },
+            { name: 'Nilai Program Khusus', path: '/nilai-siswa' }
           ]
         },
       ]
