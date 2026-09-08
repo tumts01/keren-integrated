@@ -9,10 +9,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Username harus diisi' }, { status: 400 });
     }
 
-    const { data: rows, error } = await supabase.from('data_users').select('*');
+    // Filter langsung di database — hindari full table scan
+    const { data: rows, error } = await supabase
+      .from('data_users')
+      .select('*')
+      .ilike('metadata->>Username', username.trim());
     if (error) throw error;
-    
-    // Find user by Username (case-insensitive for convenience)
+
     const userRow = (rows || []).find((r: any) => {
       const dbUsername = r.metadata?.['Username'];
       return dbUsername && dbUsername.toString().toLowerCase().trim() === username.toLowerCase().trim();

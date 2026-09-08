@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 import styles from './sts.module.css';
@@ -38,7 +38,9 @@ export default function StsPage() {
   const [gradesData, setGradesData] = useState<any[]>([]);
   const [isFetchingGrades, setIsFetchingGrades] = useState(false);
 
-  const kelasOptions = Array.from(new Set(siswaList.filter(s => s.tahunAjaran === tahunAjaran && s.status?.toLowerCase().includes('aktif')).map(s => s.rombel))).filter(Boolean).sort();
+  const kelasOptions = useMemo(() =>
+    Array.from(new Set(siswaList.filter(s => s.tahunAjaran === tahunAjaran && s.status?.toLowerCase().includes('aktif')).map(s => s.rombel))).filter(Boolean).sort() as string[]
+  , [siswaList, tahunAjaran]);
   const siswaKelasSelected = siswaList.filter(s => s.rombel === kelas && s.tahunAjaran === tahunAjaran && s.status?.toLowerCase().includes('aktif')).sort((a, b) => a.nama.localeCompare(b.nama));
 
   useEffect(() => {

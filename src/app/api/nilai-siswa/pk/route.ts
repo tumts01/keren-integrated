@@ -105,7 +105,9 @@ export async function GET(req: Request) {
       nilai: nilaiMap[s.induk] || ''
     }));
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data }, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' }
+    });
 
   } catch (error: any) {
     console.error('API Nilai PK GET Error:', error);
