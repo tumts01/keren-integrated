@@ -11,6 +11,8 @@ interface Siswa {
   nama: string;
   jenisKelamin: string;
   rombel: string;
+  tahunAjaran: string;
+  status: string;
 }
 
 export default function StsPage() {
@@ -24,8 +26,7 @@ export default function StsPage() {
   
   // Data
   const [siswaList, setSiswaList] = useState<Siswa[]>([]);
-  const [allKelas, setAllKelas] = useState<string[]>([]);
-  const [allMapel, setAllMapel] = useState<string[]>([]);
+    const [allMapel, setAllMapel] = useState<string[]>([]);
   
   // Upload Data
   const [previewData, setPreviewData] = useState<any[]>([]);
@@ -56,10 +57,7 @@ export default function StsPage() {
         const data = jsonSiswa.data;
         setSiswaList(data);
         
-        const kelasUnik = Array.from(new Set(data.map((s: any) => s.rombel))).filter(Boolean).sort() as string[];
-        setAllKelas(kelasUnik);
-        if (kelasUnik.length > 0) setKelas(kelasUnik[0]);
-      }
+              }
 
       // Ambil mata pelajaran
       const resMapel = await fetch('/api/jadwal/mapel');
@@ -89,6 +87,12 @@ export default function StsPage() {
     }
   };
 
+  useEffect(() => {
+    if (kelasOptions.length > 0 && !kelasOptions.includes(kelas)) {
+      setKelas(kelasOptions[0]);
+    }
+  }, [kelasOptions, kelas]);
+
   const handleDownloadTemplate = () => {
     if (!kelas || !mapel) {
       Swal.fire('Oops', 'Pilih kelas dan mata pelajaran terlebih dahulu', 'warning');
@@ -96,7 +100,7 @@ export default function StsPage() {
     }
 
     const siswaKelas = siswaList
-      .filter(s => s.rombel === kelas)
+      .filter(s => s.rombel === kelas && s.tahunAjaran === tahunAjaran && s.status?.toLowerCase().includes('aktif'))
       .sort((a, b) => a.nama.localeCompare(b.nama));
 
     if (siswaKelas.length === 0) {
@@ -311,8 +315,10 @@ export default function StsPage() {
     }
   };
 
+  const kelasOptions = Array.from(new Set(siswaList.filter(s => s.tahunAjaran === tahunAjaran && s.status?.toLowerCase().includes('aktif')).map(s => s.rombel))).filter(Boolean).sort();
+
   const siswaKelasSelected = siswaList
-    .filter(s => s.rombel === kelas)
+    .filter(s => s.rombel === kelas && s.tahunAjaran === tahunAjaran && s.status?.toLowerCase().includes('aktif'))
     .sort((a, b) => a.nama.localeCompare(b.nama));
 
   return (
@@ -357,7 +363,7 @@ export default function StsPage() {
           <div className={styles.filterGroup}>
             <label>Kelas</label>
             <select className={styles.select} value={kelas} onChange={e => setKelas(e.target.value)}>
-              {allKelas.map(k => <option key={k} value={k}>{k}</option>)}
+              {kelasOptions.map(k => <option key={k} value={k}>{k}</option>)}
             </select>
           </div>
           {activeTab === 'input' && (
