@@ -186,35 +186,27 @@ export default function PerangkatUjianPage() {
         ruang: String(r['RUANG'] || '')
       })).filter(p => p.nisn);
 
-      const pageSize = 1000;
-      const pages = [0, 1, 2, 3];
-      const results = await Promise.all(
-        pages.map(page =>
-          supabase
-            .from('data_induk')
-            .select('metadata')
-            .range(page * pageSize, (page + 1) * pageSize - 1)
-        )
-      );
+      // Ambil data nama dan foto via API (tidak lagi query Supabase langsung di client)
+      const nisns = parsed.map(p => p.nisn);
+      
+      const res = await fetch('/api/perangkat-ujian/peserta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nisns })
+      });
+      const resData = await res.json();
 
-      let hasError = false;
-      let dbData: { metadata: Record<string, string> }[] = [];
-
-      for (const res of results) {
-        if (res.error) hasError = true;
-        if (res.data) dbData = [...dbData, ...res.data];
-      }
-
-      if (hasError) {
-        Swal.fire('Error', 'Gagal memuat sebagian atau seluruh data dari Supabase', 'error');
+      if (!resData.success) {
+        Swal.fire('Error', resData.error || 'Gagal memuat data peserta', 'error');
       } else {
+        const dbData = resData.data; // { [nisn]: { nama, rombel, foto } }
         const enriched = parsed.map(p => {
-          const match = dbData.find(d => String(d.metadata?.['NISN']) === p.nisn);
+          const match = dbData[p.nisn];
           return {
             ...p,
-            nama: match?.metadata?.['NAMA'] || 'TIDAK DITEMUKAN',
-            kelas: p.kelas || match?.metadata?.['ROMBEL'] || '-',
-            foto: match?.metadata?.['LINK FOTO TERBARU'] || match?.metadata?.['LINK URL FOTO 1'] || ''
+            nama: match?.nama || 'TIDAK DITEMUKAN',
+            kelas: p.kelas || match?.rombel || '-',
+            foto: match?.foto || ''
           };
         });
         setParticipants(enriched);
