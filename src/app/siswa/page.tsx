@@ -611,7 +611,7 @@ function PrintSiswaModal({
         th { background: #f0f0f0; padding: ${paddingPt}pt 5pt; font-weight: 600; text-align: left; border: 1px solid #999; }
         td { padding: ${paddingPt}pt 5pt; border: 1px solid #bbb; vertical-align: middle; height: ${rowHeightPt}pt; }
         .col-no { width: 26pt; text-align: center; }
-        .col-nama { width: 55%; }
+        .col-nama { width: 45%; }
         .group-header td { background: #e8e8e8; font-weight: 600; font-size: ${subPt}pt; padding: ${Math.max(paddingPt - 1, 1)}pt 5pt; border: 1px solid #999; }
         .page-section { page-break-after: always; }
         .page-section:last-child { page-break-after: avoid; }
@@ -875,7 +875,8 @@ function PrintSiswaModal({
                       <tr>
                         <th className="col-no">No</th>
                         <th className="col-nama">Nama Siswa</th>
-                        <th className="col-domisili" style={{ width: '25%' }}>Domisili</th>
+                        <th className="col-domisili" style={{ width: '20%' }}>Domisili</th>
+                        <th className="col-ket">Keterangan</th>
                         <th className="col-ket">Keterangan</th>
                       </tr>
                     </thead>
@@ -885,6 +886,7 @@ function PrintSiswaModal({
                           <td className="col-no">{i + 1}</td>
                           <td className="col-nama">{s.nama}</td>
                           <td className="col-domisili">{s.domisili || '-'}</td>
+                          <td className="col-ket"></td>
                           <td className="col-ket"></td>
                         </tr>
                       ))}
@@ -907,11 +909,12 @@ function PrintSiswaModal({
                       {mode === 'manual' ? (
                         <>
                           <th className="col-kelas" style={{ width: '20%' }}>Kelas</th>
-                          <th className="col-domisili" style={{ width: '25%' }}>Domisili</th>
+                          <th className="col-domisili" style={{ width: '20%' }}>Domisili</th>
                         </>
                       ) : (
                         <>
-                          <th className="col-domisili" style={{ width: '25%' }}>Domisili</th>
+                          <th className="col-domisili" style={{ width: '20%' }}>Domisili</th>
+                          <th className="col-ket">Keterangan</th>
                           <th className="col-ket">Keterangan</th>
                         </>
                       )}
@@ -930,6 +933,7 @@ function PrintSiswaModal({
                         ) : (
                           <>
                             <td className="col-domisili">{s.domisili || '-'}</td>
+                            <td className="col-ket"></td>
                             <td className="col-ket"></td>
                           </>
                         )}
