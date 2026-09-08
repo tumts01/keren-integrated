@@ -1,21 +1,13 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { getAllCachedDataInduk } from '@/lib/data-induk';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
     // 1. Fetch Students from Supabase (handle >1000 rows)
-    let rawSiswa: any[] = [];
-    let page = 0;
-    while (true) {
-      const { data, error } = await supabase.from('data_induk').select('*').range(page * 1000, (page + 1) * 1000 - 1);
-      if (error) throw error;
-      if (!data || data.length === 0) break;
-      rawSiswa.push(...data);
-      if (data.length < 1000) break;
-      page++;
-    }
+    let rawSiswa = await getAllCachedDataInduk();
     
     const activeStudents = (rawSiswa || []).map((row: any) => {
         let rombel = (row.metadata?.['ROMBEL KELAS 9'] || '').trim();

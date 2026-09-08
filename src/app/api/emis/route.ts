@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { getAllCachedDataInduk } from '@/lib/data-induk';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,21 +10,7 @@ export async function GET(request: Request) {
     const tahunAjaranFilter = searchParams.get('tahunAjaran') || '';
 
     // Mengambil data induk (pengganti DATABASE tab)
-    const pageSize = 1000;
-    const pages = [0, 1, 2, 3];
-    const results = await Promise.all(
-      pages.map(page => 
-        supabase
-          .from('data_induk')
-          .select('*')
-          .range(page * pageSize, (page + 1) * pageSize - 1)
-      )
-    );
-    
-    for (const res of results) {
-      if (res.error) throw res.error;
-    }
-    const sbRows = results.flatMap(r => r.data || []);
+    const sbRows = await getAllCachedDataInduk();
 
     type SiswaRecord = {
       nisn: string; nis: string; nama: string; status: string;

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getIndukDoc } from '@/lib/google-sheets';
 import { supabase } from '@/lib/supabase';
+import { revalidateTag } from 'next/cache';
 
 export async function POST() {
   try {
@@ -47,6 +48,7 @@ export async function POST() {
       if (insErr) throw insErr;
     }
 
+    revalidateTag('data_induk', {});
     return NextResponse.json({ success: true, message: 'Sinkronisasi berhasil!' });
   } catch (error: any) {
     console.error('Error Sync Siswa:', error);

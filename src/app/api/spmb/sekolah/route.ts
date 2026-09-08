@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { getAllCachedDataInduk } from '@/lib/data-induk';
 
 export async function GET() {
   try {
-    const { data: rows, error } = await supabase.from('data_induk').select('*');
-    if (error) throw error;
+    const rows = await getAllCachedDataInduk();
     
     const sekolahMap = new Map<string, string>();
     

@@ -1,18 +1,10 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { getAllCachedDataInduk } from '@/lib/data-induk';
 
 export async function GET() {
   try {
-    let rowsSiswa: any[] = [];
-    let page = 0;
-    while (true) {
-      const { data, error } = await supabase.from('data_induk').select('*').range(page * 1000, (page + 1) * 1000 - 1);
-      if (error) throw error;
-      if (!data || data.length === 0) break;
-      rowsSiswa = rowsSiswa.concat(data);
-      if (data.length < 1000) break;
-      page++;
-    }
+    let rowsSiswa = await getAllCachedDataInduk();
     
     const { data: rowsKelas, error: errKelas } = await supabase.from('data_kelas').select('*');
     if (errKelas) throw errKelas;

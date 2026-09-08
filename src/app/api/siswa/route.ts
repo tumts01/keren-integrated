@@ -1,27 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getIndukDoc } from '@/lib/google-sheets';
 import { supabase } from '@/lib/supabase';
+import { getAllCachedDataInduk } from '@/lib/data-induk';
+import { revalidateTag } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const pageSize = 1000;
-    const pages = [0, 1, 2, 3]; // 4000 rows max, cukup untuk 3200+ siswa
-    const results = await Promise.all(
-      pages.map(page => 
-        supabase
-          .from('data_induk')
-          .select('*')
-          .range(page * pageSize, (page + 1) * pageSize - 1)
-      )
-    );
-    
-    for (const res of results) {
-      if (res.error) throw res.error;
-    }
-    
-    const sbRows = results.flatMap(r => r.data || []);
+    const sbRows = await getAllCachedDataInduk();
     
     // Mock Google Sheet row interface
     const rows = sbRows.map((sbRow: any, index: number) => ({
@@ -189,6 +176,7 @@ export async function POST(request: Request) {
         metadata: rowData
       };
       await supabase.from('data_induk').insert(payload);
+      revalidateTag('data_induk', {});
     } catch (sbError) {
       console.error('Error insert mutasi ke Supabase:', sbError);
     }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { getAllCachedDataInduk } from '@/lib/data-induk';
 
 export const dynamic = 'force-dynamic';
 
@@ -106,20 +107,7 @@ export async function GET() {
     });
 
     // 2. Data Siswa
-    const pageSize = 1000;
-    const pages = [0, 1, 2, 3];
-    const siswaResults = await Promise.all(
-      pages.map(page => 
-        supabase
-          .from('data_induk')
-          .select('*')
-          .range(page * pageSize, (page + 1) * pageSize - 1)
-      )
-    );
-    for (const res of siswaResults) {
-      if (res.error) throw res.error;
-    }
-    const siswaRows = siswaResults.flatMap(r => r.data || []);
+    const siswaRows = await getAllCachedDataInduk();
 
     const siswaStats = {
       total: { L: 0, P: 0, Total: 0 },

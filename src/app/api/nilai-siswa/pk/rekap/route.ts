@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getNilaiSiswaDoc } from '@/lib/google-sheets';
 import { supabase } from '@/lib/supabase';
+import { getAllCachedDataInduk } from '@/lib/data-induk';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,8 +17,7 @@ export async function GET(req: Request) {
     }
 
     // 1. Fetch Students from Supabase
-    const { data: rowsDb, error } = await supabase.from('data_induk').select('*');
-    if (error) throw error;
+    const rowsDb = await getAllCachedDataInduk();
     
     const siswas: any[] = [];
     (rowsDb || []).forEach((r: any) => {
