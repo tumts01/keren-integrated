@@ -126,7 +126,7 @@ export default function StsPage() {
       i + 1,
       s.nisn,
       s.nama.toUpperCase(),
-      s.jenisKelamin === 'Laki-laki' ? 'L' : (s.jenisKelamin === 'Perempuan' ? 'P' : '-'),
+      (s.jenisKelamin || '').toLowerCase().includes('laki') || (s.jenisKelamin || '').toLowerCase() === 'l' ? 'L' : ((s.jenisKelamin || '').toLowerCase().includes('perempuan') || (s.jenisKelamin || '').toLowerCase() === 'p' ? 'P' : '-'),
       ...Array(21).fill('')
     ]);
 
@@ -184,6 +184,20 @@ export default function StsPage() {
 
   const handleSimpan = async () => {
     if (previewData.length === 0) return;
+    
+    const confirm = await Swal.fire({
+      title: 'Simpan Nilai?',
+      text: `Nilai Kelas ${kelas} Mapel ${mapel} akan disimpan. Data sebelumnya (jika ada) akan tertimpa.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3b82f6',
+      cancelButtonColor: '#ef4444',
+      confirmButtonText: 'Ya, Simpan!',
+      cancelButtonText: 'Batal'
+    });
+
+    if (!confirm.isConfirmed) return;
+
     setIsSaving(true);
     try {
       const payload = {
