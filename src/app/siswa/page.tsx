@@ -646,7 +646,7 @@ function PrintSiswaModal({
             'TTL Ayah': s.rawMetadata?.['TTL AYAH KANDUNG'] || '',
           'Nama Ibu': s.namaIbu,
             'NIK Ibu': s.rawMetadata?.['NIK IBU KANDUNG'] || '',
-            'TTL Ibu': s.rawMetadata?.['TTL IBU KANDUNG'] || '',
+            'TTL Ibu': s.rawMetadata?.['TTL IBU'] || '',
           'Tahun Ajaran': s.tahunAjaran,
         }));
         const ws = XLSX.utils.json_to_sheet(rows);
@@ -674,7 +674,7 @@ function PrintSiswaModal({
           'TTL Ayah': s.rawMetadata?.['TTL AYAH KANDUNG'] || '',
         'Nama Ibu': s.namaIbu || '',
           'NIK Ibu': s.rawMetadata?.['NIK IBU KANDUNG'] || '',
-          'TTL Ibu': s.rawMetadata?.['TTL IBU KANDUNG'] || '',
+          'TTL Ibu': s.rawMetadata?.['TTL IBU'] || '',
         'Tahun Ajaran': s.tahunAjaran || '',
       }));
       const ws = XLSX.utils.json_to_sheet(rows);
@@ -1120,7 +1120,7 @@ export default function SiswaPage() {
       'Pekerjaan Ayah': s.pekerjaanAyah,
       'Nama Ibu': s.namaIbu,
             'NIK Ibu': s.rawMetadata?.['NIK IBU KANDUNG'] || '',
-            'TTL Ibu': s.rawMetadata?.['TTL IBU KANDUNG'] || '',
+            'TTL Ibu': s.rawMetadata?.['TTL IBU'] || '',
       'Pekerjaan Ibu': s.pekerjaanIbu,
       'No. HP / WA': s.noHp
     }));
