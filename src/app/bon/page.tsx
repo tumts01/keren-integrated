@@ -952,7 +952,13 @@ function TabRealisasi({ onPrint }: { onPrint: (url: string) => void }) {
             <select className={styles.input} value={selectedBon?.['NoBon'] || ''} onChange={e => {
               const bon = bonList.find(b => (b['NoBon'] || b['ID']) === e.target.value);
               setSelectedBon(bon || null);
-              if (bon) { try { const r = JSON.parse(bon['RincianJSON'] || '[]'); if (r.length > 0) setRincian(r); } catch {} }
+              if (bon) { 
+                try { const r = JSON.parse(bon['RincianJSON'] || '[]'); if (r.length > 0) setRincian(r); else setRincian([{ barang: '', qty: 1, satuan: 'PCS', harga: 0 }]); } catch { setRincian([{ barang: '', qty: 1, satuan: 'PCS', harga: 0 }]); } 
+                try { const p = JSON.parse(bon['PenerimaJSON'] || '[]'); if (p.length > 0) setPenerima(p); else setPenerima([{ nama: '', keterangan: '' }]); } catch { setPenerima([{ nama: '', keterangan: '' }]); } 
+              } else {
+                setRincian([{ barang: '', qty: 1, satuan: 'PCS', harga: 0 }]);
+                setPenerima([{ nama: '', keterangan: '' }]);
+              }
             }} required>
               <option value="">— Pilih Nota BON —</option>
               {bonList.map((b, i) => {
