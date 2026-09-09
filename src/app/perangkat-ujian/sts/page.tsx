@@ -42,6 +42,8 @@ export default function StsPage() {
   const [reviewData, setReviewData] = useState<any[]>([]);
   const [isFetchingReview, setIsFetchingReview] = useState(false);
   const [viewingGrade, setViewingGrade] = useState<any>(null);
+  const [editingGradeId, setEditingGradeId] = useState<string | null>(null);
+  const [editedNilaiData, setEditedNilaiData] = useState<any[]>([]);
 
   const kelasOptions = useMemo(() =>
     Array.from(new Set(siswaList.filter(s => s.tahunAjaran === tahunAjaran && s.status?.toLowerCase().includes('aktif')).map(s => s.rombel))).filter(Boolean).sort() as string[]
@@ -99,6 +101,35 @@ export default function StsPage() {
       }
     }
   };
+  const handleSaveEdit = async () => {
+    setIsSaving(true);
+    try {
+      const payload = {
+        tahunAjaran: viewingGrade.tahun_ajaran,
+        semester: viewingGrade.semester,
+        kelas: viewingGrade.kelas,
+        mataPelajaran: viewingGrade.mata_pelajaran,
+        dataNilai: editedNilaiData
+      };
+      const res = await fetch('/api/nilai-sts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+      if (result.success) {
+        Swal.fire('Sukses', 'Data nilai berhasil diperbarui', 'success');
+        setViewingGrade(null);
+        setEditingGradeId(null);
+        fetchReviewData();
+      } else throw new Error(result.error);
+    } catch (e: any) {
+      Swal.fire('Error', e.message, 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
 
   const fetchDataAwal = async () => {
     try {
@@ -611,9 +642,20 @@ export default function StsPage() {
                           <button 
                             className={styles.btnPrimary} 
                             style={{ padding: '6px 12px', fontSize: '0.85rem' }}
-                            onClick={() => setViewingGrade(d)}
+                            onClick={() => { setViewingGrade(d); setEditingGradeId(null); }}
                           >
                             <i className="fas fa-eye"></i> Lihat
+                          </button>
+                          <button 
+                            className={styles.btnPrimary} 
+                            style={{ padding: '6px 12px', fontSize: '0.85rem', background: '#eab308' }}
+                            onClick={() => { 
+                              setViewingGrade(d); 
+                              setEditingGradeId(d.id); 
+                              setEditedNilaiData(JSON.parse(JSON.stringify(d.data_nilai || []))); 
+                            }}
+                          >
+                            <i className="fas fa-edit"></i> Edit
                           </button>
                           <button 
                             className={styles.btnPrimary} 
@@ -681,9 +723,25 @@ export default function StsPage() {
                         <td>{n.NISN || n.nisn || '-'}</td>
                         <td>{n.Nama || n.nama || n['Nama Siswa'] || '-'}</td>
                         {Object.keys(n)
-                          .filter(k => k.toLowerCase() !== 'no' && k.toLowerCase() !== 'nisn' && k.toLowerCase() !== 'nama')
+                          .filter(k => k.toLowerCase() !== 'no' && k.toLowerCase() !== 'nisn' && k.toLowerCase() !== 'nama' && k.toLowerCase() !== 'nama siswa')
                           .map((col, cIdx) => (
-                            <td key={cIdx} style={{ textAlign: 'center', fontWeight: 'bold' }}>{n[col]}</td>
+                            <td key={cIdx} style={{ textAlign: 'center', fontWeight: 'bold' }}>
+                              {editingGradeId === viewingGrade.id ? (
+                                <input 
+                                  type="text"
+                                  value={editedNilaiData[idx]?.[col] || ''}
+                                  onChange={e => {
+                                    const newData = [...editedNilaiData];
+                                    if (!newData[idx]) newData[idx] = { ...n };
+                                    newData[idx][col] = e.target.value;
+                                    setEditedNilaiData(newData);
+                                  }}
+                                  style={{ width: '60px', textAlign: 'center', padding: '6px', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                                />
+                              ) : (
+                                n[col]
+                              )}
+                            </td>
                           ))}
                       </tr>
                     ))
@@ -695,6 +753,25 @@ export default function StsPage() {
                 </tbody>
               </table>
             </div>
+
+            {editingGradeId === viewingGrade.id && (
+              <div style={{ marginTop: '20px', textAlign: 'right' }}>
+                <button 
+                  className={styles.btnOutline} 
+                  style={{ marginRight: '10px' }}
+                  onClick={() => setViewingGrade(null)}
+                >
+                  Batal
+                </button>
+                <button 
+                  className={styles.btnPrimary} 
+                  onClick={handleSaveEdit}
+                  disabled={isSaving}
+                >
+                  {isSaving ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>} Simpan Perubahan
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
