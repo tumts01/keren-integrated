@@ -41,6 +41,7 @@ export default function StsPage() {
   // Review Data
   const [reviewData, setReviewData] = useState<any[]>([]);
   const [isFetchingReview, setIsFetchingReview] = useState(false);
+  const [viewingGrade, setViewingGrade] = useState<any>(null);
 
   const kelasOptions = useMemo(() =>
     Array.from(new Set(siswaList.filter(s => s.tahunAjaran === tahunAjaran && s.status?.toLowerCase().includes('aktif')).map(s => s.rombel))).filter(Boolean).sort() as string[]
@@ -606,13 +607,22 @@ export default function StsPage() {
                       <td>{Array.isArray(d.data_nilai) ? d.data_nilai.length : 0} Siswa</td>
                       <td>{new Date(d.updated_at).toLocaleString('id-ID')}</td>
                       <td>
-                        <button 
-                          className={styles.btnPrimary} 
-                          style={{ padding: '6px 12px', fontSize: '0.85rem', margin: '0 auto', background: '#ef4444' }}
-                          onClick={() => handleDeleteGrade(d.id, d.mata_pelajaran)}
-                        >
-                          <i className="fas fa-trash"></i> Hapus
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                          <button 
+                            className={styles.btnPrimary} 
+                            style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+                            onClick={() => setViewingGrade(d)}
+                          >
+                            <i className="fas fa-eye"></i> Lihat
+                          </button>
+                          <button 
+                            className={styles.btnPrimary} 
+                            style={{ padding: '6px 12px', fontSize: '0.85rem', background: '#ef4444' }}
+                            onClick={() => handleDeleteGrade(d.id, d.mata_pelajaran)}
+                          >
+                            <i className="fas fa-trash"></i> Hapus
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -623,6 +633,68 @@ export default function StsPage() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {viewingGrade && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          padding: '20px'
+        }}>
+          <div className={styles.card} style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', margin: 0, position: 'relative' }}>
+            <button 
+              style={{ position: 'absolute', right: '20px', top: '20px', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}
+              onClick={() => setViewingGrade(null)}
+            >
+              <i className="fas fa-times"></i>
+            </button>
+            
+            <h2 style={{ marginTop: 0, marginBottom: '8px' }}>Review Nilai: {viewingGrade.mata_pelajaran}</h2>
+            <p style={{ color: '#64748b', marginBottom: '20px', fontSize: '0.9rem' }}>
+              Kelas {viewingGrade.kelas} | Semester {viewingGrade.semester} {viewingGrade.tahun_ajaran}
+            </p>
+
+            <div className={styles.tableContainer}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={{ width: '50px' }}>No</th>
+                    <th style={{ textAlign: 'left' }}>NISN</th>
+                    <th style={{ textAlign: 'left' }}>Nama Siswa</th>
+                    {viewingGrade.data_nilai && viewingGrade.data_nilai.length > 0 && 
+                      Object.keys(viewingGrade.data_nilai[0])
+                        .filter(k => k.toLowerCase() !== 'no' && k.toLowerCase() !== 'nisn' && k.toLowerCase() !== 'nama')
+                        .map((col, idx) => (
+                          <th key={idx}>{col}</th>
+                        ))
+                    }
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.isArray(viewingGrade.data_nilai) && viewingGrade.data_nilai.length > 0 ? (
+                    viewingGrade.data_nilai.map((n: any, idx: number) => (
+                      <tr key={idx}>
+                        <td style={{ textAlign: 'center' }}>{n.No || n.no || idx + 1}</td>
+                        <td>{n.NISN || n.nisn || '-'}</td>
+                        <td>{n.Nama || n.nama || n['Nama Siswa'] || '-'}</td>
+                        {Object.keys(n)
+                          .filter(k => k.toLowerCase() !== 'no' && k.toLowerCase() !== 'nisn' && k.toLowerCase() !== 'nama')
+                          .map((col, cIdx) => (
+                            <td key={cIdx} style={{ textAlign: 'center', fontWeight: 'bold' }}>{n[col]}</td>
+                          ))}
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} style={{ textAlign: 'center', padding: '24px' }}>Tidak ada detail nilai.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
