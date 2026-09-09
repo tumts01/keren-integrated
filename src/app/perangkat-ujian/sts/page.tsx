@@ -706,25 +706,33 @@ export default function StsPage() {
                     <th style={{ width: '50px' }}>No</th>
                     <th style={{ textAlign: 'left' }}>NISN</th>
                     <th style={{ textAlign: 'left' }}>Nama Siswa</th>
-                    {viewingGrade.data_nilai && viewingGrade.data_nilai.length > 0 && 
-                      Object.keys(viewingGrade.data_nilai[0])
-                        .filter(k => k.toLowerCase() !== 'no' && k.toLowerCase() !== 'nisn' && k.toLowerCase() !== 'nama')
-                        .map((col, idx) => (
-                          <th key={idx}>{col}</th>
-                        ))
-                    }
+                    {(() => {
+                      if (!viewingGrade.data_nilai || viewingGrade.data_nilai.length === 0) return null;
+                      const keys = Object.keys(viewingGrade.data_nilai[0]);
+                      const noKey = keys.find(k => k.trim().toLowerCase() === 'no' || k.trim().toLowerCase() === 'nomor');
+                      const nisnKey = keys.find(k => k.trim().toLowerCase() === 'nisn');
+                      const nameKey = keys.find(k => k.trim().toLowerCase().includes('nama'));
+                      return keys.filter(k => k !== noKey && k !== nisnKey && k !== nameKey).map((col, idx) => (
+                        <th key={idx}>{col}</th>
+                      ));
+                    })()}
                   </tr>
                 </thead>
                 <tbody>
                   {Array.isArray(viewingGrade.data_nilai) && viewingGrade.data_nilai.length > 0 ? (
-                    viewingGrade.data_nilai.map((n: any, idx: number) => (
-                      <tr key={idx}>
-                        <td style={{ textAlign: 'center' }}>{n.No || n.no || idx + 1}</td>
-                        <td>{n.NISN || n.nisn || '-'}</td>
-                        <td>{n.Nama || n.nama || n['Nama Siswa'] || '-'}</td>
-                        {Object.keys(n)
-                          .filter(k => k.toLowerCase() !== 'no' && k.toLowerCase() !== 'nisn' && k.toLowerCase() !== 'nama' && k.toLowerCase() !== 'nama siswa')
-                          .map((col, cIdx) => (
+                    viewingGrade.data_nilai.map((n: any, idx: number) => {
+                      const keys = Object.keys(n);
+                      const noKey = keys.find(k => k.trim().toLowerCase() === 'no' || k.trim().toLowerCase() === 'nomor');
+                      const nisnKey = keys.find(k => k.trim().toLowerCase() === 'nisn');
+                      const nameKey = keys.find(k => k.trim().toLowerCase().includes('nama'));
+                      const gradeCols = keys.filter(k => k !== noKey && k !== nisnKey && k !== nameKey);
+                      
+                      return (
+                        <tr key={idx}>
+                          <td style={{ textAlign: 'center' }}>{noKey ? n[noKey] : (idx + 1)}</td>
+                          <td>{nisnKey ? n[nisnKey] : '-'}</td>
+                          <td>{nameKey ? n[nameKey] : '-'}</td>
+                          {gradeCols.map((col, cIdx) => (
                             <td key={cIdx} style={{ textAlign: 'center', fontWeight: 'bold' }}>
                               {editingGradeId === viewingGrade.id ? (
                                 <input 
@@ -743,8 +751,9 @@ export default function StsPage() {
                               )}
                             </td>
                           ))}
-                      </tr>
-                    ))
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
                       <td colSpan={4} style={{ textAlign: 'center', padding: '24px' }}>Tidak ada detail nilai.</td>
