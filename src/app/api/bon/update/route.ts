@@ -30,9 +30,27 @@ export async function PATCH(request: Request) {
     const rows = await sheet.getRows();
 
     // Cari baris berdasarkan NoBon atau ID
-    const row = rows.find(r =>
-      (r.get('NoBon') === noBon) || (r.get('ID') === noBon)
-    );
+    let row;
+    if (noBon.startsWith('SISA-')) {
+      const parts = noBon.split('-');
+      const rowIdxStr = parts[parts.length - 1];
+      const rowIdx = parseInt(rowIdxStr, 10) - 1;
+      
+      if (!isNaN(rowIdx) && rowIdx >= 0 && rowIdx < rows.length) {
+        row = rows[rowIdx];
+        // Pastikan nama cocok untuk mencegah edit baris yang salah jika ada shift baris
+        const expectedNama = parts.slice(1, -1).join('-');
+        const actualNama = (row.get('Nama') || '').trim().split(' ')[0].toUpperCase();
+        if (expectedNama !== actualNama) {
+           // Fallback kalau bergeser, coba cari berdasar nama + NoBon kosong
+           row = rows.find(r => !r.get('NoBon') && !r.get('ID') && (r.get('Nama') || '').toUpperCase().startsWith(expectedNama));
+        }
+      }
+    } else {
+      row = rows.find(r =>
+        (r.get('NoBon') === noBon) || (r.get('ID') === noBon)
+      );
+    }
 
     if (!row) {
       return NextResponse.json({ success: false, error: `BON dengan nomor ${noBon} tidak ditemukan` }, { status: 404 });
