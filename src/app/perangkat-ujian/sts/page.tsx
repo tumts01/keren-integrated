@@ -13,6 +13,8 @@ interface Siswa {
   rombel: string;
   tahunAjaran: string;
   status: string;
+  noAbsen?: string;
+  noInduk?: string;
 }
 
 export default function StsPage() {
@@ -310,87 +312,193 @@ export default function StsPage() {
   };
 
   const cetakRapor = (siswa: Siswa) => {
-    // 1. Kumpulkan nilai dari seluruh mapel untuk siswa ini
-    const nilaiSiswa = gradesData.map(doc => {
-      const barisAnak = doc.data_nilai.find((n: any) => String(n['NISN']) === String(siswa.nisn) || n['NAMA SISWA'] === siswa.nama.toUpperCase());
+    // Helper: cari nilai siswa dari data per mapel
+    const getNilai = (mapelName: string) => {
+      const doc = gradesData.find(d => d.mata_pelajaran.toLowerCase().trim() === mapelName.toLowerCase().trim());
+      if (!doc) return { tp1: '', tp2: '', tp3: '', tp4: '', tp5: '', tp6: '', sts: '', na: '' };
+      const keys = Object.keys(doc.data_nilai?.[0] || {});
+      const nisnKey = keys.find(k => k.trim().toLowerCase() === 'nisn');
+      const nameKey = keys.find(k => k.trim().toLowerCase().includes('nama'));
+      const baris = doc.data_nilai?.find((n: any) =>
+        (nisnKey && String(n[nisnKey]).trim() === String(siswa.nisn).trim()) ||
+        (nameKey && n[nameKey]?.toString().toUpperCase().trim() === siswa.nama.toUpperCase().trim())
+      );
+      if (!baris) return { tp1: '', tp2: '', tp3: '', tp4: '', tp5: '', tp6: '', sts: '', na: '' };
       return {
-        mapel: doc.mata_pelajaran,
-        sts: barisAnak ? barisAnak['STS'] : '',
-        na: barisAnak ? barisAnak['NILAI AKHIR'] : ''
+        tp1: baris['TP1'] ?? baris['tp1'] ?? '',
+        tp2: baris['TP2'] ?? baris['tp2'] ?? '',
+        tp3: baris['TP3'] ?? baris['tp3'] ?? '',
+        tp4: baris['TP4'] ?? baris['tp4'] ?? '',
+        tp5: baris['TP5'] ?? baris['tp5'] ?? '',
+        tp6: baris['TP6'] ?? baris['tp6'] ?? '',
+        sts: baris['STS'] ?? baris['Nilai STS'] ?? baris['NILAI STS'] ?? '',
+        na: baris['NILAI AKHIR'] ?? baris['Nilai Akhir'] ?? baris['NA'] ?? '',
       };
-    }).sort((a, b) => a.mapel.localeCompare(b.mapel));
+    };
 
-    // 2. Generate HTML
-    const trHtml = nilaiSiswa.map((n, i) => `
-      <tr>
-        <td style="text-align: center; padding: 8px; border: 1px solid #333;">${i + 1}</td>
-        <td style="padding: 8px; border: 1px solid #333;">${n.mapel}</td>
-        <td style="text-align: center; padding: 8px; border: 1px solid #333;">${n.sts}</td>
-        <td style="text-align: center; padding: 8px; border: 1px solid #333;">${n.na}</td>
-      </tr>
-    `).join('');
+    const mkRow = (no: string | number, nama: string, mapelKey: string, isSubMapel = false) => {
+      const v = getNilai(mapelKey);
+      const style = isSubMapel ? 'padding-left: 20px; font-style: italic;' : 'font-weight: bold;';
+      return `<tr>
+        <td style="text-align:center;border:1px solid #333;padding:5px;">${no}</td>
+        <td style="border:1px solid #333;padding:5px;${style}">${nama}</td>
+        <td style="text-align:center;border:1px solid #333;padding:5px;">${v.tp1}</td>
+        <td style="text-align:center;border:1px solid #333;padding:5px;">${v.tp2}</td>
+        <td style="text-align:center;border:1px solid #333;padding:5px;">${v.tp3}</td>
+        <td style="text-align:center;border:1px solid #333;padding:5px;">${v.tp4}</td>
+        <td style="text-align:center;border:1px solid #333;padding:5px;">${v.tp5}</td>
+        <td style="text-align:center;border:1px solid #333;padding:5px;">${v.tp6}</td>
+        <td style="text-align:center;border:1px solid #333;padding:5px;font-weight:bold;">${v.sts}</td>
+        <td style="text-align:center;border:1px solid #333;padding:5px;font-weight:bold;">${v.na}</td>
+      </tr>`;
+    };
+
+    const mkGroupHeader = (label: string) => `<tr>
+      <td colspan="10" style="border:1px solid #333;padding:5px;font-weight:bold;background:#f5f5f5;">${label}</td>
+    </tr>`;
+
+    const logoUrl = '/logo.png';
+    const today = new Date();
+    const bulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    const tanggal = `${today.getDate()} ${bulan[today.getMonth()]} ${today.getFullYear()}`;
 
     const html = `
       <html>
         <head>
-          <title>Cetak Rapor STS - ${siswa.nama}</title>
+          <title>Rapor STS - ${siswa.nama}</title>
           <style>
-            @page { size: A4 portrait; margin: 20mm; }
-            body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; color: #000; margin: 0; padding: 0; }
-            .header { text-align: center; border-bottom: 3px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-            .header h2, .header h3 { margin: 0; }
-            .title { text-align: center; font-weight: bold; font-size: 14pt; margin-bottom: 20px; text-transform: uppercase; }
-            .info-table { width: 100%; margin-bottom: 20px; font-size: 11pt; }
-            .info-table td { padding: 3px; }
-            .nilai-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 11pt; }
-            .nilai-table th { background: #f0f0f0; padding: 10px; border: 1px solid #333; }
-            .ttd-table { width: 100%; text-align: center; font-size: 11pt; }
-            .ttd-table td { width: 33%; padding-bottom: 80px; vertical-align: top; }
+            @page { size: A4 portrait; margin: 15mm 15mm 15mm 20mm; }
+            body { font-family: 'Times New Roman', Times, serif; font-size: 10pt; color: #000; margin: 0; }
+            table { border-collapse: collapse; }
+            .kop { display: flex; align-items: center; border-bottom: 3px double #000; padding-bottom: 8px; margin-bottom: 10px; }
+            .kop img { width: 70px; height: 70px; margin-right: 15px; }
+            .kop-text { text-align: center; flex: 1; }
+            .kop-text .instansi { font-size: 8pt; }
+            .kop-text .yayasan { font-size: 10pt; font-weight: bold; }
+            .kop-text .sekolah { font-size: 13pt; font-weight: bold; }
+            .kop-text .alamat { font-size: 8pt; }
+            .judul { text-align: center; font-weight: bold; font-size: 12pt; border: 1px solid #000; padding: 5px; margin: 10px 0; }
+            .info { width: 100%; margin-bottom: 12px; font-size: 10pt; }
+            .info td { padding: 2px 5px; }
+            .section-label { font-weight: bold; margin: 8px 0 4px 0; }
+            .nilai-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 12px; }
+            .nilai-table th { background: #ddd; border: 1px solid #333; padding: 5px; text-align: center; }
+            .absent-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 15px; }
+            .absent-table td, .absent-table th { border: 1px solid #333; padding: 5px; }
+            .ttd { width: 100%; margin-top: 15px; font-size: 10pt; }
+            .ttd td { width: 50%; vertical-align: top; padding-top: 5px; }
+            .ttd .nama-ttd { font-weight: bold; text-decoration: underline; margin-top: 70px; display: block; }
             @media print { body { -webkit-print-color-adjust: exact; } }
           </style>
         </head>
         <body>
-          <div class="header">
-            <h3>KEMENTERIAN AGAMA REPUBLIK INDONESIA</h3>
-            <h2>RAPOR SUMATIF TENGAH SEMESTER (STS)</h2>
+          <!-- KOP SURAT -->
+          <div class="kop">
+            <img src="${logoUrl}" alt="Logo">
+            <div class="kop-text">
+              <div class="instansi">KEMENTERIAN AGAMA REPUBLIK INDONESIA</div>
+              <div class="yayasan">YAYASAN PENDIDIKAN ALMAARIF SINGOSARI</div>
+              <div class="sekolah">MADRASAH TSANAWIYAH ALMAARIF 01 SINGOSARI</div>
+              <div class="alamat">Jl. Masjid No. 33 Singosari. Telp. 0341-458355</div>
+            </div>
           </div>
-          
-          <div class="title">Laporan Hasil Penilaian Tengah Semester</div>
 
-          <table class="info-table">
+          <!-- JUDUL -->
+          <div class="judul">LAPORAN HASIL SUMATIF TENGAH SEMESTER (STS)</div>
+
+          <!-- INFO SISWA -->
+          <table class="info">
             <tr>
-              <td width="18%">Nama Peserta Didik</td><td width="2%">:</td><td width="40%"><b>${siswa.nama.toUpperCase()}</b></td>
-              <td width="15%">Kelas</td><td width="2%">:</td><td width="23%">${siswa.rombel}</td>
+              <td width="15%">No.Absen</td><td width="2%">:</td><td width="30%">${siswa.noAbsen || '-'}</td>
+              <td width="10%">Kelas</td><td width="2%">:</td><td>${siswa.rombel}</td>
             </tr>
             <tr>
-              <td>NISN</td><td>:</td><td>${siswa.nisn || '-'}</td>
+              <td>Nama Siswa</td><td>:</td><td>${siswa.nama}</td>
               <td>Semester</td><td>:</td><td>${semester}</td>
             </tr>
             <tr>
-              <td>Nama Sekolah</td><td>:</td><td>MTs/SMP ...</td>
-              <td>Tahun Ajaran</td><td>:</td><td>${tahunAjaran}</td>
+              <td>No.Induk</td><td>:</td><td>${siswa.noInduk || '-'}</td>
+              <td>Tahun Pelajaran</td><td>:</td><td>${tahunAjaran}</td>
+            </tr>
+            <tr>
+              <td>NISN</td><td>:</td><td>${siswa.nisn || '-'}</td>
+              <td></td><td></td><td></td>
             </tr>
           </table>
 
+          <!-- TABEL NILAI -->
+          <div class="section-label">CAPAIAN</div>
           <table class="nilai-table">
             <thead>
               <tr>
-                <th width="5%">No</th>
-                <th width="55%">Mata Pelajaran</th>
-                <th width="20%">Nilai STS</th>
-                <th width="20%">Nilai Akhir (Raport)</th>
+                <th rowspan="2" style="width:4%;">No</th>
+                <th rowspan="2" style="width:30%; text-align:left; padding-left:8px;">Mata Pelajaran</th>
+                <th colspan="6">NILAI SUMATIF HARIAN</th>
+                <th rowspan="2" style="width:10%;">SUMATIF TENGAH SEMESTER</th>
+                <th rowspan="2" style="width:8%;">NILAI</th>
+              </tr>
+              <tr>
+                <th style="width:6%;">TP1</th>
+                <th style="width:6%;">TP2</th>
+                <th style="width:6%;">TP3</th>
+                <th style="width:6%;">TP4</th>
+                <th style="width:6%;">TP5</th>
+                <th style="width:6%;">TP6</th>
               </tr>
             </thead>
             <tbody>
-              ${trHtml || '<tr><td colspan="4" style="text-align: center; padding: 20px;">Belum ada data nilai</td></tr>'}
+              <tr>
+                <td style="text-align:center;border:1px solid #333;padding:5px;">1</td>
+                <td colspan="9" style="border:1px solid #333;padding:5px;font-weight:bold;">Pendidikan Agama Islam</td>
+              </tr>
+              ${mkRow('', 'a. Al-Qur\'an Hadis', "Al-Qur'an Hadis", true)}
+              ${mkRow('', 'b. Akidah Akhlak', 'Akidah Akhlak', true)}
+              ${mkRow('', 'c . Fiqih', 'Fiqih', true)}
+              ${mkRow('', 'd. Sejarah Kebudayaan Islam', 'Sejarah Kebudayaan Islam', true)}
+              ${mkRow(2, 'Pendidikan Pancasila', 'Pendidikan Pancasila')}
+              ${mkRow(3, 'Bahasa Indonesia', 'Bahasa Indonesia')}
+              ${mkRow(4, 'Bahasa Arab', 'Bahasa Arab')}
+              ${mkRow(5, 'Matematika', 'Matematika')}
+              ${mkRow(6, 'Ilmu Pengetahuan Alam', 'Ilmu Pengetahuan Alam')}
+              ${mkRow(7, 'Ilmu Pengetahuan Sosial', 'Ilmu Pengetahuan Sosial')}
+              ${mkRow(8, 'Bahasa Inggris', 'Bahasa Inggris')}
+              ${mkRow(9, 'Pendidikan Jasmani, Olah Raga dan Kesehatan', 'Pendidikan Jasmani')}
+              ${mkRow(10, 'Informatika', 'Informatika')}
+              
+              ${mkGroupHeader('Mata Pelajaran Pilihan')}
+              ${mkRow(1, 'Seni Budaya', 'Seni Budaya', true)}
+              ${mkRow(2, 'Prakarya', 'Prakarya', true)}
+              
+              ${mkGroupHeader('Muatan Lokal')}
+              ${mkRow(1, 'Bahasa Daerah', 'Bahasa Daerah', true)}
+              ${mkRow(2, 'KE-NU-AN', 'KE-NU-AN', true)}
             </tbody>
           </table>
 
-          <table class="ttd-table">
+          <!-- KETIDAKHADIRAN -->
+          <table class="absent-table">
             <tr>
-              <td>Mengetahui,<br/>Orang Tua / Wali</td>
-              <td><br/>Wali Kelas</td>
-              <td>..........., .....................<br/>Kepala Madrasah</td>
+              <td colspan="2" style="font-weight:bold;background:#f5f5f5;">Ketidakhadiran</td>
+            </tr>
+            <tr>
+              <td style="width:20%;">1 &nbsp; Sakit</td>
+              <td style="width:80%;"></td>
+            </tr>
+            <tr>
+              <td>2 &nbsp; Izin</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>3 &nbsp; Tanpa Keterangan</td>
+              <td></td>
+            </tr>
+          </table>
+
+          <!-- TTD -->
+          <table class="ttd">
+            <tr>
+              <td>Mengetahui:<br>Orang Tua/Wali<br><br><br><br><br>_________________________</td>
+              <td style="text-align:right;">Singosari, ${tanggal}<br>Wali Kelas:<br><br><br><br><br>_________________________</td>
             </tr>
           </table>
         </body>
@@ -411,6 +519,7 @@ export default function StsPage() {
       }, 500);
     }
   };
+
 
 
 
