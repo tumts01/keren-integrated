@@ -16,7 +16,7 @@ interface Siswa {
 }
 
 export default function StsPage() {
-  const [activeTab, setActiveTab] = useState<'input' | 'cetak'>('input');
+  const [activeTab, setActiveTab] = useState<'input' | 'cetak' | 'review'>('input');
   
   // Filters
   const [tahunAjaran, setTahunAjaran] = useState('2026/2027');
@@ -26,7 +26,7 @@ export default function StsPage() {
   
   // Data
   const [siswaList, setSiswaList] = useState<Siswa[]>([]);
-    const [allMapel, setAllMapel] = useState<string[]>([]);
+  const [allMapel, setAllMapel] = useState<string[]>([]);
   
   // Upload Data
   const [previewData, setPreviewData] = useState<any[]>([]);
@@ -37,6 +37,10 @@ export default function StsPage() {
   // Cetak Rapor Data
   const [gradesData, setGradesData] = useState<any[]>([]);
   const [isFetchingGrades, setIsFetchingGrades] = useState(false);
+
+  // Review Data
+  const [reviewData, setReviewData] = useState<any[]>([]);
+  const [isFetchingReview, setIsFetchingReview] = useState(false);
 
   const kelasOptions = useMemo(() =>
     Array.from(new Set(siswaList.filter(s => s.tahunAjaran === tahunAjaran && s.status?.toLowerCase().includes('aktif')).map(s => s.rombel))).filter(Boolean).sort() as string[]
@@ -51,7 +55,49 @@ export default function StsPage() {
     if (activeTab === 'cetak' && kelas) {
       fetchGrades();
     }
+    if (activeTab === 'review' && kelas) {
+      fetchReviewData();
+    }
   }, [activeTab, tahunAjaran, semester, kelas]);
+
+  const fetchReviewData = async () => {
+    setIsFetchingReview(true);
+    try {
+      const res = await fetch(`/api/nilai-sts?tahunAjaran=${encodeURIComponent(tahunAjaran)}&semester=${encodeURIComponent(semester)}&kelas=${encodeURIComponent(kelas)}`);
+      const json = await res.json();
+      if (json.success) setReviewData(json.data || []);
+      else Swal.fire('Gagal', json.error || 'Gagal memuat data', 'error');
+    } catch (e) {
+      Swal.fire('Error', 'Kesalahan jaringan', 'error');
+    }
+    setIsFetchingReview(false);
+  };
+
+  const handleDeleteGrade = async (id: string, mapelNama: string) => {
+    const confirm = await Swal.fire({
+      title: 'Hapus Nilai?',
+      text: `Anda yakin ingin menghapus data nilai mata pelajaran ${mapelNama}?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal'
+    });
+    
+    if (confirm.isConfirmed) {
+      try {
+        const res = await fetch(`/api/nilai-sts?id=${id}`, { method: 'DELETE' });
+        const json = await res.json();
+        if (json.success) {
+          Swal.fire('Terhapus', 'Data nilai berhasil dihapus.', 'success');
+          fetchReviewData();
+        } else {
+          Swal.fire('Gagal', json.error || 'Gagal menghapus', 'error');
+        }
+      } catch(e) {
+        Swal.fire('Error', 'Kesalahan jaringan', 'error');
+      }
+    }
+  };
 
   const fetchDataAwal = async () => {
     try {
@@ -356,6 +402,12 @@ export default function StsPage() {
         >
           <i className="fas fa-print" style={{marginRight: '8px'}}></i> Cetak Rapor
         </button>
+        <button 
+          className={`${styles.tab} ${activeTab === 'review' ? styles.tabActive : ''}`}
+          onClick={() => setActiveTab('review')}
+        >
+          <i className="fas fa-list-check" style={{marginRight: '8px'}}></i> Review & Edit Nilai
+        </button>
       </div>
 
       {/* FILTER GLOBAL */}
@@ -511,6 +563,62 @@ export default function StsPage() {
                 ) : (
                   <tr>
                     <td colSpan={4} style={{ padding: '24px' }}>Tidak ada siswa di kelas ini</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'review' && (
+        <div className={styles.card}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <h3 style={{ margin: 0 }}>Data Nilai Tersimpan - Kelas {kelas}</h3>
+            <button 
+              className={styles.btnOutline} 
+              onClick={fetchReviewData}
+              disabled={isFetchingReview}
+            >
+              <i className={`fas fa-sync ${isFetchingReview ? 'fa-spin' : ''}`}></i> Refresh
+            </button>
+          </div>
+
+          <div className={styles.tableContainer}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th style={{width: '60px'}}>No</th>
+                  <th style={{textAlign: 'left'}}>Mata Pelajaran</th>
+                  <th>Jumlah Siswa Dinilai</th>
+                  <th style={{textAlign: 'left'}}>Terakhir Diperbarui</th>
+                  <th style={{width: '120px'}}>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isFetchingReview ? (
+                  <tr><td colSpan={5} style={{ padding: '24px' }}>Memuat data...</td></tr>
+                ) : reviewData.length > 0 ? (
+                  reviewData.map((d, i) => (
+                    <tr key={d.id}>
+                      <td>{i + 1}</td>
+                      <td style={{fontWeight: 600}}>{d.mata_pelajaran}</td>
+                      <td>{Array.isArray(d.data_nilai) ? d.data_nilai.length : 0} Siswa</td>
+                      <td>{new Date(d.updated_at).toLocaleString('id-ID')}</td>
+                      <td>
+                        <button 
+                          className={styles.btnPrimary} 
+                          style={{ padding: '6px 12px', fontSize: '0.85rem', margin: '0 auto', background: '#ef4444' }}
+                          onClick={() => handleDeleteGrade(d.id, d.mata_pelajaran)}
+                        >
+                          <i className="fas fa-trash"></i> Hapus
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} style={{ padding: '24px' }}>Belum ada data nilai tersimpan untuk kelas ini.</td>
                   </tr>
                 )}
               </tbody>
