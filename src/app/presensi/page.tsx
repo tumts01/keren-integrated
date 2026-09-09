@@ -101,8 +101,8 @@ export default function PresensiPage() {
 
   const [piketStudents, setPiketStudents] = useState<string[]>([]);
   // Piket: dynamic rows (1 row = 1 siswa, bisa tambah)
-  const [piketRows, setPiketRows] = useState<Array<{ id: string; nama: string; status: string }>>([
-    { id: `row_${Date.now()}`, nama: '', status: 'A' }
+  const [piketRows, setPiketRows] = useState<Array<{ id: string; nama: string; status: string; kelas?: string }>>([
+    { id: `row_${Date.now()}`, nama: '', status: 'A', kelas: '' }
   ]);
   const [piketDropdownOpenId, setPiketDropdownOpenId] = useState<string | null>(null);
   const [piketSearchSiswa, setPiketSearchSiswa] = useState('');
@@ -748,8 +748,8 @@ export default function PresensiPage() {
 
   const handleSubmit = async () => {
     const finalMapel = activeTab === 'piket' ? 'PIKET' : selectedMapel;
-    if (!selectedKelas || !finalMapel) {
-      Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Mohon pilih Kelas dan Mata Pelajaran terlebih dahulu!' });
+    if ((activeTab !== 'piket' && !selectedKelas) || !finalMapel) {
+      Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Mohon lengkapi formulir terlebih dahulu!' });
       return;
     }
     if (selectedJam.length === 0) {
@@ -768,7 +768,7 @@ export default function PresensiPage() {
 
     const result = await Swal.fire({
       title: 'Konfirmasi',
-      text: `Simpan presensi untuk kelas ${selectedKelas}?`,
+      text: activeTab === 'piket' ? 'Simpan presensi piket?' : `Simpan presensi untuk kelas ${selectedKelas}?`,
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#3085d6',
@@ -788,7 +788,7 @@ export default function PresensiPage() {
       if (activeTab === 'piket') {
         // Build from piketRows: only rows with a name
         const validRows = piketRows.filter(r => r.nama.trim() !== '');
-        siswaPayload = validRows.map(r => ({ id: r.id, nama: r.nama, nisn: '' }));
+        siswaPayload = validRows.map(r => ({ id: r.id, nama: r.nama, nisn: '', kelas: r.kelas }));
         presensiPayload = Object.fromEntries(validRows.map(r => [r.id, r.status]));
       } else {
         siswaPayload = displaySiswa;
@@ -801,7 +801,7 @@ export default function PresensiPage() {
         body: JSON.stringify({
           tanggal,
           jamKe: selectedJam.join(','),
-          kelas: selectedKelas,
+          kelas: activeTab === 'piket' ? 'MULTIPLE' : selectedKelas,
           mapel: finalMapel,
           guru,
           tahunAjaran: '2024/2025',
@@ -819,7 +819,7 @@ export default function PresensiPage() {
         });
         if (activeTab === 'piket') {
           // reset piket rows after save
-          setPiketRows([{ id: `row_${Date.now()}`, nama: '', status: 'A' }]);
+          setPiketRows([{ id: `row_${Date.now()}`, nama: '', status: 'A', kelas: '' }]);
         }
       } else {
         Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menyimpan: ' + (data.error || 'Terjadi kesalahan') });
@@ -1117,19 +1117,21 @@ export default function PresensiPage() {
                 />
               </div>
               
-              <div className={styles.filterGroup}>
-                <label>Kelas</label>
-                <select 
-                  value={selectedKelas} 
-                  onChange={(e) => setSelectedKelas(e.target.value)}
-                  className={styles.inputField}
-                >
-                  <option value="">-- Pilih Kelas --</option>
-                  {kelasList.map(kelas => (
-                    <option key={kelas} value={kelas}>{kelas}</option>
-                  ))}
-                </select>
-              </div>
+              {activeTab !== 'piket' && (
+                <div className={styles.filterGroup}>
+                  <label>Kelas</label>
+                  <select 
+                    value={selectedKelas} 
+                    onChange={(e) => setSelectedKelas(e.target.value)}
+                    className={styles.inputField}
+                  >
+                    <option value="">-- Pilih Kelas --</option>
+                    {kelasList.map(kelas => (
+                      <option key={kelas} value={kelas}>{kelas}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className={styles.filterGroup}>
                 <label>Jam Ke</label>
@@ -1206,13 +1208,14 @@ export default function PresensiPage() {
             </div>
 
             {/* PIKET: Dynamic row input */}
-            {activeTab === 'piket' && selectedKelas && (
+            {activeTab === 'piket' && (
               <div className={styles.tableContainer}>
                 <table className={styles.table}>
                   <thead>
                     <tr>
                       <th style={{ width: '50px', textAlign: 'center' }}>No</th>
                       <th>Nama Siswa</th>
+                      <th style={{ width: '100px', textAlign: 'center' }}>Kelas</th>
                       <th style={{ textAlign: 'center', width: '220px' }}>Keterangan</th>
                       <th style={{ width: '50px' }}></th>
                     </tr>
@@ -1249,27 +1252,30 @@ export default function PresensiPage() {
                                   />
                                 </div>
                                 <div className={styles.dropdownList} style={{ maxHeight: '200px' }}>
-                                  {siswaList
+                                  {allSiswaRef.current
                                     .filter((s: any) => s.nama.toLowerCase().includes(piketSearchSiswa.toLowerCase()))
                                     .map((s: any, idx: number) => (
                                       <div 
                                         key={idx} 
                                         className={styles.dropdownItem}
                                         onClick={() => {
-                                          setPiketRows(prev => prev.map(r => r.id === row.id ? { ...r, nama: s.nama } : r));
+                                          setPiketRows(prev => prev.map(r => r.id === row.id ? { ...r, nama: s.nama, kelas: s.rombel } : r));
                                           setPiketDropdownOpenId(null);
                                         }}
                                       >
-                                        {s.nama}
+                                        {s.nama} - {s.rombel}
                                       </div>
                                     ))}
-                                  {siswaList.filter((s: any) => s.nama.toLowerCase().includes(piketSearchSiswa.toLowerCase())).length === 0 && (
+                                  {allSiswaRef.current.filter((s: any) => s.nama.toLowerCase().includes(piketSearchSiswa.toLowerCase())).length === 0 && (
                                     <div style={{ padding: '10px', textAlign: 'center', color: '#94a3b8' }}>Nama tidak ditemukan</div>
                                   )}
                                 </div>
                               </div>
                             )}
                           </div>
+                        </td>
+                        <td style={{ textAlign: 'center', fontWeight: 600, color: '#475569' }}>
+                          {row.kelas || '-'}
                         </td>
                         <td>
                           <div className={styles.radioGroup}>
@@ -1308,7 +1314,7 @@ export default function PresensiPage() {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
                   <button
-                    onClick={() => setPiketRows(prev => [...prev, { id: `row_${Date.now()}`, nama: '', status: 'A' }])}
+                    onClick={() => setPiketRows(prev => [...prev, { id: `row_${Date.now()}`, nama: '', status: 'A', kelas: '' }])}
                     style={{ padding: '8px 16px', background: '#f0f9ff', border: '1px solid #7dd3fc', borderRadius: '8px', cursor: 'pointer', color: '#0369a1', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
                   >
                     <i className="fas fa-plus"></i> Tambah Siswa
@@ -1326,12 +1332,7 @@ export default function PresensiPage() {
               </div>
             )}
 
-            {activeTab === 'piket' && !selectedKelas && (
-              <div className={styles.emptyState}>
-                <i className="fas fa-chalkboard-user"></i>
-                <p>Silakan pilih kelas terlebih dahulu.</p>
-              </div>
-            )}
+
 
             {/* ABSEN: full student list */}
             {activeTab === 'absen' && (

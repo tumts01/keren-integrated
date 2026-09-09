@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import crypto from 'crypto';
 import { unstable_cache, revalidateTag } from 'next/cache';
@@ -144,13 +144,16 @@ export async function POST(request: Request) {
     const jamKeText = String(jamKe);
     const submittedJams = jamKeText.split(',').map(j => j.trim()).filter(Boolean);
 
-    const { data: existingPresensi, error: readError } = await supabase
-      .from('data_presensi_siswa')
-      .select('metadata')
-      .eq('tanggal', tanggal)
-      .eq('kelas', kelas);
-
-    if (readError) throw readError;
+    let existingPresensi: any[] = [];
+    if (kelas && kelas !== "MULTIPLE") {
+      const { data, error: readError } = await supabase
+        .from('data_presensi_siswa')
+        .select('metadata')
+        .eq('tanggal', tanggal)
+        .eq('kelas', kelas);
+      if (readError) throw readError;
+      existingPresensi = data || [];
+    }
 
     let overlappingMapel = null;
     let overlappingGuru = null;
@@ -166,7 +169,7 @@ export async function POST(request: Request) {
           const dbMapel = r.metadata?.['MAPEL'];
           const dbGuru = r.metadata?.['GURU PENGINPUT'];
           
-          if (existingJamKeStr === jamKeText && dbMapel === mapel) {
+          if (dbMapel === mapel && dbGuru === guru) {
             isExactMatch = true;
             break;
           }
@@ -195,12 +198,13 @@ export async function POST(request: Request) {
 
     const payload = listSiswa.map((s: any) => {
       const uniqueId = crypto.randomUUID();
+      const studentKelas = s.kelas || kelas;
       const metadata = {
         'ID': uniqueId,
         'TIMESTAMP': nowTimestamp,
         'TANGGAL': tanggal,
         'TAHUN AJARAN': tahunAjaran || '2026/2027',
-        'KELAS': kelas,
+        'KELAS': studentKelas,
         'JAM KE': jamKe,
         'MAPEL': mapel,
         'GURU PENGINPUT': guru,
@@ -208,7 +212,7 @@ export async function POST(request: Request) {
         'NISN': s.nisn ? `'${s.nisn}` : '',
         'KEHADIRAN': s.status
       };
-      return { tanggal, kelas, metadata };
+      return { tanggal, kelas: studentKelas, metadata };
     });
 
     const { error } = await supabase.from('data_presensi_siswa').insert(payload);
