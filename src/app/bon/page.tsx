@@ -527,7 +527,7 @@ function TabRekap({ onPrint }: { onPrint: (url: string) => void }) {
   const handleEditRealisasiClick = async (item: any) => {
     setLoading(true);
     const id = item['NoBon'] || item['ID'];
-    const res = await fetch(`/api/bon/realisasi?bonId=${encodeURIComponent(id)}`);
+    const res = await fetch(`/api/bon/realisasi?bonId=${encodeURIComponent(id)}&t=${Date.now()}`);
     const json = await res.json();
     if (json.success && json.data && json.data.length > 0) {
       setEditRealisasiBon({ bon: item, realisasi: json.data[0] });
@@ -544,7 +544,7 @@ function TabRekap({ onPrint }: { onPrint: (url: string) => void }) {
     if (status) params.set('status', status);
     if (from) params.set('from', from);
     if (to) params.set('to', to);
-    const res = await fetch(`/api/bon?${params}`);
+    const res = await fetch(`/api/bon?${params}&t=${Date.now()}`);
     const json = await res.json();
     setData(json.data || []);
     setStats(json.stats || {});
@@ -1090,7 +1090,7 @@ function TabAjukan({ onPrint }: { onPrint: (url: string) => void }) {
       }
     });
     fetch('/api/bon/toko').then(r => r.json()).then(j => setTokoList(j.data || []));
-    fetch('/api/bon').then(r => r.json()).then(j => {
+    fetch(`/api/bon?t=${Date.now()}`).then(r => r.json()).then(j => {
       if (j.saldoMap) setSaldoMap(j.saldoMap);
       if (j.data) {
         const history: Record<string, number> = {};
@@ -1321,14 +1321,14 @@ function TabLaporanKeuangan({ onPrint }: { onPrint: (url: string) => void }) {
         setFilterUser(u.nama || '');
       }
     }
-    fetch('/api/user').then(r => r.json()).then(j => {
+    fetch('/api/user?t=' + Date.now()).then(r => r.json()).then(j => {
       setAvailableUsers(j.data || []);
     });
   }, []);
 
   const fetchData = async () => {
     setLoading(true);
-    const res = await fetch(`/api/bon`);
+    const res = await fetch(`/api/bon?t=${Date.now()}`);
     const json = await res.json();
     setData(json.data || []);
     setLoading(false);
