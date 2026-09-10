@@ -9,7 +9,7 @@ const cleanJamKe = (val: string) => {
   return val.replace(/,(19|20)\d{2}$/g, '').trim();
 };
 
-const getCachedPresensi = unstable_cache(
+const getMapDomisili = unstable_cache(
   async () => {
     let rowsInduk: any[] = [];
     let page = 0;
@@ -31,12 +31,33 @@ const getCachedPresensi = unstable_cache(
         }
       });
     }
+    return mapDomisili;
+  },
+  ['map-domisili-all'],
+  { tags: ['data_induk'], revalidate: 3600 }
+);
+
+export const dynamic = 'force-dynamic';
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const filterTanggal = searchParams.get('tanggal');
+    const from = searchParams.get('from');
+    const to = searchParams.get('to');
+
+    let query = supabase.from('data_presensi_siswa').select('*');
+    if (filterTanggal) {
+      query = query.eq('tanggal', filterTanggal);
+    } else {
+      if (from) query = query.gte('tanggal', from);
+      if (to) query = query.lte('tanggal', to);
+    }
 
     let rows: any[] = [];
     let pageP = 0;
     while (true) {
-      let query = supabase.from('data_presensi_siswa').select('*').range(pageP * 1000, (pageP + 1) * 1000 - 1);
-      const { data, error } = await query;
+      let q = query.range(pageP * 1000, (pageP + 1) * 1000 - 1);
+      const { data, error } = await q;
       if (error) throw error;
       if (!data || data.length === 0) break;
       rows = rows.concat(data);
@@ -44,7 +65,9 @@ const getCachedPresensi = unstable_cache(
       pageP++;
     }
 
-    return (rows || []).map((r: any) => {
+    const mapDomisili = await getMapDomisili();
+
+    const mappedData = (rows || []).map((r: any) => {
       const rawNisn = (r.metadata?.['NISN'] || '').trim();
       const safeNisn = cleanNisn(rawNisn);
       return {
@@ -62,24 +85,8 @@ const getCachedPresensi = unstable_cache(
         timestamp: (r.metadata?.['TIMESTAMP'] || '').trim(),
       };
     });
-  },
-  ['presensi-data-all'],
-  { tags: ['presensi'], revalidate: 3600 }
-);
 
-export const dynamic = 'force-dynamic';
-export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const filterTanggal = searchParams.get('tanggal');
-
-    let data = await getCachedPresensi();
-
-    if (filterTanggal) {
-      data = data.filter((d: any) => d.tanggal === filterTanggal);
-    }
-
-    return NextResponse.json({ success: true, data }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
+    return NextResponse.json({ success: true, data: mappedData }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
   } catch (error: any) {
     console.error('Fetch Presensi Error:', error);
     return NextResponse.json({ success: false, error: 'Gagal memuat data presensi: ' + error.message }, { status: 500 });

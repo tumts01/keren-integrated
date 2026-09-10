@@ -152,8 +152,12 @@ export default function PresensiPage() {
   const [rekapSiswaData, setRekapSiswaData] = useState<any[]>([]);
   const [rekapSiswaLoading, setRekapSiswaLoading] = useState(false);
   const [rsSubTab, setRsSubTab] = useState<'semua' | 'alpha'>('semua');
-  const [rsFilterFrom, setRsFilterFrom] = useState('');
-  const [rsFilterTo, setRsFilterTo] = useState('');
+  const [rsFilterFrom, setRsFilterFrom] = useState(() => {
+    const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+  });
+  const [rsFilterTo, setRsFilterTo] = useState(() => {
+    const d = new Date(); return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+  });
   const [rsFilterNama, setRsFilterNama] = useState('');
   const [rsFilterKelas, setRsFilterKelas] = useState('');
   const [rsFilterDomisili, setRsFilterDomisili] = useState('');
@@ -281,7 +285,14 @@ export default function PresensiPage() {
   const fetchRekapSiswa = async () => {
     setRekapSiswaLoading(true);
     try {
-      const res = await fetch('/api/presensi');
+      let url = '/api/presensi';
+      if (rsFilterFrom || rsFilterTo) {
+        const q = new URLSearchParams();
+        if (rsFilterFrom) q.append('from', rsFilterFrom);
+        if (rsFilterTo) q.append('to', rsFilterTo);
+        url += '?' + q.toString();
+      }
+      const res = await fetch(url);
       const json = await res.json();
       if (json.success) {
         setRekapSiswaData(json.data);
@@ -1745,7 +1756,11 @@ export default function PresensiPage() {
                   {rsDomisiliList.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
+                <button onClick={fetchRekapSiswa}
+                  style={{ padding: '6px 12px', background: '#237227', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
+                  <i className="fas fa-search"></i> Terapkan
+                </button>
                 <button onClick={() => { setRsFilterFrom(''); setRsFilterTo(''); setRsFilterNama(''); setRsFilterKelas(''); setRsFilterDomisili(''); }}
                   style={{ padding: '6px 12px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
                   <i className="fas fa-times"></i> Reset
