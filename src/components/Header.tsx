@@ -70,8 +70,8 @@ export default function Header({ user, onLogout }: HeaderProps) {
     if (!url) return '';
     const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
     if (url.includes('drive.google.com') && match && match[1]) {
-      // Menggunakan lh3.googleusercontent.com yang lebih stabil untuk gambar publik
-      return `https://lh3.googleusercontent.com/d/${match[1]}=w200-h200`;
+      // Gunakan endpoint thumbnail Drive yang lebih stabil dari pada lh3
+      return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w200-h200`;
     }
     return url;
   };

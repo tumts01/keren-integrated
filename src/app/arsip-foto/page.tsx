@@ -179,7 +179,7 @@ export default function ArsipFotoPage() {
                   onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)'; }}
                 >
                   <img
-                    src={`https://lh3.googleusercontent.com/d/${f.id}=w400`}
+                    src={`https://drive.google.com/thumbnail?id=${f.id}&sz=w400`}
                     alt={f.name}
                     style={{ width: '100%', height: '160px', objectFit: 'cover', display: 'block' }}
                     loading="lazy"
@@ -230,7 +230,7 @@ export default function ArsipFotoPage() {
             <i className="fas fa-times"></i>
           </button>
           <img
-            src={`https://lh3.googleusercontent.com/d/${lightbox}=w1200`}
+            src={`https://drive.google.com/thumbnail?id=${lightbox}&sz=w1200`}
             alt="Preview"
             onClick={e => e.stopPropagation()}
             style={{

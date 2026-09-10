@@ -48,7 +48,7 @@ function compressImage(file: File, maxSize = 1200, quality = 0.7): Promise<Blob>
 function getProxiedUrl(url: string) {
   if (!url) return '';
   const match = url.match(/\/d\/([\w-]+)/);
-  if (match) return `https://lh3.googleusercontent.com/d/${match[1]}`;
+  if (match) return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w800`;
   return url;
 }
 
