@@ -218,12 +218,90 @@ export default function AbsensiGTK() {
         if (data.success) {
           setMessage(data.message);
           // Perbarui dengan waktu akurat dari server
+          const serverTime = data.time || currentTimeOptimistic;
           if (action === 'checkin') {
-            setStatus(s => ({ ...s, hasCheckedIn: true, jamMasuk: data.time || currentTimeOptimistic }));
+            setStatus(s => ({ ...s, hasCheckedIn: true, jamMasuk: serverTime }));
           } else {
-            setStatus(s => ({ ...s, hasCheckedOut: true, jamPulang: data.time || currentTimeOptimistic }));
+            setStatus(s => ({ ...s, hasCheckedOut: true, jamPulang: serverTime }));
           }
           setActionLoading(false);
+
+          // 🎉 Animasi confetti dan popup sukses
+          const isCheckin = action === 'checkin';
+          const emoji = isCheckin ? '🎉' : '👋';
+          const title = isCheckin ? 'Selamat Datang!' : 'Sampai Jumpa!';
+          const msg = isCheckin
+            ? `Check In berhasil pukul <b>${serverTime}</b><br/>Semangat bekerja hari ini! 💪`
+            : `Check Out berhasil pukul <b>${serverTime}</b><br/>Selamat beristirahat! 🌙`;
+
+          // Buat partikel confetti manual dengan CSS animation
+          const createConfetti = () => {
+            const colors = isCheckin
+              ? ['#237227', '#4ade80', '#86efac', '#fbbf24', '#f97316']
+              : ['#3b82f6', '#818cf8', '#a78bfa', '#f472b6', '#fb923c'];
+            const container = document.createElement('div');
+            container.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:99999;overflow:hidden;';
+            document.body.appendChild(container);
+
+            for (let i = 0; i < 80; i++) {
+              const particle = document.createElement('div');
+              const size = Math.random() * 10 + 6;
+              const color = colors[Math.floor(Math.random() * colors.length)];
+              const startX = Math.random() * 100;
+              const delay = Math.random() * 0.8;
+              const duration = Math.random() * 1.5 + 1.5;
+              const rotation = Math.random() * 720 - 360;
+              const shapes = ['50%', '0%', '0%'];
+              const shape = shapes[Math.floor(Math.random() * shapes.length)];
+              particle.style.cssText = `
+                position:absolute;
+                left:${startX}%;
+                top:-20px;
+                width:${size}px;
+                height:${size}px;
+                background:${color};
+                border-radius:${shape};
+                opacity:1;
+                animation: confettiFall ${duration}s ease-in ${delay}s forwards;
+                transform-origin: center;
+              `;
+              container.appendChild(particle);
+            }
+
+            // Inject keyframe CSS once
+            if (!document.getElementById('confetti-style')) {
+              const style = document.createElement('style');
+              style.id = 'confetti-style';
+              style.textContent = `
+                @keyframes confettiFall {
+                  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+                  80% { opacity: 1; }
+                  100% { transform: translateY(100vh) rotate(${Math.random() > 0.5 ? '' : '-'}720deg); opacity: 0; }
+                }
+              `;
+              document.head.appendChild(style);
+            }
+
+            setTimeout(() => container.remove(), 4000);
+          };
+
+          createConfetti();
+
+          Swal.fire({
+            title: `${emoji} ${title}`,
+            html: msg,
+            icon: undefined,
+            timer: 3000,
+            timerProgressBar: true,
+            showConfirmButton: false,
+            background: isCheckin ? '#f0fdf4' : '#eff6ff',
+            color: isCheckin ? '#166534' : '#1e40af',
+            iconColor: isCheckin ? '#16a34a' : '#2563eb',
+            customClass: { popup: 'animated-popup' },
+            showClass: { popup: 'animate__animated animate__bounceIn' },
+            hideClass: { popup: 'animate__animated animate__fadeOutUp' },
+          });
+
           setTimeout(() => setMessage(''), 4000);
           return; // sukses, keluar
         } else {
