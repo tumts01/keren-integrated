@@ -95,7 +95,15 @@ export default function Sidebar() {
         { name: 'Loker Digital', path: '/loker-digital', icon: 'fa-folder-open' },
         ...(isAdmin ? [
           { name: 'Buku Tamu', path: '/buku-tamu', icon: 'fa-address-book' },
-          { name: 'SPMB', path: '/spmb/rekap', icon: 'fa-user-graduate' },
+          { 
+            name: 'SPMB', 
+            path: '/spmb-parent', 
+            icon: 'fa-user-graduate',
+            subItems: [
+              { name: 'Pendaftaran', path: '/spmb' },
+              { name: 'Rekap', path: '/spmb/rekap' }
+            ]
+          },
           { name: 'Data Prestasi', path: '/prestasi', icon: 'fa-trophy' },
         ] : []),
         { name: 'Arsip Foto', path: '/arsip-foto', icon: 'fa-images' },
