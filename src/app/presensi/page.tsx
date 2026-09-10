@@ -136,8 +136,12 @@ export default function PresensiPage() {
   const [editingJurnal, setEditingJurnal] = useState<any>(null);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [rekapJurnalLoading, setRekapJurnalLoading] = useState(false);
-  const [filterFrom, setFilterFrom] = useState('');
-  const [filterTo, setFilterTo] = useState('');
+  const [filterFrom, setFilterFrom] = useState(() => {
+    const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+  });
+  const [filterTo, setFilterTo] = useState(() => {
+    const d = new Date(); return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+  });
   const [filterGuruRekap, setFilterGuruRekap] = useState('');
   const [guruListRekap, setGuruListRekap] = useState<string[]>([]);
   const [filterKelasRekap, setFilterKelasRekap] = useState('');
@@ -168,8 +172,12 @@ export default function PresensiPage() {
   // Rekap Piket
   const [rekapPiketData, setRekapPiketData] = useState<any[]>([]);
   const [rekapPiketLoading, setRekapPiketLoading] = useState(false);
-  const [rpFilterFrom, setRpFilterFrom] = useState('');
-  const [rpFilterTo, setRpFilterTo] = useState('');
+  const [rpFilterFrom, setRpFilterFrom] = useState(() => {
+    const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+  });
+  const [rpFilterTo, setRpFilterTo] = useState(() => {
+    const d = new Date(); return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+  });
 
   // Load classes and mapel
   useEffect(() => {
@@ -273,7 +281,14 @@ export default function PresensiPage() {
   const fetchRekapPiket = async () => {
     setRekapPiketLoading(true);
     try {
-      const res = await fetch('/api/jurnal-piket');
+      let url = '/api/jurnal-piket';
+      if (rpFilterFrom || rpFilterTo) {
+        const q = new URLSearchParams();
+        if (rpFilterFrom) q.append('from', rpFilterFrom);
+        if (rpFilterTo) q.append('to', rpFilterTo);
+        url += '?' + q.toString();
+      }
+      const res = await fetch(url);
       const json = await res.json();
       if (json.success) {
         setRekapPiketData(json.data);
@@ -496,7 +511,14 @@ export default function PresensiPage() {
   const fetchRekapJurnal = async () => {
     setRekapJurnalLoading(true);
     try {
-      const res = await fetch('/api/jurnal');
+      let url = '/api/jurnal';
+      if (filterFrom || filterTo) {
+        const q = new URLSearchParams();
+        if (filterFrom) q.append('from', filterFrom);
+        if (filterTo) q.append('to', filterTo);
+        url += '?' + q.toString();
+      }
+      const res = await fetch(url);
       const json = await res.json();
       if (json.success) {
         setRekapJurnalData(json.data);
@@ -2113,10 +2135,10 @@ export default function PresensiPage() {
                 </button>
                 <button 
                   onClick={fetchRekapPiket}
-                  style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '8px 12px', borderRadius: 6, cursor: 'pointer' }}
+                  style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
                   disabled={rekapPiketLoading}
                 >
-                  <i className={`fas fa-sync-alt ${rekapPiketLoading ? 'fa-spin' : ''}`}></i>
+                  <i className={`fas fa-sync-alt ${rekapPiketLoading ? 'fa-spin' : ''}`}></i> Terapkan
                 </button>
               </div>
             </div>
@@ -2263,14 +2285,18 @@ export default function PresensiPage() {
                   {kelasListRekap.map(k => <option key={k} value={k}>{k}</option>)}
                 </select>
               </div>
-              {(filterFrom || filterTo || filterKelasRekap || (isAdmin && filterGuruRekap)) && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
+                <button onClick={fetchRekapJurnal}
+                  style={{ padding: '7px 14px', background: '#237227', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>
+                  <i className="fas fa-search"></i> Terapkan
+                </button>
+                {(filterFrom || filterTo || filterKelasRekap || (isAdmin && filterGuruRekap)) && (
                   <button onClick={() => { setFilterFrom(''); setFilterTo(''); setFilterKelasRekap(''); if (isAdmin) setFilterGuruRekap(''); }}
                     style={{ padding: '7px 14px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>
                     <i className="fas fa-times"></i> Reset
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {rekapJurnalLoading ? (

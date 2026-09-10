@@ -4,21 +4,29 @@ import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    // Ambil hanya 12 bulan terakhir — hindari seluruh histori
+    const { searchParams } = new URL(request.url);
+    const from = searchParams.get('from');
+    const to = searchParams.get('to');
+
+    // Default cutoff jika tidak ada filter: 1 tahun terakhir
     const cutoff = new Date();
     cutoff.setFullYear(cutoff.getFullYear() - 1);
-    const cutoffStr = cutoff.toISOString().split('T')[0]; // YYYY-MM-DD
+    const cutoffStr = cutoff.toISOString().split('T')[0];
+
+    let query = supabase.from('data_jurnal_piket').select('*');
+    if (from) query = query.gte('tanggal', from);
+    if (to) query = query.lte('tanggal', to);
+    if (!from && !to) {
+        query = query.gte('tanggal', cutoffStr);
+    }
 
     let rows: any[] = [];
     let page = 0;
     while (true) {
-      const { data, error } = await supabase
-        .from('data_jurnal_piket')
-        .select('*')
-        .gte('metadata->>TANGGAL', cutoffStr)
-        .range(page * 1000, (page + 1) * 1000 - 1);
+      let q = query.range(page * 1000, (page + 1) * 1000 - 1);
+      const { data, error } = await q;
       if (error) throw error;
       if (!data || data.length === 0) break;
       rows = rows.concat(data);
