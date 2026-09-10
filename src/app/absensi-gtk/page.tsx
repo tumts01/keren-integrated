@@ -228,11 +228,11 @@ export default function AbsensiGTK() {
 
           // 🎉 Animasi confetti dan popup sukses
           const isCheckin = action === 'checkin';
-          const emoji = isCheckin ? '🎉' : '👋';
-          const title = isCheckin ? 'Selamat Datang!' : 'Sampai Jumpa!';
+          const emoji = isCheckin ? '😊' : '😊';
+          const title = isCheckin ? 'Semangat ya Kerjanya!' : 'Yaaahh kok pulang sih?!';
           const msg = isCheckin
-            ? `Check In berhasil pukul <b>${serverTime}</b><br/>Semangat bekerja hari ini! 💪`
-            : `Check Out berhasil pukul <b>${serverTime}</b><br/>Selamat beristirahat! 🌙`;
+            ? `Check In berhasil pukul <b>${serverTime}</b><br/>Jangan lupa bahagia 😊`
+            : `Check Out berhasil pukul <b>${serverTime}</b><br/>Yaudah hati-hati yaa 😊`;
 
           // Buat partikel confetti manual dengan CSS animation
           const createConfetti = () => {
@@ -291,7 +291,7 @@ export default function AbsensiGTK() {
             title: `${emoji} ${title}`,
             html: msg,
             icon: undefined,
-            timer: 3000,
+            timer: 6000,
             timerProgressBar: true,
             showConfirmButton: false,
             background: isCheckin ? '#f0fdf4' : '#eff6ff',
