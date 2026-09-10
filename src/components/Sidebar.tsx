@@ -368,6 +368,22 @@ export default function Sidebar() {
         })}
       </nav>
 
+      {/* Panduan - pinned to bottom */}
+      <div style={{ padding: '8px 12px 16px', borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: 'auto' }}>
+        <Link
+          href="/panduan"
+          className={`${styles.menuItem} ${pathname === '/panduan' ? styles.active : ''}`}
+          title={isCollapsed ? 'Panduan' : ''}
+          onClick={() => { if (window.innerWidth <= 768) setIsCollapsed(true); }}
+          style={{ borderRadius: 8 }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <i className={`fas fa-book-open ${styles.menuIcon}`}></i>
+            {!isCollapsed && <span className={styles.menuText}>Panduan</span>}
+          </div>
+        </Link>
+      </div>
+
     </aside>
     </>
   );
