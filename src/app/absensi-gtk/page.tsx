@@ -226,63 +226,83 @@ export default function AbsensiGTK() {
           }
           setActionLoading(false);
 
-          // 🎉 Animasi confetti dan popup sukses
+          // 🎉 Animasi confetti / air mata dan popup sukses
           const isCheckin = action === 'checkin';
-          const emoji = isCheckin ? '😊' : '😊';
+          const emoji = isCheckin ? '😊' : '😢';
           const title = isCheckin ? 'Semangat ya Kerjanya!' : 'Yaaahh kok pulang sih?!';
           const msg = isCheckin
             ? `Check In berhasil pukul <b>${serverTime}</b><br/>Jangan lupa bahagia 😊`
-            : `Check Out berhasil pukul <b>${serverTime}</b><br/>Yaudah hati-hati yaa 😊`;
+            : `Check Out berhasil pukul <b>${serverTime}</b><br/>Yaudah hati-hati yaa 😢`;
 
-          // Buat partikel confetti manual dengan CSS animation
+          // Injeksi keyframe CSS (hanya sekali)
+          if (!document.getElementById('confetti-style')) {
+            const style = document.createElement('style');
+            style.id = 'confetti-style';
+            style.textContent = `
+              @keyframes confettiFall {
+                0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+                80%  { opacity: 1; }
+                100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+              }
+              @keyframes tearFall {
+                0%   { transform: translateY(0) scaleY(1); opacity: 0.9; }
+                60%  { opacity: 0.8; }
+                100% { transform: translateY(100vh) scaleY(1.2); opacity: 0; }
+              }
+            `;
+            document.head.appendChild(style);
+          }
+
           const createConfetti = () => {
-            const colors = isCheckin
-              ? ['#237227', '#4ade80', '#86efac', '#fbbf24', '#f97316']
-              : ['#3b82f6', '#818cf8', '#a78bfa', '#f472b6', '#fb923c'];
             const container = document.createElement('div');
             container.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:99999;overflow:hidden;';
             document.body.appendChild(container);
 
-            for (let i = 0; i < 80; i++) {
-              const particle = document.createElement('div');
-              const size = Math.random() * 10 + 6;
-              const color = colors[Math.floor(Math.random() * colors.length)];
-              const startX = Math.random() * 100;
-              const delay = Math.random() * 0.8;
-              const duration = Math.random() * 1.5 + 1.5;
-              const rotation = Math.random() * 720 - 360;
-              const shapes = ['50%', '0%', '0%'];
-              const shape = shapes[Math.floor(Math.random() * shapes.length)];
-              particle.style.cssText = `
-                position:absolute;
-                left:${startX}%;
-                top:-20px;
-                width:${size}px;
-                height:${size}px;
-                background:${color};
-                border-radius:${shape};
-                opacity:1;
-                animation: confettiFall ${duration}s ease-in ${delay}s forwards;
-                transform-origin: center;
-              `;
-              container.appendChild(particle);
+            if (isCheckin) {
+              // 🎉 Confetti warna-warni untuk check in
+              const colors = ['#237227', '#4ade80', '#86efac', '#fbbf24', '#f97316'];
+              for (let i = 0; i < 80; i++) {
+                const particle = document.createElement('div');
+                const size = Math.random() * 10 + 6;
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const startX = Math.random() * 100;
+                const delay = Math.random() * 0.8;
+                const duration = Math.random() * 1.5 + 1.5;
+                const shapes = ['50%', '0%', '0%'];
+                const shape = shapes[Math.floor(Math.random() * shapes.length)];
+                particle.style.cssText = `
+                  position:absolute;left:${startX}%;top:-20px;
+                  width:${size}px;height:${size}px;
+                  background:${color};border-radius:${shape};opacity:1;
+                  animation:confettiFall ${duration}s ease-in ${delay}s forwards;
+                `;
+                container.appendChild(particle);
+              }
+            } else {
+              // 😢 Tetesan air mata untuk check out
+              const tearColors = ['#93c5fd', '#60a5fa', '#94a3b8', '#cbd5e1', '#bfdbfe'];
+              for (let i = 0; i < 60; i++) {
+                const particle = document.createElement('div');
+                const w = Math.random() * 6 + 5;
+                const h = w * (1.5 + Math.random() * 0.8); // lebih tinggi dari lebar → bentuk tetes
+                const color = tearColors[Math.floor(Math.random() * tearColors.length)];
+                const startX = Math.random() * 100;
+                const delay = Math.random() * 2.5;      // delay lebih panjang → jatuh perlahan-lahan
+                const duration = Math.random() * 2 + 3; // durasi lebih lama → melayu sedih
+                particle.style.cssText = `
+                  position:absolute;left:${startX}%;top:-20px;
+                  width:${w}px;height:${h}px;
+                  background:${color};
+                  border-radius: 50% 50% 60% 60% / 40% 40% 60% 60%;
+                  opacity:0.85;
+                  animation:tearFall ${duration}s ease-in ${delay}s forwards;
+                  filter: blur(0.3px);
+                `;
+                container.appendChild(particle);
+              }
             }
 
-            // Inject keyframe CSS once
-            if (!document.getElementById('confetti-style')) {
-              const style = document.createElement('style');
-              style.id = 'confetti-style';
-              style.textContent = `
-                @keyframes confettiFall {
-                  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
-                  80% { opacity: 1; }
-                  100% { transform: translateY(100vh) rotate(${Math.random() > 0.5 ? '' : '-'}720deg); opacity: 0; }
-                }
-              `;
-              document.head.appendChild(style);
-            }
-
-            setTimeout(() => container.remove(), 4000);
+            setTimeout(() => container.remove(), isCheckin ? 4000 : 7000);
           };
 
           createConfetti();
