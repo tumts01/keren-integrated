@@ -235,8 +235,10 @@ export default function PerangkatUjianPage() {
 
     try {
       // Card dimensions in mm — 3 kartu per baris (hemat kertas)
-      const cardW = 70;   // 3 × 70 = 210mm pas lebar A4
-      const cardH = 35;
+      // 3 × 66 = 198mm → sisa 6mm kiri + 6mm kanan
+      const cardW = 66;
+      // 8 × 36 = 288mm → sisa 4.5mm atas + 4.5mm bawah (margin minimal)
+      const cardH = 36;
       const cols = 3;
       const rows = 8;
       const cardsPerPage = cols * rows; // 24
@@ -244,13 +246,13 @@ export default function PerangkatUjianPage() {
       // A4 size in mm: 210 x 297
       const pageW = 210;
       const pageH = 297;
-      const marginX = (pageW - cols * cardW) / 2; // (210 - 210)/2 = 0
-      const marginY = (pageH - rows * cardH) / 2; // (297 - 280)/2 = 8.5
+      const marginX = (pageW - cols * cardW) / 2; // (210 - 198)/2 = 6mm
+      const marginY = (pageH - rows * cardH) / 2; // (297 - 288)/2 = 4.5mm
 
       // Canvas pixel dimensions (300 DPI = ~11.81 pixels per mm)
       const scale = 11.81;
-      const cW = Math.round(cardW * scale); // ~1181px
-      const cH = Math.round(cardH * scale); // ~413px
+      const cW = Math.round(cardW * scale);
+      const cH = Math.round(cardH * scale);
 
       // Load template background once
       const bgImg = await loadImage(nobangDesign);
