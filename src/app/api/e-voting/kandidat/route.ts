@@ -127,7 +127,7 @@ export async function DELETE(req: Request) {
 
     if (error) throw error;
     if (count === 0) {
-      return NextResponse.json({ success: false, error: 'Data tidak ditemukan' }, { status: 404 });
+      return NextResponse.json({ success: false, error: `Data tidak ditemukan untuk ID: ${idStr} (tipe: ${typeof id})` }, { status: 404 });
     }
 
     return NextResponse.json({ success: true });

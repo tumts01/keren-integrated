@@ -26,7 +26,7 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
   const fetchKandidat = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/e-voting/kandidat');
+      const res = await fetch('/api/e-voting/kandidat?t=' + Date.now());
       const result = await res.json();
       if (result.success) {
         setKandidatList(result.data);
