@@ -275,7 +275,7 @@ export default function SurveyMadrasahPage() {
   };
 
   return (
-    <div className={styles.container} style={mainTab === 'e_voting' ? { maxWidth: '1400px' } : {}}>
+    <div className={styles.container} style={mainTab === 'e_voting' ? { maxWidth: '1600px' } : {}}>
       {!(isStandaloneEVoting || isStandaloneHumas || isStandalonePemetaan) && (
         <>
           <h1 className={styles.title}>
