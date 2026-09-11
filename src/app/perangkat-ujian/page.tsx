@@ -234,17 +234,17 @@ export default function PerangkatUjianPage() {
     setProgress('Memuat template Nobang...');
 
     try {
-      // Card dimensions in mm (10cm x 3.5cm)
-      const cardW = 100;
+      // Card dimensions in mm — 3 kartu per baris (hemat kertas)
+      const cardW = 70;   // 3 × 70 = 210mm pas lebar A4
       const cardH = 35;
-      const cols = 2;
+      const cols = 3;
       const rows = 8;
-      const cardsPerPage = cols * rows; // 16
+      const cardsPerPage = cols * rows; // 24
 
       // A4 size in mm: 210 x 297
       const pageW = 210;
       const pageH = 297;
-      const marginX = (pageW - cols * cardW) / 2; // (210 - 200)/2 = 5
+      const marginX = (pageW - cols * cardW) / 2; // (210 - 210)/2 = 0
       const marginY = (pageH - rows * cardH) / 2; // (297 - 280)/2 = 8.5
 
       // Canvas pixel dimensions (300 DPI = ~11.81 pixels per mm)
