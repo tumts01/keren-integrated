@@ -135,6 +135,8 @@ export default function PresensiPage() {
   const [rekapJurnalData, setRekapJurnalData] = useState<any[]>([]);
   const [editingJurnal, setEditingJurnal] = useState<any>(null);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editingPiket, setEditingPiket] = useState<any>(null);
+  const [isSavingEditPiket, setIsSavingEditPiket] = useState(false);
   const [rekapJurnalLoading, setRekapJurnalLoading] = useState(false);
   const [filterFrom, setFilterFrom] = useState(() => {
     const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
@@ -454,6 +456,58 @@ export default function PresensiPage() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Rekap Piket');
     XLSX.writeFile(wb, `Rekap_Piket_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.xlsx`);
+  };
+
+  // ── Rekap Piket Edit & Delete Helper ─────────────────────────────────────
+
+  const handleSaveEditPiket = async () => {
+    if (!editingPiket) return;
+    setIsSavingEditPiket(true);
+    try {
+      const res = await fetch(`/api/jurnal-piket?id=${editingPiket.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingPiket)
+      });
+      const data = await res.json();
+      if (data.success) {
+        Swal.fire('Berhasil!', 'Jurnal Piket berhasil diperbarui.', 'success');
+        setEditingPiket(null);
+        fetchRekapPiket();
+      } else {
+        Swal.fire('Gagal', data.error, 'error');
+      }
+    } catch (err) {
+      Swal.fire('Error', 'Gagal memperbarui jurnal piket.', 'error');
+    } finally {
+      setIsSavingEditPiket(false);
+    }
+  };
+
+  const handleDeletePiket = async (id: string) => {
+    const confirm = await Swal.fire({
+      title: 'Hapus Jurnal Piket?',
+      text: 'Data jurnal piket ini akan dihapus secara permanen.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonText: 'Batal',
+      confirmButtonText: 'Ya, Hapus!'
+    });
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const res = await fetch(`/api/jurnal-piket?id=${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        Swal.fire('Terhapus!', 'Data jurnal piket berhasil dihapus.', 'success');
+        fetchRekapPiket();
+      } else {
+        Swal.fire('Gagal', data.error, 'error');
+      }
+    } catch (err) {
+      Swal.fire('Error', 'Gagal menghapus data jurnal piket.', 'error');
+    }
   };
 
   // ── Rekap Jurnal Helper ──────────────────────────────────────────────────
@@ -2167,6 +2221,7 @@ export default function PresensiPage() {
                       <th style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>Kls Kosong</th>
                       <th style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>Materi</th>
                       <th style={{ padding: '8px 12px', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 700 }}>Pengganti</th>
+                      {isAdmin && <th style={{ padding: '8px 12px', textAlign: 'center', whiteSpace: 'nowrap', fontWeight: 700 }}>Aksi</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -2181,6 +2236,24 @@ export default function PresensiPage() {
                         <td style={{ padding: '7px 12px', color: '#dc2626', fontWeight: 600 }}>{r.kelasDitinggalkan}</td>
                         <td style={{ padding: '7px 12px' }}>{r.materi}</td>
                         <td style={{ padding: '7px 12px', color: '#16a34a' }}>{r.guruPengganti}</td>
+                        {isAdmin && (
+                          <td style={{ padding: '7px 12px', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                              <button
+                                style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
+                                onClick={() => setEditingPiket(r)}
+                              >
+                                <i className="fas fa-edit"></i> Edit
+                              </button>
+                              <button
+                                style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
+                                onClick={() => handleDeletePiket(r.id)}
+                              >
+                                <i className="fas fa-trash"></i> Hapus
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -2409,6 +2482,71 @@ export default function PresensiPage() {
           </div>
         )}
       </div>
+
+      {editingPiket && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'white', padding: '24px', borderRadius: '12px', width: '90%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#1e293b' }}><i className="fas fa-edit"></i> Edit Jurnal Piket</h3>
+              <button onClick={() => !isSavingEditPiket && setEditingPiket(null)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#64748b' }}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Tanggal</label>
+                <input type="date" value={editingPiket.tanggal} onChange={e => setEditingPiket({ ...editingPiket, tanggal: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Petugas Piket</label>
+                  <input type="text" value={editingPiket.petugasPiket} onChange={e => setEditingPiket({ ...editingPiket, petugasPiket: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Guru Dispo</label>
+                  <input type="text" value={editingPiket.guruDispo} onChange={e => setEditingPiket({ ...editingPiket, guruDispo: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                </div>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Guru Izin / Kosong</label>
+                  <input type="text" value={editingPiket.guruIzin} onChange={e => setEditingPiket({ ...editingPiket, guruIzin: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Alasan Izin</label>
+                  <input type="text" value={editingPiket.alasanIzin} onChange={e => setEditingPiket({ ...editingPiket, alasanIzin: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                </div>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Kelas Kosong</label>
+                  <input type="text" value={editingPiket.kelasDitinggalkan} onChange={e => setEditingPiket({ ...editingPiket, kelasDitinggalkan: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Guru Pengganti</label>
+                  <input type="text" value={editingPiket.guruPengganti} onChange={e => setEditingPiket({ ...editingPiket, guruPengganti: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Materi / Tugas</label>
+                <textarea rows={3} value={editingPiket.materi} onChange={e => setEditingPiket({ ...editingPiket, materi: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', resize: 'vertical' }} />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '10px' }}>
+                <button onClick={() => setEditingPiket(null)} disabled={isSavingEditPiket} style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f1f5f9', cursor: 'pointer', fontWeight: 600 }}>Batal</button>
+                <button onClick={handleSaveEditPiket} disabled={isSavingEditPiket} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#0ea5e9', color: 'white', cursor: 'pointer', fontWeight: 600 }}>
+                  {isSavingEditPiket ? 'Menyimpan...' : 'Simpan Perubahan'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {editingJurnal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

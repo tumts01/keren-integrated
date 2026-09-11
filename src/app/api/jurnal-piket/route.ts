@@ -130,3 +130,58 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: false, error: 'Gagal menghapus data: ' + error.message }, { status: 500 });
   }
 }
+
+export async function PUT(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ success: false, error: 'ID tidak valid' }, { status: 400 });
+
+    const body = await request.json();
+    
+    // Temukan baris yang tepat berdasarkan ID metadata atau baris ID
+    let updateId = parseInt(id, 10);
+    let currentMetadata: any = {};
+    if (isNaN(updateId)) {
+      const { data: foundRow } = await supabase.from('data_jurnal_piket').select('id, metadata').contains('metadata', { 'ID': id }).single();
+      if (foundRow) {
+        updateId = foundRow.id;
+        currentMetadata = foundRow.metadata;
+      }
+    } else {
+      const { data: foundRow } = await supabase.from('data_jurnal_piket').select('metadata').eq('id', updateId).single();
+      if (foundRow) currentMetadata = foundRow.metadata;
+    }
+
+    if (isNaN(updateId)) {
+      return NextResponse.json({ success: false, error: 'Data tidak ditemukan' }, { status: 404 });
+    }
+
+    const newMetadata = {
+      ...currentMetadata,
+      'TANGGAL': body.tanggal || currentMetadata['TANGGAL'],
+      'PETUGAS PIKET': body.petugasPiket || currentMetadata['PETUGAS PIKET'],
+      'GURU DISPO': body.guruDispo || currentMetadata['GURU DISPO'] || '',
+      'GURU IZIN': body.guruIzin || currentMetadata['GURU IZIN'],
+      'ALASAN IZIN': body.alasanIzin || currentMetadata['ALASAN IZIN'] || '',
+      'KELAS DITINGGALKAN': body.kelasDitinggalkan || currentMetadata['KELAS DITINGGALKAN'] || '',
+      'MATERI': body.materi || currentMetadata['MATERI'] || '',
+      'GURU PENGGANTI': body.guruPengganti || currentMetadata['GURU PENGGANTI'] || '',
+    };
+
+    const { error } = await supabase
+      .from('data_jurnal_piket')
+      .update({
+        tanggal: newMetadata['TANGGAL'], // Pastikan kolom tanggal sinkron
+        metadata: newMetadata
+      })
+      .eq('id', updateId);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, message: 'Data berhasil diupdate' });
+  } catch (error: any) {
+    console.error('PUT Jurnal Piket Error:', error);
+    return NextResponse.json({ success: false, error: 'Gagal mengupdate data: ' + error.message }, { status: 500 });
+  }
+}
