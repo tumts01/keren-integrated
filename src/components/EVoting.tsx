@@ -160,7 +160,7 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
   const handleCoblos = async (kandidat: any) => {
     const confirm = await Swal.fire({
       title: 'Konfirmasi Pilihan',
-      html: `Anda akan memilih:<br/><b>Paslon ${kandidat.noUrut} - ${kandidat.nama}</b><br/><br/>Pilihan tidak dapat diubah setelah disimpan!`,
+      html: `Anda akan memilih:<br/><b>Calon ${kandidat.noUrut} - ${kandidat.nama}</b><br/><br/>Pilihan tidak dapat diubah setelah disimpan!`,
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'Ya, Coblos Sekarang!',
@@ -206,7 +206,7 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
   };
 
   const chartData = {
-    labels: kandidatList.map(k => `Paslon ${k.noUrut}: ${k.nama}`),
+    labels: kandidatList.map(k => `Calon ${k.noUrut}: ${k.nama}`),
     datasets: [
       {
         label: 'Perolehan Suara',
@@ -349,7 +349,7 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
                   )}
                 </div>
                 <div className={styles.paslonContent}>
-                  <div className={styles.nomorUrut}>PASLON {k.noUrut}</div>
+                  <div className={styles.nomorUrut}>CALON {k.noUrut}</div>
                   <div className={styles.namaPaslon}>{k.nama}</div>
                   <div className={styles.visimisi}>
                     <h4>Visi</h4>
@@ -399,7 +399,7 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
                 <input type="text" value={formData.nomor_urut} onChange={e => setFormData({...formData, nomor_urut: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} required />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '5px', fontWeight: 'bold' }}>Nama Paslon</label>
+                <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '5px', fontWeight: 'bold' }}>Nama Calon</label>
                 <input type="text" value={formData.nama_paslon} onChange={e => setFormData({...formData, nama_paslon: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} required />
               </div>
             </div>
@@ -411,15 +411,9 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
               <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '5px', fontWeight: 'bold' }}>Misi</label>
               <textarea value={formData.misi} onChange={e => setFormData({...formData, misi: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', minHeight: '80px' }} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '5px', fontWeight: 'bold' }}>URL Foto Ketua (Drive/Lainnya)</label>
-                <input type="text" value={formData.foto_ketua} onChange={e => setFormData({...formData, foto_ketua: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '5px', fontWeight: 'bold' }}>URL Foto Wakil (Drive/Lainnya)</label>
-                <input type="text" value={formData.foto_wakil} onChange={e => setFormData({...formData, foto_wakil: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
-              </div>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '5px', fontWeight: 'bold' }}>URL Foto Calon (Drive/Lainnya)</label>
+              <input type="text" value={formData.foto_ketua} onChange={e => setFormData({...formData, foto_ketua: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button type="submit" disabled={loading} style={{ background: '#10b981', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
@@ -438,11 +432,10 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
             {kandidatList.map(k => (
               <div key={k.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                 <div>
-                  <h5 style={{ margin: '0 0 5px 0', fontSize: '1.1rem' }}>Paslon {k.noUrut}: {k.nama}</h5>
-                  <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
-                    <span style={{ marginRight: '10px' }}><i className="fas fa-image"></i> Foto Ketua: {k.fotoKetua ? 'Ada' : 'Kosong'}</span>
-                    <span><i className="fas fa-image"></i> Foto Wakil: {k.fotoWakil ? 'Ada' : 'Kosong'}</span>
-                  </div>
+                  <h5 style={{ margin: '0 0 5px 0', fontSize: '1.1rem' }}>CALON {k.noUrut}: {k.nama}</h5>
+                    <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                      <span style={{ marginRight: '10px' }}><i className="fas fa-image"></i> Foto Calon: {k.fotoKetua ? 'Ada' : 'Kosong'}</span>
+                    </div>
                 </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button onClick={() => handleEditKandidat(k)} style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer' }}>
