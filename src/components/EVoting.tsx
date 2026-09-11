@@ -34,8 +34,20 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
     fetchNames();
   }, []);
 
-  const fetchKandidat = async () => {
-    setLoading(true);
+  // Polling untuk Dashboard Quick Count (Live)
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (view === 'dashboard') {
+      fetchKandidat(true); // fetch silent awal
+      interval = setInterval(() => {
+        fetchKandidat(true);
+      }, 5000); // Tiap 5 detik refresh otomatis
+    }
+    return () => clearInterval(interval);
+  }, [view]);
+
+  const fetchKandidat = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await fetch('/api/e-voting/kandidat?t=' + Date.now());
       const result = await res.json();
@@ -46,7 +58,7 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
     } catch (err) {
       console.error(err);
     }
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
 
   const fetchNames = async () => {
