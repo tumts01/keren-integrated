@@ -244,8 +244,8 @@ export default function PerangkatUjianPage() {
       // Hitung cardH dari rasio pixel canvas agar proporsional (tidak mleyot)
       const cardH = Math.round(cardW * (cH / cW) * 10) / 10; // = 66 × (250/660) = 25mm
       const cols = 3;
-      const rows = 10; // 10 × 25mm = 250mm → margin atas/bawah ~23.5mm
-      const cardsPerPage = cols * rows; // 30
+      const rows = 11; // 11 × 25mm = 275mm → margin atas/bawah ~11mm
+      const cardsPerPage = cols * rows; // 33
 
       // A4 size in mm: 210 x 297
       const pageW = 210;
