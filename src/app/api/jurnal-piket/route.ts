@@ -95,6 +95,20 @@ export async function POST(request: Request) {
       });
     }
 
+    if (rowsToInsert.length === 0) {
+      // Jika tidak ada guru izin (nihil), tetap simpan kehadiran petugas piket
+      const id = crypto.randomUUID().substring(0, 8);
+      rowsToInsert.push({
+        tanggal,
+        metadata: {
+          'ID': id, 'TIMESTAMP': timestamp, 'TANGGAL': tanggal,
+          'PETUGAS PIKET': petugasPiket, 'GURU IZIN': '-',
+          'ALASAN IZIN': '-', 'KELAS DITINGGALKAN': '-',
+          'MATERI': 'Nihil', 'GURU PENGGANTI': '-', 'GURU DISPO': guruDispo || '-'
+        }
+      });
+    }
+
     if (rowsToInsert.length > 0) {
       // ── ANTI-DOBEL JURNAL PIKET ──
       // Ambil data jurnal hari ini
@@ -122,7 +136,7 @@ export async function POST(request: Request) {
       });
 
       if (filteredRowsToInsert.length === 0) {
-        return NextResponse.json({ success: true, message: 'Data sudah ada (Anti-Dobel Aktif), tidak ada data baru yang ditambahkan.' });
+        return NextResponse.json({ success: false, error: 'Data ini terdeteksi sama persis dengan yang sudah tersimpan sebelumnya (Anti-Dobel Aktif).' }, { status: 409 });
       }
 
       const { error } = await supabase.from('data_jurnal_piket').insert(filteredRowsToInsert);

@@ -191,7 +191,7 @@ export async function POST(request: Request) {
     }
 
     if (isExactMatch) {
-      return NextResponse.json({ success: true, message: 'Absensi sudah pernah diinput (Anti-Dobel Aktif)' });
+      return NextResponse.json({ success: false, error: 'Data absensi ini sudah pernah Anda input sebelumnya (Anti-Dobel Aktif).' }, { status: 409 });
     }
 
     if (overlappingMapel && overlappingMapel !== 'PIKET' && mapel !== 'PIKET') {
@@ -219,7 +219,7 @@ export async function POST(request: Request) {
         });
         
         if (listSiswa.length === 0) {
-          return NextResponse.json({ success: true, message: 'Data absensi piket sudah ada sebelumnya (Anti-Dobel Aktif).' });
+          return NextResponse.json({ success: false, error: 'Data absensi piket sudah ada sebelumnya (Anti-Dobel Aktif).' }, { status: 409 });
         }
       }
     }

@@ -103,7 +103,7 @@ export async function POST(request: Request) {
     }
 
     if (isExactMatch) {
-      return NextResponse.json({ success: true, message: 'Jurnal sudah pernah diinput (Anti-Dobel Aktif)' });
+      return NextResponse.json({ success: false, error: 'Data jurnal ini sudah pernah Anda input sebelumnya (Anti-Dobel Aktif).' }, { status: 409 });
     }
 
     if (overlappingRow) {

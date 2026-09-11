@@ -1065,7 +1065,7 @@ export default function PresensiPage() {
         Swal.fire({
           icon: 'success',
           title: 'Berhasil!',
-          text: 'Jurnal Piket berhasil disimpan.'
+          text: data.message || 'Jurnal Piket berhasil disimpan.'
         });
         setJpEntries([{ guruIzin: '', alasanIzin: '', kelasDitinggalkan: '', materi: '', guruPengganti: '' }]);
         setJpPetugasPiket([]);
