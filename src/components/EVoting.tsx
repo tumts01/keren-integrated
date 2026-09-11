@@ -350,9 +350,9 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
           <div className={styles.grid}>
             {kandidatList.map((k, idx) => (
               <div key={idx} className={styles.paslonCard}>
-                <div style={{ display: 'flex', width: '100%', height: '250px', background: '#f1f5f9' }}>
-                  {k.fotoKetua && <img src={getImageUrl(k.fotoKetua)} alt={`Ketua ${k.noUrut}`} style={{ flex: k.fotoWakil ? 1 : 'none', width: k.fotoWakil ? '50%' : '100%', objectFit: 'cover', borderRight: k.fotoWakil ? '2px solid white' : 'none' }} />}
-                  {k.fotoWakil && <img src={getImageUrl(k.fotoWakil)} alt={`Wakil ${k.noUrut}`} style={{ flex: 1, width: '50%', objectFit: 'cover' }} />}
+                <div style={{ display: 'flex', width: '100%', height: '360px', background: '#1e293b' }}>
+                  {k.fotoKetua && <img src={getImageUrl(k.fotoKetua)} alt={`Calon ${k.noUrut}`} style={{ flex: k.fotoWakil ? 1 : 'none', width: k.fotoWakil ? '50%' : '100%', objectFit: 'contain', borderRight: k.fotoWakil ? '2px solid white' : 'none' }} />}
+                  {k.fotoWakil && <img src={getImageUrl(k.fotoWakil)} alt={`Calon ${k.noUrut}`} style={{ flex: 1, width: '50%', objectFit: 'contain' }} />}
                   {!k.fotoKetua && !k.fotoWakil && (
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1' }}>
                       <i className="fas fa-user-tie" style={{ fontSize: '4rem' }}></i>
