@@ -14,6 +14,7 @@ export async function GET() {
     if (errKandidat) throw errKandidat;
 
     const kandidatList = (rowsKandidat || []).map(r => ({
+      id: r.id,
       noUrut: r.nomor_urut || '',
       nama: (r.nama_paslon || '').trim(),
       visi: r.visi || '',
@@ -53,6 +54,76 @@ export async function GET() {
     });
   } catch (err: any) {
     console.error('Error GET E-Voting Supabase:', err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const { nomor_urut, nama_paslon, visi, misi, foto_ketua, foto_wakil } = body;
+    
+    if (!nama_paslon) {
+      return NextResponse.json({ success: false, error: 'Nama Paslon wajib diisi' }, { status: 400 });
+    }
+
+    const { error } = await supabase.from('kandidat_osim').insert([{
+      nomor_urut: nomor_urut || '',
+      nama_paslon: nama_paslon.trim(),
+      visi: visi || '',
+      misi: misi || '',
+      foto_ketua: foto_ketua || '',
+      foto_wakil: foto_wakil || ''
+    }]);
+
+    if (error) throw error;
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    const body = await req.json();
+    const { nomor_urut, nama_paslon, visi, misi, foto_ketua, foto_wakil } = body;
+
+    if (!id || !nama_paslon) {
+      return NextResponse.json({ success: false, error: 'ID dan Nama Paslon wajib diisi' }, { status: 400 });
+    }
+
+    const { error } = await supabase.from('kandidat_osim').update({
+      nomor_urut: nomor_urut || '',
+      nama_paslon: nama_paslon.trim(),
+      visi: visi || '',
+      misi: misi || '',
+      foto_ketua: foto_ketua || '',
+      foto_wakil: foto_wakil || ''
+    }).eq('id', id);
+
+    if (error) throw error;
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'ID wajib diisi' }, { status: 400 });
+    }
+
+    const { error } = await supabase.from('kandidat_osim').delete().eq('id', id);
+
+    if (error) throw error;
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }

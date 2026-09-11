@@ -7,7 +7,7 @@ import { Bar } from 'react-chartjs-2';
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
-  const [view, setView] = useState<'login' | 'vote' | 'dashboard'>('login');
+  const [view, setView] = useState<'login' | 'vote' | 'dashboard' | 'pengaturan'>('login');
   const [kandidatList, setKandidatList] = useState<any[]>([]);
   const [totalPemilih, setTotalPemilih] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -60,6 +60,83 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    nomor_urut: '',
+    nama_paslon: '',
+    visi: '',
+    misi: '',
+    foto_ketua: '',
+    foto_wakil: ''
+  });
+
+  const handleEditKandidat = (k: any) => {
+    setEditingId(k.id);
+    setFormData({
+      nomor_urut: k.noUrut || '',
+      nama_paslon: k.nama || '',
+      visi: k.visi || '',
+      misi: k.misi || '',
+      foto_ketua: k.fotoKetua || '',
+      foto_wakil: k.fotoWakil || ''
+    });
+  };
+
+  const handleDeleteKandidat = async (id: string) => {
+    const confirmDelete = await Swal.fire({
+      title: 'Hapus Kandidat?',
+      text: "Data yang dihapus tidak dapat dikembalikan!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Ya, hapus!'
+    });
+    
+    if (!confirmDelete.isConfirmed) return;
+    
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/e-voting/kandidat?id=${id}`, { method: 'DELETE' });
+      const result = await res.json();
+      if (result.success) {
+        Swal.fire('Terhapus', 'Kandidat berhasil dihapus', 'success');
+        fetchKandidat();
+      } else {
+        Swal.fire('Gagal', result.error, 'error');
+      }
+    } catch (e: any) {
+      Swal.fire('Error', e.message, 'error');
+    }
+    setLoading(false);
+  };
+
+  const handleSaveKandidat = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const url = editingId ? `/api/e-voting/kandidat?id=${editingId}` : `/api/e-voting/kandidat`;
+      const method = editingId ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      const result = await res.json();
+      if (result.success) {
+        Swal.fire('Tersimpan', 'Data kandidat berhasil disimpan', 'success');
+        setEditingId(null);
+        setFormData({ nomor_urut: '', nama_paslon: '', visi: '', misi: '', foto_ketua: '', foto_wakil: '' });
+        fetchKandidat();
+      } else {
+        Swal.fire('Gagal', result.error, 'error');
+      }
+    } catch (err: any) {
+      Swal.fire('Error', err.message, 'error');
+    }
+    setLoading(false);
   };
 
   const handleLogin = (e: React.FormEvent) => {
@@ -175,10 +252,17 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
           </button>
           <button 
             className={styles.btnPrimary} 
-            style={{ width: 'auto', background: view === 'login' ? '#0f172a' : '#3b82f6' }}
+            style={{ width: 'auto', background: view === 'login' ? '#0f172a' : '#3b82f6', marginRight: '10px' }}
             onClick={() => setView('login')}
           >
             <i className="fas fa-user-check"></i> Form Pemilih
+          </button>
+          <button 
+            className={styles.btnPrimary} 
+            style={{ width: 'auto', background: view === 'pengaturan' ? '#0f172a' : '#3b82f6' }}
+            onClick={() => setView('pengaturan')}
+          >
+            <i className="fas fa-cog"></i> Pengaturan
           </button>
         </div>
       )}
@@ -286,17 +370,14 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
       {view === 'dashboard' && (
         <div className={styles.quickCountCard}>
           <h3 style={{ textAlign: 'center', marginBottom: '10px' }}>Hasil Quick Count Sementara</h3>
-          <p style={{ textAlign: 'center', color: '#64748b', marginBottom: '30px' }}>Total Pemilih Masuk: {totalPemilih} Suara</p>
-          
-          <div style={{ height: '400px' }}>
+          <div style={{ marginBottom: '20px', textAlign: 'center', fontWeight: 'bold', color: '#3b82f6' }}>
+            Total Suara Masuk: {totalPemilih} Suara
+          </div>
+          <div style={{ height: '400px', display: 'flex', justifyContent: 'center' }}>
             <Bar 
               data={chartData} 
-              options={{
-                responsive: true,
+              options={{ 
                 maintainAspectRatio: false,
-                plugins: {
-                  legend: { display: false }
-                },
                 scales: {
                   y: { beginAtZero: true, ticks: { precision: 0 } }
                 }
@@ -305,6 +386,81 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
           </div>
         </div>
       )}
+
+      {view === 'pengaturan' && (
+        <div className={styles.loginCard} style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'left' }}>
+          <h3 style={{ textAlign: 'center', marginBottom: '20px' }}><i className="fas fa-users-cog"></i> Pengaturan Kandidat OSIM</h3>
+          
+          <form onSubmit={handleSaveKandidat} style={{ marginBottom: '30px', padding: '20px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <h4 style={{ marginBottom: '15px' }}>{editingId ? 'Edit Kandidat' : 'Tambah Kandidat Baru'}</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '15px', marginBottom: '15px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '5px', fontWeight: 'bold' }}>Nomor Urut</label>
+                <input type="text" value={formData.nomor_urut} onChange={e => setFormData({...formData, nomor_urut: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} required />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '5px', fontWeight: 'bold' }}>Nama Paslon</label>
+                <input type="text" value={formData.nama_paslon} onChange={e => setFormData({...formData, nama_paslon: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} required />
+              </div>
+            </div>
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '5px', fontWeight: 'bold' }}>Visi</label>
+              <textarea value={formData.visi} onChange={e => setFormData({...formData, visi: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', minHeight: '60px' }} />
+            </div>
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '5px', fontWeight: 'bold' }}>Misi</label>
+              <textarea value={formData.misi} onChange={e => setFormData({...formData, misi: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', minHeight: '80px' }} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '5px', fontWeight: 'bold' }}>URL Foto Ketua (Drive/Lainnya)</label>
+                <input type="text" value={formData.foto_ketua} onChange={e => setFormData({...formData, foto_ketua: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '5px', fontWeight: 'bold' }}>URL Foto Wakil (Drive/Lainnya)</label>
+                <input type="text" value={formData.foto_wakil} onChange={e => setFormData({...formData, foto_wakil: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button type="submit" disabled={loading} style={{ background: '#10b981', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                <i className="fas fa-save"></i> {loading ? 'Menyimpan...' : 'Simpan Kandidat'}
+              </button>
+              {editingId && (
+                <button type="button" onClick={() => { setEditingId(null); setFormData({ nomor_urut: '', nama_paslon: '', visi: '', misi: '', foto_ketua: '', foto_wakil: '' }); }} style={{ background: '#64748b', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                  Batal Edit
+                </button>
+              )}
+            </div>
+          </form>
+
+          <h4 style={{ marginBottom: '15px', borderBottom: '2px solid #e2e8f0', paddingBottom: '10px' }}>Daftar Kandidat Saat Ini</h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            {kandidatList.map(k => (
+              <div key={k.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'white', padding: '15px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div>
+                  <h5 style={{ margin: '0 0 5px 0', fontSize: '1.1rem' }}>Paslon {k.noUrut}: {k.nama}</h5>
+                  <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                    <span style={{ marginRight: '10px' }}><i className="fas fa-image"></i> Foto Ketua: {k.fotoKetua ? 'Ada' : 'Kosong'}</span>
+                    <span><i className="fas fa-image"></i> Foto Wakil: {k.fotoWakil ? 'Ada' : 'Kosong'}</span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={() => handleEditKandidat(k)} style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer' }}>
+                    <i className="fas fa-edit"></i> Edit
+                  </button>
+                  <button onClick={() => handleDeleteKandidat(k.id)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '4px', cursor: 'pointer' }}>
+                    <i className="fas fa-trash"></i> Hapus
+                  </button>
+                </div>
+              </div>
+            ))}
+            {kandidatList.length === 0 && (
+              <p style={{ textAlign: 'center', color: '#94a3b8', fontStyle: 'italic' }}>Belum ada data kandidat</p>
+            )}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
