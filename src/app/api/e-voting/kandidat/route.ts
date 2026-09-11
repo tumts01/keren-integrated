@@ -86,13 +86,15 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
+    const idStr = searchParams.get('id');
     const body = await req.json();
     const { nomor_urut, nama_paslon, visi, misi, foto_ketua, foto_wakil } = body;
 
-    if (!id || !nama_paslon) {
+    if (!idStr || !nama_paslon) {
       return NextResponse.json({ success: false, error: 'ID dan Nama Paslon wajib diisi' }, { status: 400 });
     }
+    
+    const id = /^\d+$/.test(idStr) ? parseInt(idStr, 10) : idStr;
 
     const { error } = await supabase.from('kandidat_osim').update({
       nomor_urut: nomor_urut || '',
@@ -113,15 +115,21 @@ export async function PUT(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
+    const idStr = searchParams.get('id');
     
-    if (!id) {
+    if (!idStr) {
       return NextResponse.json({ success: false, error: 'ID wajib diisi' }, { status: 400 });
     }
 
-    const { error } = await supabase.from('kandidat_osim').delete().eq('id', id);
+    const id = /^\d+$/.test(idStr) ? parseInt(idStr, 10) : idStr;
+
+    const { error, count } = await supabase.from('kandidat_osim').delete({ count: 'exact' }).eq('id', id);
 
     if (error) throw error;
+    if (count === 0) {
+      return NextResponse.json({ success: false, error: 'Data tidak ditemukan' }, { status: 404 });
+    }
+
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
