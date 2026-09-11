@@ -234,25 +234,24 @@ export default function PerangkatUjianPage() {
     setProgress('Memuat template Nobang...');
 
     try {
+      // Canvas render size (sesuai request: 660×250px)
+      const cW = 660;
+      const cH = 250;
+
       // Card dimensions in mm — 3 kartu per baris (hemat kertas)
       // 3 × 66 = 198mm → sisa 6mm kiri + 6mm kanan
       const cardW = 66;
-      // 8 × 36 = 288mm → sisa 4.5mm atas + 4.5mm bawah (margin minimal)
-      const cardH = 36;
+      // Hitung cardH dari rasio pixel canvas agar proporsional (tidak mleyot)
+      const cardH = Math.round(cardW * (cH / cW) * 10) / 10; // = 66 × (250/660) = 25mm
       const cols = 3;
-      const rows = 8;
-      const cardsPerPage = cols * rows; // 24
+      const rows = 10; // 10 × 25mm = 250mm → margin atas/bawah ~23.5mm
+      const cardsPerPage = cols * rows; // 30
 
       // A4 size in mm: 210 x 297
       const pageW = 210;
       const pageH = 297;
       const marginX = (pageW - cols * cardW) / 2; // (210 - 198)/2 = 6mm
-      const marginY = (pageH - rows * cardH) / 2; // (297 - 288)/2 = 4.5mm
-
-      // Canvas pixel dimensions (300 DPI = ~11.81 pixels per mm)
-      const scale = 11.81;
-      const cW = Math.round(cardW * scale);
-      const cH = Math.round(cardH * scale);
+      const marginY = (pageH - rows * cardH) / 2; // (297 - 250)/2 = 23.5mm
 
       // Load template background once
       const bgImg = await loadImage(nobangDesign);
