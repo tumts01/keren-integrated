@@ -7,6 +7,7 @@ import styles from './presensi.module.css';
 
 const MultiSelectDropdown = ({ options, selected, onChange, placeholder, className }: { options: string[], selected: string[], onChange: (s: string[]) => void, placeholder: string, className?: string }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -26,6 +27,8 @@ const MultiSelectDropdown = ({ options, selected, onChange, placeholder, classNa
       onChange([...selected, opt]);
     }
   };
+
+  const filteredOptions = options.filter(opt => opt.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <div ref={wrapperRef} style={{ position: 'relative', width: '100%' }}>
@@ -49,8 +52,18 @@ const MultiSelectDropdown = ({ options, selected, onChange, placeholder, classNa
         }
       </div>
       {isOpen && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #d1d5db', zIndex: 50, maxHeight: '200px', overflowY: 'auto', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', borderRadius: '4px', marginTop: '4px' }}>
-          {options.map(opt => (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #d1d5db', zIndex: 50, maxHeight: '250px', overflowY: 'auto', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', borderRadius: '4px', marginTop: '4px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ position: 'sticky', top: 0, background: 'white', padding: '8px', borderBottom: '1px solid #e5e7eb', zIndex: 2 }}>
+            <input 
+              type="text" 
+              placeholder="Cari..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{ width: '100%', padding: '6px 12px', border: '1px solid #d1d5db', borderRadius: '4px', fontSize: '0.85rem' }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+          {filteredOptions.map(opt => (
             <div 
               key={opt} 
               style={{ padding: '8px 12px', cursor: 'pointer', background: selected.includes(opt) ? '#f3f4f6' : 'white', display: 'flex', alignItems: 'center', fontSize: '0.9rem' }}
@@ -60,7 +73,7 @@ const MultiSelectDropdown = ({ options, selected, onChange, placeholder, classNa
               {opt}
             </div>
           ))}
-          {options.length === 0 && <div style={{ padding: '8px 12px', color: '#9ca3af', fontSize: '0.9rem' }}>Tidak ada pilihan</div>}
+          {filteredOptions.length === 0 && <div style={{ padding: '12px', color: '#9ca3af', fontSize: '0.9rem', textAlign: 'center' }}>Tidak ditemukan</div>}
         </div>
       )}
     </div>
