@@ -144,13 +144,15 @@ export async function DELETE(request: Request) {
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ success: false, error: 'ID tidak valid' }, { status: 400 });
 
-    let deleteId = parseInt(id, 10);
-    if (isNaN(deleteId)) {
+    let deleteId: number | null = null;
+    if (/^\d+$/.test(id)) {
+      deleteId = parseInt(id, 10);
+    } else {
       const { data: foundRow } = await supabase.from('data_jurnal_piket').select('id').contains('metadata', { 'ID': id }).single();
       if (foundRow) deleteId = foundRow.id;
     }
 
-    if (!isNaN(deleteId)) {
+    if (deleteId !== null) {
       const { error } = await supabase.from('data_jurnal_piket').delete().eq('id', deleteId);
       if (error) throw error;
     }
@@ -171,20 +173,22 @@ export async function PUT(request: Request) {
     const body = await request.json();
     
     // Temukan baris yang tepat berdasarkan ID metadata atau baris ID
-    let updateId = parseInt(id, 10);
+    let updateId: number | null = null;
     let currentMetadata: any = {};
-    if (isNaN(updateId)) {
+    
+    if (/^\d+$/.test(id)) {
+      updateId = parseInt(id, 10);
+      const { data: foundRow } = await supabase.from('data_jurnal_piket').select('metadata').eq('id', updateId).single();
+      if (foundRow) currentMetadata = foundRow.metadata;
+    } else {
       const { data: foundRow } = await supabase.from('data_jurnal_piket').select('id, metadata').contains('metadata', { 'ID': id }).single();
       if (foundRow) {
         updateId = foundRow.id;
         currentMetadata = foundRow.metadata;
       }
-    } else {
-      const { data: foundRow } = await supabase.from('data_jurnal_piket').select('metadata').eq('id', updateId).single();
-      if (foundRow) currentMetadata = foundRow.metadata;
     }
 
-    if (isNaN(updateId)) {
+    if (updateId === null) {
       return NextResponse.json({ success: false, error: 'Data tidak ditemukan' }, { status: 404 });
     }
 

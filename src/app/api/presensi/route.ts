@@ -266,16 +266,18 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ success: false, error: 'ID tidak diberikan' }, { status: 400 });
     }
 
-    let deleteId = parseInt(id, 10);
+    let deleteId: number | null = null;
     
-    if (isNaN(deleteId)) {
+    if (/^\d+$/.test(id)) {
+      deleteId = parseInt(id, 10);
+    } else {
       const { data: foundRow } = await supabase.from('data_presensi_siswa').select('id').contains('metadata', { 'ID': id }).single();
       if (foundRow) {
         deleteId = foundRow.id;
       }
     }
 
-    if (!isNaN(deleteId)) {
+    if (deleteId !== null) {
       const { error } = await supabase.from('data_presensi_siswa').delete().eq('id', deleteId);
       if (error) throw error;
     }
