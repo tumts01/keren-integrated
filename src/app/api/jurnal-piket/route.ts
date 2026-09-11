@@ -96,11 +96,42 @@ export async function POST(request: Request) {
     }
 
     if (rowsToInsert.length > 0) {
-      const { error } = await supabase.from('data_jurnal_piket').insert(rowsToInsert);
+      // ── ANTI-DOBEL JURNAL PIKET ──
+      // Ambil data jurnal hari ini
+      const { data: existingRows, error: readError } = await supabase
+        .from('data_jurnal_piket')
+        .select('metadata')
+        .eq('tanggal', tanggal);
+      
+      if (readError) throw readError;
+
+      // Filter rowsToInsert yang belum ada di database
+      const filteredRowsToInsert = rowsToInsert.filter(newRow => {
+        const newGuruIzin = newRow.metadata['GURU IZIN'];
+        const newKelasKosong = newRow.metadata['KELAS DITINGGALKAN'];
+        const newAlasan = newRow.metadata['ALASAN IZIN'];
+        
+        // Cek apakah ada data yang sama persis (guru izin, kelas kosong, dan tanggal)
+        const isDuplicate = existingRows?.some(existing => {
+          return existing.metadata['GURU IZIN'] === newGuruIzin &&
+                 existing.metadata['KELAS DITINGGALKAN'] === newKelasKosong &&
+                 existing.metadata['ALASAN IZIN'] === newAlasan;
+        });
+        
+        return !isDuplicate;
+      });
+
+      if (filteredRowsToInsert.length === 0) {
+        return NextResponse.json({ success: true, message: 'Data sudah ada (Anti-Dobel Aktif), tidak ada data baru yang ditambahkan.' });
+      }
+
+      const { error } = await supabase.from('data_jurnal_piket').insert(filteredRowsToInsert);
       if (error) throw error;
+      
+      return NextResponse.json({ success: true, message: `Berhasil menyimpan ${filteredRowsToInsert.length} data jurnal piket baru` });
     }
 
-    return NextResponse.json({ success: true, message: `Berhasil menyimpan ${rowsToInsert.length} data jurnal piket` });
+    return NextResponse.json({ success: true, message: `Berhasil menyimpan data` });
   } catch (error: any) {
     console.error('POST Jurnal Piket Error:', error);
     return NextResponse.json({ success: false, error: 'Gagal memproses jurnal piket' }, { status: 500 });

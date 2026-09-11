@@ -201,6 +201,29 @@ export async function POST(request: Request) {
       }, { status: 409 });
     }
 
+    // ── ANTI-DOBEL KHUSUS PIKET ──
+    if (kelas === "MULTIPLE" && mapel === "PIKET") {
+      const { data: piketPresensi, error: pError } = await supabase
+        .from('data_presensi_siswa')
+        .select('metadata')
+        .eq('tanggal', tanggal)
+        .contains('metadata', { 'MAPEL': 'PIKET' });
+
+      if (!pError && piketPresensi) {
+        listSiswa = listSiswa.filter((s: any) => {
+          return !piketPresensi.some(p => {
+            const existingJams = String(p.metadata?.['JAM KE'] || '').split(',').map(j => j.trim()).filter(Boolean);
+            const hasOverlap = submittedJams.some(j => existingJams.includes(j));
+            return hasOverlap && p.metadata?.['NAMA SISWA'] === s.nama;
+          });
+        });
+        
+        if (listSiswa.length === 0) {
+          return NextResponse.json({ success: true, message: 'Data absensi piket sudah ada sebelumnya (Anti-Dobel Aktif).' });
+        }
+      }
+    }
+
     const nowTimestamp = timestamp || new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
 
     const payload = listSiswa.map((s: any) => {
