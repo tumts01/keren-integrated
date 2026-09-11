@@ -9,17 +9,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Nama Pemilih dan Paslon wajib diisi' }, { status: 400 });
     }
 
-    // Cek apakah sudah pernah memilih
-    const { data: existingVotes, error: errCek } = await supabase
+    // Cek apakah sudah pernah memilih secara efisien
+    const { data: existingVote, error: errCek } = await supabase
       .from('suara_osim')
-      .select('nama_pemilih');
+      .select('id')
+      .ilike('nama_pemilih', namaPemilih.trim())
+      .limit(1)
+      .maybeSingle();
 
     if (errCek) throw errCek;
 
-    const pemilihSet = new Set((existingVotes || []).map(r => (r.nama_pemilih || '').trim().toUpperCase()));
-
-    if (pemilihSet.has(namaPemilih.trim().toUpperCase())) {
-      return NextResponse.json({ success: false, error: 'Anda sudah pernah memberikan suara!' }, { status: 400 });
+    if (existingVote) {
+      return NextResponse.json({ success: false, error: 'Anda sudah pernah memberikan suara!' }, { status: 409 });
     }
 
     // Insert suara
