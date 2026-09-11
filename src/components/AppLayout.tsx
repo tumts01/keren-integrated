@@ -155,7 +155,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (!mounted) return null;
 
-  const isPrintPage = pathname?.includes('/cetak') || pathname?.includes('/cetak-realisasi');
+  const isPrintPage = pathname?.includes('/cetak') || pathname?.includes('/cetak-realisasi') || pathname?.includes('/quick-count');
   if (isPrintPage) {
     return <>{children}</>;
   }
