@@ -1170,6 +1170,7 @@ const handleExportMissingNisnNik = () => {
           <td>${i + 1}</td>
           <td style="text-align: left; padding-left: 8px; font-weight: bold;">${s.nama}</td>
           <td>${s.rombel}</td>
+          <td>${s.id || '-'}</td>
           <td style="color: #ef4444; font-weight: bold;">${s.nisn || 'KOSONG'}</td>
           <td style="color: #ef4444; font-weight: bold;">${s.nik || 'KOSONG'}</td>
           <td style="text-align: left; padding-left: 8px;">${s.tempatLahir}, ${s.tanggalLahir}</td>
@@ -1206,6 +1207,7 @@ const handleExportMissingNisnNik = () => {
               <th style="width: 30px;">No</th>
               <th>Nama Siswa</th>
               <th style="width: 60px;">Kelas</th>
+              <th>ID Siswa</th>
               <th>NISN</th>
               <th>NIK</th>
               <th>Tempat, Tgl Lahir</th>
@@ -1511,6 +1513,7 @@ const handleExportMissingNisnNik = () => {
                 <tr>
                   <th>Profil (Nama)</th>
                   <th>Status</th>
+                  <th>ID Siswa</th>
                   <th>NISN</th>
                   <th>NIK</th>
                   <th>Tempat Lahir</th>
@@ -1551,6 +1554,7 @@ const handleExportMissingNisnNik = () => {
                           {siswa.status || 'Tidak Diketahui'}
                         </span>
                       </td>
+                      <td>{siswa.id || '-'}</td>
                       <td>{siswa.nisn || '-'}</td>
                       <td>{siswa.nik || '-'}</td>
                       <td>{siswa.tempatLahir || '-'}</td>
