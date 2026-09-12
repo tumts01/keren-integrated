@@ -159,6 +159,19 @@ export default function JurnalPage() {
       Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Mohon pilih Jam Ke!' });
       return;
     }
+    
+    if (selectedMapel.toLowerCase().includes('program khusus')) {
+      if (selectedJam.length > 1 || !selectedJam.includes(1)) {
+        Swal.fire({ 
+          icon: 'warning', 
+          title: 'Aturan Program Khusus', 
+          text: 'Mata pelajaran Program Khusus HANYA DAPAT diisi di Jam ke-1 dan berdurasi maksimal 1 Jam.' 
+        });
+        setSelectedJam([1]);
+        return;
+      }
+    }
+    
     if (!materi.trim()) {
       Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Mohon isi Materi!' });
       return;

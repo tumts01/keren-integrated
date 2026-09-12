@@ -74,9 +74,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
     }
 
+    const jamKeText = String(jamKe);
+
+    if (mapel.toLowerCase().includes('program khusus')) {
+      if (jamKeText.trim() !== '1') {
+        return NextResponse.json({ success: false, error: 'Mata pelajaran Program Khusus hanya dapat diisi di Jam ke-1.' }, { status: 400 });
+      }
+    }
+
     const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
     const id = crypto.randomUUID().substring(0, 8);
-    const jamKeText = String(jamKe);
 
     const { data: rows, error: readError } = await supabase.from('data_jurnal_mengajar').select('*').eq('tanggal', tanggal).eq('kelas', kelas);
     if (readError) throw readError;
@@ -151,6 +158,12 @@ export async function PUT(request: Request) {
     }
 
     const jamKeText = String(jamKe);
+
+    if (mapel.toLowerCase().includes('program khusus')) {
+      if (jamKeText.trim() !== '1') {
+        return NextResponse.json({ success: false, error: 'Mata pelajaran Program Khusus hanya dapat diisi di Jam ke-1.' }, { status: 400 });
+      }
+    }
 
     // Get all rows for that date and class to check for overlap
     const { data: rows, error: readError } = await supabase
