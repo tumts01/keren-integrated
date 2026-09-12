@@ -29,6 +29,7 @@ export default function EmisPage() {
   const [filterKelas, setFilterKelas] = useState('');
   const [filterMasuk, setFilterMasuk] = useState('');   // '' | 'sudah' | 'belum'
   const [filterValid, setFilterValid] = useState('');   // '' | 'sudah' | 'belum'
+  const [filterWalkel, setFilterWalkel] = useState(''); // '' | 'valid' | 'perbaikan' | 'belum'
   const [searchTerm, setSearchTerm] = useState('');
   const [updating, setUpdating] = useState<string>(''); // key saat update
   const [isAdmin, setIsAdmin] = useState(false);
@@ -74,6 +75,11 @@ export default function EmisPage() {
     if (filterMasuk === 'belum' && s.masukEMIS) return false;
     if (filterValid === 'sudah' && s.emisValid !== 'SAMA') return false;
     if (filterValid === 'belum' && s.emisValid === 'SAMA') return false;
+    
+    if (filterWalkel === 'valid' && s.validasiWalkel !== 'VALID') return false;
+    if (filterWalkel === 'perbaikan' && s.validasiWalkel !== 'PERBAIKAN') return false;
+    if (filterWalkel === 'belum' && (s.validasiWalkel === 'VALID' || s.validasiWalkel === 'PERBAIKAN')) return false;
+
     if (searchTerm && !s.nama.toLowerCase().includes(searchTerm.toLowerCase()) && !s.nisn.includes(searchTerm)) return false;
     return true;
   });
@@ -267,7 +273,13 @@ export default function EmisPage() {
         <select value={filterValid} onChange={e => setFilterValid(e.target.value)} className={styles.filterSelect}>
           <option value="">EMIS Valid: Semua</option>
           <option value="sudah">✅ Sudah Valid</option>
-          <option value="belum">⏳ Belum Valid</option>
+          <option value="belum">❌ Belum Valid</option>
+        </select>
+        <select value={filterWalkel} onChange={e => setFilterWalkel(e.target.value)} className={styles.filterSelect}>
+          <option value="">Val. Walkel: Semua</option>
+          <option value="valid">✅ Valid</option>
+          <option value="perbaikan">⚠️ Perbaikan</option>
+          <option value="belum">➖ Belum</option>
         </select>
         <button className={styles.refreshBtn} onClick={() => fetchData(filterTA)} title="Refresh data">
           <i className="fas fa-sync-alt"></i>
