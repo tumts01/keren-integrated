@@ -99,6 +99,15 @@ export default function JurnalPage() {
   }, [activeTab, fetchRekap]);
 
   const toggleJam = (jam: number) => {
+    if (selectedMapel.toLowerCase().includes('program khusus')) {
+      if (jam !== 1) {
+        Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Program Khusus hanya bisa diisi di Jam ke-1.' });
+        return;
+      }
+      setSelectedJam([1]);
+      return;
+    }
+    
     setSelectedJam(prev =>
       prev.includes(jam) ? prev.filter(j => j !== jam) : [...prev, jam].sort((a, b) => a - b)
     );
@@ -106,6 +115,19 @@ export default function JurnalPage() {
 
   const handleSaveEdit = async () => {
     if (!editingJurnal) return;
+    
+    if (editingJurnal.mapel.toLowerCase().includes('program khusus')) {
+      const jamStr = editingJurnal.jamKe.trim();
+      if (jamStr !== '1') {
+        Swal.fire({ 
+          icon: 'warning', 
+          title: 'Aturan Program Khusus', 
+          text: 'Mata pelajaran Program Khusus HANYA DAPAT diisi di Jam ke-1 dan berdurasi 1 Jam.' 
+        });
+        return;
+      }
+    }
+    
     setIsSavingEdit(true);
     try {
       const res = await fetch('/api/jurnal', {
@@ -270,7 +292,17 @@ export default function JurnalPage() {
             </div>
             <div className={styles.filterGroup}>
               <label>Mata Pelajaran</label>
-              <select value={selectedMapel} onChange={e => setSelectedMapel(e.target.value)} className={styles.inputField}>
+              <select 
+                value={selectedMapel} 
+                onChange={e => {
+                  const val = e.target.value;
+                  setSelectedMapel(val);
+                  if (val.toLowerCase().includes('program khusus')) {
+                    setSelectedJam([1]);
+                  }
+                }} 
+                className={styles.inputField}
+              >
                 <option value="">-- Pilih Mapel --</option>
                 {mapelList.map((m, i) => <option key={i} value={m}>{m}</option>)}
               </select>
