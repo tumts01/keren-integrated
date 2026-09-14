@@ -74,8 +74,16 @@ export async function GET(request: Request) {
       buktiData = buktiRows.map(r => r.toObject());
     }
 
-    let data = rows.map(row => {
+    let data = rows.map((row, idx) => {
       const obj = row.toObject();
+      
+      // Entry belanja sisa saldo (NoBon kosong) diberi ID virtual agar bisa ditampilkan
+      if (!obj['NoBon'] && !obj['ID']) {
+        const nama = (obj['Nama'] || 'UNKNOWN').trim().split(' ')[0].toUpperCase();
+        obj['NoBon'] = `SISA-${nama}-${idx + 1}`;
+        obj['isSisaSaldo'] = true;
+      }
+      
       if (!obj['JumlahRealisasi'] || !obj['RealisasiRincianJSON']) {
         const id = obj['NoBon'] || obj['ID'];
         const b = buktiData.find(b => b['NoBon'] === id || b['BonID'] === id);
@@ -83,14 +91,6 @@ export async function GET(request: Request) {
           obj['JumlahRealisasi'] = b['JumlahRealisasi'];
           obj['RealisasiRincianJSON'] = b['RincianJSON'];
         }
-      }
-      return obj;
-    }).map((obj, idx) => {
-      // Entry belanja sisa saldo (NoBon kosong) diberi ID virtual agar bisa ditampilkan
-      if (!obj['NoBon'] && !obj['ID']) {
-        const nama = (obj['Nama'] || 'UNKNOWN').trim().split(' ')[0].toUpperCase();
-        obj['NoBon'] = `SISA-${nama}-${idx + 1}`;
-        obj['isSisaSaldo'] = true;
       }
       return obj;
     }).filter(r => r['NoBon'] || r['ID']);

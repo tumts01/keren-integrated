@@ -1,0 +1,18 @@
+
+> keren-integrated@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.10 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.104:3000
+- Environments: .env.local
+✓ Ready in 3.7s
+
+ GET /api/e-voting/kandidat 200 in 2.5s (next.js: 1345ms, application-code: 1158ms)
+ DELETE /api/e-voting/kandidat?id=2 404 in 231ms (next.js: 10ms, application-code: 221ms)
+ POST /api/e-voting/kandidat 200 in 230ms (next.js: 8ms, application-code: 222ms)
+ GET /api/e-voting/kandidat 200 in 337ms (next.js: 9ms, application-code: 327ms)
+ GET /api/e-voting/kandidat 200 in 393ms (next.js: 10ms, application-code: 383ms)
+ DELETE /api/e-voting/kandidat?id=5 404 in 291ms (next.js: 16ms, application-code: 275ms)
+ PUT /api/e-voting/kandidat?id=5 200 in 234ms (next.js: 15ms, application-code: 220ms)
+ GET /api/e-voting/kandidat 200 in 323ms (next.js: 10ms, application-code: 313ms)

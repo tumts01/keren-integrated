@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 interface Siswa {
   nis: string;
   nisn: string;
+  nik: string;
   nama: string;
   foto: string;
   jenisKelamin: string;
