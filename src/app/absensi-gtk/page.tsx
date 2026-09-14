@@ -35,10 +35,11 @@ export default function AbsensiGTK() {
   const [editingRow, setEditingRow] = useState<string | null>(null);
   const [inlineJamMasuk, setInlineJamMasuk] = useState('');
   const [inlineJamPulang, setInlineJamPulang] = useState('');
+  const [inlineStatus, setInlineStatus] = useState('Hadir');
 
   // States for Admin Bulk Edit
   const [isBulkEditing, setIsBulkEditing] = useState(false);
-  const [bulkData, setBulkData] = useState<Record<string, { jam_masuk: string, jam_pulang: string }>>({});
+  const [bulkData, setBulkData] = useState<Record<string, { jam_masuk: string, jam_pulang: string, status?: string }>>({});
 
   // States for Admin Searchable Dropdown
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -375,10 +376,11 @@ export default function AbsensiGTK() {
     }
   };
 
-  const handleEditInline = (tanggal: string, jamMasuk: string, jamPulang: string) => {
+  const handleEditInline = (tanggal: string, jamMasuk: string, jamPulang: string, status: string) => {
     setEditingRow(tanggal);
     setInlineJamMasuk(jamMasuk && jamMasuk !== '-' ? jamMasuk : '');
     setInlineJamPulang(jamPulang && jamPulang !== '-' ? jamPulang : '');
+    setInlineStatus(status && status !== '-' ? status : 'Hadir');
   };
 
   const handleSaveInline = async (tanggal: string) => {
@@ -392,7 +394,8 @@ export default function AbsensiGTK() {
           nama: targetUser, 
           tanggal: tanggal, 
           jam_masuk: inlineJamMasuk, 
-          jam_pulang: inlineJamPulang 
+          jam_pulang: inlineJamPulang,
+          status: inlineStatus
         })
       });
       const data = await res.json();
@@ -417,14 +420,15 @@ export default function AbsensiGTK() {
   const handleStartBulkEdit = () => {
     setIsBulkEditing(true);
     setEditingRow(null); // Clear any single row edit
-    const initialBulk: Record<string, { jam_masuk: string, jam_pulang: string }> = {};
+    const initialBulk: Record<string, { jam_masuk: string, jam_pulang: string, status?: string }> = {};
     const daysInMonth = new Date(rekapTahun, rekapBulan, 0).getDate();
     for (let i = 1; i <= daysInMonth; i++) {
       const dateStr = `${i.toString().padStart(2, '0')}/${rekapBulan.toString().padStart(2, '0')}/${rekapTahun}`;
       const d = rekapData.find(r => r.tanggal === dateStr);
       initialBulk[dateStr] = {
         jam_masuk: d && d.jam_masuk !== '-' ? d.jam_masuk : '',
-        jam_pulang: d && d.jam_pulang !== '-' ? d.jam_pulang : ''
+        jam_pulang: d && d.jam_pulang !== '-' ? d.jam_pulang : '',
+        status: d && d.status && d.status !== '-' ? d.status : 'Hadir'
       };
     }
     setBulkData(initialBulk);
@@ -546,7 +550,7 @@ export default function AbsensiGTK() {
           <td style={{ textAlign: 'center', color: dataAbsen && dataAbsen.jam_pulang ? (hitungSelisih('14:05', dataAbsen.jam_pulang).startsWith('-') ? '#ef4444' : '#10b981') : 'inherit' }}>
             {dataAbsen ? hitungSelisih('14:05', dataAbsen.jam_pulang) : '-'}
           </td>
-          <td></td>
+          <td style={{ textAlign: 'center' }}>{dataAbsen ? (dataAbsen.status || 'Hadir') : '-'}</td>
         </tr>
       );
     }
@@ -861,7 +865,27 @@ export default function AbsensiGTK() {
                         </td>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
-                            <span>{children[3]?.props?.children !== '-' ? 'Hadir' : '-'}</span>
+                            {isEditing ? (
+                              <select
+                                value={isBulkEditing ? (bulkData[dateStr]?.status || 'Hadir') : inlineStatus}
+                                onChange={e => {
+                                  if (isBulkEditing) {
+                                    setBulkData(prev => ({ ...prev, [dateStr]: { ...prev[dateStr], status: e.target.value } }));
+                                  } else {
+                                    setInlineStatus(e.target.value);
+                                  }
+                                }}
+                                style={{ padding: '4px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                              >
+                                <option value="Hadir">Hadir</option>
+                                <option value="Sakit">Sakit</option>
+                                <option value="Izin">Izin</option>
+                                <option value="Cuti">Cuti</option>
+                                <option value="Dinas Luar">Dinas Luar</option>
+                              </select>
+                            ) : (
+                              <span>{children[8]?.props?.children !== '-' ? children[8]?.props?.children : (children[3]?.props?.children !== '-' ? 'Hadir' : '-')}</span>
+                            )}
                             {user.role?.toLowerCase() === 'admin' && !isBulkEditing && (
                               editingRow === dateStr ? (
                                 <div style={{ display: 'flex', gap: '4px' }}>
@@ -885,7 +909,8 @@ export default function AbsensiGTK() {
                                   onClick={() => handleEditInline(
                                     dateStr, 
                                     children[3]?.props?.children, 
-                                    children[6]?.props?.children
+                                    children[6]?.props?.children,
+                                    children[8]?.props?.children
                                   )}
                                   style={{ background: '#e2e8f0', border: 'none', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', color: '#475569' }}
                                   title="Edit Absensi"

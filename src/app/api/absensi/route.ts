@@ -100,7 +100,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { action, nama, tanggal: inputTanggal, jam_masuk, jam_pulang } = body;
+    const { action, nama, tanggal: inputTanggal, jam_masuk, jam_pulang, status } = body;
 
     if (!nama || !action) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
@@ -131,10 +131,10 @@ export async function POST(request: Request) {
       if (fetchErr) throw fetchErr;
 
       const promises = Object.entries(bulkData).map(async ([tgl, data]) => {
-        const { jam_masuk, jam_pulang } = data as any;
+        const { jam_masuk, jam_pulang, status } = data as any;
         const existingRow = allUserRows?.find(r => r.tanggal === tgl);
         
-        if (!existingRow && !jam_masuk && !jam_pulang) return Promise.resolve();
+        if (!existingRow && !jam_masuk && !jam_pulang && !status) return Promise.resolve();
 
         if (!existingRow) {
           return supabase.from('absen_gtk').insert([{
@@ -145,12 +145,12 @@ export async function POST(request: Request) {
               tanggal: tgl,
               jam_masuk: jam_masuk || '',
               jam_pulang: jam_pulang || '',
-              status: 'Hadir'
+              status: status || 'Hadir'
             }
           }]);
         } else {
           return supabase.from('absen_gtk').update({
-            metadata: { ...existingRow.metadata, jam_masuk: jam_masuk || '', jam_pulang: jam_pulang || '' }
+            metadata: { ...existingRow.metadata, jam_masuk: jam_masuk || '', jam_pulang: jam_pulang || '', status: status || existingRow.metadata.status || 'Hadir' }
           }).eq('id', existingRow.id);
         }
       });
@@ -170,14 +170,14 @@ export async function POST(request: Request) {
             tanggal: targetDate,
             jam_masuk: jam_masuk || '',
             jam_pulang: jam_pulang || '',
-            status: 'Hadir'
+            status: status || 'Hadir'
           }
         }]);
         if (insertError) throw insertError;
       } else {
         // Update existing row
         const { error: updateError } = await supabase.from('absen_gtk').update({
-          metadata: { ...userRow.metadata, jam_masuk: jam_masuk || '', jam_pulang: jam_pulang || '' }
+          metadata: { ...userRow.metadata, jam_masuk: jam_masuk || '', jam_pulang: jam_pulang || '', status: status || userRow.metadata.status || 'Hadir' }
         }).eq('id', userRow.id);
         if (updateError) throw updateError;
       }
