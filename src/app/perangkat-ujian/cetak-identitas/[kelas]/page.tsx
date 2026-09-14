@@ -7,6 +7,7 @@ interface Siswa {
   nisn: string;
   nik: string;
   nama: string;
+  status: string;
   foto: string;
   jenisKelamin: string;
   tempatLahir: string;
@@ -44,9 +45,9 @@ export default function CetakIdentitasPage() {
         const data = await res.json();
         if (!data.success) throw new Error(data.error);
 
-        // Filter by kelas (rombel) and only latest record
+        // Filter by kelas (rombel), only latest record, and must be Aktif
         const filtered = data.data.filter((s: Siswa) => {
-          return s.isLatest && s.rombel === kelas;
+          return s.isLatest && s.rombel === kelas && s.status === 'Aktif';
         });
 
         // Sort by name
