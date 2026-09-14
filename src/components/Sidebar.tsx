@@ -81,6 +81,7 @@ export default function Sidebar() {
           path: '/perangkat-ujian-parent', 
           icon: 'fa-file-alt',
           subItems: [
+            { name: 'Mapping Foto', path: '/perangkat-ujian/mapping-foto' },
             { name: 'Sekretaris', path: '/perangkat-ujian' },
             { name: 'STS', path: '/perangkat-ujian/sts' },
             { name: 'Nilai Program Khusus', path: '/nilai-siswa' }
