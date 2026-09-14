@@ -67,6 +67,17 @@ export async function GET() {
         pekerjaanAyah: row.get('PEKERJAAN AYAH KANDUNG') || '',
         pekerjaanIbu: row.get('PEKERJAAN IBU KANDUNG') || '',
         noHp,
+        noHpAyah,
+        noHpIbu,
+        // Extra fields for Identitas Rapor
+        statusKeluarga: row.get('STATUS DALAM KELUARGA') || row.get('STATUS DALAM KELUARGA ') || '',
+        anakKe: row.get('ANAK KE') || '',
+        asalSekolah: row.get('SEKOLAH ASAL') || row.get('SEKOLAH ASAL (SD/MI)') || '',
+        namaWali: row.get('NAMA WALI') || '',
+        pekerjaanWali: row.get('PEKERJAAN WALI') || '',
+        noHpWali: row.get('NOMOR TELEPON WALI') || row.get('NOMOR HP WALI') || '',
+        alamatWali: row.get('ALAMAT WALI') || '',
+        tanggalDiterima: row.get('TANGGAL DITERIMA') || row.get('TANGGAL MULAI') || '',
       };
 
       const records = [];

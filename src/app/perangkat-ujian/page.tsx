@@ -29,6 +29,85 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+const KELAS_LIST = [
+  '7A','7B','7C','7D','7E','7F','7G','7H','7I',
+  '8A','8B','8C','8D','8E','8F','8G','8H','8I',
+  '9A','9B','9C','9D','9E','9F','9G','9H','9I',
+];
+
+function CetakIdentitasTab() {
+  const [selectedKelas, setSelectedKelas] = useState('7A');
+  const [showPreview, setShowPreview] = useState(false);
+  const url = `/perangkat-ujian/cetak-identitas/${encodeURIComponent(selectedKelas)}`;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: 0 }}>
+          Cetak Identitas Rapor
+        </h2>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxWidth: '420px', margin: '0 auto', padding: '20px 0' }}>
+        <p style={{ color: '#64748b', textAlign: 'center', margin: 0 }}>
+          Pilih kelas untuk mencetak semua halaman Identitas Peserta Didik per kelas. Format A4, satu halaman per siswa.
+        </p>
+        <select
+          value={selectedKelas}
+          onChange={e => setSelectedKelas(e.target.value)}
+          style={{ padding: '10px 15px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '1rem', width: '100%' }}
+        >
+          {KELAS_LIST.map(k => (
+            <option key={k} value={k}>Kelas {k}</option>
+          ))}
+        </select>
+        <button
+          onClick={() => setShowPreview(true)}
+          style={{ background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+        >
+          <i className="fas fa-id-card"></i> Generate Identitas Kelas {selectedKelas}
+        </button>
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          style={{ background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', textDecoration: 'none' }}
+        >
+          <i className="fas fa-external-link-alt"></i> Buka di Tab Baru
+        </a>
+      </div>
+
+      {showPreview && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ background: 'white', padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+            <span style={{ fontWeight: 'bold', fontSize: '1rem' }}>
+              <i className="fas fa-id-card" style={{ color: '#10b981', marginRight: '8px' }}></i>
+              Preview Identitas Rapor Kelas {selectedKelas}
+            </span>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <a
+                href={url}
+                target="_blank"
+                rel="noreferrer"
+                style={{ padding: '6px 14px', background: '#2563eb', color: 'white', borderRadius: '6px', textDecoration: 'none', fontSize: '0.85rem', fontWeight: 'bold' }}
+              >
+                <i className="fas fa-external-link-alt"></i> Buka Tab Baru
+              </a>
+              <button onClick={() => setShowPreview(false)} style={{ padding: '6px 14px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                <i className="fas fa-times"></i> Tutup
+              </button>
+            </div>
+          </div>
+          <iframe
+            src={url}
+            style={{ flex: 1, border: 'none', width: '100%' }}
+            title={`Preview Identitas Kelas ${selectedKelas}`}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PerangkatUjianPage() {
   const [activeTab, setActiveTab] = useState<'nopes' | 'nobang' | 'identitas' | 'sampul'>('nopes');
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -809,18 +888,7 @@ export default function PerangkatUjianPage() {
         )}
 
         {activeTab === 'identitas' && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: 0 }}>
-                Cetak Identitas Rapor
-              </h2>
-            </div>
-            <div style={{ padding: '60px 40px', textAlign: 'center', border: '1px dashed #cbd5e1', borderRadius: '8px', color: '#64748b', background: '#f8fafc' }}>
-              <i className="fas fa-tools" style={{ fontSize: '48px', color: '#cbd5e1', marginBottom: '16px' }}></i>
-              <h3 style={{ margin: '0 0 8px 0', color: '#475569' }}>Sedang Dalam Pengembangan</h3>
-              <p style={{ margin: 0 }}>Fitur Cetak Identitas Rapor akan segera hadir di update berikutnya.</p>
-            </div>
-          </div>
+          <CetakIdentitasTab />
         )}
 
         {activeTab === 'sampul' && (
