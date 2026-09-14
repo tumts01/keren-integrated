@@ -210,8 +210,8 @@ export default function CetakIdentitasPage() {
           margin-top: 20px;
         }
         .foto-box {
-          width: 90px;
-          height: 115px;
+          width: 40mm;
+          height: 60mm;
           border: 2px solid #000;
           display: flex;
           align-items: center;
@@ -237,7 +237,7 @@ export default function CetakIdentitasPage() {
           margin-bottom: 4px;
         }
         .sign-img {
-          height: 65px;
+          height: 110px;
           object-fit: contain;
         }
         .sign-name {
