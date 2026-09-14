@@ -30,7 +30,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 export default function PerangkatUjianPage() {
-  const [activeTab, setActiveTab] = useState<'nopes' | 'nobang'>('nopes');
+  const [activeTab, setActiveTab] = useState<'nopes' | 'nobang' | 'identitas' | 'sampul'>('nopes');
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -660,6 +660,20 @@ export default function PerangkatUjianPage() {
           <i className="fas fa-chair" style={{ marginRight: '8px' }}></i>
           Generate Nobang
         </button>
+        <button
+          onClick={() => setActiveTab('identitas')}
+          style={{ padding: '12px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'identitas' ? '3px solid #0ea5e9' : '3px solid transparent', color: activeTab === 'identitas' ? '#0ea5e9' : '#64748b', fontWeight: activeTab === 'identitas' ? 'bold' : 'normal', cursor: 'pointer', fontSize: '15px' }}
+        >
+          <i className="fas fa-id-card" style={{ marginRight: '8px' }}></i>
+          Cetak Identitas Rapor
+        </button>
+        <button
+          onClick={() => setActiveTab('sampul')}
+          style={{ padding: '12px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'sampul' ? '3px solid #0ea5e9' : '3px solid transparent', color: activeTab === 'sampul' ? '#0ea5e9' : '#64748b', fontWeight: activeTab === 'sampul' ? 'bold' : 'normal', cursor: 'pointer', fontSize: '15px' }}
+        >
+          <i className="fas fa-book" style={{ marginRight: '8px' }}></i>
+          Cetak Sampul Rapor
+        </button>
       </div>
 
       {/* Tab Content */}
@@ -791,6 +805,36 @@ export default function PerangkatUjianPage() {
                 <p>Belum ada data. Silakan import dari Excel.</p>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'identitas' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: 0 }}>
+                Cetak Identitas Rapor
+              </h2>
+            </div>
+            <div style={{ padding: '60px 40px', textAlign: 'center', border: '1px dashed #cbd5e1', borderRadius: '8px', color: '#64748b', background: '#f8fafc' }}>
+              <i className="fas fa-tools" style={{ fontSize: '48px', color: '#cbd5e1', marginBottom: '16px' }}></i>
+              <h3 style={{ margin: '0 0 8px 0', color: '#475569' }}>Sedang Dalam Pengembangan</h3>
+              <p style={{ margin: 0 }}>Fitur Cetak Identitas Rapor akan segera hadir di update berikutnya.</p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'sampul' && (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: 0 }}>
+                Cetak Sampul Rapor
+              </h2>
+            </div>
+            <div style={{ padding: '60px 40px', textAlign: 'center', border: '1px dashed #cbd5e1', borderRadius: '8px', color: '#64748b', background: '#f8fafc' }}>
+              <i className="fas fa-tools" style={{ fontSize: '48px', color: '#cbd5e1', marginBottom: '16px' }}></i>
+              <h3 style={{ margin: '0 0 8px 0', color: '#475569' }}>Sedang Dalam Pengembangan</h3>
+              <p style={{ margin: 0 }}>Fitur Cetak Sampul Rapor akan segera hadir di update berikutnya.</p>
+            </div>
           </div>
         )}
       </div>
