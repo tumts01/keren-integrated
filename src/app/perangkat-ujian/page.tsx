@@ -1,7 +1,10 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 import { supabase } from '@/lib/supabase';
+import MappingFotoTab from './mapping-foto/MappingFotoTab';
 import Swal from 'sweetalert2';
 import { jsPDF } from 'jspdf';
 
@@ -109,7 +112,7 @@ function CetakIdentitasTab() {
 }
 
 export default function PerangkatUjianPage() {
-  const [activeTab, setActiveTab] = useState<'nopes' | 'nobang' | 'identitas' | 'sampul'>('nopes');
+  const [activeTab, setActiveTab] = useState<'nopes' | 'nobang' | 'identitas' | 'sampul' | 'mapping-foto'>('nopes');
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -747,6 +750,13 @@ export default function PerangkatUjianPage() {
           Cetak Identitas Rapor
         </button>
         <button
+          onClick={() => setActiveTab('mapping-foto')}
+          style={{ padding: '12px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'mapping-foto' ? '3px solid #0ea5e9' : '3px solid transparent', color: activeTab === 'mapping-foto' ? '#0ea5e9' : '#64748b', fontWeight: activeTab === 'mapping-foto' ? 'bold' : 'normal', cursor: 'pointer', fontSize: '15px' }}
+        >
+          <i className="fas fa-camera-retro" style={{ marginRight: '8px' }}></i>
+          Mapping Foto Siswa
+        </button>
+        <button
           onClick={() => setActiveTab('sampul')}
           style={{ padding: '12px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'sampul' ? '3px solid #0ea5e9' : '3px solid transparent', color: activeTab === 'sampul' ? '#0ea5e9' : '#64748b', fontWeight: activeTab === 'sampul' ? 'bold' : 'normal', cursor: 'pointer', fontSize: '15px' }}
         >
@@ -889,6 +899,10 @@ export default function PerangkatUjianPage() {
 
         {activeTab === 'identitas' && (
           <CetakIdentitasTab />
+        )}
+
+        {activeTab === 'mapping-foto' && (
+          <MappingFotoTab />
         )}
 
         {activeTab === 'sampul' && (
