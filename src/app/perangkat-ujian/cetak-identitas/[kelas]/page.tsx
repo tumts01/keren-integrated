@@ -237,7 +237,9 @@ export default function CetakIdentitasPage() {
           margin-bottom: 4px;
         }
         .sign-img {
-          height: 110px;
+          height: 150px;
+          margin-top: -10px;
+          margin-bottom: -20px;
           object-fit: contain;
         }
         .sign-name {
