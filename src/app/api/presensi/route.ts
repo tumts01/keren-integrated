@@ -224,6 +224,41 @@ export async function POST(request: Request) {
       }
     }
 
+    // ── FILTER: Jika guru kelas mengabsen, siswa yg sudah tercatat PIKET di hari itu dikeluarkan otomatis ──
+    if (mapel !== 'PIKET') {
+      const { data: piketHariIni, error: pErr } = await supabase
+        .from('data_presensi_siswa')
+        .select('metadata')
+        .eq('tanggal', tanggal)
+        .contains('metadata', { 'MAPEL': 'PIKET' });
+
+      if (!pErr && piketHariIni && piketHariIni.length > 0) {
+        const namaSiswaYgSudahDiPiket = new Set(
+          piketHariIni.map(p => (p.metadata?.['NAMA SISWA'] || '').trim().toUpperCase())
+        );
+
+        const beforeCount = listSiswa.length;
+        listSiswa = listSiswa.filter((s: any) => {
+          const nama = (s.nama || '').trim().toUpperCase();
+          return !namaSiswaYgSudahDiPiket.has(nama);
+        });
+        const skippedCount = beforeCount - listSiswa.length;
+
+        if (listSiswa.length === 0) {
+          return NextResponse.json({
+            success: false,
+            error: `Semua siswa yang tidak hadir sudah tercatat oleh Guru Piket hari ini. Tidak ada data baru yang disimpan.`
+          }, { status: 409 });
+        }
+
+        // Lanjut simpan, tapi tandai ada yang diskip
+        if (skippedCount > 0) {
+          // Kita set flag agar response bisa memberi tahu frontend
+          (body as any)._skippedPiket = skippedCount;
+        }
+      }
+    }
+
     const nowTimestamp = timestamp || new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
 
     const payload = listSiswa.map((s: any) => {
@@ -248,8 +283,12 @@ export async function POST(request: Request) {
     const { error } = await supabase.from('data_presensi_siswa').insert(payload);
     if (error) throw error;
 
+    const skippedPiket = (body as any)._skippedPiket || 0;
     revalidateTag('presensi', {});
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ 
+      success: true,
+      ...(skippedPiket > 0 ? { skippedPiket, info: `${skippedPiket} siswa sudah tercatat oleh Guru Piket dan dilewati secara otomatis.` } : {})
+    });
 
   } catch (error: any) {
     console.error('Submit Presensi Error:', error);

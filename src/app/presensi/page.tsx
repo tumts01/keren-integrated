@@ -915,7 +915,7 @@ export default function PresensiPage() {
         Swal.fire({
           icon: 'success',
           title: 'Berhasil!',
-          text: `Berhasil menyimpan presensi! ${data.totalSaved > 0 ? (data.totalSaved + ' data S/I/A tercatat.') : 'Semua siswa Hadir (tidak ada data absen ke sheet).'}`
+          html: `Berhasil menyimpan presensi! ${data.totalSaved > 0 ? (data.totalSaved + ' data S/I/A tercatat.') : 'Semua siswa Hadir (tidak ada data absen ke sheet).'}${data.skippedPiket > 0 ? `<br/><br/><span style="color:#f59e0b;font-size:0.9rem">⚠️ ${data.info}</span>` : ''}`
         });
         if (activeTab === 'piket') {
           // reset piket rows after save
