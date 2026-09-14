@@ -14,7 +14,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'Parameter kelas wajib diisi' }, { status: 400 });
     }
 
-    const { data: allSiswa } = await getAllCachedDataInduk();
+    const allSiswa = await getAllCachedDataInduk();
     
     // Filter siswa
     const filtered = allSiswa.filter((s: any) => {
