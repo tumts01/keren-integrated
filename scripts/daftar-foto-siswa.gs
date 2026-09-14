@@ -17,21 +17,7 @@ function daftarFotoSiswa() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getActiveSheet();
 
-  // Minta Folder ID dari user
-  const ui = SpreadsheetApp.getUi();
-  const result = ui.prompt(
-    'Daftar Foto Siswa',
-    'Masukkan Folder ID Google Drive tempat foto disimpan:\n(dari URL: drive.google.com/drive/folders/FOLDER_ID)',
-    ui.ButtonSet.OK_CANCEL
-  );
-
-  if (result.getSelectedButton() !== ui.Button.OK) return;
-
-  const folderId = result.getResponseText().trim();
-  if (!folderId) {
-    ui.alert('Folder ID tidak boleh kosong!');
-    return;
-  }
+  const folderId = 'MASUKKAN_FOLDER_ID_DISINI'; // <-- PASTE FOLDER ID DI SINI
 
   // Bersihkan sheet
   sheet.clearContents();
@@ -46,7 +32,7 @@ function daftarFotoSiswa() {
   try {
     folder = DriveApp.getFolderById(folderId);
   } catch (e) {
-    ui.alert('Folder tidak ditemukan! Pastikan Folder ID benar dan folder sudah di-share ke akun ini.');
+    console.log();
     return;
   }
 
@@ -81,7 +67,7 @@ function daftarFotoSiswa() {
   }
 
   if (rows.length === 0) {
-    ui.alert('Tidak ada file gambar di folder tersebut!');
+    console.log();
     return;
   }
 
@@ -112,7 +98,7 @@ function daftarFotoSiswa() {
     sheet.getRange(i, headers.length + 1).setFormula(`=D${i}`);
   }
 
-  ui.alert(`✅ Berhasil!\n\n${rows.length} foto ditemukan di folder.\n\nSekarang:\n1. Kolom "Link Foto" sudah terisi otomatis dengan link thumbnail\n2. Salin sheet ini → gunakan sebagai referensi\n3. Buka template Excel di aplikasi KEREN\n4. Copy-paste kolom "Link Foto" ke kolom "Link Foto" di template Excel\n5. Upload template Excel yang sudah diisi ke aplikasi KEREN`);
+  console.log();
 }
 
 /**
@@ -121,8 +107,6 @@ function daftarFotoSiswa() {
  */
 function buatTemplateMappingLengkap() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const ui = SpreadsheetApp.getUi();
-
   // Minta sheet nama siswa
   const sheetNames = ss.getSheets().map(s => s.getName()).join(', ');
   const result = ui.prompt(
@@ -136,7 +120,7 @@ function buatTemplateMappingLengkap() {
   const fotoSheet = ss.getSheetByName(fotoSheetName);
 
   if (!fotoSheet) {
-    ui.alert('Sheet tidak ditemukan!');
+    console.log();
     return;
   }
 
@@ -169,5 +153,7 @@ function buatTemplateMappingLengkap() {
   mappingSheet.autoResizeColumns(1, headers.length);
   mappingSheet.setFrozenRows(1);
 
-  ui.alert(`✅ Sheet MAPPING FOTO sudah dibuat dengan ${rows.length} foto.\n\nSalin kolom "Link Foto" ke template Excel KEREN!`);
+  console.log();
 }
+
+
