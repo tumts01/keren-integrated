@@ -1,6 +1,5 @@
 'use client';
 import MappingFotoTab from './MappingFotoTab';
-import withAuth from '@/lib/withAuth';
 
 function MappingFotoPage() {
   return (
@@ -12,4 +11,5 @@ function MappingFotoPage() {
   );
 }
 
-export default withAuth(MappingFotoPage, ['Super Admin', 'Admin', 'Guru']);
+export default MappingFotoPage;
+
