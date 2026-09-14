@@ -140,63 +140,63 @@ export default function CetakIdentitasPage() {
           display: flex;
           align-items: flex-start;
           margin-bottom: 4px;
-          font-size: 10pt;
-          min-height: 18px;
+          font-size: 12pt;
+          min-height: 24px;
         }
         .field-no {
           width: 22px;
           flex-shrink: 0;
-          font-size: 10pt;
+          font-size: 12pt;
         }
         .field-label {
-          width: 140px;
+          width: 170px;
           flex-shrink: 0;
-          font-size: 10pt;
+          font-size: 12pt;
         }
         .field-colon {
           width: 12px;
           flex-shrink: 0;
           text-align: center;
-          font-size: 10pt;
+          font-size: 12pt;
         }
         .field-value {
           flex: 1;
-          font-size: 10pt;
+          font-size: 12pt;
           font-weight: bold;
         }
         .sub-field-row {
           display: flex;
           align-items: flex-start;
           margin-bottom: 4px;
-          font-size: 10pt;
-          min-height: 18px;
+          font-size: 12pt;
+          min-height: 24px;
         }
         .sub-indent {
           width: 30px;
           flex-shrink: 0;
         }
         .sub-label {
-          width: 132px;
+          width: 162px;
           flex-shrink: 0;
-          font-size: 10pt;
+          font-size: 12pt;
         }
         .sub-colon {
           width: 12px;
           flex-shrink: 0;
           text-align: center;
-          font-size: 10pt;
+          font-size: 12pt;
         }
         .sub-value {
           flex: 1;
-          font-size: 10pt;
+          font-size: 12pt;
           font-weight: bold;
         }
         .section-label {
           display: flex;
           align-items: flex-start;
           margin-bottom: 4px;
-          font-size: 10pt;
-          min-height: 18px;
+          font-size: 12pt;
+          min-height: 24px;
         }
         .divider {
           border: none;
@@ -229,11 +229,11 @@ export default function CetakIdentitasPage() {
           min-width: 220px;
         }
         .sign-date {
-          font-size: 10pt;
+          font-size: 12pt;
           margin-bottom: 2px;
         }
         .sign-title {
-          font-size: 10pt;
+          font-size: 12pt;
           margin-bottom: 4px;
         }
         .sign-img {
@@ -241,12 +241,12 @@ export default function CetakIdentitasPage() {
           object-fit: contain;
         }
         .sign-name {
-          font-size: 10pt;
+          font-size: 12pt;
           font-weight: bold;
           text-decoration: underline;
         }
         .sign-nip {
-          font-size: 10pt;
+          font-size: 12pt;
         }
         @media print {
           .no-print { display: none !important; }
@@ -508,3 +508,4 @@ export default function CetakIdentitasPage() {
     </>
   );
 }
+
