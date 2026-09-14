@@ -72,10 +72,10 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
       
       let allNames: string[] = [];
       if (dataSiswa.success) {
-        allNames = [...allNames, ...dataSiswa.data.map((s: any) => s.nama)];
+        allNames = [...allNames, ...dataSiswa.data.map((s: any) => s.kelas ? `${s.nama} ${s.kelas}` : s.nama)];
       }
       if (dataGuru.success) {
-        allNames = [...allNames, ...dataGuru.data.map((g: any) => g.nama)];
+        allNames = [...allNames, ...dataGuru.data.map((g: any) => `${g.nama} (Guru)`)];
       }
       
       const uniqueNames = Array.from(new Set(allNames.filter(Boolean)));
