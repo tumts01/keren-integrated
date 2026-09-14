@@ -290,7 +290,7 @@ export default function CetakIdentitasPage() {
 
       <div style={{ paddingTop: '50px' }}>
         {siswaList.map((s, idx) => {
-          const tanggalDiterimaRaw = getField(s, 'TANGGAL DITERIMA') || getField(s, 'TANGGAL MULAI') || '';
+          const tanggalDiterimaRaw = getField(s, 'TANGGAL MASUK MTs/SMP') || s.tanggalDiterima || getField(s, 'TANGGAL DITERIMA') || getField(s, 'TANGGAL MULAI') || '';
           const kelasAwal = getField(s, 'ROMBEL KELAS 7') || getField(s, 'ROMBEL') || s.rombel || '';
           const asalSekolah = getField(s, 'SEKOLAH ASAL') || getField(s, 'SEKOLAH ASAL (SD/MI)') || s.asalSekolah || '';
           const statusKeluarga = getField(s, 'STATUS DALAM KELUARGA') || s.statusKeluarga || '';

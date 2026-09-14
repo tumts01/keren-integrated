@@ -77,7 +77,7 @@ export async function GET() {
         pekerjaanWali: row.get('PEKERJAAN WALI') || '',
         noHpWali: row.get('NOMOR TELEPON WALI') || row.get('NOMOR HP WALI') || '',
         alamatWali: row.get('ALAMAT WALI') || '',
-        tanggalDiterima: row.get('TA KELAS 7') || row.get('TANGGAL DITERIMA') || '',
+        tanggalDiterima: row.get('TANGGAL MASUK MTs/SMP') || row.get('TA KELAS 7') || row.get('TANGGAL DITERIMA') || '',
       };
 
       const records = [];
