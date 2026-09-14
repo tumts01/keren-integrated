@@ -16,10 +16,21 @@ export async function GET(request: Request) {
 
     const allSiswa = await getAllCachedDataInduk();
     
+    // Helper to determine latest rombel
+    const getLatestRombel = (metadata: any) => {
+      if (!metadata) return '';
+      if ((metadata['TA KELAS 9'] || '').trim() && (metadata['ROMBEL KELAS 9'] || '').trim()) return (metadata['ROMBEL KELAS 9'] || '').trim();
+      if ((metadata['TA KELAS 8'] || '').trim() && (metadata['ROMBEL KELAS 8'] || '').trim()) return (metadata['ROMBEL KELAS 8'] || '').trim();
+      if ((metadata['TA KELAS 7'] || '').trim() && (metadata['ROMBEL KELAS 7'] || '').trim()) return (metadata['ROMBEL KELAS 7'] || '').trim();
+      return (metadata['ROMBEL'] || '').trim();
+    };
+
     // Filter siswa
     const filtered = allSiswa.filter((s: any) => {
-      const isAktif = s.status && s.status.toLowerCase().trim() === 'aktif';
-      return s.isLatest && (s.rombel || '').toUpperCase() === kelas.toUpperCase() && isAktif;
+      const status = s.metadata?.['STATUS SISWA'] || '';
+      const isAktif = status.toLowerCase().trim() === 'aktif';
+      const rombel = getLatestRombel(s.metadata);
+      return rombel.toUpperCase() === kelas.toUpperCase() && isAktif;
     });
 
     // Sort by nama abjad
@@ -33,9 +44,9 @@ export async function GET(request: Request) {
     filtered.forEach((s: any, idx: number) => {
       rows.push([
         String(idx + 1),
-        s.nis || '',
+        s.id_siswa || '',
         s.nama || '',
-        s.rombel || '',
+        getLatestRombel(s.metadata),
         '' // Kosong untuk diisi link foto
       ]);
     });
