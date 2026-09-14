@@ -72,7 +72,9 @@ export default function EVoting({ isAdmin = false }: { isAdmin?: boolean }) {
       
       let allNames: string[] = [];
       if (dataSiswa.success) {
-        allNames = [...allNames, ...dataSiswa.data.map((s: any) => s.kelas ? `${s.nama} ${s.kelas}` : s.nama)];
+        // Filter ONLY the latest records to avoid duplicates across years, and use 'rombel' for the class name
+        const latestSiswa = dataSiswa.data.filter((s: any) => s.isLatest);
+        allNames = [...allNames, ...latestSiswa.map((s: any) => s.rombel ? `${s.nama} ${s.rombel}` : s.nama)];
       }
       if (dataGuru.success) {
         allNames = [...allNames, ...dataGuru.data.map((g: any) => `${g.nama} (Guru)`)];
