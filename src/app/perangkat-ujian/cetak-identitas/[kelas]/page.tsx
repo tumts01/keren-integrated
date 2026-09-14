@@ -45,9 +45,10 @@ export default function CetakIdentitasPage() {
         const data = await res.json();
         if (!data.success) throw new Error(data.error);
 
-        // Filter by kelas (rombel), only latest record, and must be Aktif
+        // Filter by kelas (rombel), only latest record, and must be Aktif (or empty)
         const filtered = data.data.filter((s: Siswa) => {
-          return s.isLatest && s.rombel === kelas && s.status === 'Aktif';
+          const isActive = !s.status || s.status.toLowerCase().includes('aktif');
+          return s.isLatest && s.rombel === kelas && isActive;
         });
 
         // Sort by name
