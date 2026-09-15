@@ -331,6 +331,25 @@ export default function PresensiPage() {
     finally { setRekapSiswaLoading(false); }
   };
 
+  const handlePilihDobel = () => {
+    const keys = new Set();
+    const toSelect: string[] = [];
+    for (const r of rsFiltered) {
+      const key = `${r.tanggal}-${r.namaSiswa}-${r.mapel}-${r.jamKe}`;
+      if (keys.has(key)) {
+        toSelect.push(r.id);
+      } else {
+        keys.add(key);
+      }
+    }
+    if (toSelect.length === 0) {
+      Swal.fire('Info', 'Tidak ditemukan data presensi yang dobel (duplikat persis) pada tabel saat ini.', 'info');
+    } else {
+      setSelectedRs(toSelect);
+      Swal.fire('Berhasil', `${toSelect.length} baris data dobel berhasil dipilih. Silakan klik tombol 'Hapus (Hadir)' di bar atas untuk membersihkannya.`, 'success');
+    }
+  };
+
   const handleMassEdit = async (status: string) => {
     if (selectedRs.length === 0) return;
     
@@ -1929,10 +1948,17 @@ export default function PresensiPage() {
                       </div>
                     )}
                   </div>
-                  <button onClick={() => exportSiswaExcel(rsFiltered)}
-                    style={{ background: '#16a34a', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-                    <i className="fas fa-file-excel"></i> Export Excel ({rsFiltered.length})
-                  </button>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button onClick={handlePilihDobel}
+                      style={{ background: '#f59e0b', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+                      title="Pilih otomatis data presensi yang ganda untuk dihapus masal">
+                      <i className="fas fa-clone"></i> Pilih Data Dobel
+                    </button>
+                    <button onClick={() => exportSiswaExcel(rsFiltered)}
+                      style={{ background: '#16a34a', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                      <i className="fas fa-file-excel"></i> Export Excel ({rsFiltered.length})
+                    </button>
+                  </div>
                 </div>
                 {rsFiltered.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '32px 0', color: '#94a3b8' }}>
