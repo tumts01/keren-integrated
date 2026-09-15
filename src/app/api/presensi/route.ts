@@ -97,17 +97,21 @@ export async function POST(request: Request) {
       const { ids, status } = body;
       if (!ids || !Array.isArray(ids)) return NextResponse.json({ success: false, error: 'ID tidak valid' }, { status: 400 });
       
-      for (const id of ids) {
-        const { data: foundRow } = await supabase.from('data_presensi_siswa').select('*').contains('metadata', { 'ID': id }).single();
-        if (foundRow) {
-          if (status === 'DELETE') {
-            await supabase.from('data_presensi_siswa').delete().eq('id', foundRow.id);
-          } else {
-            await supabase.from('data_presensi_siswa').update({
-              metadata: { ...foundRow.metadata, 'KEHADIRAN': status }
-            }).eq('id', foundRow.id);
+      const chunkSize = 20;
+      for (let i = 0; i < ids.length; i += chunkSize) {
+        const chunk = ids.slice(i, i + chunkSize);
+        await Promise.all(chunk.map(async (id: string) => {
+          const { data: foundRow } = await supabase.from('data_presensi_siswa').select('id, metadata').contains('metadata', { 'ID': id }).single();
+          if (foundRow) {
+            if (status === 'DELETE') {
+              await supabase.from('data_presensi_siswa').delete().eq('id', foundRow.id);
+            } else {
+              await supabase.from('data_presensi_siswa').update({
+                metadata: { ...foundRow.metadata, 'KEHADIRAN': status }
+              }).eq('id', foundRow.id);
+            }
           }
-        }
+        }));
       }
       revalidateTag('presensi', {});
       return NextResponse.json({ success: true });
