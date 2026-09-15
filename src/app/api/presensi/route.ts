@@ -135,7 +135,7 @@ export async function POST(request: Request) {
       listSiswa = body.siswaList.map((s: any) => {
         const nisnKey = (s.nisn || s.NISN || '').toString().replace(/^'/, '').trim();
         const namaKey = s.nama || s.namaSiswa || '';
-        const status = presensiMap[nisnKey] || presensiMap[namaKey] || 'H';
+        const idKey = s.id || ''; const status = presensiMap[idKey] || presensiMap[nisnKey] || presensiMap[namaKey] || 'H';
         return {
           nama: namaKey,
           nisn: nisnKey,
@@ -329,3 +329,4 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: false, error: 'Gagal menghapus presensi' }, { status: 500 });
   }
 }
+

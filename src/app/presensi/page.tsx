@@ -889,7 +889,7 @@ export default function PresensiPage() {
         // Build from piketRows: only rows with a name
         const validRows = piketRows.filter(r => r.nama.trim() !== '');
         siswaPayload = validRows.map(r => ({ id: r.id, nama: r.nama, nisn: '', kelas: r.kelas }));
-        presensiPayload = Object.fromEntries(validRows.map(r => [r.id, r.status]));
+        presensiPayload = Object.fromEntries(validRows.map(r => [r.nama, r.status]));
       } else {
         siswaPayload = displaySiswa;
         presensiPayload = presensi;
@@ -2616,3 +2616,4 @@ export default function PresensiPage() {
     </div>
   );
 }
+
