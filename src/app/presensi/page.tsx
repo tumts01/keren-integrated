@@ -335,7 +335,7 @@ export default function PresensiPage() {
     const keys = new Set();
     const toSelect: string[] = [];
     for (const r of rsFiltered) {
-      const key = `${r.tanggal}-${r.namaSiswa}-${r.mapel}-${r.jamKe}`;
+      const key = `${r.tanggal}-${r.namaSiswa}`;
       if (keys.has(key)) {
         toSelect.push(r.id);
       } else {
@@ -343,7 +343,7 @@ export default function PresensiPage() {
       }
     }
     if (toSelect.length === 0) {
-      Swal.fire('Info', 'Tidak ditemukan data presensi yang dobel (duplikat persis) pada tabel saat ini.', 'info');
+      Swal.fire('Info', 'Tidak ditemukan data presensi yang dobel (nama & tanggal sama) pada tabel saat ini.', 'info');
     } else {
       setSelectedRs(toSelect);
       Swal.fire('Berhasil', `${toSelect.length} baris data dobel berhasil dipilih. Silakan klik tombol 'Hapus (Hadir)' di bar atas untuk membersihkannya.`, 'success');
