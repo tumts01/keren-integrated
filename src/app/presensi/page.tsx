@@ -179,7 +179,7 @@ export default function PresensiPage() {
   });
   const [rsFilterNama, setRsFilterNama] = useState('');
   const [rsFilterKelas, setRsFilterKelas] = useState('');
-  const [rsFilterDomisili, setRsFilterDomisili] = useState('');
+  const [rsFilterDomisili, setRsFilterDomisili] = useState(''); const [rsFilterMapel, setRsFilterMapel] = useState('');
   const [editRsId, setEditRsId] = useState<string | null>(null);
   const [editRsStatus, setEditRsStatus] = useState<string>('');
   const [editRsJam, setEditRsJam] = useState<string>('');
@@ -1101,14 +1101,14 @@ export default function PresensiPage() {
     if (rsFilterTo && r.tanggal > rsFilterTo) return false;
     if (rsFilterNama && !r.namaSiswa.toLowerCase().includes(rsFilterNama.toLowerCase())) return false;
     if (rsFilterKelas && r.kelas.trim() !== rsFilterKelas.trim()) return false;
-    if (rsFilterDomisili && (r.domisili || '').trim() !== rsFilterDomisili.trim()) return false;
+    if (rsFilterDomisili && (r.domisili || '').trim() !== rsFilterDomisili.trim()) return false; if (rsFilterMapel && (r.mapel || '').trim().toLowerCase() !== rsFilterMapel.trim().toLowerCase()) return false;
     return true;
   }).sort((a, b) => {
     const dc = (a.tanggal || '').localeCompare(b.tanggal || '');
     return dc !== 0 ? dc : (a.namaSiswa || '').localeCompare(b.namaSiswa || '', 'id');
   });
   const rsKelasList = Array.from(new Set(rekapSiswaData.map(r => (r.kelas || '').trim()).filter(Boolean))).sort() as string[];
-  const rsDomisiliList = Array.from(new Set(rekapSiswaData.map(r => (r.domisili || '').trim()).filter(Boolean))).sort() as string[];
+  const rsDomisiliList = Array.from(new Set(rekapSiswaData.map(r => (r.domisili || '').trim()).filter(Boolean))).sort() as string[]; const rsMapelList = Array.from(new Set(rekapSiswaData.map(r => (r.mapel || '').trim()).filter(Boolean))).sort() as string[];
   const rsAlphaMap: Record<string, { nama: string; kelas: string; domisili: string; S: number; I: number; A: number }> = {};
   for (const r of rsFiltered) {
     const nm = r.namaSiswa; const jm = countJamSIA(r.jamKe);
@@ -1845,12 +1845,19 @@ export default function PresensiPage() {
                   {rsDomisiliList.map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
               </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>Mata Pelajaran</label>
+                <select value={rsFilterMapel} onChange={e => setRsFilterMapel(e.target.value)} style={{ padding: '6px 10px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: '0.85rem', minWidth: 150 }}>
+                  <option value="">Semua Mapel</option>
+                  {rsMapelList.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
               <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
                 <button onClick={fetchRekapSiswa}
                   style={{ padding: '6px 12px', background: '#237227', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
                   <i className="fas fa-search"></i> Terapkan
                 </button>
-                <button onClick={() => { setRsFilterFrom(''); setRsFilterTo(''); setRsFilterNama(''); setRsFilterKelas(''); setRsFilterDomisili(''); }}
+                <button onClick={() => { setRsFilterFrom(''); setRsFilterTo(''); setRsFilterNama(''); setRsFilterKelas(''); setRsFilterDomisili(''); setRsFilterMapel(''); }}
                   style={{ padding: '6px 12px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
                   <i className="fas fa-times"></i> Reset
                 </button>
@@ -2616,4 +2623,7 @@ export default function PresensiPage() {
     </div>
   );
 }
+
+
+
 
