@@ -182,7 +182,7 @@ export default function PresensiPage() {
   const [rsFilterDomisili, setRsFilterDomisili] = useState(''); const [rsFilterMapel, setRsFilterMapel] = useState('');
   const [editRsId, setEditRsId] = useState<string | null>(null);
   const [editRsStatus, setEditRsStatus] = useState<string>('');
-  const [editRsJam, setEditRsJam] = useState<string>('');
+  const [editRsJam, setEditRsJam] = useState<string>(''); const [selectedRs, setSelectedRs] = useState<string[]>([]);
 
   // Rekap Piket
   const [rekapPiketData, setRekapPiketData] = useState<any[]>([]);
@@ -329,6 +329,50 @@ export default function PresensiPage() {
       }
     } catch (e) { console.error(e); }
     finally { setRekapSiswaLoading(false); }
+  };
+
+  const handleMassEdit = async (status: string) => {
+    if (selectedRs.length === 0) return;
+    
+    const isHadir = status === 'DELETE';
+    const statusName = status === 'S' ? 'Sakit' : status === 'I' ? 'Izin' : status === 'A' ? 'Alpha' : 'Hadir';
+    const confirmMsg = isHadir 
+      ? `Jika diubah ke Hadir, ${selectedRs.length} catatan presensi ini akan dihapus. Lanjutkan?`
+      : `Yakin ingin mengubah ${selectedRs.length} data menjadi ${statusName}?`;
+
+    const result = await Swal.fire({
+      title: 'Konfirmasi Edit Masal',
+      text: confirmMsg,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#16a34a',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Ya, Ubah',
+      cancelButtonText: 'Batal'
+    });
+
+    if (!result.isConfirmed) return;
+    
+    setRekapSiswaLoading(true);
+    try {
+      const res = await fetch('/api/presensi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'mass_update', ids: selectedRs, status })
+      });
+      const data = await res.json();
+      if (data.success) {
+        Swal.fire('Berhasil', 'Presensi berhasil diperbarui', 'success');
+        setSelectedRs([]);
+        fetchRekapSiswa(); // Refresh data
+      } else {
+        Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal mengupdate: ' + (data.error || 'Terjadi kesalahan') });
+      }
+    } catch (error: any) {
+      Swal.fire({ icon: 'error', title: 'Error', text: error.message });
+    } finally {
+      setRekapSiswaLoading(false);
+    }
   };
 
   const handleSaveRsEdit = async (id: string) => {
@@ -1873,7 +1917,18 @@ export default function PresensiPage() {
               /* ── TAB SEMUA PRESENSI ── */
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <span style={{ fontSize: '0.82rem', color: '#64748b' }}>{rsFiltered.length} entri</span>
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.82rem', color: '#64748b' }}>{rsFiltered.length} entri</span>
+                    {selectedRs.length > 0 && (
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', background: '#eff6ff', padding: '4px 10px', borderRadius: 8, border: '1px solid #bfdbfe' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#1e40af', marginRight: 6 }}>{selectedRs.length} terpilih:</span>
+                        <button onClick={() => handleMassEdit('S')} style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '4px 8px', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}>Sakit</button>
+                        <button onClick={() => handleMassEdit('I')} style={{ background: '#f97316', color: 'white', border: 'none', padding: '4px 8px', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}>Izin</button>
+                        <button onClick={() => handleMassEdit('A')} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '4px 8px', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}>Alpha</button>
+                        <button onClick={() => handleMassEdit('DELETE')} style={{ background: '#94a3b8', color: 'white', border: 'none', padding: '4px 8px', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }} title="Hapus (Hadir)"><i className="fas fa-trash"></i> Hadir</button>
+                      </div>
+                    )}
+                  </div>
                   <button onClick={() => exportSiswaExcel(rsFiltered)}
                     style={{ background: '#16a34a', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
                     <i className="fas fa-file-excel"></i> Export Excel ({rsFiltered.length})
@@ -1889,6 +1944,13 @@ export default function PresensiPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                       <thead>
                         <tr style={{ background: '#1e3a5f', color: 'white' }}>
+                          <th style={{ padding: '8px 12px', textAlign: 'center', width: 40 }}>
+                            <input type="checkbox" 
+                              checked={rsFiltered.length > 0 && selectedRs.length === rsFiltered.length}
+                              onChange={(e) => setSelectedRs(e.target.checked ? rsFiltered.map(r => r.id) : [])}
+                              style={{ cursor: 'pointer' }}
+                            />
+                          </th>
                           {['No','Tanggal','Nama Siswa','Kelas','Domisili','Mata Pelajaran','Jam Ke','Ket.', 'Aksi'].map(h => (
                             <th key={h} style={{ padding: '8px 12px', textAlign: (h === 'Jam Ke' || h === 'Ket.' || h === 'Aksi') ? 'center' : 'left', whiteSpace: 'nowrap', fontWeight: 700, width: h === 'Jam Ke' ? '120px' : 'auto' }}>{h}</th>
                           ))}
@@ -1897,6 +1959,14 @@ export default function PresensiPage() {
                       <tbody>
                         {rsFiltered.map((r, i) => (
                           <tr key={`${r.tanggal}-${r.namaSiswa}-${i}`} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? 'white' : '#f8fafc' }}>
+                            <td style={{ padding: '7px 12px', textAlign: 'center' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={selectedRs.includes(r.id)}
+                                onChange={(e) => setSelectedRs(prev => e.target.checked ? [...prev, r.id] : prev.filter(id => id !== r.id))}
+                                style={{ cursor: 'pointer' }}
+                              />
+                            </td>
                             <td style={{ padding: '7px 12px', color: '#94a3b8' }}>{i + 1}</td>
                             <td style={{ padding: '7px 12px', whiteSpace: 'nowrap' }}>{r.tanggal}</td>
                             <td style={{ padding: '7px 12px', fontWeight: 600 }}>{r.namaSiswa}</td>
@@ -2623,6 +2693,7 @@ export default function PresensiPage() {
     </div>
   );
 }
+
 
 
 
