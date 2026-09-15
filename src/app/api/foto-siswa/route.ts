@@ -158,6 +158,10 @@ export async function POST(request: Request) {
       errors.push(`GSheets: Gagal update - ${sheetErr.message}`);
     }
 
+    const { revalidateTag } = require('next/cache');
+    revalidateTag('data_induk');
+    revalidateTag('siswa');
+
     return NextResponse.json({ success: true, updated, skipped, errors });
   } catch (error: any) {
     console.error('Error upload mapping foto:', error);

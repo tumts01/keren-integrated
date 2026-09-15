@@ -151,10 +151,11 @@ export async function POST(request: Request) {
       listSiswa = body.siswaList.map((s: any) => {
         const nisnKey = (s.nisn || s.NISN || '').toString().replace(/^'/, '').trim();
         const namaKey = s.nama || s.namaSiswa || '';
-        const idKey = s.id || ''; const status = presensiMap[idKey] || presensiMap[nisnKey] || presensiMap[namaKey] || 'H';
+        const idKey = s.id || ''; const status = presensiMap[idKey] || presensiMap[nisnKey] || presensiMap[namaKey] || s.status || 'H';
         return {
           nama: namaKey,
           nisn: nisnKey,
+          kelas: s.kelas,
           status
         };
       });
