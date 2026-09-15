@@ -9,33 +9,21 @@ const cleanJamKe = (val: string) => {
   return val.replace(/,(19|20)\d{2}$/g, '').trim();
 };
 
-const getMapDomisili = unstable_cache(
-  async () => {
-    let rowsInduk: any[] = [];
-    let page = 0;
-    while (true) {
-      const { data, error } = await supabase.from('data_induk').select('metadata').range(page * 1000, (page + 1) * 1000 - 1);
-      if (error) throw error;
-      if (!data || data.length === 0) break;
-      rowsInduk = rowsInduk.concat(data);
-      if (data.length < 1000) break;
-      page++;
-    }
+import { getAllCachedDataInduk } from '@/lib/data-induk';
 
-    const mapDomisili: Record<string, string> = {};
-    if (rowsInduk) {
-      rowsInduk.forEach((r: any) => {
-        const nisn = cleanNisn(r.metadata?.['NISN']);
-        if (nisn) {
-          mapDomisili[nisn] = (r.metadata?.['DOMISILI'] || '').trim();
-        }
-      });
-    }
-    return mapDomisili;
-  },
-  ['map-domisili-all'],
-  { tags: ['data_induk'], revalidate: 3600 }
-);
+const getMapDomisili = async () => {
+  const rowsInduk = await getAllCachedDataInduk();
+  const mapDomisili: Record<string, string> = {};
+  if (rowsInduk) {
+    rowsInduk.forEach((r: any) => {
+      const nisn = cleanNisn(r.metadata?.['NISN']);
+      if (nisn) {
+        mapDomisili[nisn] = (r.metadata?.['DOMISILI'] || '').trim();
+      }
+    });
+  }
+  return mapDomisili;
+};
 
 export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
@@ -45,25 +33,33 @@ export async function GET(request: Request) {
     const from = searchParams.get('from');
     const to = searchParams.get('to');
 
-    let query = supabase.from('data_presensi_siswa').select('*');
-    if (filterTanggal) {
-      query = query.eq('tanggal', filterTanggal);
-    } else {
-      if (from) query = query.gte('tanggal', from);
-      if (to) query = query.lte('tanggal', to);
+    // Count rows first to know how many chunks we need
+    let qCount = supabase.from('data_presensi_siswa').select('*', { count: 'exact', head: true });
+    if (filterTanggal) qCount = qCount.eq('tanggal', filterTanggal);
+    else {
+      if (from) qCount = qCount.gte('tanggal', from);
+      if (to) qCount = qCount.lte('tanggal', to);
     }
+    const { count, error: countError } = await qCount;
+    if (countError) throw countError;
 
-    let rows: any[] = [];
-    let pageP = 0;
-    while (true) {
-      let q = query.range(pageP * 1000, (pageP + 1) * 1000 - 1);
-      const { data, error } = await q;
-      if (error) throw error;
-      if (!data || data.length === 0) break;
-      rows = rows.concat(data);
-      if (data.length < 1000) break;
-      pageP++;
-    }
+    const total = count || 0;
+    const pages = Math.ceil(total / 1000);
+    const chunks = Array.from({ length: pages }, (_, i) => i);
+
+    // Fetch in parallel
+    const results = await Promise.all(chunks.map(async p => {
+      let q = supabase.from('data_presensi_siswa').select('*').range(p * 1000, (p + 1) * 1000 - 1);
+      if (filterTanggal) q = q.eq('tanggal', filterTanggal);
+      else {
+        if (from) q = q.gte('tanggal', from);
+        if (to) q = q.lte('tanggal', to);
+      }
+      const { data } = await q;
+      return data || [];
+    }));
+    
+    let rows = results.flat();
 
     const mapDomisili = await getMapDomisili();
 
@@ -86,7 +82,7 @@ export async function GET(request: Request) {
       };
     });
 
-    return NextResponse.json({ success: true, data: mappedData }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
+    return NextResponse.json({ success: true, data: mappedData }, { headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' } });
   } catch (error: any) {
     console.error('Fetch Presensi Error:', error);
     return NextResponse.json({ success: false, error: 'Gagal memuat data presensi: ' + error.message }, { status: 500 });
