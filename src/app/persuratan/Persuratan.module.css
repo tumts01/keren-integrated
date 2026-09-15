@@ -149,10 +149,14 @@
   border-radius: 16px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
   overflow: hidden;
+  min-width: 0;
+  width: 100%;
 }
 
 .tableContainer {
   overflow-x: auto;
+  min-width: 0;
+  width: 100%;
 }
 
 .table {
@@ -405,10 +409,25 @@
   .infoFull {
     grid-column: span 1;
   }
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .searchBox {
+    width: 100%;
+  }
+  .filterSelect {
+    width: 100%;
+  }
 }
   
 /* Statistics Grid */  
-.statsGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; padding: 0 24px; }  
+.statsGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; padding: 0 24px; }  
 .statCard { background: white; border-radius: 12px; padding: 20px; display: flex; align-items: flex-start; gap: 16px; border-left: 4px solid var(--primary); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }  
 .statIcon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }  
 .statInfo { display: flex; flex-direction: column; }  
