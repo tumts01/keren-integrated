@@ -246,7 +246,7 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
   const tahunSekarang = new Date().getFullYear();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    nis: '', nisn: '', nik: '', nama: '', jenisKelamin: 'L',
+    nis: '', nisn: '', nik: '', nama: '', jenisKelamin: 'LAKI-LAKI',
     tempatLahir: '', tanggalLahir: '', domisili: 'Pesantren',
     asalSekolah: '', rombel: '', tahunAjaran: `${tahunSekarang}/${tahunSekarang + 1}`,
     kelas: '7',
