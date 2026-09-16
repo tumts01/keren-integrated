@@ -89,15 +89,7 @@ export default function Sidebar() {
           subItems: [
             { name: 'Mapping Foto', path: '/perangkat-ujian/mapping-foto' },
             { name: 'Sekretaris', path: '/perangkat-ujian' },
-            { 
-              name: 'Susulan', 
-              path: '#',
-              subItems: [
-                { name: 'Rekap Data', path: '/perangkat-ujian/susulan/rekap-data' },
-                { name: 'Input', path: '/perangkat-ujian/susulan/input' },
-                { name: 'Rekap Susulan', path: '/perangkat-ujian/susulan/rekap' }
-              ]
-            },
+            { name: 'Susulan', path: '/perangkat-ujian/susulan' },
             { name: 'STS', path: '/perangkat-ujian/sts' },
             { name: 'Nilai Program Khusus', path: '/nilai-siswa' }
           ]
