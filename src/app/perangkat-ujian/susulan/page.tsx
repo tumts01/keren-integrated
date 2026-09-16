@@ -1,8 +1,83 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import * as XLSX from 'xlsx';
+import Swal from 'sweetalert2';
+
+interface Participant {
+  nisn: string;
+  noUjian: string;
+  ruang: string;
+  nama?: string;
+  kelas?: string;
+  foto?: string;
+}
 
 export default function SusulanPage() {
   const [activeTab, setActiveTab] = useState<'rekap-data' | 'input' | 'rekap-susulan'>('rekap-data');
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const downloadTemplate = () => {
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet([{ NISN: '1234567890', 'NO UJIAN': '001-01', RUANG: 'Ruang 1' }]);
+    XLSX.utils.book_append_sheet(wb, ws, 'Template Susulan');
+    XLSX.writeFile(wb, 'Template_Susulan.xlsx');
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet);
+
+      if (rows.length === 0) {
+        Swal.fire('Error', 'File Excel kosong', 'error');
+        setLoading(false);
+        return;
+      }
+
+      const parsed: Participant[] = rows.map(r => ({
+        nisn: String(r['NISN'] || ''),
+        noUjian: String(r['NO UJIAN'] || ''),
+        ruang: String(r['RUANG'] || '')
+      })).filter(p => p.nisn);
+
+      // Fetch names from API
+      const nisns = parsed.map(p => p.nisn);
+      const res = await fetch('/api/perangkat-ujian/peserta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nisns })
+      });
+      const resData = await res.json();
+
+      if (!resData.success) {
+        Swal.fire('Error', resData.error || 'Gagal memuat data peserta', 'error');
+      } else {
+        const dbData = resData.data;
+        const enriched = parsed.map(p => {
+          const match = dbData[p.nisn];
+          return {
+            ...p,
+            nama: match?.nama || 'TIDAK DITEMUKAN',
+            kelas: match?.rombel || '-'
+          };
+        });
+        setParticipants(enriched);
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire('Error', 'Gagal membaca file Excel', 'error');
+    }
+    setLoading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -41,8 +116,54 @@ export default function SusulanPage() {
       <div style={{ background: 'white', padding: '24px', borderRadius: '8px', border: '1px solid #e2e8f0', minHeight: '400px' }}>
         {activeTab === 'rekap-data' && (
           <div>
-            <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', marginBottom: '20px' }}>Rekap Data</h2>
-            <p style={{ color: '#64748b' }}>Halaman ini sedang dalam tahap pengembangan.</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: 0 }}>
+                Rekap Data Susulan
+              </h2>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={downloadTemplate} style={{ padding: '8px 16px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: '#475569' }}>
+                  <i className="fas fa-download"></i> Template Excel
+                </button>
+                <label style={{ padding: '8px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
+                  <i className="fas fa-upload"></i> {loading ? 'Memproses...' : 'Import Data'}
+                  <input type="file" accept=".xlsx, .xls" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileUpload} disabled={loading} />
+                </label>
+              </div>
+            </div>
+
+            {participants.length > 0 ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>NISN</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Nama Siswa</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Kelas</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>No Ujian</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Ruang</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {participants.map((p, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ padding: '12px' }}>{p.nisn}</td>
+                        <td style={{ padding: '12px', fontWeight: 'bold', color: '#334155' }}>{p.nama}</td>
+                        <td style={{ padding: '12px' }}>{p.kelas}</td>
+                        <td style={{ padding: '12px' }}>
+                          <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: '4px' }}>{p.noUjian}</span>
+                        </td>
+                        <td style={{ padding: '12px' }}>{p.ruang}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                <i className="fas fa-file-excel" style={{ fontSize: '48px', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
+                Belum ada data. Silakan import file Excel terlebih dahulu.
+              </div>
+            )}
           </div>
         )}
         
