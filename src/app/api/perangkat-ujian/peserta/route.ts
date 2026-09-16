@@ -24,9 +24,14 @@ export async function POST(req: Request) {
       const rowNisn = String(row.metadata['NISN'] || '').trim();
       
       if (nisnSet.has(rowNisn)) {
+        let rombel = row.metadata['ROMBEL KELAS 9']?.trim() || 
+                     row.metadata['ROMBEL KELAS 8']?.trim() || 
+                     row.metadata['ROMBEL KELAS 7']?.trim() || 
+                     row.metadata['ROMBEL']?.trim() || '';
+
         matchedData[rowNisn] = {
           nama: row.metadata['NAMA'] || '',
-          rombel: row.metadata['ROMBEL'] || '',
+          rombel,
           foto: row.metadata['LINK FOTO TERBARU'] || row.metadata['LINK URL FOTO 1'] || ''
         };
       }
