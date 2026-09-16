@@ -4,11 +4,17 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import styles from './Sidebar.module.css';
 
+type SubMenuItem = {
+  name: string;
+  path: string;
+  subItems?: { name: string; path: string }[];
+};
+
 type MenuItem = {
   name: string;
   path: string;
   icon: string;
-  subItems?: { name: string; path: string }[];
+  subItems?: SubMenuItem[];
 };
 
 type MenuCategory = {
@@ -83,7 +89,15 @@ export default function Sidebar() {
           subItems: [
             { name: 'Mapping Foto', path: '/perangkat-ujian/mapping-foto' },
             { name: 'Sekretaris', path: '/perangkat-ujian' },
-            { name: 'Susulan', path: '/perangkat-ujian/susulan' },
+            { 
+              name: 'Susulan', 
+              path: '#',
+              subItems: [
+                { name: 'Rekap Data', path: '/perangkat-ujian/susulan/rekap-data' },
+                { name: 'Input', path: '/perangkat-ujian/susulan/input' },
+                { name: 'Rekap Susulan', path: '/perangkat-ujian/susulan/rekap' }
+              ]
+            },
             { name: 'STS', path: '/perangkat-ujian/sts' },
             { name: 'Nilai Program Khusus', path: '/nilai-siswa' }
           ]
@@ -175,7 +189,7 @@ export default function Sidebar() {
     // If a path matches, ensure its category is open
     const activeCategory = menuCategories.find(cat => 
       cat.items.some(item => 
-        item.path === pathname || (item.subItems && item.subItems.some(sub => sub.path === pathname))
+        item.path === pathname || (item.subItems && item.subItems.some(sub => sub.path === pathname || (sub.subItems && sub.subItems.some(ss => ss.path === pathname))))
       )
     );
     if (activeCategory && !openCategories.includes(activeCategory.title)) {
@@ -189,7 +203,7 @@ export default function Sidebar() {
     // Auto open submenu if active
     menuCategories.forEach(cat => {
       cat.items.forEach(item => {
-        if (item.subItems && item.subItems.some(sub => sub.path === pathname)) {
+        if (item.subItems && item.subItems.some(sub => sub.path === pathname || (sub.subItems && sub.subItems.some(ss => ss.path === pathname)))) {
           if (!openSubmenus.includes(item.name)) {
             setOpenSubmenus(prev => {
               const newSubs = [...prev, item.name];
@@ -198,6 +212,19 @@ export default function Sidebar() {
             });
           }
         }
+        
+        // Auto open sub-submenu
+        item.subItems?.forEach(sub => {
+          if (sub.subItems && sub.subItems.some(ss => ss.path === pathname)) {
+            if (!openSubmenus.includes(sub.name)) {
+              setOpenSubmenus(prev => {
+                const newSubs = [...prev, sub.name];
+                if (isClient) localStorage.setItem('sidebar_open_submenus', JSON.stringify(newSubs));
+                return newSubs;
+              });
+            }
+          }
+        });
       });
     });
     
@@ -284,8 +311,8 @@ export default function Sidebar() {
                 {cat.items.map((item) => {
                   const hasSub = !!item.subItems;
                   const isSubOpen = openSubmenus.includes(item.name);
-                  // Item is active if pathname matches its path exactly, or if no subitems. If it has subitems, we rely on subitems to show active state, but maybe highlight parent too
-                  const isParentActive = pathname === item.path || (hasSub && item.subItems!.some(sub => pathname === sub.path));
+                    // Item is active if pathname matches its path exactly, or if no subitems. If it has subitems, we rely on subitems to show active state, but maybe highlight parent too
+                    const isParentActive = pathname === item.path || (hasSub && item.subItems!.some(sub => pathname === sub.path || (sub.subItems && sub.subItems.some(ss => pathname === ss.path))));
                   
                   return (
                     <div key={item.path} className={styles.menuItemWrapper}>
@@ -321,45 +348,100 @@ export default function Sidebar() {
                       
                       {/* Submenu rendering */}
                       {!isCollapsed && hasSub && (
-                        <div className={`${styles.submenuContainer} ${isSubOpen ? styles.submenuOpen : ''}`} style={{
-                          maxHeight: isSubOpen ? '200px' : '0',
-                          overflow: 'hidden',
-                          transition: 'max-height 0.3s ease',
-                          paddingLeft: '32px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '4px',
-                          marginTop: isSubOpen ? '4px' : '0'
-                        }}>
-                          {item.subItems!.map(sub => {
-                            const isSubActive = pathname === sub.path;
-                            return (
-                              <Link 
-                                key={sub.path} 
-                                href={sub.path}
-                                className={styles.subMenuItem}
-                                onClick={() => {
-                                  if (window.innerWidth <= 768) setIsCollapsed(true);
-                                }}
-                                style={{
-                                  fontSize: '0.85rem',
-                                  padding: '8px 12px',
-                                  borderRadius: '8px',
-                                  color: isSubActive ? 'var(--primary)' : 'rgba(255, 255, 255, 0.7)',
-                                  backgroundColor: isSubActive ? '#f0fdf4' : 'transparent',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '8px',
-                                  textDecoration: 'none',
-                                  fontWeight: isSubActive ? 600 : 500
-                                }}
-                              >
-                                <i className={`fas ${isSubActive ? 'fa-dot-circle' : 'fa-circle'}`} style={{fontSize: '0.4rem'}}></i>
-                                {sub.name}
-                              </Link>
-                            )
-                          })}
-                        </div>
+                          <div className={`${styles.submenuContainer} ${isSubOpen ? styles.submenuOpen : ''}`} style={{
+                            maxHeight: isSubOpen ? '400px' : '0',
+                            overflow: 'hidden',
+                            transition: 'max-height 0.3s ease',
+                            paddingLeft: '32px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '4px',
+                            marginTop: isSubOpen ? '4px' : '0'
+                          }}>
+                            {item.subItems!.map(sub => {
+                              const hasSubSub = !!sub.subItems;
+                              const isSubSubOpen = openSubmenus.includes(sub.name);
+                              const isSubActive = pathname === sub.path || (hasSubSub && sub.subItems!.some(ss => pathname === ss.path));
+                              
+                              return (
+                                <div key={sub.path || sub.name} style={{ display: 'flex', flexDirection: 'column' }}>
+                                  <Link 
+                                    href={hasSubSub ? '#' : sub.path}
+                                    className={styles.subMenuItem}
+                                    onClick={(e) => {
+                                      if (hasSubSub) {
+                                        toggleSubmenu(sub.name, e);
+                                      } else {
+                                        if (window.innerWidth <= 768) setIsCollapsed(true);
+                                      }
+                                    }}
+                                    style={{
+                                      fontSize: '0.85rem',
+                                      padding: '8px 12px',
+                                      borderRadius: '8px',
+                                      color: isSubActive ? 'var(--primary)' : 'rgba(255, 255, 255, 0.7)',
+                                      backgroundColor: isSubActive ? '#f0fdf4' : 'transparent',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      textDecoration: 'none',
+                                      fontWeight: isSubActive ? 600 : 500
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <i className={`fas ${isSubActive ? 'fa-dot-circle' : 'fa-circle'}`} style={{fontSize: '0.4rem'}}></i>
+                                      {sub.name}
+                                    </div>
+                                    {hasSubSub && (
+                                      <i className={`fas fa-chevron-${isSubSubOpen ? 'up' : 'down'}`} style={{ fontSize: '0.7rem' }}></i>
+                                    )}
+                                  </Link>
+                                  
+                                  {/* Sub-submenus */}
+                                  {hasSubSub && (
+                                    <div style={{
+                                      maxHeight: isSubSubOpen ? '200px' : '0',
+                                      overflow: 'hidden',
+                                      transition: 'max-height 0.3s ease',
+                                      paddingLeft: '24px',
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      gap: '4px',
+                                      marginTop: isSubSubOpen ? '4px' : '0'
+                                    }}>
+                                      {sub.subItems!.map(ss => {
+                                        const isSsActive = pathname === ss.path;
+                                        return (
+                                          <Link 
+                                            key={ss.path} 
+                                            href={ss.path}
+                                            onClick={() => {
+                                              if (window.innerWidth <= 768) setIsCollapsed(true);
+                                            }}
+                                            style={{
+                                              fontSize: '0.8rem',
+                                              padding: '6px 12px',
+                                              borderRadius: '6px',
+                                              color: isSsActive ? 'var(--primary)' : 'rgba(255, 255, 255, 0.7)',
+                                              backgroundColor: isSsActive ? '#f0fdf4' : 'transparent',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              gap: '8px',
+                                              textDecoration: 'none',
+                                              fontWeight: isSsActive ? 600 : 500
+                                            }}
+                                          >
+                                            <i className={`fas ${isSsActive ? 'fa-dot-circle' : 'fa-circle'}`} style={{fontSize: '0.3rem'}}></i>
+                                            {ss.name}
+                                          </Link>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
                       )}
                     </div>
                   );
