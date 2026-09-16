@@ -55,6 +55,9 @@ export default function SpmbPage() {
     nomorWaAyah: '',
     nomorWaIbu: '',
     alamatLengkap: '',
+    desa: '',
+    kecamatan: '',
+    kabupaten: '',
     prestasi: ''
   });
 
@@ -140,6 +143,9 @@ export default function SpmbPage() {
         nomorWaAyah: formData.nomorWaAyah,
         nomorWaIbu: formData.nomorWaIbu,
         alamatLengkap: formData.alamatLengkap,
+        desa: formData.desa,
+        kecamatan: formData.kecamatan,
+        kabupaten: formData.kabupaten,
         prestasi: formData.prestasi,
         linkKk: linkKk
       };
@@ -173,6 +179,9 @@ export default function SpmbPage() {
           nomorWaAyah: '',
           nomorWaIbu: '',
           alamatLengkap: '',
+          desa: '',
+          kecamatan: '',
+          kabupaten: '',
           prestasi: ''
         });
         setFileKk(null);
@@ -281,10 +290,22 @@ export default function SpmbPage() {
                 <option value="Konghucu">Konghucu</option>
               </select>
             </div>
-            <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
-              <label className={styles.label}>Alamat Lengkap (Tempat Tinggal) <span>*</span></label>
-              <textarea name="alamatLengkap" className={styles.textarea} placeholder="Jalan, RT/RW, Desa/Kelurahan, Kecamatan, Kabupaten" value={formData.alamatLengkap} onChange={handleInputChange} required></textarea>
-            </div>
+              <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
+                <label className={styles.label}>Jalan / RT / RW (Tempat Tinggal) <span>*</span></label>
+                <textarea name="alamatLengkap" className={styles.textarea} placeholder="Contoh: Jl. Diponegoro No. 10, RT 01 RW 02" value={formData.alamatLengkap} onChange={handleInputChange} required></textarea>
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Desa / Kelurahan <span>*</span></label>
+                <input type="text" name="desa" className={styles.input} placeholder="Contoh: Toyomarto" value={formData.desa} onChange={handleInputChange} required />
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Kecamatan <span>*</span></label>
+                <input type="text" name="kecamatan" className={styles.input} placeholder="Contoh: Singosari" value={formData.kecamatan} onChange={handleInputChange} required />
+              </div>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>Kabupaten / Kota <span>*</span></label>
+                <input type="text" name="kabupaten" className={styles.input} placeholder="Contoh: Malang" value={formData.kabupaten} onChange={handleInputChange} required />
+              </div>
           </div>
 
           <div className={styles.sectionTitle}>

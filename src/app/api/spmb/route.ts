@@ -29,6 +29,11 @@ export async function POST(req: Request) {
     const payload = await req.json();
     const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
     
+    let fullAlamat = payload.alamatLengkap || '';
+    if (payload.desa) fullAlamat += `, Desa/Kel. ${payload.desa}`;
+    if (payload.kecamatan) fullAlamat += `, Kec. ${payload.kecamatan}`;
+    if (payload.kabupaten) fullAlamat += `, ${payload.kabupaten}`;
+    
     const { error } = await supabase.from('data_spmb').insert({
       nama: payload.namaLengkap || '',
       nisn: payload.nisn || '',
@@ -48,7 +53,11 @@ export async function POST(req: Request) {
       'Pekerjaan Ibu': payload.pekerjaanIbu || '',
       'Nomor WA Ayah': payload.nomorWaAyah || '',
       'Nomor WA Ibu': payload.nomorWaIbu || '',
-      'Alamat Lengkap': payload.alamatLengkap || '',
+      'Alamat (Jalan/RT/RW)': payload.alamatLengkap || '',
+      'Desa/Kelurahan': payload.desa || '',
+      'Kecamatan': payload.kecamatan || '',
+      'Kabupaten/Kota': payload.kabupaten || '',
+      'Alamat Lengkap': fullAlamat,
       'Prestasi (Jika Ada)': payload.prestasi || '',
       'File KK': payload.linkKk || '',
       'File Akta': payload.linkAkta || ''
