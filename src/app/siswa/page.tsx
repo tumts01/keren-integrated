@@ -950,6 +950,15 @@ function PrintSiswaModal({
   );
 }
 
+const STANDARD_KEYS = [
+  'ID SISWA', 'NAMA', 'NISN', 'NIK', 'NRP', 'TEMPAT, TANGGAL LAHIR', 'JENIS KELAMIN',
+  'STATUS SISWA', 'DOMISILI', 'ALAMAT AYAH KANDUNG', 'NAMA AYAH KANDUNG', 'NAMA IBU KANDUNG',
+  'PEKERJAAN AYAH KANDUNG', 'PEKERJAAN IBU KANDUNG', 'NOMOR TELEPON AYAH KANDUNG', 'NOMOR TELEPON IBU KANDUNG',
+  'STATUS ANAK', 'ANAK KE-', 'SD/MI', 'NAMA WALI', 'PEKERJAAN WALI', 'NOMOR TELEPON WALI', 'ALAMAT WALI',
+  'TANGGAL MASUK MTs/SMP', 'LINK FOTO TERBARU',
+  'TA KELAS 7', 'ROMBEL KELAS 7', 'TA KELAS 8', 'ROMBEL KELAS 8', 'TA KELAS 9', 'ROMBEL KELAS 9'
+];
+
 export default function SiswaPage() {
   const [data, setData] = useState<Siswa[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -1005,7 +1014,16 @@ export default function SiswaPage() {
 
   const handleEditClick = (siswa: Siswa) => {
     setEditingSiswa(siswa);
-    setEditMetadata(siswa.rawMetadata ? { ...siswa.rawMetadata } : {});
+    const existing = siswa.rawMetadata ? { ...siswa.rawMetadata } : {};
+    
+    // Tambahkan key standar yang belum ada agar form-nya lengkap
+    STANDARD_KEYS.forEach(key => {
+      if (!(key in existing)) {
+        existing[key] = '';
+      }
+    });
+    
+    setEditMetadata(existing);
   };
 
   const handleSaveEdit = async () => {
