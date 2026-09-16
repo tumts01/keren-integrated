@@ -18,11 +18,57 @@ export default function SusulanPage() {
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({ nisn: '', noUjian: '', ruang: '' });
+
   const downloadTemplate = () => {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet([{ NISN: '1234567890', 'NO UJIAN': '001-01', RUANG: 'Ruang 1' }]);
     XLSX.utils.book_append_sheet(wb, ws, 'Template Susulan');
     XLSX.writeFile(wb, 'Template_Susulan.xlsx');
+  };
+
+  const handleAddParticipant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.nisn || !formData.noUjian || !formData.ruang) {
+      Swal.fire('Error', 'Semua field harus diisi', 'error');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      const res = await fetch('/api/perangkat-ujian/peserta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nisns: [formData.nisn] })
+      });
+      const resData = await res.json();
+      
+      if (!resData.success) {
+        Swal.fire('Error', resData.error || 'Gagal memuat data peserta', 'error');
+      } else {
+        const dbData = resData.data;
+        const match = dbData[formData.nisn];
+        
+        const newPart = {
+          nisn: formData.nisn,
+          noUjian: formData.noUjian,
+          ruang: formData.ruang,
+          nama: match?.nama || 'TIDAK DITEMUKAN',
+          kelas: match?.rombel || '-'
+        };
+        
+        setParticipants(prev => [...prev, newPart]);
+        setIsModalOpen(false);
+        setFormData({ nisn: '', noUjian: '', ruang: '' });
+        Swal.fire('Berhasil', 'Siswa berhasil ditambahkan', 'success');
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire('Error', 'Gagal menambahkan peserta', 'error');
+    }
+    setIsSubmitting(false);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -124,6 +170,9 @@ export default function SusulanPage() {
                 <button onClick={downloadTemplate} style={{ padding: '8px 16px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: '#475569' }}>
                   <i className="fas fa-download"></i> Template Excel
                 </button>
+                <button onClick={() => setIsModalOpen(true)} style={{ padding: '8px 16px', background: '#f59e0b', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
+                  <i className="fas fa-plus"></i> Tambah Data
+                </button>
                 <label style={{ padding: '8px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
                   <i className="fas fa-upload"></i> {loading ? 'Memproses...' : 'Import Data'}
                   <input type="file" accept=".xlsx, .xls" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileUpload} disabled={loading} />
@@ -181,6 +230,34 @@ export default function SusulanPage() {
           </div>
         )}
       </div>
+
+      {isModalOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div style={{ background: 'white', padding: '24px', borderRadius: '12px', width: '100%', maxWidth: '400px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '1.2rem', color: '#1e293b' }}>Tambah Peserta Susulan</h3>
+            <form onSubmit={handleAddParticipant}>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>NISN</label>
+                <input type="text" value={formData.nisn} onChange={e => setFormData({...formData, nisn: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px' }} placeholder="Masukkan NISN" required />
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>No Ujian</label>
+                <input type="text" value={formData.noUjian} onChange={e => setFormData({...formData, noUjian: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px' }} placeholder="Contoh: 7-09-001" required />
+              </div>
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Ruang</label>
+                <input type="text" value={formData.ruang} onChange={e => setFormData({...formData, ruang: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px' }} placeholder="Contoh: Ruang 01" required />
+              </div>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                <button type="button" onClick={() => setIsModalOpen(false)} style={{ padding: '10px 16px', background: '#f1f5f9', border: 'none', borderRadius: '6px', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Batal</button>
+                <button type="submit" disabled={isSubmitting} style={{ padding: '10px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', color: 'white', fontWeight: 600, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>
+                  {isSubmitting ? 'Menyimpan...' : 'Simpan'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
