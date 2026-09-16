@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 
@@ -16,11 +16,56 @@ export default function SusulanPage() {
   const [activeTab, setActiveTab] = useState<'rekap-data' | 'input' | 'rekap-susulan'>('rekap-data');
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ nisn: '', noUjian: '', ruang: '' });
+
+  // Load existing data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch('/api/perangkat-ujian/susulan');
+        const resData = await res.json();
+        if (resData.success && resData.data) {
+          const loaded: Participant[] = resData.data.map((row: any) => ({
+            nisn: row.metadata?.['NISN'] || '',
+            nama: row.metadata?.['NAMA'] || '',
+            kelas: row.metadata?.['KELAS'] || '',
+            noUjian: row.metadata?.['NO UJIAN'] || '',
+            ruang: row.metadata?.['RUANG'] || ''
+          }));
+          setParticipants(loaded);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/perangkat-ujian/susulan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ participants })
+      });
+      const resData = await res.json();
+      if (resData.success) {
+        Swal.fire('Berhasil', 'Data Rekap Susulan berhasil disimpan', 'success');
+      } else {
+        Swal.fire('Error', resData.error || 'Gagal menyimpan data. Pastikan tabel data_susulan sudah ada.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire('Error', 'Terjadi kesalahan sistem', 'error');
+    }
+    setSaving(false);
+  };
 
   const downloadTemplate = () => {
     const wb = XLSX.utils.book_new();
@@ -182,6 +227,11 @@ export default function SusulanPage() {
                   <i className="fas fa-upload"></i> {loading ? 'Memproses...' : 'Import Data'}
                   <input type="file" accept=".xlsx, .xls" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileUpload} disabled={loading} />
                 </label>
+                {participants.length > 0 && (
+                  <button onClick={handleSave} disabled={saving} style={{ padding: '8px 16px', background: saving ? '#94a3b8' : '#10b981', border: 'none', borderRadius: '6px', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
+                    <i className={saving ? 'fas fa-spinner fa-spin' : 'fas fa-save'}></i> {saving ? 'Menyimpan...' : 'Simpan'}
+                  </button>
+                )}
               </div>
             </div>
 
