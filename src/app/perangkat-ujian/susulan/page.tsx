@@ -163,8 +163,13 @@ export default function SusulanPage() {
         {activeTab === 'rekap-data' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: 0 }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
                 Rekap Data Susulan
+                {participants.length > 0 && (
+                  <span style={{ fontSize: '13px', padding: '4px 10px', background: '#e2e8f0', color: '#475569', borderRadius: '12px', fontWeight: 'normal' }}>
+                    {participants.length} Peserta
+                  </span>
+                )}
               </h2>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button onClick={downloadTemplate} style={{ padding: '8px 16px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: '#475569' }}>
