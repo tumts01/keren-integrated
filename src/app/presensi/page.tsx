@@ -172,10 +172,12 @@ export default function PresensiPage() {
   const [rekapSiswaLoading, setRekapSiswaLoading] = useState(false);
   const [rsSubTab, setRsSubTab] = useState<'semua' | 'alpha'>('semua');
   const [rsFilterFrom, setRsFilterFrom] = useState(() => {
-    const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+    const d = new Date(); 
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().split('T')[0];
   });
   const [rsFilterTo, setRsFilterTo] = useState(() => {
-    const d = new Date(); return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+    return new Date().toISOString().split('T')[0];
   });
   const [rsFilterNama, setRsFilterNama] = useState('');
   const [rsFilterKelas, setRsFilterKelas] = useState('');
