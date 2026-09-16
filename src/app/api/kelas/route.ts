@@ -81,8 +81,8 @@ export async function GET() {
         const isAktif = ['aktif', 'lulus'].includes(status);
         if (isAktif) {
           rombelStats[key].totalAktif++;
-          if (jk.includes('laki')) rombelStats[key].lakiAktif++;
-          if (jk.includes('perempuan')) rombelStats[key].perempuanAktif++;
+          if (jk.includes('laki') || jk === 'l' || jk === 'l.') rombelStats[key].lakiAktif++;
+          else if (jk.includes('perempuan') || jk === 'p' || jk === 'p.') rombelStats[key].perempuanAktif++;
         }
       });
     });
