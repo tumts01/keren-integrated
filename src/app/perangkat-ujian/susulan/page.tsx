@@ -526,59 +526,67 @@ export default function SusulanPage() {
         
         {activeTab === 'input' && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: 0 }}>
+            {/* Header toolbar — wraps on mobile */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'flex-start', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: 0, width: '100%' }}>
                 Input Data Susulan
               </h2>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', background: '#f1f5f9', padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-                  <i className="fas fa-search" style={{ color: '#94a3b8', marginRight: '8px' }}></i>
-                  <input 
-                    type="text" 
-                    placeholder="Cari siswa / mapel..." 
-                    value={inputSearch}
-                    onChange={(e) => setInputSearch(e.target.value)}
-                    style={{ border: 'none', background: 'transparent', outline: 'none', width: '200px', fontSize: '0.9rem' }}
-                  />
-                </div>
-                <select 
-                  value={inputFilterStatus} 
-                  onChange={(e) => setInputFilterStatus(e.target.value)}
-                  style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem', color: '#475569' }}
-                >
-                  <option value="Semua">Semua Status</option>
-                  <option value="Selesai">Selesai</option>
-                  <option value="Belum Selesai">Belum Selesai</option>
-                </select>
-                <select 
-                  value={inputFilterKelas} 
-                  onChange={(e) => setInputFilterKelas(e.target.value)}
-                  style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem', color: '#475569' }}
-                >
-                  <option value="Semua">Semua Kelas</option>
-                  {uniqueInputKelas.map(k => (
-                    <option key={k} value={k}>Kelas {k}</option>
-                  ))}
-                </select>
-                <button onClick={handleAddInputRow} style={{ padding: '8px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold', marginLeft: '12px' }}>
-                  <i className="fas fa-plus"></i> Tambah Baris
-                </button>
+
+              {/* Search */}
+              <div style={{ display: 'flex', alignItems: 'center', background: '#f1f5f9', padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', flex: '1 1 200px', minWidth: '160px' }}>
+                <i className="fas fa-search" style={{ color: '#94a3b8', marginRight: '8px' }}></i>
+                <input 
+                  type="text" 
+                  placeholder="Cari siswa / mapel..." 
+                  value={inputSearch}
+                  onChange={(e) => setInputSearch(e.target.value)}
+                  style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '0.9rem' }}
+                />
               </div>
+
+              {/* Filter Status */}
+              <select 
+                value={inputFilterStatus} 
+                onChange={(e) => setInputFilterStatus(e.target.value)}
+                style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem', color: '#475569', flex: '1 1 130px', minWidth: '120px' }}
+              >
+                <option value="Semua">Semua Status</option>
+                <option value="Selesai">Selesai</option>
+                <option value="Belum Selesai">Belum Selesai</option>
+              </select>
+
+              {/* Filter Kelas */}
+              <select 
+                value={inputFilterKelas} 
+                onChange={(e) => setInputFilterKelas(e.target.value)}
+                style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem', color: '#475569', flex: '1 1 120px', minWidth: '110px' }}
+              >
+                <option value="Semua">Semua Kelas</option>
+                {uniqueInputKelas.map(k => (
+                  <option key={k} value={k}>Kelas {k}</option>
+                ))}
+              </select>
+
+              {/* Tambah Baris */}
+              <button onClick={handleAddInputRow} style={{ padding: '8px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                <i className="fas fa-plus"></i> Tambah Baris
+              </button>
             </div>
 
             {isFetchingInput ? (
               <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}><i className="fas fa-spinner fa-spin"></i> Memuat data...</div>
             ) : inputRows.length > 0 ? (
-              <div>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              /* Horizontal scroll wrapper so the table doesn't overflow on mobile */
+              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Nama Siswa</th>
-                      <th style={{ padding: '12px', textAlign: 'center', color: '#475569', width: '90px' }}>Susulan</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Mata Pelajaran</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Kelas</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Ruang</th>
-                      <th style={{ padding: '12px', textAlign: 'center', color: '#475569', width: '150px' }}>Aksi</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569', whiteSpace: 'nowrap' }}>Nama Siswa</th>
+                      <th style={{ padding: '12px', textAlign: 'center', color: '#475569', width: '80px', whiteSpace: 'nowrap' }}>Susulan</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569', whiteSpace: 'nowrap' }}>Mata Pelajaran</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569', whiteSpace: 'nowrap' }}>Kelas</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569', whiteSpace: 'nowrap' }}>Ruang</th>
+                      <th style={{ padding: '12px', textAlign: 'center', color: '#475569', width: '140px', whiteSpace: 'nowrap' }}>Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -593,7 +601,7 @@ export default function SusulanPage() {
                         const idx = inputRows.findIndex(r => r === row);
                         return (
                           <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', background: row.isSelesai ? '#ecfdf5' : 'transparent' }}>
-                            <td style={{ padding: '12px' }}>
+                            <td style={{ padding: '12px', minWidth: '160px' }}>
                               {row.isEditing ? (
                                 <SearchableSelect 
                                   value={row.nisn} 
@@ -612,7 +620,7 @@ export default function SusulanPage() {
                                 <span style={{ color: '#cbd5e1' }}>-</span>
                               )}
                             </td>
-                            <td style={{ padding: '12px' }}>
+                            <td style={{ padding: '12px', minWidth: '150px' }}>
                               {row.isEditing ? (
                                 <SearchableSelect 
                                   value={row.mapel} 
@@ -624,18 +632,18 @@ export default function SusulanPage() {
                                 <span>{row.mapel}</span>
                               )}
                             </td>
-                            <td style={{ padding: '12px' }}>{row.kelas}</td>
-                            <td style={{ padding: '12px' }}>{row.ruang}</td>
+                            <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>{row.kelas}</td>
+                            <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>{row.ruang}</td>
                             <td style={{ padding: '12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                               {row.isEditing ? (
-                                <button onClick={() => handleSaveInputRow(idx)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }} title="Simpan">
+                                <button onClick={() => handleSaveInputRow(idx)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }} title="Simpan">
                                   <i className="fas fa-save"></i>
                                 </button>
                               ) : (
                                 <>
                                   <button 
                                     onClick={() => handleToggleSelesai(idx)} 
-                                    style={{ background: row.isSelesai ? '#64748b' : '#3b82f6', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }}
+                                    style={{ background: row.isSelesai ? '#64748b' : '#3b82f6', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }}
                                     title={row.isSelesai ? "Batalkan Selesai" : "Tandai Selesai"}
                                   >
                                     <i className={row.isSelesai ? "fas fa-undo" : "fas fa-check"}></i>
@@ -644,12 +652,12 @@ export default function SusulanPage() {
                                     const updated = [...inputRows];
                                     updated[idx].isEditing = true;
                                     setInputRows(updated);
-                                  }} style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }} title="Edit">
+                                  }} style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }} title="Edit">
                                     <i className="fas fa-edit"></i>
                                   </button>
                                 </>
                               )}
-                              <button onClick={() => handleDeleteInputRow(idx)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer' }} title="Hapus">
+                              <button onClick={() => handleDeleteInputRow(idx)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer' }} title="Hapus">
                                 <i className="fas fa-trash"></i>
                               </button>
                             </td>
