@@ -94,7 +94,7 @@ const SearchableSelect = ({ value, options, onChange, placeholder }: any) => {
 };
 
 export default function SusulanPage() {
-  const [activeTab, setActiveTab] = useState<'rekap-data' | 'input' | 'rekap-susulan'>('rekap-data');
+  const [activeTab, setActiveTab] = useState<'rekap-data' | 'input'>('rekap-data');
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -455,13 +455,6 @@ export default function SusulanPage() {
           <i className="fas fa-edit" style={{ marginRight: '8px' }}></i>
           Input
         </button>
-        <button
-          onClick={() => setActiveTab('rekap-susulan')}
-          style={{ padding: '12px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'rekap-susulan' ? '3px solid #0ea5e9' : '3px solid transparent', color: activeTab === 'rekap-susulan' ? '#0ea5e9' : '#64748b', fontWeight: activeTab === 'rekap-susulan' ? 'bold' : 'normal', cursor: 'pointer', fontSize: '15px' }}
-        >
-          <i className="fas fa-list-alt" style={{ marginRight: '8px' }}></i>
-          Rekap Susulan
-        </button>
       </div>
 
       <div style={{ background: 'white', padding: '24px', borderRadius: '8px', border: '1px solid #e2e8f0', minHeight: '400px' }}>
@@ -672,13 +665,6 @@ export default function SusulanPage() {
                 <p>Belum ada data input susulan. Klik "Tambah Baris" untuk memulai.</p>
               </div>
             )}
-          </div>
-        )}
-        
-        {activeTab === 'rekap-susulan' && (
-          <div>
-            <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', marginBottom: '20px' }}>Rekap Susulan</h2>
-            <p style={{ color: '#64748b' }}>Halaman ini sedang dalam tahap pengembangan.</p>
           </div>
         )}
       </div>

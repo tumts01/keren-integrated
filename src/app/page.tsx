@@ -10,6 +10,7 @@ export default function Home() {
 
   const [tagihanList, setTagihanList] = useState<any[]>([]);
   const [raporInfo, setRaporInfo] = useState<{kelas: string, missing: number, total: number} | null>(null);
+  const [susulanInfo, setSusulanInfo] = useState<{kelas: string, total: number, belumSelesai: number, rincian: any[]} | null>(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('keren_user_data');
@@ -24,16 +25,18 @@ export default function Home() {
 
   const fetchProfile = async (nama: string) => {
     try {
-      const [resGuru, resSurat, resKelas, resRapor] = await Promise.all([
+      const [resGuru, resSurat, resKelas, resRapor, resSusulan] = await Promise.all([
         fetch('/api/guru'),
         fetch('/api/persuratan'),
         fetch('/api/kelas'),
-        fetch('/api/rapor')
+        fetch('/api/rapor'),
+        fetch('/api/perangkat-ujian/susulan/input')
       ]);
       const data = await resGuru.json();
       const surat = await resSurat.json();
       const kelasData = await resKelas.json();
       const raporData = await resRapor.json();
+      const susulanData = await resSusulan.json();
       
       let foundProfile = null;
       if (data.success) {
@@ -51,23 +54,43 @@ export default function Home() {
         setTagihanList(myTagihan);
       }
 
-      // Check wali kelas rapor status
-      if (kelasData.success && raporData.success && foundProfile) {
+      // Check wali kelas status (rapor and susulan)
+      if (kelasData.success && foundProfile) {
         const myName = foundProfile.nama.toLowerCase().trim();
-        // Use flexible matching: either the wali kelas name includes the guru name or vice versa
         const myKelas = kelasData.data.find((k: any) => {
           if (!k.waliKelas) return false;
           const waliName = k.waliKelas.toLowerCase().trim();
           return waliName.includes(myName) || myName.includes(waliName);
         });
+        
         if (myKelas) {
-          const rekapKelas = raporData.rekap?.find((r: any) => r.kelas === myKelas.rombel);
-          if (rekapKelas && rekapKelas.missing > 0) {
-            setRaporInfo({
-              kelas: myKelas.rombel,
-              missing: rekapKelas.missing,
-              total: rekapKelas.total
-            });
+          if (raporData.success) {
+            const rekapKelas = raporData.rekap?.find((r: any) => r.kelas === myKelas.rombel);
+            if (rekapKelas && rekapKelas.missing > 0) {
+              setRaporInfo({
+                kelas: myKelas.rombel,
+                missing: rekapKelas.missing,
+                total: rekapKelas.total
+              });
+            }
+          }
+
+          if (susulanData.success && susulanData.data) {
+            const classSusulan = susulanData.data.filter((r: any) => r.metadata?.kelas === myKelas.rombel);
+            if (classSusulan.length > 0) {
+              const belumSelesai = classSusulan.filter((r: any) => !r.metadata?.isSelesai).length;
+              const rincian = classSusulan.map((r: any) => ({
+                nama: r.metadata?.nama,
+                mapel: r.metadata?.mapel,
+                isSelesai: !!r.metadata?.isSelesai
+              }));
+              setSusulanInfo({
+                kelas: myKelas.rombel,
+                total: classSusulan.length,
+                belumSelesai,
+                rincian
+              });
+            }
           }
         }
       }
@@ -198,6 +221,35 @@ export default function Home() {
               <a href="/pengembalian-rapor" style={{ display: 'inline-block', marginTop: '16px', background: '#d97706', color: 'white', padding: '8px 16px', borderRadius: '8px', textDecoration: 'none', fontWeight: 600, fontSize: '0.9rem' }}>
                 Lihat Detail Pengembalian <i className="fas fa-arrow-right" style={{ marginLeft: '4px' }}></i>
               </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Box Susulan Wali Kelas */}
+      {susulanInfo && (
+        <div style={{ background: '#e0f2fe', border: '1px solid #bae6fd', borderRadius: '12px', padding: '20px', marginBottom: '24px', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: '-10px', right: '-10px', opacity: 0.1 }}>
+            <i className="fas fa-clipboard-list" style={{ fontSize: '8rem', color: '#0284c7' }}></i>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', position: 'relative', zIndex: 1 }}>
+            <div style={{ background: '#0284c7', color: 'white', width: '48px', height: '48px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', flexShrink: 0 }}>
+              <i className="fas fa-edit"></i>
+            </div>
+            <div style={{ flex: 1 }}>
+              <h3 style={{ margin: '0 0 4px 0', color: '#075985', fontSize: '1.2rem', fontWeight: 700 }}>Info Ujian Susulan &mdash; Kelas {susulanInfo.kelas}</h3>
+              <p style={{ margin: '0 0 12px 0', color: '#0369a1', fontSize: '0.95rem' }}>
+                Ada <strong>{susulanInfo.total}</strong> mata pelajaran yang diikuti siswa susulan di kelas Anda. 
+                <strong>{susulanInfo.belumSelesai}</strong> di antaranya belum selesai.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {susulanInfo.rincian.map((r, i) => (
+                  <div key={i} style={{ background: 'white', border: '1px solid #bae6fd', padding: '6px 12px', borderRadius: '6px', fontSize: '0.85rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <i className={r.isSelesai ? "fas fa-check-circle" : "fas fa-clock"} style={{ color: r.isSelesai ? '#10b981' : '#f59e0b' }}></i>
+                    <span><strong>{r.nama}</strong> ({r.mapel})</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
