@@ -110,39 +110,26 @@ export async function POST(request: Request) {
     }
 
     if (rowsToInsert.length > 0) {
-      // ── ANTI-DOBEL JURNAL PIKET ──
-      // Ambil data jurnal hari ini
+      // 🛡️ ANTI-DOBEL JURNAL PIKET BERDASARKAN TANGGAL 🛡️
+      // Cek apakah sudah ada data jurnal di tanggal tersebut
       const { data: existingRows, error: readError } = await supabase
         .from('data_jurnal_piket')
-        .select('metadata')
+        .select('id')
         .eq('tanggal', tanggal);
       
       if (readError) throw readError;
 
-      // Filter rowsToInsert yang belum ada di database
-      const filteredRowsToInsert = rowsToInsert.filter(newRow => {
-        const newGuruIzin = newRow.metadata['GURU IZIN'];
-        const newKelasKosong = newRow.metadata['KELAS DITINGGALKAN'];
-        const newAlasan = newRow.metadata['ALASAN IZIN'];
-        
-        // Cek apakah ada data yang sama persis (guru izin, kelas kosong, dan tanggal)
-        const isDuplicate = existingRows?.some(existing => {
-          return existing.metadata['GURU IZIN'] === newGuruIzin &&
-                 existing.metadata['KELAS DITINGGALKAN'] === newKelasKosong &&
-                 existing.metadata['ALASAN IZIN'] === newAlasan;
-        });
-        
-        return !isDuplicate;
-      });
-
-      if (filteredRowsToInsert.length === 0) {
-        return NextResponse.json({ success: false, error: 'Data ini terdeteksi sama persis dengan yang sudah tersimpan sebelumnya (Anti-Dobel Aktif).' }, { status: 409 });
+      if (existingRows && existingRows.length > 0) {
+        return NextResponse.json({ 
+          success: false, 
+          error: `Jurnal piket untuk tanggal ${tanggal} sudah diinput. Silakan gunakan fitur Edit/Hapus pada tab Rekap untuk mengubah data di tanggal tersebut.` 
+        }, { status: 409 });
       }
 
-      const { error } = await supabase.from('data_jurnal_piket').insert(filteredRowsToInsert);
+      const { error } = await supabase.from('data_jurnal_piket').insert(rowsToInsert);
       if (error) throw error;
       
-      return NextResponse.json({ success: true, message: `Berhasil menyimpan ${filteredRowsToInsert.length} data jurnal piket baru` });
+      return NextResponse.json({ success: true, message: `Berhasil menyimpan ${rowsToInsert.length} data jurnal piket baru` });
     }
 
     return NextResponse.json({ success: true, message: `Berhasil menyimpan data` });
