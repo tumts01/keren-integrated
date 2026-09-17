@@ -462,18 +462,18 @@ export default function StsPage() {
                 <td style="text-align:center;border:1px solid #333;padding:5px 4px;font-weight:bold;">1</td>
                 <td colspan="9" style="border:1px solid #333;padding:5px 5px;font-weight:bold;">Pendidikan Agama Islam</td>
               </tr>
-              ${mkRow('', 'a. Al-Qur\'an Hadis', "Al-Qur'an Hadis", true)}
+              ${mkRow('', 'a. Alquran Hadis', 'Alquran Hadis', true)}
               ${mkRow('', 'b. Akidah Akhlak', 'Akidah Akhlak', true)}
-              ${mkRow('', 'c. Fiqih', 'Fiqih', true)}
+              ${mkRow('', 'c. Fikih', 'Fikih', true)}
               ${mkRow('', 'd. Sejarah Kebudayaan Islam', 'Sejarah Kebudayaan Islam', true)}
               ${mkRow(2, 'Pendidikan Pancasila', 'Pendidikan Pancasila')}
               ${mkRow(3, 'Bahasa Indonesia', 'Bahasa Indonesia')}
               ${mkRow(4, 'Bahasa Arab', 'Bahasa Arab')}
               ${mkRow(5, 'Matematika', 'Matematika')}
-              ${mkRow(6, 'Ilmu Pengetahuan Alam', 'Ilmu Pengetahuan Alam')}
-              ${mkRow(7, 'Ilmu Pengetahuan Sosial', 'Ilmu Pengetahuan Sosial')}
+              ${mkRow(6, 'Ilmu Pengetahuan Alam', 'llmu Pengetahuan Alam')}
+              ${mkRow(7, 'Ilmu Pengetahuan Sosial', 'llmu Pengetahuan Sosial')}
               ${mkRow(8, 'Bahasa Inggris', 'Bahasa Inggris')}
-              ${mkRow(9, 'Pendidikan Jasmani, Olah Raga dan Kesehatan', 'Pendidikan Jasmani')}
+              ${mkRow(9, 'Pendidikan Jasmani, Olah Raga dan Kesehatan', 'Pendidikan Jasmani, Olah Raga dan Kesehatan')}
               ${mkRow(10, 'Informatika', 'Informatika')}
 
               ${mkGroupHeader('Mata Pelajaran Pilihan')}
