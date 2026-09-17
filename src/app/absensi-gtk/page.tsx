@@ -2,6 +2,9 @@
 import { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import styles from './Absensi.module.css';
+import Lottie from 'lottie-react';
+import catAnimation from '../../../public/animations/cat.json';
+
 
 export default function AbsensiGTK() {
   const [user, setUser] = useState<any>(null);
@@ -581,11 +584,17 @@ export default function AbsensiGTK() {
       </div>
 
       {activeTab === 'absen' && (
-        <div className={styles.card} style={{ maxWidth: '600px', margin: '0 auto' }}>
-          <div className={styles.clockContainer}>
-            <div className={styles.time}>{time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
-            <div className={styles.date}>{time.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+        <div style={{ maxWidth: '600px', margin: '0 auto', position: 'relative', marginTop: '160px' }}>
+          {/* Lottie Animation Peeking */}
+          <div style={{ position: 'absolute', bottom: 'calc(100% - 80px)', left: '50%', transform: 'translateX(-50%)', width: '250px', zIndex: 0, pointerEvents: 'none' }}>
+            <Lottie animationData={catAnimation} loop={true} />
           </div>
+
+          <div className={styles.card} style={{ position: 'relative', zIndex: 1, margin: 0 }}>
+            <div className={styles.clockContainer}>
+              <div className={styles.time}>{time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+              <div className={styles.date}>{time.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+            </div>
 
           <div style={{ textAlign: 'center', marginBottom: '24px' }}>
             <h3 style={{ margin: 0, fontSize: '1.2rem' }}>{user.nama}</h3>
@@ -658,6 +667,7 @@ export default function AbsensiGTK() {
               </div>
             </div>
           )}
+        </div>
         </div>
       )}
 
