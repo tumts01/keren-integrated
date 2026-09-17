@@ -77,9 +77,10 @@ export default function Home() {
 
           if (susulanData.success && susulanData.data) {
             const classSusulan = susulanData.data.filter((r: any) => r.metadata?.kelas === myKelas.rombel);
-            if (classSusulan.length > 0) {
-              const belumSelesai = classSusulan.filter((r: any) => !r.metadata?.isSelesai).length;
-              const rincian = classSusulan.map((r: any) => ({
+            const pendingSusulan = classSusulan.filter((r: any) => !r.metadata?.isSelesai);
+            
+            if (pendingSusulan.length > 0) {
+              const rincian = pendingSusulan.map((r: any) => ({
                 nama: r.metadata?.nama,
                 mapel: r.metadata?.mapel,
                 isSelesai: !!r.metadata?.isSelesai
@@ -87,7 +88,7 @@ export default function Home() {
               setSusulanInfo({
                 kelas: myKelas.rombel,
                 total: classSusulan.length,
-                belumSelesai,
+                belumSelesai: pendingSusulan.length,
                 rincian
               });
             }
