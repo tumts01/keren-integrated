@@ -23,6 +23,75 @@ interface InputRow {
   isEditing: boolean;
 }
 
+const SearchableSelect = ({ value, options, onChange, placeholder }: any) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find((o: any) => o.value === value);
+  const filteredOptions = options.filter((o: any) => o.label.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div ref={wrapperRef} style={{ position: 'relative', width: '100%', minWidth: '180px' }}>
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', background: 'white', cursor: 'pointer', minHeight: '38px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+      >
+        <span style={{ color: selectedOption ? '#334155' : '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.95rem' }}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <i className="fas fa-chevron-down" style={{ fontSize: '12px', color: '#94a3b8' }}></i>
+      </div>
+
+      {isOpen && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'white', border: '1px solid #cbd5e1', borderRadius: '6px', marginTop: '4px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
+          <div style={{ padding: '8px', borderBottom: '1px solid #e2e8f0' }}>
+            <input
+              type="text"
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Cari..."
+              style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px', outline: 'none', fontSize: '0.9rem' }}
+            />
+          </div>
+          <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
+            {filteredOptions.length === 0 ? (
+              <div style={{ padding: '12px', color: '#94a3b8', textAlign: 'center', fontSize: '0.9rem' }}>Tidak ditemukan</div>
+            ) : (
+              filteredOptions.map((o: any) => (
+                <div
+                  key={o.value}
+                  onClick={() => {
+                    onChange(o.value);
+                    setIsOpen(false);
+                    setSearch('');
+                  }}
+                  style={{ padding: '10px 12px', cursor: 'pointer', background: o.value === value ? '#e0f2fe' : 'transparent', color: o.value === value ? '#0369a1' : '#334155', fontSize: '0.9rem', borderBottom: '1px solid #f1f5f9' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f5f9')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = o.value === value ? '#e0f2fe' : 'transparent')}
+                >
+                  {o.label}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function SusulanPage() {
   const [activeTab, setActiveTab] = useState<'rekap-data' | 'input' | 'rekap-susulan'>('rekap-data');
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -436,32 +505,24 @@ export default function SusulanPage() {
                       <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
                         <td style={{ padding: '12px' }}>
                           {row.isEditing ? (
-                            <select 
+                            <SearchableSelect 
                               value={row.nisn} 
-                              onChange={(e) => handleInputRowChange(idx, 'nisn', e.target.value)}
-                              style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }}
-                            >
-                              <option value="">Pilih Siswa...</option>
-                              {participants.map(p => (
-                                <option key={p.nisn} value={p.nisn}>{p.nama}</option>
-                              ))}
-                            </select>
+                              onChange={(val: string) => handleInputRowChange(idx, 'nisn', val)}
+                              placeholder="Pilih Siswa..."
+                              options={participants.map(p => ({ value: p.nisn, label: p.nama }))}
+                            />
                           ) : (
                             <span style={{ fontWeight: 'bold', color: '#334155' }}>{row.nama}</span>
                           )}
                         </td>
                         <td style={{ padding: '12px' }}>
                           {row.isEditing ? (
-                            <select 
+                            <SearchableSelect 
                               value={row.mapel} 
-                              onChange={(e) => handleInputRowChange(idx, 'mapel', e.target.value)}
-                              style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }}
-                            >
-                              <option value="">Pilih Mata Pelajaran...</option>
-                              {mapelList.map(m => (
-                                <option key={m} value={m}>{m}</option>
-                              ))}
-                            </select>
+                              onChange={(val: string) => handleInputRowChange(idx, 'mapel', val)}
+                              placeholder="Pilih Mata Pelajaran..."
+                              options={mapelList.map(m => ({ value: m, label: m }))}
+                            />
                           ) : (
                             <span>{row.mapel}</span>
                           )}
