@@ -472,6 +472,20 @@ export default function StsPage() {
               ${mkGroupHeader('Muatan Lokal')}
               ${mkRow(1, 'Bahasa Daerah', 'Bahasa Daerah', true)}
               ${mkRow(2, 'KE-NU-AN', 'KE-NU-AN', true)}
+
+              ${mkGroupHeader('Pengembangan Potensi Minat &amp; Bakat')}
+              <tr>
+                <td style="text-align:center;border:1px solid #333;padding:5px;">1</td>
+                <td style="border:1px solid #333;padding:5px;"></td>
+                <td style="border:1px solid #333;padding:5px;"></td>
+                <td style="border:1px solid #333;padding:5px;"></td>
+                <td style="border:1px solid #333;padding:5px;"></td>
+                <td style="border:1px solid #333;padding:5px;"></td>
+                <td style="border:1px solid #333;padding:5px;"></td>
+                <td style="border:1px solid #333;padding:5px;"></td>
+                <td style="border:1px solid #333;padding:5px;"></td>
+                <td style="border:1px solid #333;padding:5px;"></td>
+              </tr>
             </tbody>
           </table>
 
