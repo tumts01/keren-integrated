@@ -12,6 +12,17 @@ interface Participant {
   foto?: string;
 }
 
+interface InputRow {
+  id?: number;
+  nisn: string;
+  nama: string;
+  kelas: string;
+  ruang: string;
+  noUjian: string;
+  mapel: string;
+  isEditing: boolean;
+}
+
 export default function SusulanPage() {
   const [activeTab, setActiveTab] = useState<'rekap-data' | 'input' | 'rekap-susulan'>('rekap-data');
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -23,12 +34,18 @@ export default function SusulanPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ nisn: '', noUjian: '', ruang: '' });
 
+  // Input Tab states
+  const [mapelList, setMapelList] = useState<string[]>([]);
+  const [inputRows, setInputRows] = useState<InputRow[]>([]);
+  const [isFetchingInput, setIsFetchingInput] = useState(false);
+
   // Load existing data
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch('/api/perangkat-ujian/susulan');
-        const resData = await res.json();
+        // Fetch participants (Rekap Data)
+        const resPart = await fetch('/api/perangkat-ujian/susulan');
+        const resData = await resPart.json();
         if (resData.success && resData.data) {
           const loaded: Participant[] = resData.data.map((row: any) => ({
             nisn: row.metadata?.['NISN'] || '',
@@ -39,12 +56,130 @@ export default function SusulanPage() {
           }));
           setParticipants(loaded);
         }
+
+        // Fetch Mapel list
+        const resMapel = await fetch('/api/jadwal/mapel');
+        const mapelData = await resMapel.json();
+        if (mapelData.success && mapelData.data) {
+          setMapelList(mapelData.data.map((m: any) => m.namaMapel));
+        }
+
+        // Fetch Input Rows
+        setIsFetchingInput(true);
+        const resInput = await fetch('/api/perangkat-ujian/susulan/input');
+        const inputData = await resInput.json();
+        if (inputData.success && inputData.data) {
+          const loadedInputs: InputRow[] = inputData.data.map((row: any) => ({
+            id: row.id,
+            nisn: row.metadata?.nisn || '',
+            nama: row.metadata?.nama || '',
+            kelas: row.metadata?.kelas || '',
+            ruang: row.metadata?.ruang || '',
+            noUjian: row.metadata?.noUjian || '',
+            mapel: row.metadata?.mapel || '',
+            isEditing: false
+          }));
+          setInputRows(loadedInputs);
+        }
       } catch (err) {
         console.error(err);
+      } finally {
+        setIsFetchingInput(false);
       }
     };
     fetchData();
   }, []);
+
+  // --- Input Tab Handlers ---
+  const handleAddInputRow = () => {
+    setInputRows([{ id: undefined, nisn: '', nama: '', kelas: '', ruang: '', noUjian: '', mapel: '', isEditing: true }, ...inputRows]);
+  };
+
+  const handleInputRowChange = (index: number, field: keyof InputRow, value: string) => {
+    const updated = [...inputRows];
+    if (field === 'nisn') {
+      // Auto-fill nama, kelas, dll
+      const participant = participants.find(p => p.nisn === value);
+      if (participant) {
+        updated[index] = { ...updated[index], nisn: value, nama: participant.nama || '', kelas: participant.kelas || '', ruang: participant.ruang || '', noUjian: participant.noUjian || '' };
+      } else {
+        updated[index] = { ...updated[index], nisn: value, nama: '', kelas: '', ruang: '', noUjian: '' };
+      }
+    } else {
+      updated[index] = { ...updated[index], [field]: value };
+    }
+    setInputRows(updated);
+  };
+
+  const handleSaveInputRow = async (index: number) => {
+    const row = inputRows[index];
+    if (!row.nisn || !row.mapel) {
+      Swal.fire('Error', 'Nama dan Mapel harus diisi', 'error');
+      return;
+    }
+
+    try {
+      const action = row.id ? 'edit' : 'add';
+      const payload = {
+        nisn: row.nisn,
+        nama: row.nama,
+        kelas: row.kelas,
+        ruang: row.ruang,
+        noUjian: row.noUjian,
+        mapel: row.mapel
+      };
+
+      const res = await fetch('/api/perangkat-ujian/susulan/input', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, id: row.id, payload })
+      });
+      const resData = await res.json();
+      
+      if (resData.success) {
+        const updated = [...inputRows];
+        updated[index] = { ...updated[index], id: resData.data.id, isEditing: false };
+        setInputRows(updated);
+        Swal.fire({ icon: 'success', title: 'Tersimpan', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+      } else {
+        Swal.fire('Error', resData.error || 'Gagal menyimpan', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire('Error', 'Terjadi kesalahan jaringan', 'error');
+    }
+  };
+
+  const handleDeleteInputRow = async (index: number) => {
+    const row = inputRows[index];
+    if (!row.id) {
+      // Remove unsaved row directly
+      setInputRows(inputRows.filter((_, i) => i !== index));
+      return;
+    }
+
+    const { isConfirmed } = await Swal.fire({ title: 'Hapus data?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Ya, hapus!' });
+    if (!isConfirmed) return;
+
+    try {
+      const res = await fetch('/api/perangkat-ujian/susulan/input', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', id: row.id })
+      });
+      const resData = await res.json();
+      
+      if (resData.success) {
+        setInputRows(inputRows.filter((_, i) => i !== index));
+      } else {
+        Swal.fire('Error', resData.error || 'Gagal menghapus', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire('Error', 'Terjadi kesalahan jaringan', 'error');
+    }
+  };
+  // --------------------------
 
   const handleSave = async () => {
     setSaving(true);
@@ -273,8 +408,94 @@ export default function SusulanPage() {
         
         {activeTab === 'input' && (
           <div>
-            <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', marginBottom: '20px' }}>Input Susulan</h2>
-            <p style={{ color: '#64748b' }}>Halaman ini sedang dalam tahap pengembangan.</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: 0 }}>
+                Input Data Susulan
+              </h2>
+              <button onClick={handleAddInputRow} style={{ padding: '8px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
+                <i className="fas fa-plus"></i> Tambah Baris
+              </button>
+            </div>
+
+            {isFetchingInput ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}><i className="fas fa-spinner fa-spin"></i> Memuat data...</div>
+            ) : inputRows.length > 0 ? (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Nama Siswa</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Mata Pelajaran</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Kelas</th>
+                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Ruang</th>
+                      <th style={{ padding: '12px', textAlign: 'center', color: '#475569', width: '120px' }}>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inputRows.map((row, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ padding: '12px' }}>
+                          {row.isEditing ? (
+                            <select 
+                              value={row.nisn} 
+                              onChange={(e) => handleInputRowChange(idx, 'nisn', e.target.value)}
+                              style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                            >
+                              <option value="">Pilih Siswa...</option>
+                              {participants.map(p => (
+                                <option key={p.nisn} value={p.nisn}>{p.nama}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span style={{ fontWeight: 'bold', color: '#334155' }}>{row.nama}</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          {row.isEditing ? (
+                            <select 
+                              value={row.mapel} 
+                              onChange={(e) => handleInputRowChange(idx, 'mapel', e.target.value)}
+                              style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                            >
+                              <option value="">Pilih Mata Pelajaran...</option>
+                              {mapelList.map(m => (
+                                <option key={m} value={m}>{m}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <span>{row.mapel}</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px' }}>{row.kelas}</td>
+                        <td style={{ padding: '12px' }}>{row.ruang}</td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          {row.isEditing ? (
+                            <button onClick={() => handleSaveInputRow(idx)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }}>
+                              <i className="fas fa-save"></i>
+                            </button>
+                          ) : (
+                            <button onClick={() => {
+                              const updated = [...inputRows];
+                              updated[idx].isEditing = true;
+                              setInputRows(updated);
+                            }} style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }}>
+                              <i className="fas fa-edit"></i>
+                            </button>
+                          )}
+                          <button onClick={() => handleDeleteInputRow(idx)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer' }}>
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                <p>Belum ada data input susulan. Klik "Tambah Baris" untuk memulai.</p>
+              </div>
+            )}
           </div>
         )}
         
