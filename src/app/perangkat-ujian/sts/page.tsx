@@ -341,7 +341,7 @@ export default function StsPage() {
       const v = getNilai(mapelKey);
       const nameStyle = isSubMapel ? 'padding-left: 14px;' : '';
       const B = 'border:1px solid #333;';
-      const P = 'padding:3px 4px;';
+      const P = 'padding:5px 4px;';
       return `<tr>
         <td style="text-align:center;${B}${P}">${no}</td>
         <td style="${B}${P}${nameStyle}">${nama}</td>
@@ -357,7 +357,7 @@ export default function StsPage() {
     };
 
     const mkGroupHeader = (label: string) => `<tr>
-      <td colspan="10" style="border:1px solid #333;padding:3px 5px;font-weight:bold;background:#f5f5f5;">${label}</td>
+      <td colspan="10" style="border:1px solid #333;padding:5px 5px;font-weight:bold;background:#f5f5f5;">${label}</td>
     </tr>`;
 
     const logoUrl = '/logo.png';
@@ -388,7 +388,7 @@ export default function StsPage() {
             .nilai-table th { background: #ddd; border: 1px solid #333; padding: 3px 2px; text-align: center; }
             .nilai-table td { border: 1px solid #333; }
             .absent-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 8px; }
-            .absent-table td, .absent-table th { border: 1px solid #333; padding: 3px 5px; }
+            .absent-table td, .absent-table th { border: 1px solid #333; padding: 4px 5px; }
             .ttd { width: 88%; margin: 22px auto 0 auto; font-size: 9.5pt; }
             .ttd td { width: 50%; vertical-align: top; padding-top: 4px; }
             @media print { body { -webkit-print-color-adjust: exact; } }
@@ -459,8 +459,8 @@ export default function StsPage() {
             </thead>
             <tbody>
               <tr>
-                <td style="text-align:center;border:1px solid #333;padding:3px 4px;font-weight:bold;">1</td>
-                <td colspan="9" style="border:1px solid #333;padding:3px 5px;font-weight:bold;">Pendidikan Agama Islam</td>
+                <td style="text-align:center;border:1px solid #333;padding:5px 4px;font-weight:bold;">1</td>
+                <td colspan="9" style="border:1px solid #333;padding:5px 5px;font-weight:bold;">Pendidikan Agama Islam</td>
               </tr>
               ${mkRow('', 'a. Al-Qur\'an Hadis', "Al-Qur'an Hadis", true)}
               ${mkRow('', 'b. Akidah Akhlak', 'Akidah Akhlak', true)}
@@ -486,16 +486,16 @@ export default function StsPage() {
 
               ${mkGroupHeader('Pengembangan Potensi Minat &amp; Bakat')}
               <tr>
-                <td style="text-align:center;border:1px solid #333;padding:3px 4px;">1</td>
-                <td style="border:1px solid #333;padding:3px 4px;"></td>
-                <td style="border:1px solid #333;padding:3px 4px;"></td>
-                <td style="border:1px solid #333;padding:3px 4px;"></td>
-                <td style="border:1px solid #333;padding:3px 4px;"></td>
-                <td style="border:1px solid #333;padding:3px 4px;"></td>
-                <td style="border:1px solid #333;padding:3px 4px;"></td>
-                <td style="border:1px solid #333;padding:3px 4px;"></td>
-                <td style="border:1px solid #333;padding:3px 4px;"></td>
-                <td style="border:1px solid #333;padding:3px 4px;"></td>
+                <td style="text-align:center;border:1px solid #333;padding:5px 4px;">1</td>
+                <td style="border:1px solid #333;padding:5px 4px;"></td>
+                <td style="border:1px solid #333;padding:5px 4px;"></td>
+                <td style="border:1px solid #333;padding:5px 4px;"></td>
+                <td style="border:1px solid #333;padding:5px 4px;"></td>
+                <td style="border:1px solid #333;padding:5px 4px;"></td>
+                <td style="border:1px solid #333;padding:5px 4px;"></td>
+                <td style="border:1px solid #333;padding:5px 4px;"></td>
+                <td style="border:1px solid #333;padding:5px 4px;"></td>
+                <td style="border:1px solid #333;padding:5px 4px;"></td>
               </tr>
             </tbody>
           </table>
