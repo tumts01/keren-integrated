@@ -489,7 +489,7 @@ export default function SusulanPage() {
             {isFetchingInput ? (
               <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}><i className="fas fa-spinner fa-spin"></i> Memuat data...</div>
             ) : inputRows.length > 0 ? (
-              <div style={{ overflowX: 'auto' }}>
+              <div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
