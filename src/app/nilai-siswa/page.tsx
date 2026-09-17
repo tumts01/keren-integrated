@@ -25,7 +25,22 @@ export default function NilaiSiswaPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<any>(null);
-  const [mapelList, setMapelList] = useState<string[]>(['BTQ', 'Tahfidz', 'Madin', 'Sorogan']);
+  const pkMapelList = [
+    'Ilmu Pengetahuan Alam',
+    'Ilmu Pengetahuan Sosial',
+    'Matematika',
+    'Bahasa Indonesia',
+    'Pendidikan Jasmani, Olah Raga dan Kesehatan',
+    'Seni Budaya',
+    'Bahasa Inggris',
+    'Bahasa Arab',
+    'Prakarya',
+    'Informatika',
+    'Pendidikan Agama Islam',
+    'Tahfidh'
+  ];
+
+  const [mapelList, setMapelList] = useState<string[]>(pkMapelList);
 
   useEffect(() => {
     const userStr = localStorage.getItem('keren_user_data');
@@ -34,22 +49,14 @@ export default function NilaiSiswaPage() {
         setProfile(JSON.parse(userStr));
       } catch (e) {}
     }
-
-    fetch('/api/jadwal/mapel')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.data) {
-          const list = data.data.map((m: any) => m.namaMapel);
-          setMapelList(list);
-          setMapel(prevMapel => {
-            if (!list.includes(prevMapel) && prevMapel !== 'Lainnya' && list.length > 0) {
-              return list[0];
-            }
-            return prevMapel;
-          });
-        }
-      })
-      .catch(console.error);
+    
+    // Set initial mapel correctly since we removed API fetch
+    setMapel(prevMapel => {
+      if (!pkMapelList.includes(prevMapel) && prevMapel !== 'Lainnya' && pkMapelList.length > 0) {
+        return pkMapelList[0];
+      }
+      return prevMapel;
+    });
   }, []);
 
   const fetchRekap = async () => {
