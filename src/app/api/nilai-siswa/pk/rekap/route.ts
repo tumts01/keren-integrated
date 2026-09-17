@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { getNilaiSiswaDoc } from '@/lib/google-sheets';
 import { supabase } from '@/lib/supabase';
 import { getAllCachedDataInduk } from '@/lib/data-induk';
 
@@ -55,40 +54,13 @@ export async function GET(req: Request) {
 
     const activeSiswa = siswas;
 
-    // 2. Fetch Grades from NilaiSiswaDoc
-    const docNilai = await getNilaiSiswaDoc();
-    const sheetName = `${kelas}_${mapel}`;
-    let sheetNilai = docNilai.sheetsByTitle[sheetName];
-
-    let nilaiMap: Record<string, Record<string, string>> = {};
-
-    if (sheetNilai) {
-      await sheetNilai.loadCells({
-        startRowIndex: 8,
-        endRowIndex: sheetNilai.rowCount,
-        startColumnIndex: 0,
-        endColumnIndex: 29 // 0 to 28
-      });
-
-      for (let i = 8; i < sheetNilai.rowCount; i++) {
-        const idSiswa = sheetNilai.getCell(i, 2).value;
-        if (idSiswa) {
-          const key = idSiswa.toString().trim();
-          const getVal = (c: number) => (sheetNilai.getCell(i, c).value || '').toString();
-          nilaiMap[key] = {
-            m1s1: getVal(8), m1s2: getVal(9), m1s3: getVal(10),
-            m2s1: getVal(11), m2s2: getVal(12), m2s3: getVal(13),
-            m3s1: getVal(14), m3s2: getVal(15), m3s3: getVal(16),
-            m4s1: getVal(17), m4s2: getVal(18), m4s3: getVal(19),
-            m5s1: getVal(20), m5s2: getVal(21), m5s3: getVal(22),
-            m6s1: getVal(23), m6s2: getVal(24), m6s3: getVal(25),
-            sts: getVal(26),
-            sas: getVal(27),
-            rata: getVal(28)
-          };
-        }
-      }
-    }
+    // 2. Fetch Grades from Supabase nilai_pk
+    const { data: pkData, error } = await supabase
+      .from('nilai_pk')
+      .select('*')
+      .eq('tahun_ajaran', tahunAjaran)
+      .eq('kelas', kelas)
+      .eq('mata_pelajaran', mapel);
 
     const emptyScores = {
       m1s1: '', m1s2: '', m1s3: '',
@@ -100,12 +72,62 @@ export async function GET(req: Request) {
       sts: '', sas: '', rata: ''
     };
 
+    let globalNilaiMap: Record<string, Record<string, string>> = {};
+    activeSiswa.forEach(s => {
+      globalNilaiMap[s.induk] = { ...emptyScores };
+    });
+
+    if (pkData && pkData.length > 0) {
+      for (const row of pkData) {
+        if (!row.data_nilai || !Array.isArray(row.data_nilai)) continue;
+
+        let scoreKey = '';
+        if (row.tipe === 'sts') scoreKey = 'sts';
+        else if (row.tipe === 'sas') scoreKey = 'sas';
+        else if (row.tipe === 'materi_harian') {
+          const mMatch = (row.materi || '').match(/\d+/);
+          const m = mMatch ? parseInt(mMatch[0]) : 1;
+          const sMatch = (row.sub_materi || '').match(/\d+/);
+          const s = sMatch ? parseInt(sMatch[0]) : 1;
+          scoreKey = `m${m}s${s}`;
+        }
+
+        if (scoreKey) {
+          row.data_nilai.forEach((item: any) => {
+            if (globalNilaiMap[item.induk]) {
+              globalNilaiMap[item.induk][scoreKey] = item.nilai?.toString() || '';
+            }
+          });
+        }
+      }
+    }
+
+    // Calculate Rata-rata
+    for (const induk in globalNilaiMap) {
+      const scores = globalNilaiMap[induk];
+      let totalHarian = 0; let countHarian = 0;
+      ['m1s1','m1s2','m1s3','m2s1','m2s2','m2s3','m3s1','m3s2','m3s3','m4s1','m4s2','m4s3','m5s1','m5s2','m5s3','m6s1','m6s2','m6s3'].forEach(k => {
+        if (scores[k]) { totalHarian += Number(scores[k]); countHarian++; }
+      });
+      let rataHarian = countHarian > 0 ? totalHarian / countHarian : 0;
+      
+      let finalTotal = 0;
+      let finalDiv = 0;
+      if (rataHarian > 0) { finalTotal += rataHarian; finalDiv++; }
+      if (scores.sts) { finalTotal += Number(scores.sts); finalDiv++; }
+      if (scores.sas) { finalTotal += Number(scores.sas); finalDiv++; }
+      
+      if (finalDiv > 0) {
+        scores.rata = Math.round(finalTotal / finalDiv).toString();
+      }
+    }
+
     const data = activeSiswa.map((s, index) => ({
       no: index + 1,
       induk: s.induk,
       nama: s.nama,
       jk: s.jk,
-      scores: nilaiMap[s.induk] || emptyScores
+      scores: globalNilaiMap[s.induk] || { ...emptyScores }
     }));
 
     return NextResponse.json({ success: true, data }, {
