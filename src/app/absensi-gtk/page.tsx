@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import styles from './Absensi.module.css';
-import Lottie from 'lottie-react';
+import { Lottie } from 'lottie-react';
 import catAnimation from '../../../public/animations/cat.json';
 
 
@@ -587,7 +587,7 @@ export default function AbsensiGTK() {
         <div style={{ maxWidth: '600px', margin: '0 auto', position: 'relative', marginTop: '160px' }}>
           {/* Lottie Animation Peeking */}
           <div style={{ position: 'absolute', bottom: 'calc(100% - 80px)', left: '50%', transform: 'translateX(-50%)', width: '250px', zIndex: 0, pointerEvents: 'none' }}>
-            <Lottie animationData={catAnimation} loop={true} />
+            <Lottie src={catAnimation} loop={true} />
           </div>
 
           <div className={styles.card} style={{ position: 'relative', zIndex: 1, margin: 0 }}>
