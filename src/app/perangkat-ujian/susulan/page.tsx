@@ -460,8 +460,8 @@ export default function SusulanPage() {
       <div style={{ background: 'white', padding: '24px', borderRadius: '8px', border: '1px solid #e2e8f0', minHeight: '400px' }}>
         {activeTab === 'rekap-data' && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: 0, display: 'flex', alignItems: 'center', gap: '10px', flex: '1 1 auto' }}>
                 Rekap Data Susulan
                 {participants.length > 0 && (
                   <span style={{ fontSize: '13px', padding: '4px 10px', background: '#e2e8f0', color: '#475569', borderRadius: '12px', fontWeight: 'normal' }}>
@@ -469,23 +469,21 @@ export default function SusulanPage() {
                   </span>
                 )}
               </h2>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button onClick={downloadTemplate} style={{ padding: '8px 16px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: '#475569' }}>
-                  <i className="fas fa-download"></i> Template Excel
+              <button onClick={downloadTemplate} style={{ padding: '8px 14px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: '#475569', whiteSpace: 'nowrap', fontSize: '0.9rem' }}>
+                <i className="fas fa-download"></i> Template
+              </button>
+              <button onClick={() => setIsModalOpen(true)} style={{ padding: '8px 14px', background: '#f59e0b', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap', fontSize: '0.9rem' }}>
+                <i className="fas fa-plus"></i> Tambah Data
+              </button>
+              <label style={{ padding: '8px 14px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap', fontSize: '0.9rem' }}>
+                <i className="fas fa-upload"></i> {loading ? 'Memproses...' : 'Import Excel'}
+                <input type="file" accept=".xlsx, .xls" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileUpload} disabled={loading} />
+              </label>
+              {participants.length > 0 && (
+                <button onClick={handleSave} disabled={saving} style={{ padding: '8px 14px', background: saving ? '#94a3b8' : '#10b981', border: 'none', borderRadius: '6px', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap', fontSize: '0.9rem' }}>
+                  <i className={saving ? 'fas fa-spinner fa-spin' : 'fas fa-save'}></i> {saving ? 'Menyimpan...' : 'Simpan'}
                 </button>
-                <button onClick={() => setIsModalOpen(true)} style={{ padding: '8px 16px', background: '#f59e0b', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
-                  <i className="fas fa-plus"></i> Tambah Data
-                </button>
-                <label style={{ padding: '8px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
-                  <i className="fas fa-upload"></i> {loading ? 'Memproses...' : 'Import Data'}
-                  <input type="file" accept=".xlsx, .xls" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileUpload} disabled={loading} />
-                </label>
-                {participants.length > 0 && (
-                  <button onClick={handleSave} disabled={saving} style={{ padding: '8px 16px', background: saving ? '#94a3b8' : '#10b981', border: 'none', borderRadius: '6px', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
-                    <i className={saving ? 'fas fa-spinner fa-spin' : 'fas fa-save'}></i> {saving ? 'Menyimpan...' : 'Simpan'}
-                  </button>
-                )}
-              </div>
+              )}
             </div>
 
             {participants.length > 0 ? (
