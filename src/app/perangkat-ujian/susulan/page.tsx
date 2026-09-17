@@ -110,7 +110,7 @@ export default function SusulanPage() {
   const [isFetchingInput, setIsFetchingInput] = useState(false);
   const [inputSearch, setInputSearch] = useState('');
   const [inputFilterStatus, setInputFilterStatus] = useState('Semua');
-  const [inputFilterKelas, setInputFilterKelas] = useState('Semua');
+  const [inputFilterRuang, setInputFilterRuang] = useState('Semua');
 
   // Load existing data
   useEffect(() => {
@@ -415,7 +415,7 @@ export default function SusulanPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const uniqueInputKelas = Array.from(new Set(inputRows.map(r => r.kelas).filter(Boolean))).sort();
+  const uniqueInputRuang = Array.from(new Set(inputRows.map(r => r.ruang).filter(Boolean))).sort();
 
   const filteredInputRows = inputRows.filter(row => {
     const matchesSearch = row.nama.toLowerCase().includes(inputSearch.toLowerCase()) || 
@@ -425,9 +425,9 @@ export default function SusulanPage() {
     if (inputFilterStatus === 'Selesai') matchesStatus = !!row.isSelesai;
     if (inputFilterStatus === 'Belum Selesai') matchesStatus = !row.isSelesai;
 
-    const matchesKelas = inputFilterKelas === 'Semua' || row.kelas === inputFilterKelas;
+    const matchesRuang = inputFilterRuang === 'Semua' || row.ruang === inputFilterRuang;
 
-    return matchesSearch && matchesStatus && matchesKelas;
+    return matchesSearch && matchesStatus && matchesRuang;
   });
 
   return (
@@ -553,15 +553,15 @@ export default function SusulanPage() {
                 <option value="Belum Selesai">Belum Selesai</option>
               </select>
 
-              {/* Filter Kelas */}
+              {/* Filter Ruang */}
               <select 
-                value={inputFilterKelas} 
-                onChange={(e) => setInputFilterKelas(e.target.value)}
+                value={inputFilterRuang} 
+                onChange={(e) => setInputFilterRuang(e.target.value)}
                 style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem', color: '#475569', flex: '1 1 120px', minWidth: '110px' }}
               >
-                <option value="Semua">Semua Kelas</option>
-                {uniqueInputKelas.map(k => (
-                  <option key={k} value={k}>Kelas {k}</option>
+                <option value="Semua">Semua Ruang</option>
+                {uniqueInputRuang.map(r => (
+                  <option key={r} value={r}>{r}</option>
                 ))}
               </select>
 
