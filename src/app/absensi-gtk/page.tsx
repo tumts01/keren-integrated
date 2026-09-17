@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import styles from './Absensi.module.css';
 import { Lottie } from 'lottie-react';
-import catAnimation from '../../../public/animations/cat.json';
 
 
 export default function AbsensiGTK() {
@@ -586,8 +585,8 @@ export default function AbsensiGTK() {
       {activeTab === 'absen' && (
         <div style={{ maxWidth: '600px', margin: '0 auto', position: 'relative', marginTop: '160px' }}>
           {/* Lottie Animation Peeking */}
-          <div style={{ position: 'absolute', bottom: 'calc(100% - 80px)', left: '50%', transform: 'translateX(-50%)', width: '250px', zIndex: 0, pointerEvents: 'none' }}>
-            <Lottie src={catAnimation} loop={true} />
+          <div style={{ position: 'absolute', bottom: 'calc(100% - 60px)', left: '50%', transform: 'translateX(-50%)', width: '250px', height: '444px', zIndex: 0, pointerEvents: 'none' }}>
+            <Lottie src="/animations/cat.json" loop={true} autoplay={true} style={{ width: '100%', height: '100%' }} />
           </div>
 
           <div className={styles.card} style={{ position: 'relative', zIndex: 1, margin: 0 }}>
