@@ -336,25 +336,28 @@ export default function StsPage() {
       };
     };
 
+    // mkRow: only sub-mapel gets indent; main rows (2-10) and sub-mapel both are NOT bold
     const mkRow = (no: string | number, nama: string, mapelKey: string, isSubMapel = false) => {
       const v = getNilai(mapelKey);
-      const style = isSubMapel ? 'padding-left: 16px;' : 'font-weight: bold;';
+      const nameStyle = isSubMapel ? 'padding-left: 14px;' : '';
+      const B = 'border:1px solid #333;';
+      const P = 'padding:3px 4px;';
       return `<tr>
-        <td style="text-align:center;border:1px solid #333;padding:2px 3px;">${no}</td>
-        <td style="border:1px solid #333;padding:2px 5px;${style}">${nama}</td>
-        <td style="text-align:center;border:1px solid #333;padding:2px 3px;">${v.tp1}</td>
-        <td style="text-align:center;border:1px solid #333;padding:2px 3px;">${v.tp2}</td>
-        <td style="text-align:center;border:1px solid #333;padding:2px 3px;">${v.tp3}</td>
-        <td style="text-align:center;border:1px solid #333;padding:2px 3px;">${v.tp4}</td>
-        <td style="text-align:center;border:1px solid #333;padding:2px 3px;">${v.tp5}</td>
-        <td style="text-align:center;border:1px solid #333;padding:2px 3px;">${v.tp6}</td>
-        <td style="text-align:center;border:1px solid #333;padding:2px 3px;font-weight:bold;">${v.sts}</td>
-        <td style="text-align:center;border:1px solid #333;padding:2px 3px;font-weight:bold;">${v.na}</td>
+        <td style="text-align:center;${B}${P}">${no}</td>
+        <td style="${B}${P}${nameStyle}">${nama}</td>
+        <td style="text-align:center;${B}${P}">${v.tp1}</td>
+        <td style="text-align:center;${B}${P}">${v.tp2}</td>
+        <td style="text-align:center;${B}${P}">${v.tp3}</td>
+        <td style="text-align:center;${B}${P}">${v.tp4}</td>
+        <td style="text-align:center;${B}${P}">${v.tp5}</td>
+        <td style="text-align:center;${B}${P}">${v.tp6}</td>
+        <td style="text-align:center;${B}${P}font-weight:bold;">${v.sts}</td>
+        <td style="text-align:center;${B}${P}font-weight:bold;">${v.na}</td>
       </tr>`;
     };
 
     const mkGroupHeader = (label: string) => `<tr>
-      <td colspan="10" style="border:1px solid #333;padding:2px 5px;font-weight:bold;background:#f5f5f5;">${label}</td>
+      <td colspan="10" style="border:1px solid #333;padding:3px 5px;font-weight:bold;background:#f5f5f5;">${label}</td>
     </tr>`;
 
     const logoUrl = '/logo.png';
@@ -383,11 +386,11 @@ export default function StsPage() {
             .section-label { font-weight: bold; margin: 4px 0 2px 0; font-size: 9.5pt; }
             .nilai-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 6px; }
             .nilai-table th { background: #ddd; border: 1px solid #333; padding: 3px 2px; text-align: center; }
+            .nilai-table td { border: 1px solid #333; }
             .absent-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 8px; }
             .absent-table td, .absent-table th { border: 1px solid #333; padding: 3px 5px; }
-            .ttd { width: 100%; margin-top: 8px; font-size: 9.5pt; }
+            .ttd { width: 88%; margin: 22px auto 0 auto; font-size: 9.5pt; }
             .ttd td { width: 50%; vertical-align: top; padding-top: 4px; }
-            .ttd .nama-ttd { font-weight: bold; text-decoration: underline; margin-top: 55px; display: block; }
             @media print { body { -webkit-print-color-adjust: exact; } }
           </style>
         </head>
@@ -406,12 +409,17 @@ export default function StsPage() {
           <!-- JUDUL -->
           <div class="judul">LAPORAN HASIL SUMATIF TENGAH SEMESTER (STS)</div>
 
-          <!-- INFO SISWA -->
+          <!-- INFO SISWA: right side aligned with ~TP5 (≈55% from left) -->
           <table class="info">
+            <colgroup>
+              <col style="width:12%"><col style="width:1%"><col style="width:24%">
+              <col style="width:18%">
+              <col style="width:16%"><col style="width:1%"><col>
+            </colgroup>
             <tr>
-              <td width="12%">No.Absen</td><td width="1%">:</td><td width="22%">${siswa.noAbsen || '-'}</td>
-              <td width="5%"></td>
-              <td width="14%">Kelas</td><td width="1%">:</td><td>${siswa.rombel}</td>
+              <td>No.Absen</td><td>:</td><td>${siswa.noAbsen || '-'}</td>
+              <td></td>
+              <td>Kelas</td><td>:</td><td>${siswa.rombel}</td>
             </tr>
             <tr>
               <td>Nama Siswa</td><td>:</td><td>${siswa.nama}</td>
@@ -451,12 +459,12 @@ export default function StsPage() {
             </thead>
             <tbody>
               <tr>
-                <td style="text-align:center;border:1px solid #333;padding:5px;">1</td>
-                <td colspan="9" style="border:1px solid #333;padding:5px;font-weight:bold;">Pendidikan Agama Islam</td>
+                <td style="text-align:center;border:1px solid #333;padding:3px 4px;font-weight:bold;">1</td>
+                <td colspan="9" style="border:1px solid #333;padding:3px 5px;font-weight:bold;">Pendidikan Agama Islam</td>
               </tr>
               ${mkRow('', 'a. Al-Qur\'an Hadis', "Al-Qur'an Hadis", true)}
               ${mkRow('', 'b. Akidah Akhlak', 'Akidah Akhlak', true)}
-              ${mkRow('', 'c . Fiqih', 'Fiqih', true)}
+              ${mkRow('', 'c. Fiqih', 'Fiqih', true)}
               ${mkRow('', 'd. Sejarah Kebudayaan Islam', 'Sejarah Kebudayaan Islam', true)}
               ${mkRow(2, 'Pendidikan Pancasila', 'Pendidikan Pancasila')}
               ${mkRow(3, 'Bahasa Indonesia', 'Bahasa Indonesia')}
@@ -467,27 +475,27 @@ export default function StsPage() {
               ${mkRow(8, 'Bahasa Inggris', 'Bahasa Inggris')}
               ${mkRow(9, 'Pendidikan Jasmani, Olah Raga dan Kesehatan', 'Pendidikan Jasmani')}
               ${mkRow(10, 'Informatika', 'Informatika')}
-              
+
               ${mkGroupHeader('Mata Pelajaran Pilihan')}
               ${mkRow(1, 'Seni Budaya', 'Seni Budaya', true)}
               ${mkRow(2, 'Prakarya', 'Prakarya', true)}
-              
+
               ${mkGroupHeader('Muatan Lokal')}
               ${mkRow(1, 'Bahasa Daerah', 'Bahasa Daerah', true)}
               ${mkRow(2, 'KE-NU-AN', 'KE-NU-AN', true)}
 
               ${mkGroupHeader('Pengembangan Potensi Minat &amp; Bakat')}
               <tr>
-                <td style="text-align:center;border:1px solid #333;padding:5px;">1</td>
-                <td style="border:1px solid #333;padding:5px;"></td>
-                <td style="border:1px solid #333;padding:5px;"></td>
-                <td style="border:1px solid #333;padding:5px;"></td>
-                <td style="border:1px solid #333;padding:5px;"></td>
-                <td style="border:1px solid #333;padding:5px;"></td>
-                <td style="border:1px solid #333;padding:5px;"></td>
-                <td style="border:1px solid #333;padding:5px;"></td>
-                <td style="border:1px solid #333;padding:5px;"></td>
-                <td style="border:1px solid #333;padding:5px;"></td>
+                <td style="text-align:center;border:1px solid #333;padding:3px 4px;">1</td>
+                <td style="border:1px solid #333;padding:3px 4px;"></td>
+                <td style="border:1px solid #333;padding:3px 4px;"></td>
+                <td style="border:1px solid #333;padding:3px 4px;"></td>
+                <td style="border:1px solid #333;padding:3px 4px;"></td>
+                <td style="border:1px solid #333;padding:3px 4px;"></td>
+                <td style="border:1px solid #333;padding:3px 4px;"></td>
+                <td style="border:1px solid #333;padding:3px 4px;"></td>
+                <td style="border:1px solid #333;padding:3px 4px;"></td>
+                <td style="border:1px solid #333;padding:3px 4px;"></td>
               </tr>
             </tbody>
           </table>
