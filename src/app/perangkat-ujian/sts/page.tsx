@@ -338,23 +338,23 @@ export default function StsPage() {
 
     const mkRow = (no: string | number, nama: string, mapelKey: string, isSubMapel = false) => {
       const v = getNilai(mapelKey);
-      const style = isSubMapel ? 'padding-left: 20px; font-style: italic;' : 'font-weight: bold;';
+      const style = isSubMapel ? 'padding-left: 16px;' : 'font-weight: bold;';
       return `<tr>
-        <td style="text-align:center;border:1px solid #333;padding:5px;">${no}</td>
-        <td style="border:1px solid #333;padding:5px;${style}">${nama}</td>
-        <td style="text-align:center;border:1px solid #333;padding:5px;">${v.tp1}</td>
-        <td style="text-align:center;border:1px solid #333;padding:5px;">${v.tp2}</td>
-        <td style="text-align:center;border:1px solid #333;padding:5px;">${v.tp3}</td>
-        <td style="text-align:center;border:1px solid #333;padding:5px;">${v.tp4}</td>
-        <td style="text-align:center;border:1px solid #333;padding:5px;">${v.tp5}</td>
-        <td style="text-align:center;border:1px solid #333;padding:5px;">${v.tp6}</td>
-        <td style="text-align:center;border:1px solid #333;padding:5px;font-weight:bold;">${v.sts}</td>
-        <td style="text-align:center;border:1px solid #333;padding:5px;font-weight:bold;">${v.na}</td>
+        <td style="text-align:center;border:1px solid #333;padding:2px 3px;">${no}</td>
+        <td style="border:1px solid #333;padding:2px 5px;${style}">${nama}</td>
+        <td style="text-align:center;border:1px solid #333;padding:2px 3px;">${v.tp1}</td>
+        <td style="text-align:center;border:1px solid #333;padding:2px 3px;">${v.tp2}</td>
+        <td style="text-align:center;border:1px solid #333;padding:2px 3px;">${v.tp3}</td>
+        <td style="text-align:center;border:1px solid #333;padding:2px 3px;">${v.tp4}</td>
+        <td style="text-align:center;border:1px solid #333;padding:2px 3px;">${v.tp5}</td>
+        <td style="text-align:center;border:1px solid #333;padding:2px 3px;">${v.tp6}</td>
+        <td style="text-align:center;border:1px solid #333;padding:2px 3px;font-weight:bold;">${v.sts}</td>
+        <td style="text-align:center;border:1px solid #333;padding:2px 3px;font-weight:bold;">${v.na}</td>
       </tr>`;
     };
 
     const mkGroupHeader = (label: string) => `<tr>
-      <td colspan="10" style="border:1px solid #333;padding:5px;font-weight:bold;background:#f5f5f5;">${label}</td>
+      <td colspan="10" style="border:1px solid #333;padding:2px 5px;font-weight:bold;background:#f5f5f5;">${label}</td>
     </tr>`;
 
     const logoUrl = '/logo.png';
@@ -367,27 +367,27 @@ export default function StsPage() {
         <head>
           <title>Rapor STS - ${siswa.nama}</title>
           <style>
-            @page { size: A4 portrait; margin: 15mm 15mm 15mm 20mm; }
-            body { font-family: 'Times New Roman', Times, serif; font-size: 10pt; color: #000; margin: 0; }
+            @page { size: A4 portrait; margin: 10mm 10mm 10mm 15mm; }
+            body { font-family: 'Times New Roman', Times, serif; font-size: 9.5pt; color: #000; margin: 0; }
             table { border-collapse: collapse; }
-            .kop { display: flex; align-items: center; border-bottom: 3px double #000; padding-bottom: 8px; margin-bottom: 10px; }
-            .kop img { width: 70px; height: 70px; margin-right: 15px; }
+            .kop { display: flex; align-items: center; border-bottom: 3px double #000; padding-bottom: 4px; margin-bottom: 6px; }
+            .kop img { width: 60px; height: 60px; margin-right: 12px; }
             .kop-text { text-align: center; flex: 1; }
-            .kop-text .instansi { font-size: 8pt; }
-            .kop-text .yayasan { font-size: 10pt; font-weight: bold; }
-            .kop-text .sekolah { font-size: 13pt; font-weight: bold; }
-            .kop-text .alamat { font-size: 8pt; }
-            .judul { text-align: center; font-weight: bold; font-size: 12pt; border: 1px solid #000; padding: 5px; margin: 10px 0; }
-            .info { width: 100%; margin-bottom: 12px; font-size: 10pt; }
-            .info td { padding: 2px 5px; }
-            .section-label { font-weight: bold; margin: 8px 0 4px 0; }
-            .nilai-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 12px; }
-            .nilai-table th { background: #ddd; border: 1px solid #333; padding: 5px; text-align: center; }
-            .absent-table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 15px; }
-            .absent-table td, .absent-table th { border: 1px solid #333; padding: 5px; }
-            .ttd { width: 100%; margin-top: 15px; font-size: 10pt; }
-            .ttd td { width: 50%; vertical-align: top; padding-top: 5px; }
-            .ttd .nama-ttd { font-weight: bold; text-decoration: underline; margin-top: 70px; display: block; }
+            .kop-text .instansi { font-size: 7.5pt; }
+            .kop-text .yayasan { font-size: 9pt; font-weight: bold; }
+            .kop-text .sekolah { font-size: 12pt; font-weight: bold; }
+            .kop-text .alamat { font-size: 7.5pt; }
+            .judul { text-align: center; font-weight: bold; font-size: 11pt; border: 1px solid #000; padding: 4px; margin: 6px 0; }
+            .info { width: 100%; margin-bottom: 6px; font-size: 9.5pt; }
+            .info td { padding: 1px 4px; }
+            .section-label { font-weight: bold; margin: 4px 0 2px 0; font-size: 9.5pt; }
+            .nilai-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 6px; }
+            .nilai-table th { background: #ddd; border: 1px solid #333; padding: 3px 2px; text-align: center; }
+            .absent-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; margin-bottom: 8px; }
+            .absent-table td, .absent-table th { border: 1px solid #333; padding: 3px 5px; }
+            .ttd { width: 100%; margin-top: 8px; font-size: 9.5pt; }
+            .ttd td { width: 50%; vertical-align: top; padding-top: 4px; }
+            .ttd .nama-ttd { font-weight: bold; text-decoration: underline; margin-top: 55px; display: block; }
             @media print { body { -webkit-print-color-adjust: exact; } }
           </style>
         </head>
@@ -409,20 +409,23 @@ export default function StsPage() {
           <!-- INFO SISWA -->
           <table class="info">
             <tr>
-              <td width="15%">No.Absen</td><td width="2%">:</td><td width="30%">${siswa.noAbsen || '-'}</td>
-              <td width="10%">Kelas</td><td width="2%">:</td><td>${siswa.rombel}</td>
+              <td width="12%">No.Absen</td><td width="1%">:</td><td width="22%">${siswa.noAbsen || '-'}</td>
+              <td width="5%"></td>
+              <td width="14%">Kelas</td><td width="1%">:</td><td>${siswa.rombel}</td>
             </tr>
             <tr>
               <td>Nama Siswa</td><td>:</td><td>${siswa.nama}</td>
+              <td></td>
               <td>Semester</td><td>:</td><td>${semester}</td>
             </tr>
             <tr>
               <td>No.Induk</td><td>:</td><td>${siswa.noInduk || '-'}</td>
+              <td></td>
               <td>Tahun Pelajaran</td><td>:</td><td>${tahunAjaran}</td>
             </tr>
             <tr>
               <td>NISN</td><td>:</td><td>${siswa.nisn || '-'}</td>
-              <td></td><td></td><td></td>
+              <td></td><td></td><td></td><td></td>
             </tr>
           </table>
 
@@ -431,19 +434,19 @@ export default function StsPage() {
           <table class="nilai-table">
             <thead>
               <tr>
-                <th rowspan="2" style="width:4%;">No</th>
-                <th rowspan="2" style="width:30%; text-align:left; padding-left:8px;">Mata Pelajaran</th>
+                <th rowspan="2" style="width:3%;">No</th>
+                <th rowspan="2" style="width:24%; text-align:left; padding-left:6px;">Mata Pelajaran</th>
                 <th colspan="6">NILAI SUMATIF HARIAN</th>
-                <th rowspan="2" style="width:10%;">SUMATIF TENGAH SEMESTER</th>
-                <th rowspan="2" style="width:8%;">NILAI</th>
+                <th rowspan="2" style="width:11%;">SUMATIF TENGAH SEMESTER</th>
+                <th rowspan="2" style="width:9%;">NILAI</th>
               </tr>
               <tr>
-                <th style="width:6%;">TP1</th>
-                <th style="width:6%;">TP2</th>
-                <th style="width:6%;">TP3</th>
-                <th style="width:6%;">TP4</th>
-                <th style="width:6%;">TP5</th>
-                <th style="width:6%;">TP6</th>
+                <th style="width:7%;">TP1</th>
+                <th style="width:7%;">TP2</th>
+                <th style="width:7%;">TP3</th>
+                <th style="width:7%;">TP4</th>
+                <th style="width:7%;">TP5</th>
+                <th style="width:7%;">TP6</th>
               </tr>
             </thead>
             <tbody>
