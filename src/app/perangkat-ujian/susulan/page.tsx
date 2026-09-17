@@ -20,6 +20,7 @@ interface InputRow {
   ruang: string;
   noUjian: string;
   mapel: string;
+  isSelesai?: boolean;
   isEditing: boolean;
 }
 
@@ -146,6 +147,7 @@ export default function SusulanPage() {
             ruang: row.metadata?.ruang || '',
             noUjian: row.metadata?.noUjian || '',
             mapel: row.metadata?.mapel || '',
+            isSelesai: !!row.metadata?.isSelesai,
             isEditing: false
           }));
           setInputRows(loadedInputs);
@@ -161,7 +163,7 @@ export default function SusulanPage() {
 
   // --- Input Tab Handlers ---
   const handleAddInputRow = () => {
-    setInputRows([{ id: undefined, nisn: '', nama: '', kelas: '', ruang: '', noUjian: '', mapel: '', isEditing: true }, ...inputRows]);
+    setInputRows([{ id: undefined, nisn: '', nama: '', kelas: '', ruang: '', noUjian: '', mapel: '', isSelesai: false, isEditing: true }, ...inputRows]);
   };
 
   const handleInputRowChange = (index: number, field: keyof InputRow, value: string) => {
@@ -195,7 +197,8 @@ export default function SusulanPage() {
         kelas: row.kelas,
         ruang: row.ruang,
         noUjian: row.noUjian,
-        mapel: row.mapel
+        mapel: row.mapel,
+        isSelesai: row.isSelesai
       };
 
       const res = await fetch('/api/perangkat-ujian/susulan/input', {
@@ -212,6 +215,41 @@ export default function SusulanPage() {
         Swal.fire({ icon: 'success', title: 'Tersimpan', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
       } else {
         Swal.fire('Error', resData.error || 'Gagal menyimpan', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire('Error', 'Terjadi kesalahan jaringan', 'error');
+    }
+  };
+
+  const handleToggleSelesai = async (index: number) => {
+    const row = inputRows[index];
+    if (!row.id) return; // Only saved rows can be toggled
+
+    const newStatus = !row.isSelesai;
+    try {
+      const payload = {
+        nisn: row.nisn,
+        nama: row.nama,
+        kelas: row.kelas,
+        ruang: row.ruang,
+        noUjian: row.noUjian,
+        mapel: row.mapel,
+        isSelesai: newStatus
+      };
+
+      const res = await fetch('/api/perangkat-ujian/susulan/input', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'edit', id: row.id, payload })
+      });
+      const resData = await res.json();
+      
+      if (resData.success) {
+        const updated = [...inputRows];
+        updated[index] = { ...updated[index], isSelesai: newStatus };
+        setInputRows(updated);
+        Swal.fire({ icon: 'success', title: newStatus ? 'Ditandai Selesai' : 'Batal Selesai', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
       }
     } catch (err) {
       console.error(err);
@@ -494,15 +532,16 @@ export default function SusulanPage() {
                   <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                       <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Nama Siswa</th>
+                      <th style={{ padding: '12px', textAlign: 'center', color: '#475569', width: '90px' }}>Susulan</th>
                       <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Mata Pelajaran</th>
                       <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Kelas</th>
                       <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Ruang</th>
-                      <th style={{ padding: '12px', textAlign: 'center', color: '#475569', width: '120px' }}>Aksi</th>
+                      <th style={{ padding: '12px', textAlign: 'center', color: '#475569', width: '150px' }}>Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
                     {inputRows.map((row, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', background: row.isSelesai ? '#ecfdf5' : 'transparent' }}>
                         <td style={{ padding: '12px' }}>
                           {row.isEditing ? (
                             <SearchableSelect 
@@ -513,6 +552,13 @@ export default function SusulanPage() {
                             />
                           ) : (
                             <span style={{ fontWeight: 'bold', color: '#334155' }}>{row.nama}</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          {row.isSelesai ? (
+                            <i className="fas fa-check-circle" style={{ color: '#10b981', fontSize: '1.2rem' }}></i>
+                          ) : (
+                            <span style={{ color: '#cbd5e1' }}>-</span>
                           )}
                         </td>
                         <td style={{ padding: '12px' }}>
@@ -529,21 +575,30 @@ export default function SusulanPage() {
                         </td>
                         <td style={{ padding: '12px' }}>{row.kelas}</td>
                         <td style={{ padding: '12px' }}>{row.ruang}</td>
-                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                        <td style={{ padding: '12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                           {row.isEditing ? (
-                            <button onClick={() => handleSaveInputRow(idx)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }}>
+                            <button onClick={() => handleSaveInputRow(idx)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }} title="Simpan">
                               <i className="fas fa-save"></i>
                             </button>
                           ) : (
-                            <button onClick={() => {
-                              const updated = [...inputRows];
-                              updated[idx].isEditing = true;
-                              setInputRows(updated);
-                            }} style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }}>
-                              <i className="fas fa-edit"></i>
-                            </button>
+                            <>
+                              <button 
+                                onClick={() => handleToggleSelesai(idx)} 
+                                style={{ background: row.isSelesai ? '#64748b' : '#3b82f6', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }}
+                                title={row.isSelesai ? "Batalkan Selesai" : "Tandai Selesai"}
+                              >
+                                <i className={row.isSelesai ? "fas fa-undo" : "fas fa-check"}></i>
+                              </button>
+                              <button onClick={() => {
+                                const updated = [...inputRows];
+                                updated[idx].isEditing = true;
+                                setInputRows(updated);
+                              }} style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }} title="Edit">
+                                <i className="fas fa-edit"></i>
+                              </button>
+                            </>
                           )}
-                          <button onClick={() => handleDeleteInputRow(idx)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer' }}>
+                          <button onClick={() => handleDeleteInputRow(idx)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer' }} title="Hapus">
                             <i className="fas fa-trash"></i>
                           </button>
                         </td>
