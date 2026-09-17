@@ -108,6 +108,9 @@ export default function SusulanPage() {
   const [mapelList, setMapelList] = useState<string[]>([]);
   const [inputRows, setInputRows] = useState<InputRow[]>([]);
   const [isFetchingInput, setIsFetchingInput] = useState(false);
+  const [inputSearch, setInputSearch] = useState('');
+  const [inputFilterStatus, setInputFilterStatus] = useState('Semua');
+  const [inputFilterKelas, setInputFilterKelas] = useState('Semua');
 
   // Load existing data
   useEffect(() => {
@@ -412,6 +415,21 @@ export default function SusulanPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const uniqueInputKelas = Array.from(new Set(inputRows.map(r => r.kelas).filter(Boolean))).sort();
+
+  const filteredInputRows = inputRows.filter(row => {
+    const matchesSearch = row.nama.toLowerCase().includes(inputSearch.toLowerCase()) || 
+                          row.mapel.toLowerCase().includes(inputSearch.toLowerCase());
+    
+    let matchesStatus = true;
+    if (inputFilterStatus === 'Selesai') matchesStatus = !!row.isSelesai;
+    if (inputFilterStatus === 'Belum Selesai') matchesStatus = !row.isSelesai;
+
+    const matchesKelas = inputFilterKelas === 'Semua' || row.kelas === inputFilterKelas;
+
+    return matchesSearch && matchesStatus && matchesKelas;
+  });
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div style={{ background: 'white', padding: '24px', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
@@ -519,9 +537,40 @@ export default function SusulanPage() {
               <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: 0 }}>
                 Input Data Susulan
               </h2>
-              <button onClick={handleAddInputRow} style={{ padding: '8px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
-                <i className="fas fa-plus"></i> Tambah Baris
-              </button>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', background: '#f1f5f9', padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                  <i className="fas fa-search" style={{ color: '#94a3b8', marginRight: '8px' }}></i>
+                  <input 
+                    type="text" 
+                    placeholder="Cari siswa / mapel..." 
+                    value={inputSearch}
+                    onChange={(e) => setInputSearch(e.target.value)}
+                    style={{ border: 'none', background: 'transparent', outline: 'none', width: '200px', fontSize: '0.9rem' }}
+                  />
+                </div>
+                <select 
+                  value={inputFilterStatus} 
+                  onChange={(e) => setInputFilterStatus(e.target.value)}
+                  style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem', color: '#475569' }}
+                >
+                  <option value="Semua">Semua Status</option>
+                  <option value="Selesai">Selesai</option>
+                  <option value="Belum Selesai">Belum Selesai</option>
+                </select>
+                <select 
+                  value={inputFilterKelas} 
+                  onChange={(e) => setInputFilterKelas(e.target.value)}
+                  style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem', color: '#475569' }}
+                >
+                  <option value="Semua">Semua Kelas</option>
+                  {uniqueInputKelas.map(k => (
+                    <option key={k} value={k}>Kelas {k}</option>
+                  ))}
+                </select>
+                <button onClick={handleAddInputRow} style={{ padding: '8px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold', marginLeft: '12px' }}>
+                  <i className="fas fa-plus"></i> Tambah Baris
+                </button>
+              </div>
             </div>
 
             {isFetchingInput ? (
@@ -540,70 +589,81 @@ export default function SusulanPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {inputRows.map((row, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', background: row.isSelesai ? '#ecfdf5' : 'transparent' }}>
-                        <td style={{ padding: '12px' }}>
-                          {row.isEditing ? (
-                            <SearchableSelect 
-                              value={row.nisn} 
-                              onChange={(val: string) => handleInputRowChange(idx, 'nisn', val)}
-                              placeholder="Pilih Siswa..."
-                              options={participants.map(p => ({ value: p.nisn, label: p.nama }))}
-                            />
-                          ) : (
-                            <span style={{ fontWeight: 'bold', color: '#334155' }}>{row.nama}</span>
-                          )}
-                        </td>
-                        <td style={{ padding: '12px', textAlign: 'center' }}>
-                          {row.isSelesai ? (
-                            <i className="fas fa-check-circle" style={{ color: '#10b981', fontSize: '1.2rem' }}></i>
-                          ) : (
-                            <span style={{ color: '#cbd5e1' }}>-</span>
-                          )}
-                        </td>
-                        <td style={{ padding: '12px' }}>
-                          {row.isEditing ? (
-                            <SearchableSelect 
-                              value={row.mapel} 
-                              onChange={(val: string) => handleInputRowChange(idx, 'mapel', val)}
-                              placeholder="Pilih Mata Pelajaran..."
-                              options={mapelList.map(m => ({ value: m, label: m }))}
-                            />
-                          ) : (
-                            <span>{row.mapel}</span>
-                          )}
-                        </td>
-                        <td style={{ padding: '12px' }}>{row.kelas}</td>
-                        <td style={{ padding: '12px' }}>{row.ruang}</td>
-                        <td style={{ padding: '12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                          {row.isEditing ? (
-                            <button onClick={() => handleSaveInputRow(idx)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }} title="Simpan">
-                              <i className="fas fa-save"></i>
-                            </button>
-                          ) : (
-                            <>
-                              <button 
-                                onClick={() => handleToggleSelesai(idx)} 
-                                style={{ background: row.isSelesai ? '#64748b' : '#3b82f6', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }}
-                                title={row.isSelesai ? "Batalkan Selesai" : "Tandai Selesai"}
-                              >
-                                <i className={row.isSelesai ? "fas fa-undo" : "fas fa-check"}></i>
-                              </button>
-                              <button onClick={() => {
-                                const updated = [...inputRows];
-                                updated[idx].isEditing = true;
-                                setInputRows(updated);
-                              }} style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }} title="Edit">
-                                <i className="fas fa-edit"></i>
-                              </button>
-                            </>
-                          )}
-                          <button onClick={() => handleDeleteInputRow(idx)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer' }} title="Hapus">
-                            <i className="fas fa-trash"></i>
-                          </button>
+                    {filteredInputRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
+                          Tidak ada data yang sesuai dengan pencarian atau filter.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      filteredInputRows.map((row, _idx) => {
+                        const idx = inputRows.findIndex(r => r === row);
+                        return (
+                          <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', background: row.isSelesai ? '#ecfdf5' : 'transparent' }}>
+                            <td style={{ padding: '12px' }}>
+                              {row.isEditing ? (
+                                <SearchableSelect 
+                                  value={row.nisn} 
+                                  onChange={(val: string) => handleInputRowChange(idx, 'nisn', val)}
+                                  placeholder="Pilih Siswa..."
+                                  options={participants.map(p => ({ value: p.nisn, label: p.nama }))}
+                                />
+                              ) : (
+                                <span style={{ fontWeight: 'bold', color: '#334155' }}>{row.nama}</span>
+                              )}
+                            </td>
+                            <td style={{ padding: '12px', textAlign: 'center' }}>
+                              {row.isSelesai ? (
+                                <i className="fas fa-check-circle" style={{ color: '#10b981', fontSize: '1.2rem' }}></i>
+                              ) : (
+                                <span style={{ color: '#cbd5e1' }}>-</span>
+                              )}
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              {row.isEditing ? (
+                                <SearchableSelect 
+                                  value={row.mapel} 
+                                  onChange={(val: string) => handleInputRowChange(idx, 'mapel', val)}
+                                  placeholder="Pilih Mata Pelajaran..."
+                                  options={mapelList.map(m => ({ value: m, label: m }))}
+                                />
+                              ) : (
+                                <span>{row.mapel}</span>
+                              )}
+                            </td>
+                            <td style={{ padding: '12px' }}>{row.kelas}</td>
+                            <td style={{ padding: '12px' }}>{row.ruang}</td>
+                            <td style={{ padding: '12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                              {row.isEditing ? (
+                                <button onClick={() => handleSaveInputRow(idx)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }} title="Simpan">
+                                  <i className="fas fa-save"></i>
+                                </button>
+                              ) : (
+                                <>
+                                  <button 
+                                    onClick={() => handleToggleSelesai(idx)} 
+                                    style={{ background: row.isSelesai ? '#64748b' : '#3b82f6', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }}
+                                    title={row.isSelesai ? "Batalkan Selesai" : "Tandai Selesai"}
+                                  >
+                                    <i className={row.isSelesai ? "fas fa-undo" : "fas fa-check"}></i>
+                                  </button>
+                                  <button onClick={() => {
+                                    const updated = [...inputRows];
+                                    updated[idx].isEditing = true;
+                                    setInputRows(updated);
+                                  }} style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }} title="Edit">
+                                    <i className="fas fa-edit"></i>
+                                  </button>
+                                </>
+                              )}
+                              <button onClick={() => handleDeleteInputRow(idx)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor: 'pointer' }} title="Hapus">
+                                <i className="fas fa-trash"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
