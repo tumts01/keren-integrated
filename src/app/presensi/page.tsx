@@ -2343,37 +2343,53 @@ export default function PresensiPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rpFiltered.map((r, i) => (
-                      <tr key={r.id || i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? 'white' : '#f8fafc' }}>
-                        <td style={{ padding: '7px 12px', color: '#94a3b8' }}>{i + 1}</td>
-                        <td style={{ padding: '7px 12px', whiteSpace: 'nowrap' }}>{r.tanggal}</td>
-                        <td style={{ padding: '7px 12px', fontWeight: 600 }}>{r.petugasPiket}</td>
-                        <td style={{ padding: '7px 12px', fontWeight: 600 }}>{r.guruDispo}</td>
-                        <td style={{ padding: '7px 12px', color: '#b45309', fontWeight: 600 }}>{r.guruIzin}</td>
-                        <td style={{ padding: '7px 12px' }}>{r.alasanIzin}</td>
-                        <td style={{ padding: '7px 12px', color: '#dc2626', fontWeight: 600 }}>{r.kelasDitinggalkan}</td>
-                        <td style={{ padding: '7px 12px' }}>{r.materi}</td>
-                        <td style={{ padding: '7px 12px', color: '#16a34a' }}>{r.guruPengganti}</td>
-                        {isAdmin && (
-                          <td style={{ padding: '7px 12px', textAlign: 'center' }}>
-                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                              <button
-                                style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
-                                onClick={() => setEditingPiket(r)}
-                              >
-                                <i className="fas fa-edit"></i> Edit
-                              </button>
-                              <button
-                                style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
-                                onClick={() => handleDeletePiket(r.id)}
-                              >
-                                <i className="fas fa-trash"></i> Hapus
-                              </button>
-                            </div>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
+                    {(() => {
+                      const rowSpans = new Array(rpFiltered.length).fill(1);
+                      for (let i = rpFiltered.length - 1; i > 0; i--) {
+                        const current = rpFiltered[i];
+                        const prev = rpFiltered[i - 1];
+                        if (current.tanggal === prev.tanggal && current.petugasPiket === prev.petugasPiket && current.guruDispo === prev.guruDispo) {
+                          rowSpans[i - 1] += rowSpans[i];
+                          rowSpans[i] = 0;
+                        }
+                      }
+                      
+                      return rpFiltered.map((r, i) => (
+                        <tr key={r.id || i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? 'white' : '#f8fafc' }}>
+                          {rowSpans[i] > 0 && (
+                            <>
+                              <td rowSpan={rowSpans[i]} style={{ padding: '7px 12px', color: '#94a3b8', verticalAlign: 'middle' }}>{i + 1}</td>
+                              <td rowSpan={rowSpans[i]} style={{ padding: '7px 12px', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{r.tanggal}</td>
+                              <td rowSpan={rowSpans[i]} style={{ padding: '7px 12px', fontWeight: 600, verticalAlign: 'middle' }}>{r.petugasPiket}</td>
+                              <td rowSpan={rowSpans[i]} style={{ padding: '7px 12px', fontWeight: 600, verticalAlign: 'middle' }}>{r.guruDispo}</td>
+                            </>
+                          )}
+                          <td style={{ padding: '7px 12px', color: '#b45309', fontWeight: 600 }}>{r.guruIzin}</td>
+                          <td style={{ padding: '7px 12px' }}>{r.alasanIzin}</td>
+                          <td style={{ padding: '7px 12px', color: '#dc2626', fontWeight: 600 }}>{r.kelasDitinggalkan}</td>
+                          <td style={{ padding: '7px 12px' }}>{r.materi}</td>
+                          <td style={{ padding: '7px 12px', color: '#16a34a' }}>{r.guruPengganti}</td>
+                          {isAdmin && (
+                            <td style={{ padding: '7px 12px', textAlign: 'center' }}>
+                              <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                                <button
+                                  style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
+                                  onClick={() => setEditingPiket(r)}
+                                >
+                                  <i className="fas fa-edit"></i> Edit
+                                </button>
+                                <button
+                                  style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
+                                  onClick={() => handleDeletePiket(r.id)}
+                                >
+                                  <i className="fas fa-trash"></i> Hapus
+                                </button>
+                              </div>
+                            </td>
+                          )}
+                        </tr>
+                      ));
+                    })()}
                   </tbody>
                 </table>
               </div>
