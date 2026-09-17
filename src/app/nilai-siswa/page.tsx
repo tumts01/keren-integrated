@@ -145,7 +145,7 @@ export default function NilaiSiswaPage() {
       if (result.success) {
         Swal.fire({
           title: 'Mantap Keren!',
-          text: 'Nilai berhasil disimpan ke spreadsheet.',
+          text: 'Nilai berhasil disimpan ke sistem.',
           icon: 'success',
           timer: 2500,
           showConfirmButton: false,
