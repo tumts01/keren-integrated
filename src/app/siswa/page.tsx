@@ -1531,6 +1531,11 @@ const handleExportMissingNisnNik = () => {
         <PrintPresensiModal allData={data} onClose={() => setShowPresensiModal(false)} />
       )}
 
+      {/* Print Kartu Pelajar Modal */}
+      {showKartuPelajarModal && (
+        <PrintKartuPelajarModal allData={data} onClose={() => setShowKartuPelajarModal(false)} />
+      )}
+
       {showMutasiModal && (
         <TambahMutasiModal
           allData={data}
