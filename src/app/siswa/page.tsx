@@ -1058,7 +1058,7 @@ function PrintKartuPelajarModal({
 
       // Fix: encode space in filename
       const templateImg = new Image();
-      templateImg.src = '/kartu%20pelajar.png';
+      templateImg.src = '/kartu-pelajar.png';
       await new Promise<void>((res, rej) => {
         templateImg.onload = () => res();
         templateImg.onerror = () => rej(new Error('Gagal memuat template kartu. Pastikan file "kartu pelajar.png" ada di folder public.'));
