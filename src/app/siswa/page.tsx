@@ -1084,17 +1084,19 @@ function PrintKartuPelajarModal({
         // Font size lowered to ~18px
         ctx.font = '700 19px Poppins, sans-serif'; 
         // Y coordinates for each field to perfectly align with fixed colons
-        wrapText(ctx, student.nama.toUpperCase(), leftX, 255, maxWidth, lineHeight);
+        // Nama turun dikit (255 -> 258)
+        wrapText(ctx, student.nama.toUpperCase(), leftX, 258, maxWidth, lineHeight);
 
         ctx.font = '500 18px Poppins, sans-serif';
         const jk = student.jenisKelamin?.toLowerCase().startsWith('l') ? 'LAKI-LAKI' : 'PEREMPUAN';
-        ctx.fillText(jk, leftX, 350);
-        ctx.fillText(`${student.nis || '-'} / ${student.nisn || '-'}`, leftX, 388);
-        ctx.fillText(`${student.tempatLahir || '-'}, ${student.tanggalLahir || '-'}`, leftX, 426);
-        wrapText(ctx, student.alamat || '-', leftX, 464, maxWidth, lineHeight);
+        
+        // Identitas lain naik dikit (-4px)
+        ctx.fillText(jk, leftX, 346);
+        ctx.fillText(`${student.nis || '-'} / ${student.nisn || '-'}`, leftX, 384);
+        ctx.fillText(`${student.tempatLahir || '-'}, ${student.tanggalLahir || '-'}`, leftX, 422);
+        wrapText(ctx, student.alamat || '-', leftX, 460, maxWidth, lineHeight);
 
-        // Draw Photo on the LEFT side (centered below logo)
-        // Logo center is ~x=180. Photo width=150 -> x = 180 - 75 = 105
+        // Draw Photo on the LEFT side
         if (student.foto) {
           try {
             const photoImg = new Image();
@@ -1107,8 +1109,8 @@ function PrintKartuPelajarModal({
               }),
               new Promise<void>((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))
             ]);
-            // Increased size from 120x160 to 150x200
-            ctx.drawImage(photoImg, 105, 260, 150, 200);
+            // Geser kiri dikit & perbesar dikit (x: 105 -> 85, size: 150x200 -> 165x220, y: 260 -> 255)
+            ctx.drawImage(photoImg, 85, 255, 165, 220);
           } catch {
             // Skip photo silently if it fails or times out
           }
