@@ -1078,22 +1078,23 @@ function PrintKartuPelajarModal({
 
         ctx.fillStyle = '#000000';
         ctx.textBaseline = 'top';
-        // leftX = right after the colon printed on template (~x=450 on 1011px canvas)
-        const leftX = 465, maxWidth = 490, lineHeight = 38;
-        let currentY = 257;
+        // leftX after colon
+        const leftX = 490, maxWidth = 480, lineHeight = 30; // Reduced lineHeight for smaller font
 
-        ctx.font = '600 24px Poppins, sans-serif';
-        currentY = wrapText(ctx, student.nama.toUpperCase(), leftX, currentY, maxWidth, lineHeight);
-        currentY += 15;
+        // Font size lowered to ~18px
+        ctx.font = '700 19px Poppins, sans-serif'; 
+        // Y coordinates for each field to perfectly align with fixed colons
+        wrapText(ctx, student.nama.toUpperCase(), leftX, 255, maxWidth, lineHeight);
 
-        ctx.font = '500 24px Poppins, sans-serif';
+        ctx.font = '500 18px Poppins, sans-serif';
         const jk = student.jenisKelamin?.toLowerCase().startsWith('l') ? 'LAKI-LAKI' : 'PEREMPUAN';
-        currentY = wrapText(ctx, jk, leftX, currentY, maxWidth, lineHeight);
-        currentY = wrapText(ctx, `${student.nis || '-'} / ${student.nisn || '-'}`, leftX, currentY, maxWidth, lineHeight);
-        currentY = wrapText(ctx, `${student.tempatLahir || '-'}, ${student.tanggalLahir || '-'}`, leftX, currentY, maxWidth, lineHeight);
-        wrapText(ctx, student.alamat || '-', leftX, currentY, maxWidth, lineHeight);
+        ctx.fillText(jk, leftX, 350);
+        ctx.fillText(`${student.nis || '-'} / ${student.nisn || '-'}`, leftX, 388);
+        ctx.fillText(`${student.tempatLahir || '-'}, ${student.tanggalLahir || '-'}`, leftX, 426);
+        wrapText(ctx, student.alamat || '-', leftX, 464, maxWidth, lineHeight);
 
-        // Draw Photo on the LEFT side (below logo area, portrait 3:4 ratio)
+        // Draw Photo on the LEFT side (centered below logo)
+        // Logo center is ~x=180. Photo width=150 -> x = 180 - 75 = 105
         if (student.foto) {
           try {
             const photoImg = new Image();
@@ -1106,8 +1107,8 @@ function PrintKartuPelajarModal({
               }),
               new Promise<void>((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))
             ]);
-            // Photo goes on LEFT: x=32, y=255, width=120, height=160 (3:4 portrait)
-            ctx.drawImage(photoImg, 32, 255, 120, 160);
+            // Increased size from 120x160 to 150x200
+            ctx.drawImage(photoImg, 105, 260, 150, 200);
           } catch {
             // Skip photo silently if it fails or times out
           }
