@@ -52,14 +52,10 @@ export const uploadFileToDrive = async (
   params.append('folderId', folderId);
 
   try {
-    const bodyString = params.toString();
     const response = await fetch(gasUrl, {
       method: 'POST',
-      body: bodyString,
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Content-Length': Buffer.byteLength(bodyString).toString(),
-      },
+      body: params, // Pass URLSearchParams directly, fetch will set correct Content-Type and Content-Length automatically
+      cache: 'no-store', // Prevent Next.js from caching the request or response
     });
 
     const responseText = await response.text();
@@ -68,7 +64,8 @@ export const uploadFileToDrive = async (
       result = JSON.parse(responseText);
     } catch (e) {
       console.error('GAS HTML Response:', responseText.substring(0, 500));
-      throw new Error(`Google Apps Script tidak mengembalikan JSON. Cek konfigurasi Deploy Web App (Pastikan Execute as: Me, Access: Anyone).`);
+      const snippet = responseText.substring(0, 100).replace(/<[^>]*>?/gm, '').trim();
+      throw new Error(`Google Apps Script tidak mengembalikan JSON. (Respon: ${snippet || 'Kosong'}). Cek konfigurasi Deploy Web App (Pastikan Execute as: Me, Access: Anyone).`);
     }
 
     if (!result.success) {
