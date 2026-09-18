@@ -1078,7 +1078,8 @@ function PrintKartuPelajarModal({
 
         ctx.fillStyle = '#000000';
         ctx.textBaseline = 'top';
-        const leftX = 475, maxWidth = 500, lineHeight = 38;
+        // leftX = right after the colon printed on template (~x=450 on 1011px canvas)
+        const leftX = 465, maxWidth = 490, lineHeight = 38;
         let currentY = 257;
 
         ctx.font = '600 24px Poppins, sans-serif';
@@ -1092,7 +1093,7 @@ function PrintKartuPelajarModal({
         currentY = wrapText(ctx, `${student.tempatLahir || '-'}, ${student.tanggalLahir || '-'}`, leftX, currentY, maxWidth, lineHeight);
         wrapText(ctx, student.alamat || '-', leftX, currentY, maxWidth, lineHeight);
 
-        // Draw Photo — graceful: skip if fails or times out
+        // Draw Photo on the LEFT side (below logo area, portrait 3:4 ratio)
         if (student.foto) {
           try {
             const photoImg = new Image();
@@ -1105,7 +1106,8 @@ function PrintKartuPelajarModal({
               }),
               new Promise<void>((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))
             ]);
-            ctx.drawImage(photoImg, 800, 257, 165, 220);
+            // Photo goes on LEFT: x=32, y=255, width=120, height=160 (3:4 portrait)
+            ctx.drawImage(photoImg, 32, 255, 120, 160);
           } catch {
             // Skip photo silently if it fails or times out
           }
