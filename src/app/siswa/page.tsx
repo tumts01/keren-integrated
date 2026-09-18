@@ -1052,103 +1052,79 @@ function PrintKartuPelajarModal({
     setIsGenerating(true);
     setProgress(0);
 
-    const zip = new JSZip();
-    const folder = zip.folder(`Kartu_Pelajar_${mode}`);
-
-    const templateImg = new Image();
-    templateImg.src = '/kartu pelajar.png';
-    await new Promise((res, rej) => {
-      templateImg.onload = res;
-      templateImg.onerror = rej;
-    });
-
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // 8.56 x 5.4 cm at 300 DPI is approx 1011 x 638
-    canvas.width = 1011;
-    canvas.height = 638;
-
-    for (let i = 0; i < targetStudents.length; i++) {
-      const student = targetStudents[i];
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(templateImg, 0, 0, canvas.width, canvas.height);
-
-      ctx.fillStyle = '#000000';
-      ctx.font = '600 24px Poppins, sans-serif'; // Bold for Name
-      ctx.textBaseline = 'top';
-
-      const leftX = 475; // Adjust based on the template's colon position
-      const maxWidth = 500; 
-      let currentY = 257; 
-      const lineHeight = 38;
-
-      // 1. Nama (with extra gap to JK if wrapped)
-      currentY = wrapText(ctx, student.nama.toUpperCase(), leftX, currentY, maxWidth, lineHeight);
-      currentY += 15; // extra gap for jenis kelamin so it doesn't overlap if name is 2 lines
-
-      // Back to normal weight for others
-      ctx.font = '500 24px Poppins, sans-serif'; 
-
-      // 2. Jenis Kelamin
-      const jk = student.jenisKelamin?.toLowerCase().startsWith('l') ? 'LAKI-LAKI' : 'PEREMPUAN';
-      currentY = wrapText(ctx, jk, leftX, currentY, maxWidth, lineHeight);
-
-      // 3. NIS / NISN
-      const nisnisn = `${student.nis || '-'} / ${student.nisn || '-'}`;
-      currentY = wrapText(ctx, nisnisn, leftX, currentY, maxWidth, lineHeight);
-
-      // 4. TTL
-      const ttl = `${student.tempatLahir || '-'}, ${student.tanggalLahir || '-'}`;
-      currentY = wrapText(ctx, ttl, leftX, currentY, maxWidth, lineHeight);
-
-      // 5. Alamat
-      wrapText(ctx, student.alamat || '-', leftX, currentY, maxWidth, lineHeight);
-
-      // Draw Photo
-      if (student.foto) {
-        try {
-           const photoImg = new Image();
-           photoImg.crossOrigin = 'Anonymous';
-           // use proxy to avoid CORS
-           photoImg.src = `/api/proxy-image?url=${encodeURIComponent(student.foto)}`;
-           await new Promise((res, rej) => {
-             photoImg.onload = res;
-             photoImg.onerror = rej; 
-           });
-           
-           // Coordinates for photo on the right side
-           // Let's place it at x=780, y=255 with size 3x4 ratio (e.g. 150x200)
-           // Wait, the template has no frame. I will draw it neatly.
-           const photoWidth = 165;
-           const photoHeight = 220;
-           const photoX = 800; // Far right
-           const photoY = 257;
-           
-           ctx.drawImage(photoImg, photoX, photoY, photoWidth, photoHeight);
-        } catch (e) {
-           console.error('Error loading photo for', student.nama, e);
-        }
-      }
-
-      // Add to ZIP
-      const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/png', 1.0));
-      if (blob && folder) {
-        const cleanName = student.nama.replace(/[^a-z0-9]/gi, '_');
-        folder.file(`${student.rombel}_${student.nis || i}_${cleanName}.png`, blob);
-      }
-
-      setProgress(Math.round(((i + 1) / targetStudents.length) * 100));
-    }
-
     try {
+      const zip = new JSZip();
+      const folder = zip.folder(`Kartu_Pelajar_${mode}`);
+
+      // Fix: encode space in filename
+      const templateImg = new Image();
+      templateImg.src = '/kartu%20pelajar.png';
+      await new Promise<void>((res, rej) => {
+        templateImg.onload = () => res();
+        templateImg.onerror = () => rej(new Error('Gagal memuat template kartu. Pastikan file "kartu pelajar.png" ada di folder public.'));
+      });
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas tidak tersedia');
+
+      canvas.width = 1011;
+      canvas.height = 638;
+
+      for (let i = 0; i < targetStudents.length; i++) {
+        const student = targetStudents[i];
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(templateImg, 0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#000000';
+        ctx.textBaseline = 'top';
+        const leftX = 475, maxWidth = 500, lineHeight = 38;
+        let currentY = 257;
+
+        ctx.font = '600 24px Poppins, sans-serif';
+        currentY = wrapText(ctx, student.nama.toUpperCase(), leftX, currentY, maxWidth, lineHeight);
+        currentY += 15;
+
+        ctx.font = '500 24px Poppins, sans-serif';
+        const jk = student.jenisKelamin?.toLowerCase().startsWith('l') ? 'LAKI-LAKI' : 'PEREMPUAN';
+        currentY = wrapText(ctx, jk, leftX, currentY, maxWidth, lineHeight);
+        currentY = wrapText(ctx, `${student.nis || '-'} / ${student.nisn || '-'}`, leftX, currentY, maxWidth, lineHeight);
+        currentY = wrapText(ctx, `${student.tempatLahir || '-'}, ${student.tanggalLahir || '-'}`, leftX, currentY, maxWidth, lineHeight);
+        wrapText(ctx, student.alamat || '-', leftX, currentY, maxWidth, lineHeight);
+
+        // Draw Photo — graceful: skip if fails or times out
+        if (student.foto) {
+          try {
+            const photoImg = new Image();
+            photoImg.crossOrigin = 'Anonymous';
+            photoImg.src = `/api/proxy-image?url=${encodeURIComponent(student.foto)}`;
+            await Promise.race([
+              new Promise<void>((res, rej) => {
+                photoImg.onload = () => res();
+                photoImg.onerror = () => rej(new Error('photo error'));
+              }),
+              new Promise<void>((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))
+            ]);
+            ctx.drawImage(photoImg, 800, 257, 165, 220);
+          } catch {
+            // Skip photo silently if it fails or times out
+          }
+        }
+
+        const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/png', 1.0));
+        if (blob && folder) {
+          const cleanName = student.nama.replace(/[^a-z0-9]/gi, '_');
+          folder.file(`${student.rombel}_${student.nis || i}_${cleanName}.png`, blob);
+        }
+        setProgress(Math.round(((i + 1) / targetStudents.length) * 100));
+      }
+
       const content = await zip.generateAsync({ type: 'blob' });
       saveAs(content, `Kartu_Pelajar_${mode}.zip`);
-      Swal.fire({ icon: 'success', title: 'Berhasil', text: `Berhasil mengunduh ${targetStudents.length} Kartu Pelajar!` });
+      Swal.fire({ icon: 'success', title: 'Berhasil!', text: `${targetStudents.length} Kartu Pelajar berhasil diunduh.` });
       onClose();
     } catch (e: any) {
-      Swal.fire({ icon: 'error', title: 'Gagal Membuat ZIP', text: e.message });
+      Swal.fire({ icon: 'error', title: 'Gagal', text: e.message || 'Terjadi kesalahan saat generate kartu.' });
     } finally {
       setIsGenerating(false);
     }
