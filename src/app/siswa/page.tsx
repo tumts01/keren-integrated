@@ -3,6 +3,8 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import styles from './Siswa.module.css';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 interface Siswa {
   id: number;
@@ -975,6 +977,251 @@ const STANDARD_KEYS = [
   'LINK FOTO TERBARU', 'LINK URL FOTO 1', 'LINK URL FOTO 2'
 ];
 
+// ===== CETAK KARTU PELAJAR MODAL =====
+function PrintKartuPelajarModal({
+  allData,
+  onClose,
+}: {
+  allData: Siswa[];
+  onClose: () => void;
+}) {
+  const [mode, setMode] = useState<'angkatan' | 'kelas' | 'manual'>('kelas');
+  const [tingkat, setTingkat] = useState<string>('7');
+  const [rombel, setRombel] = useState<string>('');
+  const [selectedManual, setSelectedManual] = useState<string>('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  const activeData = allData.filter(s => ['aktif'].includes(s.status.toLowerCase().trim()) && s.isLatest);
+  const uniqueRombels = Array.from(new Set(activeData.map(s => s.rombel))).filter(Boolean).sort();
+
+  useEffect(() => {
+    if (uniqueRombels.length > 0 && !rombel) {
+      setRombel(uniqueRombels[0]);
+    }
+  }, [uniqueRombels]);
+
+  const wrapText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number) => {
+    const words = text.split(' ');
+    let line = '';
+    let currentY = y;
+    
+    for (let n = 0; n < words.length; n++) {
+      const testLine = line + words[n] + ' ';
+      const metrics = ctx.measureText(testLine);
+      const testWidth = metrics.width;
+      if (testWidth > maxWidth && n > 0) {
+        ctx.fillText(line, x, currentY);
+        line = words[n] + ' ';
+        currentY += lineHeight;
+      } else {
+        line = testLine;
+      }
+    }
+    ctx.fillText(line, x, currentY);
+    return currentY + lineHeight;
+  };
+
+  const handleGenerate = async () => {
+    let targetStudents: Siswa[] = [];
+    
+    if (mode === 'angkatan') {
+      targetStudents = activeData.filter(s => s.rombel.startsWith(tingkat));
+    } else if (mode === 'kelas') {
+      targetStudents = activeData.filter(s => s.rombel === rombel);
+    } else {
+      const manualNames = selectedManual.split(',').map(n => n.trim().toLowerCase()).filter(Boolean);
+      targetStudents = activeData.filter(s => 
+        manualNames.some(name => s.nama.toLowerCase().includes(name)) ||
+        manualNames.some(name => s.nis?.includes(name)) ||
+        manualNames.some(name => s.nisn?.includes(name))
+      );
+    }
+
+    if (targetStudents.length === 0) {
+      Swal.fire({ icon: 'warning', title: 'Data Kosong', text: 'Tidak ada data siswa yang sesuai filter' });
+      return;
+    }
+
+    setIsGenerating(true);
+    setProgress(0);
+
+    const zip = new JSZip();
+    const folder = zip.folder(`Kartu_Pelajar_${mode}`);
+
+    const templateImg = new Image();
+    templateImg.src = '/kartu pelajar.png';
+    await new Promise((res, rej) => {
+      templateImg.onload = res;
+      templateImg.onerror = rej;
+    });
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // 8.56 x 5.4 cm at 300 DPI is approx 1011 x 638
+    canvas.width = 1011;
+    canvas.height = 638;
+
+    for (let i = 0; i < targetStudents.length; i++) {
+      const student = targetStudents[i];
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(templateImg, 0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#000000';
+      ctx.font = '600 24px Poppins, sans-serif'; // Bold for Name
+      ctx.textBaseline = 'top';
+
+      const leftX = 475; // Adjust based on the template's colon position
+      const maxWidth = 500; 
+      let currentY = 257; 
+      const lineHeight = 38;
+
+      // 1. Nama (with extra gap to JK if wrapped)
+      currentY = wrapText(ctx, student.nama.toUpperCase(), leftX, currentY, maxWidth, lineHeight);
+      currentY += 15; // extra gap for jenis kelamin so it doesn't overlap if name is 2 lines
+
+      // Back to normal weight for others
+      ctx.font = '500 24px Poppins, sans-serif'; 
+
+      // 2. Jenis Kelamin
+      const jk = student.jenisKelamin?.toLowerCase().startsWith('l') ? 'LAKI-LAKI' : 'PEREMPUAN';
+      currentY = wrapText(ctx, jk, leftX, currentY, maxWidth, lineHeight);
+
+      // 3. NIS / NISN
+      const nisnisn = `${student.nis || '-'} / ${student.nisn || '-'}`;
+      currentY = wrapText(ctx, nisnisn, leftX, currentY, maxWidth, lineHeight);
+
+      // 4. TTL
+      const ttl = `${student.tempatLahir || '-'}, ${student.tanggalLahir || '-'}`;
+      currentY = wrapText(ctx, ttl, leftX, currentY, maxWidth, lineHeight);
+
+      // 5. Alamat
+      wrapText(ctx, student.alamat || '-', leftX, currentY, maxWidth, lineHeight);
+
+      // Draw Photo
+      if (student.foto) {
+        try {
+           const photoImg = new Image();
+           photoImg.crossOrigin = 'Anonymous';
+           // use proxy to avoid CORS
+           photoImg.src = `/api/proxy-image?url=${encodeURIComponent(student.foto)}`;
+           await new Promise((res, rej) => {
+             photoImg.onload = res;
+             photoImg.onerror = rej; 
+           });
+           
+           // Coordinates for photo on the right side
+           // Let's place it at x=780, y=255 with size 3x4 ratio (e.g. 150x200)
+           // Wait, the template has no frame. I will draw it neatly.
+           const photoWidth = 165;
+           const photoHeight = 220;
+           const photoX = 800; // Far right
+           const photoY = 257;
+           
+           ctx.drawImage(photoImg, photoX, photoY, photoWidth, photoHeight);
+        } catch (e) {
+           console.error('Error loading photo for', student.nama, e);
+        }
+      }
+
+      // Add to ZIP
+      const blob = await new Promise<Blob | null>(res => canvas.toBlob(res, 'image/png', 1.0));
+      if (blob && folder) {
+        const cleanName = student.nama.replace(/[^a-z0-9]/gi, '_');
+        folder.file(`${student.rombel}_${student.nis || i}_${cleanName}.png`, blob);
+      }
+
+      setProgress(Math.round(((i + 1) / targetStudents.length) * 100));
+    }
+
+    try {
+      const content = await zip.generateAsync({ type: 'blob' });
+      saveAs(content, `Kartu_Pelajar_${mode}.zip`);
+      Swal.fire({ icon: 'success', title: 'Berhasil', text: `Berhasil mengunduh ${targetStudents.length} Kartu Pelajar!` });
+      onClose();
+    } catch (e: any) {
+      Swal.fire({ icon: 'error', title: 'Gagal Membuat ZIP', text: e.message });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <div className={styles.modalOverlay} onClick={!isGenerating ? onClose : undefined}>
+      <div className={styles.modalCard} style={{ maxWidth: '450px' }} onClick={e => e.stopPropagation()}>
+        <div className={styles.modalHeader}>
+          <h2><i className="fas fa-id-card"></i> Cetak Kartu Pelajar</h2>
+          {!isGenerating && <button className={styles.closeBtn} onClick={onClose}><i className="fas fa-times"></i></button>}
+        </div>
+        <div className={styles.modalBody} style={{ padding: '20px', display: 'block' }}>
+          
+          <div style={{ marginBottom: '15px' }}>
+            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Mode Cetak</label>
+            <select className={styles.selectBox} value={mode} onChange={e => setMode(e.target.value as any)} disabled={isGenerating}>
+              <option value="kelas">Per Kelas (Rombel)</option>
+              <option value="angkatan">Per Angkatan (Tingkat)</option>
+              <option value="manual">Input Manual</option>
+            </select>
+          </div>
+
+          {mode === 'angkatan' && (
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Tingkat Kelas</label>
+              <select className={styles.selectBox} value={tingkat} onChange={e => setTingkat(e.target.value)} disabled={isGenerating}>
+                <option value="7">Kelas 7</option>
+                <option value="8">Kelas 8</option>
+                <option value="9">Kelas 9</option>
+              </select>
+            </div>
+          )}
+
+          {mode === 'kelas' && (
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Pilih Kelas</label>
+              <select className={styles.selectBox} value={rombel} onChange={e => setRombel(e.target.value)} disabled={isGenerating}>
+                {uniqueRombels.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+          )}
+
+          {mode === 'manual' && (
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Nama / NIS (Pisahkan dengan koma)</label>
+              <textarea 
+                className={styles.inputField} 
+                style={{ width: '100%', height: '80px', padding: '10px' }} 
+                placeholder="Contoh: Budi, 13456, Andi"
+                value={selectedManual}
+                onChange={e => setSelectedManual(e.target.value)}
+                disabled={isGenerating}
+              ></textarea>
+            </div>
+          )}
+
+          {isGenerating && (
+            <div style={{ marginBottom: '15px', textAlign: 'center' }}>
+              <p style={{ marginBottom: '5px', fontWeight: 'bold', color: '#0d9488' }}>Sedang Memproses: {progress}%</p>
+              <div style={{ width: '100%', height: '10px', backgroundColor: '#e2e8f0', borderRadius: '5px', overflow: 'hidden' }}>
+                <div style={{ width: `${progress}%`, height: '100%', backgroundColor: '#0d9488', transition: 'width 0.2s' }}></div>
+              </div>
+              <p style={{ fontSize: '0.8rem', marginTop: '5px', color: '#64748b' }}>Mohon tunggu, jangan tutup halaman ini...</p>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+            <button className={styles.btnSecondary} onClick={onClose} disabled={isGenerating}>Batal</button>
+            <button className={styles.btnPrimary} onClick={handleGenerate} disabled={isGenerating}>
+              {isGenerating ? <><i className="fas fa-spinner fa-spin"></i> Memproses...</> : <><i className="fas fa-download"></i> Unduh (.zip)</>}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function SiswaPage() {
   const [data, setData] = useState<Siswa[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -995,6 +1242,7 @@ export default function SiswaPage() {
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showPresensiModal, setShowPresensiModal] = useState(false);
   const [showMutasiModal, setShowMutasiModal] = useState(false);
+  const [showKartuPelajarModal, setShowKartuPelajarModal] = useState(false);
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -1470,22 +1718,25 @@ const handleExportMissingNisnNik = () => {
               />
             </div>
             <button onClick={handleSyncSupabase} className="btn" disabled={isSyncing} style={{ background: '#3b82f6', color: 'white', borderColor: '#3b82f6', marginRight: '8px' }}>
-                {isSyncing ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-sync"></i>} {isSyncing ? 'Menyinkronkan...' : 'Sync Supabase'}
-              </button>
-              <button onClick={handleExportExcel} className="btn btn-gold" style={{ marginRight: '8px' }}>
+              <i className={`fas ${isSyncing ? 'fa-spinner fa-spin' : 'fa-sync-alt'}`}></i> {isSyncing ? 'Sinkronisasi...' : 'Tarik Data'}
+            </button>
+            <button onClick={handleExportExcel} className="btn btn-gold" style={{ marginRight: '8px' }}>
               <i className="fas fa-file-excel"></i> Export Excel
             </button>
             <button onClick={handleExportMissingNisnNik} className="btn" style={{ marginRight: '8px', background: '#ef4444', color: 'white', borderColor: '#ef4444' }} title="Cetak data siswa yang NISN atau NIK nya kosong">
-              <i className="fas fa-exclamation-circle"></i> Cek NISN/NIK Kosong
+              <i className="fas fa-exclamation-triangle"></i> Cek Data Kosong
             </button>
             <button onClick={() => setShowPresensiModal(true)} className="btn btn-primary" style={{ background: "linear-gradient(135deg,#10b981,#059669)", borderColor: "#10b981", marginRight: "8px" }}>
               <i className="fas fa-calendar-check"></i> Cetak Absensi
             </button>
-            <button onClick={() => setShowPrintModal(true)} className="btn btn-primary" style={{ background: 'linear-gradient(135deg,#7c3aed,#6d28d9)', borderColor: '#7c3aed' }}>
-              <i className="fas fa-print"></i> Cetak Daftar
+            <button onClick={() => setShowKartuPelajarModal(true)} className="btn btn-primary" style={{ background: "linear-gradient(135deg,#f59e0b,#d97706)", borderColor: "#f59e0b", marginRight: "8px" }}>
+              <i className="fas fa-id-card"></i> Kartu Pelajar
+            </button>
+            <button onClick={() => setShowPrintModal(true)} className="btn btn-primary" style={{ background: 'linear-gradient(135deg,#7c3aed,#6d28d9)', borderColor: '#7c3aed', marginRight: "8px" }}>
+              <i className="fas fa-print"></i> Cetak Format
             </button>
             <button onClick={() => setShowMutasiModal(true)} className="btn btn-primary" style={{ background: 'linear-gradient(135deg,#0ea5e9,#0284c7)', borderColor: '#0ea5e9' }}>
-              <i className="fas fa-user-plus"></i> Mutasi Masuk
+              <i className="fas fa-exchange-alt"></i> Data Mutasi
             </button>
           </div>
         </div>
