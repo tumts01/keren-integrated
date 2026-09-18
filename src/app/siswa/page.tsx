@@ -988,35 +988,51 @@ function PrintKartuPelajarModal({
   const [mode, setMode] = useState<'angkatan' | 'kelas' | 'manual'>('kelas');
   const [tingkat, setTingkat] = useState<string>('7');
   const [rombel, setRombel] = useState<string>('');
-  const [selectedManual, setSelectedManual] = useState<string>('');
+  const [manualSearch, setManualSearch] = useState<string>('');
+  const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const activeData = allData.filter(s => ['aktif'].includes(s.status.toLowerCase().trim()) && s.isLatest);
   const uniqueRombels = Array.from(new Set(activeData.map(s => s.rombel))).filter(Boolean).sort();
 
   useEffect(() => {
-    if (uniqueRombels.length > 0 && !rombel) {
-      setRombel(uniqueRombels[0]);
-    }
+    if (uniqueRombels.length > 0 && !rombel) setRombel(uniqueRombels[0]);
   }, [uniqueRombels]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setShowDropdown(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filteredStudents = activeData.filter(s =>
+    s.nama.toLowerCase().includes(manualSearch.toLowerCase()) ||
+    (s.nis || '').includes(manualSearch) ||
+    s.rombel.toLowerCase().includes(manualSearch.toLowerCase())
+  ).sort((a, b) => a.nama.localeCompare(b.nama));
+
+  const selectedStudentObjects = activeData.filter(s => selectedStudents.includes(s.nis || s.nama));
+
+  const toggleStudent = (key: string) => {
+    setSelectedStudents(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+  };
 
   const wrapText = (ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number) => {
     const words = text.split(' ');
     let line = '';
     let currentY = y;
-    
     for (let n = 0; n < words.length; n++) {
       const testLine = line + words[n] + ' ';
-      const metrics = ctx.measureText(testLine);
-      const testWidth = metrics.width;
-      if (testWidth > maxWidth && n > 0) {
+      if (ctx.measureText(testLine).width > maxWidth && n > 0) {
         ctx.fillText(line, x, currentY);
         line = words[n] + ' ';
         currentY += lineHeight;
-      } else {
-        line = testLine;
-      }
+      } else { line = testLine; }
     }
     ctx.fillText(line, x, currentY);
     return currentY + lineHeight;
@@ -1024,19 +1040,9 @@ function PrintKartuPelajarModal({
 
   const handleGenerate = async () => {
     let targetStudents: Siswa[] = [];
-    
-    if (mode === 'angkatan') {
-      targetStudents = activeData.filter(s => s.rombel.startsWith(tingkat));
-    } else if (mode === 'kelas') {
-      targetStudents = activeData.filter(s => s.rombel === rombel);
-    } else {
-      const manualNames = selectedManual.split(',').map(n => n.trim().toLowerCase()).filter(Boolean);
-      targetStudents = activeData.filter(s => 
-        manualNames.some(name => s.nama.toLowerCase().includes(name)) ||
-        manualNames.some(name => s.nis?.includes(name)) ||
-        manualNames.some(name => s.nisn?.includes(name))
-      );
-    }
+    if (mode === 'angkatan') targetStudents = activeData.filter(s => s.rombel.startsWith(tingkat));
+    else if (mode === 'kelas') targetStudents = activeData.filter(s => s.rombel === rombel);
+    else targetStudents = selectedStudentObjects;
 
     if (targetStudents.length === 0) {
       Swal.fire({ icon: 'warning', title: 'Data Kosong', text: 'Tidak ada data siswa yang sesuai filter' });
@@ -1148,72 +1154,179 @@ function PrintKartuPelajarModal({
     }
   };
 
+  const modeOptions = [
+    { value: 'kelas', icon: 'fa-chalkboard', label: 'Per Kelas', desc: 'Pilih rombel' },
+    { value: 'angkatan', icon: 'fa-layer-group', label: 'Per Angkatan', desc: 'Semua 7/8/9' },
+    { value: 'manual', icon: 'fa-user-check', label: 'Pilih Siswa', desc: 'Satu per satu' },
+  ];
+
   return (
     <div className={styles.modalOverlay} onClick={!isGenerating ? onClose : undefined}>
-      <div className={styles.modalCard} style={{ maxWidth: '450px' }} onClick={e => e.stopPropagation()}>
-        <div className={styles.modalHeader}>
-          <h2><i className="fas fa-id-card"></i> Cetak Kartu Pelajar</h2>
-          {!isGenerating && <button className={styles.closeBtn} onClick={onClose}><i className="fas fa-times"></i></button>}
+      <div className={styles.modalCard} style={{ maxWidth: '520px', borderRadius: '16px', overflow: 'hidden', padding: 0 }} onClick={e => e.stopPropagation()}>
+
+        {/* Header */}
+        <div style={{ background: 'linear-gradient(135deg, #1a6b3c 0%, #2d9e5f 100%)', padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '42px', height: '42px', background: 'rgba(255,255,255,0.2)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <i className="fas fa-id-card" style={{ color: 'white', fontSize: '19px' }}></i>
+            </div>
+            <div>
+              <h2 style={{ margin: 0, color: 'white', fontSize: '1.05rem', fontWeight: 700 }}>Cetak Kartu Pelajar</h2>
+              <p style={{ margin: 0, color: 'rgba(255,255,255,0.7)', fontSize: '0.78rem' }}>Generate & unduh dalam format PNG (.zip)</p>
+            </div>
+          </div>
+          {!isGenerating && (
+            <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', width: '34px', height: '34px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>
+              <i className="fas fa-times"></i>
+            </button>
+          )}
         </div>
-        <div className={styles.modalBody} style={{ padding: '20px', display: 'block' }}>
-          
-          <div style={{ marginBottom: '15px' }}>
-            <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Mode Cetak</label>
-            <select className={styles.selectBox} value={mode} onChange={e => setMode(e.target.value as any)} disabled={isGenerating}>
-              <option value="kelas">Per Kelas (Rombel)</option>
-              <option value="angkatan">Per Angkatan (Tingkat)</option>
-              <option value="manual">Input Manual</option>
-            </select>
+
+        {/* Body */}
+        <div style={{ padding: '22px', background: '#f8fafc' }}>
+
+          {/* Mode Tabs */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '10px', fontWeight: 600, fontSize: '0.78rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Mode Cetak</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+              {modeOptions.map(opt => (
+                <button key={opt.value} disabled={isGenerating} onClick={() => setMode(opt.value as any)}
+                  style={{ padding: '12px 8px', border: `2px solid ${mode === opt.value ? '#1a6b3c' : '#e2e8f0'}`, borderRadius: '12px', cursor: 'pointer',
+                    background: mode === opt.value ? '#f0fdf4' : 'white', transition: 'all 0.15s', textAlign: 'center' }}>
+                  <i className={`fas ${opt.icon}`} style={{ color: mode === opt.value ? '#1a6b3c' : '#94a3b8', fontSize: '20px', display: 'block', marginBottom: '6px' }}></i>
+                  <span style={{ display: 'block', fontWeight: 700, fontSize: '0.82rem', color: mode === opt.value ? '#1a6b3c' : '#374151' }}>{opt.label}</span>
+                  <span style={{ display: 'block', fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>{opt.desc}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
+          {/* Per Angkatan */}
           {mode === 'angkatan' && (
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Tingkat Kelas</label>
-              <select className={styles.selectBox} value={tingkat} onChange={e => setTingkat(e.target.value)} disabled={isGenerating}>
-                <option value="7">Kelas 7</option>
-                <option value="8">Kelas 8</option>
-                <option value="9">Kelas 9</option>
-              </select>
-            </div>
-          )}
-
-          {mode === 'kelas' && (
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Pilih Kelas</label>
-              <select className={styles.selectBox} value={rombel} onChange={e => setRombel(e.target.value)} disabled={isGenerating}>
-                {uniqueRombels.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </div>
-          )}
-
-          {mode === 'manual' && (
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Nama / NIS (Pisahkan dengan koma)</label>
-              <textarea 
-                className={styles.inputField} 
-                style={{ width: '100%', height: '80px', padding: '10px' }} 
-                placeholder="Contoh: Budi, 13456, Andi"
-                value={selectedManual}
-                onChange={e => setSelectedManual(e.target.value)}
-                disabled={isGenerating}
-              ></textarea>
-            </div>
-          )}
-
-          {isGenerating && (
-            <div style={{ marginBottom: '15px', textAlign: 'center' }}>
-              <p style={{ marginBottom: '5px', fontWeight: 'bold', color: '#0d9488' }}>Sedang Memproses: {progress}%</p>
-              <div style={{ width: '100%', height: '10px', backgroundColor: '#e2e8f0', borderRadius: '5px', overflow: 'hidden' }}>
-                <div style={{ width: `${progress}%`, height: '100%', backgroundColor: '#0d9488', transition: 'width 0.2s' }}></div>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.85rem', color: '#374151' }}>Tingkat Kelas</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {['7', '8', '9'].map(t => (
+                  <button key={t} onClick={() => setTingkat(t)} disabled={isGenerating}
+                    style={{ flex: 1, padding: '10px', border: '2px solid', borderRadius: '10px', cursor: 'pointer', fontWeight: 600,
+                      borderColor: tingkat === t ? '#1a6b3c' : '#e2e8f0',
+                      background: tingkat === t ? '#1a6b3c' : 'white',
+                      color: tingkat === t ? 'white' : '#374151', transition: 'all 0.15s' }}>
+                    Kelas {t}
+                  </button>
+                ))}
               </div>
-              <p style={{ fontSize: '0.8rem', marginTop: '5px', color: '#64748b' }}>Mohon tunggu, jangan tutup halaman ini...</p>
+              <p style={{ margin: '8px 0 0', fontSize: '0.78rem', color: '#0284c7', background: '#e0f2fe', padding: '8px 12px', borderRadius: '8px' }}>
+                <i className="fas fa-info-circle" style={{ marginRight: '5px' }}></i>
+                {activeData.filter(s => s.rombel.startsWith(tingkat)).length} siswa aktif akan digenerate
+              </p>
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-            <button className={styles.btnSecondary} onClick={onClose} disabled={isGenerating}>Batal</button>
-            <button className={styles.btnPrimary} onClick={handleGenerate} disabled={isGenerating}>
-              {isGenerating ? <><i className="fas fa-spinner fa-spin"></i> Memproses...</> : <><i className="fas fa-download"></i> Unduh (.zip)</>}
+          {/* Per Kelas */}
+          {mode === 'kelas' && (
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.85rem', color: '#374151' }}>Pilih Kelas / Rombel</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px', maxHeight: '110px', overflowY: 'auto' }}>
+                {uniqueRombels.map(r => (
+                  <button key={r} onClick={() => setRombel(r)} disabled={isGenerating}
+                    style={{ padding: '8px 4px', border: '2px solid', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.82rem',
+                      borderColor: rombel === r ? '#1a6b3c' : '#e2e8f0',
+                      background: rombel === r ? '#1a6b3c' : 'white',
+                      color: rombel === r ? 'white' : '#374151', transition: 'all 0.15s' }}>
+                    {r}
+                  </button>
+                ))}
+              </div>
+              {rombel && (
+                <p style={{ margin: '8px 0 0', fontSize: '0.78rem', color: '#0284c7', background: '#e0f2fe', padding: '8px 12px', borderRadius: '8px' }}>
+                  <i className="fas fa-info-circle" style={{ marginRight: '5px' }}></i>
+                  {activeData.filter(s => s.rombel === rombel).length} siswa aktif di kelas {rombel}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Manual Searchable */}
+          {mode === 'manual' && (
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, fontSize: '0.85rem', color: '#374151' }}>Cari & Pilih Siswa</label>
+              <div ref={dropdownRef} style={{ position: 'relative' }}>
+                <div style={{ position: 'relative' }}>
+                  <i className="fas fa-search" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '13px' }}></i>
+                  <input type="text" value={manualSearch}
+                    onChange={e => { setManualSearch(e.target.value); setShowDropdown(true); }}
+                    onFocus={() => setShowDropdown(true)}
+                    placeholder="Ketik nama, NIS, atau kelas..."
+                    disabled={isGenerating}
+                    style={{ width: '100%', padding: '10px 12px 10px 36px', border: '2px solid #e2e8f0', borderRadius: '10px', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box', background: 'white' }}
+                  />
+                </div>
+                {showDropdown && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, background: 'white', border: '2px solid #e2e8f0', borderRadius: '10px', maxHeight: '210px', overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', marginTop: '4px' }}>
+                    {filteredStudents.length === 0 ? (
+                      <div style={{ padding: '14px', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>Tidak ada siswa ditemukan</div>
+                    ) : filteredStudents.slice(0, 60).map(s => {
+                      const key = s.nis || s.nama;
+                      const isSel = selectedStudents.includes(key);
+                      return (
+                        <div key={key} onClick={() => toggleStudent(key)}
+                          style={{ padding: '9px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', background: isSel ? '#f0fdf4' : 'white', borderBottom: '1px solid #f1f5f9', transition: 'background 0.1s' }}>
+                          <div style={{ width: '18px', height: '18px', borderRadius: '5px', border: `2px solid ${isSel ? '#1a6b3c' : '#cbd5e1'}`, background: isSel ? '#1a6b3c' : 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            {isSel && <i className="fas fa-check" style={{ color: 'white', fontSize: '9px' }}></i>}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#1e293b' }}>{s.nama}</div>
+                            <div style={{ fontSize: '0.73rem', color: '#64748b' }}>{s.rombel} • NIS: {s.nis || '-'}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              {selectedStudents.length > 0 && (
+                <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '6px', maxHeight: '80px', overflowY: 'auto' }}>
+                  {selectedStudentObjects.map(s => {
+                    const key = s.nis || s.nama;
+                    return (
+                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: '#1a6b3c', color: 'white', padding: '4px 8px 4px 10px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 600 }}>
+                        {s.nama.split(' ').slice(0, 2).join(' ')}
+                        <button onClick={() => toggleStudent(key)} style={{ background: 'rgba(255,255,255,0.25)', border: 'none', color: 'white', width: '16px', height: '16px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, fontSize: '9px', flexShrink: 0 }}>✕</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <p style={{ margin: '8px 0 0', fontSize: '0.78rem', color: selectedStudents.length > 0 ? '#1a6b3c' : '#94a3b8', fontWeight: selectedStudents.length > 0 ? 600 : 400 }}>
+                {selectedStudents.length === 0 ? 'Belum ada siswa yang dipilih' : `✓ ${selectedStudents.length} siswa dipilih`}
+              </p>
+            </div>
+          )}
+
+          {/* Progress */}
+          {isGenerating && (
+            <div style={{ marginBottom: '16px', background: 'white', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontWeight: 600, fontSize: '0.84rem', color: '#374151' }}>Sedang memproses...</span>
+                <span style={{ fontWeight: 700, color: '#1a6b3c' }}>{progress}%</span>
+              </div>
+              <div style={{ width: '100%', height: '8px', backgroundColor: '#e2e8f0', borderRadius: '100px', overflow: 'hidden' }}>
+                <div style={{ width: `${progress}%`, height: '100%', background: 'linear-gradient(90deg, #1a6b3c, #2d9e5f)', borderRadius: '100px', transition: 'width 0.2s' }}></div>
+              </div>
+              <p style={{ fontSize: '0.74rem', color: '#94a3b8', margin: '6px 0 0' }}>Jangan tutup halaman ini...</p>
+            </div>
+          )}
+
+          {/* Footer */}
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={onClose} disabled={isGenerating}
+              style={{ flex: 1, padding: '11px', border: '2px solid #e2e8f0', borderRadius: '10px', background: 'white', color: '#374151', fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem' }}>
+              Batal
+            </button>
+            <button onClick={handleGenerate} disabled={isGenerating}
+              style={{ flex: 2, padding: '11px', border: 'none', borderRadius: '10px', background: isGenerating ? '#94a3b8' : 'linear-gradient(135deg, #1a6b3c, #2d9e5f)', color: 'white', fontWeight: 700, cursor: isGenerating ? 'not-allowed' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              {isGenerating ? <><i className="fas fa-spinner fa-spin"></i> Memproses...</> : <><i className="fas fa-download"></i> Unduh Kartu (.zip)</>}
             </button>
           </div>
         </div>
