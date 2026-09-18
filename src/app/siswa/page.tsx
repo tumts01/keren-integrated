@@ -1084,17 +1084,17 @@ function PrintKartuPelajarModal({
         // Font size lowered to ~18px
         ctx.font = '700 19px Poppins, sans-serif'; 
         // Y coordinates for each field to perfectly align with fixed colons
-        // Nama diturunkan lebih jauh (258 -> 265)
-        wrapText(ctx, student.nama.toUpperCase(), leftX, 265, maxWidth, lineHeight);
+        // Nama diturunkan 1px lagi (265 -> 266)
+        wrapText(ctx, student.nama.toUpperCase(), leftX, 266, maxWidth, lineHeight);
 
         ctx.font = '500 18px Poppins, sans-serif';
         const jk = student.jenisKelamin?.toLowerCase().startsWith('l') ? 'LAKI-LAKI' : 'PEREMPUAN';
         
-        // Identitas lain dinaikkan lebih jauh (-8px dari sebelumnya)
-        ctx.fillText(jk, leftX, 338);
-        ctx.fillText(`${student.nis || '-'} / ${student.nisn || '-'}`, leftX, 376);
-        ctx.fillText(`${student.tempatLahir || '-'}, ${student.tanggalLahir || '-'}`, leftX, 414);
-        wrapText(ctx, student.alamat || '-', leftX, 452, maxWidth, lineHeight);
+        // Identitas lain dinaikkan 1px lagi
+        ctx.fillText(jk, leftX, 337);
+        ctx.fillText(`${student.nis || '-'} / ${student.nisn || '-'}`, leftX, 375);
+        ctx.fillText(`${student.tempatLahir || '-'}, ${student.tanggalLahir || '-'}`, leftX, 413);
+        wrapText(ctx, student.alamat || '-', leftX, 451, maxWidth, lineHeight);
 
         // Draw Photo on the LEFT side
         if (student.foto) {
