@@ -300,7 +300,7 @@ export default function JurnalMgmpTab() {
   return (
     <div style={{ padding: '20px 0', fontFamily: 'sans-serif' }}>
       {/* Filters & Actions */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
         <input
           type="text"
