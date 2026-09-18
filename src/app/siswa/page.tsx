@@ -1084,17 +1084,17 @@ function PrintKartuPelajarModal({
         // Font size lowered to ~18px
         ctx.font = '700 19px Poppins, sans-serif'; 
         // Y coordinates for each field to perfectly align with fixed colons
-        // Nama turun dikit (255 -> 258)
-        wrapText(ctx, student.nama.toUpperCase(), leftX, 258, maxWidth, lineHeight);
+        // Nama diturunkan lebih jauh (258 -> 265)
+        wrapText(ctx, student.nama.toUpperCase(), leftX, 265, maxWidth, lineHeight);
 
         ctx.font = '500 18px Poppins, sans-serif';
         const jk = student.jenisKelamin?.toLowerCase().startsWith('l') ? 'LAKI-LAKI' : 'PEREMPUAN';
         
-        // Identitas lain naik dikit (-4px)
-        ctx.fillText(jk, leftX, 346);
-        ctx.fillText(`${student.nis || '-'} / ${student.nisn || '-'}`, leftX, 384);
-        ctx.fillText(`${student.tempatLahir || '-'}, ${student.tanggalLahir || '-'}`, leftX, 422);
-        wrapText(ctx, student.alamat || '-', leftX, 460, maxWidth, lineHeight);
+        // Identitas lain dinaikkan lebih jauh (-8px dari sebelumnya)
+        ctx.fillText(jk, leftX, 338);
+        ctx.fillText(`${student.nis || '-'} / ${student.nisn || '-'}`, leftX, 376);
+        ctx.fillText(`${student.tempatLahir || '-'}, ${student.tanggalLahir || '-'}`, leftX, 414);
+        wrapText(ctx, student.alamat || '-', leftX, 452, maxWidth, lineHeight);
 
         // Draw Photo on the LEFT side
         if (student.foto) {
@@ -1109,8 +1109,8 @@ function PrintKartuPelajarModal({
               }),
               new Promise<void>((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))
             ]);
-            // Geser kiri dikit & perbesar dikit (x: 105 -> 85, size: 150x200 -> 165x220, y: 260 -> 255)
-            ctx.drawImage(photoImg, 85, 255, 165, 220);
+            // Geser kiri lagi & perbesar (x: 85 -> 65, size: 165x220 -> 180x240, y: 255 -> 250)
+            ctx.drawImage(photoImg, 65, 250, 180, 240);
           } catch {
             // Skip photo silently if it fails or times out
           }
