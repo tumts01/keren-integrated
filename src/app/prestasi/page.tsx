@@ -39,6 +39,21 @@ export default function PrestasiPage() {
   });
 
   const [siswaList, setSiswaList] = useState<any[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    fetchData();
+    
+    // Check if user is admin
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        const parsed = JSON.parse(storedUser);
+        const role = (parsed.role || '').toLowerCase();
+        if (role === 'admin' || role === 'administrator') setIsAdmin(true);
+      } catch(e) {}
+    }
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
@@ -67,9 +82,7 @@ export default function PrestasiPage() {
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+
 
   const uniqueTahun = Array.from(new Set(data.map(d => d.tahun_pelajaran).filter(Boolean)));
   const uniqueTingkat = Array.from(new Set(data.map(d => d.tingkat).filter(Boolean)));
@@ -169,9 +182,11 @@ export default function PrestasiPage() {
           <h1 className={styles.title}>Data Prestasi Siswa</h1>
           <p className={styles.subtitle}>Kelola rekapitulasi data prestasi siswa madrasah</p>
         </div>
-        <button className={styles.btnAdd} onClick={() => handleOpenModal()}>
-          <i className="fas fa-plus"></i> Tambah Prestasi
-        </button>
+        {isAdmin && (
+          <button className={styles.btnAdd} onClick={() => handleOpenModal()}>
+            <i className="fas fa-plus"></i> Tambah Prestasi
+          </button>
+        )}
       </div>
 
       <div className={styles.statsGrid}>
@@ -298,12 +313,16 @@ export default function PrestasiPage() {
                               <i className="fas fa-certificate"></i>
                             </a>
                           )}
-                          <button onClick={() => handleOpenModal(item)} className={styles.btnIcon} title="Edit" style={{ color: '#10b981' }}>
-                            <i className="fas fa-edit"></i>
-                          </button>
-                          <button onClick={() => handleDelete(item.id!)} className={styles.btnIcon} title="Hapus" style={{ color: '#ef4444' }}>
-                            <i className="fas fa-trash"></i>
-                          </button>
+                          {isAdmin && (
+                            <>
+                              <button onClick={() => handleOpenModal(item)} className={styles.btnIcon} title="Edit" style={{ color: '#10b981' }}>
+                                <i className="fas fa-edit"></i>
+                              </button>
+                              <button onClick={() => handleDelete(item.id!)} className={styles.btnIcon} title="Hapus" style={{ color: '#ef4444' }}>
+                                <i className="fas fa-trash"></i>
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>

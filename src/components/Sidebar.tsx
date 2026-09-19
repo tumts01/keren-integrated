@@ -112,8 +112,8 @@ export default function Sidebar() {
         },
         ...(isAdmin ? [
           { name: 'Buku Tamu', path: '/buku-tamu', icon: 'fa-address-book' },
-          { name: 'Data Prestasi', path: '/prestasi', icon: 'fa-trophy' },
         ] : []),
+        { name: 'Data Prestasi', path: '/prestasi', icon: 'fa-trophy' },
         { name: 'Arsip Foto', path: '/arsip-foto', icon: 'fa-images' },
         { name: 'Sajian Data', path: '/sajian-data', icon: 'fa-chart-pie' },
         { name: 'Jurnal Kegiatan', path: '/jurnal-kegiatan', icon: 'fa-book-open' },
