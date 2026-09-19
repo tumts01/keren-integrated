@@ -258,3 +258,9 @@
   color: #64748b;
   font-size: 1.1rem;
 }
+  
+.statsGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }  
+.statCard { background: white; border-radius: 12px; padding: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); display: flex; align-items: center; gap: 16px; border-left: 4px solid #cbd5e1; }  
+.statIcon { font-size: 2rem; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; }  
+.statInfo h3 { margin: 0; font-size: 1.5rem; font-weight: 800; color: #1e293b; }  
+.statInfo p { margin: 0; font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; } 

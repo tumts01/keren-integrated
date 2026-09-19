@@ -149,15 +149,18 @@ export default function PrestasiPage() {
     }
   };
 
-  const renderTingkat = (tingkat: string) => {
-    const t = (tingkat || '').toUpperCase();
-    if (t.includes('INTERNASIONAL')) return <><i className="fas fa-globe fa-spin" style={{ color: '#8b5cf6', marginRight: '6px', animationDuration: '3s' }}></i>{tingkat}</>;
-    if (t.includes('NASIONAL')) return <><i className="fas fa-flag fa-beat" style={{ color: '#ef4444', marginRight: '6px', '--fa-animation-iteration-count': 'infinite', '--fa-beat-scale': '1.2' } as any}></i>{tingkat}</>;
-    if (t.includes('PROVINSI')) return <><i className="fas fa-map-marked-alt fa-bounce" style={{ color: '#f59e0b', marginRight: '6px', '--fa-animation-iteration-count': 'infinite', '--fa-bounce-height': '-3px' } as any}></i>{tingkat}</>;
-    if (t.includes('KABUPATEN') || t.includes('KOTA')) return <><i className="fas fa-city fa-pulse" style={{ color: '#10b981', marginRight: '6px' }}></i>{tingkat}</>;
-    if (t.includes('KECAMATAN')) return <><i className="fas fa-map-pin fa-shake" style={{ color: '#64748b', marginRight: '6px', '--fa-animation-iteration-count': 'infinite' } as any}></i>{tingkat}</>;
-    return <><i className="fas fa-award fa-beat-fade" style={{ color: '#94a3b8', marginRight: '6px' }}></i>{tingkat || 'Belum diatur'}</>;
-  };
+  const stats = useMemo(() => {
+    const s = { internasional: 0, nasional: 0, provinsi: 0, kabupaten: 0, kecamatan: 0 };
+    filteredData.forEach(item => {
+      const t = (item.tingkat || '').toUpperCase();
+      if (t.includes('INTERNASIONAL')) s.internasional++;
+      else if (t.includes('NASIONAL')) s.nasional++;
+      else if (t.includes('PROVINSI')) s.provinsi++;
+      else if (t.includes('KABUPATEN') || t.includes('KOTA')) s.kabupaten++;
+      else if (t.includes('KECAMATAN')) s.kecamatan++;
+    });
+    return s;
+  }, [filteredData]);
 
   return (
     <div className={styles.container}>
@@ -169,6 +172,54 @@ export default function PrestasiPage() {
         <button className={styles.btnAdd} onClick={() => handleOpenModal()}>
           <i className="fas fa-plus"></i> Tambah Prestasi
         </button>
+      </div>
+
+      <div className={styles.statsGrid}>
+        <div className={styles.statCard}>
+          <div className={styles.statIcon} style={{ color: '#8b5cf6', backgroundColor: '#ede9fe' }}>
+            <i className="fas fa-globe fa-spin" style={{ animationDuration: '3s' }}></i>
+          </div>
+          <div className={styles.statInfo}>
+            <h3>{stats.internasional}</h3>
+            <p>Internasional</p>
+          </div>
+        </div>
+        <div className={styles.statCard}>
+          <div className={styles.statIcon} style={{ color: '#ef4444', backgroundColor: '#fee2e2' }}>
+            <i className="fas fa-flag fa-beat" style={{ '--fa-animation-iteration-count': 'infinite', '--fa-beat-scale': '1.2' } as any}></i>
+          </div>
+          <div className={styles.statInfo}>
+            <h3>{stats.nasional}</h3>
+            <p>Nasional</p>
+          </div>
+        </div>
+        <div className={styles.statCard}>
+          <div className={styles.statIcon} style={{ color: '#f59e0b', backgroundColor: '#fef3c7' }}>
+            <i className="fas fa-map-marked-alt fa-bounce" style={{ '--fa-animation-iteration-count': 'infinite', '--fa-bounce-height': '-3px' } as any}></i>
+          </div>
+          <div className={styles.statInfo}>
+            <h3>{stats.provinsi}</h3>
+            <p>Provinsi</p>
+          </div>
+        </div>
+        <div className={styles.statCard}>
+          <div className={styles.statIcon} style={{ color: '#10b981', backgroundColor: '#d1fae5' }}>
+            <i className="fas fa-city fa-pulse"></i>
+          </div>
+          <div className={styles.statInfo}>
+            <h3>{stats.kabupaten}</h3>
+            <p>Kab/Kota</p>
+          </div>
+        </div>
+        <div className={styles.statCard}>
+          <div className={styles.statIcon} style={{ color: '#64748b', backgroundColor: '#f1f5f9' }}>
+            <i className="fas fa-map-pin fa-shake" style={{ '--fa-animation-iteration-count': 'infinite' } as any}></i>
+          </div>
+          <div className={styles.statInfo}>
+            <h3>{stats.kecamatan}</h3>
+            <p>Kecamatan</p>
+          </div>
+        </div>
       </div>
 
       <div className={styles.card}>
@@ -238,7 +289,7 @@ export default function PrestasiPage() {
                       </td>
                       <td>
                         <div style={{ fontWeight: 600, color: '#f59e0b' }}>{item.peringkat}</div>
-                        <div style={{ fontSize: '0.85rem' }}>{renderTingkat(item.tingkat)}</div>
+                        <div style={{ fontSize: '0.85rem' }}>{item.tingkat}</div>
                       </td>
                       <td>
                         <div className={styles.actionButtons}>
