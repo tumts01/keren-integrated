@@ -33,18 +33,32 @@ export default function PrestasiPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const [form, setForm] = useState<Prestasi>({
-    no: '', tahun_pelajaran: '2024-2025', tanggal: '', nama: '', kelas: '',
+    no: '', tahun_pelajaran: '2026-2027', tanggal: '', nama: '', kelas: '',
     nama_lomba: '', penyelenggara: '', peringkat: '', tingkat: 'KABUPATEN/KOTA',
     link_sertifikat: '', induk: '', sertifikat_fisik: '', emis: ''
   });
 
+  const [siswaList, setSiswaList] = useState<any[]>([]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/prestasi');
-      const json = await res.json();
-      if (json.success) {
-        setData(json.data);
+      const [resPrestasi, resSiswa] = await Promise.all([
+        fetch('/api/prestasi'),
+        fetch('/api/siswa')
+      ]);
+      const jsonPrestasi = await resPrestasi.json();
+      if (jsonPrestasi.success) {
+        setData(jsonPrestasi.data);
+      }
+      
+      const jsonSiswa = await resSiswa.json();
+      if (jsonSiswa.success) {
+        // Hanya ambil data siswa terbaru (isLatest) dan pastikan tidak duplikat induk
+        const latestSiswa = jsonSiswa.data.filter((s: any) => s.isLatest);
+        // Buat deduplikasi kalau-kalau induknya sama
+        const uniqueSiswa = Array.from(new Map(latestSiswa.map((s: any) => [s.nis, s])).values());
+        setSiswaList(uniqueSiswa);
       }
     } catch (err) {
       console.error(err);
@@ -77,7 +91,7 @@ export default function PrestasiPage() {
     } else {
       setEditingData(null);
       setForm({
-        no: data.length + 1, tahun_pelajaran: '2024-2025', tanggal: '', nama: '', kelas: '',
+        no: data.length + 1, tahun_pelajaran: '2026-2027', tanggal: '', nama: '', kelas: '',
         nama_lomba: '', penyelenggara: '', peringkat: '', tingkat: 'KABUPATEN/KOTA',
         link_sertifikat: '', induk: '', sertifikat_fisik: '', emis: ''
       });
@@ -206,7 +220,7 @@ export default function PrestasiPage() {
                       </td>
                       <td>
                         <div style={{ fontWeight: 600 }}>{item.nama}</div>
-                        <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{item.kelas ? `Kelas ${item.kelas}` : '-'} | {item.induk || '-'}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{item.kelas ? `Kelas ${item.kelas}` : '-'}</div>
                       </td>
                       <td>
                         <div style={{ fontWeight: 600, color: '#0ea5e9' }}>{item.nama_lomba}</div>
@@ -263,16 +277,31 @@ export default function PrestasiPage() {
                 
                 <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
                   <label>Nama Siswa</label>
-                  <input type="text" required value={form.nama} onChange={e => setForm({...form, nama: e.target.value.toUpperCase()})} />
+                  <input 
+                    type="text" 
+                    required 
+                    list="siswa-datalist"
+                    value={form.nama} 
+                    onChange={e => {
+                      const val = e.target.value.toUpperCase();
+                      const matchedSiswa = siswaList.find(s => s.nama.toUpperCase() === val);
+                      setForm({
+                        ...form, 
+                        nama: val,
+                        kelas: matchedSiswa ? matchedSiswa.rombel : form.kelas,
+                        induk: matchedSiswa ? matchedSiswa.nis : form.induk
+                      });
+                    }} 
+                    placeholder="Ketik atau pilih nama siswa..."
+                  />
+                  <datalist id="siswa-datalist">
+                    {siswaList.map((s, i) => <option key={i} value={s.nama} />)}
+                  </datalist>
                 </div>
                 
                 <div className={styles.formGroup}>
-                  <label>No Induk / NIS</label>
-                  <input type="text" value={form.induk} onChange={e => setForm({...form, induk: e.target.value})} />
-                </div>
-                <div className={styles.formGroup}>
                   <label>Kelas</label>
-                  <input type="text" value={form.kelas} onChange={e => setForm({...form, kelas: e.target.value.toUpperCase()})} />
+                  <input type="text" value={form.kelas} onChange={e => setForm({...form, kelas: e.target.value.toUpperCase()})} placeholder="Otomatis terisi" />
                 </div>
                 
                 <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
