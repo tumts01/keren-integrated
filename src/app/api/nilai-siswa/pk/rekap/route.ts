@@ -52,8 +52,14 @@ export async function GET(req: Request) {
       });
     });
 
-    const activeSiswa = siswas;
-
+    const activeSiswa: any[] = [];
+    const seenInduk = new Set();
+    siswas.forEach(s => {
+      if (!seenInduk.has(s.induk)) {
+        seenInduk.add(s.induk);
+        activeSiswa.push(s);
+      }
+    });
     // 2. Fetch Grades from Supabase nilai_pk
     const { data: pkData, error } = await supabase
       .from('nilai_pk')

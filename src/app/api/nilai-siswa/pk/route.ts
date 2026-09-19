@@ -55,7 +55,15 @@ export async function GET(req: Request) {
       records.forEach(rec => siswas.push(rec));
     });
 
-    const activeSiswa = siswas.filter(s => s.tahunAjaran === tahunAjaran && s.rombel === kelas);
+    const activeSiswaRaw = siswas.filter(s => s.tahunAjaran === tahunAjaran && s.rombel === kelas);
+    const activeSiswa: any[] = [];
+    const seenInduk = new Set();
+    activeSiswaRaw.forEach(s => {
+      if (!seenInduk.has(s.induk)) {
+        seenInduk.add(s.induk);
+        activeSiswa.push(s);
+      }
+    });
 
     // 2. Fetch Grades from Supabase nilai_pk
     let nilaiMap: Record<string, string> = {};
