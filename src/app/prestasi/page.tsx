@@ -204,7 +204,7 @@ export default function PrestasiPage() {
         </div>
         <div className={styles.statCard}>
           <div className={styles.statIcon} style={{ color: '#10b981', backgroundColor: '#d1fae5' }}>
-            <i className="fas fa-city fa-pulse"></i>
+            <i className="fas fa-city fa-beat-fade"></i>
           </div>
           <div className={styles.statInfo}>
             <h3>{stats.kabupaten}</h3>
