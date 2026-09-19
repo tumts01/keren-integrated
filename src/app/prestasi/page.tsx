@@ -45,7 +45,7 @@ export default function PrestasiPage() {
     fetchData();
     
     // Check if user is admin
-    const storedUser = localStorage.getItem('user');
+    const storedUser = localStorage.getItem('keren_user_data');
     if (storedUser) {
       try {
         const parsed = JSON.parse(storedUser);
