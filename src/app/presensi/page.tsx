@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
 import styles from './presensi.module.css';
+import InlineLoading from '@/components/InlineLoading';
 
 const MultiSelectDropdown = ({ options, selected, onChange, placeholder, className }: { options: string[], selected: string[], onChange: (s: string[]) => void, placeholder: string, className?: string }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -1930,11 +1931,8 @@ export default function PresensiPage() {
             </div>
 
             {rekapSiswaLoading ? (
-              <div style={{ textAlign: 'center', padding: '48px 0', color: '#64748b' }}>
-                <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', display: 'block', marginBottom: 12 }}></i>
-                Memuat data presensi...
-              </div>
-            ) : rsSubTab === 'semua' ? (
+          <InlineLoading message="Memuat data presensi..." />
+        ) : rsSubTab === 'semua' ? (
               /* ── TAB SEMUA PRESENSI ── */
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -2316,11 +2314,8 @@ export default function PresensiPage() {
             </div>
 
             {rekapPiketLoading ? (
-              <div style={{ textAlign: 'center', padding: '48px 0', color: '#64748b' }}>
-                <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', display: 'block', marginBottom: 12 }}></i>
-                Memuat data rekap piket...
-              </div>
-            ) : rpFiltered.length === 0 ? (
+          <InlineLoading message="Memuat data rekap piket..." />
+        ) : rpFiltered.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '32px 0', color: '#94a3b8' }}>
                 <i className="fas fa-inbox" style={{ fontSize: '2rem', display: 'block', marginBottom: 8 }}></i>
                 Tidak ada data
@@ -2507,11 +2502,8 @@ export default function PresensiPage() {
             </div>
 
             {rekapJurnalLoading ? (
-              <div style={{ textAlign: 'center', padding: '48px 0', color: '#64748b' }}>
-                <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', display: 'block', marginBottom: 12 }}></i>
-                Memuat data jurnal...
-              </div>
-            ) : rekapJurnalData.length === 0 ? (
+          <InlineLoading message="Memuat data jurnal..." />
+        ) : rekapJurnalData.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
                 <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', display: 'block', marginBottom: 12 }}></i>
                 Memuat data jurnal...

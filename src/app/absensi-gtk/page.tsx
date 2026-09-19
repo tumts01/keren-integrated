@@ -4,6 +4,7 @@ import Swal from 'sweetalert2';
 import styles from './Absensi.module.css';
 import LoadingScreen from '@/components/LoadingScreen';
 import { Lottie } from 'lottie-react';
+import InlineLoading from '@/components/InlineLoading';
 
 
 export default function AbsensiGTK() {
@@ -781,8 +782,8 @@ export default function AbsensiGTK() {
               </thead>
               <tbody>
                 {loadingRekap ? (
-                  <tr><td colSpan={7} style={{ textAlign: 'center' }}>Memuat data...</td></tr>
-                ) : (
+          <tr><td colSpan={7} style={{ textAlign: 'center' }}><InlineLoading message="Memuat data..." /></td></tr>
+        ) : (
                   recapRows.map((row, idx) => {
                     const children = Array.isArray(row.props.children) ? row.props.children : [row.props.children];
                     // Holiday row: has background set (isHoliday) — check by row style

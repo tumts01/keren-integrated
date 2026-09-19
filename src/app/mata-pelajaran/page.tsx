@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Swal from 'sweetalert2';
+import InlineLoading from '@/components/InlineLoading';
 import styles from './Mapel.module.css';
 
 interface Mapel {
@@ -147,10 +149,7 @@ export default function MataPelajaranPage() {
 
       <div className={styles.card}>
         {loading ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            <i className="fas fa-spinner fa-spin fa-2x"></i>
-            <p>Memuat data...</p>
-          </div>
+          <InlineLoading message="Memuat data mata pelajaran..." />
         ) : filteredMapel.length === 0 ? (
           <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
             <p>Belum ada data mata pelajaran.</p>

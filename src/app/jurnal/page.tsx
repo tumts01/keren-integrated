@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
 import styles from './jurnal.module.css';
+import InlineLoading from '@/components/InlineLoading';
 
 interface JurnalRecord {
   id: string;
@@ -443,10 +444,7 @@ export default function JurnalPage() {
 
           {/* Table */}
           {rekapLoading ? (
-            <div style={{ textAlign: 'center', padding: '48px 0', color: '#64748b' }}>
-              <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', marginBottom: 12, display: 'block' }}></i>
-              Memuat data jurnal...
-            </div>
+            <InlineLoading message="Memuat data jurnal..." />
           ) : filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '48px 0', color: '#94a3b8' }}>
               <i className="fas fa-inbox" style={{ fontSize: '2.5rem', display: 'block', marginBottom: 12 }}></i>

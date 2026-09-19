@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './Jadwal.module.css';
+import InlineLoading from '@/components/InlineLoading';
 
 interface Jadwal {
   id: string;
@@ -287,10 +288,7 @@ export default function JadwalMengajarPage() {
 
       <div className={styles.card}>
         {loading ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-            <i className="fas fa-spinner fa-spin fa-2x"></i>
-            <p>Memuat data jadwal...</p>
-          </div>
+          <InlineLoading message="Memuat data jadwal..." />
         ) : activeTab === 'guru' ? (
           filteredList.length === 0 ? (
             <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -354,10 +352,7 @@ export default function JadwalMengajarPage() {
           )
         ) : (
           loadingPelajaran ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-              <i className="fas fa-spinner fa-spin fa-2x"></i>
-              <p>Memuat jadwal kelas...</p>
-            </div>
+            <InlineLoading message="Memuat jadwal kelas..." />
           ) : classTimetable.length === 0 ? (
             <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
               <p>Tidak ada jadwal untuk kelas {selectedKelas.replace('_', ' ')}.</p>

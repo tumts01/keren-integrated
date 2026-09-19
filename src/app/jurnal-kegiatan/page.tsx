@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import styles from './JurnalKegiatan.module.css';
 import Swal from 'sweetalert2';
 import JurnalMgmpTab from '@/components/JurnalMgmpTab';
+import InlineLoading from '@/components/InlineLoading';
 
 const compressImage = async (file: File): Promise<File> => {
   if (!file.type.startsWith('image/')) return file;
@@ -372,10 +373,7 @@ export default function JurnalKegiatanPage() {
 
       <div className={styles.tableContainer}>
         {loading ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
-            <i className="fas fa-spinner fa-spin fa-2x"></i>
-            <p>Memuat data {activeTab === 'notulen' ? 'notulen' : 'LPJ'}...</p>
-          </div>
+          <InlineLoading message={`Memuat data ${activeTab === 'notulen' ? 'notulen' : 'LPJ'}...`} />
         ) : activeTab === 'notulen' ? (
           <table className={styles.table}>
             <thead>

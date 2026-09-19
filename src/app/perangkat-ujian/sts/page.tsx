@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 import styles from './sts.module.css';
+import InlineLoading from '@/components/InlineLoading';
 
 interface Siswa {
   id: string;
@@ -763,8 +764,8 @@ export default function StsPage() {
               </thead>
               <tbody>
                 {isFetchingReview ? (
-                  <tr><td colSpan={5} style={{ padding: '24px' }}>Memuat data...</td></tr>
-                ) : reviewData.length > 0 ? (
+          <tr><td colSpan={5} style={{ textAlign: 'center' }}><InlineLoading message="Memuat data..." /></td></tr>
+        ) : reviewData.length > 0 ? (
                   reviewData.map((d, i) => (
                     <tr key={d.id}>
                       <td>{i + 1}</td>

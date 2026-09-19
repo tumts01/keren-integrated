@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import styles from './Guru.module.css';
+import InlineLoading from '@/components/InlineLoading';
 
 interface Guru {
   id: number;
@@ -268,10 +269,7 @@ export default function GuruPage() {
 
       <div className={styles.card}>
         {loading ? (
-          <div className={styles.loading}>
-            <i className={`fas fa-circle-notch ${styles.spinner}`}></i>
-            <p>Memuat Data Guru dari Spreadsheet...</p>
-          </div>
+          <InlineLoading message="Memuat Data Guru dari Spreadsheet..." />
         ) : error ? (
           <div className={styles.loading} style={{ color: 'var(--danger)' }}>
             <i className="fas fa-exclamation-triangle" style={{ fontSize: '2rem' }}></i>

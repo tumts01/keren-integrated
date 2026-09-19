@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import styles from './Loker.module.css';
+import InlineLoading from '@/components/InlineLoading';
 
 export default function LokerDigital() {
   const [lokerData, setLokerData] = useState<any[]>([]);
@@ -156,10 +157,7 @@ export default function LokerDigital() {
       </div>
 
       {loading ? (
-        <div className={styles.loading}>
-          <i className={`fas fa-circle-notch ${styles.spinner}`}></i>
-          <p>Sinkronisasi Loker Digital dengan Google Drive...</p>
-        </div>
+        <InlineLoading message="Sinkronisasi Loker Digital dengan Google Drive..." />
       ) : error ? (
         <div className={styles.errorState}>
           <i className="fas fa-exclamation-triangle"></i>

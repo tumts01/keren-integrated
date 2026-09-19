@@ -1,5 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import InlineLoading from '@/components/InlineLoading';
 import * as XLSX from 'xlsx';
 import styles from './Kelas.module.css';
 
@@ -217,10 +219,7 @@ export default function KelasPage() {
 
       {loading ? (
         <div className={styles.card}>
-          <div className={styles.loading}>
-            <i className={`fas fa-circle-notch ${styles.spinner}`}></i>
-            <p>Memuat Rekapan Kelas dari Spreadsheet...</p>
-          </div>
+          <InlineLoading message="Memuat Rekapan Kelas dari Database (Supabase)..." />
         </div>
       ) : error ? (
         <div className={styles.card}>

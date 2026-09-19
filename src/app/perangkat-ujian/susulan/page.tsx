@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
+import InlineLoading from '@/components/InlineLoading';
 
 interface Participant {
   nisn: string;
@@ -572,8 +573,8 @@ export default function SusulanPage() {
             </div>
 
             {isFetchingInput ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}><i className="fas fa-spinner fa-spin"></i> Memuat data...</div>
-            ) : inputRows.length > 0 ? (
+          <InlineLoading message="Memuat data..." />
+        ) : inputRows.length > 0 ? (
               /* Horizontal scroll wrapper so the table doesn't overflow on mobile */
               <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse' }}>

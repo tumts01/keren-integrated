@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Swal from 'sweetalert2';
 import styles from './Emis.module.css';
+import InlineLoading from '@/components/InlineLoading';
 
 interface SiswaEmis {
   nisn: string;
@@ -289,10 +290,7 @@ export default function EmisPage() {
       {/* Table */}
       <div className={styles.card}>
         {loading ? (
-          <div className={styles.loading}>
-            <i className="fas fa-circle-notch fa-spin" style={{ fontSize: '2rem', color: '#3b82f6' }}></i>
-            <p>Memuat data EMIS...</p>
-          </div>
+          <InlineLoading message="Memuat data EMIS..." />
         ) : (
           <>
             <div className={styles.tableWrap}>

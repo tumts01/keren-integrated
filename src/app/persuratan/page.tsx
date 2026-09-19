@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import styles from './Persuratan.module.css';
 import * as XLSX from 'xlsx';
+import InlineLoading from '@/components/InlineLoading';
 
 interface SuratKeluar {
   id: number;
@@ -908,10 +909,7 @@ export default function PersuratanPage() {
 
       <div className={styles.card} style={{ marginTop: activeTab === 'masuk' ? '20px' : '0' }}>
         {loading ? (
-          <div className={styles.loading}>
-            <i className={`fas fa-circle-notch ${styles.spinner}`}></i>
-            <p>Memuat Data Persuratan...</p>
-          </div>
+          <InlineLoading message="Memuat Data Persuratan..." />
         ) : error ? (
           <div className={styles.loading} style={{ color: 'var(--danger)' }}>
             <i className="fas fa-exclamation-triangle" style={{ fontSize: '2rem' }}></i>

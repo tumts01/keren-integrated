@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
+import InlineLoading from '@/components/InlineLoading';
 
 interface Siswa {
   id: number;
@@ -1985,10 +1986,7 @@ const handleExportMissingNisnNik = () => {
 
       <div className={styles.card}>
         {loading ? (
-          <div className={styles.loading}>
-            <i className={`fas fa-circle-notch ${styles.spinner}`}></i>
-            <p>Memuat Data Siswa dari Database (Supabase)...</p>
-          </div>
+          <InlineLoading message="Memuat Data Siswa dari Database (Supabase)..." />
         ) : error ? (
           <div className={styles.loading} style={{ color: 'var(--danger)' }}>
             <i className="fas fa-exclamation-triangle" style={{ fontSize: '2rem' }}></i>

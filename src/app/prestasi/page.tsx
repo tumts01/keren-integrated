@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Swal from 'sweetalert2';
 import styles from './Prestasi.module.css';
+import InlineLoading from '@/components/InlineLoading';
 
 interface Prestasi {
   id?: number;
@@ -263,9 +264,7 @@ export default function PrestasiPage() {
         </div>
 
         {loading ? (
-          <div className={styles.loading}>
-            <i className="fas fa-circle-notch fa-spin"></i> Memuat data...
-          </div>
+          <InlineLoading message="Memuat data..." />
         ) : (
           <div className={styles.tableWrapper}>
             <table className={styles.table}>
