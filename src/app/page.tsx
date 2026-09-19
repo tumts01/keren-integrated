@@ -2,8 +2,7 @@
 import { useState, useEffect } from 'react';
 import styles from "./page.module.css";
 import Link from 'next/link';
-import { Lottie } from 'lottie-react';
-import searchingAnimation from '@/assets/animations/searching.json';
+import LoadingScreen from '@/components/LoadingScreen';
 
 export default function Home() {
   const [user, setUser] = useState<any>(null);
@@ -105,14 +104,7 @@ export default function Home() {
   };
 
   if (loading) {
-    return (
-      <div className={styles.loading}>
-        <div style={{ width: 150, height: 150 }}>
-          <Lottie src={searchingAnimation} loop autoplay />
-        </div>
-        <p>Menyiapkan Dashboard Anda...</p>
-      </div>
-    );
+    return <LoadingScreen message="Menyiapkan Dashboard Anda..." />;
   }
 
   // Jika tidak ditemukan di db_GTK, tampilkan halaman awal standar

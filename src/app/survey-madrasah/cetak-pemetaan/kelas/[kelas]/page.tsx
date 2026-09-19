@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import LoadingScreen from '@/components/LoadingScreen';
 
 export default function CetakPemetaanKelasPage() {
   const params = useParams();
@@ -23,12 +24,10 @@ export default function CetakPemetaanKelasPage() {
       .finally(() => setLoading(false));
   }, [kelas]);
 
-  if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'Arial, sans-serif', flexDirection: 'column', gap: 16 }}>
-      <div style={{ fontSize: '2rem' }}>⏳</div>
-      <p>Memuat data pemetaan kelas {kelas}...</p>
-    </div>
-  );
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
 
   if (error) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'Arial, sans-serif', flexDirection: 'column', gap: 16 }}>

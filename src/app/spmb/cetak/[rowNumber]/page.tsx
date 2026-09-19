@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Script from 'next/script';
 import styles from './Cetak.module.css';
+import LoadingScreen from '@/components/LoadingScreen';
 
 export default function CetakSpmb() {
   const { rowNumber } = useParams();
@@ -77,8 +78,9 @@ export default function CetakSpmb() {
   };
 
   if (loading) {
-    return <div className={styles.loading}>Menyiapkan Dokumen Cetak...</div>;
+    return <LoadingScreen />;
   }
+
 
   if (error || !data) {
     return <div className={styles.loading}>Error: {error}</div>;

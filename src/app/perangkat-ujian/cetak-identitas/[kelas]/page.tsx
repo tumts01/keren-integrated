@@ -1,6 +1,7 @@
 'use client';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import LoadingScreen from '@/components/LoadingScreen';
 
 interface Siswa {
   nis: string;
@@ -84,11 +85,10 @@ export default function CetakIdentitasPage() {
     return str;
   };
 
-  if (loading) return (
-    <div style={{ padding: '40px', textAlign: 'center', fontFamily: 'Arial, sans-serif' }}>
-      <div>Memuat data siswa kelas {kelas}...</div>
-    </div>
-  );
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
 
   if (error) return (
     <div style={{ padding: '40px', textAlign: 'center', color: 'red', fontFamily: 'Arial, sans-serif' }}>

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import styles from '../../../cetak/[id]/Cetak.module.css';
+import LoadingScreen from '@/components/LoadingScreen';
 
 const formatRp = (n: any) => {
   if (!n && n !== 0) return 'Rp 0';
@@ -35,12 +36,10 @@ export default function CetakLaporanKeuanganPage() {
     }
   }, [data, loading]);
 
-  if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: 16 }}>
-      <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', color: '#237227' }}></i>
-      <p>Memuat laporan keuangan...</p>
-    </div>
-  );
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
 
   let arrPemasukan: { uraian: string, jumlah: number }[] = [];
   let arrPengeluaran: { uraian: string, jumlah: number }[] = [];

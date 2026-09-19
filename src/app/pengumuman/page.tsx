@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import styles from './pengumuman.module.css';
+import LoadingScreen from '@/components/LoadingScreen';
 
 // ===== CUSTOM SEND MODAL =====
 function CustomSendModal({
@@ -249,7 +250,9 @@ export default function PengumumanPage() {
   const badgeIcon = (target: string) =>
     target === 'Pimpinan' ? 'fa-user-tie' : target?.includes('Guru Pilihan') ? 'fa-user-check' : 'fa-users';
 
-  if (loading) return null;
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <div className={styles.container}>

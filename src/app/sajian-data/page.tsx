@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import styles from './sajian-data.module.css';
+import LoadingScreen from '@/components/LoadingScreen';
 
 export default function SajianDataPage() {
   const [data, setData] = useState<any>(null);
@@ -26,14 +27,7 @@ export default function SajianDataPage() {
   }, []);
 
   if (loading) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.loading}>
-          <i className="fas fa-spinner fa-spin" style={{ fontSize: '1.5rem', marginBottom: '12px' }}></i>
-          Memuat Sajian Data...
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (error || !data) {
