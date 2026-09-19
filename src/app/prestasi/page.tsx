@@ -186,7 +186,6 @@ export default function PrestasiPage() {
                   <th>Siswa</th>
                   <th>Lomba & Penyelenggara</th>
                   <th>Peringkat / Tingkat</th>
-                  <th>Status EMIS</th>
                   <th style={{ width: '120px', textAlign: 'center' }}>Aksi</th>
                 </tr>
               </thead>
@@ -216,13 +215,6 @@ export default function PrestasiPage() {
                       <td>
                         <div style={{ fontWeight: 600, color: '#f59e0b' }}>{item.peringkat}</div>
                         <div style={{ fontSize: '0.85rem' }}>{item.tingkat}</div>
-                      </td>
-                      <td>
-                        {item.emis && item.emis.toLowerCase() === 'sudah' ? (
-                          <span className={`${styles.badge} ${styles.badgeSuccess}`}>SUDAH</span>
-                        ) : (
-                          <span className={`${styles.badge} ${styles.badgeWarning}`}>BELUM</span>
-                        )}
                       </td>
                       <td>
                         <div className={styles.actionButtons}>
@@ -312,14 +304,6 @@ export default function PrestasiPage() {
                 <div className={styles.formGroup} style={{ gridColumn: '1 / -1' }}>
                   <label>Link Sertifikat (Drive)</label>
                   <input type="url" value={form.link_sertifikat} onChange={e => setForm({...form, link_sertifikat: e.target.value})} placeholder="https://drive.google.com/..." />
-                </div>
-                
-                <div className={styles.formGroup}>
-                  <label>Status EMIS</label>
-                  <select value={form.emis} onChange={e => setForm({...form, emis: e.target.value})}>
-                    <option value="">Belum</option>
-                    <option value="SUDAH">Sudah</option>
-                  </select>
                 </div>
                 
                 <div className={styles.formGroup}>
