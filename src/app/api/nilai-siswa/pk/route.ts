@@ -74,7 +74,7 @@ export async function GET(req: Request) {
 
       if (pkData && pkData.data_nilai && Array.isArray(pkData.data_nilai)) {
         pkData.data_nilai.forEach((item: any) => {
-          nilaiMap[item.induk] = item.nilai || '';
+          nilaiMap[item.induk] = item.nilai || item.score || '';
         });
       }
     }

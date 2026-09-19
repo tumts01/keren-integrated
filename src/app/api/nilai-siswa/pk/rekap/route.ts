@@ -95,7 +95,8 @@ export async function GET(req: Request) {
         if (scoreKey) {
           row.data_nilai.forEach((item: any) => {
             if (globalNilaiMap[item.induk]) {
-              globalNilaiMap[item.induk][scoreKey] = item.nilai?.toString() || '';
+              const val = item.nilai || item.score || '';
+              globalNilaiMap[item.induk][scoreKey] = val.toString();
             }
           });
         }
