@@ -249,11 +249,16 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     nis: '', nisn: '', nik: '', nama: '', jenisKelamin: 'LAKI-LAKI',
-    tempatLahir: '', tanggalLahir: '', domisili: 'Pesantren',
-    asalSekolah: '', rombel: '', tahunAjaran: `${tahunSekarang}/${tahunSekarang + 1}`,
+    tempatLahir: '', tanggalLahir: '', agama: 'Islam', domisili: 'Pesantren',
+    noKk: '', anakKe: '', jumlahSaudara: '', statusAnak: 'Anak Kandung',
+    statusTempatTinggal: 'Tinggal Bersama Orang Tua', jarak: '', waktuTempuh: '', transportasi: '',
+    asalSekolah: '', npsnSd: '', tahunLulusSd: '', noIjazahSd: '', kip: '',
+    rombel: '', tahunAjaran: `${tahunSekarang}/${tahunSekarang + 1}`,
     kelas: '7',
-    namaAyah: '', namaIbu: '', pekerjaanAyah: '', pekerjaanIbu: '',
-    noHpAyah: '', noHpIbu: '', alamat: '',
+    namaAyah: '', nikAyah: '', pekerjaanAyah: '', pendidikanAyah: '', penghasilanAyah: '', noHpAyah: '',
+    namaIbu: '', nikIbu: '', pekerjaanIbu: '', pendidikanIbu: '', penghasilanIbu: '', noHpIbu: '',
+    alamat: '',
+    namaWali: '', nikWali: '', pekerjaanWali: '', noHpWali: '', alamatWali: '',
     noSuratMutasiMasuk: '', sekolahSebelumnya: '', npsnSekolahSebelumnya: '',
     tanggalMutasiMasuk: ''
   });
@@ -382,6 +387,30 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
                 <label style={labelStyle}>Tanggal Lahir</label>
                 <input type="date" style={inputStyle} value={form.tanggalLahir} onChange={e=>set('tanggalLahir',e.target.value)} />
               </div>
+              <div>
+                <label style={labelStyle}>Agama</label>
+                <input style={inputStyle} value={form.agama} onChange={e=>set('agama',e.target.value)} placeholder="Islam" />
+              </div>
+              <div>
+                <label style={labelStyle}>No. Kartu Keluarga (KK)</label>
+                <input style={inputStyle} value={form.noKk} onChange={e=>set('noKk',e.target.value)} placeholder="16 digit" />
+              </div>
+              <div>
+                <label style={labelStyle}>Anak Ke-</label>
+                <input style={inputStyle} value={form.anakKe} onChange={e=>set('anakKe',e.target.value)} placeholder="contoh: 1" />
+              </div>
+              <div>
+                <label style={labelStyle}>Jumlah Saudara</label>
+                <input style={inputStyle} value={form.jumlahSaudara} onChange={e=>set('jumlahSaudara',e.target.value)} placeholder="contoh: 2" />
+              </div>
+              <div>
+                <label style={labelStyle}>Status Anak</label>
+                <input style={inputStyle} value={form.statusAnak} onChange={e=>set('statusAnak',e.target.value)} placeholder="Anak Kandung" />
+              </div>
+              <div>
+                <label style={labelStyle}>No KIP / PKH</label>
+                <input style={inputStyle} value={form.kip} onChange={e=>set('kip',e.target.value)} placeholder="(opsional)" />
+              </div>
             </div>
           </div>
 
@@ -433,8 +462,20 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
                 <input style={inputStyle} value={form.tahunAjaran} onChange={e=>set('tahunAjaran',e.target.value)} placeholder="2026/2027" />
               </div>
               <div>
-                <label style={labelStyle}>Asal Sekolah</label>
+                <label style={labelStyle}>Asal Sekolah (SD/MI)</label>
                 <input style={inputStyle} value={form.asalSekolah} onChange={e=>set('asalSekolah',e.target.value)} placeholder="SD/MI Asal" />
+              </div>
+              <div>
+                <label style={labelStyle}>NPSN Asal Sekolah</label>
+                <input style={inputStyle} value={form.npsnSd} onChange={e=>set('npsnSd',e.target.value)} placeholder="NPSN SD/MI" />
+              </div>
+              <div>
+                <label style={labelStyle}>Tahun Lulus SD/MI</label>
+                <input style={inputStyle} value={form.tahunLulusSd} onChange={e=>set('tahunLulusSd',e.target.value)} placeholder="contoh: 2024" />
+              </div>
+              <div>
+                <label style={labelStyle}>No. Seri Ijazah SD/MI</label>
+                <input style={inputStyle} value={form.noIjazahSd} onChange={e=>set('noIjazahSd',e.target.value)} placeholder="No Ijazah" />
               </div>
               <div>
                 <label style={labelStyle}>Domisili</label>
@@ -442,6 +483,22 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
                   <option value="Pesantren">Pesantren</option>
                   <option value="Rumah">Rumah</option>
                 </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Status Tempat Tinggal</label>
+                <input style={inputStyle} value={form.statusTempatTinggal} onChange={e=>set('statusTempatTinggal',e.target.value)} placeholder="Tinggal Bersama Orang Tua" />
+              </div>
+              <div>
+                <label style={labelStyle}>Jarak ke Madrasah (km)</label>
+                <input style={inputStyle} value={form.jarak} onChange={e=>set('jarak',e.target.value)} placeholder="contoh: 5" />
+              </div>
+              <div>
+                <label style={labelStyle}>Waktu Tempuh (menit)</label>
+                <input style={inputStyle} value={form.waktuTempuh} onChange={e=>set('waktuTempuh',e.target.value)} placeholder="contoh: 15" />
+              </div>
+              <div>
+                <label style={labelStyle}>Transportasi</label>
+                <input style={inputStyle} value={form.transportasi} onChange={e=>set('transportasi',e.target.value)} placeholder="Sepeda Motor / Jalan Kaki" />
               </div>
             </div>
           </div>
@@ -457,28 +514,76 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
                 <input style={inputStyle} value={form.namaAyah} onChange={e=>set('namaAyah',e.target.value)} placeholder="Nama ayah kandung" />
               </div>
               <div>
-                <label style={labelStyle}>Nama Ibu</label>
-                <input style={inputStyle} value={form.namaIbu} onChange={e=>set('namaIbu',e.target.value)} placeholder="Nama ibu kandung" />
+                <label style={labelStyle}>NIK Ayah</label>
+                <input style={inputStyle} value={form.nikAyah} onChange={e=>set('nikAyah',e.target.value)} placeholder="16 digit" />
+              </div>
+              <div>
+                <label style={labelStyle}>Pendidikan Ayah</label>
+                <input style={inputStyle} value={form.pendidikanAyah} onChange={e=>set('pendidikanAyah',e.target.value)} placeholder="SMA/S1/..." />
               </div>
               <div>
                 <label style={labelStyle}>Pekerjaan Ayah</label>
                 <input style={inputStyle} value={form.pekerjaanAyah} onChange={e=>set('pekerjaanAyah',e.target.value)} placeholder="Wiraswasta, PNS, dll" />
               </div>
               <div>
-                <label style={labelStyle}>Pekerjaan Ibu</label>
-                <input style={inputStyle} value={form.pekerjaanIbu} onChange={e=>set('pekerjaanIbu',e.target.value)} placeholder="Wiraswasta, IRT, dll" />
+                <label style={labelStyle}>Penghasilan Ayah /Bulan</label>
+                <input style={inputStyle} value={form.penghasilanAyah} onChange={e=>set('penghasilanAyah',e.target.value)} placeholder="contoh: 2000000" />
               </div>
               <div>
                 <label style={labelStyle}>No. HP Ayah</label>
                 <input style={inputStyle} value={form.noHpAyah} onChange={e=>set('noHpAyah',e.target.value)} placeholder="08xxxxxxxxxx" />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Nama Ibu</label>
+                <input style={inputStyle} value={form.namaIbu} onChange={e=>set('namaIbu',e.target.value)} placeholder="Nama ibu kandung" />
+              </div>
+              <div>
+                <label style={labelStyle}>NIK Ibu</label>
+                <input style={inputStyle} value={form.nikIbu} onChange={e=>set('nikIbu',e.target.value)} placeholder="16 digit" />
+              </div>
+              <div>
+                <label style={labelStyle}>Pendidikan Ibu</label>
+                <input style={inputStyle} value={form.pendidikanIbu} onChange={e=>set('pendidikanIbu',e.target.value)} placeholder="SMA/S1/..." />
+              </div>
+              <div>
+                <label style={labelStyle}>Pekerjaan Ibu</label>
+                <input style={inputStyle} value={form.pekerjaanIbu} onChange={e=>set('pekerjaanIbu',e.target.value)} placeholder="Wiraswasta, IRT, dll" />
+              </div>
+              <div>
+                <label style={labelStyle}>Penghasilan Ibu /Bulan</label>
+                <input style={inputStyle} value={form.penghasilanIbu} onChange={e=>set('penghasilanIbu',e.target.value)} placeholder="contoh: 2000000" />
               </div>
               <div>
                 <label style={labelStyle}>No. HP Ibu</label>
                 <input style={inputStyle} value={form.noHpIbu} onChange={e=>set('noHpIbu',e.target.value)} placeholder="08xxxxxxxxxx" />
               </div>
               <div style={{ gridColumn: '1/-1' }}>
-                <label style={labelStyle}>Alamat</label>
-                <textarea style={{...inputStyle, resize:'vertical', minHeight:72}} value={form.alamat} onChange={e=>set('alamat',e.target.value)} placeholder="Alamat lengkap" />
+                <label style={labelStyle}>Alamat KK Terakhir (Alamat Ortu)</label>
+                <textarea style={{...inputStyle, resize:'vertical', minHeight:72}} value={form.alamat} onChange={e=>set('alamat',e.target.value)} placeholder="Alamat lengkap (RT, RW, Desa, Kec, Kab, Kode Pos)" />
+              </div>
+
+              <div style={{ gridColumn: '1/-1', borderTop: '1px dashed #cbd5e1', margin: '8px 0' }}></div>
+
+              <div>
+                <label style={labelStyle}>Nama Wali</label>
+                <input style={inputStyle} value={form.namaWali} onChange={e=>set('namaWali',e.target.value)} placeholder="(opsional)" />
+              </div>
+              <div>
+                <label style={labelStyle}>NIK Wali</label>
+                <input style={inputStyle} value={form.nikWali} onChange={e=>set('nikWali',e.target.value)} placeholder="(opsional)" />
+              </div>
+              <div>
+                <label style={labelStyle}>Pekerjaan Wali</label>
+                <input style={inputStyle} value={form.pekerjaanWali} onChange={e=>set('pekerjaanWali',e.target.value)} placeholder="(opsional)" />
+              </div>
+              <div>
+                <label style={labelStyle}>No. HP Wali</label>
+                <input style={inputStyle} value={form.noHpWali} onChange={e=>set('noHpWali',e.target.value)} placeholder="(opsional)" />
+              </div>
+              <div style={{ gridColumn: '1/-1' }}>
+                <label style={labelStyle}>Alamat Wali</label>
+                <textarea style={{...inputStyle, resize:'vertical', minHeight:50}} value={form.alamatWali} onChange={e=>set('alamatWali',e.target.value)} placeholder="Alamat lengkap wali (jika ada)" />
               </div>
             </div>
           </div>

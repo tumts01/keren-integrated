@@ -131,32 +131,65 @@ export async function POST(request: Request) {
     await sheet.loadHeaderRow();
     const headers = sheet.headerValues; // array nama kolom
 
-    // Buat map: nama kolom → nilai
     const rowData: Record<string, string> = {
       'ID SISWA':                   fields.nis || '',
       'NISN':                       fields.nisn || '',
       'NIK':                        fields.nik || '',
       'NAMA':                       fields.nama || '',
       'JENIS KELAMIN':              fields.jenisKelamin || '',
-      'TEMPAT, TANGGAL LAHIR':     `${fields.tempatLahir || ''}, ${fields.tanggalLahir || ''}`,
+      'TEMPAT, TANGGAL LAHIR':      fields.tempatLahir && fields.tanggalLahir ? `${fields.tempatLahir}, ${fields.tanggalLahir}` : (fields.tempatLahir || fields.tanggalLahir || ''),
+      'AGAMA':                      fields.agama || '',
+      'NOMOR KK':                   fields.noKk || '',
+      'ANAK KE-':                   fields.anakKe || '',
+      'JUMLAH SAUDARA':             fields.jumlahSaudara || '',
+      'STATUS ANAK':                fields.statusAnak || '',
+      'STATUS TEMPAT TINGGAL SISWA': fields.statusTempatTinggal || '',
+      'JARAK TEMPAT TINGGAL - MADRASAH/SEKOLAH': fields.jarak || '',
+      'WAKTU TEMPUH':               fields.waktuTempuh || '',
+      'TRANSPORTASI KE SEKOLAH':    fields.transportasi || '',
+      'KIP':                        fields.kip || '',
       'DOMISILI':                   fields.domisili || '',
-      'ALAMAT AYAH KANDUNG':        fields.alamat || '',
+
+      'ALAMAT ASAL SESUAI KK TERAKHIR': fields.alamat || '',
+      
       'NAMA AYAH KANDUNG':          fields.namaAyah || '',
-      'NAMA IBU KANDUNG':           fields.namaIbu || '',
+      'NIK AYAH KANDUNG':           fields.nikAyah || '',
       'PEKERJAAN AYAH KANDUNG':     fields.pekerjaanAyah || '',
-      'PEKERJAAN IBU KANDUNG':      fields.pekerjaanIbu || '',
+      'PENDIDIKAN TERAKHIR AYAH KANDUNG': fields.pendidikanAyah || '',
+      'PENGHASILAN RATA-RATA PER BULAN AYAH KANDUNG': fields.penghasilanAyah || '',
       'NOMOR TELEPON AYAH KANDUNG': fields.noHpAyah || '',
+      'ALAMAT AYAH KANDUNG':        fields.alamatAyah || fields.alamat || '',
+      
+      'NAMA IBU KANDUNG':           fields.namaIbu || '',
+      'NIK IBU KANDUNG':            fields.nikIbu || '',
+      'PEKERJAAN IBU KANDUNG':      fields.pekerjaanIbu || '',
+      'PENDIDIKAN TERAKHIR IBU KANDUNG': fields.pendidikanIbu || '',
+      'PENGHASILAN RATA-RATA PER BULAN IBU KANDUNG': fields.penghasilanIbu || '',
       'NOMOR TELEPON IBU KANDUNG':  fields.noHpIbu || '',
+      'ALAMAT IBU KANDUNG':         fields.alamatIbu || fields.alamat || '',
+
+      'NAMA WALI':                  fields.namaWali || '',
+      'NIK WALI':                   fields.nikWali || '',
+      'PEKERJAAN WALI':             fields.pekerjaanWali || '',
+      'NOMOR TELEPON WALI':         fields.noHpWali || '',
+      'ALAMAT WALI':                fields.alamatWali || '',
+      
+      'SD/MI':                      fields.asalSekolah || '',
+      'NPSN SD/MI':                 fields.npsnSd || '',
+      'TAHUN LULUS SD/MI':          fields.tahunLulusSd || '',
+      'NO SERI IJAZAH SD/MI':       fields.noIjazahSd || '',
+
       'STATUS SISWA':               'Aktif',
-      [`TA KELAS ${kelas}`]:        fields.tahunAjaran || '',
-      [`ROMBEL KELAS ${kelas}`]:    fields.rombel || '',
+      'DITERIMA DI MTs KELAS':      fields.kelas || '',
+      [`TA KELAS ${fields.kelas || '7'}`]: fields.tahunAjaran || '',
+      [`ROMBEL KELAS ${fields.kelas || '7'}`]: fields.rombel || '',
+      
       'NOMOR SURAT MUTASI MASUK': fields.noSuratMutasiMasuk || '',
       'SMP/MTs SEBELUMNYA': fields.sekolahSebelumnya || '',
       'NPSN/NSS/NSM SMP/MTs SEBELUMNYA': fields.npsnSekolahSebelumnya || '',
       'TANGGAL MUTASI MASUK': fields.tanggalMutasiMasuk || '',
     };
 
-    // Asal SD/MI diarahkan ke kolom AY (index 50)
     if (fields.asalSekolah && headers[50]) {
       rowData[headers[50]] = fields.asalSekolah;
     }
