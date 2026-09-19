@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import styles from './Absensi.module.css';
+import LoadingScreen from '@/components/LoadingScreen';
 import { Lottie } from 'lottie-react';
 
 
@@ -467,32 +468,7 @@ export default function AbsensiGTK() {
     }
   };
 
-  if (!time || !user) return (
-    <div className={styles.skeletonPage}>
-      {/* Skeleton clock card */}
-      <div className={styles.skeletonCard}>
-        <div className={styles.skeletonCircle}></div>
-        <div className={styles.skeletonLine} style={{ width: '60%', height: 28, marginTop: 16 }}></div>
-        <div className={styles.skeletonLine} style={{ width: '40%', height: 16, marginTop: 10 }}></div>
-      </div>
-      {/* Skeleton absen card */}
-      <div className={styles.skeletonCard}>
-        <div className={styles.skeletonLine} style={{ width: '45%', height: 20, marginBottom: 20 }}></div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <div className={styles.skeletonBtn}></div>
-          <div className={styles.skeletonBtn}></div>
-        </div>
-        <div className={styles.skeletonLine} style={{ width: '70%', height: 14, marginTop: 16 }}></div>
-      </div>
-      {/* Skeleton rekap card */}
-      <div className={styles.skeletonCard}>
-        <div className={styles.skeletonLine} style={{ width: '35%', height: 20, marginBottom: 16 }}></div>
-        {[...Array(5)].map((_, i) => (
-          <div key={i} className={styles.skeletonLine} style={{ width: `${75 + (i % 3) * 8}%`, height: 14, marginBottom: 10 }}></div>
-        ))}
-      </div>
-    </div>
-  );
+  if (!time || !user) return <LoadingScreen message="Menyiapkan Absensi GTK..." />;
 
   // Generate days in month for recap
   const daysInMonth = new Date(rekapTahun, rekapBulan, 0).getDate();
