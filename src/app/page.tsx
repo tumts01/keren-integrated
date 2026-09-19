@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import styles from "./page.module.css";
 import Link from 'next/link';
+import { Lottie } from 'lottie-react';
+import searchingAnimation from '@/assets/animations/searching.json';
 
 export default function Home() {
   const [user, setUser] = useState<any>(null);
@@ -105,7 +107,9 @@ export default function Home() {
   if (loading) {
     return (
       <div className={styles.loading}>
-        <i className={`fas fa-circle-notch ${styles.spinner}`}></i>
+        <div style={{ width: 150, height: 150 }}>
+          <Lottie src={searchingAnimation} loop autoplay />
+        </div>
         <p>Menyiapkan Dashboard Anda...</p>
       </div>
     );
