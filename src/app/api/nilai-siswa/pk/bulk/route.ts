@@ -65,11 +65,32 @@ export async function POST(req: Request) {
     }
 
     if (bulkUpserts.length > 0) {
+      // 1. Fetch existing rows to get their IDs
+      const { data: existingRows } = await supabase
+        .from('nilai_pk')
+        .select('id, tipe, materi, sub_materi')
+        .eq('tahun_ajaran', tahunAjaran)
+        .eq('kelas', kelas)
+        .eq('mata_pelajaran', mapel);
+
+      const toUpsert = [];
+
+      for (const row of bulkUpserts) {
+        const existing = existingRows?.find(e => e.tipe === row.tipe && e.materi === row.materi && e.sub_materi === row.sub_materi);
+        if (existing) {
+          toUpsert.push({ ...row, id: existing.id });
+        } else {
+          toUpsert.push(row); // Will be inserted because no id is provided
+        }
+      }
+
       const { error } = await supabase
         .from('nilai_pk')
-        .upsert(bulkUpserts, { onConflict: 'tahun_ajaran,kelas,mata_pelajaran,tipe,materi,sub_materi' });
+        .upsert(toUpsert); // By default, upsert uses the primary key 'id' for conflict resolution
 
       if (error) throw error;
+    } else {
+      return NextResponse.json({ success: false, error: 'Tidak ada data nilai yang valid ditemukan dalam file. Pastikan menggunakan format template yang benar.' }, { status: 400 });
     }
 
     return NextResponse.json({ success: true });
