@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
+import * as XLSX from 'xlsx';
 import styles from './NilaiSiswa.module.css';
 
 export default function NilaiSiswaPage() {
@@ -24,6 +25,11 @@ export default function NilaiSiswaPage() {
   const [rekapStudents, setRekapStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  
+  // States for Bulk Upload
+  const [headers, setHeaders] = useState<string[]>([]);
+  const [previewData, setPreviewData] = useState<any[]>([]);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<any>(null);
   const pkMapelList = [
     'Ilmu Pengetahuan Alam',
@@ -101,13 +107,160 @@ export default function NilaiSiswaPage() {
     setLoading(false);
   };
 
-  const handleScoreChange = (idx: number, val: string) => {
-    const newStudents = [...students];
-    newStudents[idx].score = val;
-    setStudents(newStudents);
+  const handleDownloadTemplate = async () => {
+    if (!kelas || !tahunAjaran) {
+      Swal.fire('Peringatan', 'Silakan pilih Kelas dan Tahun Ajaran terlebih dahulu', 'warning');
+      return;
+    }
+    setLoading(true);
+    const finalMapel = mapel === 'Lainnya' ? mapelLain : mapel;
+    try {
+      // Just fetch students for the class (omit tipe so it returns empty scores)
+      const res = await fetch(`/api/nilai-siswa/pk?kelas=${encodeURIComponent(kelas)}&mapel=${encodeURIComponent(finalMapel)}&tahunAjaran=${encodeURIComponent(tahunAjaran)}`);
+      const result = await res.json();
+      if (result.success) {
+        const siswaKelas = result.data.sort((a: any, b: any) => a.nama.localeCompare(b.nama));
+        
+        if (siswaKelas.length === 0) {
+          Swal.fire('Kosong', 'Tidak ada siswa di kelas ini pada tahun ajaran tersebut', 'info');
+          setLoading(false);
+          return;
+        }
+
+        const headerRow = [
+          'NO', 'NISN', 'NAMA SISWA', 'L/P', 
+          'MATERI 1 S1', 'MATERI 1 S2', 'MATERI 1 S3',
+          'MATERI 2 S1', 'MATERI 2 S2', 'MATERI 2 S3',
+          'MATERI 3 S1', 'MATERI 3 S2', 'MATERI 3 S3',
+          'MATERI 4 S1', 'MATERI 4 S2', 'MATERI 4 S3',
+          'MATERI 5 S1', 'MATERI 5 S2', 'MATERI 5 S3',
+          'MATERI 6 S1', 'MATERI 6 S2', 'MATERI 6 S3',
+          'STS', 'SAS'
+        ];
+
+        const dataRows = siswaKelas.map((s: any, i: number) => [
+          i + 1,
+          s.induk,
+          s.nama.toUpperCase(),
+          (s.jk || '').toLowerCase().includes('l') ? 'L' : 'P',
+          ...Array(20).fill('')
+        ]);
+
+        const wsData = [headerRow, ...dataRows];
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+        ws['!cols'] = [
+          { wch: 5 }, { wch: 15 }, { wch: 35 }, { wch: 5 },
+          ...Array(20).fill({ wch: 12 })
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Input Nilai PK');
+        XLSX.writeFile(wb, `Template_Nilai_PK_${kelas}_${finalMapel.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
+      } else {
+        Swal.fire('Gagal', result.error || 'Gagal mengambil data siswa', 'error');
+      }
+    } catch (err: any) {
+      Swal.fire('Error', err.message, 'error');
+    }
+    setLoading(false);
   };
 
-  const saveScores = async () => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        
+        const rawData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
+        if (rawData.length < 2) throw new Error("Format file tidak valid.");
+
+        const headerArr = rawData[0] || [];
+        setHeaders(headerArr.map(String));
+
+        const parsedData = [];
+        for (let i = 1; i < rawData.length; i++) {
+          const row = rawData[i];
+          if (!row || row.length === 0 || !row[1]) continue;
+
+          const rowObj: any = {};
+          headerArr.forEach((h: any, j: number) => {
+            rowObj[h] = row[j] ?? '';
+          });
+          
+          rowObj.induk = rowObj['NISN'];
+          rowObj.nama = rowObj['NAMA SISWA'];
+          rowObj.jk = rowObj['L/P'];
+          
+          parsedData.push(rowObj);
+        }
+
+        setPreviewData(parsedData);
+      } catch (err: any) {
+        Swal.fire('Error', 'Gagal membaca file Excel: ' + err.message, 'error');
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const saveBulkScores = async () => {
+    if (previewData.length === 0) return;
+    
+    const confirm = await Swal.fire({
+      title: 'Simpan Nilai?',
+      text: `Anda akan menyimpan nilai untuk ${previewData.length} siswa. Data sebelumnya akan ditimpa.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3b82f6',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: '<i class="fas fa-save"></i> Ya, Simpan',
+      cancelButtonText: 'Batal',
+      reverseButtons: true
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    setSaving(true);
+    const finalMapel = mapel === 'Lainnya' ? mapelLain : mapel;
+    try {
+      const res = await fetch('/api/nilai-siswa/pk/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kelas,
+          mapel: finalMapel,
+          dataNilai: previewData,
+          guru: profile?.nama || '',
+          tahunAjaran
+        })
+      });
+      const result = await res.json();
+      if (result.success) {
+        Swal.fire({
+          title: 'Mantap Keren!',
+          text: 'Nilai berhasil disimpan ke sistem.',
+          icon: 'success',
+          timer: 2500,
+          showConfirmButton: false
+        });
+        setPreviewData([]);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      } else {
+        Swal.fire('Gagal', result.error || 'Gagal menyimpan nilai', 'error');
+      }
+    } catch (err: any) {
+      Swal.fire('Error', err.message, 'error');
+    }
+    setSaving(false);
+  };
+
+  const fetchStudents = async () => {
     if (students.length === 0) return;
     
     const confirm = await Swal.fire({
@@ -232,80 +385,76 @@ export default function NilaiSiswaPage() {
                     <input type="text" className={styles.input} value={mapelLain} onChange={e => setMapelLain(e.target.value)} placeholder="Tulis mapel..." />
                   </div>
                 )}
+              </div>
 
-                <div className={styles.formGroup}>
-                  <label>Jenis Penilaian</label>
-                  <select className={styles.select} value={tipe} onChange={e => setTipe(e.target.value as any)}>
-                    <option value="materi_harian">Materi Harian</option>
-                    <option value="sts">Sumatif Tengah Semester</option>
-                    <option value="sas">Sumatif Akhir Semester</option>
-                  </select>
-                </div>
-
-                {tipe === 'materi_harian' && (
-                  <>
-                    <div className={styles.formGroup}>
-                      <label>Pilihan Materi</label>
-                      <select className={styles.select} value={materi} onChange={e => setMateri(e.target.value)}>
-                        {[1,2,3,4,5,6].map(m => <option key={m} value={`Materi ${m}`}>Materi {m}</option>)}
-                      </select>
-                    </div>
-                    <div className={styles.formGroup}>
-                      <label>Sub Materi</label>
-                      <select className={styles.select} value={subMateri} onChange={e => setSubMateri(e.target.value)}>
-                        {['S1','S2','S3'].map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </div>
-                  </>
-                )}
-                
-                <div className={styles.formGroup} style={{ justifyContent: 'flex-end' }}>
-                  <button className={styles.btnSubmit} onClick={fetchStudents} disabled={loading || !kelas}>
-                    {loading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-search"></i>}
-                    Tampilkan
-                  </button>
+              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '16px 20px', marginBottom: '24px', display: 'flex', gap: '16px', alignItems: 'center' }}>
+                <i className="fas fa-info-circle fa-2x" style={{ color: '#3b82f6' }}></i>
+                <div>
+                  <strong style={{ display: 'block', marginBottom: '4px', color: '#1e3a8a' }}>Langkah Input Nilai PK:</strong>
+                  <div style={{ fontSize: '0.9rem', color: '#1e40af', lineHeight: 1.5 }}>
+                    1. Pastikan Filter Kelas dan Mata Pelajaran sudah benar.<br/>
+                    2. Klik <b>Download Template Excel</b> (Otomatis berisi daftar siswa di kelas tersebut berurut abjad).<br/>
+                    3. Isi nilai siswa secara offline di Excel.<br/>
+                    4. Klik <b>Upload File Excel</b> yang sudah diisi.<br/>
+                    5. Cek preview tabel di bawah, lalu klik <b>Simpan ke Database</b>.
+                  </div>
                 </div>
               </div>
 
-              {students.length > 0 && (
-                <div className={styles.tableWrapper}>
-                  <table className={styles.table}>
-                    <thead>
-                      <tr>
-                        <th style={{width: '50px'}}>No</th>
-                        <th style={{width: '120px'}}>No Induk</th>
-                        <th>Nama Lengkap</th>
-                        <th style={{width: '80px', textAlign: 'center'}}>L/P</th>
-                        <th style={{width: '150px', textAlign: 'center'}}>Nilai</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {students.map((s, idx) => (
-                        <tr key={idx}>
-                          <td>{idx + 1}</td>
-                          <td>{s.induk}</td>
-                          <td>{s.nama}</td>
-                          <td style={{textAlign: 'center'}}>{s.jk}</td>
-                          <td style={{textAlign: 'center'}}>
-                            <input 
-                              type="number" 
-                              className={styles.inputScore} 
-                              value={s.score || ''} 
-                              onChange={e => handleScoreChange(idx, e.target.value)}
-                              placeholder="0-100"
-                              min="0"
-                              max="100"
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  
-                  <div style={{ padding: '20px', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0', background: '#f8fafc' }}>
-                    <button className={styles.btnSubmit} onClick={saveScores} disabled={saving}>
-                      {saving ? <><i className="fas fa-spinner fa-spin"></i> Menyimpan...</> : <><i className="fas fa-save"></i> Simpan Nilai</>}
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '32px', flexWrap: 'wrap' }}>
+                <button 
+                  style={{ background: 'white', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}
+                  onClick={handleDownloadTemplate}
+                  disabled={loading}
+                >
+                  {loading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-file-excel" style={{ color: '#10b981' }}></i>}
+                  Download Template Excel
+                </button>
+                
+                <div style={{ position: 'relative' }}>
+                  <button style={{ background: 'white', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <i className="fas fa-upload" style={{ color: '#3b82f6' }}></i> Upload File Excel
+                  </button>
+                  <input 
+                    type="file" 
+                    accept=".xlsx, .xls"
+                    onChange={handleFileUpload}
+                    ref={fileInputRef}
+                    style={{ position: 'absolute', left: 0, top: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                  />
+                </div>
+              </div>
+
+              {previewData.length > 0 && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Preview Data ({previewData.length} baris)</h3>
+                    <button 
+                      className={styles.btnSubmit} 
+                      onClick={saveBulkScores}
+                      disabled={saving}
+                    >
+                      {saving ? <><i className="fas fa-spinner fa-spin"></i> Menyimpan...</> : <><i className="fas fa-save"></i> Simpan ke Database</>}
                     </button>
+                  </div>
+                  
+                  <div className={styles.tableWrapper} style={{ maxHeight: '500px', overflowY: 'auto' }}>
+                    <table className={styles.table}>
+                      <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                        <tr>
+                          {headers.map((h, i) => <th key={i}>{h}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previewData.map((row, i) => (
+                          <tr key={i}>
+                            {headers.map((h, j) => (
+                              <td key={j}>{row[h]}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
