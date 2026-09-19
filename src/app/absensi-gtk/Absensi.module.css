@@ -2,6 +2,7 @@
   padding: 24px;
   max-width: 1200px;
   margin: 0 auto;
+  position: relative;
 }
 
 .header {
@@ -451,4 +452,23 @@
   background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
   background-size: 600px 100%;
   animation: shimmer 1.4s infinite linear;
+}
+
+/* Floating Icons */
+.floatingIcon {
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+  animation: floatAnim 3s ease-in-out infinite;
+  opacity: 0.9;
+  user-select: none;
+}
+.floatTopLeft { top: -15px; left: -10px; animation-delay: 0s; font-size: 2.5rem; }
+.floatTopRight { top: 10px; right: 0px; animation-delay: 1.5s; font-size: 2.2rem; transform: rotate(15deg); }
+.floatBottomLeft { bottom: 20px; left: 10px; animation-delay: 0.7s; font-size: 2rem; transform: rotate(-10deg); }
+.floatBottomRight { bottom: -10px; right: -5px; animation-delay: 2.2s; font-size: 2.5rem; transform: rotate(10deg); }
+
+@keyframes floatAnim {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
 }

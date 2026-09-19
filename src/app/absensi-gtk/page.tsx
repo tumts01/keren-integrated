@@ -590,6 +590,12 @@ export default function AbsensiGTK() {
           </div>
 
           <div className={styles.card} style={{ position: 'relative', zIndex: 1, margin: 0 }}>
+            {/* Animasi Floating Emojis Tema Absensi */}
+            <div className={`${styles.floatingIcon} ${styles.floatTopLeft}`}>⏰</div>
+            <div className={`${styles.floatingIcon} ${styles.floatTopRight}`}>🗓️</div>
+            <div className={`${styles.floatingIcon} ${styles.floatBottomLeft}`}>📍</div>
+            <div className={`${styles.floatingIcon} ${styles.floatBottomRight}`}>✅</div>
+            
             <div className={styles.clockContainer}>
               <div className={styles.time}>{time.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
               <div className={styles.date}>{time.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
