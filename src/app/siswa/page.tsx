@@ -249,7 +249,7 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
   const tahunSekarang = new Date().getFullYear();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    nis: '', nisn: '', nik: '', nama: '', jenisKelamin: 'LAKI-LAKI',
+    nis: '', nism: '', nisn: '', nik: '', nama: '', jenisKelamin: 'LAKI-LAKI',
     tempatLahir: '', tanggalLahir: '', agama: 'Islam', domisili: 'Pesantren',
     noKk: '', anakKe: '', jumlahSaudara: '', statusAnak: 'Anak Kandung',
     statusTempatTinggal: 'Tinggal Bersama Orang Tua', jarak: '', waktuTempuh: '', transportasi: '',
@@ -267,17 +267,33 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
 
   useEffect(() => {
     let maxNis = 0;
+    let maxNism = BigInt(0);
     allData.forEach(s => {
+      // Auto NIS
       if (s.nis) {
         const nisNum = parseInt(s.nis, 10);
         if (!isNaN(nisNum) && nisNum > maxNis) {
           maxNis = nisNum;
         }
       }
+      
+      // Auto NISM
+      const nismStr = (s.rawMetadata?.['NISM'] || '').trim();
+      if (nismStr && /^\d+$/.test(nismStr)) {
+        try {
+          const nismBig = BigInt(nismStr);
+          if (nismBig > maxNism) {
+            maxNism = nismBig;
+          }
+        } catch (e) {}
+      }
     });
-    if (maxNis > 0) {
-      setForm(f => ({ ...f, nis: String(maxNis + 1) }));
-    }
+
+    setForm(f => ({
+      ...f,
+      nis: maxNis > 0 ? String(maxNis + 1) : f.nis,
+      nism: maxNism > BigInt(0) ? String(maxNism + BigInt(1)) : f.nism
+    }));
   }, [allData]);
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
@@ -364,6 +380,10 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
               <div>
                 <label style={labelStyle}>NIS / ID Siswa</label>
                 <input style={inputStyle} value={form.nis} onChange={e=>set('nis',e.target.value)} placeholder="contoh: 2024001" />
+              </div>
+              <div>
+                <label style={labelStyle}>NISM</label>
+                <input style={inputStyle} value={form.nism} onChange={e=>set('nism',e.target.value)} placeholder="18 digit" />
               </div>
               <div>
                 <label style={labelStyle}>NISN</label>

@@ -134,6 +134,7 @@ export async function POST(request: Request) {
     const rowData: Record<string, string> = {
       'ID SISWA':                   fields.nis || '',
       'NISN':                       fields.nisn || '',
+      'NISM':                       fields.nism || '',
       'NIK':                        fields.nik || '',
       'NAMA':                       fields.nama || '',
       'JENIS KELAMIN':              fields.jenisKelamin || '',
