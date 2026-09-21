@@ -1453,7 +1453,7 @@ function PrintKartuPelajarModal({
 
 export default function SiswaPage() {
   const [data, setData] = useState<Siswa[]>([]);
-  const [isSyncing, setIsSyncing] = useState(false);
+
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState('');
@@ -1648,24 +1648,7 @@ export default function SiswaPage() {
     XLSX.writeFile(workbook, `Data_Siswa_${selectedTahun === 'Semua' ? 'All' : selectedTahun}.xlsx`);
   };
 
-    const handleSyncSupabase = async () => {
-    if (!confirm('Tarik ulang semua data siswa dari Google Sheets ke Supabase? Ini membutuhkan waktu sekitar 15-20 detik.')) return;
-    setIsSyncing(true);
-    try {
-      const res = await fetch('/api/siswa/sync', { method: 'POST' });
-      const json = await res.json();
-      if (json.success) {
-        await Swal.fire({ icon: 'success', title: 'Sukses', text: 'Sinkronisasi berhasil! Halaman akan dimuat ulang.' });
-        window.location.reload();
-      } else {
-        Swal.fire({ icon: 'error', title: 'Gagal', text: json.error });
-      }
-    } catch (err: any) {
-      Swal.fire({ icon: 'error', title: 'Error', text: err.message });
-    } finally {
-      setIsSyncing(false);
-    }
-  };
+  
 
 const handleExportMissingNisnNik = () => {
     const missingData = filteredData.filter(s => !s.nisn || s.nisn.trim() === '' || !s.nik || s.nik.trim() === '');
@@ -1951,9 +1934,7 @@ const handleExportMissingNisnNik = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <button onClick={handleSyncSupabase} className="btn" disabled={isSyncing} style={{ background: '#3b82f6', color: 'white', borderColor: '#3b82f6', marginRight: '8px' }}>
-              <i className={`fas ${isSyncing ? 'fa-spinner fa-spin' : 'fa-sync-alt'}`}></i> {isSyncing ? 'Sinkronisasi...' : 'Tarik Data'}
-            </button>
+
             <button onClick={handleExportExcel} className="btn btn-gold" style={{ marginRight: '8px' }}>
               <i className="fas fa-file-excel"></i> Export Excel
             </button>

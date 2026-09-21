@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { getIndukDoc } from '@/lib/google-sheets';
 import { supabase } from '@/lib/supabase';
 import { getAllCachedDataInduk } from '@/lib/data-induk';
 import { revalidateTag } from 'next/cache';
@@ -120,15 +119,6 @@ export async function POST(request: Request) {
     const { kelas, ...fields } = body;
     // kelas: '7' | '8' | '9'
 
-    const doc = await getIndukDoc();
-    const sheet = doc.sheetsByTitle['DATABASE'];
-    if (!sheet) {
-      return NextResponse.json({ success: false, error: 'Tab DATABASE tidak ditemukan' }, { status: 404 });
-    }
-
-    await sheet.loadHeaderRow();
-    const headers = sheet.headerValues; // array nama kolom
-
     const rowData: Record<string, string> = {
       'ID SISWA':                   fields.nis || '',
       'NISN':                       fields.nisn || '',
@@ -189,40 +179,16 @@ export async function POST(request: Request) {
       'TANGGAL MUTASI MASUK': fields.tanggalMutasiMasuk || '',
     };
 
-    if (fields.asalSekolah && headers[50]) {
-      rowData[headers[50]] = fields.asalSekolah;
-    }
+    const payload = {
+      id_siswa: fields.nis || '',
+      nama: (fields.nama || '').trim(),
+      metadata: rowData
+    };
 
-    // Sisipkan baris kosong di row index 1 (baris ke-2, tepat di bawah header)
-    await sheet.insertDimension('ROWS', { startIndex: 1, endIndex: 2 }, false);
-
-    // Muat sel baris ke-2 (index 1)
-    await sheet.loadCells({ startRowIndex: 1, endRowIndex: 2, startColumnIndex: 0, endColumnIndex: headers.length });
-
-    // Isi nilai per kolom
-    headers.forEach((header, colIndex) => {
-      const val = rowData[header];
-      if (val !== undefined && val !== '') {
-        const cell = sheet.getCell(1, colIndex);
-        cell.value = val;
-      }
-    });
-
-    // Simpan
-    await sheet.saveUpdatedCells();
-
-    // DUAL-WRITE KE SUPABASE
-    try {
-      const payload = {
-        id_siswa: fields.nis || '',
-        nama: (fields.nama || '').trim(),
-        metadata: rowData
-      };
-      await supabase.from('data_induk').insert(payload);
-      revalidateTag('data_induk');
-    } catch (sbError) {
-      console.error('Error insert mutasi ke Supabase:', sbError);
-    }
+    const { error } = await supabase.from('data_induk').insert(payload);
+    if (error) throw error;
+    
+    revalidateTag('data_induk', {} as any);
 
     return NextResponse.json({ success: true, message: 'Siswa mutasi masuk berhasil ditambahkan.' });
   } catch (error: any) {
