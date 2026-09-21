@@ -269,8 +269,10 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
     let maxNis = 0;
     
     // Konfigurasi NISM: Prefix Mutlak (12) + Tahun (2) + Urut (4)
-    const currentYearStr = String(new Date().getFullYear()).slice(-2);
-    const prefixNISM = `121235070115${currentYearStr}`;
+    // Ekstrak 4 digit awal dari tahunAjaran form (misal: "2026/2027" -> "2026")
+    const entryYearStr = (form.tahunAjaran || `${new Date().getFullYear()}`).substring(0, 4);
+    const yearPrefix = entryYearStr.slice(-2);
+    const prefixNISM = `121235070115${yearPrefix}`;
     let maxUrutNism = 0;
 
     allData.forEach(s => {
@@ -282,7 +284,7 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
         }
       }
       
-      // Auto NISM (Filter yang sesuai tahun ini saja)
+      // Auto NISM (Filter yang sesuai tahun ajaran ini saja)
       const nismStr = (s.rawMetadata?.['NISM'] || '').trim();
       if (nismStr && nismStr.startsWith(prefixNISM) && nismStr.length === 18) {
         const urutStr = nismStr.slice(14); // Ambil 4 digit terakhir
@@ -301,7 +303,7 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
       nis: maxNis > 0 ? String(maxNis + 1) : f.nis,
       nism: nextNismStr
     }));
-  }, [allData]);
+  }, [allData, form.tahunAjaran]);
 
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
