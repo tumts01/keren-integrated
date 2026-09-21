@@ -107,6 +107,7 @@ export default function PortalLogin() {
           </p>
         </div>
       </div>
+      </div>
     </div>
   );
 }
