@@ -101,7 +101,7 @@ export default function PortalDashboard() {
           {menus.map((menu, idx) => (
             <div 
               key={idx} 
-              onClick={() => Swal.fire('Segera Hadir', 'Fitur ini sedang dalam tahap pengembangan.', 'info')} // Temporary
+              onClick={() => router.push(menu.path)}
               style={{ 
                 background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px', 
                 padding: '20px 16px', textAlign: 'center', cursor: 'pointer',
