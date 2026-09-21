@@ -70,18 +70,75 @@ export default function PortalDashboard() {
 
       <div className="portal-content" style={{ marginTop: '-20px' }}>
         
-        {/* Student Card Info */}
-        <div className="portal-card" style={{ position: 'relative', zIndex: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', color: '#94a3b8' }}>
-              <i className="fas fa-user-graduate"></i>
-            </div>
-            <div style={{ flex: 1 }}>
-              <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', color: '#1e293b' }}>{student.nama}</h3>
-              <div style={{ display: 'flex', gap: '12px', fontSize: '13px', color: '#64748b' }}>
-                <span><i className="fas fa-id-card" style={{ marginRight: '4px' }}></i> {student.nisn}</span>
-                <span><i className="fas fa-chalkboard" style={{ marginRight: '4px' }}></i> Kls {student.kelas}</span>
+        {/* Student Card Info - Detail Siswa Layout */}
+        <div className="portal-card" style={{ position: 'relative', zIndex: 10, padding: '20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            
+            {/* Foto Top Section */}
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <div style={{ 
+                width: '120px', height: '120px', borderRadius: '12px', background: '#e2e8f0', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px', color: '#94a3b8',
+                overflow: 'hidden', border: '4px solid white', boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
+              }}>
+                {student.foto ? (
+                  <img src={student.foto} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                ) : (
+                  <i className="fas fa-user-graduate"></i>
+                )}
               </div>
+            </div>
+
+            {/* Grid Detail Info */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <span style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '2px' }}>Nama Lengkap</span>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b', background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>{student.nama || '-'}</div>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <span style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '2px' }}>NISN</span>
+                  <div style={{ fontSize: '14px', color: '#334155', background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>{student.nisn || '-'}</div>
+                </div>
+                <div>
+                  <span style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '2px' }}>Rombel / Kelas</span>
+                  <div style={{ fontSize: '14px', color: '#334155', background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>{student.kelas || '-'}</div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <span style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '2px' }}>Status</span>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#16a34a', background: '#dcfce7', padding: '8px 12px', borderRadius: '8px', border: '1px solid #bbf7d0', textAlign: 'center' }}>{student.status || 'AKTIF'}</div>
+                </div>
+                <div>
+                  <span style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '2px' }}>Jenis Kelamin</span>
+                  <div style={{ fontSize: '14px', color: '#334155', background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>{student.jenisKelamin || '-'}</div>
+                </div>
+              </div>
+
+              {student.noHp && (
+                <div>
+                  <span style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '2px' }}>No. HP / WA (Ortu)</span>
+                  <div style={{ fontSize: '14px', color: '#334155', background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}><i className="fab fa-whatsapp" style={{ color: '#22c55e', marginRight: '6px' }}></i> {student.noHp}</div>
+                </div>
+              )}
+
+              <div>
+                <span style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '2px' }}>Nama Orang Tua</span>
+                <div style={{ fontSize: '13px', color: '#334155', background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', lineHeight: 1.6 }}>
+                  Ayah: {student.namaAyah || '-'}<br/>Ibu: {student.namaIbu || '-'}
+                </div>
+              </div>
+
+              <div>
+                <span style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '2px' }}>Domisili & Alamat</span>
+                <div style={{ fontSize: '13px', color: '#334155', background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', lineHeight: 1.5 }}>
+                  <strong>{student.domisili || '-'}</strong> - {student.alamat || '-'}
+                </div>
+              </div>
+
             </div>
           </div>
         </div>

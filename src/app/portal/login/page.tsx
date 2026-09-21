@@ -42,11 +42,33 @@ export default function PortalLogin() {
   };
 
   return (
-    <div className="portal-container" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-      <div style={{ padding: '32px 24px', textAlign: 'center' }}>
-        <img src="/logo.png" alt="Logo" style={{ width: '80px', height: '80px', marginBottom: '16px' }} />
-        <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#1e293b', margin: '0 0 8px 0' }}>Portal Wali Murid</h1>
-        <p style={{ color: '#64748b', fontSize: '14px', margin: '0 0 32px 0' }}>MTs Almaarif 01 Singosari</p>
+    <div style={{ 
+      minHeight: '100vh', 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center',
+      backgroundImage: 'url(/bg-login.jpg)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat'
+    }}>
+      <div className="portal-container" style={{ 
+        width: '100%', 
+        maxWidth: '480px', 
+        minHeight: 'auto',
+        borderRadius: '24px',
+        boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+        display: 'flex', 
+        flexDirection: 'column', 
+        justifyContent: 'center',
+        margin: '20px',
+        background: 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: 'blur(10px)'
+      }}>
+        <div style={{ padding: '40px 24px', textAlign: 'center' }}>
+          <img src="/logo.png" alt="Logo" style={{ width: '90px', height: '90px', marginBottom: '16px' }} />
+          <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#1e293b', margin: '0 0 8px 0' }}>Portal Wali Murid</h1>
+          <p style={{ color: '#64748b', fontSize: '15px', margin: '0 0 32px 0' }}>MTs Almaarif 01 Singosari</p>
 
         <form onSubmit={handleLogin} style={{ textAlign: 'left' }}>
           <div style={{ marginBottom: '20px' }}>
