@@ -258,7 +258,7 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
     kelas: '7',
     namaAyah: '', nikAyah: '', pekerjaanAyah: '', pendidikanAyah: '', penghasilanAyah: '', noHpAyah: '',
     namaIbu: '', nikIbu: '', pekerjaanIbu: '', pendidikanIbu: '', penghasilanIbu: '', noHpIbu: '',
-    alamat: '',
+    jalan: '', desa: '', kecamatan: '', kabupaten: '',
     namaWali: '', nikWali: '', pekerjaanWali: '', noHpWali: '', alamatWali: '',
     noSuratMutasiMasuk: '', sekolahSebelumnya: '', npsnSekolahSebelumnya: '',
     tanggalMutasiMasuk: ''
@@ -315,10 +315,14 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
     }
     setSaving(true);
     try {
+      const payload = {
+        ...form,
+        alamat: `${form.jalan}, Desa/Kel. ${form.desa}, Kec. ${form.kecamatan}, Kab/Kota. ${form.kabupaten}`.trim()
+      };
       const res = await fetch('/api/siswa', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.success) {
@@ -589,8 +593,22 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
                 <input style={inputStyle} value={form.noHpIbu} onChange={e=>set('noHpIbu',e.target.value)} placeholder="08xxxxxxxxxx" />
               </div>
               <div style={{ gridColumn: '1/-1' }}>
-                <label style={labelStyle}>Alamat KK Terakhir (Alamat Ortu)</label>
-                <textarea style={{...inputStyle, resize:'vertical', minHeight:72}} value={form.alamat} onChange={e=>set('alamat',e.target.value)} placeholder="Alamat lengkap (RT, RW, Desa, Kec, Kab, Kode Pos)" />
+                <label style={labelStyle}>Jalan / RT / RW (Tempat Tinggal) <span style={{color:'#ef4444'}}>*</span></label>
+                <textarea style={{...inputStyle, resize:'vertical', minHeight:72}} value={form.jalan} onChange={e=>set('jalan',e.target.value)} placeholder="Contoh: Jl. Diponegoro No. 10, RT 01 RW 02" required />
+              </div>
+              <div style={{ gridColumn: '1/-1', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={labelStyle}>Desa / Kelurahan <span style={{color:'#ef4444'}}>*</span></label>
+                  <input style={inputStyle} value={form.desa} onChange={e=>set('desa',e.target.value)} placeholder="Contoh: Toyomarto" required />
+                </div>
+                <div>
+                  <label style={labelStyle}>Kecamatan <span style={{color:'#ef4444'}}>*</span></label>
+                  <input style={inputStyle} value={form.kecamatan} onChange={e=>set('kecamatan',e.target.value)} placeholder="Contoh: Singosari" required />
+                </div>
+                <div>
+                  <label style={labelStyle}>Kabupaten / Kota <span style={{color:'#ef4444'}}>*</span></label>
+                  <input style={inputStyle} value={form.kabupaten} onChange={e=>set('kabupaten',e.target.value)} placeholder="Contoh: Malang" required />
+                </div>
               </div>
 
               <div style={{ gridColumn: '1/-1', borderTop: '1px dashed #cbd5e1', margin: '8px 0' }}></div>
