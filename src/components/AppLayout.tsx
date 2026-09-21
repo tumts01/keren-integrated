@@ -161,11 +161,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
  // Prevent hydration mismatch
 
-  // Halaman Publik (tanpa login)
+  // Halaman Publik (tanpa login atau layout khusus)
   const isPublicPage = pathname?.startsWith('/survey-madrasah') || pathname?.startsWith('/spmb');
+  const isPortal = pathname?.startsWith('/portal');
+
+  if (isPortal) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '0' }}>
+        {children}
+      </div>
+    );
+  }
+
   if (isPublicPage && !user) {
     return (
-      <div style={{ minHeight: '100vh', background: '#f1f5f9', padding: '20px 0' }}>
+      <div style={{ minHeight: '100vh', background: '#f1f5f9', padding: '0' }}>
         {children}
       </div>
     );
