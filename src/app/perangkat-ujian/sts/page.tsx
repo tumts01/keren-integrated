@@ -8,6 +8,7 @@ import InlineLoading from '@/components/InlineLoading';
 
 interface Siswa {
   id: string;
+  nis?: string;
   nisn: string;
   nama: string;
   jenisKelamin: string;
@@ -223,27 +224,34 @@ export default function StsPage() {
       const json = await res.json();
       if (json.success && json.data) {
         const grouped = json.data.reduce((acc: any, curr: any) => {
-          const meta = curr.metadata || {};
-          if (meta['KELAS'] !== kelas) return acc;
-          if (meta['TAHUN AJARAN'] !== tahunAjaran) return acc;
+          if ((curr.kelas || '').trim() !== kelas) return acc;
+          if ((curr.tahunAjaran || '').trim() !== tahunAjaran) return acc;
           
-          const dateStr = meta['TANGGAL'] || curr.tanggal || '';
+          const dateStr = curr.tanggal || '';
           if (dateStr) {
-            const m = parseInt(dateStr.split('-')[1] || '0', 10);
-            if (semester === 'Ganjil' && (m < 7 || m > 12)) return acc;
-            if (semester === 'Genap' && (m < 1 || m > 6)) return acc;
+            let m = 0;
+            if (dateStr.includes('/')) {
+              // Usually mm/dd/yyyy or dd/mm/yyyy. Try parsing with Date if possible
+              m = new Date(dateStr).getMonth() + 1;
+            } else if (dateStr.includes('-')) {
+              m = parseInt(dateStr.split('-')[1] || '0', 10);
+            }
+            if (!isNaN(m) && m > 0) {
+              if (semester === 'Ganjil' && (m < 7 || m > 12)) return acc;
+              if (semester === 'Genap' && (m < 1 || m > 6)) return acc;
+            }
           }
 
-          const nama = (meta['NAMA SISWA'] || '').trim().toUpperCase();
+          const nama = (curr.namaSiswa || '').trim().toUpperCase();
           if (!nama) return acc;
           if (!acc[nama]) acc[nama] = { S: 0, I: 0, A: 0 };
           
-          const status = meta['KEHADIRAN'] || '';
-          const jams = (meta['JAM KE'] || '').toString().split(',').length;
+          const status = curr.kehadiran || '';
+          const jams = (curr.jamKe || '').toString().split(',').length;
           
-          if (status === 'S' || status === 'Sakit') acc[nama].S += jams;
-          else if (status === 'I' || status === 'Izin') acc[nama].I += jams;
-          else if (status === 'A' || status === 'Alpha') acc[nama].A += jams;
+          if (status === 'S' || status.toUpperCase() === 'SAKIT') acc[nama].S += jams;
+          else if (status === 'I' || status.toUpperCase() === 'IZIN') acc[nama].I += jams;
+          else if (status === 'A' || status.toUpperCase() === 'ALPHA' || status.toUpperCase() === 'TANPA KETERANGAN') acc[nama].A += jams;
 
           return acc;
         }, {});
@@ -420,9 +428,9 @@ export default function StsPage() {
 
   const cetakRapor = (siswa: Siswa, idx: number) => {
     // Cari wali kelas dari kelasList
-    const targetKelas = kelasList.find(k => k.nama_kelas === siswa.rombel);
-    const waliKelas = targetKelas?.wali_kelas || '';
-    const waliKelasText = waliKelas ? `<b><u>${waliKelas}</u></b>` : '_________________________';
+    const targetKelas = kelasList.find(k => k.rombel === siswa.rombel || k.nama_kelas === siswa.rombel);
+    const waliKelas = targetKelas?.waliKelas || targetKelas?.wali_kelas || '';
+    const waliKelasText = (waliKelas && waliKelas !== '-') ? `<b><u>${waliKelas}</u></b>` : '_________________________';
 
     // Mapping Minat & Bakat
     const mapMinatBakat: Record<string, string> = {
@@ -644,7 +652,7 @@ export default function StsPage() {
               <td>Semester</td><td>:</td><td>${semester}</td>
             </tr>
             <tr>
-              <td>No.Induk</td><td>:</td><td>${siswa.id || '-'}</td>
+              <td>No.Induk</td><td>:</td><td>${siswa.nis || siswa.id || '-'}</td>
               <td></td>
               <td>Tahun Pelajaran</td><td>:</td><td>${tahunAjaran}</td>
             </tr>
