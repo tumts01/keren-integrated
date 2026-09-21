@@ -324,21 +324,16 @@ export default function StsPage() {
     
     // Jika nama file tidak mengandung nama kelas atau nama mapel (yang sudah di-sanitize)
     if (!fileNameSafe.includes(kelas.toLowerCase()) || !fileNameSafe.includes(safeMapel)) {
-      const confirm = await Swal.fire({
-        title: 'Nama File Tidak Sesuai?',
-        html: `File yang Anda upload: <b>${file.name}</b><br><br>Sepertinya tidak cocok dengan dropdown terpilih:<br>Kelas: <b>${kelas}</b><br>Mapel: <b>${mapel}</b><br><br>Yakin ingin melanjutkan?`,
-        icon: 'warning',
-        showCancelButton: true,
+      await Swal.fire({
+        title: 'Upload Ditolak',
+        html: `File yang Anda upload: <b>${file.name}</b><br><br>Sepertinya tidak cocok dengan dropdown terpilih:<br>Kelas: <b>${kelas}</b><br>Mapel: <b>${mapel}</b><br><br><b>Silakan upload file yang benar agar nilai tidak tertukar!</b>`,
+        icon: 'error',
         confirmButtonColor: '#ef4444',
-        cancelButtonColor: '#64748b',
-        confirmButtonText: 'Ya, Lanjutkan',
-        cancelButtonText: 'Batal'
+        confirmButtonText: 'Tutup'
       });
 
-      if (!confirm.isConfirmed) {
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        return;
-      }
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
     }
 
     const reader = new FileReader();

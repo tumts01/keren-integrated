@@ -219,21 +219,15 @@ export default function NilaiSiswaPage() {
 
     if (!isMapelMatch || !isKelasMatch) {
       Swal.fire({
-        title: 'Peringatan Keamanan',
-        html: `Nama file Excel yang diupload (<b>${file.name}</b>) tidak sesuai dengan Kelas (<b>${kelas}</b>) atau Mapel Program Khusus (<b>${finalMapel}</b>) yang sedang dipilih.<br><br>Apakah Anda yakin ingin melanjutkan? Pastikan file ini benar agar nilai tidak tertukar!`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Ya, Lanjutkan',
-        cancelButtonText: 'Batal',
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33'
-      }).then((result) => {
-        if (result.isConfirmed) {
-          processUpload(file);
-        } else {
-          if (fileInputRef.current) fileInputRef.current.value = '';
-        }
+        title: 'Upload Ditolak',
+        html: `File yang Anda upload: <b>${file.name}</b><br><br>Sepertinya tidak cocok dengan dropdown terpilih:<br>Kelas: <b>${kelas}</b><br>Mapel Program Khusus: <b>${finalMapel}</b><br><br><b>Silakan upload file yang benar agar nilai tidak tertukar!</b>`,
+        icon: 'error',
+        confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Tutup'
+      }).then(() => {
+        if (fileInputRef.current) fileInputRef.current.value = '';
       });
+      return;
     } else {
       processUpload(file);
     }
