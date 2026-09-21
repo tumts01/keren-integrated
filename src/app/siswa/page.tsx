@@ -267,7 +267,12 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
 
   useEffect(() => {
     let maxNis = 0;
-    let maxNism = BigInt(0);
+    
+    // Konfigurasi NISM: Prefix Mutlak (12) + Tahun (2) + Urut (4)
+    const currentYearStr = String(new Date().getFullYear()).slice(-2);
+    const prefixNISM = `121235070115${currentYearStr}`;
+    let maxUrutNism = 0;
+
     allData.forEach(s => {
       // Auto NIS
       if (s.nis) {
@@ -277,22 +282,24 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
         }
       }
       
-      // Auto NISM
+      // Auto NISM (Filter yang sesuai tahun ini saja)
       const nismStr = (s.rawMetadata?.['NISM'] || '').trim();
-      if (nismStr && /^\d+$/.test(nismStr)) {
-        try {
-          const nismBig = BigInt(nismStr);
-          if (nismBig > maxNism) {
-            maxNism = nismBig;
-          }
-        } catch (e) {}
+      if (nismStr && nismStr.startsWith(prefixNISM) && nismStr.length === 18) {
+        const urutStr = nismStr.slice(14); // Ambil 4 digit terakhir
+        const urutNum = parseInt(urutStr, 10);
+        if (!isNaN(urutNum) && urutNum > maxUrutNism) {
+          maxUrutNism = urutNum;
+        }
       }
     });
+
+    const nextUrutNism = maxUrutNism > 0 ? (maxUrutNism + 1) : 1;
+    const nextNismStr = `${prefixNISM}${String(nextUrutNism).padStart(4, '0')}`;
 
     setForm(f => ({
       ...f,
       nis: maxNis > 0 ? String(maxNis + 1) : f.nis,
-      nism: maxNism > BigInt(0) ? String(maxNism + BigInt(1)) : f.nism
+      nism: nextNismStr
     }));
   }, [allData]);
 
