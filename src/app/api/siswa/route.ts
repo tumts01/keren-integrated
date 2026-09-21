@@ -107,9 +107,7 @@ export async function GET() {
       return records;
     });
 
-    return NextResponse.json({ success: true, data }, {
-      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' }
-    });
+    return NextResponse.json({ success: true, data });
   } catch (error: any) {
     console.error('Fetch Siswa Error:', error);
     return NextResponse.json({ success: false, error: 'Gagal mengambil data dari Database' }, { status: 500 });
@@ -221,7 +219,7 @@ export async function POST(request: Request) {
         metadata: rowData
       };
       await supabase.from('data_induk').insert(payload);
-      revalidateTag('data_induk', {});
+      revalidateTag('data_induk');
     } catch (sbError) {
       console.error('Error insert mutasi ke Supabase:', sbError);
     }
