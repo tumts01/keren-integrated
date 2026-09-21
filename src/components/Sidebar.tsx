@@ -121,6 +121,13 @@ export default function Sidebar() {
         { name: 'Survey Madrasah', path: '/survey-madrasah', icon: 'fa-poll-h' },
       ]
     },
+    {
+      title: 'Event Madrasah',
+      items: [
+        { name: 'AKSI', path: '/aksi', icon: 'fa-star' },
+        { name: 'Olimpiade & Seni', path: '/olimpiade-seni', icon: 'fa-medal' },
+      ]
+    },
     ...(showKeuangan ? [
       {
         title: 'Keuangan',
@@ -135,7 +142,7 @@ export default function Sidebar() {
     ] : [])
   ];
 
-  const [openCategories, setOpenCategories] = useState<string[]>(['Utama', 'Akademik & KBM', 'Administrasi', 'Keuangan']);
+  const [openCategories, setOpenCategories] = useState<string[]>(['Utama', 'Akademik & KBM', 'Administrasi', 'Event Madrasah', 'Keuangan']);
   const [openSubmenus, setOpenSubmenus] = useState<string[]>(['SPMB']); // For submenus like SPMB
   const [isClient, setIsClient] = useState(false);
 
