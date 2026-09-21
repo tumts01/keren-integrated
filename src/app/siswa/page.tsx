@@ -783,7 +783,8 @@ function PrintSiswaModal({
       // Export per angkatan: 1 sheet per kelas
       const wb = XLSX.utils.book_new();
       Object.entries(groupedByKelas).sort(([a], [b]) => a.localeCompare(b)).forEach(([rombel, list]) => {
-        const rows = list.map((s, i) => ({
+        const sortedList = [...list].sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
+        const rows = sortedList.map((s, i) => ({
           'No': i + 1,
           'Nama Siswa': s.nama,
           'NIS': s.nis,
@@ -810,7 +811,8 @@ function PrintSiswaModal({
       XLSX.writeFile(wb, `Daftar_Siswa_Angkatan_${angkatan}_${new Date().toISOString().slice(0,10)}.xlsx`);
     } else {
       // Export per kelas: 1 sheet
-      const rows = selectedData.map((s, i) => ({
+      const sortedSelectedData = [...selectedData].sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
+      const rows = sortedSelectedData.map((s, i) => ({
         'No': i + 1,
         'Nama Siswa': s.nama || '',
         'NIS': s.nis || '',
@@ -1628,7 +1630,8 @@ export default function SiswaPage() {
   }, [searchTerm, selectedTahun, selectedTingkat]);
 
   const handleExportExcel = () => {
-    const dataToExport = filteredData.map((s, index) => ({
+    const sortedData = [...filteredData].sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
+    const dataToExport = sortedData.map((s, index) => ({
       'No': index + 1,
       'NIS': s.nis,
       'NISN': s.nisn,
