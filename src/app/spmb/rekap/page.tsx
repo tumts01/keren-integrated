@@ -91,6 +91,8 @@ export default function RekapSpmb() {
                   <th>Nama Lengkap</th>
                   <th>Jalur</th>
                   <th>Asal Sekolah</th>
+                  <th>No. WA Ayah</th>
+                  <th>No. WA Ibu</th>
                   <th>Berkas</th>
                   <th>Aksi</th>
                 </tr>
@@ -116,6 +118,20 @@ export default function RekapSpmb() {
                       </span>
                     </td>
                     <td>{item.asalSekolah}</td>
+                    <td>
+                      {item.nomorWaAyah ? (
+                        <a href={`https://wa.me/${item.nomorWaAyah.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" style={{ color: '#16a34a', fontWeight: 600, textDecoration: 'none' }}>
+                          <i className="fab fa-whatsapp" style={{ marginRight: 4 }}></i>{item.nomorWaAyah}
+                        </a>
+                      ) : '-'}
+                    </td>
+                    <td>
+                      {item.nomorWaIbu ? (
+                        <a href={`https://wa.me/${item.nomorWaIbu.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" style={{ color: '#16a34a', fontWeight: 600, textDecoration: 'none' }}>
+                          <i className="fab fa-whatsapp" style={{ marginRight: 4 }}></i>{item.nomorWaIbu}
+                        </a>
+                      ) : '-'}
+                    </td>
                     <td>
                       <div className={styles.actionGroup}>
                         {item.linkKk ? (

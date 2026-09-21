@@ -1969,7 +1969,7 @@ const handleExportMissingNisnNik = () => {
               <i className="fas fa-id-card"></i> Kartu Pelajar
             </button>
             <button onClick={() => setShowPrintModal(true)} className="btn btn-primary" style={{ background: 'linear-gradient(135deg,#7c3aed,#6d28d9)', borderColor: '#7c3aed', marginRight: "8px" }}>
-              <i className="fas fa-print"></i> Cetak Format
+              <i className="fas fa-print"></i> Cetak Daftar
             </button>
             <button onClick={() => setShowMutasiModal(true)} className="btn btn-primary" style={{ background: 'linear-gradient(135deg,#0ea5e9,#0284c7)', borderColor: '#0ea5e9' }}>
               <i className="fas fa-exchange-alt"></i> Data Mutasi
