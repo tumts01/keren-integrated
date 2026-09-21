@@ -2,27 +2,29 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { unstable_cache } from 'next/cache';
 
-// Ambil hanya 2 kolom yang diperlukan — bukan seluruh data induk!
+// Ambil hanya 3 kolom yang diperlukan
 const getCachedSekolah = unstable_cache(
   async () => {
-    const sekolahMap = new Map<string, string>();
+    const sekolahMap = new Map<string, { alamat: string, npsn: string }>();
     let page = 0;
     const PAGE_SIZE = 1000;
 
     while (true) {
       const { data, error } = await supabase
         .from('data_induk')
-        .select('metadata->>SD/MI, metadata->>ALAMAT SD/MI')
+        .select('metadata')
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
       if (error) throw error;
       if (!data || data.length === 0) break;
 
       data.forEach((r: any) => {
-        const namaSekolah = (r['SD/MI'] || '').toString().trim();
-        const alamatSekolah = (r['ALAMAT SD/MI'] || '').toString().trim();
+        const meta = r.metadata || {};
+        const namaSekolah = (meta['SD/MI'] || '').toString().trim();
+        const alamatSekolah = (meta['ALAMAT SD/MI'] || '').toString().trim();
+        const npsn = (meta['NPSN SD/MI'] || '').toString().trim();
         if (namaSekolah && !sekolahMap.has(namaSekolah)) {
-          sekolahMap.set(namaSekolah, alamatSekolah);
+          sekolahMap.set(namaSekolah, { alamat: alamatSekolah, npsn });
         }
       });
 
@@ -31,7 +33,7 @@ const getCachedSekolah = unstable_cache(
     }
 
     return Array.from(sekolahMap.entries())
-      .map(([nama, alamat]) => ({ nama, alamat }))
+      .map(([nama, val]) => ({ nama, alamat: val.alamat, npsn: val.npsn }))
       .sort((a, b) => a.nama.localeCompare(b.nama));
   },
   ['spmb_sekolah'],

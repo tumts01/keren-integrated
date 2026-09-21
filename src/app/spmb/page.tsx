@@ -8,7 +8,7 @@ export default function SpmbPage() {
   const pathname = usePathname();
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
-  const [sekolahRef, setSekolahRef] = useState<{nama: string, alamat: string}[]>([]);
+  const [sekolahRef, setSekolahRef] = useState<{nama: string, alamat: string, npsn?: string}[]>([]);
 
   useEffect(() => {
     fetch('/api/spmb/sekolah')
@@ -48,6 +48,7 @@ export default function SpmbPage() {
     agama: 'Islam',
     asalSekolah: '',
     alamatSekolahAsal: '',
+    npsnSekolahAsal: '',
     namaAyah: '',
     pekerjaanAyah: '',
     namaIbu: '',
@@ -70,11 +71,12 @@ export default function SpmbPage() {
     setFormData(prev => {
       const newData = { ...prev, [name]: value };
       
-      // Auto-fill alamat sekolah jika asalSekolah dipilih dari referensi
+      // Auto-fill alamat dan NPSN sekolah jika asalSekolah dipilih dari referensi
       if (name === 'asalSekolah') {
         const selected = sekolahRef.find(s => s.nama === value);
-        if (selected && selected.alamat) {
-          newData.alamatSekolahAsal = selected.alamat;
+        if (selected) {
+          if (selected.alamat) newData.alamatSekolahAsal = selected.alamat;
+          if (selected.npsn) newData.npsnSekolahAsal = selected.npsn;
         }
       }
       
@@ -322,6 +324,10 @@ export default function SpmbPage() {
               </datalist>
             </div>
             <div className={styles.formGroup}>
+              <label className={styles.label}>NPSN SD/MI <span>*</span></label>
+              <input type="text" name="npsnSekolahAsal" className={styles.input} placeholder="Contoh: 20554142" value={formData.npsnSekolahAsal} onChange={handleInputChange} required />
+            </div>
+            <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
               <label className={styles.label}>Alamat Sekolah Asal <span>*</span></label>
               <input type="text" name="alamatSekolahAsal" className={styles.input} placeholder="Contoh: Singosari, Kab. Malang" value={formData.alamatSekolahAsal} onChange={handleInputChange} required />
             </div>
