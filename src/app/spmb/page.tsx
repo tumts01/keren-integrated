@@ -174,6 +174,7 @@ export default function SpmbPage() {
           agama: 'Islam',
           asalSekolah: '',
           alamatSekolahAsal: '',
+          npsnSekolahAsal: '',
           namaAyah: '',
           pekerjaanAyah: '',
           namaIbu: '',
