@@ -40,8 +40,7 @@ export default function NilaiSiswaPage() {
     'Seni Budaya',
     'Bahasa Inggris',
     'Bahasa Arab',
-    'Prakarya',
-    'Informatika',
+    'Keterampilan Kreatif Produktif',
     'Pendidikan Agama Islam',
     'Tahfidh'
   ];
@@ -166,10 +165,7 @@ export default function NilaiSiswaPage() {
     setLoading(false);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processUpload = (file: File) => {
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -207,6 +203,40 @@ export default function NilaiSiswaPage() {
       }
     };
     reader.readAsBinaryString(file);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const finalMapel = mapel === 'Lainnya' ? mapelLain : mapel;
+    const fileNameUpper = file.name.toUpperCase();
+    
+    // Check if filename contains the mapel words and kelas
+    const mapelWords = finalMapel.toUpperCase().replace(/[^A-Z0-9]/g, ' ').trim().split(/\s+/).filter(Boolean);
+    const isMapelMatch = mapelWords.length > 0 && mapelWords.some((word: string) => fileNameUpper.includes(word));
+    const isKelasMatch = kelas && fileNameUpper.includes(kelas.toUpperCase());
+
+    if (!isMapelMatch || !isKelasMatch) {
+      Swal.fire({
+        title: 'Peringatan Keamanan',
+        html: `Nama file Excel yang diupload (<b>${file.name}</b>) tidak sesuai dengan Kelas (<b>${kelas}</b>) atau Mapel Program Khusus (<b>${finalMapel}</b>) yang sedang dipilih.<br><br>Apakah Anda yakin ingin melanjutkan? Pastikan file ini benar agar nilai tidak tertukar!`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Lanjutkan',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          processUpload(file);
+        } else {
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+      });
+    } else {
+      processUpload(file);
+    }
   };
 
   const saveBulkScores = async () => {

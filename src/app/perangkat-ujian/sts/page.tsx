@@ -26,9 +26,11 @@ export default function StsPage() {
   const [semester, setSemester] = useState('Ganjil');
   const [kelas, setKelas] = useState('');
   const [mapel, setMapel] = useState('');
+  const [tanggalCetak, setTanggalCetak] = useState(() => new Date().toISOString().split('T')[0]);
   
   // Data
   const [siswaList, setSiswaList] = useState<Siswa[]>([]);
+  const [kelasList, setKelasList] = useState<any[]>([]);
   const [allMapel, setAllMapel] = useState<string[]>([]);
   
   // Upload Data
@@ -39,6 +41,8 @@ export default function StsPage() {
 
   // Cetak Rapor Data
   const [gradesData, setGradesData] = useState<any[]>([]);
+  const [prosusData, setProsusData] = useState<any[]>([]);
+  const [rekapPresensi, setRekapPresensi] = useState<Record<string, { S: number, I: number, A: number }>>({});
   const [isFetchingGrades, setIsFetchingGrades] = useState(false);
 
   // Review Data
@@ -60,6 +64,7 @@ export default function StsPage() {
   useEffect(() => {
     if (activeTab === 'cetak' && kelas) {
       fetchGrades();
+      fetchRekapPresensi();
     }
     if (activeTab === 'review' && kelas) {
       fetchReviewData();
@@ -145,6 +150,13 @@ export default function StsPage() {
         
               }
 
+      // Ambil data kelas
+      const resKelas = await fetch('/api/kelas');
+      const jsonKelas = await resKelas.json();
+      if (jsonKelas.success && jsonKelas.data) {
+        setKelasList(jsonKelas.data);
+      }
+
       // Ambil mata pelajaran
       const resMapel = await fetch('/api/jadwal/mapel');
       const jsonMapel = await resMapel.json();
@@ -166,10 +178,86 @@ export default function StsPage() {
       if (json.success) {
         setGradesData(json.data);
       }
+
+      // Fetch Prosus Data (Pengembangan Potensi Minat & Bakat)
+      const mapMinatBakat: Record<string, string> = {
+        '7A': 'SAINS RISET', '7B': 'SAINS RISET',
+        '7C': 'OLAHRAGA SENI', '7D': 'OLAHRAGA SENI',
+        '7E': 'MULTILINGUAL', '7F': 'MULTILINGUAL',
+        '7G': 'KETERAMPILAN KREATIF PRODUKTIF',
+        '7H': 'AGAMA TAHFIDZ', '7I': 'AGAMA TAHFIDZ',
+        '8A': 'OLAHRAGA SENI', '8B': 'MULTILINGUAL',
+        '8C': 'OLAHRAGA SENI', '8D': 'MULTILINGUAL',
+        '8E': 'SAINS RISET', '8F': 'KETERAMPILAN KREATIF PRODUKTIF',
+        '8G': 'SAINS RISET', '8H': 'AGAMA TAHFIDZ', '8I': 'AGAMA TAHFIDZ'
+      };
+      
+      const prosusName = mapMinatBakat[kelas.toUpperCase().trim()] || '';
+      let targetMapels: string[] = [];
+      
+      if (prosusName === 'SAINS RISET') targetMapels = ['Ilmu Pengetahuan Alam', 'Ilmu Pengetahuan Sosial', 'Matematika', 'Bahasa Indonesia'];
+      else if (prosusName === 'OLAHRAGA SENI') targetMapels = ['Pendidikan Jasmani, Olah Raga dan Kesehatan', 'Seni Budaya'];
+      else if (prosusName === 'MULTILINGUAL') targetMapels = ['Bahasa Arab', 'Bahasa Indonesia'];
+      else if (prosusName === 'KETERAMPILAN KREATIF PRODUKTIF') targetMapels = ['Keterampilan Kreatif Produktif'];
+      else if (prosusName === 'AGAMA TAHFIDZ') targetMapels = ['Pendidikan Agama Islam', 'Tahfidh'];
+
+      if (targetMapels.length > 0) {
+        const pkRes = await fetch(`/api/nilai-sts/prosus?tahunAjaran=${encodeURIComponent(tahunAjaran)}&kelas=${encodeURIComponent(kelas)}&mapels=${encodeURIComponent(targetMapels.join(','))}`);
+        const pkJson = await pkRes.json();
+        if (pkJson.success) setProsusData(pkJson.data);
+        else setProsusData([]);
+      } else {
+        setProsusData([]);
+      }
+
     } catch (err) {
       console.error(err);
     } finally {
       setIsFetchingGrades(false);
+    }
+  };
+
+  const fetchRekapPresensi = async () => {
+    try {
+      const res = await fetch('/api/presensi');
+      const json = await res.json();
+      if (json.success && json.data) {
+        const grouped = json.data.reduce((acc: any, curr: any) => {
+          const meta = curr.metadata || {};
+          if (meta['KELAS'] !== kelas) return acc;
+          if (meta['TAHUN AJARAN'] !== tahunAjaran) return acc;
+          
+          const dateStr = meta['TANGGAL'] || curr.tanggal || '';
+          if (dateStr) {
+            const m = parseInt(dateStr.split('-')[1] || '0', 10);
+            if (semester === 'Ganjil' && (m < 7 || m > 12)) return acc;
+            if (semester === 'Genap' && (m < 1 || m > 6)) return acc;
+          }
+
+          const nama = (meta['NAMA SISWA'] || '').trim().toUpperCase();
+          if (!nama) return acc;
+          if (!acc[nama]) acc[nama] = { S: 0, I: 0, A: 0 };
+          
+          const status = meta['KEHADIRAN'] || '';
+          const jams = (meta['JAM KE'] || '').toString().split(',').length;
+          
+          if (status === 'S' || status === 'Sakit') acc[nama].S += jams;
+          else if (status === 'I' || status === 'Izin') acc[nama].I += jams;
+          else if (status === 'A' || status === 'Alpha') acc[nama].A += jams;
+
+          return acc;
+        }, {});
+        
+        Object.keys(grouped).forEach(k => {
+          grouped[k].S = Number((grouped[k].S / 10).toFixed(1));
+          grouped[k].I = Number((grouped[k].I / 10).toFixed(1));
+          grouped[k].A = Number((grouped[k].A / 10).toFixed(1));
+        });
+        
+        setRekapPresensi(grouped);
+      }
+    } catch (err) {
+      console.error('Gagal mengambil presensi', err);
     }
   };
 
@@ -226,9 +314,32 @@ export default function StsPage() {
     XLSX.writeFile(wb, `Template_Nilai_STS_${kelas}_${mapel.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // FITUR KEAMANAN EKSTRA: Cek kecocokan nama file dengan kelas & mapel
+    const safeMapel = mapel.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+    const fileNameSafe = file.name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+    
+    // Jika nama file tidak mengandung nama kelas atau nama mapel (yang sudah di-sanitize)
+    if (!fileNameSafe.includes(kelas.toLowerCase()) || !fileNameSafe.includes(safeMapel)) {
+      const confirm = await Swal.fire({
+        title: 'Nama File Tidak Sesuai?',
+        html: `File yang Anda upload: <b>${file.name}</b><br><br>Sepertinya tidak cocok dengan dropdown terpilih:<br>Kelas: <b>${kelas}</b><br>Mapel: <b>${mapel}</b><br><br>Yakin ingin melanjutkan?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Lanjutkan',
+        cancelButtonText: 'Batal'
+      });
+
+      if (!confirm.isConfirmed) {
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        return;
+      }
+    }
 
     const reader = new FileReader();
     reader.onload = (evt) => {
@@ -312,7 +423,86 @@ export default function StsPage() {
     }
   };
 
-  const cetakRapor = (siswa: Siswa) => {
+  const cetakRapor = (siswa: Siswa, idx: number) => {
+    // Cari wali kelas dari kelasList
+    const targetKelas = kelasList.find(k => k.nama_kelas === siswa.rombel);
+    const waliKelas = targetKelas?.wali_kelas || '';
+    const waliKelasText = waliKelas ? `<b><u>${waliKelas}</u></b>` : '_________________________';
+
+    // Mapping Minat & Bakat
+    const mapMinatBakat: Record<string, string> = {
+      '7A': 'SAINS RISET', '7B': 'SAINS RISET',
+      '7C': 'OLAHRAGA SENI', '7D': 'OLAHRAGA SENI',
+      '7E': 'MULTILINGUAL', '7F': 'MULTILINGUAL',
+      '7G': 'KETERAMPILAN KREATIF PRODUKTIF',
+      '7H': 'AGAMA TAHFIDZ', '7I': 'AGAMA TAHFIDZ',
+      '8A': 'OLAHRAGA SENI', '8B': 'MULTILINGUAL',
+      '8C': 'OLAHRAGA SENI', '8D': 'MULTILINGUAL',
+      '8E': 'SAINS RISET', '8F': 'KETERAMPILAN KREATIF PRODUKTIF',
+      '8G': 'SAINS RISET', '8H': 'AGAMA TAHFIDZ', '8I': 'AGAMA TAHFIDZ'
+    };
+    const minatBakat = mapMinatBakat[siswa.rombel.toUpperCase().trim()] || '';
+
+    let prosusHtml = `
+      <tr>
+        <td style="text-align:center;border:1px solid #333;padding:5px 4px;">1</td>
+        <td style="border:1px solid #333;padding:5px 4px;"></td>
+        <td style="border:1px solid #333;padding:5px 4px;"></td>
+        <td style="border:1px solid #333;padding:5px 4px;"></td>
+        <td style="border:1px solid #333;padding:5px 4px;"></td>
+        <td style="border:1px solid #333;padding:5px 4px;"></td>
+        <td style="border:1px solid #333;padding:5px 4px;"></td>
+        <td style="border:1px solid #333;padding:5px 4px;"></td>
+        <td style="border:1px solid #333;padding:5px 4px;"></td>
+        <td style="border:1px solid #333;padding:5px 4px;"></td>
+      </tr>`;
+    
+    if (minatBakat) {
+      const pkStudent = prosusData.find(p => String(p.nisn).trim() === String(siswa.nisn).trim());
+      if (pkStudent) {
+        const tp1 = pkStudent.tp1;
+        const tp2 = pkStudent.tp2;
+        const tp3 = pkStudent.tp3;
+        const tp4 = pkStudent.tp4;
+        const tp5 = pkStudent.tp5;
+        const tp6 = pkStudent.tp6;
+        const sts = pkStudent.sts;
+        let na = '';
+        const tps = [tp1, tp2, tp3, tp4, tp5, tp6].filter(val => val !== '' && !isNaN(Number(val))).map(Number);
+        const stsNum = parseFloat(String(sts).replace(',', '.'));
+        if (tps.length > 0 && !isNaN(stsNum)) {
+           const avgHarian = tps.reduce((a, b) => a + b, 0) / tps.length;
+           na = String(Math.round((avgHarian * 0.6) + (stsNum * 0.4)));
+        }
+
+        prosusHtml = `<tr>
+          <td style="text-align:center;border:1px solid #333;padding:5px 4px;">1</td>
+          <td style="border:1px solid #333;padding:5px 4px;padding-left:14px;">${minatBakat}</td>
+          <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${tp1}</td>
+          <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${tp2}</td>
+          <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${tp3}</td>
+          <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${tp4}</td>
+          <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${tp5}</td>
+          <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${tp6}</td>
+          <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${sts}</td>
+          <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${na}</td>
+        </tr>`;
+      } else {
+        prosusHtml = `<tr>
+          <td style="text-align:center;border:1px solid #333;padding:5px 4px;">1</td>
+          <td style="border:1px solid #333;padding:5px 4px;padding-left:14px;">${minatBakat}</td>
+          <td style="text-align:center;border:1px solid #333;padding:5px 4px;"></td>
+          <td style="text-align:center;border:1px solid #333;padding:5px 4px;"></td>
+          <td style="text-align:center;border:1px solid #333;padding:5px 4px;"></td>
+          <td style="text-align:center;border:1px solid #333;padding:5px 4px;"></td>
+          <td style="text-align:center;border:1px solid #333;padding:5px 4px;"></td>
+          <td style="text-align:center;border:1px solid #333;padding:5px 4px;"></td>
+          <td style="text-align:center;border:1px solid #333;padding:5px 4px;"></td>
+          <td style="text-align:center;border:1px solid #333;padding:5px 4px;"></td>
+        </tr>`;
+      }
+    }
+
     // Helper: cari nilai siswa dari data per mapel
     const getNilai = (mapelName: string) => {
       const doc = gradesData.find(d => d.mata_pelajaran.toLowerCase().trim() === mapelName.toLowerCase().trim());
@@ -325,16 +515,44 @@ export default function StsPage() {
         (nameKey && n[nameKey]?.toString().toUpperCase().trim() === siswa.nama.toUpperCase().trim())
       );
       if (!baris) return { tp1: '', tp2: '', tp3: '', tp4: '', tp5: '', tp6: '', sts: '', na: '' };
-      return {
-        tp1: baris['TP1'] ?? baris['tp1'] ?? '',
-        tp2: baris['TP2'] ?? baris['tp2'] ?? '',
-        tp3: baris['TP3'] ?? baris['tp3'] ?? '',
-        tp4: baris['TP4'] ?? baris['tp4'] ?? '',
-        tp5: baris['TP5'] ?? baris['tp5'] ?? '',
-        tp6: baris['TP6'] ?? baris['tp6'] ?? '',
-        sts: baris['STS'] ?? baris['Nilai STS'] ?? baris['NILAI STS'] ?? '',
-        na: baris['NILAI AKHIR'] ?? baris['Nilai Akhir'] ?? baris['NA'] ?? '',
+
+      const calcAvg = (materiIndex: number) => {
+        let sum = 0;
+        let count = 0;
+        for (let s = 1; s <= 3; s++) {
+          const val = baris[`MATERI ${materiIndex} S${s}`] ?? baris[`Materi ${materiIndex} S${s}`];
+          if (val !== undefined && val !== null && val !== '') {
+            const num = parseFloat(String(val).replace(',', '.'));
+            if (!isNaN(num)) {
+              sum += num;
+              count++;
+            }
+          }
+        }
+        if (count === 0) return '';
+        return Math.round(sum / count);
       };
+
+      const tp1 = baris['TP1'] ?? baris['tp1'] ?? calcAvg(1);
+      const tp2 = baris['TP2'] ?? baris['tp2'] ?? calcAvg(2);
+      const tp3 = baris['TP3'] ?? baris['tp3'] ?? calcAvg(3);
+      const tp4 = baris['TP4'] ?? baris['tp4'] ?? calcAvg(4);
+      const tp5 = baris['TP5'] ?? baris['tp5'] ?? calcAvg(5);
+      const tp6 = baris['TP6'] ?? baris['tp6'] ?? calcAvg(6);
+      const sts = baris['SUMATIF TENGAH SEMESTER'] ?? baris['STS'] ?? baris['Nilai STS'] ?? baris['NILAI STS'] ?? '';
+
+      let na = baris['NILAI AKHIR'] ?? baris['Nilai Akhir'] ?? baris['NA'] ?? '';
+
+      const tps = [tp1, tp2, tp3, tp4, tp5, tp6].filter(val => val !== '' && !isNaN(Number(val))).map(Number);
+      const stsNum = parseFloat(String(sts).replace(',', '.'));
+
+      if (tps.length > 0 && !isNaN(stsNum)) {
+        const avgHarian = tps.reduce((a, b) => a + b, 0) / tps.length;
+        // Asumsi proporsi 60% harian dan 40% STS (agar total 100%)
+        na = Math.round((avgHarian * 0.6) + (stsNum * 0.4));
+      }
+
+      return { tp1, tp2, tp3, tp4, tp5, tp6, sts, na };
     };
 
     // mkRow: only sub-mapel gets indent; main rows (2-10) and sub-mapel both are NOT bold
@@ -362,9 +580,12 @@ export default function StsPage() {
     </tr>`;
 
     const logoUrl = '/logo.png';
-    const today = new Date();
+    const cetakDate = new Date(tanggalCetak);
     const bulan = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-    const tanggal = `${today.getDate()} ${bulan[today.getMonth()]} ${today.getFullYear()}`;
+    const tanggal = `${cetakDate.getDate()} ${bulan[cetakDate.getMonth()]} ${cetakDate.getFullYear()}`;
+
+    // Cari data presensi
+    const presensi = rekapPresensi[siswa.nama.toUpperCase().trim()] || { S: 0, I: 0, A: 0 };
 
     const html = `
       <html>
@@ -418,7 +639,7 @@ export default function StsPage() {
               <col style="width:16%"><col style="width:1%"><col>
             </colgroup>
             <tr>
-              <td>No.Absen</td><td>:</td><td>${siswa.noAbsen || '-'}</td>
+              <td>No.Absen</td><td>:</td><td>${idx + 1}</td>
               <td></td>
               <td>Kelas</td><td>:</td><td>${siswa.rombel}</td>
             </tr>
@@ -428,7 +649,7 @@ export default function StsPage() {
               <td>Semester</td><td>:</td><td>${semester}</td>
             </tr>
             <tr>
-              <td>No.Induk</td><td>:</td><td>${siswa.noInduk || '-'}</td>
+              <td>No.Induk</td><td>:</td><td>${siswa.id || '-'}</td>
               <td></td>
               <td>Tahun Pelajaran</td><td>:</td><td>${tahunAjaran}</td>
             </tr>
@@ -471,8 +692,8 @@ export default function StsPage() {
               ${mkRow(3, 'Bahasa Indonesia', 'Bahasa Indonesia')}
               ${mkRow(4, 'Bahasa Arab', 'Bahasa Arab')}
               ${mkRow(5, 'Matematika', 'Matematika')}
-              ${mkRow(6, 'Ilmu Pengetahuan Alam', 'llmu Pengetahuan Alam')}
-              ${mkRow(7, 'Ilmu Pengetahuan Sosial', 'llmu Pengetahuan Sosial')}
+              ${mkRow(6, 'Ilmu Pengetahuan Alam', 'Ilmu Pengetahuan Alam')}
+              ${mkRow(7, 'Ilmu Pengetahuan Sosial', 'Ilmu Pengetahuan Sosial')}
               ${mkRow(8, 'Bahasa Inggris', 'Bahasa Inggris')}
               ${mkRow(9, 'Pendidikan Jasmani, Olah Raga dan Kesehatan', 'Pendidikan Jasmani, Olah Raga dan Kesehatan')}
               ${mkRow(10, 'Informatika', 'Informatika')}
@@ -486,18 +707,7 @@ export default function StsPage() {
               ${mkRow(2, 'KE-NU-AN', 'KE-NU-AN', true)}
 
               ${mkGroupHeader('Pengembangan Potensi Minat &amp; Bakat')}
-              <tr>
-                <td style="text-align:center;border:1px solid #333;padding:5px 4px;">1</td>
-                <td style="border:1px solid #333;padding:5px 4px;"></td>
-                <td style="border:1px solid #333;padding:5px 4px;"></td>
-                <td style="border:1px solid #333;padding:5px 4px;"></td>
-                <td style="border:1px solid #333;padding:5px 4px;"></td>
-                <td style="border:1px solid #333;padding:5px 4px;"></td>
-                <td style="border:1px solid #333;padding:5px 4px;"></td>
-                <td style="border:1px solid #333;padding:5px 4px;"></td>
-                <td style="border:1px solid #333;padding:5px 4px;"></td>
-                <td style="border:1px solid #333;padding:5px 4px;"></td>
-              </tr>
+              ${prosusHtml}
             </tbody>
           </table>
 
@@ -508,15 +718,15 @@ export default function StsPage() {
             </tr>
             <tr>
               <td style="width:20%;">1 &nbsp; Sakit</td>
-              <td style="width:80%;"></td>
+              <td style="width:80%;">${presensi.S > 0 ? presensi.S + ' hari' : '-'}</td>
             </tr>
             <tr>
               <td>2 &nbsp; Izin</td>
-              <td></td>
+              <td>${presensi.I > 0 ? presensi.I + ' hari' : '-'}</td>
             </tr>
             <tr>
               <td>3 &nbsp; Tanpa Keterangan</td>
-              <td></td>
+              <td>${presensi.A > 0 ? presensi.A + ' hari' : '-'}</td>
             </tr>
           </table>
 
@@ -524,7 +734,7 @@ export default function StsPage() {
           <table class="ttd">
             <tr>
               <td>Mengetahui:<br>Orang Tua/Wali<br><br><br><br><br>_________________________</td>
-              <td style="text-align:right;">Singosari, ${tanggal}<br>Wali Kelas:<br><br><br><br><br>_________________________</td>
+              <td style="text-align:right;">Singosari, ${tanggal}<br>Wali Kelas:<br><br><br><br><br>${waliKelasText}</td>
             </tr>
           </table>
         </body>
@@ -606,6 +816,17 @@ export default function StsPage() {
               <select className={styles.select} value={mapel} onChange={e => setMapel(e.target.value)}>
                 {allMapel.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
+            </div>
+          )}
+          {activeTab === 'cetak' && (
+            <div className={styles.filterGroup}>
+              <label>Tanggal Cetak</label>
+              <input 
+                type="date" 
+                className={styles.select} 
+                value={tanggalCetak} 
+                onChange={e => setTanggalCetak(e.target.value)} 
+              />
             </div>
           )}
         </div>
@@ -720,7 +941,7 @@ export default function StsPage() {
                         <button 
                           className={styles.btnPrimary} 
                           style={{ padding: '6px 12px', fontSize: '0.85rem', margin: '0 auto' }}
-                          onClick={() => cetakRapor(s)}
+                          onClick={() => cetakRapor(s, i)}
                         >
                           <i className="fas fa-print"></i> Cetak
                         </button>
