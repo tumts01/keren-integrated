@@ -26,6 +26,7 @@ export async function GET() {
         suratTugas: meta['SURAT TUGAS'] || '',
         dokumentasi: meta['DOKUMENTASI'] || '',
         notulen: meta['NOTULEN'] || '',
+        daftarHadir: meta['DAFTAR HADIR'] || '',
       };
     }).filter((item: any) => item.namaGuru || item.namaKegiatan);
 
@@ -41,7 +42,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { namaGuru, bidangStudi, namaKegiatan, tempat, tanggal, penyelenggara, agenda, suratTugas, dokumentasi, notulen } = body;
+    const { namaGuru, bidangStudi, namaKegiatan, tempat, tanggal, penyelenggara, agenda, suratTugas, dokumentasi, notulen, daftarHadir } = body;
 
     if (!namaGuru || !namaKegiatan || !tanggal) {
       return NextResponse.json({ success: false, error: 'Nama guru, nama kegiatan, dan tanggal wajib diisi' }, { status: 400 });
@@ -59,6 +60,7 @@ export async function POST(req: Request) {
         'SURAT TUGAS': suratTugas || '',
         'DOKUMENTASI': dokumentasi || '',
         'NOTULEN': notulen || '',
+        'DAFTAR HADIR': daftarHadir || '',
         'CREATED_AT': new Date().toISOString(),
       }
     }]);
@@ -75,7 +77,7 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   try {
     const body = await req.json();
-    const { id, namaGuru, bidangStudi, namaKegiatan, tempat, tanggal, penyelenggara, agenda, suratTugas, dokumentasi, notulen } = body;
+    const { id, namaGuru, bidangStudi, namaKegiatan, tempat, tanggal, penyelenggara, agenda, suratTugas, dokumentasi, notulen, daftarHadir } = body;
 
     if (!id || !namaGuru || !namaKegiatan || !tanggal) {
       return NextResponse.json({ success: false, error: 'ID, Nama guru, nama kegiatan, dan tanggal wajib diisi' }, { status: 400 });
@@ -93,6 +95,7 @@ export async function PUT(req: Request) {
         'SURAT TUGAS': suratTugas || '',
         'DOKUMENTASI': dokumentasi || '',
         'NOTULEN': notulen || '',
+        'DAFTAR HADIR': daftarHadir || '',
         'UPDATED_AT': new Date().toISOString(),
       }
     }).eq('id', id);

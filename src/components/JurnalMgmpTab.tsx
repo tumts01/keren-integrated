@@ -16,6 +16,7 @@ interface JurnalMgmp {
   suratTugas: string;
   dokumentasi: string;
   notulen: string;
+  daftarHadir: string;
 }
 
 interface Guru {
@@ -74,14 +75,17 @@ export default function JurnalMgmpTab() {
     tanggal: '',
     penyelenggara: '',
     agenda: '',
-    notulen: '',
   });
   const [suratTugasFile, setSuratTugasFile] = useState<File | null>(null);
   const [dokumentasiFiles, setDokumentasiFiles] = useState<File[]>([]);
+  const [daftarHadirFile, setDaftarHadirFile] = useState<File | null>(null);
+  const [notulenFile, setNotulenFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState('');
 
   const suratTugasRef = useRef<HTMLInputElement>(null);
   const dokumentasiRef = useRef<HTMLInputElement>(null);
+  const daftarHadirRef = useRef<HTMLInputElement>(null);
+  const notulenRef = useRef<HTMLInputElement>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -104,12 +108,16 @@ export default function JurnalMgmpTab() {
 
   const resetForm = () => {
     setEditId(null);
-    setForm({ namaGuru: '', bidangStudi: '', namaKegiatan: '', tempat: '', tanggal: '', penyelenggara: '', agenda: '', notulen: '' });
+    setForm({ namaGuru: '', bidangStudi: '', namaKegiatan: '', tempat: '', tanggal: '', penyelenggara: '', agenda: '' });
     setSuratTugasFile(null);
     setDokumentasiFiles([]);
+    setDaftarHadirFile(null);
+    setNotulenFile(null);
     setUploadProgress('');
     if (suratTugasRef.current) suratTugasRef.current.value = '';
     if (dokumentasiRef.current) dokumentasiRef.current.value = '';
+    if (daftarHadirRef.current) daftarHadirRef.current.value = '';
+    if (notulenRef.current) notulenRef.current.value = '';
   };
 
   const handleEdit = (item: JurnalMgmp) => {
@@ -122,12 +130,15 @@ export default function JurnalMgmpTab() {
       tanggal: item.tanggal,
       penyelenggara: item.penyelenggara,
       agenda: item.agenda,
-      notulen: item.notulen,
     });
     setSuratTugasFile(null);
     setDokumentasiFiles([]);
+    setDaftarHadirFile(null);
+    setNotulenFile(null);
     if (suratTugasRef.current) suratTugasRef.current.value = '';
     if (dokumentasiRef.current) dokumentasiRef.current.value = '';
+    if (daftarHadirRef.current) daftarHadirRef.current.value = '';
+    if (notulenRef.current) notulenRef.current.value = '';
     setShowModal(true);
   };
 
@@ -150,6 +161,8 @@ export default function JurnalMgmpTab() {
     try {
       let suratTugasUrl = editId ? data.find(d => d.id === editId)?.suratTugas || '' : '';
       let dokumentasiUrlsStr = editId ? data.find(d => d.id === editId)?.dokumentasi || '' : '';
+      let daftarHadirUrl = editId ? data.find(d => d.id === editId)?.daftarHadir || '' : '';
+      let notulenUrl = editId ? data.find(d => d.id === editId)?.notulen || '' : '';
 
       if (suratTugasFile) {
         setUploadProgress('Mengunggah surat tugas...');
@@ -157,6 +170,22 @@ export default function JurnalMgmpTab() {
           ? await compressImage(suratTugasFile) 
           : suratTugasFile;
         suratTugasUrl = await uploadFile(new File([compressed], suratTugasFile.name, { type: suratTugasFile.type }));
+      }
+
+      if (daftarHadirFile) {
+        setUploadProgress('Mengunggah daftar hadir...');
+        const compressed = daftarHadirFile.type.startsWith('image/') 
+          ? await compressImage(daftarHadirFile) 
+          : daftarHadirFile;
+        daftarHadirUrl = await uploadFile(new File([compressed], daftarHadirFile.name, { type: daftarHadirFile.type }));
+      }
+
+      if (notulenFile) {
+        setUploadProgress('Mengunggah notulen...');
+        const compressed = notulenFile.type.startsWith('image/') 
+          ? await compressImage(notulenFile) 
+          : notulenFile;
+        notulenUrl = await uploadFile(new File([compressed], notulenFile.name, { type: notulenFile.type }));
       }
 
       if (dokumentasiFiles.length > 0) {
@@ -180,6 +209,8 @@ export default function JurnalMgmpTab() {
           id: editId,
           suratTugas: suratTugasUrl,
           dokumentasi: dokumentasiUrlsStr,
+          daftarHadir: daftarHadirUrl,
+          notulen: notulenUrl,
         }),
       });
       const json = await res.json();
@@ -254,30 +285,30 @@ export default function JurnalMgmpTab() {
       }
     });
 
-    // Notulen
     const finalY = (doc as any).lastAutoTable.finalY + 10;
-    doc.setFont('helvetica', 'bold');
-    doc.text('Notulen:', 14, finalY);
-    doc.setFont('helvetica', 'normal');
-    
-    // Handle multiline text properly
-    const notulenLines = doc.splitTextToSize(jurnal.notulen || '-', 180);
-    doc.text(notulenLines, 14, finalY + 6);
     
     // Attachment Links info
-    let attachmentY = finalY + 6 + (notulenLines.length * 5) + 10;
-    if (jurnal.suratTugas || jurnal.dokumentasi) {
+    let attachmentY = finalY;
+    if (jurnal.suratTugas || jurnal.dokumentasi || jurnal.daftarHadir || jurnal.notulen) {
       doc.setFont('helvetica', 'bold');
-      doc.text('Lampiran (Lihat di Aplikasi):', 14, attachmentY);
+      doc.text('Lampiran (Tersimpan di Aplikasi):', 14, attachmentY);
       doc.setFont('helvetica', 'normal');
       if (jurnal.suratTugas) {
         attachmentY += 6;
-        doc.text('- Surat Tugas (Terlampir)', 14, attachmentY);
+        doc.text('- Surat Tugas', 14, attachmentY);
+      }
+      if (jurnal.daftarHadir) {
+        attachmentY += 6;
+        doc.text('- Daftar Hadir', 14, attachmentY);
+      }
+      if (jurnal.notulen) {
+        attachmentY += 6;
+        doc.text('- Notulen Kegiatan', 14, attachmentY);
       }
       if (jurnal.dokumentasi) {
         const count = jurnal.dokumentasi.split(' || ').length;
         attachmentY += 6;
-        doc.text(`- Dokumentasi (${count} Foto terlampir)`, 14, attachmentY);
+        doc.text(`- Dokumentasi (${count} Foto)`, 14, attachmentY);
       }
     }
 
@@ -547,19 +578,46 @@ export default function JurnalMgmpTab() {
                   )}
                 </div>
 
-                {/* Notulen */}
+                {/* Daftar Hadir Upload */}
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
-                    <i className="fas fa-pen-alt" style={{ marginRight: '6px', color: '#0ea5e9' }}></i>
-                    Notulen
+                    <i className="fas fa-users" style={{ marginRight: '6px', color: '#10b981' }}></i>
+                    Upload Daftar Hadir (file/foto) {editId && <span style={{ color: '#ef4444', fontWeight: 'normal' }}>(Opsional, biarkan kosong jika tidak diubah)</span>}
                   </label>
-                  <textarea
-                    value={form.notulen}
-                    onChange={e => setForm(f => ({ ...f, notulen: e.target.value }))}
-                    placeholder="Tuliskan hasil/notulen kegiatan MGMP..."
-                    rows={5}
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', resize: 'vertical' }}
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    ref={daftarHadirRef}
+                    onChange={e => setDaftarHadirFile(e.target.files?.[0] || null)}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', background: '#f8fafc' }}
                   />
+                  {daftarHadirFile && (
+                    <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#10b981' }}>
+                      <i className="fas fa-check-circle" style={{ marginRight: '4px' }}></i>
+                      {daftarHadirFile.name}
+                    </p>
+                  )}
+                </div>
+
+                {/* Notulen Upload */}
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+                    <i className="fas fa-file-word" style={{ marginRight: '6px', color: '#0ea5e9' }}></i>
+                    Upload Notulen Kegiatan (PDF/Word/Foto) {editId && <span style={{ color: '#ef4444', fontWeight: 'normal' }}>(Opsional, biarkan kosong jika tidak diubah)</span>}
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf,.doc,.docx"
+                    ref={notulenRef}
+                    onChange={e => setNotulenFile(e.target.files?.[0] || null)}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', background: '#f8fafc' }}
+                  />
+                  {notulenFile && (
+                    <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#10b981' }}>
+                      <i className="fas fa-check-circle" style={{ marginRight: '4px' }}></i>
+                      {notulenFile.name}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -621,10 +679,23 @@ export default function JurnalMgmpTab() {
                 </div>
               )}
 
+              {selectedDetail.daftarHadir && (
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Daftar Hadir</p>
+                  <a href={selectedDetail.daftarHadir} target="_blank" rel="noopener noreferrer"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#10b981', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '14px' }}>
+                    <i className="fas fa-external-link-alt"></i> Buka Daftar Hadir
+                  </a>
+                </div>
+              )}
+
               {selectedDetail.notulen && (
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Notulen</p>
-                  <p style={{ fontSize: '14px', color: '#334155', margin: 0, whiteSpace: 'pre-wrap', background: '#f0f9ff', padding: '12px', borderRadius: '8px', border: '1px solid #bae6fd' }}>{selectedDetail.notulen}</p>
+                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Notulen Kegiatan</p>
+                  <a href={selectedDetail.notulen} target="_blank" rel="noopener noreferrer"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#0ea5e9', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '14px' }}>
+                    <i className="fas fa-external-link-alt"></i> Buka Notulen
+                  </a>
                 </div>
               )}
 
