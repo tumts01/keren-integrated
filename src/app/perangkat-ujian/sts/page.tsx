@@ -1013,11 +1013,20 @@ export default function StsPage() {
           <tr><td colSpan={5} style={{ textAlign: 'center' }}><InlineLoading message="Memuat data..." /></td></tr>
         ) : reviewData.length > 0 ? (
                   reviewData.map((d, i) => (
-                    <tr key={d.id}>
+                    <tr key={`${d.id}-${d.source}`}>
                       <td>{i + 1}</td>
-                      <td style={{fontWeight: 600}}>{d.mata_pelajaran}</td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{fontWeight: 600}}>{d.mata_pelajaran}</span>
+                          {d.source === 'PK' ? (
+                            <span style={{ fontSize: '0.65rem', background: '#e0e7ff', color: '#4338ca', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', border: '1px solid #c7d2fe' }}>NILAI PK</span>
+                          ) : (
+                            <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#16a34a', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold', border: '1px solid #bbf7d0' }}>NILAI STS</span>
+                          )}
+                        </div>
+                      </td>
                       <td>{Array.isArray(d.data_nilai) ? d.data_nilai.length : 0} Siswa</td>
-                      <td>{new Date(d.updated_at).toLocaleString('id-ID')}</td>
+                      <td>{d.updated_at ? new Date(d.updated_at).toLocaleString('id-ID') : '-'}</td>
                       <td>
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                           <button 
@@ -1027,24 +1036,30 @@ export default function StsPage() {
                           >
                             <i className="fas fa-eye"></i> Lihat
                           </button>
-                          <button 
-                            className={styles.btnPrimary} 
-                            style={{ padding: '6px 12px', fontSize: '0.85rem', background: '#eab308' }}
-                            onClick={() => { 
-                              setViewingGrade(d); 
-                              setEditingGradeId(d.id); 
-                              setEditedNilaiData(JSON.parse(JSON.stringify(d.data_nilai || []))); 
-                            }}
-                          >
-                            <i className="fas fa-edit"></i> Edit
-                          </button>
-                          <button 
-                            className={styles.btnPrimary} 
-                            style={{ padding: '6px 12px', fontSize: '0.85rem', background: '#ef4444' }}
-                            onClick={() => handleDeleteGrade(d.id, d.mata_pelajaran)}
-                          >
-                            <i className="fas fa-trash"></i> Hapus
-                          </button>
+                          {d.source !== 'PK' && (
+                            <>
+                              <button 
+                                className={styles.btnPrimary} 
+                                style={{ padding: '6px 12px', fontSize: '0.85rem', background: '#eab308' }}
+                                onClick={() => { 
+                                  setViewingGrade(d); 
+                                  setEditingGradeId(d.id); 
+                                  setEditedNilaiData(JSON.parse(JSON.stringify(d.data_nilai || []))); 
+                                }}
+                                title="Edit Nilai"
+                              >
+                                <i className="fas fa-edit"></i>
+                              </button>
+                              <button 
+                                className={styles.btnOutline} 
+                                style={{ padding: '6px 12px', fontSize: '0.85rem', borderColor: '#ef4444', color: '#ef4444' }}
+                                onClick={() => handleDeleteGrade(d.id, d.mata_pelajaran)}
+                                title="Hapus"
+                              >
+                                <i className="fas fa-trash"></i>
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -26,10 +26,38 @@ export async function GET(request: Request) {
       query = query.eq('mata_pelajaran', mataPelajaran);
     }
 
-    const { data, error } = await query;
-    if (error) throw error;
+    const { data: stsData, error: stsError } = await query;
+    if (stsError) throw stsError;
 
-    return NextResponse.json({ success: true, data });
+    // Fetch dari nilai_pk juga
+    let pkQuery = supabase
+      .from('nilai_pk')
+      .select('*')
+      .eq('tahun_ajaran', tahunAjaran)
+      .eq('kelas', kelas)
+      .eq('tipe', 'sts');
+
+    if (mataPelajaran) {
+      pkQuery = pkQuery.eq('mata_pelajaran', mataPelajaran);
+    }
+
+    const { data: pkData, error: pkError } = await pkQuery;
+    if (pkError) throw pkError;
+
+    const formattedStsData = (stsData || []).map(item => ({
+      ...item,
+      source: 'STS'
+    }));
+
+    const formattedPkData = (pkData || []).map(item => ({
+      ...item,
+      semester: semester,
+      source: 'PK'
+    }));
+
+    const combinedData = [...formattedStsData, ...formattedPkData];
+
+    return NextResponse.json({ success: true, data: combinedData });
   } catch (error: any) {
     console.error('Error GET nilai_sts:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
