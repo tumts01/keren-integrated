@@ -1635,6 +1635,7 @@ export default function SiswaPage() {
       'No': index + 1,
       'NIS': s.nis,
       'NISN': s.nisn,
+      'NISM': s.nism,
       'NIK': s.nik,
       'Nama Lengkap': s.nama,
       'Jenis Kelamin': s.jenisKelamin,
@@ -2033,6 +2034,7 @@ const handleExportMissingNisnNik = () => {
                   <th>Status</th>
                   <th>ID Siswa</th>
                   <th>NISN</th>
+                  <th>NISM</th>
                   <th>NIK</th>
                   <th>Tempat Lahir</th>
                   <th>Tanggal Lahir</th>
@@ -2074,6 +2076,7 @@ const handleExportMissingNisnNik = () => {
                       </td>
                       <td>{siswa.nis || '-'}</td>
                       <td>{siswa.nisn || '-'}</td>
+                      <td>{siswa.nism || '-'}</td>
                       <td>{siswa.nik || '-'}</td>
                       <td>{siswa.tempatLahir || '-'}</td>
                       <td>{siswa.tanggalLahir || '-'}</td>
