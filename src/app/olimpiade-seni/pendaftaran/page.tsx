@@ -21,6 +21,8 @@ export default function PendaftaranOlimpiadeSeni() {
   });
   const [loading, setLoading] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [buktiIndividu, setBuktiIndividu] = useState<File | null>(null);
+  const [buktiKolektif, setBuktiKolektif] = useState<File | null>(null);
 
   const lombaOptions = {
     'Olimpiade': ['Olimpiade Matematika', 'Olimpiade IPA', 'Olimpiade IPS', 'Olimpiade PAI'],
@@ -223,6 +225,21 @@ export default function PendaftaranOlimpiadeSeni() {
                   </div>
                 )}
 
+                <div style={{ gridColumn: '1 / -1', background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                  <label style={{ display: 'block', fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
+                    <i className="fas fa-receipt" style={{ marginRight: '8px', color: '#3b82f6' }}></i>
+                    Upload Bukti Pembayaran <span style={{ color: 'red' }}>*</span>
+                  </label>
+                  <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0 0 12px 0' }}>Format gambar (.jpg, .png, .jpeg). Wajib diisi.</p>
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    required 
+                    onChange={e => setBuktiIndividu(e.target.files ? e.target.files[0] : null)}
+                    style={{ width: '100%', padding: '8px', background: 'white', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                  />
+                </div>
+
               </div>
 
               <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end', gap: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '24px' }}>
@@ -254,7 +271,7 @@ export default function PendaftaranOlimpiadeSeni() {
               </button>
             </div>
 
-            <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
+            <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '12px', padding: '24px', textAlign: 'center', marginBottom: '32px' }}>
               <i className="fas fa-cloud-upload-alt" style={{ fontSize: '3rem', color: '#3b82f6', marginBottom: '16px' }}></i>
               <h3 style={{ margin: '0 0 8px 0', color: '#0f172a' }}>2. Unggah Data Pendaftar</h3>
               <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '16px' }}>Pilih file excel (.xlsx) yang sudah Anda isi dengan lengkap.</p>
@@ -279,25 +296,41 @@ export default function PendaftaranOlimpiadeSeni() {
                   <div style={{ padding: '12px', background: '#dbeafe', color: '#1e40af', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <i className="fas fa-check-circle"></i> {uploadedFile.name}
                   </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button 
-                      onClick={() => setUploadedFile(null)}
-                      style={{ padding: '8px 16px', borderRadius: '8px', background: '#f1f5f9', color: '#475569', border: 'none', cursor: 'pointer', fontSize: '0.9rem' }}
-                    >
-                      Batal
-                    </button>
-                    <button 
-                      onClick={handleSubmitKolektif}
-                      disabled={loading}
-                      style={{ padding: '8px 24px', borderRadius: '8px', background: '#0f172a', color: 'white', border: 'none', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}
-                    >
-                      {loading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-upload"></i>}
-                      Proses Upload
-                    </button>
-                  </div>
+                  <button 
+                    onClick={() => setUploadedFile(null)}
+                    style={{ padding: '8px 16px', borderRadius: '8px', background: '#f1f5f9', color: '#475569', border: 'none', cursor: 'pointer', fontSize: '0.9rem' }}
+                  >
+                    Batal Pilih Excel
+                  </button>
                 </div>
               )}
             </div>
+
+            <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
+              <i className="fas fa-receipt" style={{ fontSize: '3rem', color: '#f59e0b', marginBottom: '16px' }}></i>
+              <h3 style={{ margin: '0 0 8px 0', color: '#0f172a' }}>3. Unggah Bukti Pembayaran</h3>
+              <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '16px' }}>Format gambar (.jpg, .png). Wajib diunggah untuk verifikasi pendaftaran kolektif.</p>
+              
+              <input 
+                type="file" 
+                accept="image/*"
+                required
+                onChange={e => setBuktiKolektif(e.target.files ? e.target.files[0] : null)}
+                style={{ width: '100%', maxWidth: '300px', padding: '8px', background: 'white', borderRadius: '8px', border: '1px solid #cbd5e1', margin: '0 auto' }}
+              />
+            </div>
+
+            <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end', gap: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '24px' }}>
+              <button 
+                onClick={handleSubmitKolektif}
+                disabled={loading || !uploadedFile || !buktiKolektif}
+                style={{ padding: '12px 32px', borderRadius: '10px', background: '#0f172a', color: 'white', border: 'none', fontWeight: 700, cursor: (loading || !uploadedFile || !buktiKolektif) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'center', fontSize: '1.1rem' }}
+              >
+                {loading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-upload"></i>}
+                Proses Pendaftaran Kolektif
+              </button>
+            </div>
+
 
           </div>
         )}
