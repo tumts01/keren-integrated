@@ -1559,7 +1559,7 @@ export default function PersuratanPage() {
             {generateJenis === 'Surat Keterangan Aktif Siswa' ? (
               <>
                 <div className={styles.suratJudul}>
-                  <h3 style={{ textDecoration: 'underline', margin: '0 0 5px 0', fontSize: '12pt' }}>SURAT KETERANGAN</h3>
+                  <h3 style={{ textDecoration: 'underline', margin: '0 0 5px 0', fontSize: '14pt' }}>SURAT KETERANGAN</h3>
                   <p style={{ margin: 0 }}>{generateNomor || '.../YPA/MTs-01.A.1/VI/2026'}</p>
                 </div>
 
@@ -1715,7 +1715,7 @@ export default function PersuratanPage() {
             ) : (
               <>
                 <div style={{ textAlign: 'center', marginBottom: '25px', marginTop: '10px', fontFamily: 'Arial, sans-serif' }}>
-                  <h3 style={{ textDecoration: 'underline', margin: '0 0 5px 0', fontSize: '12pt', letterSpacing: '1px' }}>S U R A T &nbsp;&nbsp; T U G A S</h3>
+                  <h3 style={{ textDecoration: 'underline', margin: '0 0 5px 0', fontSize: '14pt' }}>SURAT TUGAS</h3>
                   <p style={{ margin: 0, fontSize: '12pt' }}>Nomor: {generateNomor}</p>
                 </div>
                 <div style={{ fontSize: '12pt', fontFamily: 'Arial, sans-serif' }}>
