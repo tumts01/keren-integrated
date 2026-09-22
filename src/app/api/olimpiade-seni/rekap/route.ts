@@ -23,6 +23,43 @@ export async function GET() {
   }
 }
 
+export async function PUT(req: Request) {
+  try {
+    const { id, action } = await req.json();
+    if (!id || action !== 'validasi') {
+      return NextResponse.json({ success: false, error: 'Data tidak valid' }, { status: 400 });
+    }
+
+    // Ambil metadata saat ini
+    const { data: existing, error: getErr } = await supabase
+      .from('data_olimpiade_seni')
+      .select('metadata')
+      .eq('id', id)
+      .single();
+
+    if (getErr || !existing) {
+      throw getErr || new Error('Data tidak ditemukan');
+    }
+
+    const newMeta = {
+      ...existing.metadata,
+      STATUS_PEMBAYARAN: 'Valid'
+    };
+
+    const { error: updateErr } = await supabase
+      .from('data_olimpiade_seni')
+      .update({ metadata: newMeta })
+      .eq('id', id);
+
+    if (updateErr) throw updateErr;
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('PUT Rekap Olimpiade Error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
 export async function DELETE(req: Request) {
   try {
     const { id } = await req.json();

@@ -17,6 +17,11 @@ export default function RekapOlimpiadeSeni() {
   const [data, setData] = useState<OlimpiadeData[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterJenis, setFilterJenis] = useState<'semua' | 'individu' | 'kolektif'>('semua');
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    setIsAdmin(localStorage.getItem('userRole') === 'admin');
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
@@ -68,6 +73,32 @@ export default function RekapOlimpiadeSeni() {
       } catch (err: any) {
         Swal.fire('Error', 'Gagal menghapus data: ' + err.message, 'error');
       }
+    }
+  };
+
+  const handleValidasi = async (id: number) => {
+    try {
+      const res = await fetch('/api/olimpiade-seni/rekap', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action: 'validasi' })
+      });
+      const json = await res.json();
+      
+      if (json.success) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Berhasil!',
+          text: 'Pembayaran telah divalidasi',
+          timer: 1500,
+          showConfirmButton: false
+        });
+        fetchData();
+      } else {
+        Swal.fire('Error', json.error, 'error');
+      }
+    } catch (err: any) {
+      Swal.fire('Error', 'Gagal memvalidasi: ' + err.message, 'error');
     }
   };
 
@@ -170,7 +201,8 @@ export default function RekapOlimpiadeSeni() {
                     <th style={{ padding: '16px', borderBottom: '2px solid #e2e8f0' }}>Identitas Pendaftar</th>
                     <th style={{ padding: '16px', borderBottom: '2px solid #e2e8f0' }}>Detail Lomba</th>
                     <th style={{ padding: '16px', borderBottom: '2px solid #e2e8f0' }}>Lampiran</th>
-                    <th style={{ padding: '16px', borderBottom: '2px solid #e2e8f0', textAlign: 'right' }}>Aksi</th>
+                    <th style={{ padding: '16px', borderBottom: '2px solid #e2e8f0' }}>Validasi Pembayaran</th>
+                    {isAdmin && <th style={{ padding: '16px', borderBottom: '2px solid #e2e8f0', textAlign: 'right' }}>Aksi</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -248,15 +280,39 @@ export default function RekapOlimpiadeSeni() {
                             )}
                           </div>
                         </td>
-                        <td style={{ padding: '16px', textAlign: 'right' }}>
-                          <button 
-                            onClick={() => handleDelete(row.id)}
-                            style={{ width: '32px', height: '32px', borderRadius: '6px', background: '#fee2e2', color: '#ef4444', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                            title="Hapus Data"
-                          >
-                            <i className="fas fa-trash-alt"></i>
-                          </button>
+                        <td style={{ padding: '16px' }}>
+                          {row.metadata.STATUS_PEMBAYARAN === 'Valid' ? (
+                            <span style={{ background: '#dcfce7', color: '#16a34a', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700 }}>
+                              <i className="fas fa-check-circle" style={{ marginRight: '4px' }}></i> LUNAS
+                            </span>
+                          ) : (
+                            <span style={{ background: '#fef3c7', color: '#d97706', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700 }}>
+                              <i className="fas fa-clock" style={{ marginRight: '4px' }}></i> MENUNGGU
+                            </span>
+                          )}
                         </td>
+                        {isAdmin && (
+                          <td style={{ padding: '16px', textAlign: 'right' }}>
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                              {row.metadata.STATUS_PEMBAYARAN !== 'Valid' && (
+                                <button 
+                                  onClick={() => handleValidasi(row.id)}
+                                  style={{ padding: '6px 12px', borderRadius: '6px', background: '#3b82f6', color: 'white', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600 }}
+                                  title="Validasi Pembayaran"
+                                >
+                                  <i className="fas fa-check"></i> Validasi
+                                </button>
+                              )}
+                              <button 
+                                onClick={() => handleDelete(row.id)}
+                                style={{ width: '32px', height: '32px', borderRadius: '6px', background: '#fee2e2', color: '#ef4444', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                title="Hapus Data"
+                              >
+                                <i className="fas fa-trash-alt"></i>
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     );
                   })}
