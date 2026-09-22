@@ -2,6 +2,7 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
+import Swal from 'sweetalert2';
 
 export default function PendaftaranOlimpiadeSeni() {
   const router = useRouter();
@@ -62,7 +63,7 @@ export default function PendaftaranOlimpiadeSeni() {
   const handleSubmitIndividu = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!buktiIndividu) {
-      alert('Bukti pembayaran wajib diunggah!');
+      Swal.fire('Peringatan', 'Bukti pembayaran wajib diunggah!', 'warning');
       return;
     }
     setLoading(true);
@@ -83,13 +84,14 @@ export default function PendaftaranOlimpiadeSeni() {
 
       const data = await res.json();
       if (data.success) {
-        alert('Pendaftaran Individu Berhasil!');
-        router.push('/olimpiade-seni');
+        Swal.fire('Berhasil!', 'Pendaftaran Individu Berhasil!', 'success').then(() => {
+          router.push('/olimpiade-seni');
+        });
       } else {
-        alert('Gagal mendaftar: ' + data.error);
+        Swal.fire('Gagal', 'Gagal mendaftar: ' + data.error, 'error');
       }
     } catch (err: any) {
-      alert('Terjadi kesalahan sistem: ' + err.message);
+      Swal.fire('Error', 'Terjadi kesalahan sistem: ' + err.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -142,9 +144,11 @@ export default function PendaftaranOlimpiadeSeni() {
         });
 
         if (errorMsgs.length > 0) {
-          alert('Gagal Upload!\nDitemukan penulisan jenis lomba yang tidak sesuai/typo di dalam Excel:\n\n' + 
-            errorMsgs.join('\n') + 
-            '\n\nSilakan perbaiki excelnya (sesuaikan dengan nama lomba resmi) dan upload ulang.');
+          Swal.fire({
+            icon: 'error',
+            title: 'Gagal Upload!',
+            html: `Ditemukan penulisan jenis lomba yang tidak sesuai/typo di dalam Excel:<br><br><div style="text-align: left; background: #fee2e2; padding: 10px; border-radius: 8px; max-height: 200px; overflow-y: auto;">${errorMsgs.join('<br>')}</div><br>Silakan perbaiki excelnya (sesuaikan dengan nama lomba resmi) dan upload ulang.`
+          });
           
           if (fileInputRef.current) fileInputRef.current.value = '';
           setUploadedFile(null);
@@ -153,7 +157,7 @@ export default function PendaftaranOlimpiadeSeni() {
 
         setUploadedFile(file);
       } catch (err) {
-        alert('Gagal membaca file Excel. Pastikan formatnya benar.');
+        Swal.fire('Gagal', 'Gagal membaca file Excel. Pastikan formatnya benar.', 'error');
         if (fileInputRef.current) fileInputRef.current.value = '';
         setUploadedFile(null);
       }
@@ -162,15 +166,15 @@ export default function PendaftaranOlimpiadeSeni() {
 
   const handleSubmitKolektif = async () => {
     if (!formKolektif.asalSekolah || kolektifLombaList.length === 0) {
-      alert('Silakan isi Asal Sekolah dan tambahkan minimal 1 Jenis Lomba!');
+      Swal.fire('Peringatan', 'Silakan isi Asal Sekolah dan tambahkan minimal 1 Jenis Lomba!', 'warning');
       return;
     }
     if (!uploadedFile) {
-      alert('Silakan pilih file Excel terlebih dahulu!');
+      Swal.fire('Peringatan', 'Silakan pilih file Excel terlebih dahulu!', 'warning');
       return;
     }
     if (!buktiKolektif) {
-      alert('Bukti pembayaran wajib diunggah!');
+      Swal.fire('Peringatan', 'Bukti pembayaran wajib diunggah!', 'warning');
       return;
     }
     
@@ -211,13 +215,14 @@ export default function PendaftaranOlimpiadeSeni() {
 
       const data = await res.json();
       if (data.success) {
-        alert('Pendaftaran Kolektif Berhasil!');
-        router.push('/olimpiade-seni');
+        Swal.fire('Berhasil!', 'Pendaftaran Kolektif Berhasil!', 'success').then(() => {
+          router.push('/olimpiade-seni');
+        });
       } else {
-        alert('Gagal mendaftar: ' + data.error);
+        Swal.fire('Gagal', 'Gagal mendaftar: ' + data.error, 'error');
       }
     } catch (err: any) {
-      alert('Terjadi kesalahan sistem: ' + err.message);
+      Swal.fire('Error', 'Terjadi kesalahan sistem: ' + err.message, 'error');
     } finally {
       setLoading(false);
     }
