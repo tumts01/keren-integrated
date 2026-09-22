@@ -33,7 +33,7 @@ export default function OlimpiadeSeniPage() {
 
         {/* Logo */}
         <img 
-          src="/LOGO_OLIMPIADE_DAN_SENI_NEW.png" 
+          src="/logo_olimpiade_seni.png" 
           alt="Logo Olimpiade dan Seni" 
           style={{ width: '150px', height: 'auto', marginBottom: '24px', position: 'relative', zIndex: 10 }}
         />

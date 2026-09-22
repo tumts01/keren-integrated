@@ -1779,12 +1779,13 @@ export default function PersuratanPage() {
                     src="/ttd bu palupi.png" 
                     style={{ 
                       position: 'absolute', 
-                      top: '15px', 
-                      left: '-30px', 
-                      width: '240px', 
+                      top: '0px', 
+                      left: '-20px', 
+                      width: '220px', 
                       height: 'auto',
                       zIndex: 10,
-                      pointerEvents: 'none'
+                      pointerEvents: 'none',
+                      mixBlendMode: 'multiply'
                     }} 
                     alt="Ttd Kepala Madrasah" 
                   />
