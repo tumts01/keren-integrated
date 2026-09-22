@@ -208,7 +208,7 @@ export default function RekapOlimpiadeSeni() {
                     <th style={{ padding: '16px', borderBottom: '2px solid #e2e8f0' }}>Jenis</th>
                     <th style={{ padding: '16px', borderBottom: '2px solid #e2e8f0' }}>Identitas Pendaftar</th>
                     <th style={{ padding: '16px', borderBottom: '2px solid #e2e8f0' }}>Detail Lomba</th>
-                    <th style={{ padding: '16px', borderBottom: '2px solid #e2e8f0' }}>Lampiran</th>
+                    {isAdmin && <th style={{ padding: '16px', borderBottom: '2px solid #e2e8f0' }}>Lampiran</th>}
                     <th style={{ padding: '16px', borderBottom: '2px solid #e2e8f0' }}>Validasi Pembayaran</th>
                     {isAdmin && <th style={{ padding: '16px', borderBottom: '2px solid #e2e8f0', textAlign: 'right' }}>Aksi</th>}
                   </tr>
@@ -264,30 +264,32 @@ export default function RekapOlimpiadeSeni() {
                             </div>
                           )}
                         </td>
-                        <td style={{ padding: '16px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {row.bukti_pembayaran_url && (
-                              <a 
-                                href={row.bukti_pembayaran_url} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#3b82f6', textDecoration: 'none', background: '#eff6ff', padding: '4px 10px', borderRadius: '6px', width: 'fit-content' }}
-                              >
-                                <i className="fas fa-receipt"></i> Bukti Bayar
-                              </a>
-                            )}
-                            {row.file_excel_url && (
-                              <a 
-                                href={row.file_excel_url} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#10b981', textDecoration: 'none', background: '#ecfdf5', padding: '4px 10px', borderRadius: '6px', width: 'fit-content' }}
-                              >
-                                <i className="fas fa-file-excel"></i> File Excel
-                              </a>
-                            )}
-                          </div>
-                        </td>
+                        {isAdmin && (
+                          <td style={{ padding: '16px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {row.bukti_pembayaran_url && (
+                                <a 
+                                  href={row.bukti_pembayaran_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#3b82f6', textDecoration: 'none', background: '#eff6ff', padding: '4px 10px', borderRadius: '6px', width: 'fit-content' }}
+                                >
+                                  <i className="fas fa-receipt"></i> Bukti Bayar
+                                </a>
+                              )}
+                              {row.file_excel_url && (
+                                <a 
+                                  href={row.file_excel_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#10b981', textDecoration: 'none', background: '#ecfdf5', padding: '4px 10px', borderRadius: '6px', width: 'fit-content' }}
+                                >
+                                  <i className="fas fa-file-excel"></i> File Excel
+                                </a>
+                              )}
+                            </div>
+                          </td>
+                        )}
                         <td style={{ padding: '16px' }}>
                           {row.metadata.STATUS_PEMBAYARAN === 'Valid' ? (
                             <span style={{ background: '#dcfce7', color: '#16a34a', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700 }}>
