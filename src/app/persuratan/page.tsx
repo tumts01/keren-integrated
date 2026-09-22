@@ -1770,10 +1770,27 @@ export default function PersuratanPage() {
             )}
 
             {generateJenis !== 'Surat Undangan GTK' && (
-              <div style={{ marginTop: '20px', marginLeft: 'auto', width: '300px', textAlign: 'left', fontSize: '12pt', fontFamily: 'Arial, sans-serif' }}>
+              <div style={{ marginTop: '20px', marginLeft: 'auto', width: '300px', textAlign: 'left', fontSize: '12pt', fontFamily: 'Arial, sans-serif', position: 'relative' }}>
                 <p style={{ margin: '0 0 5px 0' }}>Singosari, {generateTanggal}</p>
                 <p style={{ margin: '0 0 90px 0' }}>Kepala Madrasah,</p>
-                <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>DWI RETNO PALUPI, M.Pd.</p>
+                
+                {generateJenis === 'Surat Keterangan Aktif Siswa' && (
+                  <img 
+                    src="/ttd bu palupi.png" 
+                    style={{ 
+                      position: 'absolute', 
+                      top: '15px', 
+                      left: '-30px', 
+                      width: '240px', 
+                      height: 'auto',
+                      zIndex: 10,
+                      pointerEvents: 'none'
+                    }} 
+                    alt="Ttd Kepala Madrasah" 
+                  />
+                )}
+
+                <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline', position: 'relative', zIndex: 11 }}>DWI RETNO PALUPI, M.Pd.</p>
               </div>
             )}
             
