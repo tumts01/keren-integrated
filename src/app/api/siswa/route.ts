@@ -51,6 +51,7 @@ export async function GET() {
         rawMetadata: sbRows[index]?.metadata || {},
         nis: row.get('ID SISWA') || '',
         nisn: row.get('NISN') || '',
+        nism: row.get('NISM') || '',
         nik: row.get('NIK') || '',
         nrp: row.get('NRP') || '',
         tempatLahir: (row.get('TEMPAT, TANGGAL LAHIR') || '').split(',')[0]?.trim() || '',

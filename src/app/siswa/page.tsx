@@ -13,6 +13,7 @@ interface Siswa {
   rawMetadata?: Record<string, string>;
   nis: string;
   nisn: string;
+  nism?: string;
   nik: string;
   nrp?: string;
   tempatLahir: string;
