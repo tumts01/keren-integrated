@@ -128,14 +128,12 @@ export default function Sidebar() {
         { name: 'Olimpiade & Seni', path: '/olimpiade-seni', icon: 'fa-medal' },
       ]
     },
-    ...(showKeuangan ? [
+    ...(isAdmin ? [
       {
         title: 'Keuangan',
         items: [
-          ...(isAdmin ? [
-            { name: 'Bendahara', path: '/bendahara', icon: 'fa-wallet' },
-            { name: 'Pembayaran', path: '/pembayaran', icon: 'fa-money-bill-wave' },
-          ] : []),
+          { name: 'Bendahara', path: '/bendahara', icon: 'fa-wallet' },
+          { name: 'Pembayaran', path: '/pembayaran', icon: 'fa-money-bill-wave' },
           { name: 'Nota Bon', path: '/bon', icon: 'fa-file-invoice-dollar' }
         ]
       }
