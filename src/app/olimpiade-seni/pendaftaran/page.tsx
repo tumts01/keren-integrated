@@ -23,6 +23,10 @@ export default function PendaftaranOlimpiadeSeni() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [buktiIndividu, setBuktiIndividu] = useState<File | null>(null);
   const [buktiKolektif, setBuktiKolektif] = useState<File | null>(null);
+  const [formKolektif, setFormKolektif] = useState({
+    asalSekolah: '',
+    detailLomba: ''
+  });
 
   const lombaOptions = {
     'Olimpiade': ['Olimpiade Matematika', 'Olimpiade IPA', 'Olimpiade IPS', 'Olimpiade PAI'],
@@ -100,6 +104,10 @@ export default function PendaftaranOlimpiadeSeni() {
   };
 
   const handleSubmitKolektif = async () => {
+    if (!formKolektif.asalSekolah || !formKolektif.detailLomba) {
+      alert('Silakan isi Asal Sekolah dan Kategori Lomba terlebih dahulu!');
+      return;
+    }
     if (!uploadedFile) {
       alert('Silakan pilih file Excel terlebih dahulu!');
       return;
@@ -116,6 +124,8 @@ export default function PendaftaranOlimpiadeSeni() {
       formData.append('jenisPendaftaran', 'kolektif');
       formData.append('fileExcel', uploadedFile);
       formData.append('buktiPembayaran', buktiKolektif);
+      formData.append('namaSekolah', formKolektif.asalSekolah);
+      formData.append('detailLomba', formKolektif.detailLomba);
 
       const res = await fetch('/api/olimpiade-seni/daftar', {
         method: 'POST',
@@ -307,6 +317,28 @@ export default function PendaftaranOlimpiadeSeni() {
         {jenisPendaftaran === 'kolektif' && (
           <div style={{ background: 'white', borderRadius: '20px', padding: '32px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
             
+            <div style={{ marginBottom: '32px' }}>
+              <h3 style={{ margin: '0 0 16px 0', color: '#0f172a', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px' }}>Identitas Instansi / Sekolah</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Asal Sekolah / Instansi <span style={{ color: 'red' }}>*</span></label>
+                  <input 
+                    type="text" required value={formKolektif.asalSekolah} onChange={e => setFormKolektif({...formKolektif, asalSekolah: e.target.value})}
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none' }}
+                    placeholder="Contoh: MIN 1 Malang"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Kategori/Detail Lomba <span style={{ color: 'red' }}>*</span></label>
+                  <input 
+                    type="text" required value={formKolektif.detailLomba} onChange={e => setFormKolektif({...formKolektif, detailLomba: e.target.value})}
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none' }}
+                    placeholder="Contoh: Campuran (Olimpiade & Seni)"
+                  />
+                </div>
+              </div>
+            </div>
+
             <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '12px', padding: '24px', textAlign: 'center', marginBottom: '32px' }}>
               <i className="fas fa-file-excel" style={{ fontSize: '3rem', color: '#10b981', marginBottom: '16px' }}></i>
               <h3 style={{ margin: '0 0 8px 0', color: '#0f172a' }}>1. Unduh Template Excel</h3>

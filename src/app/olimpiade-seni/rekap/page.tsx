@@ -164,8 +164,9 @@ export default function RekapOlimpiadeSeni() {
                               <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Asal: {row.metadata.ASAL_SEKOLAH || '-'}</div>
                             </div>
                           ) : (
-                            <div style={{ color: '#64748b', fontStyle: 'italic' }}>
-                              Data kolektif berada di dalam file Excel terlampir.
+                            <div>
+                              <div style={{ fontWeight: 700, color: '#0f172a' }}>Pendaftaran Kolektif</div>
+                              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>Asal Instansi: {row.metadata.ASAL_SEKOLAH || '-'}</div>
                             </div>
                           )}
                         </td>
@@ -179,7 +180,10 @@ export default function RekapOlimpiadeSeni() {
                               )}
                             </div>
                           ) : (
-                            <div style={{ color: '#64748b' }}>-</div>
+                            <div>
+                              <div style={{ color: '#0f172a' }}>{row.metadata.LOMBA_DIPILIH || '-'}</div>
+                              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>Peserta via Excel</div>
+                            </div>
                           )}
                         </td>
                         <td style={{ padding: '16px' }}>
