@@ -62,6 +62,37 @@ export default function StsPage() {
     fetchDataAwal();
   }, []);
 
+  // Fetch Mapel dari nilai_pk ketika kelas atau tahun ajaran berubah
+  useEffect(() => {
+    const fetchMapelPK = async () => {
+      if (!kelas || !tahunAjaran) {
+        setAllMapel([]);
+        setMapel('');
+        return;
+      }
+      try {
+        const res = await fetch(`/api/nilai-pk/mapel?kelas=${encodeURIComponent(kelas)}&tahunAjaran=${encodeURIComponent(tahunAjaran)}&tipe=sts`);
+        const json = await res.json();
+        if (json.success && json.data) {
+          setAllMapel(json.data);
+          if (json.data.length > 0) {
+            setMapel(json.data[0]);
+          } else {
+            setMapel('');
+          }
+        } else {
+          setAllMapel([]);
+          setMapel('');
+        }
+      } catch (err) {
+        console.error('Gagal fetch mapel PK', err);
+        setAllMapel([]);
+        setMapel('');
+      }
+    };
+    fetchMapelPK();
+  }, [kelas, tahunAjaran]);
+
   useEffect(() => {
     if (activeTab === 'cetak' && kelas) {
       fetchGrades();
@@ -156,15 +187,6 @@ export default function StsPage() {
       const jsonKelas = await resKelas.json();
       if (jsonKelas.success && jsonKelas.data) {
         setKelasList(jsonKelas.data);
-      }
-
-      // Ambil mata pelajaran
-      const resMapel = await fetch('/api/jadwal/mapel');
-      const jsonMapel = await resMapel.json();
-      if (jsonMapel.success && jsonMapel.data) {
-        const mapels = jsonMapel.data.map((m: any) => m.namaMapel).filter(Boolean).sort();
-        setAllMapel(mapels);
-        if (mapels.length > 0) setMapel(mapels[0]);
       }
     } catch (err) {
       console.error('Gagal memuat data awal', err);
