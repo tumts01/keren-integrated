@@ -62,35 +62,48 @@ export default function StsPage() {
     fetchDataAwal();
   }, []);
 
-  // Fetch Mapel dari nilai_pk ketika kelas atau tahun ajaran berubah
+  // Fetch Mapel dari API Jadwal dan nilai_pk
   useEffect(() => {
-    const fetchMapelPK = async () => {
-      if (!kelas || !tahunAjaran) {
-        setAllMapel([]);
-        setMapel('');
-        return;
-      }
+    const fetchAllMapels = async () => {
       try {
-        const res = await fetch(`/api/nilai-pk/mapel?kelas=${encodeURIComponent(kelas)}&tahunAjaran=${encodeURIComponent(tahunAjaran)}&tipe=sts`);
-        const json = await res.json();
-        if (json.success && json.data) {
-          setAllMapel(json.data);
-          if (json.data.length > 0) {
-            setMapel(json.data[0]);
-          } else {
-            setMapel('');
+        const [resPK, resUmum] = await Promise.all([
+          (kelas && tahunAjaran) ? fetch(`/api/nilai-pk/mapel?kelas=${encodeURIComponent(kelas)}&tahunAjaran=${encodeURIComponent(tahunAjaran)}&tipe=sts`) : Promise.resolve(null),
+          fetch(`/api/jadwal/mapel`)
+        ]);
+
+        let combinedMapels = new Set<string>();
+
+        // Tambahkan mapel umum
+        if (resUmum) {
+          const jsonUmum = await resUmum.json();
+          if (jsonUmum.success && jsonUmum.data) {
+            jsonUmum.data.forEach((m: any) => m.namaMapel && combinedMapels.add(m.namaMapel));
           }
+        }
+
+        // Tambahkan mapel PK (jika kelas dipilih)
+        if (resPK) {
+          const jsonPK = await resPK.json();
+          if (jsonPK.success && jsonPK.data) {
+            jsonPK.data.forEach((m: string) => m && combinedMapels.add(m));
+          }
+        }
+
+        const finalMapels = Array.from(combinedMapels).sort();
+        setAllMapel(finalMapels);
+        
+        if (finalMapels.length > 0) {
+          setMapel(finalMapels[0]);
         } else {
-          setAllMapel([]);
           setMapel('');
         }
       } catch (err) {
-        console.error('Gagal fetch mapel PK', err);
+        console.error('Gagal fetch mapel gabungan', err);
         setAllMapel([]);
         setMapel('');
       }
     };
-    fetchMapelPK();
+    fetchAllMapels();
   }, [kelas, tahunAjaran]);
 
   useEffect(() => {
