@@ -76,6 +76,24 @@ export default function RekapOlimpiadeSeni() {
     return item.jenis_pendaftaran === filterJenis;
   });
 
+  // Hitung total peserta per cabang lomba
+  const summaryCounts: Record<string, number> = {};
+  data.forEach(row => {
+    if (row.jenis_pendaftaran === 'individu') {
+      const lomba = row.metadata.LOMBA_DIPILIH;
+      if (lomba) {
+        summaryCounts[lomba] = (summaryCounts[lomba] || 0) + 1;
+      }
+    } else if (row.jenis_pendaftaran === 'kolektif' && row.metadata.REKAP_PESERTA) {
+      const rekap = row.metadata.REKAP_PESERTA;
+      Object.keys(rekap).forEach(lomba => {
+        summaryCounts[lomba] = (summaryCounts[lomba] || 0) + rekap[lomba];
+      });
+    }
+  });
+
+  const totalSemuaPeserta = Object.values(summaryCounts).reduce((a, b) => a + b, 0);
+
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '40px 20px' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -109,6 +127,26 @@ export default function RekapOlimpiadeSeni() {
             </button>
           </div>
         </div>
+
+        {/* Dashboard Banner Lomba */}
+        {!loading && data.length > 0 && (
+          <div style={{ background: 'white', borderRadius: '16px', padding: '24px', marginBottom: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+            <h3 style={{ margin: '0 0 16px 0', color: '#0f172a', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px', display: 'flex', justifyContent: 'space-between' }}>
+              <span>Ringkasan Peserta Per Cabang Lomba</span>
+              <span style={{ background: '#dbeafe', color: '#1e40af', padding: '4px 12px', borderRadius: '20px', fontSize: '0.9rem' }}>
+                Total Keseluruhan: <b>{totalSemuaPeserta} Peserta</b>
+              </span>
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
+              {Object.entries(summaryCounts).sort((a, b) => b[1] - a[1]).map(([lomba, count]) => (
+                <div key={lomba} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600, lineHeight: 1.4 }}>{lomba}</span>
+                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a' }}>{count} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8' }}>Peserta</span></span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', overflow: 'hidden' }}>
           {loading ? (

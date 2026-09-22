@@ -144,6 +144,26 @@ export default function PendaftaranOlimpiadeSeni() {
       formData.append('namaSekolah', formKolektif.asalSekolah);
       formData.append('detailLomba', kolektifLombaList.join(', '));
 
+      // Parse Excel untuk menghitung jumlah peserta per lomba
+      try {
+        const buffer = await uploadedFile.arrayBuffer();
+        const wb = XLSX.read(buffer, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const excelData = XLSX.utils.sheet_to_json(ws);
+        
+        const counts: Record<string, number> = {};
+        excelData.forEach((row: any) => {
+          const lomba = row['LOMBA YANG DIPILIH'];
+          if (lomba && typeof lomba === 'string') {
+            counts[lomba.trim()] = (counts[lomba.trim()] || 0) + 1;
+          }
+        });
+        formData.append('rekapPesertaExcel', JSON.stringify(counts));
+      } catch (parseError) {
+        console.error('Gagal membaca excel:', parseError);
+        formData.append('rekapPesertaExcel', '{}');
+      }
+
       const res = await fetch('/api/olimpiade-seni/daftar', {
         method: 'POST',
         body: formData

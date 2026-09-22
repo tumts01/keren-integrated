@@ -40,7 +40,10 @@ export async function POST(req: Request) {
       fileExcelUrl = res.webViewLink || '';
       
       metadata = {
-        'WAKTU_DAFTAR': new Date().toISOString()
+        'ASAL_SEKOLAH': formData.get('namaSekolah') || '',
+        'LOMBA_DIPILIH': formData.get('detailLomba') || '',
+        'WAKTU_DAFTAR': new Date().toISOString(),
+        'REKAP_PESERTA': JSON.parse((formData.get('rekapPesertaExcel') as string) || '{}')
       };
       
     } else if (jenisPendaftaran === 'individu') {
