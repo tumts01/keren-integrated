@@ -20,7 +20,15 @@ export default function RekapOlimpiadeSeni() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    setIsAdmin(localStorage.getItem('userRole') === 'admin');
+    const sessionStr = localStorage.getItem('userSession');
+    if (sessionStr) {
+      try {
+        const session = JSON.parse(sessionStr);
+        setIsAdmin(session.role === 'admin');
+      } catch (e) {
+        setIsAdmin(false);
+      }
+    }
   }, []);
 
   const fetchData = async () => {
