@@ -100,13 +100,16 @@ export default function PendaftaranOlimpiadeSeni() {
       ['NO', 'NAMA', 'NISN', 'NAMA SD/MI', 'NPSN SD/MI', 'KELAS', 'LOMBA YANG DIPILIH', 'NAMA REGU/GRUP (LOMBA MAPEL TIDAK PERLU MENGISI)'],
       // Contoh isi
       [1, 'Ahmad Budi', '0123456789', 'MIN 1 Malang', '20500000', '6', 'Olimpiade Matematika', ''],
-      [2, 'Grup Al-Banjari', '-', 'SDIT Ahmad Yani', '20511111', '5', 'Banjari', 'Grup Shalawat A']
+      [2, 'Grup Al-Banjari', '-', 'SDIT Ahmad Yani', '20511111', '5', 'Banjari', 'Grup Shalawat A'],
+      [],
+      ['*** PENTING: Pilihan "LOMBA YANG DIPILIH" harus sama persis dengan daftar di bawah ini (tanpa typo): ***'],
+      ['Olimpiade Matematika, Olimpiade IPA, Olimpiade IPS, Olimpiade PAI, Kaligrafi, Banjari, Pidato Bahasa Arab, Pidato Bahasa Inggris, Singer']
     ];
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     
     // Atur lebar kolom
     ws['!cols'] = [
-      { wch: 5 }, { wch: 25 }, { wch: 15 }, { wch: 30 }, { wch: 15 }, { wch: 10 }, { wch: 25 }, { wch: 50 }
+      { wch: 5 }, { wch: 25 }, { wch: 15 }, { wch: 30 }, { wch: 15 }, { wch: 10 }, { wch: 35 }, { wch: 50 }
     ];
 
     const wb = XLSX.utils.book_new();
@@ -114,9 +117,46 @@ export default function PendaftaranOlimpiadeSeni() {
     XLSX.writeFile(wb, "Template_Pendaftaran_Kolektif.xlsx");
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setUploadedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      
+      try {
+        const buffer = await file.arrayBuffer();
+        const wb = XLSX.read(buffer, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const excelData = XLSX.utils.sheet_to_json(ws);
+        
+        const validLomba = [...lombaOptions['Olimpiade'], ...lombaOptions['Seni']];
+        const errorMsgs: string[] = [];
+        
+        excelData.forEach((row: any, index: number) => {
+          const namaLomba = row['LOMBA YANG DIPILIH'];
+          // Lewati baris kosong atau baris instruksi yang kita tambahkan di bawah
+          if (namaLomba && typeof namaLomba === 'string' && !namaLomba.includes('*** PENTING')) {
+            const trimmed = namaLomba.trim();
+            if (!validLomba.includes(trimmed)) {
+              errorMsgs.push(`Baris excel ke-${index + 2}: "${trimmed}"`);
+            }
+          }
+        });
+
+        if (errorMsgs.length > 0) {
+          alert('Gagal Upload!\nDitemukan penulisan jenis lomba yang tidak sesuai/typo di dalam Excel:\n\n' + 
+            errorMsgs.join('\n') + 
+            '\n\nSilakan perbaiki excelnya (sesuaikan dengan nama lomba resmi) dan upload ulang.');
+          
+          if (fileInputRef.current) fileInputRef.current.value = '';
+          setUploadedFile(null);
+          return;
+        }
+
+        setUploadedFile(file);
+      } catch (err) {
+        alert('Gagal membaca file Excel. Pastikan formatnya benar.');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        setUploadedFile(null);
+      }
     }
   };
 
