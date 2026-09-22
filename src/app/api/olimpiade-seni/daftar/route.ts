@@ -13,8 +13,8 @@ export async function POST(req: Request) {
     const buktiFile = formData.get('buktiPembayaran') as File | null;
     let buktiUrl = '';
 
-    // Folder ID Google Drive untuk Olimpiade (Silakan sesuaikan nanti di .env atau hardcode di sini sementara)
-    const folderId = process.env.GOOGLE_DRIVE_OLIMPIADE_FOLDER_ID || '1j5qL_YfH_-tK7kF-gXQvO4XN_y3U3W7s'; // Default fallback (ganti dengan folder asli)
+    // Folder ID Google Drive
+    const folderId = process.env.GOOGLE_DRIVE_OLIMPIADE_FOLDER_ID || '1XMpQqdTzx0i_WaD79AHdgzhRUUmgQX6z';
 
     if (buktiFile) {
       const arrayBuffer = await buktiFile.arrayBuffer();
