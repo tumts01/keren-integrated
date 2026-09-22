@@ -162,7 +162,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
  // Prevent hydration mismatch
 
   // Halaman Publik (tanpa login atau layout khusus)
-  const isPublicPage = pathname?.startsWith('/survey-madrasah') || pathname?.startsWith('/spmb');
+  const isPublicPage = 
+    pathname?.startsWith('/survey-madrasah') || 
+    pathname?.startsWith('/spmb') ||
+    pathname === '/wali-murid' || 
+    pathname?.startsWith('/wali-murid/') ||
+    pathname === '/olimpiade-seni' ||
+    pathname === '/olimpiade-seni/pendaftaran';
   const isPortal = pathname?.startsWith('/portal');
 
   if (isPortal) {
