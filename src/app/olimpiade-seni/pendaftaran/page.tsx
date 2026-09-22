@@ -24,9 +24,11 @@ export default function PendaftaranOlimpiadeSeni() {
   const [buktiIndividu, setBuktiIndividu] = useState<File | null>(null);
   const [buktiKolektif, setBuktiKolektif] = useState<File | null>(null);
   const [formKolektif, setFormKolektif] = useState({
-    asalSekolah: '',
-    detailLomba: ''
+    asalSekolah: ''
   });
+  const [kolektifKategori, setKolektifKategori] = useState<'Olimpiade' | 'Seni'>('Olimpiade');
+  const [kolektifLombaDipilih, setKolektifLombaDipilih] = useState('Olimpiade Matematika');
+  const [kolektifLombaList, setKolektifLombaList] = useState<string[]>([]);
 
   const lombaOptions = {
     'Olimpiade': ['Olimpiade Matematika', 'Olimpiade IPA', 'Olimpiade IPS', 'Olimpiade PAI'],
@@ -40,6 +42,21 @@ export default function PendaftaranOlimpiadeSeni() {
       lombaDipilih: lombaOptions[kat][0],
       namaRegu: '' // Reset regu
     });
+  };
+
+  const handleKolektifKategoriChange = (kat: 'Olimpiade' | 'Seni') => {
+    setKolektifKategori(kat);
+    setKolektifLombaDipilih(lombaOptions[kat][0]);
+  };
+
+  const handleAddKolektifLomba = () => {
+    if (!kolektifLombaList.includes(kolektifLombaDipilih)) {
+      setKolektifLombaList([...kolektifLombaList, kolektifLombaDipilih]);
+    }
+  };
+
+  const handleRemoveKolektifLomba = (lomba: string) => {
+    setKolektifLombaList(kolektifLombaList.filter(item => item !== lomba));
   };
 
   const handleSubmitIndividu = async (e: React.FormEvent) => {
@@ -104,8 +121,8 @@ export default function PendaftaranOlimpiadeSeni() {
   };
 
   const handleSubmitKolektif = async () => {
-    if (!formKolektif.asalSekolah || !formKolektif.detailLomba) {
-      alert('Silakan isi Asal Sekolah dan Kategori Lomba terlebih dahulu!');
+    if (!formKolektif.asalSekolah || kolektifLombaList.length === 0) {
+      alert('Silakan isi Asal Sekolah dan tambahkan minimal 1 Jenis Lomba!');
       return;
     }
     if (!uploadedFile) {
@@ -125,7 +142,7 @@ export default function PendaftaranOlimpiadeSeni() {
       formData.append('fileExcel', uploadedFile);
       formData.append('buktiPembayaran', buktiKolektif);
       formData.append('namaSekolah', formKolektif.asalSekolah);
-      formData.append('detailLomba', formKolektif.detailLomba);
+      formData.append('detailLomba', kolektifLombaList.join(', '));
 
       const res = await fetch('/api/olimpiade-seni/daftar', {
         method: 'POST',
@@ -319,23 +336,58 @@ export default function PendaftaranOlimpiadeSeni() {
             
             <div style={{ marginBottom: '32px' }}>
               <h3 style={{ margin: '0 0 16px 0', color: '#0f172a', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px' }}>Identitas Instansi / Sekolah</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Asal Sekolah / Instansi <span style={{ color: 'red' }}>*</span></label>
+                <input 
+                  type="text" required value={formKolektif.asalSekolah} onChange={e => setFormKolektif({...formKolektif, asalSekolah: e.target.value})}
+                  style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none' }}
+                  placeholder="Contoh: MIN 1 Malang"
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '20px', alignItems: 'end' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Asal Sekolah / Instansi <span style={{ color: 'red' }}>*</span></label>
-                  <input 
-                    type="text" required value={formKolektif.asalSekolah} onChange={e => setFormKolektif({...formKolektif, asalSekolah: e.target.value})}
-                    style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none' }}
-                    placeholder="Contoh: MIN 1 Malang"
-                  />
+                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Kategori Pendaftaran</label>
+                  <select 
+                    value={kolektifKategori} onChange={e => handleKolektifKategoriChange(e.target.value as 'Olimpiade' | 'Seni')}
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', background: 'white' }}
+                  >
+                    <option value="Olimpiade">Olimpiade Akademik</option>
+                    <option value="Seni">Lomba Seni</option>
+                  </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Kategori/Detail Lomba <span style={{ color: 'red' }}>*</span></label>
-                  <input 
-                    type="text" required value={formKolektif.detailLomba} onChange={e => setFormKolektif({...formKolektif, detailLomba: e.target.value})}
-                    style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none' }}
-                    placeholder="Contoh: Campuran (Olimpiade & Seni)"
-                  />
+                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Pilihan Lomba</label>
+                  <select 
+                    value={kolektifLombaDipilih} onChange={e => setKolektifLombaDipilih(e.target.value)}
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', background: 'white' }}
+                  >
+                    {lombaOptions[kolektifKategori].map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
                 </div>
+                <button 
+                  onClick={handleAddKolektifLomba}
+                  style={{ padding: '12px 24px', borderRadius: '10px', background: '#0ea5e9', color: 'white', border: 'none', fontWeight: 700, cursor: 'pointer', height: '45px' }}
+                >
+                  <i className="fas fa-plus"></i> Tambah
+                </button>
+              </div>
+              
+              {/* List Lomba Terpilih */}
+              <div style={{ marginTop: '16px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                {kolektifLombaList.length === 0 ? (
+                  <span style={{ fontSize: '0.9rem', color: '#94a3b8', fontStyle: 'italic' }}>Belum ada lomba yang ditambahkan. Silakan pilih dan klik "Tambah"</span>
+                ) : (
+                  kolektifLombaList.map(lomba => (
+                    <div key={lomba} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: '#f1f5f9', borderRadius: '20px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#334155' }}>
+                      {lomba}
+                      <i className="fas fa-times" style={{ color: '#ef4444', cursor: 'pointer' }} onClick={() => handleRemoveKolektifLomba(lomba)}></i>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
