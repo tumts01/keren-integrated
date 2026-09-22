@@ -38,15 +38,40 @@ export default function PendaftaranOlimpiadeSeni() {
     });
   };
 
-  const handleSubmitIndividu = (e: React.FormEvent) => {
+  const handleSubmitIndividu = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!buktiIndividu) {
+      alert('Bukti pembayaran wajib diunggah!');
+      return;
+    }
     setLoading(true);
-    // TODO: Submit to Supabase
-    setTimeout(() => {
-      alert('Pendaftaran Individu Berhasil! (Simulasi)');
+
+    try {
+      const formData = new FormData();
+      formData.append('jenisPendaftaran', 'individu');
+      formData.append('buktiPembayaran', buktiIndividu);
+      
+      Object.keys(form).forEach(key => {
+        formData.append(key, (form as any)[key]);
+      });
+
+      const res = await fetch('/api/olimpiade-seni/daftar', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        alert('Pendaftaran Individu Berhasil!');
+        router.push('/olimpiade-seni');
+      } else {
+        alert('Gagal mendaftar: ' + data.error);
+      }
+    } catch (err: any) {
+      alert('Terjadi kesalahan sistem: ' + err.message);
+    } finally {
       setLoading(false);
-      router.push('/olimpiade-seni');
-    }, 1000);
+    }
   };
 
   const handleDownloadTemplate = () => {
@@ -74,18 +99,41 @@ export default function PendaftaranOlimpiadeSeni() {
     }
   };
 
-  const handleSubmitKolektif = () => {
+  const handleSubmitKolektif = async () => {
     if (!uploadedFile) {
       alert('Silakan pilih file Excel terlebih dahulu!');
       return;
     }
+    if (!buktiKolektif) {
+      alert('Bukti pembayaran wajib diunggah!');
+      return;
+    }
+    
     setLoading(true);
-    // TODO: Parsing excel to Supabase logic
-    setTimeout(() => {
-      alert(`Berhasil mengunggah file ${uploadedFile.name} (Simulasi)`);
+
+    try {
+      const formData = new FormData();
+      formData.append('jenisPendaftaran', 'kolektif');
+      formData.append('fileExcel', uploadedFile);
+      formData.append('buktiPembayaran', buktiKolektif);
+
+      const res = await fetch('/api/olimpiade-seni/daftar', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        alert('Pendaftaran Kolektif Berhasil!');
+        router.push('/olimpiade-seni');
+      } else {
+        alert('Gagal mendaftar: ' + data.error);
+      }
+    } catch (err: any) {
+      alert('Terjadi kesalahan sistem: ' + err.message);
+    } finally {
       setLoading(false);
-      router.push('/olimpiade-seni');
-    }, 1500);
+    }
   };
 
   return (
