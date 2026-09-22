@@ -1779,9 +1779,9 @@ export default function PersuratanPage() {
                     src="/ttd bu palupi.png" 
                     style={{ 
                       position: 'absolute', 
-                      top: '0px', 
-                      left: '-20px', 
-                      width: '220px', 
+                      top: '15px', 
+                      left: '-5px', 
+                      width: '160px', 
                       height: 'auto',
                       zIndex: 10,
                       pointerEvents: 'none',
