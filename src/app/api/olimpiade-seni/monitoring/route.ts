@@ -41,7 +41,7 @@ export async function GET(req: Request) {
 
     // Gabungkan nilai per peserta
     const result = pesertaList.map(p => {
-      const pNilai = nilaiData.filter(n => n.peserta_id === p.id);
+      const pNilai = (nilaiData || []).filter(n => n.peserta_id === p.id);
       let total = 0;
       let count = 0;
       pNilai.forEach(n => {

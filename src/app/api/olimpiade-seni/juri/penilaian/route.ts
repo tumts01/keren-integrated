@@ -71,7 +71,7 @@ export async function GET(req: Request) {
 
     // Gabungkan
     const result = pesertaList.map(p => {
-      const n = nilai.find(x => x.peserta_id === p.id);
+      const n = (nilai || []).find(x => x.peserta_id === p.id);
       return {
         ...p,
         nilai: n ? n.nilai : null
@@ -81,7 +81,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: true, data: result });
   } catch (err: any) {
     console.error('Error GET penilaian:', err);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ success: false, error: err.message || 'Internal server error' }, { status: 500 });
   }
 }
 
