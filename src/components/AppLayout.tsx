@@ -172,7 +172,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     pathname === '/olimpiade-seni/rekap' ||
     pathname === '/olimpiade-seni/monitoring' ||
     pathname === '/olimpiade-seni/kartu' ||
-    pathname?.startsWith('/olimpiade-seni/juri');
+    pathname?.startsWith('/olimpiade-seni/juri') ||
+    pathname?.startsWith('/cbt');
   const isPortal = pathname?.startsWith('/portal');
 
   if (isPortal) {

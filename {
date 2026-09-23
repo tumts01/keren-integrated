@@ -1,0 +1,1 @@
+import { createClient } from '@supabase/supabase-js'; const s = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY); async function r() { const {data} = await s.from('data_induk').select('metadata'); console.log(data.filter(d= const m = d.metadata
