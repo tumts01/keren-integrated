@@ -14,26 +14,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ success: false, error: 'Parameter tidak lengkap' }, { status: 400 });
     }
 
-    // Ambil semua peserta yang daftar lomba ini dan sudah LUNAS
-    const { data: peserta, error: errPeserta } = await supabase
-      .from('data_olimpiade_seni')
-      .select('*')
-      .eq('jenis_pendaftar', 'Individu');
-
-    if (errPeserta) throw errPeserta;
-
-    // Karena cabang lomba disimpan di metadata (LOMBA_DIPILIH atau KATEGORI), kita harus filter di server
-    // Atau ambil dari REKAP_PESERTA untuk kolektif
-    
-    // Tapi tunggu, untuk lomba individu, LOMBA_DIPILIH atau cabang ada di metadata.
-    // Dan untuk kolektif, mereka menggunakan file_excel_url. Kita tidak punya nama pesertanya di DB secara langsung!
-    // Ah, ini masalah: pendaftar kolektif hanya upload excel, data siswanya tidak masuk ke tabel satu per satu.
-    // Kita harus fetch semua, lalu ekstrak data siswa.
-    
-    // Untuk saat ini, asumsikan Juri hanya menilai Individu atau Kolektif yang sudah diekstrak.
-    // Mari kita ekstrak semua peserta.
-    
-    // FETCH semua data lunas
+    // Ambil semua data peserta yang statusnya LUNAS
     const { data: allData, error: errAll } = await supabase
       .from('data_olimpiade_seni')
       .select('*')
