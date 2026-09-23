@@ -16,8 +16,8 @@ export default function PendaftaranOlimpiadeSeni() {
     namaSekolah: '',
     npsn: '',
     kelas: '',
-    kategori: 'Olimpiade',
-    lombaDipilih: 'Olimpiade Matematika',
+    kategori: 'Olimpiade Akademik',
+    lombaDipilih: 'Matematika',
     namaRegu: ''
   });
   const [loading, setLoading] = useState(false);
@@ -27,16 +27,16 @@ export default function PendaftaranOlimpiadeSeni() {
   const [formKolektif, setFormKolektif] = useState({
     asalSekolah: ''
   });
-  const [kolektifKategori, setKolektifKategori] = useState<'Olimpiade' | 'Seni'>('Olimpiade');
-  const [kolektifLombaDipilih, setKolektifLombaDipilih] = useState('Olimpiade Matematika');
+  const [kolektifKategori, setKolektifKategori] = useState<'Olimpiade Akademik' | 'Lomba Seni'>('Olimpiade Akademik');
+  const [kolektifLombaDipilih, setKolektifLombaDipilih] = useState('Matematika');
   const [kolektifLombaList, setKolektifLombaList] = useState<string[]>([]);
 
   const lombaOptions = {
-    'Olimpiade': ['Olimpiade Matematika', 'Olimpiade IPA', 'Olimpiade IPS', 'Olimpiade PAI'],
-    'Seni': ['Kaligrafi', 'Banjari', 'Pidato Bahasa Arab', 'Pidato Bahasa Inggris', 'Singer']
+    'Olimpiade Akademik': ['Matematika', 'IPAS', 'PAI', 'Inggris', 'Arab'],
+    'Lomba Seni': ['Singer (solo)', 'Al Banjari', 'Sandi Morse Semaphore (SMS)']
   };
 
-  const handleKategoriChange = (kat: 'Olimpiade' | 'Seni') => {
+  const handleKategoriChange = (kat: 'Olimpiade Akademik' | 'Lomba Seni') => {
     setForm({
       ...form,
       kategori: kat,
@@ -45,7 +45,7 @@ export default function PendaftaranOlimpiadeSeni() {
     });
   };
 
-  const handleKolektifKategoriChange = (kat: 'Olimpiade' | 'Seni') => {
+  const handleKolektifKategoriChange = (kat: 'Olimpiade Akademik' | 'Lomba Seni') => {
     setKolektifKategori(kat);
     setKolektifLombaDipilih(lombaOptions[kat][0]);
   };
