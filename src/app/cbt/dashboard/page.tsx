@@ -100,7 +100,10 @@ export default function DashboardCBT() {
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '1.5rem', color: '#0f172a', margin: 0 }}><i className="fas fa-desktop" style={{ color: '#0284c7', marginRight: '12px' }}></i> Portal CBT</h1>
+          <h1 style={{ fontSize: '1.5rem', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <img src="/logo_olimpiade_seni.png" alt="Logo" style={{ height: '32px', width: 'auto' }} /> 
+            Portal CBT
+          </h1>
           <button onClick={handleLogout} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', color: '#ef4444', fontWeight: 600, cursor: 'pointer' }}>
             <i className="fas fa-sign-out-alt"></i> Keluar
           </button>
