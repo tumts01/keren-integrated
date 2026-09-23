@@ -125,7 +125,16 @@ export default function Sidebar() {
       title: 'Event Madrasah',
       items: [
         { name: 'AKSI', path: '/aksi', icon: 'fa-star' },
-        { name: 'Olimpiade & Seni', path: '/olimpiade-seni', icon: 'fa-medal' },
+        { 
+          name: 'Olimpiade & Seni', 
+          path: '/olimpiade-parent', 
+          icon: 'fa-medal',
+          subItems: [
+            { name: 'Pendaftaran', path: '/olimpiade-seni' },
+            { name: 'Rekap Data', path: '/olimpiade-seni/rekap' },
+            { name: 'Monitoring Pemenang', path: '/olimpiade-seni/monitoring' }
+          ]
+        },
       ]
     },
     ...(isAdmin ? [
