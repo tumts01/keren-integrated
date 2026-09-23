@@ -129,7 +129,7 @@ export default function PendaftaranOlimpiadeSeni() {
         const ws = wb.Sheets[wb.SheetNames[0]];
         const excelData = XLSX.utils.sheet_to_json(ws);
         
-        const validLomba = [...lombaOptions['Olimpiade'], ...lombaOptions['Seni']];
+        const validLomba = [...lombaOptions['Olimpiade Akademik'], ...lombaOptions['Lomba Seni']];
         const errorMsgs: string[] = [];
         
         excelData.forEach((row: any, index: number) => {
@@ -333,11 +333,11 @@ export default function PendaftaranOlimpiadeSeni() {
                 <div>
                   <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Kategori Pendaftaran <span style={{ color: 'red' }}>*</span></label>
                   <select 
-                    value={form.kategori} onChange={e => handleKategoriChange(e.target.value as 'Olimpiade' | 'Seni')}
+                    value={form.kategori} onChange={e => handleKategoriChange(e.target.value as 'Olimpiade Akademik' | 'Lomba Seni')}
                     style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', background: 'white' }}
                   >
-                    <option value="Olimpiade">Olimpiade Akademik</option>
-                    <option value="Seni">Lomba Seni</option>
+                    <option value="Olimpiade Akademik">Olimpiade Akademik</option>
+                    <option value="Lomba Seni">Lomba Seni</option>
                   </select>
                 </div>
 
@@ -347,7 +347,7 @@ export default function PendaftaranOlimpiadeSeni() {
                     value={form.lombaDipilih} onChange={e => setForm({...form, lombaDipilih: e.target.value})}
                     style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', background: 'white' }}
                   >
-                    {lombaOptions[form.kategori as 'Olimpiade' | 'Seni'].map(opt => (
+                    {lombaOptions[form.kategori as 'Olimpiade Akademik' | 'Lomba Seni'].map(opt => (
                       <option key={opt} value={opt}>{opt}</option>
                     ))}
                   </select>
@@ -414,13 +414,13 @@ export default function PendaftaranOlimpiadeSeni() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '20px', alignItems: 'end' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Kategori Pendaftaran</label>
-                  <select 
-                    value={kolektifKategori} onChange={e => handleKolektifKategoriChange(e.target.value as 'Olimpiade' | 'Seni')}
-                    style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', background: 'white' }}
-                  >
-                    <option value="Olimpiade">Olimpiade Akademik</option>
-                    <option value="Seni">Lomba Seni</option>
-                  </select>
+                    <select 
+                      value={kolektifKategori} onChange={e => handleKolektifKategoriChange(e.target.value as 'Olimpiade Akademik' | 'Lomba Seni')}
+                      style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', background: 'white' }}
+                    >
+                      <option value="Olimpiade Akademik">Olimpiade Akademik</option>
+                      <option value="Lomba Seni">Lomba Seni</option>
+                    </select>
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Pilihan Lomba</label>
