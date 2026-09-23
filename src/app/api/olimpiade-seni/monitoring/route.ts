@@ -18,7 +18,7 @@ export async function GET(req: Request) {
     // Ambil data peserta lunas
     const { data: allData, error: errAll } = await supabase
       .from('data_olimpiade_seni')
-      .select('id, jenis_pendaftar, metadata')
+      .select('id, jenis_pendaftaran, metadata')
       .eq('metadata->>STATUS_PEMBAYARAN', 'Valid');
 
     if (errAll) throw errAll;
@@ -26,12 +26,12 @@ export async function GET(req: Request) {
     let pesertaList: any[] = [];
     allData.forEach(row => {
       const meta = row.metadata || {};
-      if (row.jenis_pendaftar === 'Individu') {
+      if (row.jenis_pendaftaran?.toLowerCase() === 'individu') {
         const cabang = meta.LOMBA_DIPILIH || '';
         if (!cabangLomba || cabang === cabangLomba || meta.KATEGORI?.includes(cabangLomba)) {
           pesertaList.push({
             id: row.id,
-            nama: meta.NAMA_LENGKAP || meta.NAMA_REGU || 'Tanpa Nama',
+            nama: meta.NAMA || meta.NAMA_REGU || 'Tanpa Nama',
             asal_sekolah: meta.ASAL_SEKOLAH,
             cabang_lomba: cabang
           });

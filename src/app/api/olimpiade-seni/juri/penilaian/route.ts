@@ -44,16 +44,16 @@ export async function GET(req: Request) {
     let pesertaList: any[] = [];
     allData.forEach(row => {
       const meta = row.metadata || {};
-      if (row.jenis_pendaftar === 'Individu') {
+      if (row.jenis_pendaftaran?.toLowerCase() === 'individu') {
         if (meta.LOMBA_DIPILIH === cabangLomba || meta.KATEGORI?.includes(cabangLomba)) {
           pesertaList.push({
             id: row.id, // Gunakan ID asli
-            nama: meta.NAMA_LENGKAP || meta.NAMA_REGU || 'Tanpa Nama',
+            nama: meta.NAMA || meta.NAMA_REGU || 'Tanpa Nama',
             asal_sekolah: meta.ASAL_SEKOLAH,
             jenis: 'Individu'
           });
         }
-      } else if (row.jenis_pendaftar === 'Kolektif') {
+      } else if (row.jenis_pendaftaran?.toLowerCase() === 'kolektif') {
         // Untuk kolektif, kita butuh data peserta detail. 
         // Jika data peserta disimpan di REKAP_PESERTA, itu hanya hitungan jumlah.
         // Jika Juri mau menilai kolektif, nama peserta harus diinput, atau juri menilai per tim?
