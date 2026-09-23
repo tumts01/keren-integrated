@@ -240,11 +240,25 @@ export default function RekapOlimpiadeSeni() {
                               <div style={{ fontWeight: 700, color: '#0f172a' }}>{row.metadata.NAMA || '-'}</div>
                               <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>NISN: {row.metadata.NISN || '-'}</div>
                               <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Asal: {row.metadata.ASAL_SEKOLAH || '-'}</div>
+                              {row.metadata.USERNAME_CBT && (
+                                <div style={{ marginTop: '8px', padding: '6px', background: '#f1f5f9', borderRadius: '6px', fontSize: '0.8rem' }}>
+                                  <div style={{ color: '#0f172a', fontWeight: 600 }}>CBT Login:</div>
+                                  <div style={{ color: '#0284c7' }}>User: {row.metadata.USERNAME_CBT}</div>
+                                  <div style={{ color: '#0284c7' }}>Pass: {row.metadata.PASSWORD_CBT}</div>
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <div>
                               <div style={{ fontWeight: 700, color: '#0f172a' }}>Pendaftaran Kolektif</div>
                               <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>Asal Instansi: {row.metadata.ASAL_SEKOLAH || '-'}</div>
+                              {row.file_excel_url && (
+                                <div style={{ marginTop: '8px' }}>
+                                  <a href={row.file_excel_url} target="_blank" rel="noreferrer" style={{ fontSize: '0.8rem', color: '#10b981', textDecoration: 'none', fontWeight: 600 }}>
+                                    <i className="fas fa-file-excel"></i> Unduh File Excel CBT
+                                  </a>
+                                </div>
+                              )}
                             </div>
                           )}
                         </td>
