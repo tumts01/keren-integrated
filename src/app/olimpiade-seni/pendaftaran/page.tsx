@@ -71,7 +71,9 @@ export default function PendaftaranOlimpiadeSeni() {
     try {
       const formData = new FormData();
       formData.append('jenisPendaftaran', 'individu');
-      formData.append('buktiPembayaran', buktiIndividu);
+      if (buktiIndividu) {
+        formData.append('buktiPembayaran', buktiIndividu);
+      }
       
       Object.keys(form).forEach(key => {
         formData.append(key, (form as any)[key]);
@@ -173,7 +175,7 @@ export default function PendaftaranOlimpiadeSeni() {
       Swal.fire('Peringatan', 'Silakan pilih file Excel terlebih dahulu!', 'warning');
       return;
     }
-    if (!buktiKolektif) {
+    if (kolektifKategori === 'Lomba Seni' && !buktiKolektif) {
       Swal.fire('Peringatan', 'Bukti pembayaran wajib diunggah!', 'warning');
       return;
     }
@@ -184,7 +186,9 @@ export default function PendaftaranOlimpiadeSeni() {
       const formData = new FormData();
       formData.append('jenisPendaftaran', 'kolektif');
       formData.append('fileExcel', uploadedFile);
-      formData.append('buktiPembayaran', buktiKolektif);
+      if (buktiKolektif) {
+        formData.append('buktiPembayaran', buktiKolektif);
+      }
       formData.append('namaSekolah', formKolektif.asalSekolah);
       formData.append('detailLomba', kolektifLombaList.join(', '));
 
