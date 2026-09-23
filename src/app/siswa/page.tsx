@@ -251,7 +251,7 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     nis: '', nism: '', nisn: '', nik: '', nama: '', jenisKelamin: 'LAKI-LAKI',
-    tempatLahir: '', tanggalLahir: '', agama: 'Islam', domisili: 'Pesantren',
+    tempatLahir: '', tanggalLahir: '', agama: 'Islam', domisili: '',
     noKk: '', anakKe: '', jumlahSaudara: '', statusAnak: 'Anak Kandung',
     statusTempatTinggal: 'Tinggal Bersama Orang Tua', jarak: '', waktuTempuh: '', transportasi: '',
     asalSekolah: '', npsnSd: '', tahunLulusSd: '', noIjazahSd: '', kip: '',
@@ -515,8 +515,10 @@ function TambahMutasiModal({ onClose, onSuccess, allData }: { onClose: () => voi
               <div>
                 <label style={labelStyle}>Domisili</label>
                 <select style={inputStyle} value={form.domisili} onChange={e=>set('domisili',e.target.value)}>
-                  <option value="Pesantren">Pesantren</option>
-                  <option value="Rumah">Rumah</option>
+                  <option value="">Pilih Domisili...</option>
+                  {Array.from(new Set(allData.map(s => (s.domisili || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)).map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
                 </select>
               </div>
               <div>
