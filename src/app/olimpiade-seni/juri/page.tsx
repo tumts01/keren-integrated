@@ -46,8 +46,18 @@ export default function LoginJuriPage() {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', padding: '20px' }}>
       <div style={{ background: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', width: '100%', maxWidth: '400px' }}>
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <h2 style={{ color: '#0f172a', margin: '0 0 10px 0' }}>Login Juri</h2>
-          <p style={{ color: '#64748b', margin: 0, fontSize: '0.9rem' }}>Olimpiade & Lomba Seni KEREN</p>
+          <img 
+            src="/logo_olimpiade_seni.png" 
+            alt="Logo Olimpiade & Seni" 
+            style={{ width: '80px', height: '80px', objectFit: 'contain', marginBottom: '16px' }} 
+            onError={(e) => {
+              // Fallback jika logo tidak ditemukan
+              (e.target as HTMLImageElement).src = '/logo.png';
+            }}
+          />
+          <h2 style={{ color: '#0f172a', margin: '0 0 8px 0', fontSize: '1.5rem' }}>Portal Juri</h2>
+          <p style={{ color: '#64748b', margin: '0 0 4px 0', fontSize: '0.95rem', fontWeight: 600 }}>Olimpiade & Lomba Seni</p>
+          <p style={{ color: '#94a3b8', margin: 0, fontSize: '0.85rem' }}>MTs Almaarif 01 Singosari</p>
         </div>
 
         <form onSubmit={handleLogin}>
