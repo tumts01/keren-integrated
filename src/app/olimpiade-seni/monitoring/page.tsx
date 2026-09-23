@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
 import InlineLoading from '@/components/InlineLoading';
 
 export default function MonitoringOlimpiadePage() {
+  const router = useRouter();
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterCabang, setFilterCabang] = useState('Semua');
@@ -43,6 +45,13 @@ export default function MonitoringOlimpiadePage() {
 
   return (
     <div style={{ padding: '20px' }}>
+      <button 
+        onClick={() => router.push('/olimpiade-seni')}
+        style={{ marginBottom: '20px', background: 'transparent', border: 'none', color: '#3b82f6', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem' }}
+      >
+        <i className="fas fa-arrow-left"></i> Kembali ke Beranda Olimpiade
+      </button>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <div>
           <h2 style={{ margin: '0 0 8px 0', color: '#0f172a' }}>Monitoring Pemenang (Live Score)</h2>
