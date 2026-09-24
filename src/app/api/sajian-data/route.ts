@@ -178,9 +178,27 @@ export async function GET() {
       }
     });
 
-    siswaStats.rincianAsalSekolah7 = Object.entries(siswaStats.rincianAsalSekolah7)
-      .map(([nama, jumlah]) => ({ nama, jumlah }))
-      .sort((a: any, b: any) => b.jumlah - a.jumlah);
+    const rawDataAsalSekolah = siswaRows
+      .filter((r: any) => {
+        const getVal = (key1: string, key2?: string, key3?: string, key4?: string) => (r.metadata?.[key1] || (key2 ? r.metadata?.[key2] : '') || (key3 ? r.metadata?.[key3] : '') || (key4 ? r.metadata?.[key4] : ''))?.toString() || '';
+        const statusAktif = getVal('Status Siswa', 'STATUS SISWA', 'Ket', 'KETERANGAN').toLowerCase().trim();
+        return statusAktif === 'aktif' && r.nama;
+      })
+      .map((r: any) => {
+        const getVal = (k1: string, k2?: string) => (r.metadata?.[k1] || (k2 ? r.metadata?.[k2] : ''))?.toString() || '';
+        let asal = getVal('SD/MI', 'ASAL SEKOLAH').toUpperCase().trim();
+        if (!asal || asal === '-') asal = 'TIDAK DIKETAHUI';
+        return {
+          asal,
+          domisili: getVal('DOMISILI', 'Domisili').trim(),
+          kelas: getVal('KELAS', 'Kelas').trim(),
+          ta7: getVal('TA KELAS 7').trim(),
+          ta8: getVal('TA KELAS 8').trim(),
+          ta9: getVal('TA KELAS 9').trim()
+        };
+      });
+
+    siswaStats.rincianAsalSekolah7 = rawDataAsalSekolah; // We repurpose this field to hold raw data for frontend
 
     return NextResponse.json({
       success: true,

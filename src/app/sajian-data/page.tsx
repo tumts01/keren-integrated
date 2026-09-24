@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import styles from './sajian-data.module.css';
 import LoadingScreen from '@/components/LoadingScreen';
 
@@ -8,6 +8,11 @@ export default function SajianDataPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // States for Top Asal Sekolah Filters
+  const [filterDomisili, setFilterDomisili] = useState('');
+  const [filterKelas, setFilterKelas] = useState('');
+  const [filterTA, setFilterTA] = useState('');
 
   useEffect(() => {
     fetch('/api/sajian-data')
@@ -26,9 +31,55 @@ export default function SajianDataPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) {
-    return <LoadingScreen />;
-  }
+  const rawAsalSekolah = data?.siswa?.rincianAsalSekolah7 || [];
+
+  // Get unique options for filters
+  const uniqueDomisili = useMemo(() => {
+    const set = new Set<string>();
+    rawAsalSekolah.forEach((r: any) => { if (r.domisili) set.add(r.domisili) });
+    return [...set].sort();
+  }, [rawAsalSekolah]);
+
+  const uniqueKelas = useMemo(() => {
+    const set = new Set<string>();
+    rawAsalSekolah.forEach((r: any) => { if (r.kelas) set.add(r.kelas) });
+    return [...set].sort();
+  }, [rawAsalSekolah]);
+
+  const uniqueTA = useMemo(() => {
+    const set = new Set<string>();
+    rawAsalSekolah.forEach((r: any) => { 
+      if (r.ta7) set.add(r.ta7);
+      if (r.ta8) set.add(r.ta8);
+      if (r.ta9) set.add(r.ta9);
+    });
+    return [...set].sort().reverse(); // Reverse for newest first
+  }, [rawAsalSekolah]);
+
+  // Apply filters
+  const filteredAsalSekolah = useMemo(() => {
+    return rawAsalSekolah.filter((r: any) => {
+      if (filterDomisili && r.domisili !== filterDomisili) return false;
+      if (filterKelas && r.kelas !== filterKelas) return false;
+      if (filterTA && r.ta7 !== filterTA && r.ta8 !== filterTA && r.ta9 !== filterTA) return false;
+      return true;
+    });
+  }, [rawAsalSekolah, filterDomisili, filterKelas, filterTA]);
+
+  // Aggregate Top 10
+  const top10Sekolah = useMemo(() => {
+    const map: Record<string, number> = {};
+    filteredAsalSekolah.forEach((r: any) => {
+      map[r.asal] = (map[r.asal] || 0) + 1;
+    });
+    return Object.entries(map)
+      .map(([nama, jumlah]) => ({ nama, jumlah }))
+      .sort((a, b) => b.jumlah - a.jumlah)
+      .slice(0, 10);
+  }, [filteredAsalSekolah]);
+
+
+  if (loading) return <LoadingScreen />;
 
   if (error || !data) {
     return (
@@ -173,12 +224,36 @@ export default function SajianDataPage() {
         </div>
       </section>
 
-      {/* Top 10 Asal Sekolah Kelas 7 */}
-      {siswa.rincianAsalSekolah7 && siswa.rincianAsalSekolah7.length > 0 && (
+      {/* Top 10 Asal Sekolah dengan Filter */}
+      {rawAsalSekolah.length > 0 && (
         <section className={styles.section}>
           <div className={styles.sectionTitle}>
             <i className="fas fa-school" style={{ color: '#10b981' }}></i>
-            Top 10 Asal SD/MI (Siswa Kelas 7)
+            Top 10 Asal SD/MI
+          </div>
+          
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '16px', background: 'white', padding: '16px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
+            <div style={{ flex: '1 1 200px' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '4px' }}>Domisili</label>
+              <select value={filterDomisili} onChange={(e) => setFilterDomisili(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                <option value="">Semua Domisili</option>
+                {uniqueDomisili.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div style={{ flex: '1 1 200px' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '4px' }}>Kelas</label>
+              <select value={filterKelas} onChange={(e) => setFilterKelas(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                <option value="">Semua Kelas</option>
+                {uniqueKelas.map(k => <option key={k} value={k}>Kelas {k}</option>)}
+              </select>
+            </div>
+            <div style={{ flex: '1 1 200px' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '4px' }}>Tahun Ajaran Masuk</label>
+              <select value={filterTA} onChange={(e) => setFilterTA(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                <option value="">Semua Tahun Ajaran</option>
+                {uniqueTA.map(ta => <option key={ta} value={ta}>{ta}</option>)}
+              </select>
+            </div>
           </div>
           
           <div className={styles.tableWrapper}>
@@ -191,13 +266,19 @@ export default function SajianDataPage() {
                 </tr>
               </thead>
               <tbody>
-                {siswa.rincianAsalSekolah7.slice(0, 10).map((item: any, idx: number) => (
+                {top10Sekolah.length > 0 ? top10Sekolah.map((item: any, idx: number) => (
                   <tr key={idx}>
                     <td className={styles.numberCell}>{idx + 1}</td>
                     <td className={styles.categoryCell} style={{ borderRight: 'none' }}>{item.nama}</td>
                     <td className={styles.totalCell}>{item.jumlah}</td>
                   </tr>
-                ))}
+                )) : (
+                  <tr>
+                    <td colSpan={3} style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>
+                      Tidak ada data yang sesuai dengan filter
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
