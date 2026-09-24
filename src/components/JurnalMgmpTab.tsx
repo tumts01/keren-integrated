@@ -248,71 +248,133 @@ export default function JurnalMgmpTab() {
       Swal.fire('Error', json.error, 'error');
     }
   };
-  const handleDownloadPDF = (jurnal: JurnalMgmp) => {
-    const doc = new jsPDF('p', 'mm', 'a4');
-    
-    // Kop Surat
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.text('LAPORAN HASIL MGMP', 105, 20, { align: 'center' });
-    doc.setLineWidth(0.5);
-    doc.line(20, 28, 190, 28);
-    
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    
-    // Data Table using autotable for easy alignment
-    const tableData = [
-      ['Nama Guru', ':', jurnal.namaGuru],
-      ['Bidang Studi', ':', jurnal.bidangStudi || '-'],
-      ['Nama Kegiatan', ':', jurnal.namaKegiatan],
-      ['Tanggal', ':', formatDate(jurnal.tanggal)],
-      ['Tempat', ':', jurnal.tempat || '-'],
-      ['Penyelenggara', ':', jurnal.penyelenggara || '-'],
-      ['Agenda', ':', jurnal.agenda || '-'],
-    ];
+  const loadImageForPDF = async (url: string): Promise<{ base64: string, width: number, height: number } | null> => {
+    try {
+      const res = await fetch(`/api/proxy-image?url=${encodeURIComponent(url)}&size=w1200`);
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+      return await new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve({ base64, width: img.width, height: img.height });
+        img.onerror = () => resolve(null);
+        img.src = base64;
+      });
+    } catch { return null; }
+  };
 
-    autoTable(doc, {
-      startY: 35,
-      head: [],
-      body: tableData,
-      theme: 'plain',
-      styles: { cellPadding: 2, fontSize: 11, font: 'helvetica' },
-      columnStyles: {
-        0: { cellWidth: 40, fontStyle: 'bold' },
-        1: { cellWidth: 5 },
-        2: { cellWidth: 'auto' }
-      }
+  const drawAttachment = async (doc: jsPDF, url: string, title: string) => {
+    const imgData = await loadImageForPDF(url);
+    if (!imgData) return;
+    
+    doc.addPage();
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Lampiran: ${title}`, 105, 20, { align: 'center' });
+    
+    const margin = 15;
+    const maxWidth = 210 - (margin * 2);
+    const maxHeight = 297 - 40; // leaving top margin
+    
+    let finalWidth = imgData.width;
+    let finalHeight = imgData.height;
+    
+    // Scale to fit width
+    if (finalWidth > maxWidth) {
+      const ratio = maxWidth / finalWidth;
+      finalWidth = maxWidth;
+      finalHeight = finalHeight * ratio;
+    }
+    
+    // Scale to fit height
+    if (finalHeight > maxHeight) {
+      const ratio = maxHeight / finalHeight;
+      finalHeight = maxHeight;
+      finalWidth = finalWidth * ratio;
+    }
+    
+    const x = (210 - finalWidth) / 2;
+    // Format is optional, jsPDF usually infers it, but we can pass 'JPEG' or 'PNG'
+    doc.addImage(imgData.base64, 'JPEG', x, 30, finalWidth, finalHeight);
+  };
+
+  const handleDownloadPDF = async (jurnal: JurnalMgmp) => {
+    Swal.fire({ 
+      title: 'Menyiapkan Dokumen...', 
+      text: 'Mengunduh data dan seluruh lampiran. Mohon tunggu sebentar...', 
+      allowOutsideClick: false, 
+      didOpen: () => { Swal.showLoading(); } 
     });
 
-    const finalY = (doc as any).lastAutoTable.finalY + 10;
-    
-    // Attachment Links info
-    let attachmentY = finalY;
-    if (jurnal.suratTugas || jurnal.dokumentasi || jurnal.daftarHadir || jurnal.notulen) {
+    try {
+      const doc = new jsPDF('p', 'mm', 'a4');
+      
+      // Kop Surat
       doc.setFont('helvetica', 'bold');
-      doc.text('Lampiran (Tersimpan di Aplikasi):', 14, attachmentY);
+      doc.setFontSize(16);
+      doc.text('LAPORAN HASIL MGMP', 105, 20, { align: 'center' });
+      doc.setLineWidth(0.5);
+      doc.line(20, 28, 190, 28);
+      
+      doc.setFontSize(12);
       doc.setFont('helvetica', 'normal');
+      
+      // Data Table using autotable for easy alignment
+      const tableData = [
+        ['Nama Guru', ':', jurnal.namaGuru],
+        ['Bidang Studi', ':', jurnal.bidangStudi || '-'],
+        ['Nama Kegiatan', ':', jurnal.namaKegiatan],
+        ['Tanggal', ':', formatDate(jurnal.tanggal)],
+        ['Tempat', ':', jurnal.tempat || '-'],
+        ['Penyelenggara', ':', jurnal.penyelenggara || '-'],
+        ['Agenda', ':', jurnal.agenda || '-'],
+      ];
+
+      autoTable(doc, {
+        startY: 35,
+        head: [],
+        body: tableData,
+        theme: 'plain',
+        styles: { cellPadding: 2, fontSize: 11, font: 'helvetica' },
+        columnStyles: {
+          0: { cellWidth: 40, fontStyle: 'bold' },
+          1: { cellWidth: 5 },
+          2: { cellWidth: 'auto' }
+        }
+      });
+
+      const finalY = (doc as any).lastAutoTable.finalY + 10;
+      doc.setFont('helvetica', 'bold');
+      doc.text('Catatan:', 14, finalY);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Bukti fisik lampiran (Surat Tugas, Notulen, Daftar Hadir, dan Dokumentasi) terlampir pada halaman berikutnya.', 14, finalY + 6, { maxWidth: 180 });
+
+      // Embed Attachments
       if (jurnal.suratTugas) {
-        attachmentY += 6;
-        doc.text('- Surat Tugas', 14, attachmentY);
+        await drawAttachment(doc, jurnal.suratTugas, 'Surat Tugas');
       }
       if (jurnal.daftarHadir) {
-        attachmentY += 6;
-        doc.text('- Daftar Hadir', 14, attachmentY);
+        await drawAttachment(doc, jurnal.daftarHadir, 'Daftar Hadir');
       }
       if (jurnal.notulen) {
-        attachmentY += 6;
-        doc.text('- Notulen Kegiatan', 14, attachmentY);
+        await drawAttachment(doc, jurnal.notulen, 'Notulen Kegiatan');
       }
       if (jurnal.dokumentasi) {
-        const count = jurnal.dokumentasi.split(' || ').length;
-        attachmentY += 6;
-        doc.text(`- Dokumentasi (${count} Foto)`, 14, attachmentY);
+        const fotos = jurnal.dokumentasi.split(' || ');
+        for (let i = 0; i < fotos.length; i++) {
+          await drawAttachment(doc, fotos[i], `Dokumentasi Foto ${i + 1}`);
+        }
       }
-    }
 
-    doc.save(`Laporan_MGMP_${jurnal.namaGuru}_${jurnal.tanggal}.pdf`);
+      doc.save(`Laporan_MGMP_${jurnal.namaGuru}_${jurnal.tanggal}.pdf`);
+      Swal.close();
+    } catch (error: any) {
+      Swal.fire('Error', 'Gagal membuat PDF: ' + error.message, 'error');
+    }
   };
   // Filter logic
   const filtered = data.filter(d => {
