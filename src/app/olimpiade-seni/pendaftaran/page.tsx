@@ -104,11 +104,11 @@ export default function PendaftaranOlimpiadeSeni() {
     const ws_data = [
       ['NO', 'NAMA', 'NISN', 'NAMA SD/MI', 'NPSN SD/MI', 'KELAS', 'LOMBA YANG DIPILIH', 'NAMA REGU/GRUP (LOMBA MAPEL TIDAK PERLU MENGISI)'],
       // Contoh isi
-      [1, 'Ahmad Budi', '0123456789', 'MIN 1 Malang', '20500000', '6', 'Olimpiade Matematika', ''],
-      [2, 'Grup Al-Banjari', '-', 'SDIT Ahmad Yani', '20511111', '5', 'Banjari', 'Grup Shalawat A'],
+      [1, 'Ahmad Budi', '0123456789', 'MIN 1 Malang', '20500000', '6', 'Matematika', ''],
+      [2, 'Grup Al-Banjari', '-', 'SDIT Ahmad Yani', '20511111', '5', 'Al Banjari', 'Grup Shalawat A'],
       [],
       ['*** PENTING: Pilihan "LOMBA YANG DIPILIH" harus sama persis dengan daftar di bawah ini (tanpa typo): ***'],
-      ['Olimpiade Matematika, Olimpiade IPA, Olimpiade IPS, Olimpiade PAI, Kaligrafi, Banjari, Pidato Bahasa Arab, Pidato Bahasa Inggris, Singer']
+      ['Matematika, IPAS, PAI, Inggris, Arab, Singer (solo), Al Banjari, Sandi Morse Semaphore (SMS)']
     ];
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     
