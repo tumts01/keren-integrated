@@ -266,7 +266,7 @@ export default function RekapOlimpiadeSeni() {
                         <td style={{ padding: '16px' }}>
                           {isIndividu ? (
                             <div>
-                              <div style={{ color: '#0f172a' }}>{row.metadata.LOMBA_DIPILIH || '-'}</div>
+                              <div style={{ color: '#0f172a' }}>{row.metadata.LOMBA_DIPILIH || row.metadata['LOMBA YANG DIPILIH'] || '-'}</div>
                               <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>Kategori: {row.metadata.KATEGORI || '-'}</div>
                               {row.metadata.NAMA_REGU && (
                                 <div style={{ fontSize: '0.8rem', color: '#eab308', fontWeight: 600 }}>Grup: {row.metadata.NAMA_REGU}</div>
@@ -274,8 +274,18 @@ export default function RekapOlimpiadeSeni() {
                             </div>
                           ) : (
                             <div>
-                              <div style={{ color: '#0f172a' }}>{row.metadata.LOMBA_DIPILIH || '-'}</div>
-                              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>Peserta via Excel</div>
+                              {row.metadata.REKAP_PESERTA ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {Object.entries(row.metadata.REKAP_PESERTA).map(([l, c]) => (
+                                    <div key={l} style={{ fontSize: '0.85rem', color: '#0f172a' }}>
+                                      <span style={{ fontWeight: 600 }}>{String(c)}</span> peserta {l}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div style={{ color: '#0f172a' }}>{row.metadata.DETAIL_LOMBA || '-'}</div>
+                              )}
+                              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '6px' }}>Peserta via Excel</div>
                             </div>
                           )}
                         </td>
