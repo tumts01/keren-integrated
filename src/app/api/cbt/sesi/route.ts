@@ -121,6 +121,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, nilai: nilaiAkhir, message: 'Ujian selesai disimpan' });
     }
 
+    else if (action === 'log_kecurangan') {
+      const { jenisKecurangan, jumlahPelanggaran } = body;
+      
+      const { data: sesiData } = await supabase.from('cbt_sesi').select('log_kecurangan').eq('nomor_peserta', nomorPeserta).single();
+      const existingLog = Array.isArray(sesiData?.log_kecurangan) ? sesiData.log_kecurangan : [];
+      const newEntry = { jenis: jenisKecurangan, waktu: new Date().toISOString(), ke: jumlahPelanggaran };
+      const newLog = [...existingLog, newEntry];
+
+      await supabase.from('cbt_sesi').update({ log_kecurangan: newLog, updated_at: new Date().toISOString() }).eq('nomor_peserta', nomorPeserta);
+      return NextResponse.json({ success: true });
+    }
+
     return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

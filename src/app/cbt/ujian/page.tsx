@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
 
@@ -16,8 +16,17 @@ export default function CBTUjianPage() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Anti-cheat state
+  const [warningCount, setWarningCount] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showWarningBanner, setShowWarningBanner] = useState(false);
+  const warningCountRef = useRef(0);
+  const userRef = useRef<any>(null);
+  const isSubmittingRef = useRef(false);
+
   // Constants
   const DURASI_MENIT = 60;
+  const MAX_WARNINGS = 3;
 
   useEffect(() => {
     const data = localStorage.getItem('cbt_user');
@@ -27,7 +36,128 @@ export default function CBTUjianPage() {
     }
     const parsedUser = JSON.parse(data);
     setUser(parsedUser);
+    userRef.current = parsedUser;
     initSesi(parsedUser);
+  }, []);
+
+  // --- ANTI-CHEAT: Setup all guards ---
+  useEffect(() => {
+    if (!user) return;
+
+    // 1. Disable right-click
+    const preventContextMenu = (e: MouseEvent) => e.preventDefault();
+
+    // 2. Disable copy/paste/cut/select shortcuts
+    const preventKeys = (e: KeyboardEvent) => {
+      const blocked = (e.ctrlKey || e.metaKey) && ['c', 'v', 'x', 'a', 'u'].includes(e.key.toLowerCase());
+      // Also block F12 devtools, PrintScreen
+      const devtools = e.key === 'F12' || e.key === 'PrintScreen';
+      if (blocked || devtools) e.preventDefault();
+    };
+
+    // 3. Detect tab/window blur (tab switching)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && !isSubmittingRef.current) {
+        logAndWarn('tab_switch');
+      }
+    };
+
+    // 4. Detect fullscreen exit
+    const handleFullscreenChange = () => {
+      const isFull = !!(document.fullscreenElement);
+      setIsFullscreen(isFull);
+      if (!isFull && !isSubmittingRef.current) {
+        logAndWarn('fullscreen_exit');
+      }
+    };
+
+    // 5. Disable text selection (CSS approach via JS)
+    const preventSelect = (e: Event) => e.preventDefault();
+
+    document.addEventListener('contextmenu', preventContextMenu);
+    document.addEventListener('keydown', preventKeys);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('selectstart', preventSelect);
+
+    return () => {
+      document.removeEventListener('contextmenu', preventContextMenu);
+      document.removeEventListener('keydown', preventKeys);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('selectstart', preventSelect);
+    };
+  }, [user]);
+
+  // Request fullscreen when ujian starts
+  useEffect(() => {
+    if (soalList.length > 0 && !isFullscreen) {
+      requestFullscreen();
+    }
+  }, [soalList]);
+
+  const requestFullscreen = async () => {
+    try {
+      await document.documentElement.requestFullscreen();
+      setIsFullscreen(true);
+    } catch {
+      // Silently ignore if fullscreen is denied
+    }
+  };
+
+  const logAndWarn = useCallback(async (jenisKecurangan: string) => {
+    const newCount = warningCountRef.current + 1;
+    warningCountRef.current = newCount;
+    setWarningCount(newCount);
+    setShowWarningBanner(true);
+    setTimeout(() => setShowWarningBanner(false), 4000);
+
+    // Log to server
+    try {
+      fetch('/api/cbt/sesi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'log_kecurangan',
+          nomorPeserta: userRef.current?.nomorPeserta,
+          jenisKecurangan,
+          jumlahPelanggaran: newCount
+        })
+      });
+    } catch (e) {
+      console.error('Gagal log kecurangan', e);
+    }
+
+    if (newCount >= MAX_WARNINGS) {
+      // Auto submit
+      await Swal.fire({
+        title: '⚠️ Batas Pelanggaran Terlampaui!',
+        html: `Anda telah melakukan <b>${MAX_WARNINGS}x pelanggaran</b> selama ujian berlangsung.<br><br>Ujian akan dikumpulkan otomatis sekarang.`,
+        icon: 'error',
+        confirmButtonText: 'OK',
+        allowOutsideClick: false,
+        timer: 5000,
+        timerProgressBar: true,
+      });
+      submitUjian(userRef.current?.nomorPeserta, true);
+    } else {
+      const jenisLabel = jenisKecurangan === 'tab_switch' ? 'Berpindah tab/aplikasi'
+        : jenisKecurangan === 'fullscreen_exit' ? 'Keluar dari layar penuh'
+        : jenisKecurangan === 'copy_paste' ? 'Copy/Paste'
+        : 'Pelanggaran';
+      Swal.fire({
+        title: `⚠️ Peringatan ${newCount}/${MAX_WARNINGS}`,
+        html: `<b>${jenisLabel}</b> terdeteksi!<br><br>Jika Anda melanggar sebanyak <b>${MAX_WARNINGS}x</b>, ujian akan dikumpulkan otomatis.`,
+        icon: 'warning',
+        confirmButtonText: 'Kembali ke Ujian',
+        allowOutsideClick: false,
+      }).then(() => {
+        // Re-request fullscreen after warning dialog
+        if (jenisKecurangan === 'fullscreen_exit') {
+          requestFullscreen();
+        }
+      });
+    }
   }, []);
 
   const initSesi = async (u: any) => {
@@ -54,6 +184,13 @@ export default function CBTUjianPage() {
         setSoalList(dataSoal.soal);
         setJawaban(dataSoal.sesi.jawaban_tersimpan || {});
         
+        // Restore warning count if any
+        if (dataSoal.sesi.log_kecurangan) {
+          const logs = dataSoal.sesi.log_kecurangan as any[];
+          warningCountRef.current = logs.length;
+          setWarningCount(logs.length);
+        }
+
         // Calculate remaining time
         const startTime = new Date(dataSoal.sesi.waktu_mulai).getTime();
         const endTime = startTime + (DURASI_MENIT * 60 * 1000);
@@ -118,8 +255,12 @@ export default function CBTUjianPage() {
       if (!confirmed.isConfirmed) return;
     }
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     Swal.fire({ title: 'Menyimpan Ujian...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+    // Exit fullscreen gracefully
+    try { if (document.fullscreenElement) await document.exitFullscreen(); } catch { /* ignore */ }
 
     try {
       const res = await fetch('/api/cbt/sesi', {
@@ -160,7 +301,20 @@ export default function CBTUjianPage() {
   const noSoalString = currentSoal.nomor_soal.toString();
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f1f5f9' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#f1f5f9', userSelect: 'none' }}>
+
+      {/* WARNING BANNER */}
+      {showWarningBanner && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+          background: '#ef4444', color: 'white', padding: '14px', textAlign: 'center',
+          fontWeight: 700, fontSize: '1rem', letterSpacing: '0.02em',
+          boxShadow: '0 4px 20px rgba(239,68,68,0.4)'
+        }}>
+          ⚠️ PELANGGARAN TERDETEKSI! Peringatan {warningCount}/{MAX_WARNINGS}. Ujian akan dikumpulkan otomatis jika melebihi batas.
+        </div>
+      )}
+
       {/* KIRI: Area Soal */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
@@ -168,6 +322,24 @@ export default function CBTUjianPage() {
           <div style={{ fontWeight: 700, fontSize: '1.2rem', color: '#0f172a' }}>{user.lomba}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div style={{ fontSize: '0.9rem', color: '#64748b' }}>{user.nama} ({user.nomorPeserta})</div>
+            
+            {/* Warning Counter */}
+            {warningCount > 0 && (
+              <div style={{ background: '#fef2f2', color: '#ef4444', padding: '6px 12px', borderRadius: '20px', fontWeight: 700, fontSize: '0.85rem', border: '1px solid #fca5a5' }}>
+                ⚠️ {warningCount}/{MAX_WARNINGS} Pelanggaran
+              </div>
+            )}
+
+            {/* Fullscreen indicator */}
+            {!isFullscreen && (
+              <button
+                onClick={requestFullscreen}
+                style={{ background: '#f59e0b', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 12px', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem' }}
+              >
+                <i className="fas fa-expand" style={{ marginRight: '6px' }}></i>Layar Penuh
+              </button>
+            )}
+
             <div style={{ background: timeLeft !== null && timeLeft < 300 ? '#fef2f2' : '#f0fdf4', color: timeLeft !== null && timeLeft < 300 ? '#ef4444' : '#16a34a', padding: '8px 16px', borderRadius: '20px', fontWeight: 700, border: `1px solid ${timeLeft !== null && timeLeft < 300 ? '#fca5a5' : '#bbf7d0'}` }}>
               <i className="fas fa-clock" style={{ marginRight: '8px' }}></i>
               {timeLeft !== null ? formatTime(timeLeft) : '--:--'}
@@ -303,7 +475,7 @@ export default function CBTUjianPage() {
             onClick={() => submitUjian(user.nomorPeserta)}
             style={{ width: '100%', padding: '14px', borderRadius: '8px', background: '#ef4444', color: 'white', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: '1rem' }}
           >
-            Hentikan & Kumpulkan
+            Hentikan &amp; Kumpulkan
           </button>
         </div>
       </div>

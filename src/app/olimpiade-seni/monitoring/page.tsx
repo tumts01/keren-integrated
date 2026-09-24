@@ -93,7 +93,8 @@ export default function MonitoringOlimpiadePage() {
                   <th style={{ padding: '15px' }}>Nama Peserta</th>
                   <th style={{ padding: '15px' }}>Asal Sekolah</th>
                   {filterCabang === 'Semua' && <th style={{ padding: '15px' }}>Cabang Lomba</th>}
-                  <th style={{ padding: '15px', textAlign: 'center' }}>Jumlah Juri</th>
+                  <th style={{ padding: '15px', textAlign: 'center' }}>Juri</th>
+                  <th style={{ padding: '15px', textAlign: 'center' }}>Pelanggaran</th>
                   <th style={{ padding: '15px', textAlign: 'right' }}>Nilai Rata-rata</th>
                 </tr>
               </thead>
@@ -120,6 +121,20 @@ export default function MonitoringOlimpiadePage() {
                         <span style={{ background: '#e2e8f0', padding: '4px 10px', borderRadius: '20px', fontSize: '0.8rem' }}>
                           {d.jumlah_juri} Juri
                         </span>
+                      </td>
+                      <td style={{ padding: '15px', textAlign: 'center' }}>
+                        {d.log_kecurangan && d.log_kecurangan.length > 0 ? (
+                          <div
+                            title={d.log_kecurangan.map((l: any) => `${l.ke}. ${l.jenis === 'tab_switch' ? 'Pindah Tab' : l.jenis === 'fullscreen_exit' ? 'Keluar Fullscreen' : l.jenis} (${new Date(l.waktu).toLocaleTimeString('id-ID')})`).join('\n')}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#fef2f2', color: '#ef4444', borderRadius: '20px', padding: '4px 12px', fontWeight: 700, fontSize: '0.85rem', cursor: 'help', border: '1px solid #fca5a5' }}
+                          >
+                            <i className="fas fa-exclamation-triangle"></i> {d.log_kecurangan.length}x
+                          </div>
+                        ) : (
+                          <span style={{ color: '#10b981', fontSize: '0.85rem' }}>
+                            <i className="fas fa-check-circle"></i> Bersih
+                          </span>
+                        )}
                       </td>
                       <td style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold', fontSize: '1.1rem', color: '#10b981' }}>
                         {d.rata_rata}
