@@ -435,10 +435,18 @@ export default function PendaftaranOlimpiadeSeni() {
               </div>
 
               <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px' }}>
-                <p style={{ margin: '0 0 12px 0', fontSize: '0.9rem', color: '#475569', lineHeight: '1.5' }}>
-                  <strong>Informasi Pilihan Lomba:</strong><br/>
-                  Anda tidak perlu memilih daftar lomba secara manual di sini. Sistem akan secara otomatis mendeteksi dan mengelompokkan jenis lomba berdasarkan file Excel yang Anda unggah di bawah ini.
-                </p>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '1rem', color: '#0f172a', fontWeight: 700 }}>
+                  <i className="fas fa-info-circle" style={{ color: '#3b82f6', marginRight: '8px' }}></i>
+                  Panduan Pendaftaran Kolektif
+                </h4>
+                <ol style={{ margin: '0 0 16px 0', paddingLeft: '20px', fontSize: '0.9rem', color: '#475569', lineHeight: '1.6' }}>
+                  <li>Isi <strong>Asal Sekolah / Instansi</strong> pada kolom di atas.</li>
+                  <li>Unduh template Excel resmi (Poin 1), lalu isi data peserta secara lengkap.</li>
+                  <li>Unggah file Excel (Poin 2). Sistem akan mendeteksi pilihan lomba secara otomatis.</li>
+                  <li>Jika terdapat peserta <strong>Lomba Seni</strong>, wajib mengunggah Bukti Pembayaran (Poin 3).</li>
+                  <li>Klik <strong>Proses Pendaftaran Kolektif</strong> dan tunggu hingga selesai.</li>
+                  <li style={{ color: '#ef4444', fontWeight: 600 }}>PENTING: Jangan lupa untuk langsung mengunduh file Excel Akun CBT (berisi Username & Password peserta) yang muncul setelah pendaftaran berhasil!</li>
+                </ol>
                 
                 {/* List Lomba Terdeteksi Otomatis */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
