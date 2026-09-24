@@ -282,13 +282,21 @@ export default function RekapOlimpiadeSeni() {
                         </td>
                         <td style={{ padding: '16px' }}>
                           {isIndividu ? (
-                            <div>
-                              <div style={{ color: '#0f172a' }}>{normalizeLomba(row.metadata.LOMBA_DIPILIH || row.metadata['LOMBA YANG DIPILIH'] || '') || '-'}</div>
-                              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>Kategori: {row.metadata.KATEGORI || '-'}</div>
-                              {row.metadata.NAMA_REGU && (
-                                <div style={{ fontSize: '0.8rem', color: '#eab308', fontWeight: 600 }}>Grup: {row.metadata.NAMA_REGU}</div>
-                              )}
-                            </div>
+                            (() => {
+                              const lombaRaw = row.metadata.LOMBA_DIPILIH || row.metadata['LOMBA YANG DIPILIH'] || '';
+                              const lombaName = normalizeLomba(lombaRaw) || '-';
+                              const isAkademik = ['Matematika', 'IPAS', 'PAI', 'Inggris', 'Arab'].includes(lombaName);
+                              const fallbackKategori = lombaName !== '-' ? (isAkademik ? 'Olimpiade Akademik' : 'Lomba Seni') : '-';
+                              return (
+                                <div>
+                                  <div style={{ color: '#0f172a' }}>{lombaName}</div>
+                                  <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>Kategori: {row.metadata.KATEGORI || fallbackKategori}</div>
+                                  {row.metadata.NAMA_REGU && (
+                                    <div style={{ fontSize: '0.8rem', color: '#eab308', fontWeight: 600 }}>Grup: {row.metadata.NAMA_REGU}</div>
+                                  )}
+                                </div>
+                              );
+                            })()
                           ) : (
                             <div>
                               {row.metadata.REKAP_PESERTA ? (
