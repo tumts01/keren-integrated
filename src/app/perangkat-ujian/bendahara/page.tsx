@@ -9,7 +9,7 @@ export default function BendaharaPerangkatUjian() {
   const [loading, setLoading] = useState(true);
 
   const [teachers, setTeachers] = useState<string[]>([]);
-  const [columns, setColumns] = useState<{ id: string, name: string, nominal: number, type?: 'plus' | 'minus' }[]>([]);
+  const [columns, setColumns] = useState<{ id: string, name: string, nominal: number, type?: 'plus' | 'minus', inputType?: 'multiplier' | 'direct' }[]>([]);
   const [dataMap, setDataMap] = useState<Record<string, Record<string, number>>>({});
   const [loadingData, setLoadingData] = useState(false);
 
@@ -78,9 +78,13 @@ export default function BendaharaPerangkatUjian() {
       title: 'Tambah Kolom',
       html:
         '<input id="swal-input1" class="swal2-input" placeholder="Nama Kolom (Misal: Mengawas/Tabungan)">' +
-        '<input id="swal-input2" type="number" class="swal2-input" placeholder="Nominal (Misal: 20000)">' +
+        '<select id="swal-input4" class="swal2-input" style="width: 84%; height: 44px; margin-top: 15px;" onchange="document.getElementById(\'swal-input2\').style.display = this.value === \'direct\' ? \'none\' : \'block\'">' +
+        '  <option value="multiplier">Isian Frekuensi (x Nominal Tetap)</option>' +
+        '  <option value="direct">Isian Nominal Bebas (Langsung Rp)</option>' +
+        '</select>' +
+        '<input id="swal-input2" type="number" class="swal2-input" placeholder="Nominal Tetap (Misal: 20000)">' +
         '<select id="swal-input3" class="swal2-input" style="width: 84%; height: 44px; margin-top: 15px;">' +
-        '  <option value="plus">Penambahan Honor (+)</option>' +
+        '  <option value="plus">Penambahan (+)</option>' +
         '  <option value="minus">Pengurangan / Potongan (-)</option>' +
         '</select>',
       focusConfirm: false,
@@ -89,14 +93,16 @@ export default function BendaharaPerangkatUjian() {
       cancelButtonText: 'Batal',
       preConfirm: () => {
         const name = (document.getElementById('swal-input1') as HTMLInputElement).value;
+        const inputType = (document.getElementById('swal-input4') as HTMLSelectElement).value;
+        const isDirect = inputType === 'direct';
         const nominalStr = (document.getElementById('swal-input2') as HTMLInputElement).value;
         const type = (document.getElementById('swal-input3') as HTMLSelectElement).value;
         
-        if (!name || !nominalStr) {
+        if (!name || (!isDirect && !nominalStr)) {
           Swal.showValidationMessage('Nama kolom dan nominal wajib diisi!');
           return false;
         }
-        return { name, nominal: parseInt(nominalStr, 10), type: type as 'plus' | 'minus' };
+        return { name, nominal: isDirect ? 1 : parseInt(nominalStr, 10), type: type as 'plus' | 'minus', inputType: inputType as 'multiplier' | 'direct' };
       }
     });
 
@@ -105,7 +111,8 @@ export default function BendaharaPerangkatUjian() {
         id: 'col_' + Date.now(),
         name: formValues.name,
         nominal: formValues.nominal,
-        type: formValues.type
+        type: formValues.type,
+        inputType: formValues.inputType
       };
       setColumns([...columns, newCol]);
     }
@@ -224,7 +231,7 @@ export default function BendaharaPerangkatUjian() {
                   <th key={col.id} style={{ padding: '16px', textAlign: 'center', color: '#475569', minWidth: '120px' }}>
                     <div style={{ fontSize: '0.95rem' }}>{col.name}</div>
                     <div style={{ fontSize: '0.75rem', color: col.type === 'minus' ? '#ef4444' : '#10b981', marginTop: '4px', fontWeight: 'normal' }}>
-                      ({col.type === 'minus' ? '-' : '+'}{formatRupiah(col.nominal)})
+                      {col.inputType === 'direct' ? '(Nominal Bebas)' : `(${col.type === 'minus' ? '-' : '+'}${formatRupiah(col.nominal)})`}
                     </div>
                   </th>
                 ))}
@@ -257,7 +264,7 @@ export default function BendaharaPerangkatUjian() {
                           value={dataMap[t]?.[col.id] || ''}
                           onChange={(e) => handleInputChange(t, col.id, e.target.value)}
                           style={{ 
-                            width: '70px', padding: '8px', textAlign: 'center', borderRadius: '6px', 
+                            width: col.inputType === 'direct' ? '110px' : '70px', padding: '8px', textAlign: 'center', borderRadius: '6px', 
                             border: col.type === 'minus' ? '1px solid #fca5a5' : '1px solid #cbd5e1', 
                             color: col.type === 'minus' ? '#ef4444' : 'inherit',
                             outline: 'none',
@@ -279,8 +286,10 @@ export default function BendaharaPerangkatUjian() {
                     TOTAL KESELURUHAN
                   </td>
                   {columns.map(col => (
-                    <td key={col.id} style={{ padding: '16px', textAlign: 'center', fontWeight: 'bold', color: '#0ea5e9' }}>
-                      {calculateTotalColumn(col.id)} <span style={{ fontSize: '0.8rem', fontWeight: 'normal', color: '#64748b' }}>kali</span>
+                    <td key={col.id} style={{ padding: '16px', textAlign: 'center', fontWeight: 'bold', color: col.type === 'minus' ? '#ef4444' : '#0ea5e9' }}>
+                      {col.inputType === 'direct' ? formatRupiah(calculateTotalColumn(col.id)) : (
+                        <>{calculateTotalColumn(col.id)} <span style={{ fontSize: '0.8rem', fontWeight: 'normal', color: '#64748b' }}>kali</span></>
+                      )}
                     </td>
                   ))}
                   <td style={{ padding: '16px', textAlign: 'right', fontWeight: 'bold', color: '#0ea5e9', fontSize: '1.1rem' }}>
