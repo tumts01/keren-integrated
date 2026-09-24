@@ -121,3 +121,30 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
+// PATCH: Update gambar soal
+export async function PATCH(req: Request) {
+  try {
+    const formData = await req.formData();
+    const id = formData.get('id') as string;
+    const gambar = formData.get('gambar') as File | null;
+
+    if (!id || !gambar) {
+      return NextResponse.json({ success: false, error: 'ID soal dan gambar wajib disertakan' }, { status: 400 });
+    }
+
+    const folderId = process.env.GOOGLE_DRIVE_CBT_FOLDER_ID || '1XMpQqdTzx0i_WaD79AHdgzhRUUmgQX6z';
+    const buffer = Buffer.from(await gambar.arrayBuffer());
+    const res = await uploadFileToDrive(buffer, `Soal_Img_${id}_${gambar.name}`, gambar.type, folderId);
+    const gambarUrl = res.webViewLink || null;
+
+    if (!gambarUrl) throw new Error('Gagal mengupload gambar ke Google Drive');
+
+    const { error } = await supabase.from('cbt_soal').update({ gambar_url: gambarUrl }).eq('id', id);
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, message: 'Gambar berhasil ditambahkan', gambarUrl });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}

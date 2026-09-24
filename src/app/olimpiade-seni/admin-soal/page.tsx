@@ -10,6 +10,10 @@ export default function AdminSoalCBT() {
   const [lombaFilter, setLombaFilter] = useState('Matematika');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // State untuk melacak ID soal yang sedang diupload gambarnya
+  const [uploadingImageId, setUploadingImageId] = useState<number | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
   const lombaOptions = ['Matematika', 'IPAS', 'PAI', 'Inggris', 'Arab'];
 
   useEffect(() => {
@@ -103,6 +107,50 @@ export default function AdminSoalCBT() {
     }
   };
 
+  // Fungsi untuk memicu input file gambar
+  const triggerImageUpload = (id: number) => {
+    setUploadingImageId(id);
+    if (imageInputRef.current) {
+      imageInputRef.current.click();
+    }
+  };
+
+  // Handler saat gambar dipilih
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !uploadingImageId) return;
+
+    Swal.fire({
+      title: 'Mengunggah Gambar...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    try {
+      const formData = new FormData();
+      formData.append('id', uploadingImageId.toString());
+      formData.append('gambar', file);
+
+      const res = await fetch('/api/cbt/admin/soal', {
+        method: 'PATCH',
+        body: formData
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        Swal.fire('Berhasil', 'Gambar soal berhasil diperbarui', 'success');
+        fetchSoal();
+      } else {
+        Swal.fire('Gagal', data.error, 'error');
+      }
+    } catch (err: any) {
+      Swal.fire('Error', err.message, 'error');
+    }
+
+    setUploadingImageId(null);
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  };
+
   return (
     <div style={{ padding: '40px', background: '#f8fafc', minHeight: '100vh' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto', background: 'white', padding: '32px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
@@ -140,6 +188,15 @@ export default function AdminSoalCBT() {
           </button>
         </div>
 
+        {/* Input file tersembunyi untuk gambar soal */}
+        <input 
+          type="file" 
+          accept="image/*" 
+          ref={imageInputRef} 
+          onChange={handleImageChange} 
+          style={{ display: 'none' }} 
+        />
+
         {loading ? (
           <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
         ) : (
@@ -151,14 +208,29 @@ export default function AdminSoalCBT() {
             ) : (
               soalList.map(soal => (
                 <div key={soal.id} style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', alignItems: 'center' }}>
                     <div style={{ fontWeight: 700, color: '#0f172a' }}>Soal No. {soal.nomor_soal}</div>
-                    <button onClick={() => handleDelete(soal.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}><i className="fas fa-times"></i></button>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <button 
+                        onClick={() => triggerImageUpload(soal.id)} 
+                        style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#334155', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}
+                      >
+                        <i className="fas fa-image" style={{ marginRight: '6px' }}></i> {soal.gambar_url ? 'Ganti Gambar' : 'Tambah Gambar'}
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(soal.id)} 
+                        style={{ background: '#fee2e2', border: '1px solid #fca5a5', color: '#ef4444', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </div>
                   </div>
                   <div style={{ fontSize: '1.05rem', color: '#334155', marginBottom: '16px' }}>{soal.pertanyaan}</div>
                   
                   {soal.gambar_url && (
-                    <img src={soal.gambar_url} alt="Gambar Soal" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', marginBottom: '16px' }} />
+                    <div style={{ marginBottom: '16px' }}>
+                      <img src={soal.gambar_url} alt="Gambar Soal" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px' }} />
+                    </div>
                   )}
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.9rem' }}>
