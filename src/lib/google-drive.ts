@@ -34,7 +34,8 @@ export const uploadFileToDrive = async (
   fileBuffer: Buffer,
   fileName: string,
   mimeType: string,
-  folderId: string
+  folderId: string,
+  retries = 3
 ) => {
   const gasUrl = process.env.GOOGLE_APPS_SCRIPT_UPLOAD_URL;
   if (!gasUrl) {
@@ -51,42 +52,51 @@ export const uploadFileToDrive = async (
   params.append('mimeType', mimeType);
   params.append('folderId', folderId);
 
-  try {
-    const response = await fetch(gasUrl, {
-      method: 'POST',
-      body: params, // Pass URLSearchParams directly, fetch will set correct Content-Type and Content-Length automatically
-      cache: 'no-store', // Prevent Next.js from caching the request or response
-    });
+  let lastError: any = null;
 
-    const responseText = await response.text();
-    let result;
+  for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      result = JSON.parse(responseText);
-    } catch (e) {
-      console.error('GAS HTML Response:', responseText.substring(0, 500));
-      const snippet = responseText.substring(0, 100).replace(/<[^>]*>?/gm, '').trim();
-      throw new Error(`Google Apps Script tidak mengembalikan JSON. (Respon: ${snippet || 'Kosong'}). Cek konfigurasi Deploy Web App (Pastikan Execute as: Me, Access: Anyone).`);
-    }
+      const response = await fetch(gasUrl, {
+        method: 'POST',
+        body: params,
+        cache: 'no-store',
+      });
 
-    if (!result.success) {
-      throw new Error(result.error || 'Unknown Error from GAS');
-    }
+      const responseText = await response.text();
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        console.error(`[Attempt ${attempt}] GAS HTML Response:`, responseText.substring(0, 500));
+        const snippet = responseText.substring(0, 100).replace(/<[^>]*>?/gm, '').trim();
+        throw new Error(`Google Apps Script tidak mengembalikan JSON. (Respon: ${snippet || 'Kosong'}).`);
+      }
 
-    const url = result.url;
-    let fileId = '';
-    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
-    if (match && match[1]) {
-      fileId = match[1];
-    }
+      if (!result.success) {
+        throw new Error(result.error || 'Unknown Error from GAS');
+      }
 
-    return { 
-      webViewLink: url,
-      id: fileId 
-    };
-  } catch (error) {
-    console.error('Error uploading to GAS:', error);
-    throw error;
+      const url = result.url;
+      let fileId = '';
+      const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        fileId = match[1];
+      }
+
+      return { 
+        webViewLink: url,
+        id: fileId 
+      };
+    } catch (error: any) {
+      lastError = error;
+      console.warn(`[Attempt ${attempt}] Upload failed:`, error.message);
+      if (attempt < retries) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    }
   }
+
+  throw lastError;
 };
 
 /**
