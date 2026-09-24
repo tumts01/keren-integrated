@@ -134,6 +134,7 @@ export default function PendaftaranOlimpiadeSeni() {
         
         const validLomba = [...lombaOptions['Olimpiade Akademik'], ...lombaOptions['Lomba Seni']];
         const errorMsgs: string[] = [];
+        const uniqueLombas = new Set<string>();
         
         excelData.forEach((row: any, index: number) => {
           const namaLomba = row['LOMBA YANG DIPILIH'];
@@ -142,6 +143,8 @@ export default function PendaftaranOlimpiadeSeni() {
             const trimmed = namaLomba.trim();
             if (!validLomba.includes(trimmed)) {
               errorMsgs.push(`Baris excel ke-${index + 2}: "${trimmed}"`);
+            } else {
+              uniqueLombas.add(trimmed);
             }
           }
         });
@@ -155,9 +158,11 @@ export default function PendaftaranOlimpiadeSeni() {
           
           if (fileInputRef.current) fileInputRef.current.value = '';
           setUploadedFile(null);
+          setKolektifLombaList([]);
           return;
         }
 
+        setKolektifLombaList(Array.from(uniqueLombas));
         setUploadedFile(file);
       } catch (err) {
         Swal.fire('Gagal', 'Gagal membaca file Excel. Pastikan formatnya benar.', 'error');
@@ -429,48 +434,24 @@ export default function PendaftaranOlimpiadeSeni() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '20px', alignItems: 'end' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Kategori Pendaftaran</label>
-                    <select 
-                      value={kolektifKategori} onChange={e => handleKolektifKategoriChange(e.target.value as 'Olimpiade Akademik' | 'Lomba Seni')}
-                      style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', background: 'white' }}
-                    >
-                      <option value="Olimpiade Akademik">Olimpiade Akademik</option>
-                      <option value="Lomba Seni">Lomba Seni</option>
-                    </select>
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px' }}>
+                <p style={{ margin: '0 0 12px 0', fontSize: '0.9rem', color: '#475569', lineHeight: '1.5' }}>
+                  <strong>Informasi Pilihan Lomba:</strong><br/>
+                  Anda tidak perlu memilih daftar lomba secara manual di sini. Sistem akan secara otomatis mendeteksi dan mengelompokkan jenis lomba berdasarkan file Excel yang Anda unggah di bawah ini.
+                </p>
+                
+                {/* List Lomba Terdeteksi Otomatis */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {kolektifLombaList.length === 0 ? (
+                    <span style={{ fontSize: '0.9rem', color: '#94a3b8', fontStyle: 'italic' }}>Daftar lomba akan muncul otomatis setelah file Excel diunggah...</span>
+                  ) : (
+                    kolektifLombaList.map(lomba => (
+                      <div key={lomba} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: '#dcfce7', borderRadius: '20px', border: '1px solid #22c55e', fontSize: '0.9rem', color: '#166534', fontWeight: 600 }}>
+                        <i className="fas fa-check-circle"></i> {lomba}
+                      </div>
+                    ))
+                  )}
                 </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Pilihan Lomba</label>
-                  <select 
-                    value={kolektifLombaDipilih} onChange={e => setKolektifLombaDipilih(e.target.value)}
-                    style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', background: 'white' }}
-                  >
-                    {lombaOptions[kolektifKategori].map(opt => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                  </select>
-                </div>
-                <button 
-                  onClick={handleAddKolektifLomba}
-                  style={{ padding: '12px 24px', borderRadius: '10px', background: '#0ea5e9', color: 'white', border: 'none', fontWeight: 700, cursor: 'pointer', height: '45px' }}
-                >
-                  <i className="fas fa-plus"></i> Tambah
-                </button>
-              </div>
-              
-              {/* List Lomba Terpilih */}
-              <div style={{ marginTop: '16px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {kolektifLombaList.length === 0 ? (
-                  <span style={{ fontSize: '0.9rem', color: '#94a3b8', fontStyle: 'italic' }}>Belum ada lomba yang ditambahkan. Silakan pilih dan klik "Tambah"</span>
-                ) : (
-                  kolektifLombaList.map(lomba => (
-                    <div key={lomba} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '6px 12px', background: '#f1f5f9', borderRadius: '20px', border: '1px solid #cbd5e1', fontSize: '0.9rem', color: '#334155' }}>
-                      {lomba}
-                      <i className="fas fa-times" style={{ color: '#ef4444', cursor: 'pointer' }} onClick={() => handleRemoveKolektifLomba(lomba)}></i>
-                    </div>
-                  ))
-                )}
               </div>
             </div>
 
