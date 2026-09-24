@@ -475,7 +475,7 @@ export default function CBTUjianPage() {
             onClick={() => submitUjian(user.nomorPeserta)}
             style={{ width: '100%', padding: '14px', borderRadius: '8px', background: '#ef4444', color: 'white', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: '1rem' }}
           >
-            Hentikan &amp; Kumpulkan
+            Kirim Jawaban
           </button>
         </div>
       </div>

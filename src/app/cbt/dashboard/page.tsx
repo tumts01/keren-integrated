@@ -171,6 +171,7 @@ export default function DashboardCBT() {
                     <li>Pilih jawaban yang paling tepat. Jawaban otomatis tersimpan.</li>
                     <li>Jangan menutup jendela *browser* sebelum mengklik tombol <strong>Selesai</strong> di akhir ujian.</li>
                     <li>Jika terjadi gangguan koneksi, Anda bisa masuk kembali ke sistem dan melanjutkan ujian dari soal terakhir.</li>
+                    <li><strong>Sistem Anti-Curang Aktif:</strong> Segala bentuk pelanggaran (berpindah tab, meminimalkan layar, keluar dari layar penuh, atau copy-paste) akan direkam oleh sistem. <strong>3x Pelanggaran = Ujian dikumpulkan otomatis.</strong></li>
                   </ul>
                 </div>
 
