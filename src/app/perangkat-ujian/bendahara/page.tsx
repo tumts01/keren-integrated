@@ -142,6 +142,34 @@ export default function BendaharaPerangkatUjian() {
     }
   };
 
+  const handleDeleteColumn = (colId: string) => {
+    Swal.fire({
+      title: 'Hapus Kolom?',
+      text: 'Semua nominal guru pada kolom ini akan hilang!',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#cbd5e1',
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        setColumns(prev => prev.filter(c => c.id !== colId));
+        setDataMap(prev => {
+          const newData = { ...prev };
+          Object.keys(newData).forEach(teacher => {
+            if (newData[teacher]) {
+              const teacherData = { ...newData[teacher] };
+              delete teacherData[colId];
+              newData[teacher] = teacherData;
+            }
+          });
+          return newData;
+        });
+      }
+    });
+  };
+
   const handleInputChange = (teacher: string, colId: string, val: string) => {
     const num = parseInt(val, 10) || 0;
     setDataMap(prev => ({
@@ -270,7 +298,12 @@ export default function BendaharaPerangkatUjian() {
                 <th style={{ padding: '16px', textAlign: 'left', color: '#475569', minWidth: '200px' }}>Nama Guru</th>
                 {columns.map(col => (
                   <th key={col.id} style={{ padding: '16px', textAlign: 'center', color: '#475569', minWidth: '120px' }}>
-                    <div style={{ fontSize: '0.95rem' }}>{col.name}</div>
+                    <div style={{ fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+                      {col.name}
+                      <button onClick={() => handleDeleteColumn(col.id)} style={{ border: 'none', background: 'transparent', color: '#fca5a5', cursor: 'pointer', padding: 0 }} title="Hapus Kolom">
+                        <i className="fas fa-times"></i>
+                      </button>
+                    </div>
                     <div style={{ fontSize: '0.75rem', color: col.type === 'minus' ? '#ef4444' : '#10b981', marginTop: '4px', fontWeight: 'normal' }}>
                       {col.inputType === 'direct' ? '(Nominal Bebas)' : `(${col.type === 'minus' ? '-' : '+'}${formatRupiah(col.nominal)})`}
                     </div>
