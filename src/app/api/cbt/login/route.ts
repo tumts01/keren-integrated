@@ -27,13 +27,43 @@ export async function POST(req: Request) {
 
     const p = data.metadata;
 
+    // Temukan nilai lomba
+    let lombaStr = p.LOMBA_DIPILIH || '';
+    if (!lombaStr) {
+       for (const key of Object.keys(p)) {
+         if (key.toLowerCase().includes('lomba')) {
+           lombaStr = p[key];
+           break;
+         }
+       }
+    }
+
+    // Normalisasi
+    let cabang = (lombaStr || '').toString().trim();
+    if (cabang.toLowerCase() === 'arab' || cabang.toLowerCase() === 'bahasa arab' || cabang.toLowerCase() === 'b. arab') cabang = 'Arab';
+    else if (cabang.toLowerCase() === 'inggris' || cabang.toLowerCase() === 'bahasa inggris' || cabang.toLowerCase() === 'b. inggris') cabang = 'Inggris';
+    else if (cabang.toLowerCase() === 'pai' || cabang.toLowerCase() === 'p a i' || cabang.toLowerCase() === 'pendidikan agama islam') cabang = 'PAI';
+    else if (cabang.toLowerCase() === 'ipas' || cabang.toLowerCase() === 'ipa') cabang = 'IPAS';
+    else if (cabang.toLowerCase() === 'matematika' || cabang.toLowerCase() === 'mtk') cabang = 'Matematika';
+
+    // Temukan nama
+    let namaStr = p.NAMA || p.NAMA_REGU || '';
+    if (!namaStr) {
+      for (const key of Object.keys(p)) {
+        if (key.toLowerCase().includes('nama')) {
+          namaStr = p[key];
+          break;
+        }
+      }
+    }
+
     return NextResponse.json({ 
       success: true, 
       message: 'Login Berhasil', 
       user: {
         nomorPeserta: p.NOMOR_PESERTA,
-        nama: p.NAMA,
-        lomba: p.LOMBA_DIPILIH,
+        nama: namaStr,
+        lomba: cabang,
         asalSekolah: p.ASAL_SEKOLAH
       }
     });
