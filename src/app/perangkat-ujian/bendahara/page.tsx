@@ -16,6 +16,7 @@ export default function BendaharaPerangkatUjian() {
   const [namaUjian, setNamaUjian] = useState('SUMATIF AKHIR SEMESTER GENAP');
   const [tahunUjian, setTahunUjian] = useState('TAHUN 2025 / 2026');
   const [printMode, setPrintMode] = useState<string[]>([]);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   useEffect(() => {
     // Cek session di localStorage (sederhana)
@@ -25,7 +26,7 @@ export default function BendaharaPerangkatUjian() {
     }
     setLoading(false);
 
-    // Load data dari localstorage (jika ada)
+    // Load data dari localstorage (sebagai backup / initial load cepat)
     const savedCols = localStorage.getItem('bendahara_cols');
     const savedData = localStorage.getItem('bendahara_data');
     const savedConfig = localStorage.getItem('bendahara_config');
@@ -37,6 +38,24 @@ export default function BendaharaPerangkatUjian() {
       if (parsed.namaUjian) setNamaUjian(parsed.namaUjian);
       if (parsed.tahunUjian) setTahunUjian(parsed.tahunUjian);
     }
+
+    // Fetch dari Supabase Database
+    fetch('/api/bendahara')
+      .then(res => res.json())
+      .then(res => {
+        if (res.success && res.data) {
+          // Jika DB ada isinya, timpa local storage
+          if (res.data.columns && res.data.columns.length > 0) {
+            setColumns(res.data.columns);
+            setDataMap(res.data.data_map || {});
+            if (res.data.config?.namaUjian) setNamaUjian(res.data.config.namaUjian);
+            if (res.data.config?.tahunUjian) setTahunUjian(res.data.config.tahunUjian);
+          }
+        }
+      })
+      .finally(() => {
+        setIsDataLoaded(true);
+      });
   }, []);
 
   useEffect(() => {
@@ -55,15 +74,24 @@ export default function BendaharaPerangkatUjian() {
     }
   }, [isUnlocked, teachers.length]);
 
-  // Simpan tiap kali ada perubahan
+  // Simpan tiap kali ada perubahan (Debounce 1 detik ke Database)
   useEffect(() => {
+    if (!isDataLoaded) return;
+
     if (columns.length > 0) localStorage.setItem('bendahara_cols', JSON.stringify(columns));
     if (Object.keys(dataMap).length > 0) localStorage.setItem('bendahara_data', JSON.stringify(dataMap));
-  }, [columns, dataMap]);
-
-  useEffect(() => {
     localStorage.setItem('bendahara_config', JSON.stringify({ namaUjian, tahunUjian }));
-  }, [namaUjian, tahunUjian]);
+
+    const timer = setTimeout(() => {
+      fetch('/api/bendahara', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ columns, dataMap, config: { namaUjian, tahunUjian } })
+      }).catch(err => console.error('Failed to sync bendahara data:', err));
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [columns, dataMap, namaUjian, tahunUjian, isDataLoaded]);
 
   useEffect(() => {
     if (printMode.length > 0) {
