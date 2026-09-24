@@ -325,8 +325,8 @@ export default function BendaharaPerangkatUjian() {
           <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
             <thead style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
               <tr>
-                <th style={{ padding: '16px', textAlign: 'center', color: '#475569', width: '60px' }}>No</th>
-                <th style={{ padding: '16px', textAlign: 'left', color: '#475569', minWidth: '200px' }}>Nama Guru</th>
+                <th style={{ padding: '16px', textAlign: 'center', color: '#475569', width: '60px', position: 'sticky', left: 0, background: '#f8fafc', zIndex: 10 }}>No</th>
+                <th style={{ padding: '16px', textAlign: 'left', color: '#475569', minWidth: '200px', position: 'sticky', left: '60px', background: '#f8fafc', zIndex: 10, borderRight: '2px solid #e2e8f0' }}>Nama Guru</th>
                 {columns.map(col => (
                   <th key={col.id} style={{ padding: '16px', textAlign: 'center', color: '#475569', minWidth: '120px' }}>
                     <div style={{ fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
@@ -360,8 +360,8 @@ export default function BendaharaPerangkatUjian() {
               ) : (
                 teachers.map((t, i) => (
                   <tr key={t} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '12px 16px', textAlign: 'center', color: '#64748b' }}>{i + 1}</td>
-                    <td style={{ padding: '12px 16px', fontWeight: 500, color: '#334155' }}>{t}</td>
+                    <td style={{ padding: '12px 16px', textAlign: 'center', color: '#64748b', position: 'sticky', left: 0, background: 'white', zIndex: 5 }}>{i + 1}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 500, color: '#334155', position: 'sticky', left: '60px', background: 'white', zIndex: 5, borderRight: '2px solid #e2e8f0' }}>{t}</td>
                     {columns.map(col => (
                       <td key={col.id} style={{ padding: '12px 16px', textAlign: 'center' }}>
                         <input
@@ -393,7 +393,7 @@ export default function BendaharaPerangkatUjian() {
               )}
               {!loadingData && teachers.length > 0 && (
                 <tr style={{ background: '#f1f5f9', borderTop: '2px solid #cbd5e1' }}>
-                  <td colSpan={2} style={{ padding: '16px', textAlign: 'right', fontWeight: 'bold', color: '#0f172a' }}>
+                  <td colSpan={2} style={{ padding: '16px', textAlign: 'right', fontWeight: 'bold', color: '#0f172a', position: 'sticky', left: 0, background: '#f1f5f9', zIndex: 10, borderRight: '2px solid #cbd5e1' }}>
                     TOTAL KESELURUHAN
                   </td>
                   {columns.map(col => (
