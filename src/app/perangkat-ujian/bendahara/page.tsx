@@ -66,7 +66,10 @@ export default function BendaharaPerangkatUjian() {
         .then(res => res.json())
         .then(res => {
           if (res.success && res.data) {
-            const names = res.data.map((g: any) => g.nama).filter(Boolean).sort();
+            const names = res.data
+              .filter((g: any) => g.status?.toLowerCase() !== 'tidak aktif')
+              .map((g: any) => g.nama)
+              .filter(Boolean);
             setTeachers(names);
           }
         })
