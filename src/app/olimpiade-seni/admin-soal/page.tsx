@@ -234,10 +234,21 @@ export default function AdminSoalCBT() {
                   )}
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.9rem' }}>
-                    <div style={{ background: soal.kunci_jawaban === 'A' ? '#dcfce7' : '#f8fafc', padding: '8px 12px', borderRadius: '6px' }}>A. {soal.opsi_a}</div>
-                    <div style={{ background: soal.kunci_jawaban === 'B' ? '#dcfce7' : '#f8fafc', padding: '8px 12px', borderRadius: '6px' }}>B. {soal.opsi_b}</div>
-                    <div style={{ background: soal.kunci_jawaban === 'C' ? '#dcfce7' : '#f8fafc', padding: '8px 12px', borderRadius: '6px' }}>C. {soal.opsi_c}</div>
-                    <div style={{ background: soal.kunci_jawaban === 'D' ? '#dcfce7' : '#f8fafc', padding: '8px 12px', borderRadius: '6px' }}>D. {soal.opsi_d}</div>
+                    {['A', 'B', 'C', 'D'].map(opt => {
+                      const opsiValue = soal[`opsi_${opt.toLowerCase()}`];
+                      if (!opsiValue) return null;
+                      const isImage = opsiValue.startsWith('http') && opsiValue.includes('drive.google.com');
+                      return (
+                        <div key={opt} style={{ background: soal.kunci_jawaban === opt ? '#dcfce7' : '#f8fafc', padding: '8px 12px', borderRadius: '6px', display: 'flex', gap: '8px' }}>
+                          <span style={{ fontWeight: 600 }}>{opt}.</span> 
+                          {isImage ? (
+                            <img src={`/api/proxy-image?url=${encodeURIComponent(opsiValue)}`} alt={`Opsi ${opt}`} style={{ maxWidth: '100%', maxHeight: '100px', borderRadius: '4px' }} />
+                          ) : (
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{opsiValue}</span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ))

@@ -211,12 +211,20 @@ export default function CBTUjianPage() {
                           transition: 'all 0.2s'
                         }}
                       >
-                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: isSelected ? '#3b82f6' : '#f1f5f9', color: isSelected ? 'white' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, marginRight: '16px', flexShrink: 0 }}>
-                          {optKey}
-                        </div>
-                        <div style={{ fontSize: '1.1rem', color: '#334155', alignSelf: 'center' }}>
-                          {opsiValue}
-                        </div>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: isSelected ? '#3b82f6' : '#f1f5f9', color: isSelected ? 'white' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, marginRight: '16px', flexShrink: 0 }}>
+                        {optKey}
+                      </div>
+                      <div style={{ fontSize: '1.1rem', color: '#334155', alignSelf: 'center', overflow: 'hidden' }}>
+                        {opsiValue.startsWith('http') && opsiValue.includes('drive.google.com') ? (
+                          <img 
+                            src={`/api/proxy-image?url=${encodeURIComponent(opsiValue)}`} 
+                            alt={`Opsi ${optKey}`} 
+                            style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', display: 'block' }} 
+                          />
+                        ) : (
+                          opsiValue
+                        )}
+                      </div>
                       </div>
                     );
                   })}
