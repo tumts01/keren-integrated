@@ -42,18 +42,28 @@ export async function POST(req: Request) {
       const sheetName = workbook.SheetNames[0];
       const dataExcel = xlsx.utils.sheet_to_json<any>(workbook.Sheets[sheetName]);
 
-      const rowsToInsert = dataExcel.map(row => ({
-        cabang_lomba: row['LOMBA'] || '',
-        nomor_soal: parseInt(row['NOMOR_SOAL'] || '0', 10),
-        pertanyaan: row['PERTANYAAN'] || '',
-        opsi_a: row['OPSI_A'] || '',
-        opsi_b: row['OPSI_B'] || '',
-        opsi_c: row['OPSI_C'] || '',
-        opsi_d: row['OPSI_D'] || '',
-        opsi_e: row['OPSI_E'] || null,
-        kunci_jawaban: (row['KUNCI'] || '').toUpperCase(),
-        bobot_skor: parseInt(row['BOBOT'] || '1', 10)
-      })).filter(r => r.cabang_lomba && r.pertanyaan && r.kunci_jawaban);
+      const rowsToInsert = dataExcel.map(row => {
+        let cabang = (row['LOMBA'] || '').toString().trim();
+        // Auto-fix common naming issues
+        if (cabang.toLowerCase() === 'arab' || cabang.toLowerCase() === 'bahasa arab' || cabang.toLowerCase() === 'b. arab') cabang = 'Arab';
+        if (cabang.toLowerCase() === 'inggris' || cabang.toLowerCase() === 'bahasa inggris' || cabang.toLowerCase() === 'b. inggris') cabang = 'Inggris';
+        if (cabang.toLowerCase() === 'pai' || cabang.toLowerCase() === 'p a i' || cabang.toLowerCase() === 'pendidikan agama islam') cabang = 'PAI';
+        if (cabang.toLowerCase() === 'ipas' || cabang.toLowerCase() === 'ipa') cabang = 'IPAS';
+        if (cabang.toLowerCase() === 'matematika' || cabang.toLowerCase() === 'mtk') cabang = 'Matematika';
+
+        return {
+          cabang_lomba: cabang,
+          nomor_soal: parseInt(row['NOMOR_SOAL'] || '0', 10),
+          pertanyaan: row['PERTANYAAN'] || '',
+          opsi_a: row['OPSI_A'] || '',
+          opsi_b: row['OPSI_B'] || '',
+          opsi_c: row['OPSI_C'] || '',
+          opsi_d: row['OPSI_D'] || '',
+          opsi_e: row['OPSI_E'] || null,
+          kunci_jawaban: (row['KUNCI'] || '').toString().trim().toUpperCase(),
+          bobot_skor: parseInt(row['BOBOT'] || '1', 10)
+        };
+      }).filter(r => r.cabang_lomba && r.pertanyaan && r.kunci_jawaban);
 
       const { error } = await supabase.from('cbt_soal').insert(rowsToInsert);
       if (error) throw error;
