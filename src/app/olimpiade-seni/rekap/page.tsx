@@ -118,16 +118,33 @@ export default function RekapOlimpiadeSeni() {
 
   // Hitung total peserta per cabang lomba
   const summaryCounts: Record<string, number> = {};
+
+  const normalizeLomba = (lombaName: string) => {
+    if (!lombaName) return 'Lainnya';
+    const l = lombaName.toLowerCase();
+    if (l.includes('matematika')) return 'Matematika';
+    if (l.includes('ipa') || l.includes('ips') || l.includes('ipas')) return 'IPAS';
+    if (l.includes('pai')) return 'PAI';
+    if (l.includes('inggris')) return 'Inggris';
+    if (l.includes('arab') && !l.includes('pidato')) return 'Arab';
+    if (l.includes('banjari')) return 'Al Banjari';
+    if (l.includes('singer')) return 'Singer (solo)';
+    if (l.includes('sandi') || l.includes('sms') || l.includes('morse')) return 'Sandi Morse Semaphore (SMS)';
+    return lombaName;
+  };
+
   data.forEach(row => {
     if (row.jenis_pendaftaran === 'individu') {
-      const lomba = row.metadata.LOMBA_DIPILIH;
-      if (lomba) {
+      const rawLomba = row.metadata.LOMBA_DIPILIH || row.metadata['LOMBA YANG DIPILIH'];
+      if (rawLomba) {
+        const lomba = normalizeLomba(rawLomba);
         summaryCounts[lomba] = (summaryCounts[lomba] || 0) + 1;
       }
     } else if (row.jenis_pendaftaran === 'kolektif' && row.metadata.REKAP_PESERTA) {
       const rekap = row.metadata.REKAP_PESERTA;
-      Object.keys(rekap).forEach(lomba => {
-        summaryCounts[lomba] = (summaryCounts[lomba] || 0) + rekap[lomba];
+      Object.keys(rekap).forEach(rawLomba => {
+        const lomba = normalizeLomba(rawLomba);
+        summaryCounts[lomba] = (summaryCounts[lomba] || 0) + rekap[rawLomba];
       });
     }
   });
@@ -266,7 +283,7 @@ export default function RekapOlimpiadeSeni() {
                         <td style={{ padding: '16px' }}>
                           {isIndividu ? (
                             <div>
-                              <div style={{ color: '#0f172a' }}>{row.metadata.LOMBA_DIPILIH || row.metadata['LOMBA YANG DIPILIH'] || '-'}</div>
+                              <div style={{ color: '#0f172a' }}>{normalizeLomba(row.metadata.LOMBA_DIPILIH || row.metadata['LOMBA YANG DIPILIH'] || '') || '-'}</div>
                               <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>Kategori: {row.metadata.KATEGORI || '-'}</div>
                               {row.metadata.NAMA_REGU && (
                                 <div style={{ fontSize: '0.8rem', color: '#eab308', fontWeight: 600 }}>Grup: {row.metadata.NAMA_REGU}</div>
@@ -278,7 +295,7 @@ export default function RekapOlimpiadeSeni() {
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                   {Object.entries(row.metadata.REKAP_PESERTA).map(([l, c]) => (
                                     <div key={l} style={{ fontSize: '0.85rem', color: '#0f172a' }}>
-                                      <span style={{ fontWeight: 600 }}>{String(c)}</span> peserta {l}
+                                      <span style={{ fontWeight: 600 }}>{String(c)}</span> peserta {normalizeLomba(l)}
                                     </div>
                                   ))}
                                 </div>
