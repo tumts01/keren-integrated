@@ -111,6 +111,7 @@ export default function RekapOlimpiadeSeni() {
   };
 
   const filteredData = data.filter(item => {
+    if (item.jenis_pendaftaran === 'peserta_kolektif') return false;
     if (filterJenis === 'semua') return true;
     return item.jenis_pendaftaran === filterJenis;
   });

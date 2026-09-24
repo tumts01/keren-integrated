@@ -151,7 +151,7 @@ export async function POST(req: Request) {
         if (passwordCbt) participantMetadata['PASSWORD_CBT'] = passwordCbt;
 
         rowsToInsert.push({
-          jenis_pendaftaran: 'individu',
+          jenis_pendaftaran: 'peserta_kolektif',
           bukti_pembayaran_url: buktiUrl,
           file_excel_url: null,
           metadata: participantMetadata
@@ -167,9 +167,31 @@ export async function POST(req: Request) {
       const res = await uploadFileToDrive(newExcelBuffer, `Credentials_${excelFile.name}`, excelFile.type, folderId);
       const newExcelUrl = res.webViewLink || '';
 
-      // Update file_excel_url for the rows, optional but good for reference
-      rowsToInsert.forEach(row => {
-        row.file_excel_url = newExcelUrl;
+      // Calculate recap for master row
+      const rekapPeserta: Record<string, number> = {};
+      dataExcel.forEach(row => {
+        let lomba = '';
+        for (const key of Object.keys(row)) {
+          if (key.toLowerCase().includes('lomba')) {
+            lomba = row[key]; break;
+          }
+        }
+        if (lomba) {
+          rekapPeserta[lomba] = (rekapPeserta[lomba] || 0) + 1;
+        }
+      });
+
+      // Push master collective row
+      rowsToInsert.push({
+        jenis_pendaftaran: 'kolektif',
+        bukti_pembayaran_url: buktiUrl,
+        file_excel_url: newExcelUrl,
+        metadata: {
+          ASAL_SEKOLAH: namaSekolahKolektif,
+          DETAIL_LOMBA: formData.get('detailLomba') || '',
+          REKAP_PESERTA: rekapPeserta,
+          WAKTU_DAFTAR: new Date().toISOString()
+        }
       });
 
       // Insert all participants

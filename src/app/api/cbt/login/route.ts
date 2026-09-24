@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     const { data, error } = await supabase
       .from('data_olimpiade_seni')
       .select('metadata')
-      .eq('jenis_pendaftaran', 'individu')
+      .in('jenis_pendaftaran', ['individu', 'peserta_kolektif'])
       .filter('metadata->>USERNAME_CBT', 'eq', username)
       .filter('metadata->>PASSWORD_CBT', 'eq', password)
       .single();
