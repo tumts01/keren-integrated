@@ -14,14 +14,23 @@ export default function BendaharaPerangkatUjian() {
   const [loadingData, setLoadingData] = useState(false);
 
   useEffect(() => {
+    // Cek session di localStorage (sederhana)
+    const session = localStorage.getItem('bendahara_pu_session');
+    if (session === 'unlocked') {
+      setIsUnlocked(true);
+    }
+    setLoading(false);
+
     // Load data dari localstorage (jika ada)
     const savedCols = localStorage.getItem('bendahara_cols');
     const savedData = localStorage.getItem('bendahara_data');
     if (savedCols) setColumns(JSON.parse(savedCols));
     if (savedData) setDataMap(JSON.parse(savedData));
+  }, []);
 
+  useEffect(() => {
     // Fetch daftar guru
-    if (isUnlocked) {
+    if (isUnlocked && teachers.length === 0) {
       setLoadingData(true);
       fetch('/api/guru')
         .then(res => res.json())
@@ -33,13 +42,36 @@ export default function BendaharaPerangkatUjian() {
         })
         .finally(() => setLoadingData(false));
     }
-  }, [isUnlocked]);
+  }, [isUnlocked, teachers.length]);
 
   // Simpan tiap kali ada perubahan
   useEffect(() => {
     if (columns.length > 0) localStorage.setItem('bendahara_cols', JSON.stringify(columns));
     if (Object.keys(dataMap).length > 0) localStorage.setItem('bendahara_data', JSON.stringify(dataMap));
   }, [columns, dataMap]);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (username === 'kayarayahahaha') {
+      localStorage.setItem('bendahara_pu_session', 'unlocked');
+      setIsUnlocked(true);
+      Swal.fire({
+        icon: 'success',
+        title: 'Login Berhasil',
+        text: 'Selamat datang, Bendahara!',
+        timer: 1500,
+        showConfirmButton: false
+      });
+    } else {
+      Swal.fire('Akses Ditolak', 'Username salah!', 'error');
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('bendahara_pu_session');
+    setIsUnlocked(false);
+    setUsername('');
+  };
 
   const handleAddColumn = async () => {
     const { value: formValues } = await Swal.fire({
