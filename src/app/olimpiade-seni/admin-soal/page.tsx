@@ -229,7 +229,7 @@ export default function AdminSoalCBT() {
                   
                   {soal.gambar_url && (
                     <div style={{ marginBottom: '16px' }}>
-                      <img src={soal.gambar_url} alt="Gambar Soal" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px' }} />
+                      <img src={`/api/proxy-image?url=${encodeURIComponent(soal.gambar_url)}`} alt="Gambar Soal" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px' }} />
                     </div>
                   )}
 

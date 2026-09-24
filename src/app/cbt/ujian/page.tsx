@@ -186,7 +186,7 @@ export default function CBTUjianPage() {
                 </div>
                 {currentSoal.gambar_url && (
                   <div style={{ marginBottom: '24px' }}>
-                    <img src={currentSoal.gambar_url} alt="Ilustrasi Soal" style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                    <img src={`/api/proxy-image?url=${encodeURIComponent(currentSoal.gambar_url)}`} alt="Ilustrasi Soal" style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
                   </div>
                 )}
                 

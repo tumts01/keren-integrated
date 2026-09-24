@@ -5,16 +5,16 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const url = searchParams.get('url');
+  const size = searchParams.get('size') || 'w800'; // Default to 800px width
 
   if (!url) return NextResponse.json({ error: 'URL required' }, { status: 400 });
 
   try {
     let fetchUrl = url;
-    // Extract Google Drive file ID and use thumbnail (sz=w200) for small, fast images
+    // Extract Google Drive file ID and use thumbnail API
     const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/(?:\?id=|&id=|open\?id=)([a-zA-Z0-9_-]+)/);
     if (url.includes('drive.google.com') && match && match[1]) {
-      // Use Google Drive thumbnail API - much smaller
-      fetchUrl = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w200`;
+      fetchUrl = `https://drive.google.com/thumbnail?id=${match[1]}&sz=${size}`;
     }
 
     const res = await fetch(fetchUrl, {
