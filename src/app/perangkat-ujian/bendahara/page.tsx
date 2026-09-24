@@ -9,7 +9,7 @@ export default function BendaharaPerangkatUjian() {
   const [loading, setLoading] = useState(true);
 
   const [teachers, setTeachers] = useState<string[]>([]);
-  const [columns, setColumns] = useState<{ id: string, name: string, nominal: number }[]>([]);
+  const [columns, setColumns] = useState<{ id: string, name: string, nominal: number, type?: 'plus' | 'minus' }[]>([]);
   const [dataMap, setDataMap] = useState<Record<string, Record<string, number>>>({});
   const [loadingData, setLoadingData] = useState(false);
 
@@ -75,10 +75,14 @@ export default function BendaharaPerangkatUjian() {
 
   const handleAddColumn = async () => {
     const { value: formValues } = await Swal.fire({
-      title: 'Tambah Kolom Opsional',
+      title: 'Tambah Kolom',
       html:
-        '<input id="swal-input1" class="swal2-input" placeholder="Nama Kolom (Misal: Mengawas)">' +
-        '<input id="swal-input2" type="number" class="swal2-input" placeholder="Nominal (Misal: 20000)">',
+        '<input id="swal-input1" class="swal2-input" placeholder="Nama Kolom (Misal: Mengawas/Tabungan)">' +
+        '<input id="swal-input2" type="number" class="swal2-input" placeholder="Nominal (Misal: 20000)">' +
+        '<select id="swal-input3" class="swal2-input" style="width: 84%; height: 44px; margin-top: 15px;">' +
+        '  <option value="plus">Penambahan Honor (+)</option>' +
+        '  <option value="minus">Pengurangan / Potongan (-)</option>' +
+        '</select>',
       focusConfirm: false,
       showCancelButton: true,
       confirmButtonText: 'Tambahkan',
@@ -86,11 +90,13 @@ export default function BendaharaPerangkatUjian() {
       preConfirm: () => {
         const name = (document.getElementById('swal-input1') as HTMLInputElement).value;
         const nominalStr = (document.getElementById('swal-input2') as HTMLInputElement).value;
+        const type = (document.getElementById('swal-input3') as HTMLSelectElement).value;
+        
         if (!name || !nominalStr) {
           Swal.showValidationMessage('Nama kolom dan nominal wajib diisi!');
           return false;
         }
-        return { name, nominal: parseInt(nominalStr, 10) };
+        return { name, nominal: parseInt(nominalStr, 10), type: type as 'plus' | 'minus' };
       }
     });
 
@@ -98,7 +104,8 @@ export default function BendaharaPerangkatUjian() {
       const newCol = {
         id: 'col_' + Date.now(),
         name: formValues.name,
-        nominal: formValues.nominal
+        nominal: formValues.nominal,
+        type: formValues.type
       };
       setColumns([...columns, newCol]);
     }
@@ -124,7 +131,8 @@ export default function BendaharaPerangkatUjian() {
     const tData = dataMap[teacher] || {};
     columns.forEach(col => {
       const qty = tData[col.id] || 0;
-      total += (qty * col.nominal);
+      const isMinus = col.type === 'minus';
+      total += (qty * col.nominal) * (isMinus ? -1 : 1);
     });
     return total;
   };
@@ -215,8 +223,8 @@ export default function BendaharaPerangkatUjian() {
                 {columns.map(col => (
                   <th key={col.id} style={{ padding: '16px', textAlign: 'center', color: '#475569', minWidth: '120px' }}>
                     <div style={{ fontSize: '0.95rem' }}>{col.name}</div>
-                    <div style={{ fontSize: '0.75rem', color: '#10b981', marginTop: '4px', fontWeight: 'normal' }}>
-                      ({formatRupiah(col.nominal)})
+                    <div style={{ fontSize: '0.75rem', color: col.type === 'minus' ? '#ef4444' : '#10b981', marginTop: '4px', fontWeight: 'normal' }}>
+                      ({col.type === 'minus' ? '-' : '+'}{formatRupiah(col.nominal)})
                     </div>
                   </th>
                 ))}
@@ -248,7 +256,13 @@ export default function BendaharaPerangkatUjian() {
                           min="0"
                           value={dataMap[t]?.[col.id] || ''}
                           onChange={(e) => handleInputChange(t, col.id, e.target.value)}
-                          style={{ width: '70px', padding: '8px', textAlign: 'center', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none' }}
+                          style={{ 
+                            width: '70px', padding: '8px', textAlign: 'center', borderRadius: '6px', 
+                            border: col.type === 'minus' ? '1px solid #fca5a5' : '1px solid #cbd5e1', 
+                            color: col.type === 'minus' ? '#ef4444' : 'inherit',
+                            outline: 'none',
+                            background: col.type === 'minus' ? '#fef2f2' : 'white'
+                          }}
                           placeholder="0"
                         />
                       </td>
