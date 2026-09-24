@@ -13,6 +13,10 @@ export default function BendaharaPerangkatUjian() {
   const [dataMap, setDataMap] = useState<Record<string, Record<string, number>>>({});
   const [loadingData, setLoadingData] = useState(false);
 
+  const [namaUjian, setNamaUjian] = useState('SUMATIF AKHIR SEMESTER GENAP');
+  const [tahunUjian, setTahunUjian] = useState('TAHUN 2025 / 2026');
+  const [printMode, setPrintMode] = useState<string[]>([]);
+
   useEffect(() => {
     // Cek session di localStorage (sederhana)
     const session = localStorage.getItem('bendahara_pu_session');
@@ -24,8 +28,15 @@ export default function BendaharaPerangkatUjian() {
     // Load data dari localstorage (jika ada)
     const savedCols = localStorage.getItem('bendahara_cols');
     const savedData = localStorage.getItem('bendahara_data');
+    const savedConfig = localStorage.getItem('bendahara_config');
+    
     if (savedCols) setColumns(JSON.parse(savedCols));
     if (savedData) setDataMap(JSON.parse(savedData));
+    if (savedConfig) {
+      const parsed = JSON.parse(savedConfig);
+      if (parsed.namaUjian) setNamaUjian(parsed.namaUjian);
+      if (parsed.tahunUjian) setTahunUjian(parsed.tahunUjian);
+    }
   }, []);
 
   useEffect(() => {
@@ -49,6 +60,19 @@ export default function BendaharaPerangkatUjian() {
     if (columns.length > 0) localStorage.setItem('bendahara_cols', JSON.stringify(columns));
     if (Object.keys(dataMap).length > 0) localStorage.setItem('bendahara_data', JSON.stringify(dataMap));
   }, [columns, dataMap]);
+
+  useEffect(() => {
+    localStorage.setItem('bendahara_config', JSON.stringify({ namaUjian, tahunUjian }));
+  }, [namaUjian, tahunUjian]);
+
+  useEffect(() => {
+    if (printMode.length > 0) {
+      setTimeout(() => {
+        window.print();
+        setPrintMode([]);
+      }, 500);
+    }
+  }, [printMode]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -206,6 +230,12 @@ export default function BendaharaPerangkatUjian() {
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button 
+            onClick={() => { if (teachers.length > 0) setPrintMode(teachers); }}
+            style={{ padding: '10px 16px', borderRadius: '8px', background: '#0284c7', color: 'white', border: 'none', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <i className="fas fa-print"></i> Cetak Semua Slip
+          </button>
+          <button 
             onClick={handleAddColumn}
             style={{ padding: '10px 16px', borderRadius: '8px', background: '#10b981', color: 'white', border: 'none', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
           >
@@ -217,6 +247,17 @@ export default function BendaharaPerangkatUjian() {
           >
             <i className="fas fa-sign-out-alt"></i> Keluar
           </button>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', background: 'white', padding: '16px', borderRadius: '12px', border: '1px solid #f1f5f9' }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '4px', fontWeight: 'bold' }}>Nama Ujian (Untuk Kop Slip)</label>
+          <input type="text" value={namaUjian} onChange={(e) => setNamaUjian(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }} placeholder="Misal: SUMATIF AKHIR SEMESTER GENAP" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '4px', fontWeight: 'bold' }}>Tahun Ajaran</label>
+          <input type="text" value={tahunUjian} onChange={(e) => setTahunUjian(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', outline: 'none' }} placeholder="Misal: TAHUN 2025 / 2026" />
         </div>
       </div>
 
@@ -236,18 +277,19 @@ export default function BendaharaPerangkatUjian() {
                   </th>
                 ))}
                 <th style={{ padding: '16px', textAlign: 'right', color: '#0f172a', minWidth: '150px' }}>Total Honor</th>
+                <th style={{ padding: '16px', textAlign: 'center', color: '#475569', minWidth: '80px' }}>Aksi</th>
               </tr>
             </thead>
             <tbody>
               {loadingData ? (
                 <tr>
-                  <td colSpan={columns.length + 3} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                  <td colSpan={columns.length + 4} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
                     <i className="fas fa-spinner fa-spin" style={{ marginRight: '8px' }}></i> Memuat data guru...
                   </td>
                 </tr>
               ) : teachers.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length + 3} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                  <td colSpan={columns.length + 4} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
                     Belum ada data guru.
                   </td>
                 </tr>
@@ -277,6 +319,11 @@ export default function BendaharaPerangkatUjian() {
                     <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 'bold', color: '#0f172a', background: '#f8fafc' }}>
                       {formatRupiah(calculateTotalRow(t))}
                     </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                      <button onClick={() => setPrintMode([t])} style={{ padding: '6px 12px', borderRadius: '6px', background: '#e2e8f0', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#334155', fontWeight: 'bold' }} title="Cetak Slip">
+                        <i className="fas fa-print"></i>
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -295,12 +342,91 @@ export default function BendaharaPerangkatUjian() {
                   <td style={{ padding: '16px', textAlign: 'right', fontWeight: 'bold', color: '#0ea5e9', fontSize: '1.1rem' }}>
                     {formatRupiah(calculateGrandTotal())}
                   </td>
+                  <td></td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {printMode.length > 0 && (
+        <div id="print-area" style={{ background: 'white', color: 'black', fontFamily: 'Arial, sans-serif' }}>
+          <style>{`
+            @media print {
+              body * { visibility: hidden; }
+              #print-area, #print-area * { visibility: visible; }
+              #print-area { position: absolute; left: 0; top: 0; width: 100%; display: flex; flex-wrap: wrap; gap: 0.5cm; }
+              @page { margin: 0.5cm; }
+            }
+          `}</style>
+          {printMode.map(t => {
+            const plusCols = columns.filter(c => c.type !== 'minus');
+            const minusCols = columns.filter(c => c.type === 'minus');
+            let jumlah = 0;
+            let counter = 1;
+            return (
+              <div key={t} style={{ width: '9cm', height: '10cm', border: '2px solid black', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', fontSize: '10px', overflow: 'hidden', pageBreakInside: 'avoid' }}>
+                <div style={{ background: '#92D050', textAlign: 'center', padding: '4px', borderBottom: '2px solid black' }}>
+                  <div style={{ fontWeight: 'bold', color: '#002060', fontSize: '12px', marginBottom: '2px' }}>INSENTIF</div>
+                  <div style={{ fontWeight: 'bold', color: '#002060', fontSize: '11px', marginBottom: '2px' }}>{namaUjian.toUpperCase()}</div>
+                  <div style={{ color: '#002060', fontSize: '10px' }}>{tahunUjian.toUpperCase()}</div>
+                </div>
+                <div style={{ textAlign: 'center', fontWeight: 'bold', color: '#002060', padding: '4px', borderBottom: '2px solid black', fontSize: '11px' }}>
+                  {t}
+                </div>
+                <div style={{ flex: 1, padding: '2px 4px', display: 'flex', flexDirection: 'column' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <tbody>
+                      {plusCols.map(c => {
+                         const qty = dataMap[t]?.[c.id] || 0;
+                         const amount = c.inputType === 'direct' ? qty : qty * c.nominal;
+                         jumlah += amount;
+                         return (
+                           <tr key={c.id}>
+                             <td style={{ width: '15px', textAlign: 'right', paddingRight: '4px' }}>{counter++}</td>
+                             <td style={{ color: '#002060' }}>{c.name}</td>
+                             <td style={{ width: '10px', textAlign: 'center' }}>:</td>
+                             <td style={{ width: '20px', textAlign: 'center' }}>{c.inputType === 'multiplier' && qty > 0 ? qty : '-'}</td>
+                             <td style={{ width: '15px' }}>Rp</td>
+                             <td style={{ textAlign: 'right' }}>{amount === 0 ? '-' : amount.toLocaleString('id-ID')}</td>
+                           </tr>
+                         )
+                      })}
+                      <tr style={{ borderTop: '2px solid black', borderBottom: '2px solid black', fontWeight: 'bold', color: '#002060' }}>
+                         <td colSpan={2}>Jumlah</td>
+                         <td style={{ textAlign: 'center' }}>:</td>
+                         <td></td>
+                         <td>Rp</td>
+                         <td style={{ textAlign: 'right' }}>{jumlah.toLocaleString('id-ID')}</td>
+                      </tr>
+                      {minusCols.map(c => {
+                         const qty = dataMap[t]?.[c.id] || 0;
+                         const amount = c.inputType === 'direct' ? qty : qty * c.nominal;
+                         return (
+                           <tr key={c.id}>
+                             <td style={{ width: '15px', textAlign: 'right', paddingRight: '4px' }}>{counter++}</td>
+                             <td style={{ color: '#002060' }}>{c.name}</td>
+                             <td style={{ width: '10px', textAlign: 'center' }}>:</td>
+                             <td style={{ width: '20px', textAlign: 'center' }}>{c.inputType === 'multiplier' && qty > 0 ? qty : '-'}</td>
+                             <td style={{ width: '15px' }}>Rp</td>
+                             <td style={{ textAlign: 'right' }}>{amount === 0 ? '-' : amount.toLocaleString('id-ID')}</td>
+                           </tr>
+                         )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ borderTop: '3px double black', padding: '4px', display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', color: '#002060', fontSize: '12px' }}>
+                   <div>Diterima</div>
+                   <div>: Rp {(jumlah - minusCols.reduce((acc, c) => acc + (c.inputType === 'direct' ? (dataMap[t]?.[c.id] || 0) : (dataMap[t]?.[c.id] || 0) * c.nominal), 0)).toLocaleString('id-ID')}</div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
     </div>
   );
 }
