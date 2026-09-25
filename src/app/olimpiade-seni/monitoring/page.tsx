@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
 import InlineLoading from '@/components/InlineLoading';
@@ -141,6 +141,49 @@ export default function MonitoringOlimpiadePage() {
   // Re-sort karena gabungan mungkin tidak urut per cabang
   const sortedData = [...filteredData].sort((a, b) => Number(b.rata_rata) - Number(a.rata_rata));
 
+  const juaraUmumList = useMemo(() => {
+    if (!cabangOptions || cabangOptions.length === 0 || data.length === 0) return [];
+    
+    const schoolPoints: Record<string, { totalPoints: number, j1: number, j2: number, j3: number }> = {};
+
+    cabangOptions.forEach(cabang => {
+      // Dapatkan top 3 untuk cabang ini
+      const inCabang = data
+        .filter(d => d.cabang_lomba === cabang && Number(d.rata_rata) > 0)
+        .sort((a, b) => Number(b.rata_rata) - Number(a.rata_rata));
+
+      const getSekolah = (row: any) => {
+        if (!row || !row.asal_sekolah || row.asal_sekolah.trim() === '-' || row.asal_sekolah.trim() === '') return null;
+        return row.asal_sekolah.trim();
+      };
+
+      const s1 = getSekolah(inCabang[0]);
+      if (s1) {
+        if (!schoolPoints[s1]) schoolPoints[s1] = { totalPoints: 0, j1: 0, j2: 0, j3: 0 };
+        schoolPoints[s1].j1 += 1;
+        schoolPoints[s1].totalPoints += 3;
+      }
+      
+      const s2 = getSekolah(inCabang[1]);
+      if (s2) {
+        if (!schoolPoints[s2]) schoolPoints[s2] = { totalPoints: 0, j1: 0, j2: 0, j3: 0 };
+        schoolPoints[s2].j2 += 1;
+        schoolPoints[s2].totalPoints += 2;
+      }
+
+      const s3 = getSekolah(inCabang[2]);
+      if (s3) {
+        if (!schoolPoints[s3]) schoolPoints[s3] = { totalPoints: 0, j1: 0, j2: 0, j3: 0 };
+        schoolPoints[s3].j3 += 1;
+        schoolPoints[s3].totalPoints += 1;
+      }
+    });
+
+    return Object.entries(schoolPoints)
+      .map(([sekolah, stats]) => ({ sekolah, ...stats }))
+      .sort((a, b) => b.totalPoints - a.totalPoints || b.j1 - a.j1 || b.j2 - a.j2 || b.j3 - a.j3);
+  }, [data, cabangOptions]);
+
   return (
     <div style={{ padding: '20px' }}>
       <button 
@@ -199,6 +242,44 @@ export default function MonitoringOlimpiadePage() {
                 <i className={`fas ${publishing ? 'fa-spinner fa-spin' : hasilPublished ? 'fa-eye-slash' : 'fa-bullhorn'}`}></i>
                 {publishing ? 'Memproses...' : hasilPublished ? 'Batalkan Publikasi' : 'Publikasikan Hasil'}
               </button>
+            </div>
+          )}
+
+          {juaraUmumList.length > 0 && (
+            <div style={{ background: 'linear-gradient(to right, #1e293b, #0f172a)', borderRadius: '12px', padding: '24px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginBottom: '24px', color: 'white' }}>
+              <h3 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '10px', color: '#f8fafc' }}>
+                <i className="fas fa-crown" style={{ color: '#fbbf24', fontSize: '1.2rem' }}></i>
+                Klasemen Juara Umum Sekolah
+              </h3>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                {juaraUmumList.slice(0, 3).map((juara, index) => (
+                  <div key={juara.sekolah} style={{ background: 'rgba(255,255,255,0.1)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ 
+                      width: '40px', height: '40px', borderRadius: '50%', 
+                      background: index === 0 ? '#fbbf24' : index === 1 ? '#94a3b8' : '#b45309', 
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                      color: 'white', fontWeight: 'bold', fontSize: '1.2rem',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }}>
+                      {index + 1}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {juara.sekolah}
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: '#cbd5e1', display: 'flex', gap: '12px' }}>
+                        <span title="Juara 1"><i className="fas fa-medal" style={{ color: '#fbbf24' }}></i> {juara.j1}</span>
+                        <span title="Juara 2"><i className="fas fa-medal" style={{ color: '#e2e8f0' }}></i> {juara.j2}</span>
+                        <span title="Juara 3"><i className="fas fa-medal" style={{ color: '#b45309' }}></i> {juara.j3}</span>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#f8fafc' }}>
+                      {juara.totalPoints}<span style={{ fontSize: '0.8rem', fontWeight: 'normal', color: '#94a3b8', marginLeft: '4px' }}>pts</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
