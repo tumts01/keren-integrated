@@ -89,26 +89,33 @@ export async function POST(req: Request) {
       if (!sesi) return NextResponse.json({ success: false, error: 'Sesi tidak valid' }, { status: 400 });
       if (sesi.status === 'selesai') return NextResponse.json({ success: true, message: 'Sudah pernah disubmit' });
 
-      // Skoring
-      const { data: soalList } = await supabase.from('cbt_soal').select('nomor_soal, kunci_jawaban, bobot_skor').eq('cabang_lomba', sesi.cabang_lomba);
+      // Skoring Olimpiade: Benar +4, Salah -1, Tidak Dijawab 0
+      const { data: soalList } = await supabase.from('cbt_soal').select('nomor_soal, kunci_jawaban').eq('cabang_lomba', sesi.cabang_lomba);
       
       let totalBenar = 0;
-      let totalSoal = soalList?.length || 0;
-      let totalBobotBenar = 0;
-      let maxBobot = 0;
+      let totalSalah = 0;
+      let totalKosong = 0;
+      const totalSoal = soalList?.length || 0;
 
       if (soalList && totalSoal > 0) {
         soalList.forEach(soal => {
-          maxBobot += (soal.bobot_skor || 1);
-          const jawabanUser = sesi.jawaban_tersimpan[soal.nomor_soal.toString()];
-          if (jawabanUser === soal.kunci_jawaban) {
+          const jawabanUser = sesi.jawaban_tersimpan?.[soal.nomor_soal.toString()];
+          if (!jawabanUser || jawabanUser === '') {
+            totalKosong++;
+          } else if (jawabanUser === soal.kunci_jawaban) {
             totalBenar++;
-            totalBobotBenar += (soal.bobot_skor || 1);
+          } else {
+            totalSalah++;
           }
         });
       }
 
-      const nilaiAkhir = maxBobot > 0 ? (totalBobotBenar / maxBobot) * 100 : 0;
+      // Skor mentah: benar*4, salah*(-1), kosong*0
+      const skorMentah = (totalBenar * 4) + (totalSalah * -1);
+      // Skor max = totalSoal * 4
+      const skorMax = totalSoal * 4;
+      // nilaiAkhir dikonversi ke skala 0-100 (boleh negatif kalau jawaban salah semua)
+      const nilaiAkhir = skorMax > 0 ? (skorMentah / skorMax) * 100 : 0;
 
       const { error } = await supabase.from('cbt_sesi').update({
         status: 'selesai',
@@ -118,7 +125,16 @@ export async function POST(req: Request) {
       }).eq('nomor_peserta', nomorPeserta);
 
       if (error) throw error;
-      return NextResponse.json({ success: true, nilai: nilaiAkhir, message: 'Ujian selesai disimpan' });
+      return NextResponse.json({ 
+        success: true, 
+        nilai: nilaiAkhir,
+        skor: skorMentah,
+        benar: totalBenar,
+        salah: totalSalah,
+        kosong: totalKosong,
+        totalSoal,
+        message: 'Ujian selesai disimpan' 
+      });
     }
 
     else if (action === 'log_kecurangan') {

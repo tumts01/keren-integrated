@@ -272,9 +272,32 @@ export default function CBTUjianPage() {
 
       if (data.success) {
         Swal.fire({
-          title: 'Ujian Selesai!',
-          text: `Terima kasih telah mengikuti CBT.`,
-          icon: 'success'
+          title: 'Ujian Selesai! 🎉',
+          html: `
+            <div style="text-align: left; font-size: 0.95rem; margin-top: 8px;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr style="background: #f0fdf4;">
+                  <td style="padding: 10px 16px; font-weight: 600; color: #16a34a;">✅ Jawaban Benar</td>
+                  <td style="padding: 10px 16px; text-align: right; font-weight: 700; color: #16a34a;">${data.benar} × (+4) = +${data.benar * 4}</td>
+                </tr>
+                <tr style="background: #fef2f2;">
+                  <td style="padding: 10px 16px; font-weight: 600; color: #dc2626;">❌ Jawaban Salah</td>
+                  <td style="padding: 10px 16px; text-align: right; font-weight: 700; color: #dc2626;">${data.salah} × (−1) = −${data.salah}</td>
+                </tr>
+                <tr style="background: #f8fafc;">
+                  <td style="padding: 10px 16px; font-weight: 600; color: #64748b;">⬜ Tidak Dijawab</td>
+                  <td style="padding: 10px 16px; text-align: right; font-weight: 700; color: #64748b;">${data.kosong} × (0) = 0</td>
+                </tr>
+                <tr style="background: #eff6ff; border-top: 2px solid #3b82f6;">
+                  <td style="padding: 12px 16px; font-weight: 700; color: #1d4ed8; font-size: 1rem;">⭐ Total Skor</td>
+                  <td style="padding: 12px 16px; text-align: right; font-weight: 800; color: #1d4ed8; font-size: 1.2rem;">${data.skor}</td>
+                </tr>
+              </table>
+              <p style="margin: 12px 0 0 0; font-size: 0.8rem; color: #94a3b8; text-align: center;">dari ${data.totalSoal} soal · Sistem: Benar +4, Salah −1, Kosong 0</p>
+            </div>
+          `,
+          icon: 'success',
+          confirmButtonText: 'Selesai'
         }).then(() => {
           router.push('/cbt/dashboard');
         });
