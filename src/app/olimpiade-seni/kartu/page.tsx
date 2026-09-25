@@ -72,30 +72,39 @@ export default function CetakKartuPage() {
               </div>
 
               {/* Body */}
-              <div style={{ padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', position: 'relative', zIndex: 1, overflow: 'hidden' }}>
+              <div style={{ padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', position: 'relative', overflow: 'hidden' }}>
                 
                 {/* Watermark Logo */}
-                <img 
-                  src="/logo_olimpiade_seni.png" 
-                  alt="Watermark" 
-                  style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: '6cm',
-                    height: '6cm',
-                    opacity: 0.08,
-                    zIndex: -1,
-                    objectFit: 'contain'
-                  }} 
-                />
-                <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+                <div style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 0,
+                  pointerEvents: 'none'
+                }}>
+                  <img 
+                    src="/logo_olimpiade_seni.png" 
+                    alt="Watermark" 
+                    style={{
+                      width: '6cm',
+                      height: '6cm',
+                      opacity: 0.15,
+                      objectFit: 'contain'
+                    }} 
+                  />
+                </div>
+
+                <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', marginBottom: '8px' }}>
                   <div style={{ fontSize: '7pt', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase' }}>Nomor Peserta</div>
                   <div style={{ fontSize: '14pt', fontWeight: 900, color: '#0f172a' }}>{data.NOMOR_PESERTA || '-'}</div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
+                <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
                   <DetailRow label="Nama" value={data.NAMA || data.Nama || '-'} />
                   <DetailRow label="Asal Sekolah" value={data.ASAL_SEKOLAH || data['Asal Sekolah'] || '-'} />
                   <DetailRow label="Cabang Lomba" value={lombaRaw} />
@@ -103,7 +112,7 @@ export default function CetakKartuPage() {
                 </div>
 
                 {isAkademik && (
-                  <div style={{ marginTop: 'auto', border: '1px solid #94a3b8', borderRadius: '4px', padding: '6px' }}>
+                  <div style={{ position: 'relative', zIndex: 1, marginTop: 'auto', border: '1px solid #94a3b8', borderRadius: '4px', padding: '6px', background: 'rgba(255, 255, 255, 0.8)' }}>
                     <div style={{ textAlign: 'center', fontSize: '7pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '4px' }}>
                       AKUN LOGIN CBT
                     </div>
