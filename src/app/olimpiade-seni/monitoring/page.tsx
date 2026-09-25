@@ -36,6 +36,36 @@ export default function MonitoringOlimpiadePage() {
     }
   };
 
+  const MAX_LOLOS = 30;
+
+  // Hitung ambang batas nilai per cabang lomba untuk top-30 (dengan tie-handling)
+  const getLolosThresholdPerCabang = () => {
+    const thresholdMap: Record<string, number> = {};
+    const cabangs = Array.from(new Set(data.map((d: any) => d.cabang_lomba))).filter(Boolean);
+    cabangs.forEach(cabang => {
+      const pesertaCabang = data
+        .filter((d: any) => d.cabang_lomba === cabang && Number(d.rata_rata) > 0)
+        .map((d: any) => Number(d.rata_rata))
+        .sort((a: number, b: number) => b - a);
+      
+      if (pesertaCabang.length === 0) {
+        thresholdMap[cabang as string] = -Infinity;
+        return;
+      }
+      // Ambil nilai peserta ke-30 (index 29). Semua peserta dengan nilai >= nilai ini dinyatakan lolos.
+      const cutoff = pesertaCabang[Math.min(MAX_LOLOS - 1, pesertaCabang.length - 1)];
+      thresholdMap[cabang as string] = cutoff;
+    });
+    return thresholdMap;
+  };
+
+  const lolosThreshold = getLolosThresholdPerCabang();
+
+  const isLolos = (d: any) => {
+    const threshold = lolosThreshold[d.cabang_lomba];
+    return Number(d.rata_rata) > 0 && threshold !== undefined && Number(d.rata_rata) >= threshold;
+  };
+
   const filteredData = filterCabang === 'Semua' 
     ? data 
     : data.filter(d => d.cabang_lomba === filterCabang);
@@ -93,21 +123,24 @@ export default function MonitoringOlimpiadePage() {
                   <th style={{ padding: '15px' }}>Nama Peserta</th>
                   <th style={{ padding: '15px' }}>Asal Sekolah</th>
                   {filterCabang === 'Semua' && <th style={{ padding: '15px' }}>Cabang Lomba</th>}
-                  <th style={{ padding: '15px', textAlign: 'center' }}>Juri</th>
+                  <th style={{ padding: '15px', textAlign: 'center' }}>Juri/CBT</th>
                   <th style={{ padding: '15px', textAlign: 'center' }}>Pelanggaran</th>
-                  <th style={{ padding: '15px', textAlign: 'right' }}>Nilai Rata-rata</th>
+                  <th style={{ padding: '15px', textAlign: 'right' }}>Nilai</th>
+                  <th style={{ padding: '15px', textAlign: 'center' }}>Status (Top {MAX_LOLOS})</th>
                 </tr>
               </thead>
               <tbody>
                 {sortedData.length === 0 ? (
                   <tr>
-                    <td colSpan={filterCabang === 'Semua' ? 6 : 5} style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
+                    <td colSpan={filterCabang === 'Semua' ? 7 : 6} style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
                       Belum ada data nilai masuk.
                     </td>
                   </tr>
                 ) : (
-                  sortedData.map((d, i) => (
-                    <tr key={d.id} style={{ borderBottom: '1px solid #e2e8f0', background: i === 0 ? '#fef9c3' : i === 1 ? '#f3f4f6' : i === 2 ? '#ffedd5' : 'transparent' }}>
+                  sortedData.map((d, i) => {
+                    const lolos = isLolos(d);
+                    return (
+                    <tr key={d.id} style={{ borderBottom: '1px solid #e2e8f0', background: lolos ? (i === 0 ? '#fef9c3' : i === 1 ? '#f0fdf4' : i === 2 ? '#fff7ed' : '#f0fdf4') : '#fff5f5' }}>
                       <td style={{ padding: '15px', fontWeight: 'bold', color: i === 0 ? '#ca8a04' : i === 1 ? '#64748b' : i === 2 ? '#ea580c' : '#334155' }}>
                         {i === 0 ? <><i className="fas fa-trophy" style={{color: '#eab308'}}></i> 1</> : 
                          i === 1 ? <><i className="fas fa-medal" style={{color: '#94a3b8'}}></i> 2</> : 
@@ -119,7 +152,7 @@ export default function MonitoringOlimpiadePage() {
                       {filterCabang === 'Semua' && <td style={{ padding: '15px', color: '#0ea5e9', fontWeight: 500 }}>{d.cabang_lomba}</td>}
                       <td style={{ padding: '15px', textAlign: 'center' }}>
                         <span style={{ background: '#e2e8f0', padding: '4px 10px', borderRadius: '20px', fontSize: '0.8rem' }}>
-                          {d.jumlah_juri} Juri
+                          {d.jumlah_juri === 1 && d.detail_nilai?.[0]?.olimpiade_juri?.nama_juri === 'Sistem CBT' ? 'CBT' : `${d.jumlah_juri} Juri`}
                         </span>
                       </td>
                       <td style={{ padding: '15px', textAlign: 'center' }}>
@@ -136,11 +169,25 @@ export default function MonitoringOlimpiadePage() {
                           </span>
                         )}
                       </td>
-                      <td style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold', fontSize: '1.1rem', color: '#10b981' }}>
+                      <td style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold', fontSize: '1.1rem', color: lolos ? '#10b981' : '#94a3b8' }}>
                         {d.rata_rata}
                       </td>
+                      <td style={{ padding: '15px', textAlign: 'center' }}>
+                        {Number(d.rata_rata) === 0 ? (
+                          <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Belum ada nilai</span>
+                        ) : lolos ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#dcfce7', color: '#16a34a', borderRadius: '20px', padding: '4px 14px', fontWeight: 700, fontSize: '0.85rem', border: '1px solid #86efac' }}>
+                            <i className="fas fa-check-circle"></i> LOLOS
+                          </span>
+                        ) : (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#fef2f2', color: '#ef4444', borderRadius: '20px', padding: '4px 14px', fontWeight: 700, fontSize: '0.85rem', border: '1px solid #fca5a5' }}>
+                            <i className="fas fa-times-circle"></i> TIDAK LOLOS
+                          </span>
+                        )}
+                      </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
