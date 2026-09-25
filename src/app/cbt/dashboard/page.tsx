@@ -10,6 +10,8 @@ export default function DashboardCBT() {
   const [sesi, setSesi] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [hasilPublished, setHasilPublished] = useState(false);
+  const [statusLolos, setStatusLolos] = useState<boolean | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -21,7 +23,45 @@ export default function DashboardCBT() {
     const parsed = JSON.parse(data);
     setUser(parsed);
     fetchSesi(parsed.nomorPeserta);
+    fetchConfig(parsed.nomorPeserta);
   }, [router]);
+
+  const fetchConfig = async (nomorPeserta: string) => {
+    try {
+      const res = await fetch('/api/olimpiade-seni/config');
+      const json = await res.json();
+      if (json.success) {
+        setHasilPublished(json.hasil_published);
+        if (json.hasil_published) {
+          checkLolosStatus(nomorPeserta);
+        }
+      }
+    } catch { /* silent */ }
+  };
+
+  const checkLolosStatus = async (nomorPeserta: string) => {
+    try {
+      const res = await fetch('/api/olimpiade-seni/monitoring');
+      const json = await res.json();
+      if (json.success && json.data) {
+        const pesertaUser = json.data.find((d: any) => d.nomor_peserta === nomorPeserta);
+        if (!pesertaUser) return;
+        
+        const cabang = pesertaUser.cabang_lomba;
+        const pesertaCabang = json.data
+          .filter((d: any) => d.cabang_lomba === cabang && Number(d.rata_rata) > 0)
+          .map((d: any) => Number(d.rata_rata))
+          .sort((a: number, b: number) => b - a);
+
+        if (pesertaCabang.length > 0) {
+          const cutoff = pesertaCabang[Math.min(30 - 1, pesertaCabang.length - 1)];
+          setStatusLolos(Number(pesertaUser.rata_rata) >= cutoff);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const fetchSesi = async (nomorPeserta: string) => {
     try {
@@ -90,6 +130,9 @@ export default function DashboardCBT() {
   if (!user || loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Memuat Dashboard...</div>;
 
   const isSelesai = sesi && sesi.status === 'selesai';
+  // Skor mentah dari sistem +4/-1/0 (tersimpan di nilai_akhir dalam skala 0-100)
+  // Kita tidak bisa menentukan lolos/tidak dari sisi client tanpa data semua peserta
+  // Tapi admin sudah publikasikan hasil → kita tampilkan skor saja + status menunggu pengumuman detailnya
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '40px 20px' }}>
@@ -135,19 +178,48 @@ export default function DashboardCBT() {
                   Terima kasih telah mengerjakan soal dengan sebaik-baiknya.
                 </p>
 
-                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '24px', textAlign: 'left' }}>
-                  <h4 style={{ color: '#1d4ed8', fontSize: '1.1rem', margin: '0 0 10px 0' }}>
-                    <i className="fas fa-clock" style={{ marginRight: '8px' }}></i>
-                    Menunggu Pengumuman Resmi
-                  </h4>
-                  <p style={{ color: '#1e40af', margin: '0 0 12px 0', lineHeight: '1.6' }}>
-                    Hasil seleksi akan diumumkan secara resmi oleh panitia setelah seluruh peserta menyelesaikan ujian. Mohon bersabar dan pantau pengumuman dari pihak madrasah.
-                  </p>
-                  <div style={{ background: 'white', borderRadius: '8px', padding: '12px 16px', display: 'inline-block', border: '1px solid #bfdbfe' }}>
-                    <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Mata Uji: </span>
-                    <strong style={{ color: '#0f172a' }}>{user.lomba}</strong>
+                {hasilPublished ? (
+                  statusLolos === null ? (
+                    <div style={{ padding: '20px', color: '#64748b' }}>
+                      <i className="fas fa-spinner fa-spin" style={{ marginRight: '8px' }}></i> Memuat hasil...
+                    </div>
+                  ) : statusLolos === true ? (
+                    <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '24px', textAlign: 'left' }}>
+                      <h4 style={{ color: '#065f46', fontSize: '1.2rem', margin: '0 0 12px 0' }}>🎉 Selamat, Anda dinyatakan LOLOS!</h4>
+                      <p style={{ color: '#047857', marginBottom: '16px', lineHeight: '1.5' }}>
+                        Silakan lanjutkan ke tahap berikutnya dengan melakukan pembayaran dan mengunggah bukti pembayaran pada tombol di bawah ini.
+                      </p>
+                      <button 
+                        onClick={() => fileRef.current?.click()}
+                        disabled={uploading}
+                        style={{ padding: '12px 24px', borderRadius: '8px', background: '#10b981', color: 'white', border: 'none', fontWeight: 700, cursor: uploading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                      >
+                        <i className="fas fa-upload"></i> Unggah Bukti Pembayaran
+                      </button>
+                      <input type="file" accept="image/*" ref={fileRef} onChange={handleUploadBukti} style={{ display: 'none' }} />
+                    </div>
+                  ) : (
+                    <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '12px', padding: '24px' }}>
+                      <p style={{ color: '#92400e', margin: 0, lineHeight: '1.5', fontSize: '1.1rem' }}>
+                        Terima kasih telah berpartisipasi dalam Olimpiade Akademik. Tetap semangat dan terus belajar!
+                      </p>
+                    </div>
+                  )
+                ) : (
+                  <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '24px', textAlign: 'left' }}>
+                    <h4 style={{ color: '#1d4ed8', fontSize: '1.1rem', margin: '0 0 10px 0' }}>
+                      <i className="fas fa-clock" style={{ marginRight: '8px' }}></i>
+                      Menunggu Pengumuman Resmi
+                    </h4>
+                    <p style={{ color: '#1e40af', margin: '0 0 12px 0', lineHeight: '1.6' }}>
+                      Hasil seleksi akan diumumkan secara resmi oleh panitia setelah seluruh peserta menyelesaikan ujian. Mohon bersabar dan pantau pengumuman dari pihak madrasah.
+                    </p>
+                    <div style={{ background: 'white', borderRadius: '8px', padding: '12px 16px', display: 'inline-block', border: '1px solid #bfdbfe' }}>
+                      <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Mata Uji: </span>
+                      <strong style={{ color: '#0f172a' }}>{user.lomba}</strong>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             ) : (
               <>
