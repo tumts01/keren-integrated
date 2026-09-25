@@ -8,7 +8,8 @@ export default function BendaharaPerangkatUjian() {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const [teachers, setTeachers] = useState<string[]>([]);
+  const [apiTeachers, setApiTeachers] = useState<string[]>([]);
+  const [manualTeachers, setManualTeachers] = useState<string[]>([]);
   const [columns, setColumns] = useState<{ id: string, name: string, nominal: number, type?: 'plus' | 'minus', inputType?: 'multiplier' | 'direct' }[]>([]);
   const [dataMap, setDataMap] = useState<Record<string, Record<string, number>>>({});
   const [loadingData, setLoadingData] = useState(false);
@@ -17,6 +18,8 @@ export default function BendaharaPerangkatUjian() {
   const [tahunUjian, setTahunUjian] = useState('TAHUN 2025 / 2026');
   const [printMode, setPrintMode] = useState<string[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+
+  const teachers = [...apiTeachers, ...manualTeachers];
 
   useEffect(() => {
     // Cek session di localStorage (sederhana)
@@ -37,6 +40,7 @@ export default function BendaharaPerangkatUjian() {
       const parsed = JSON.parse(savedConfig);
       if (parsed.namaUjian) setNamaUjian(parsed.namaUjian);
       if (parsed.tahunUjian) setTahunUjian(parsed.tahunUjian);
+      if (parsed.manualTeachers) setManualTeachers(parsed.manualTeachers);
     }
 
     // Fetch dari Supabase Database
@@ -50,6 +54,7 @@ export default function BendaharaPerangkatUjian() {
             setDataMap(res.data.data_map || {});
             if (res.data.config?.namaUjian) setNamaUjian(res.data.config.namaUjian);
             if (res.data.config?.tahunUjian) setTahunUjian(res.data.config.tahunUjian);
+            if (res.data.config?.manualTeachers) setManualTeachers(res.data.config.manualTeachers);
           }
         }
       })
@@ -60,7 +65,7 @@ export default function BendaharaPerangkatUjian() {
 
   useEffect(() => {
     // Fetch daftar guru
-    if (isUnlocked && teachers.length === 0) {
+    if (isUnlocked && apiTeachers.length === 0) {
       setLoadingData(true);
       fetch('/api/guru')
         .then(res => res.json())
@@ -70,12 +75,12 @@ export default function BendaharaPerangkatUjian() {
               .filter((g: any) => g.status?.toLowerCase() !== 'tidak aktif')
               .map((g: any) => g.nama)
               .filter(Boolean);
-            setTeachers(names);
+            setApiTeachers(names);
           }
         })
         .finally(() => setLoadingData(false));
     }
-  }, [isUnlocked, teachers.length]);
+  }, [isUnlocked, apiTeachers.length]);
 
   // Simpan tiap kali ada perubahan (Debounce 1 detik ke Database)
   useEffect(() => {
@@ -83,18 +88,18 @@ export default function BendaharaPerangkatUjian() {
 
     if (columns.length > 0) localStorage.setItem('bendahara_cols', JSON.stringify(columns));
     if (Object.keys(dataMap).length > 0) localStorage.setItem('bendahara_data', JSON.stringify(dataMap));
-    localStorage.setItem('bendahara_config', JSON.stringify({ namaUjian, tahunUjian }));
+    localStorage.setItem('bendahara_config', JSON.stringify({ namaUjian, tahunUjian, manualTeachers }));
 
     const timer = setTimeout(() => {
       fetch('/api/bendahara', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ columns, dataMap, config: { namaUjian, tahunUjian } })
+        body: JSON.stringify({ columns, dataMap, config: { namaUjian, tahunUjian, manualTeachers } })
       }).catch(err => console.error('Failed to sync bendahara data:', err));
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [columns, dataMap, namaUjian, tahunUjian, isDataLoaded]);
+  }, [columns, dataMap, namaUjian, tahunUjian, manualTeachers, isDataLoaded]);
 
   useEffect(() => {
     if (printMode.length > 0) {
@@ -170,6 +175,26 @@ export default function BendaharaPerangkatUjian() {
         inputType: formValues.inputType
       };
       setColumns([...columns, newCol]);
+    }
+  };
+
+  const handleAddManualTeacher = async () => {
+    const { value: name } = await Swal.fire({
+      title: 'Tambah Nama Manual',
+      input: 'text',
+      inputPlaceholder: 'Masukkan nama lengkap...',
+      showCancelButton: true,
+      confirmButtonText: 'Tambahkan',
+      cancelButtonText: 'Batal',
+      inputValidator: (value) => {
+        if (!value) {
+          return 'Nama tidak boleh kosong!';
+        }
+      }
+    });
+
+    if (name) {
+      setManualTeachers(prev => [...prev, name.trim()]);
     }
   };
 
@@ -298,7 +323,13 @@ export default function BendaharaPerangkatUjian() {
             onClick={handleAddColumn}
             style={{ padding: '10px 16px', borderRadius: '8px', background: '#10b981', color: 'white', border: 'none', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
           >
-            <i className="fas fa-plus"></i> Tambah Kolom Honor
+            <i className="fas fa-plus"></i> Tambah Kolom
+          </button>
+          <button 
+            onClick={handleAddManualTeacher}
+            style={{ padding: '10px 16px', borderRadius: '8px', background: '#f59e0b', color: 'white', border: 'none', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <i className="fas fa-user-plus"></i> Tambah Nama
           </button>
           <button 
             onClick={handleLogout}
