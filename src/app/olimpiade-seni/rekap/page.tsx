@@ -18,10 +18,6 @@ export default function RekapOlimpiadeSeni() {
   const [loading, setLoading] = useState(true);
   const [filterJenis, setFilterJenis] = useState<'semua' | 'individu' | 'kolektif'>('semua');
   const [isAdmin, setIsAdmin] = useState(false);
-  
-  const [hasilPublished, setHasilPublished] = useState(false);
-  const [publishedAt, setPublishedAt] = useState<string | null>(null);
-  const [publishing, setPublishing] = useState(false);
 
   useEffect(() => {
     const sessionStr = localStorage.getItem('keren_user_data');
@@ -34,62 +30,7 @@ export default function RekapOlimpiadeSeni() {
       }
     }
     fetchData();
-    fetchConfig();
   }, []);
-
-  const fetchConfig = async () => {
-    try {
-      const res = await fetch('/api/olimpiade-seni/config');
-      const json = await res.json();
-      if (json.success) {
-        setHasilPublished(json.hasil_published);
-        setPublishedAt(json.published_at);
-      }
-    } catch (err) {
-      console.error('Gagal fetch config:', err);
-    }
-  };
-
-  const handleTogglePublish = async () => {
-    const action = hasilPublished ? 'Batalkan Publikasi' : 'Publikasikan';
-    const confirmText = hasilPublished
-      ? 'Hasil Live Score akan disembunyikan kembali dari publik. Lanjutkan?'
-      : 'Setelah dipublikasikan, hasil Live Score akan bisa dilihat oleh publik. Lanjutkan?';
-
-    const result = await Swal.fire({
-      title: `${action} Hasil?`,
-      text: confirmText,
-      icon: hasilPublished ? 'warning' : 'question',
-      showCancelButton: true,
-      confirmButtonColor: hasilPublished ? '#ef4444' : '#10b981',
-      cancelButtonColor: '#64748b',
-      confirmButtonText: `Ya, ${action}`,
-      cancelButtonText: 'Batal',
-    });
-
-    if (!result.isConfirmed) return;
-
-    setPublishing(true);
-    try {
-      const res = await fetch('/api/olimpiade-seni/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ publish: !hasilPublished }),
-      });
-      const json = await res.json();
-      if (json.success) {
-        setHasilPublished(!hasilPublished);
-        await fetchConfig();
-        Swal.fire('Berhasil!', hasilPublished ? 'Hasil disembunyikan.' : 'Hasil berhasil dipublikasikan!', 'success');
-      } else {
-        Swal.fire('Gagal', json.error, 'error');
-      }
-    } catch (err) {
-      Swal.fire('Error', 'Gagal mengubah status publikasi', 'error');
-    } finally {
-      setPublishing(false);
-    }
-  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -240,33 +181,6 @@ export default function RekapOlimpiadeSeni() {
             </button>
           </div>
         </div>
-
-        {/* Status Banner Publikasi - Pindah Kesini agar hanya tampil di dasbor Admin */}
-        {isAdmin && (
-          <div style={{ background: hasilPublished ? '#dcfce7' : '#fef3c7', border: `1px solid ${hasilPublished ? '#86efac' : '#fde68a'}`, borderRadius: '12px', padding: '16px 24px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <i className={`fas ${hasilPublished ? 'fa-bullhorn' : 'fa-eye-slash'}`} style={{ color: hasilPublished ? '#16a34a' : '#b45309', fontSize: '1.4rem' }}></i>
-              <div>
-                <div style={{ fontWeight: 700, color: hasilPublished ? '#15803d' : '#92400e', fontSize: '1.1rem' }}>
-                  {hasilPublished ? 'Live Score & Pengumuman Aktif' : 'Status: Belum Dipublikasikan'}
-                </div>
-                <div style={{ fontSize: '0.85rem', color: hasilPublished ? '#16a34a' : '#b45309' }}>
-                  {hasilPublished && publishedAt
-                    ? `Hasil CBT sudah dapat dilihat publik mulai ${new Date(publishedAt).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}`
-                    : 'Peserta dan Publik belum dapat melihat klasemen nilai CBT (Live Score di-hide).'}
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={handleTogglePublish}
-              disabled={publishing}
-              style={{ padding: '10px 20px', borderRadius: '8px', background: hasilPublished ? '#ef4444' : '#10b981', color: 'white', border: 'none', fontWeight: 700, cursor: publishing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: publishing ? 0.7 : 1, transition: 'all 0.2s' }}
-            >
-              <i className={`fas ${publishing ? 'fa-spinner fa-spin' : hasilPublished ? 'fa-eye-slash' : 'fa-bullhorn'}`}></i>
-              {publishing ? 'Memproses...' : hasilPublished ? 'Sembunyikan Hasil' : 'Publikasikan Hasil (Live Score)'}
-            </button>
-          </div>
-        )}
 
         {/* Dashboard Banner Lomba */}
         {!loading && data.length > 0 && (
