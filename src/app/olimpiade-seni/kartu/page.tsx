@@ -177,7 +177,7 @@ function DetailRow({ label, value }: { label: string, value: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '2px' }}>
       <span style={{ fontSize: '8pt', color: '#64748b' }}>{label}</span>
-      <span style={{ fontSize: '13pt', fontWeight: 'bold', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+      <span style={{ fontSize: '13pt', fontWeight: 'bold', color: '#0f172a', maxWidth: '100%', wordWrap: 'break-word', lineHeight: '1.2' }}>
         {value}
       </span>
     </div>
