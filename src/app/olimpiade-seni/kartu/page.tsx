@@ -29,7 +29,7 @@ export default function CetakKartuPage() {
   if (pesertaList.length === 0) return null;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f1f5f9', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 20px' }}>
+    <div className="kartu-wrapper" style={{ minHeight: '100vh', background: '#f1f5f9', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 20px' }}>
       
       <div className="no-print" style={{ marginBottom: '24px', display: 'flex', gap: '16px' }}>
         <button 
@@ -142,7 +142,15 @@ export default function CetakKartuPage() {
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           body { background: white !important; margin: 0; padding: 0; }
-          .no-print { display: none !important; }
+          .no-print, .print-header, footer { display: none !important; }
+          
+          /* Remove the grey wrapper background and padding during print */
+          .kartu-wrapper {
+            background: white !important;
+            padding: 0 !important;
+            min-height: auto !important;
+          }
+
           .print-container { 
             display: block !important;
             gap: 0 !important;
