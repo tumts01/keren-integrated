@@ -105,29 +105,7 @@ export default function OlimpiadeSeniPage() {
             Rekap Data
           </button>
 
-          <button 
-            onClick={() => router.push('/olimpiade-seni/monitoring')}
-            style={{
-              padding: '16px 32px',
-              borderRadius: '12px',
-              background: '#f59e0b', // Warna emas/kuning
-              color: 'white',
-              border: 'none',
-              fontSize: '1rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              boxShadow: '0 4px 14px rgba(245, 158, 11, 0.4)',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px'
-            }}
-            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(245, 158, 11, 0.5)'; }}
-            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(245, 158, 11, 0.4)'; }}
-          >
-            <i className="fas fa-trophy" style={{ fontSize: '1.2rem' }}></i>
-            Live Score
-          </button>
+
         </div>
       </div>
     </div>
