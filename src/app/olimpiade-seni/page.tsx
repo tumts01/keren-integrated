@@ -129,29 +129,6 @@ export default function OlimpiadeSeniPage() {
             Login CBT
           </button>
 
-          <button 
-            onClick={() => router.push('/olimpiade-seni/juri')}
-            style={{
-              padding: '16px 32px',
-              borderRadius: '12px',
-              background: '#8b5cf6', // Ungu
-              color: 'white',
-              border: 'none',
-              fontSize: '1rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              boxShadow: '0 4px 14px rgba(139, 92, 246, 0.4)',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px'
-            }}
-            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(139, 92, 246, 0.5)'; }}
-            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(139, 92, 246, 0.4)'; }}
-          >
-            <i className="fas fa-gavel" style={{ fontSize: '1.2rem' }}></i>
-            Login Juri
-          </button>
 
           <button 
             onClick={() => router.push('/olimpiade-seni/monitoring')}
