@@ -148,6 +148,26 @@ export default function RekapOlimpiadeSeni() {
 
   const totalSemuaPeserta = Object.values(summaryCounts).reduce((a, b) => a + b, 0);
 
+  const handleCetakKartu = (row: OlimpiadeData) => {
+    if (row.jenis_pendaftaran === 'individu') {
+      localStorage.setItem('cetak_kartu_data', JSON.stringify(row.metadata));
+      window.open('/olimpiade-seni/kartu', '_blank');
+    } else if (row.jenis_pendaftaran === 'kolektif') {
+      const peserta = data.filter(d => 
+        d.jenis_pendaftaran === 'peserta_kolektif' &&
+        d.metadata?.ASAL_SEKOLAH === row.metadata?.ASAL_SEKOLAH &&
+        Math.abs(new Date(d.created_at).getTime() - new Date(row.created_at).getTime()) < 120000 
+      ).map(d => d.metadata);
+
+      if (peserta.length > 0) {
+        localStorage.setItem('cetak_kartu_data', JSON.stringify(peserta));
+        window.open('/olimpiade-seni/kartu', '_blank');
+      } else {
+        Swal.fire('Info', 'Data peserta kolektif tidak ditemukan atau tidak tersedia.', 'info');
+      }
+    }
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '40px 20px' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
@@ -222,6 +242,7 @@ export default function RekapOlimpiadeSeni() {
                     <th style={{ padding: '16px', borderBottom: '2px solid #e2e8f0' }}>Tanggal Daftar</th>
                     <th style={{ padding: '16px', borderBottom: '2px solid #e2e8f0' }}>Jenis</th>
                     <th style={{ padding: '16px', borderBottom: '2px solid #e2e8f0' }}>Identitas Pendaftar</th>
+                    {isAdmin && <th style={{ padding: '16px', borderBottom: '2px solid #e2e8f0', textAlign: 'center' }}>Cetak Kartu</th>}
                     <th style={{ padding: '16px', borderBottom: '2px solid #e2e8f0' }}>Detail Lomba</th>
                     {isAdmin && <th style={{ padding: '16px', borderBottom: '2px solid #e2e8f0' }}>Lampiran</th>}
                     <th style={{ padding: '16px', borderBottom: '2px solid #e2e8f0' }}>Validasi Pembayaran</th>
@@ -277,6 +298,28 @@ export default function RekapOlimpiadeSeni() {
                             </div>
                           )}
                         </td>
+                        {isAdmin && (
+                          <td style={{ padding: '16px', textAlign: 'center', verticalAlign: 'middle' }}>
+                            <button
+                              onClick={() => handleCetakKartu(row)}
+                              style={{
+                                padding: '8px 12px',
+                                background: '#0284c7',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '0.85rem',
+                                fontWeight: 600,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                              }}
+                            >
+                              <i className="fas fa-print"></i> Cetak Kartu
+                            </button>
+                          </td>
+                        )}
                         <td style={{ padding: '16px' }}>
                           {isIndividu ? (
                             (() => {
