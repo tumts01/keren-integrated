@@ -13,11 +13,63 @@ export default function MonitoringOlimpiadePage() {
   const [cabangOptions, setCabangOptions] = useState<string[]>([]);
   const [hasilPublished, setHasilPublished] = useState(false);
   const [publishedAt, setPublishedAt] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    const sessionStr = localStorage.getItem('keren_user_data');
+    if (sessionStr) {
+      try {
+        const session = JSON.parse(sessionStr);
+        setIsAdmin(session.role === 'admin' || session.role === 'Admin' || session.role === 'ADMIN');
+      } catch (e) {
+        setIsAdmin(false);
+      }
+    }
     fetchData();
     fetchConfig();
   }, []);
+
+  const handleTogglePublish = async () => {
+    const action = hasilPublished ? 'Batalkan Publikasi' : 'Publikasikan';
+    const confirmText = hasilPublished
+      ? 'Hasil akan disembunyikan kembali dari peserta. Lanjutkan?'
+      : 'Setelah dipublikasikan, semua peserta yang sudah login dapat melihat status LOLOS/TIDAK LOLOS mereka. Lanjutkan?';
+
+    const result = await Swal.fire({
+      title: `${action} Hasil?`,
+      text: confirmText,
+      icon: hasilPublished ? 'warning' : 'question',
+      showCancelButton: true,
+      confirmButtonColor: hasilPublished ? '#ef4444' : '#10b981',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: `Ya, ${action}`,
+      cancelButtonText: 'Batal',
+    });
+
+    if (!result.isConfirmed) return;
+
+    setPublishing(true);
+    try {
+      const res = await fetch('/api/olimpiade-seni/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publish: !hasilPublished }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setHasilPublished(!hasilPublished);
+        await fetchConfig();
+        Swal.fire('Berhasil!', hasilPublished ? 'Hasil disembunyikan.' : 'Hasil berhasil dipublikasikan ke peserta!', 'success');
+      } else {
+        Swal.fire('Gagal', json.error, 'error');
+      }
+    } catch (err) {
+      Swal.fire('Error', 'Gagal mengubah status publikasi', 'error');
+    } finally {
+      setPublishing(false);
+    }
+  };
 
   const fetchConfig = async () => {
     try {
@@ -103,7 +155,7 @@ export default function MonitoringOlimpiadePage() {
           <h2 style={{ margin: '0 0 8px 0', color: '#0f172a' }}>Monitoring Pemenang (Live Score)</h2>
           <p style={{ margin: 0, color: '#64748b' }}>Klasemen nilai peserta Olimpiade & Lomba Seni secara real-time</p>
         </div>
-        {hasilPublished && (
+        {(isAdmin || hasilPublished) && (
           <button 
             onClick={fetchData}
             style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '10px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500 }}
@@ -113,7 +165,7 @@ export default function MonitoringOlimpiadePage() {
         )}
       </div>
 
-      {!hasilPublished ? (
+      {!hasilPublished && !isAdmin ? (
         <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '12px', padding: '60px 20px', textAlign: 'center', marginTop: '40px' }}>
           <i className="fas fa-eye-slash" style={{ fontSize: '4rem', color: '#fcd34d', marginBottom: '20px' }}></i>
           <h3 style={{ margin: '0 0 12px 0', color: '#92400e', fontSize: '1.5rem' }}>Live Score Sedang Disembunyikan</h3>
@@ -123,6 +175,32 @@ export default function MonitoringOlimpiadePage() {
         </div>
       ) : (
         <>
+          {/* Status Banner Publikasi untuk Admin */}
+          {isAdmin && (
+            <div style={{ background: hasilPublished ? '#dcfce7' : '#fef3c7', border: `1px solid ${hasilPublished ? '#86efac' : '#fde68a'}`, borderRadius: '10px', padding: '14px 20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <i className={`fas ${hasilPublished ? 'fa-bullhorn' : 'fa-eye-slash'}`} style={{ color: hasilPublished ? '#16a34a' : '#b45309', fontSize: '1.2rem' }}></i>
+                <div>
+                  <div style={{ fontWeight: 700, color: hasilPublished ? '#15803d' : '#92400e' }}>
+                    {hasilPublished ? 'Hasil Sudah Dipublikasikan' : 'Hasil Belum Dipublikasikan'}
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: hasilPublished ? '#16a34a' : '#b45309' }}>
+                    {hasilPublished && publishedAt
+                      ? `Dipublikasikan pada ${new Date(publishedAt).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}`
+                      : 'Peserta melihat "Menunggu Pengumuman". Klik tombol untuk mempublikasikan.'}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleTogglePublish}
+                disabled={publishing}
+                style={{ padding: '10px 20px', borderRadius: '8px', background: hasilPublished ? '#ef4444' : '#10b981', color: 'white', border: 'none', fontWeight: 700, cursor: publishing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: publishing ? 0.7 : 1 }}
+              >
+                <i className={`fas ${publishing ? 'fa-spinner fa-spin' : hasilPublished ? 'fa-eye-slash' : 'fa-bullhorn'}`}></i>
+                {publishing ? 'Memproses...' : hasilPublished ? 'Batalkan Publikasi' : 'Publikasikan Hasil'}
+              </button>
+            </div>
+          )}
 
           <div style={{ background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
         <div style={{ marginBottom: '20px' }}>
