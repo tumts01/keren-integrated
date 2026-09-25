@@ -577,20 +577,20 @@ export default function BendaharaPerangkatUjian() {
             <tbody>
               {teachers.map((t, i) => (
                 <tr key={t}>
-                  <td style={{ padding: '6px 4px', textAlign: 'center' }}>{i + 1}</td>
-                  <td style={{ padding: '6px 4px', fontWeight: 500 }}>{t}</td>
+                  <td style={{ padding: '10px 4px', textAlign: 'center' }}>{i + 1}</td>
+                  <td style={{ padding: '10px 4px', fontWeight: 500 }}>{t}</td>
                   {columns.map(col => (
-                    <td key={col.id} style={{ padding: '6px 4px', textAlign: 'center' }}>
+                    <td key={col.id} style={{ padding: '10px 4px', textAlign: 'center' }}>
                       {col.inputType === 'direct' 
                         ? formatRupiah(dataMap[t]?.[col.id] || 0)
                         : (dataMap[t]?.[col.id] || '')}
                     </td>
                   ))}
-                  <td style={{ padding: '6px 4px', textAlign: 'right', fontWeight: 'bold' }}>
+                  <td style={{ padding: '10px 4px', textAlign: 'right', fontWeight: 'bold' }}>
                     {formatRupiah(calculateTotalRow(t))}
                   </td>
-                  <td style={{ padding: '6px 4px', position: 'relative', height: '24px' }}>
-                    <div style={{ position: 'absolute', top: '4px', left: i % 2 === 0 ? '4px' : '40px', fontSize: '10px' }}>
+                  <td style={{ padding: '10px 4px', position: 'relative', height: '45px' }}>
+                    <div style={{ position: 'absolute', top: '6px', left: i % 2 === 0 ? '6px' : '40px', fontSize: '11px' }}>
                       {i + 1}.
                     </div>
                   </td>
