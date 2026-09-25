@@ -105,7 +105,29 @@ export default function OlimpiadeSeniPage() {
             Rekap Data
           </button>
 
-
+          <button 
+            onClick={() => router.push('/cbt')}
+            style={{
+              padding: '16px 32px',
+              borderRadius: '12px',
+              background: '#10b981', // Hijau emerald
+              color: 'white',
+              border: 'none',
+              fontSize: '1rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(16, 185, 129, 0.4)',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.5)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(16, 185, 129, 0.4)'; }}
+          >
+            <i className="fas fa-laptop-code" style={{ fontSize: '1.2rem' }}></i>
+            Login CBT
+          </button>
         </div>
       </div>
     </div>
