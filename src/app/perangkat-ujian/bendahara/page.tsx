@@ -321,14 +321,14 @@ export default function BendaharaPerangkatUjian() {
       </div>
 
       <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', border: '1px solid #f1f5f9', overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
-            <thead style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+        <div style={{ overflow: 'auto', maxHeight: 'calc(100vh - 250px)' }}>
+          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, minWidth: '800px' }}>
+            <thead style={{ background: '#f8fafc' }}>
               <tr>
-                <th style={{ padding: '16px', textAlign: 'center', color: '#475569', width: '60px', position: 'sticky', left: 0, background: '#f8fafc', zIndex: 10 }}>No</th>
-                <th style={{ padding: '16px', textAlign: 'left', color: '#475569', minWidth: '200px', position: 'sticky', left: '60px', background: '#f8fafc', zIndex: 10, borderRight: '2px solid #e2e8f0' }}>Nama Guru</th>
+                <th style={{ padding: '16px', textAlign: 'center', color: '#475569', width: '60px', position: 'sticky', top: 0, left: 0, backgroundColor: '#f8fafc', zIndex: 30, borderBottom: '2px solid #e2e8f0' }}>No</th>
+                <th style={{ padding: '16px', textAlign: 'left', color: '#475569', minWidth: '200px', position: 'sticky', top: 0, left: '60px', backgroundColor: '#f8fafc', zIndex: 30, borderRight: '2px solid #e2e8f0', borderBottom: '2px solid #e2e8f0' }}>Nama Guru</th>
                 {columns.map(col => (
-                  <th key={col.id} style={{ padding: '16px', textAlign: 'center', color: '#475569', minWidth: '120px' }}>
+                  <th key={col.id} style={{ padding: '16px', textAlign: 'center', color: '#475569', minWidth: '120px', position: 'sticky', top: 0, backgroundColor: '#f8fafc', zIndex: 20, borderBottom: '2px solid #e2e8f0' }}>
                     <div style={{ fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
                       {col.name}
                       <button onClick={() => handleDeleteColumn(col.id)} style={{ border: 'none', background: 'transparent', color: '#fca5a5', cursor: 'pointer', padding: 0 }} title="Hapus Kolom">
@@ -340,8 +340,8 @@ export default function BendaharaPerangkatUjian() {
                     </div>
                   </th>
                 ))}
-                <th style={{ padding: '16px', textAlign: 'right', color: '#0f172a', minWidth: '150px' }}>Total Honor</th>
-                <th style={{ padding: '16px', textAlign: 'center', color: '#475569', minWidth: '80px' }}>Aksi</th>
+                <th style={{ padding: '16px', textAlign: 'right', color: '#0f172a', minWidth: '150px', position: 'sticky', top: 0, backgroundColor: '#f8fafc', zIndex: 20, borderBottom: '2px solid #e2e8f0' }}>Total Honor</th>
+                <th style={{ padding: '16px', textAlign: 'center', color: '#475569', minWidth: '80px', position: 'sticky', top: 0, backgroundColor: '#f8fafc', zIndex: 20, borderBottom: '2px solid #e2e8f0' }}>Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -359,11 +359,11 @@ export default function BendaharaPerangkatUjian() {
                 </tr>
               ) : (
                 teachers.map((t, i) => (
-                  <tr key={t} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '12px 16px', textAlign: 'center', color: '#64748b', position: 'sticky', left: 0, background: 'white', zIndex: 5 }}>{i + 1}</td>
-                    <td style={{ padding: '12px 16px', fontWeight: 500, color: '#334155', position: 'sticky', left: '60px', background: 'white', zIndex: 5, borderRight: '2px solid #e2e8f0' }}>{t}</td>
+                  <tr key={t}>
+                    <td style={{ padding: '12px 16px', textAlign: 'center', color: '#64748b', position: 'sticky', left: 0, backgroundColor: 'white', zIndex: 5, borderBottom: '1px solid #f1f5f9' }}>{i + 1}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 500, color: '#334155', position: 'sticky', left: '60px', backgroundColor: 'white', zIndex: 5, borderRight: '2px solid #e2e8f0', borderBottom: '1px solid #f1f5f9' }}>{t}</td>
                     {columns.map(col => (
-                      <td key={col.id} style={{ padding: '12px 16px', textAlign: 'center' }}>
+                      <td key={col.id} style={{ padding: '12px 16px', textAlign: 'center', borderBottom: '1px solid #f1f5f9' }}>
                         <input
                           type="number"
                           min="0"
@@ -374,16 +374,16 @@ export default function BendaharaPerangkatUjian() {
                             border: col.type === 'minus' ? '1px solid #fca5a5' : '1px solid #cbd5e1', 
                             color: col.type === 'minus' ? '#ef4444' : 'inherit',
                             outline: 'none',
-                            background: col.type === 'minus' ? '#fef2f2' : 'white'
+                            backgroundColor: col.type === 'minus' ? '#fef2f2' : 'white'
                           }}
                           placeholder="0"
                         />
                       </td>
                     ))}
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 'bold', color: '#0f172a', background: '#f8fafc' }}>
+                    <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 'bold', color: '#0f172a', backgroundColor: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
                       {formatRupiah(calculateTotalRow(t))}
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                    <td style={{ padding: '12px 16px', textAlign: 'center', borderBottom: '1px solid #f1f5f9' }}>
                       <button onClick={() => setPrintMode([t])} style={{ padding: '6px 12px', borderRadius: '6px', background: '#e2e8f0', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#334155', fontWeight: 'bold' }} title="Cetak Slip">
                         <i className="fas fa-print"></i>
                       </button>
