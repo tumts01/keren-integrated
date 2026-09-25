@@ -175,9 +175,9 @@ export default function CetakKartuPage() {
 
 function DetailRow({ label, value }: { label: string, value: string }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <span style={{ fontSize: '6pt', color: '#64748b' }}>{label}</span>
-      <span style={{ fontSize: '9pt', fontWeight: 'bold', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '2px' }}>
+      <span style={{ fontSize: '7pt', color: '#64748b' }}>{label}</span>
+      <span style={{ fontSize: '11pt', fontWeight: 'bold', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
         {value}
       </span>
     </div>
