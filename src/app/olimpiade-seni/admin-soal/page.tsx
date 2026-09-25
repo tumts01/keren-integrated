@@ -36,9 +36,9 @@ export default function AdminSoalCBT() {
 
   const handleDownloadTemplate = () => {
     const ws_data = [
-      ['LOMBA', 'NOMOR_SOAL', 'PERTANYAAN', 'OPSI_A', 'OPSI_B', 'OPSI_C', 'OPSI_D', 'OPSI_E', 'KUNCI', 'BOBOT'],
-      ['Matematika', 1, 'Berapakah 1+1?', '1', '2', '3', '4', '', 'B', 1],
-      ['Matematika', 2, 'Siapakah penemu angka 0?', 'Al-Khawarizmi', 'Newton', 'Einstein', 'Galileo', '', 'A', 1]
+      ['LOMBA', 'NOMOR_SOAL', 'PERTANYAAN', 'OPSI_A', 'OPSI_B', 'OPSI_C', 'OPSI_D', 'OPSI_E', 'KUNCI'],
+      ['Matematika', 1, 'Berapakah 1+1?', '1', '2', '3', '4', '', 'B'],
+      ['Matematika', 2, 'Siapakah penemu angka 0?', 'Al-Khawarizmi', 'Newton', 'Einstein', 'Galileo', '', 'A']
     ];
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     const wb = XLSX.utils.book_new();
