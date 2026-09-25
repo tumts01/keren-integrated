@@ -140,6 +140,10 @@ export default function CetakKartuPage() {
       </div>
 
       <style dangerouslySetInnerHTML={{__html: `
+        @page {
+          size: A4 portrait;
+          margin: 10mm;
+        }
         @media print {
           body { background: white !important; margin: 0; padding: 0; }
           .no-print, .print-header, footer { display: none !important; }
@@ -152,14 +156,16 @@ export default function CetakKartuPage() {
           }
 
           .print-container { 
-            display: block !important;
-            gap: 0 !important;
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 15px !important;
+            justify-content: flex-start !important;
           }
           .kartu-peserta {
             page-break-inside: avoid;
-            margin: 0.5cm;
-            float: left;
+            margin: 0 !important;
             box-shadow: none !important;
+            border-color: #000 !important;
           }
         }
       `}} />
