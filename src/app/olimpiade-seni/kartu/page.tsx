@@ -72,7 +72,24 @@ export default function CetakKartuPage() {
               </div>
 
               {/* Body */}
-              <div style={{ padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+              <div style={{ padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', position: 'relative', zIndex: 1, overflow: 'hidden' }}>
+                
+                {/* Watermark Logo */}
+                <img 
+                  src="/logo_olimpiade_seni.png" 
+                  alt="Watermark" 
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: '6cm',
+                    height: '6cm',
+                    opacity: 0.08,
+                    zIndex: -1,
+                    objectFit: 'contain'
+                  }} 
+                />
                 <div style={{ textAlign: 'center', marginBottom: '8px' }}>
                   <div style={{ fontSize: '7pt', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase' }}>Nomor Peserta</div>
                   <div style={{ fontSize: '14pt', fontWeight: 900, color: '#0f172a' }}>{data.NOMOR_PESERTA || '-'}</div>
