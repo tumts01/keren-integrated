@@ -613,12 +613,12 @@ export default function BendaharaPerangkatUjian() {
 
           <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'space-between', padding: '0 50px', pageBreakInside: 'avoid' }}>
             <div style={{ textAlign: 'center' }}>
-              <p style={{ margin: '0 0 70px 0' }}>Ketua Panitia,</p>
-              <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>................................................</p>
+              <p style={{ margin: '0 0 110px 0' }}>Ketua Panitia,</p>
+              <p style={{ margin: 0, fontWeight: 'bold' }}>________________________</p>
             </div>
             <div style={{ textAlign: 'center' }}>
-              <p style={{ margin: '0 0 70px 0' }}>Kepala Madrasah,</p>
-              <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>................................................</p>
+              <p style={{ margin: '0 0 110px 0' }}>Kepala Madrasah,</p>
+              <p style={{ margin: 0, fontWeight: 'bold' }}>________________________</p>
             </div>
           </div>
         </div>
