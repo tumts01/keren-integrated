@@ -101,6 +101,8 @@ export default function BendaharaPerangkatUjian() {
     return () => clearTimeout(timer);
   }, [columns, dataMap, namaUjian, tahunUjian, manualTeachers, isDataLoaded]);
 
+  const [isPrintTandaTerima, setIsPrintTandaTerima] = useState(false);
+
   useEffect(() => {
     if (printMode.length > 0) {
       setTimeout(() => {
@@ -109,6 +111,15 @@ export default function BendaharaPerangkatUjian() {
       }, 500);
     }
   }, [printMode]);
+
+  useEffect(() => {
+    if (isPrintTandaTerima) {
+      setTimeout(() => {
+        window.print();
+        setIsPrintTandaTerima(false);
+      }, 500);
+    }
+  }, [isPrintTandaTerima]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -320,6 +331,12 @@ export default function BendaharaPerangkatUjian() {
             <i className="fas fa-print"></i> Cetak Semua Slip
           </button>
           <button 
+            onClick={() => { if (teachers.length > 0) setIsPrintTandaTerima(true); }}
+            style={{ padding: '10px 16px', borderRadius: '8px', background: '#6366f1', color: 'white', border: 'none', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <i className="fas fa-file-signature"></i> Cetak Tanda Terima
+          </button>
+          <button 
             onClick={handleAddColumn}
             style={{ padding: '10px 16px', borderRadius: '8px', background: '#10b981', color: 'white', border: 'none', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
           >
@@ -519,6 +536,91 @@ export default function BendaharaPerangkatUjian() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {isPrintTandaTerima && (
+        <div id="print-area-tanda-terima" style={{ background: 'white', color: 'black', fontFamily: 'Arial, sans-serif' }}>
+          <style>{`
+            @media print {
+              body * { visibility: hidden; }
+              #print-area-tanda-terima, #print-area-tanda-terima * { visibility: visible; }
+              #print-area-tanda-terima { position: absolute; left: 0; top: 0; width: 100%; display: block; }
+              #print-area-tanda-terima table, #print-area-tanda-terima th, #print-area-tanda-terima td { border: 1px solid black; }
+              @page { size: 330mm 215mm; margin: 1cm; }
+            }
+          `}</style>
+          
+          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+            <h2 style={{ margin: 0, textTransform: 'uppercase', fontSize: '18px' }}>TANDA TERIMA INSENTIF</h2>
+            <h3 style={{ margin: '4px 0', fontSize: '16px' }}>{namaUjian.toUpperCase()}</h3>
+            <p style={{ margin: 0, fontSize: '14px' }}>{tahunUjian.toUpperCase()}</p>
+          </div>
+
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+            <thead style={{ background: '#f1f5f9' }}>
+              <tr>
+                <th style={{ padding: '8px 4px', textAlign: 'center', width: '30px' }}>No</th>
+                <th style={{ padding: '8px 4px', textAlign: 'left', minWidth: '150px' }}>Nama Guru</th>
+                {columns.map(col => (
+                  <th key={col.id} style={{ padding: '8px 4px', textAlign: 'center' }}>
+                    {col.name}<br/>
+                    <span style={{ fontSize: '9px', fontWeight: 'normal' }}>
+                      {col.inputType === 'direct' ? '(Nominal Bebas)' : `(${col.type === 'minus' ? '-' : '+'}${formatRupiah(col.nominal)})`}
+                    </span>
+                  </th>
+                ))}
+                <th style={{ padding: '8px 4px', textAlign: 'right' }}>Total Honor</th>
+                <th style={{ padding: '8px 4px', textAlign: 'center', width: '100px' }}>Tanda Tangan</th>
+              </tr>
+            </thead>
+            <tbody>
+              {teachers.map((t, i) => (
+                <tr key={t}>
+                  <td style={{ padding: '6px 4px', textAlign: 'center' }}>{i + 1}</td>
+                  <td style={{ padding: '6px 4px', fontWeight: 500 }}>{t}</td>
+                  {columns.map(col => (
+                    <td key={col.id} style={{ padding: '6px 4px', textAlign: 'center' }}>
+                      {col.inputType === 'direct' 
+                        ? formatRupiah(dataMap[t]?.[col.id] || 0)
+                        : (dataMap[t]?.[col.id] || '')}
+                    </td>
+                  ))}
+                  <td style={{ padding: '6px 4px', textAlign: 'right', fontWeight: 'bold' }}>
+                    {formatRupiah(calculateTotalRow(t))}
+                  </td>
+                  <td style={{ padding: '6px 4px', position: 'relative', height: '24px' }}>
+                    <div style={{ position: 'absolute', top: '4px', left: i % 2 === 0 ? '4px' : '40px', fontSize: '10px' }}>
+                      {i + 1}.
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              <tr style={{ background: '#f1f5f9', fontWeight: 'bold' }}>
+                <td colSpan={2} style={{ padding: '8px 4px', textAlign: 'right' }}>TOTAL KESELURUHAN</td>
+                {columns.map(col => (
+                  <td key={col.id} style={{ padding: '8px 4px', textAlign: 'center' }}>
+                    {col.inputType === 'direct' ? formatRupiah(calculateTotalColumn(col.id)) : calculateTotalColumn(col.id)}
+                  </td>
+                ))}
+                <td style={{ padding: '8px 4px', textAlign: 'right' }}>
+                  {formatRupiah(teachers.reduce((acc, t) => acc + calculateTotalRow(t), 0))}
+                </td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style={{ marginTop: '40px', display: 'flex', justifyContent: 'space-between', padding: '0 50px', pageBreakInside: 'avoid' }}>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ margin: '0 0 70px 0' }}>Ketua Panitia,</p>
+              <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>................................................</p>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ margin: '0 0 70px 0' }}>Kepala Madrasah,</p>
+              <p style={{ margin: 0, fontWeight: 'bold', textDecoration: 'underline' }}>................................................</p>
+            </div>
+          </div>
         </div>
       )}
 
