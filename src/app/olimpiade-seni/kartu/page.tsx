@@ -100,8 +100,8 @@ export default function CetakKartuPage() {
                 </div>
 
                 <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', marginBottom: '8px' }}>
-                  <div style={{ fontSize: '7pt', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase' }}>Nomor Peserta</div>
-                  <div style={{ fontSize: '14pt', fontWeight: 900, color: '#0f172a' }}>{data.NOMOR_PESERTA || '-'}</div>
+                  <div style={{ fontSize: '8pt', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase' }}>Nomor Peserta</div>
+                  <div style={{ fontSize: '16pt', fontWeight: 900, color: '#0f172a' }}>{data.NOMOR_PESERTA || '-'}</div>
                 </div>
 
                 <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
@@ -113,17 +113,17 @@ export default function CetakKartuPage() {
 
                 {isAkademik && (
                   <div style={{ position: 'relative', zIndex: 1, marginTop: 'auto', border: '1px solid #94a3b8', borderRadius: '4px', padding: '6px', background: 'rgba(255, 255, 255, 0.8)' }}>
-                    <div style={{ textAlign: 'center', fontSize: '7pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '4px' }}>
+                    <div style={{ textAlign: 'center', fontSize: '8pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '4px' }}>
                       AKUN LOGIN CBT
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dotted #94a3b8', paddingTop: '4px' }}>
                       <div style={{ textAlign: 'center', flex: 1, borderRight: '1px dotted #94a3b8' }}>
-                        <div style={{ fontSize: '6pt', color: '#64748b' }}>Username</div>
-                        <div style={{ fontSize: '9pt', fontWeight: 'bold', color: '#0f172a' }}>{data.USERNAME_CBT}</div>
+                        <div style={{ fontSize: '7pt', color: '#64748b' }}>Username</div>
+                        <div style={{ fontSize: '11pt', fontWeight: 'bold', color: '#0f172a' }}>{data.USERNAME_CBT}</div>
                       </div>
                       <div style={{ textAlign: 'center', flex: 1 }}>
-                        <div style={{ fontSize: '6pt', color: '#64748b' }}>Password</div>
-                        <div style={{ fontSize: '9pt', fontWeight: 'bold', color: '#0f172a' }}>{data.PASSWORD_CBT}</div>
+                        <div style={{ fontSize: '7pt', color: '#64748b' }}>Password</div>
+                        <div style={{ fontSize: '11pt', fontWeight: 'bold', color: '#0f172a' }}>{data.PASSWORD_CBT}</div>
                       </div>
                     </div>
                   </div>
@@ -176,8 +176,8 @@ export default function CetakKartuPage() {
 function DetailRow({ label, value }: { label: string, value: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '2px' }}>
-      <span style={{ fontSize: '7pt', color: '#64748b' }}>{label}</span>
-      <span style={{ fontSize: '11pt', fontWeight: 'bold', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+      <span style={{ fontSize: '8pt', color: '#64748b' }}>{label}</span>
+      <span style={{ fontSize: '13pt', fontWeight: 'bold', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
         {value}
       </span>
     </div>
