@@ -452,7 +452,7 @@ export default function BendaharaPerangkatUjian() {
               body * { visibility: hidden; }
               #print-area, #print-area * { visibility: visible; }
               #print-area { position: absolute; left: 0; top: 0; width: 100%; display: flex; flex-wrap: wrap; gap: 0.5cm; }
-              @page { margin: 0.5cm; }
+              @page { size: 215mm 330mm; margin: 0.5cm; }
             }
           `}</style>
           {printMode.map(t => {
