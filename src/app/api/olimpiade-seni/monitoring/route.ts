@@ -40,7 +40,19 @@ export async function GET(req: Request) {
       // But for CBT, they don't have status pembayaran. So we include them.
       
       if (row.jenis_pendaftaran?.toLowerCase() === 'individu') {
-        const cabang = meta.LOMBA_DIPILIH || '';
+        let cabang = meta.LOMBA_DIPILIH || '';
+        
+        // Normalisasi nama cabang lomba agar tidak ada duplikasi kategori
+        const l = cabang.toLowerCase();
+        if (l.includes('matematika')) cabang = 'Matematika';
+        else if (l.includes('ipas') || l.includes('ipa')) cabang = 'IPAS';
+        else if (l.includes('pai') || l.includes('agama')) cabang = 'PAI';
+        else if (l.includes('inggris') || l.includes('english')) cabang = 'Bahasa Inggris';
+        else if (l.includes('arab')) cabang = 'Bahasa Arab';
+        else if (l.includes('singer') || l.includes('solo')) cabang = 'Singer Solo';
+        else if (l.includes('banjari')) cabang = 'Al Banjari';
+        else if (l.includes('sandi') || l.includes('morse') || l.includes('sms')) cabang = 'SMS';
+
         if (!cabangLomba || cabang === cabangLomba || meta.KATEGORI?.includes(cabangLomba)) {
           pesertaList.push({
             id: row.id,
