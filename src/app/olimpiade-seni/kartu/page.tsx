@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 export default function CetakKartuPage() {
   const router = useRouter();
-  const [data, setData] = useState<any>(null);
+  const [pesertaList, setPesertaList] = useState<any[]>([]);
 
   useEffect(() => {
     const rawData = localStorage.getItem('cetak_kartu_data');
@@ -13,12 +13,20 @@ export default function CetakKartuPage() {
       router.push('/olimpiade-seni');
       return;
     }
-    setData(JSON.parse(rawData));
+    try {
+      const parsed = JSON.parse(rawData);
+      // Support array (Kolektif) or single object (Individu)
+      if (Array.isArray(parsed)) {
+        setPesertaList(parsed);
+      } else {
+        setPesertaList([parsed]);
+      }
+    } catch (e) {
+      router.push('/olimpiade-seni');
+    }
   }, [router]);
 
-  if (!data) return null;
-
-  const isAkademik = data.USERNAME_CBT && data.PASSWORD_CBT;
+  if (pesertaList.length === 0) return null;
 
   return (
     <div style={{ minHeight: '100vh', background: '#f1f5f9', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 20px' }}>
@@ -34,72 +42,91 @@ export default function CetakKartuPage() {
           onClick={() => window.print()}
           style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#0284c7', color: 'white', cursor: 'pointer', fontWeight: 600 }}
         >
-          <i className="fas fa-print"></i> Cetak Kartu (PDF)
+          <i className="fas fa-print"></i> Cetak {pesertaList.length > 1 ? `Semua Kartu (${pesertaList.length})` : 'Kartu'} (PDF)
         </button>
       </div>
 
-      <div id="printable-card" style={{ 
-        width: '100%', 
-        maxWidth: '500px', 
-        background: 'white', 
-        borderRadius: '16px', 
-        overflow: 'hidden',
-        boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
-        border: '1px solid #e2e8f0'
-      }}>
-        {/* Header */}
-        <div style={{ background: '#0f172a', padding: '24px', textAlign: 'center', color: 'white' }}>
-          <h2 style={{ margin: '0 0 8px 0', fontSize: '1.5rem' }}>KARTU PESERTA</h2>
-          <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.9rem' }}>Olimpiade & Lomba Seni MTs Almaarif 01 Singosari</p>
-        </div>
-
-        {/* Body */}
-        <div style={{ padding: '32px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <div style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Nomor Peserta</div>
-            <div style={{ fontSize: '2rem', fontWeight: 800, color: '#0284c7', letterSpacing: '2px' }}>{data.NOMOR_PESERTA || '-'}</div>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <DetailRow label="Nama Lengkap" value={data.NAMA} />
-            <DetailRow label="Asal Sekolah" value={data.ASAL_SEKOLAH} />
-            <DetailRow label="Cabang Lomba" value={data.LOMBA_DIPILIH} />
-          </div>
-
-          {isAkademik && (
-            <div style={{ marginTop: '32px', background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
-              <div style={{ textAlign: 'center', marginBottom: '16px', fontWeight: 700, color: '#0f172a' }}>
-                <i className="fas fa-desktop" style={{ color: '#3b82f6', marginRight: '8px' }}></i>
-                AKUN LOGIN CBT
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div style={{ background: 'white', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '4px' }}>Username</div>
-                  <div style={{ fontWeight: 700, color: '#0f172a', fontFamily: 'monospace', fontSize: '1.1rem' }}>{data.USERNAME_CBT}</div>
-                </div>
-                <div style={{ background: 'white', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '4px' }}>Password</div>
-                  <div style={{ fontWeight: 700, color: '#0f172a', fontFamily: 'monospace', fontSize: '1.1rem' }}>{data.PASSWORD_CBT}</div>
+      <div className="print-container" style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'center' }}>
+        {pesertaList.map((data, index) => {
+          const isAkademik = data.USERNAME_CBT && data.PASSWORD_CBT;
+          const lombaRaw = data.LOMBA_DIPILIH || data['LOMBA YANG DIPILIH'] || '-';
+          
+          return (
+            <div key={index} className="kartu-peserta" style={{ 
+              width: '8cm', 
+              height: '10.5cm', 
+              background: 'white', 
+              boxSizing: 'border-box',
+              border: '2px solid #0f172a',
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              fontFamily: 'Arial, sans-serif'
+            }}>
+              {/* Header */}
+              <div style={{ background: '#0f172a', padding: '8px', textAlign: 'center', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '12pt', fontWeight: 'bold', margin: '0' }}>KARTU PESERTA</div>
+                  <div style={{ fontSize: '7pt', color: '#e2e8f0', marginTop: '2px' }}>Olimpiade & Lomba Seni MTs Almaarif 01</div>
                 </div>
               </div>
-              <p style={{ margin: '16px 0 0 0', fontSize: '0.8rem', color: '#64748b', textAlign: 'center' }}>
-                *Gunakan akun ini untuk login pada saat ujian CBT. Jaga kerahasiaan password Anda.
-              </p>
+
+              {/* Body */}
+              <div style={{ padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+                <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+                  <div style={{ fontSize: '7pt', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase' }}>Nomor Peserta</div>
+                  <div style={{ fontSize: '14pt', fontWeight: 900, color: '#0f172a' }}>{data.NOMOR_PESERTA || '-'}</div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
+                  <DetailRow label="Nama" value={data.NAMA || data.Nama || '-'} />
+                  <DetailRow label="Asal Sekolah" value={data.ASAL_SEKOLAH || data['Asal Sekolah'] || '-'} />
+                  <DetailRow label="Cabang Lomba" value={lombaRaw} />
+                  {data.NAMA_REGU && <DetailRow label="Grup/Regu" value={data.NAMA_REGU} />}
+                </div>
+
+                {isAkademik && (
+                  <div style={{ marginTop: 'auto', border: '1px solid #94a3b8', borderRadius: '4px', padding: '6px' }}>
+                    <div style={{ textAlign: 'center', fontSize: '7pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '4px' }}>
+                      AKUN LOGIN CBT
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dotted #94a3b8', paddingTop: '4px' }}>
+                      <div style={{ textAlign: 'center', flex: 1, borderRight: '1px dotted #94a3b8' }}>
+                        <div style={{ fontSize: '6pt', color: '#64748b' }}>Username</div>
+                        <div style={{ fontSize: '9pt', fontWeight: 'bold', color: '#0f172a' }}>{data.USERNAME_CBT}</div>
+                      </div>
+                      <div style={{ textAlign: 'center', flex: 1 }}>
+                        <div style={{ fontSize: '6pt', color: '#64748b' }}>Password</div>
+                        <div style={{ fontSize: '9pt', fontWeight: 'bold', color: '#0f172a' }}>{data.PASSWORD_CBT}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Footer */}
+              <div style={{ background: '#f8fafc', padding: '4px', textAlign: 'center', borderTop: '1px solid #e2e8f0', fontSize: '6pt', color: '#64748b' }}>
+                Panitia Olimpiade & Lomba Seni
+              </div>
             </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div style={{ background: '#f8fafc', padding: '16px', textAlign: 'center', borderTop: '1px solid #e2e8f0' }}>
-          <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8' }}>Dicetak pada: {new Date().toLocaleString('id-ID')}</p>
-        </div>
+          );
+        })}
       </div>
 
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
-          body { background: white !important; }
+          body { background: white !important; margin: 0; padding: 0; }
           .no-print { display: none !important; }
-          #printable-card { box-shadow: none !important; border: 2px solid #000 !important; }
+          .print-container { 
+            display: block !important;
+            gap: 0 !important;
+          }
+          .kartu-peserta {
+            page-break-inside: avoid;
+            margin: 0.5cm;
+            float: left;
+            box-shadow: none !important;
+          }
         }
       `}} />
     </div>
@@ -109,8 +136,8 @@ export default function CetakKartuPage() {
 function DetailRow({ label, value }: { label: string, value: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <span style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '4px' }}>{label}</span>
-      <span style={{ fontSize: '1.1rem', fontWeight: 600, color: '#0f172a', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
+      <span style={{ fontSize: '6pt', color: '#64748b' }}>{label}</span>
+      <span style={{ fontSize: '9pt', fontWeight: 'bold', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
         {value}
       </span>
     </div>

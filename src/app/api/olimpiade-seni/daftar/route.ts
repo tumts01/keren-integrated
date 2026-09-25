@@ -202,7 +202,16 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
       }
 
-      return NextResponse.json({ success: true, message: 'Pendaftaran kolektif berhasil disimpan!', excelDownloadUrl: newExcelUrl });
+      const pesertaKolektif = rowsToInsert
+        .filter(r => r.jenis_pendaftaran === 'peserta_kolektif')
+        .map(r => r.metadata);
+
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Pendaftaran kolektif berhasil disimpan!', 
+        excelDownloadUrl: newExcelUrl,
+        pesertaKolektif
+      });
       
     } else if (jenisPendaftaran === 'individu') {
       const lombaDipilih = formData.get('lombaDipilih') as string || '';

@@ -226,17 +226,21 @@ export default function PendaftaranOlimpiadeSeni() {
 
       const data = await res.json();
       if (data.success) {
+        if (data.pesertaKolektif) {
+          localStorage.setItem('cetak_kartu_data', JSON.stringify(data.pesertaKolektif));
+        }
+        
         if (data.excelDownloadUrl) {
           Swal.fire({
             title: 'Berhasil!',
-            html: `Pendaftaran Kolektif Berhasil!<br/><br/><a href="${data.excelDownloadUrl}" target="_blank" style="display:inline-block;padding:10px 20px;background:#10b981;color:white;text-decoration:none;border-radius:8px;font-weight:bold;">Unduh Excel Rekap & Akun CBT</a><br/><br/><small>Simpan file Excel tersebut karena berisi Nomor Peserta & Username CBT siswa.</small>`,
+            html: `Pendaftaran Kolektif Berhasil!<br/><br/><a href="${data.excelDownloadUrl}" target="_blank" style="display:inline-block;padding:10px 20px;background:#10b981;color:white;text-decoration:none;border-radius:8px;font-weight:bold;margin-bottom:10px;">Unduh Excel Akun CBT</a><br/><small>Silakan klik OK untuk lanjut mencetak Kartu Peserta.</small>`,
             icon: 'success'
           }).then(() => {
-            router.push('/olimpiade-seni');
+            router.push('/olimpiade-seni/kartu');
           });
         } else {
           Swal.fire('Berhasil!', 'Pendaftaran Kolektif Berhasil!', 'success').then(() => {
-            router.push('/olimpiade-seni');
+            router.push('/olimpiade-seni/kartu');
           });
         }
       } else {
