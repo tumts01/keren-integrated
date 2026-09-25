@@ -12,9 +12,6 @@ export default function DashboardCBT() {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Batas nilai lolos
-  const PASSING_GRADE = 70;
-
   useEffect(() => {
     const data = localStorage.getItem('cbt_user');
     if (!data) {
@@ -93,7 +90,6 @@ export default function DashboardCBT() {
   if (!user || loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Memuat Dashboard...</div>;
 
   const isSelesai = sesi && sesi.status === 'selesai';
-  const isLolos = isSelesai && (sesi.nilai_akhir >= PASSING_GRADE);
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '40px 20px' }}>
@@ -129,38 +125,29 @@ export default function DashboardCBT() {
 
             {isSelesai ? (
               <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-                <div style={{ fontSize: '4rem', color: isLolos ? '#10b981' : '#f59e0b', marginBottom: '16px' }}>
-                  {isLolos ? <i className="fas fa-check-circle"></i> : <i className="fas fa-info-circle"></i>}
+                <div style={{ fontSize: '4rem', color: '#0284c7', marginBottom: '16px' }}>
+                  <i className="fas fa-flag-checkered"></i>
                 </div>
                 <h3 style={{ fontSize: '1.5rem', color: '#0f172a', margin: '0 0 8px 0' }}>
-                  Ujian Selesai
+                  Ujian Selesai!
                 </h3>
                 <p style={{ color: '#64748b', fontSize: '1.1rem', marginBottom: '24px' }}>
-                  Nilai Anda: <strong>{sesi.nilai_akhir}</strong>
+                  Terima kasih telah mengerjakan soal dengan sebaik-baiknya.
                 </p>
 
-                {isLolos ? (
-                  <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '24px', textAlign: 'left' }}>
-                    <h4 style={{ color: '#065f46', fontSize: '1.2rem', margin: '0 0 12px 0' }}>🎉 Selamat, Anda dinyatakan LOLOS!</h4>
-                    <p style={{ color: '#047857', marginBottom: '16px', lineHeight: '1.5' }}>
-                      Silakan lanjutkan ke tahap berikutnya dengan melakukan pembayaran dan mengunggah bukti pembayaran pada tombol di bawah ini.
-                    </p>
-                    <button 
-                      onClick={() => fileRef.current?.click()}
-                      disabled={uploading}
-                      style={{ padding: '12px 24px', borderRadius: '8px', background: '#10b981', color: 'white', border: 'none', fontWeight: 700, cursor: uploading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-                    >
-                      <i className="fas fa-upload"></i> Unggah Bukti Pembayaran
-                    </button>
-                    <input type="file" accept="image/*" ref={fileRef} onChange={handleUploadBukti} style={{ display: 'none' }} />
+                <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '24px', textAlign: 'left' }}>
+                  <h4 style={{ color: '#1d4ed8', fontSize: '1.1rem', margin: '0 0 10px 0' }}>
+                    <i className="fas fa-clock" style={{ marginRight: '8px' }}></i>
+                    Menunggu Pengumuman Resmi
+                  </h4>
+                  <p style={{ color: '#1e40af', margin: '0 0 12px 0', lineHeight: '1.6' }}>
+                    Hasil seleksi akan diumumkan secara resmi oleh panitia setelah seluruh peserta menyelesaikan ujian. Mohon bersabar dan pantau pengumuman dari pihak madrasah.
+                  </p>
+                  <div style={{ background: 'white', borderRadius: '8px', padding: '12px 16px', display: 'inline-block', border: '1px solid #bfdbfe' }}>
+                    <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Mata Uji: </span>
+                    <strong style={{ color: '#0f172a' }}>{user.lomba}</strong>
                   </div>
-                ) : (
-                  <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '12px', padding: '24px' }}>
-                    <p style={{ color: '#92400e', margin: 0, lineHeight: '1.5' }}>
-                      Terima kasih telah berpartisipasi dalam Olimpiade Akademik. Tetap semangat dan terus belajar!
-                    </p>
-                  </div>
-                )}
+                </div>
               </div>
             ) : (
               <>
