@@ -177,6 +177,64 @@ export default function OlimpiadeSeniPage() {
             Live Score
           </button>
         </div>
+
+        {/* Tombol Unduh Dokumen */}
+        <div style={{ 
+          display: 'flex', 
+          flexWrap: 'wrap', 
+          justifyContent: 'center', 
+          gap: '16px',
+          marginTop: '20px',
+          paddingTop: '20px',
+          borderTop: '1px solid #e2e8f0'
+        }}>
+          <button 
+            onClick={() => window.open('#', '_blank')} // Nanti diganti link PDF
+            style={{
+              padding: '12px 24px',
+              borderRadius: '8px',
+              background: 'white',
+              color: '#ef4444', // Merah PDF
+              border: '2px solid #ef4444',
+              fontSize: '0.95rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.background = '#fef2f2'; }}
+            onMouseOut={(e) => { e.currentTarget.style.background = 'white'; }}
+          >
+            <i className="fas fa-file-pdf" style={{ fontSize: '1.2rem' }}></i>
+            Download Juknis (PDF)
+          </button>
+
+          <button 
+            onClick={() => window.open('#', '_blank')} // Nanti diganti link Gambar
+            style={{
+              padding: '12px 24px',
+              borderRadius: '8px',
+              background: 'white',
+              color: '#3b82f6', // Biru Image
+              border: '2px solid #3b82f6',
+              fontSize: '0.95rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.background = '#eff6ff'; }}
+            onMouseOut={(e) => { e.currentTarget.style.background = 'white'; }}
+          >
+            <i className="fas fa-file-image" style={{ fontSize: '1.2rem' }}></i>
+            Download Pamflet
+          </button>
+        </div>
+
       </div>
     </div>
   );
