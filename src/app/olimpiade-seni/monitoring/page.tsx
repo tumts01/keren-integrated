@@ -14,11 +14,40 @@ export default function MonitoringOlimpiadePage() {
   const [hasilPublished, setHasilPublished] = useState(false);
   const [publishedAt, setPublishedAt] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    // Cek apakah admin
+    if (localStorage.getItem('olimpiade_admin') === 'true') {
+      setIsAdmin(true);
+    }
     fetchData();
     fetchConfig();
   }, []);
+
+  const handleAdminLogin = () => {
+    if (isAdmin) {
+      localStorage.removeItem('olimpiade_admin');
+      setIsAdmin(false);
+      return;
+    }
+    Swal.fire({
+      title: 'Login Admin',
+      input: 'password',
+      inputPlaceholder: 'Masukkan password admin',
+      showCancelButton: true
+    }).then((result) => {
+      if (result.isConfirmed) {
+        if (result.value === 'admin123') { // Simple password
+          localStorage.setItem('olimpiade_admin', 'true');
+          setIsAdmin(true);
+          Swal.fire('Berhasil', 'Mode Admin diaktifkan', 'success');
+        } else {
+          Swal.fire('Gagal', 'Password salah', 'error');
+        }
+      }
+    });
+  };
 
   const fetchConfig = async () => {
     try {
@@ -140,45 +169,68 @@ export default function MonitoringOlimpiadePage() {
         <i className="fas fa-arrow-left"></i> Kembali ke Beranda Olimpiade
       </button>
 
-      {/* Status Banner Publikasi */}
-      <div style={{ background: hasilPublished ? '#dcfce7' : '#fef3c7', border: `1px solid ${hasilPublished ? '#86efac' : '#fde68a'}`, borderRadius: '10px', padding: '14px 20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <i className={`fas ${hasilPublished ? 'fa-bullhorn' : 'fa-eye-slash'}`} style={{ color: hasilPublished ? '#16a34a' : '#b45309', fontSize: '1.2rem' }}></i>
-          <div>
-            <div style={{ fontWeight: 700, color: hasilPublished ? '#15803d' : '#92400e' }}>
-              {hasilPublished ? 'Hasil Sudah Dipublikasikan' : 'Hasil Belum Dipublikasikan'}
-            </div>
-            <div style={{ fontSize: '0.8rem', color: hasilPublished ? '#16a34a' : '#b45309' }}>
-              {hasilPublished && publishedAt
-                ? `Dipublikasikan pada ${new Date(publishedAt).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}`
-                : 'Peserta melihat "Menunggu Pengumuman". Klik tombol untuk mempublikasikan.'}
-            </div>
-          </div>
-        </div>
-        <button
-          onClick={handleTogglePublish}
-          disabled={publishing}
-          style={{ padding: '10px 20px', borderRadius: '8px', background: hasilPublished ? '#ef4444' : '#10b981', color: 'white', border: 'none', fontWeight: 700, cursor: publishing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: publishing ? 0.7 : 1 }}
-        >
-          <i className={`fas ${publishing ? 'fa-spinner fa-spin' : hasilPublished ? 'fa-eye-slash' : 'fa-bullhorn'}`}></i>
-          {publishing ? 'Memproses...' : hasilPublished ? 'Batalkan Publikasi' : 'Publikasikan Hasil'}
-        </button>
-      </div>
-
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <div>
-          <h2 style={{ margin: '0 0 8px 0', color: '#0f172a' }}>Monitoring Pemenang (Live Score)</h2>
-          <p style={{ margin: 0, color: '#64748b' }}>Klasemen nilai peserta Olimpiade & Lomba Seni secara real-time</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div>
+            <h2 style={{ margin: '0 0 8px 0', color: '#0f172a' }}>Monitoring Pemenang (Live Score)</h2>
+            <p style={{ margin: 0, color: '#64748b' }}>Klasemen nilai peserta Olimpiade & Lomba Seni secara real-time</p>
+          </div>
+          <button 
+            onClick={handleAdminLogin}
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px', opacity: isAdmin ? 1 : 0.3 }}
+            title="Admin Login"
+          >
+            <i className={`fas ${isAdmin ? 'fa-unlock' : 'fa-lock'}`} style={{ fontSize: '1.2rem', color: isAdmin ? '#10b981' : '#94a3b8' }}></i>
+          </button>
         </div>
-        <button 
-          onClick={fetchData}
-          style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '10px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500 }}
-        >
-          <i className={`fas fa-sync ${loading ? 'fa-spin' : ''}`}></i> Refresh
-        </button>
+        {(isAdmin || hasilPublished) && (
+          <button 
+            onClick={fetchData}
+            style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '10px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500 }}
+          >
+            <i className={`fas fa-sync ${loading ? 'fa-spin' : ''}`}></i> Refresh
+          </button>
+        )}
       </div>
 
-      <div style={{ background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
+      {!hasilPublished && !isAdmin ? (
+        <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '12px', padding: '60px 20px', textAlign: 'center', marginTop: '40px' }}>
+          <i className="fas fa-eye-slash" style={{ fontSize: '4rem', color: '#fcd34d', marginBottom: '20px' }}></i>
+          <h3 style={{ margin: '0 0 12px 0', color: '#92400e', fontSize: '1.5rem' }}>Live Score Sedang Disembunyikan</h3>
+          <p style={{ margin: 0, color: '#b45309', fontSize: '1.1rem' }}>
+            Hasil ujian belum dipublikasikan oleh panitia. Mohon menunggu pengumuman resmi.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* Status Banner Publikasi (Hanya muncul untuk Admin) */}
+          {isAdmin && (
+            <div style={{ background: hasilPublished ? '#dcfce7' : '#fef3c7', border: `1px solid ${hasilPublished ? '#86efac' : '#fde68a'}`, borderRadius: '10px', padding: '14px 20px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <i className={`fas ${hasilPublished ? 'fa-bullhorn' : 'fa-eye-slash'}`} style={{ color: hasilPublished ? '#16a34a' : '#b45309', fontSize: '1.2rem' }}></i>
+                <div>
+                  <div style={{ fontWeight: 700, color: hasilPublished ? '#15803d' : '#92400e' }}>
+                    {hasilPublished ? 'Hasil Sudah Dipublikasikan' : 'Hasil Belum Dipublikasikan'}
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: hasilPublished ? '#16a34a' : '#b45309' }}>
+                    {hasilPublished && publishedAt
+                      ? `Dipublikasikan pada ${new Date(publishedAt).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}`
+                      : 'Peserta melihat "Menunggu Pengumuman". Klik tombol untuk mempublikasikan.'}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleTogglePublish}
+                disabled={publishing}
+                style={{ padding: '10px 20px', borderRadius: '8px', background: hasilPublished ? '#ef4444' : '#10b981', color: 'white', border: 'none', fontWeight: 700, cursor: publishing ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', opacity: publishing ? 0.7 : 1 }}
+              >
+                <i className={`fas ${publishing ? 'fa-spinner fa-spin' : hasilPublished ? 'fa-eye-slash' : 'fa-bullhorn'}`}></i>
+                {publishing ? 'Memproses...' : hasilPublished ? 'Batalkan Publikasi' : 'Publikasikan Hasil'}
+              </button>
+            </div>
+          )}
+
+          <div style={{ background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
         <div style={{ marginBottom: '20px' }}>
           <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Filter Cabang Lomba</label>
           <select 
@@ -276,7 +328,9 @@ export default function MonitoringOlimpiadePage() {
             </table>
           </div>
         )}
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
