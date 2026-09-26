@@ -57,7 +57,8 @@ export async function GET(req: Request) {
           for (const item of row.data_nilai) {
             // Nilai PK saves the identifier in item.induk
             const identifier = (item.induk || item.nisn || '').toString().trim();
-            const val = parseFloat(String(item.nilai || '').replace(',', '.'));
+            // Data bisa disimpan sebagai item.nilai atau item.score
+            const val = parseFloat(String(item.nilai || item.score || '').replace(',', '.'));
             if (!identifier || isNaN(val)) continue;
 
             if (!studentMap[identifier]) studentMap[identifier] = emptyScores();
