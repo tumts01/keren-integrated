@@ -672,8 +672,8 @@ export default function StsPage() {
           <!-- INFO SISWA: right side aligned with ~TP5 (≈55% from left) -->
           <table class="info">
             <colgroup>
-              <col style="width:12%"><col style="width:1%"><col style="width:24%">
-              <col style="width:18%">
+              <col style="width:12%"><col style="width:1%"><col style="width:40%">
+              <col style="width:2%">
               <col style="width:16%"><col style="width:1%"><col>
             </colgroup>
             <tr>
