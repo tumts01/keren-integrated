@@ -118,7 +118,7 @@ export default function CetakSampulRaporPage() {
               <img
                 src="/Logo Kemenag Terbaru.png"
                 alt="Logo Kemenag"
-                style={{ width: '80px', height: 'auto', display: 'block', margin: '0 auto 8px auto' }}
+                style={{ width: '110px', height: 'auto', display: 'block', margin: '0 auto 12px auto' }}
               />
               <p style={{ margin: 0, fontSize: '12pt', letterSpacing: '0.5px', fontWeight: 'normal', textTransform: 'uppercase' }}>
                 Kementerian Agama Republik Indonesia
@@ -143,31 +143,28 @@ export default function CetakSampulRaporPage() {
               <img
                 src="/logo.png"
                 alt="Logo Sekolah"
-                style={{ width: '110px', height: 'auto', display: 'block', margin: '0 auto' }}
+                style={{ width: '160px', height: 'auto', display: 'block', margin: '0 auto' }}
               />
             </div>
 
             {/* === IDENTITAS SISWA === */}
-            <div style={{ width: '100%', paddingLeft: '20mm' }}>
-              <table style={{ borderCollapse: 'collapse', fontSize: '11pt' }}>
+            <div style={{ width: '100%', paddingLeft: '15mm' }}>
+              <table style={{ borderCollapse: 'collapse', fontSize: '15pt' }}>
                 <tbody>
                   <tr>
-                    <td style={{ padding: '3px 0', width: '160px', fontWeight: 'bold', textTransform: 'uppercase', verticalAlign: 'top' }}>Nama</td>
-                    <td style={{ padding: '3px 8px', fontWeight: 'bold', verticalAlign: 'top' }}>:</td>
-                    <td style={{ padding: '3px 0', fontWeight: 'bold', textTransform: 'uppercase', verticalAlign: 'top' }}>{siswa.nama}</td>
+                    <td style={{ padding: '4px 0', width: '220px', fontWeight: 'bold', textTransform: 'uppercase', verticalAlign: 'top', whiteSpace: 'nowrap' }}>Nama</td>
+                    <td style={{ padding: '4px 12px', fontWeight: 'bold', verticalAlign: 'top' }}>:</td>
+                    <td style={{ padding: '4px 0', fontWeight: 'bold', textTransform: 'uppercase', verticalAlign: 'top' }}>{siswa.nama}</td>
                   </tr>
                   <tr>
-                    <td style={{ padding: '3px 0', fontWeight: 'bold', textTransform: 'uppercase', verticalAlign: 'top' }}>
-                      <div style={{ marginBottom: '2px' }}>NIS</div>
-                      <div>MADRASAH</div>
-                    </td>
-                    <td style={{ padding: '3px 8px', fontWeight: 'bold', verticalAlign: 'top' }}>:</td>
-                    <td style={{ padding: '3px 0', fontWeight: 'bold', verticalAlign: 'top' }}>{nisMadrasah}</td>
+                    <td style={{ padding: '4px 0', fontWeight: 'bold', textTransform: 'uppercase', verticalAlign: 'top', whiteSpace: 'nowrap' }}>NIS Madrasah</td>
+                    <td style={{ padding: '4px 12px', fontWeight: 'bold', verticalAlign: 'top' }}>:</td>
+                    <td style={{ padding: '4px 0', fontWeight: 'bold', verticalAlign: 'top' }}>{nisMadrasah}</td>
                   </tr>
                   <tr>
-                    <td style={{ padding: '3px 0', fontWeight: 'bold', textTransform: 'uppercase', verticalAlign: 'top' }}>NIS Nasional</td>
-                    <td style={{ padding: '3px 8px', fontWeight: 'bold', verticalAlign: 'top' }}>:</td>
-                    <td style={{ padding: '3px 0', fontWeight: 'bold', verticalAlign: 'top' }}>{nisNasional}</td>
+                    <td style={{ padding: '4px 0', fontWeight: 'bold', textTransform: 'uppercase', verticalAlign: 'top', whiteSpace: 'nowrap' }}>NIS Nasional</td>
+                    <td style={{ padding: '4px 12px', fontWeight: 'bold', verticalAlign: 'top' }}>:</td>
+                    <td style={{ padding: '4px 0', fontWeight: 'bold', verticalAlign: 'top' }}>{nisNasional}</td>
                   </tr>
                 </tbody>
               </table>
