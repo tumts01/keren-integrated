@@ -499,7 +499,7 @@ export default function StsPage() {
       const pkStudent = prosusData.find(p => {
         const idPK = String(p.induk || p.nisn).trim();
         return idPK === String(siswa.nis || '').trim() || 
-               idPK === String(siswa.id_siswa || '').trim() || 
+               idPK === String(siswa.id || '').trim() || 
                (siswa.nisn && idPK === String(siswa.nisn).trim());
       });
       if (pkStudent) {
