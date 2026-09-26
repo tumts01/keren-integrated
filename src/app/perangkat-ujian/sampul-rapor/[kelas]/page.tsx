@@ -62,7 +62,7 @@ export default function CetakSampulRaporPage() {
         }
         @media print {
           body { margin: 0; padding: 0; }
-          .no-print { display: none !important; }
+          .no-print, .print-header, header, nav, footer, .global-kop-surat { display: none !important; }
           .halaman-sampul {
             page-break-after: always;
           }
@@ -120,20 +120,20 @@ export default function CetakSampulRaporPage() {
                 alt="Logo Kemenag"
                 style={{ width: '80px', height: 'auto', display: 'block', margin: '0 auto 8px auto' }}
               />
-              <p style={{ margin: 0, fontSize: '10pt', letterSpacing: '0.5px', fontWeight: 'normal', textTransform: 'uppercase' }}>
+              <p style={{ margin: 0, fontSize: '12pt', letterSpacing: '0.5px', fontWeight: 'normal', textTransform: 'uppercase' }}>
                 Kementerian Agama Republik Indonesia
               </p>
             </div>
 
             {/* === JUDUL === */}
             <div style={{ textAlign: 'center', width: '100%' }}>
-              <p style={{ margin: '0 0 4px 0', fontSize: '14pt', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <p style={{ margin: '0 0 4px 0', fontSize: '23pt', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Laporan Hasil Belajar
               </p>
-              <p style={{ margin: '0 0 4px 0', fontSize: '14pt', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <p style={{ margin: '0 0 4px 0', fontSize: '23pt', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Madrasah Tsanawiyah
               </p>
-              <p style={{ margin: 0, fontSize: '14pt', fontWeight: 'bold', letterSpacing: '0.5px' }}>
+              <p style={{ margin: 0, fontSize: '23pt', fontWeight: 'bold', letterSpacing: '0.5px' }}>
                 (MTs)
               </p>
             </div>
@@ -152,12 +152,15 @@ export default function CetakSampulRaporPage() {
               <table style={{ borderCollapse: 'collapse', fontSize: '11pt' }}>
                 <tbody>
                   <tr>
-                    <td style={{ padding: '3px 0', width: '110px', fontWeight: 'bold', textTransform: 'uppercase', verticalAlign: 'top' }}>Nama</td>
+                    <td style={{ padding: '3px 0', width: '160px', fontWeight: 'bold', textTransform: 'uppercase', verticalAlign: 'top' }}>Nama</td>
                     <td style={{ padding: '3px 8px', fontWeight: 'bold', verticalAlign: 'top' }}>:</td>
                     <td style={{ padding: '3px 0', fontWeight: 'bold', textTransform: 'uppercase', verticalAlign: 'top' }}>{siswa.nama}</td>
                   </tr>
                   <tr>
-                    <td style={{ padding: '3px 0', fontWeight: 'bold', textTransform: 'uppercase', verticalAlign: 'top' }}>NIS Madrasah</td>
+                    <td style={{ padding: '3px 0', fontWeight: 'bold', textTransform: 'uppercase', verticalAlign: 'top' }}>
+                      <div style={{ marginBottom: '2px' }}>NIS</div>
+                      <div>MADRASAH</div>
+                    </td>
                     <td style={{ padding: '3px 8px', fontWeight: 'bold', verticalAlign: 'top' }}>:</td>
                     <td style={{ padding: '3px 0', fontWeight: 'bold', verticalAlign: 'top' }}>{nisMadrasah}</td>
                   </tr>
@@ -172,13 +175,13 @@ export default function CetakSampulRaporPage() {
 
             {/* === FOOTER: Nama Madrasah === */}
             <div style={{ textAlign: 'center', width: '100%' }}>
-              <p style={{ margin: '0 0 2px 0', fontSize: '12pt', fontWeight: 'bold', textTransform: 'uppercase' }}>
+              <p style={{ margin: '0 0 2px 0', fontSize: '18pt', fontWeight: 'bold', textTransform: 'uppercase' }}>
                 MTs Almaarif 01 Singosari
               </p>
-              <p style={{ margin: '0 0 2px 0', fontSize: '12pt', fontWeight: 'bold', textTransform: 'uppercase' }}>
+              <p style={{ margin: '0 0 2px 0', fontSize: '18pt', fontWeight: 'bold', textTransform: 'uppercase' }}>
                 Kabupaten Malang
               </p>
-              <p style={{ margin: 0, fontSize: '12pt', fontWeight: 'bold', textTransform: 'uppercase' }}>
+              <p style={{ margin: 0, fontSize: '18pt', fontWeight: 'bold', textTransform: 'uppercase' }}>
                 Provinsi Jawa Timur
               </p>
             </div>
