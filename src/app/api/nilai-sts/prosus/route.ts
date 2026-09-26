@@ -55,15 +55,16 @@ export async function GET(req: Request) {
 
         if (scoreKey) {
           for (const item of row.data_nilai) {
-            const nisn = (item.nisn || '').toString().trim();
+            // Nilai PK saves the identifier in item.induk
+            const identifier = (item.induk || item.nisn || '').toString().trim();
             const val = parseFloat(String(item.nilai || '').replace(',', '.'));
-            if (!nisn || isNaN(val)) continue;
+            if (!identifier || isNaN(val)) continue;
 
-            if (!studentMap[nisn]) studentMap[nisn] = emptyScores();
+            if (!studentMap[identifier]) studentMap[identifier] = emptyScores();
             // @ts-ignore
-            if (studentMap[nisn][scoreKey]) {
+            if (studentMap[identifier][scoreKey]) {
               // @ts-ignore
-              studentMap[nisn][scoreKey].push(val);
+              studentMap[identifier][scoreKey].push(val);
             }
           }
         }
@@ -73,8 +74,8 @@ export async function GET(req: Request) {
     // Now calculate average across the subjects
     const result: any[] = [];
 
-    Object.keys(studentMap).forEach(nisn => {
-      const scores = studentMap[nisn];
+    Object.keys(studentMap).forEach(identifier => {
+      const scores = studentMap[identifier];
       
       const calcAvg = (materiIndex: number) => {
         let sum = 0;
@@ -103,7 +104,7 @@ export async function GET(req: Request) {
         sts = String(Math.round(scores.sts.reduce((a,b)=>a+b,0) / scores.sts.length));
       }
 
-      result.push({ nisn, tp1, tp2, tp3, tp4, tp5, tp6, sts });
+      result.push({ induk: identifier, tp1, tp2, tp3, tp4, tp5, tp6, sts });
     });
 
     return NextResponse.json({ success: true, data: result }, {

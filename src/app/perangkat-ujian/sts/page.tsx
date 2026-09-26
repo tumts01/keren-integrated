@@ -496,7 +496,12 @@ export default function StsPage() {
       </tr>`;
     
     if (minatBakat) {
-      const pkStudent = prosusData.find(p => String(p.nisn).trim() === String(siswa.nisn).trim());
+      const pkStudent = prosusData.find(p => {
+        const idPK = String(p.induk || p.nisn).trim();
+        return idPK === String(siswa.nis || '').trim() || 
+               idPK === String(siswa.id_siswa || '').trim() || 
+               (siswa.nisn && idPK === String(siswa.nisn).trim());
+      });
       if (pkStudent) {
         const tp1 = pkStudent.tp1;
         const tp2 = pkStudent.tp2;
