@@ -154,7 +154,7 @@ export default function MonitoringOlimpiadePage() {
 
       const getSekolah = (row: any) => {
         if (!row || !row.asal_sekolah || row.asal_sekolah.trim() === '-' || row.asal_sekolah.trim() === '') return null;
-        return row.asal_sekolah.trim();
+        return row.asal_sekolah.trim().toUpperCase();
       };
 
       const s1 = getSekolah(inCabang[0]);
@@ -181,7 +181,7 @@ export default function MonitoringOlimpiadePage() {
 
     return Object.entries(schoolPoints)
       .map(([sekolah, stats]) => ({ sekolah, ...stats }))
-      .sort((a, b) => b.totalPoints - a.totalPoints || b.j1 - a.j1 || b.j2 - a.j2 || b.j3 - a.j3);
+      .sort((a, b) => b.totalPoints - a.totalPoints || b.j1 - a.j1 || b.j2 - a.j2 || b.j3 - a.j3 || a.sekolah.localeCompare(b.sekolah));
   }, [data, cabangOptions]);
 
   return (
@@ -253,11 +253,11 @@ export default function MonitoringOlimpiadePage() {
               </h3>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-                {juaraUmumList.slice(0, 3).map((juara, index) => (
+                {juaraUmumList.slice(0, 6).map((juara, index) => (
                   <div key={juara.sekolah} style={{ background: 'rgba(255,255,255,0.1)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '16px' }}>
                     <div style={{ 
                       width: '40px', height: '40px', borderRadius: '50%', 
-                      background: index === 0 ? '#fbbf24' : index === 1 ? '#94a3b8' : '#b45309', 
+                      background: index === 0 ? '#fbbf24' : index === 1 ? '#94a3b8' : index === 2 ? '#b45309' : '#475569', 
                       display: 'flex', alignItems: 'center', justifyContent: 'center', 
                       color: 'white', fontWeight: 'bold', fontSize: '1.2rem',
                       boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
