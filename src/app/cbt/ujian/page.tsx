@@ -55,9 +55,16 @@ export default function CBTUjianPage() {
       if (blocked || devtools) e.preventDefault();
     };
 
-    // 3. Detect tab/window blur (tab switching)
+    // 3. Detect tab/window blur — covers visibilitychange AND window.blur (Windows key, alt-tab, dll.)
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden' && !isSubmittingRef.current) {
+        logAndWarn('tab_switch');
+      }
+    };
+
+    // Window blur: detects Windows key, Alt+Tab, click outside browser
+    const handleWindowBlur = () => {
+      if (!isSubmittingRef.current) {
         logAndWarn('tab_switch');
       }
     };
@@ -79,6 +86,7 @@ export default function CBTUjianPage() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('selectstart', preventSelect);
+    window.addEventListener('blur', handleWindowBlur);
 
     return () => {
       document.removeEventListener('contextmenu', preventContextMenu);
@@ -86,6 +94,7 @@ export default function CBTUjianPage() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('selectstart', preventSelect);
+      window.removeEventListener('blur', handleWindowBlur);
     };
   }, [user]);
 
@@ -191,15 +200,29 @@ export default function CBTUjianPage() {
           setWarningCount(logs.length);
         }
 
-        // Calculate remaining time
+        // Calculate remaining time — use server timestamp for accuracy
         const startTime = new Date(dataSoal.sesi.waktu_mulai).getTime();
-        const endTime = startTime + (DURASI_MENIT * 60 * 1000);
-        const now = new Date().getTime();
-        
-        if (now >= endTime) {
-          submitUjian(u.nomorPeserta, true); // auto submit if time is over
+        const durasiMs = DURASI_MENIT * 60 * 1000;
+        const endTime = startTime + durasiMs;
+        const now = Date.now();
+        const remaining = Math.floor((endTime - now) / 1000);
+
+        // Safeguard: jika remaining terlalu besar (>DURASI_MENIT menit, kemungkinan error timezone/jam server)
+        // maka gunakan DURASI_MENIT penuh sebagai fallback
+        const maxSeconds = DURASI_MENIT * 60;
+        const safeguardedRemaining = Math.min(remaining, maxSeconds);
+
+        if (safeguardedRemaining <= 0) {
+          // Waktu sudah habis — tapi jangan auto-submit langsung jika selisih < 5 menit
+          // (bisa terjadi jika jam browser vs jam server beda sedikit)
+          if (remaining < -(5 * 60)) {
+            submitUjian(u.nomorPeserta, true); // truly expired
+          } else {
+            // Selisih kecil — beri 60 detik sebagai grace period
+            setTimeLeft(60);
+          }
         } else {
-          setTimeLeft(Math.floor((endTime - now) / 1000));
+          setTimeLeft(safeguardedRemaining);
         }
       }
     } catch (err) {
