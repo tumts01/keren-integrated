@@ -210,6 +210,29 @@ export default function OlimpiadeSeniPage() {
             <i className="fas fa-file-image" style={{ fontSize: '1.2rem' }}></i>
             Download Pamflet
           </button>
+
+          <button 
+            onClick={() => window.open('https://chat.whatsapp.com/KNVKRsp9IrK71r2atnkaIM', '_blank')}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '8px',
+              background: 'white',
+              color: '#16a34a', // Hijau WA
+              border: '2px solid #16a34a',
+              fontSize: '0.95rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px'
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.background = '#f0fdf4'; }}
+            onMouseOut={(e) => { e.currentTarget.style.background = 'white'; }}
+          >
+            <i className="fab fa-whatsapp" style={{ fontSize: '1.2rem' }}></i>
+            Gabung Grup WA
+          </button>
         </div>
 
       </div>
