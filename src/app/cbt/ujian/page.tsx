@@ -25,7 +25,7 @@ export default function CBTUjianPage() {
   const isSubmittingRef = useRef(false);
 
   // Constants
-  const DURASI_MENIT = 60;
+  const DURASI_MENIT = 90;
   const MAX_WARNINGS = 3;
 
   useEffect(() => {
