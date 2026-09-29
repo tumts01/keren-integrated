@@ -188,6 +188,7 @@ export async function POST(req: Request) {
         file_excel_url: newExcelUrl,
         metadata: {
           ASAL_SEKOLAH: namaSekolahKolektif,
+          NO_WA: formData.get('noWa') || '',
           DETAIL_LOMBA: formData.get('detailLomba') || '',
           REKAP_PESERTA: rekapPeserta,
           WAKTU_DAFTAR: new Date().toISOString()
@@ -234,7 +235,7 @@ export async function POST(req: Request) {
         'KATEGORI': kategori,
         'LOMBA_DIPILIH': lombaDipilih,
         'NAMA_REGU': formData.get('namaRegu') || '',
-        'NO_HP': formData.get('noHp') || '',
+        'NO_WA': formData.get('noWa') || '',
         'NOMOR_PESERTA': nomorPeserta,
         'WAKTU_DAFTAR': new Date().toISOString()
       };

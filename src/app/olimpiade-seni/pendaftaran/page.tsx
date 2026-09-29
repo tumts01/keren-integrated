@@ -28,6 +28,7 @@ export default function PendaftaranOlimpiadeSeni() {
   const [form, setForm] = useState({
     nama: '',
     nisn: '',
+    noWa: '',
     namaSekolah: '',
     npsn: '',
     kelas: '',
@@ -40,7 +41,8 @@ export default function PendaftaranOlimpiadeSeni() {
   const [buktiIndividu, setBuktiIndividu] = useState<File | null>(null);
   const [buktiKolektif, setBuktiKolektif] = useState<File | null>(null);
   const [formKolektif, setFormKolektif] = useState({
-    asalSekolah: ''
+    asalSekolah: '',
+    noWa: ''
   });
   const [kolektifKategori, setKolektifKategori] = useState<'Olimpiade Akademik' | 'Lomba Seni'>('Olimpiade Akademik');
   const [kolektifLombaDipilih, setKolektifLombaDipilih] = useState('Matematika');
@@ -212,6 +214,7 @@ export default function PendaftaranOlimpiadeSeni() {
         formData.append('buktiPembayaran', buktiKolektif);
       }
       formData.append('namaSekolah', formKolektif.asalSekolah);
+      formData.append('noWa', formKolektif.noWa);
       formData.append('detailLomba', kolektifLombaList.join(', '));
 
       // Parse Excel untuk menghitung jumlah peserta per lomba
@@ -380,6 +383,15 @@ export default function PendaftaranOlimpiadeSeni() {
                   </select>
                 </div>
 
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Nomor WhatsApp (Aktif) <span style={{ color: 'red' }}>*</span></label>
+                  <input 
+                    type="text" required value={form.noWa} onChange={e => setForm({...form, noWa: e.target.value})}
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none' }}
+                    placeholder="Contoh: 081234567890"
+                  />
+                </div>
+
                 <div>
                   <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Asal Sekolah (SD/MI) <span style={{ color: 'red' }}>*</span></label>
                   <input 
@@ -478,6 +490,15 @@ export default function PendaftaranOlimpiadeSeni() {
                   type="text" required value={formKolektif.asalSekolah} onChange={e => setFormKolektif({...formKolektif, asalSekolah: e.target.value})}
                   style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none' }}
                   placeholder="Contoh: MIN 1 Malang"
+                />
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Nomor WhatsApp Guru Pendamping <span style={{ color: 'red' }}>*</span></label>
+                <input 
+                  type="text" required value={formKolektif.noWa} onChange={e => setFormKolektif({...formKolektif, noWa: e.target.value})}
+                  style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none' }}
+                  placeholder="Contoh: 081234567890"
                 />
               </div>
 
