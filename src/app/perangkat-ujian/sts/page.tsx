@@ -960,6 +960,18 @@ export default function StsPage() {
               >
                 <i className={`fas fa-sync ${isFetchingGrades ? 'fa-spin' : ''}`}></i> Refresh
               </button>
+              <button 
+                className={styles.btnSecondary} 
+                style={{ marginLeft: '8px', background: '#10b981', color: 'white', border: 'none' }}
+                disabled={!kelas || isFetchingGrades}
+                onClick={() => {
+                  if (!kelas) { Swal.fire('Peringatan', 'Pilih kelas terlebih dahulu!', 'warning'); return; }
+                  const url = `/api/nilai-sts/legger?tahunAjaran=${encodeURIComponent(tahunAjaran)}&semester=${encodeURIComponent(semester)}&kelas=${encodeURIComponent(kelas)}`;
+                  window.open(url, '_blank');
+                }}
+              >
+                <i className="fas fa-file-excel"></i> Download Legger
+              </button>
             </div>
           </div>
 
