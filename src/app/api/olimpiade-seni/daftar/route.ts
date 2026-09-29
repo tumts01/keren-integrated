@@ -86,12 +86,19 @@ export async function POST(req: Request) {
       const res = await uploadFileToDrive(buffer, buktiFile.name, buktiFile.type, folderId);
       buktiUrl = res.webViewLink || '';
     } else {
-      // For individu, if not Akademik, it's required.
-      // For kolektif, it might also be required unless it's only Akademik, but the prompt says:
-      // "Check if Bukti Pembayaran is optional (it is optional if Kategori is 'Olimpiade Akademik'). Don't throw error if it's missing for Akademik."
       if (kategori !== 'Olimpiade Akademik') {
         return NextResponse.json({ success: false, error: 'Bukti pembayaran wajib dilampirkan' }, { status: 400 });
       }
+    }
+
+    // Bukti SS Share Poster
+    const buktiSsFile = formData.get('buktiSs') as File | null;
+    let buktiSsUrl = '';
+    if (buktiSsFile) {
+      const arrayBuffer = await buktiSsFile.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      const res = await uploadFileToDrive(buffer, 'SS_' + buktiSsFile.name, buktiSsFile.type, folderId);
+      buktiSsUrl = res.webViewLink || '';
     }
 
     if (jenisPendaftaran === 'kolektif') {
@@ -189,6 +196,7 @@ export async function POST(req: Request) {
         metadata: {
           ASAL_SEKOLAH: namaSekolahKolektif,
           NO_WA: formData.get('noWa') || '',
+          BUKTI_SS_URL: buktiSsUrl,
           DETAIL_LOMBA: formData.get('detailLomba') || '',
           REKAP_PESERTA: rekapPeserta,
           WAKTU_DAFTAR: new Date().toISOString()
@@ -236,6 +244,7 @@ export async function POST(req: Request) {
         'LOMBA_DIPILIH': lombaDipilih,
         'NAMA_REGU': formData.get('namaRegu') || '',
         'NO_WA': formData.get('noWa') || '',
+        'BUKTI_SS_URL': buktiSsUrl,
         'NOMOR_PESERTA': nomorPeserta,
         'WAKTU_DAFTAR': new Date().toISOString()
       };

@@ -436,7 +436,9 @@ export default function RekapOlimpiadeSeni() {
                                   <i className="fas fa-receipt"></i> Bukti Bayar
                                 </a>
                               )}
-                              {row.file_excel_url && (
+                              {row.metadata?.BUKTI_SS_URL && (<a href={row.metadata.BUKTI_SS_URL} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#8b5cf6', textDecoration: 'none', background: '#f5f3ff', padding: '4px 10px', borderRadius: '6px', width: 'fit-content' }}><i className="fas fa-share-alt"></i> SS Share</a>)}
+
+                                {row.file_excel_url && (
                                 <a 
                                   href={row.file_excel_url} 
                                   target="_blank" 

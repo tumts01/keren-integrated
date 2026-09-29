@@ -39,7 +39,9 @@ export default function PendaftaranOlimpiadeSeni() {
   const [loading, setLoading] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [buktiIndividu, setBuktiIndividu] = useState<File | null>(null);
+  const [buktiSsIndividu, setBuktiSsIndividu] = useState<File | null>(null);
   const [buktiKolektif, setBuktiKolektif] = useState<File | null>(null);
+  const [buktiSsKolektif, setBuktiSsKolektif] = useState<File | null>(null);
   const [formKolektif, setFormKolektif] = useState({
     asalSekolah: '',
     noWa: ''
@@ -83,6 +85,10 @@ export default function PendaftaranOlimpiadeSeni() {
       Swal.fire('Peringatan', 'Bukti pembayaran wajib diunggah!', 'warning');
       return;
     }
+    if (!buktiSsIndividu) {
+      Swal.fire('Peringatan', 'Bukti Screenshot Share Poster wajib diunggah!', 'warning');
+      return;
+    }
     setLoading(true);
 
     try {
@@ -90,6 +96,9 @@ export default function PendaftaranOlimpiadeSeni() {
       formData.append('jenisPendaftaran', 'individu');
       if (buktiIndividu) {
         formData.append('buktiPembayaran', buktiIndividu);
+      }
+      if (buktiSsIndividu) {
+        formData.append('buktiSs', buktiSsIndividu);
       }
       
       Object.keys(form).forEach(key => {
@@ -203,6 +212,10 @@ export default function PendaftaranOlimpiadeSeni() {
       Swal.fire('Peringatan', 'Bukti pembayaran wajib diunggah karena ada pendaftar Lomba Seni!', 'warning');
       return;
     }
+    if (!buktiSsKolektif) {
+      Swal.fire('Peringatan', 'Bukti Screenshot Share Poster wajib diunggah!', 'warning');
+      return;
+    }
     
     setLoading(true);
 
@@ -212,6 +225,9 @@ export default function PendaftaranOlimpiadeSeni() {
       formData.append('fileExcel', uploadedFile);
       if (buktiKolektif) {
         formData.append('buktiPembayaran', buktiKolektif);
+      }
+      if (buktiSsKolektif) {
+        formData.append('buktiSs', buktiSsKolektif);
       }
       formData.append('namaSekolah', formKolektif.asalSekolah);
       formData.append('noWa', formKolektif.noWa);
@@ -455,12 +471,27 @@ export default function PendaftaranOlimpiadeSeni() {
                     <input 
                       type="file" 
                       accept="image/*"
-                      required 
+                      required={form.kategori === 'Lomba Seni'}
                       onChange={e => setBuktiIndividu(e.target.files ? e.target.files[0] : null)}
                       style={{ width: '100%', padding: '8px', background: 'white', borderRadius: '8px', border: '1px solid #cbd5e1' }}
                     />
                   </div>
                 )}
+                  
+                <div style={{ gridColumn: '1 / -1', background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                  <label style={{ display: 'block', fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
+                    <i className="fas fa-share-alt" style={{ marginRight: '8px', color: '#10b981' }}></i>
+                    Upload Bukti SS Share Poster <span style={{ color: 'red' }}>*</span>
+                  </label>
+                  <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0 0 12px 0' }}>Format gambar (.jpg, .png, .jpeg). Wajib diisi oleh seluruh pendaftar.</p>
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    required 
+                    onChange={e => setBuktiSsIndividu(e.target.files ? e.target.files[0] : null)}
+                    style={{ width: '100%', padding: '8px', background: 'white', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                  />
+                </div>
 
               </div>
 
@@ -578,19 +609,36 @@ export default function PendaftaranOlimpiadeSeni() {
               )}
             </div>
 
-            {/* Bukti Pembayaran Kolektif (Selalu Tampil) */}
-            <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
-              <i className="fas fa-receipt" style={{ fontSize: '3rem', color: '#f59e0b', marginBottom: '16px' }}></i>
-              <h3 style={{ margin: '0 0 8px 0', color: '#0f172a' }}>3. Unggah Bukti Pembayaran</h3>
-              <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '16px' }}>Format gambar (.jpg, .png). Wajib diunggah jika ada peserta Lomba Seni.</p>
-              
-              <input 
-                type="file" 
-                accept="image/*"
-                required={kolektifLombaList.some(l => lombaOptions['Lomba Seni'].includes(l))}
-                onChange={e => setBuktiKolektif(e.target.files ? e.target.files[0] : null)}
-                style={{ width: '100%', maxWidth: '300px', padding: '8px', background: 'white', borderRadius: '8px', border: '1px solid #cbd5e1', margin: '0 auto' }}
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              {/* Bukti Pembayaran Kolektif (Selalu Tampil) */}
+              <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
+                <i className="fas fa-receipt" style={{ fontSize: '3rem', color: '#f59e0b', marginBottom: '16px' }}></i>
+                <h3 style={{ margin: '0 0 8px 0', color: '#0f172a' }}>3. Unggah Bukti Pembayaran</h3>
+                <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '16px' }}>Format (.jpg, .png). Wajib jika ada Lomba Seni.</p>
+                
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  required={kolektifLombaList.some(l => lombaOptions['Lomba Seni'].includes(l))}
+                  onChange={e => setBuktiKolektif(e.target.files ? e.target.files[0] : null)}
+                  style={{ width: '100%', maxWidth: '300px', padding: '8px', background: 'white', borderRadius: '8px', border: '1px solid #cbd5e1', margin: '0 auto' }}
+                />
+              </div>
+
+              {/* Bukti SS Share Poster Kolektif */}
+              <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
+                <i className="fas fa-share-alt" style={{ fontSize: '3rem', color: '#10b981', marginBottom: '16px' }}></i>
+                <h3 style={{ margin: '0 0 8px 0', color: '#0f172a' }}>4. Unggah Bukti Share Poster</h3>
+                <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '16px' }}>Format (.jpg, .png). Wajib untuk semua pendaftaran.</p>
+                
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  required 
+                  onChange={e => setBuktiSsKolektif(e.target.files ? e.target.files[0] : null)}
+                  style={{ width: '100%', maxWidth: '300px', padding: '8px', background: 'white', borderRadius: '8px', border: '1px solid #cbd5e1', margin: '0 auto' }}
+                />
+              </div>
             </div>
 
             <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end', gap: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '24px' }}>
