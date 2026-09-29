@@ -19,6 +19,17 @@ function getNilaiAkhir(record: Record<string, any>): string | number {
   return '';
 }
 
+// Helper: get mapel name from mata_pelajaran metadata
+const getMapelName = (r: any) => {
+  if (!r.metadata) return '';
+  const keys = Object.keys(r.metadata);
+  const key = keys.find(k => {
+    const lower = k.toLowerCase().replace(/[\s_]/g, '');
+    return lower === 'namamapel' || lower === 'mapel' || lower === 'matapelajaran' || lower === 'pelajaran' || lower === 'namapelajaran';
+  }) || 'MataPelajaran';
+  return (r.metadata[key] || '').toString().trim();
+};
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -30,18 +41,71 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'Parameter tidak lengkap' }, { status: 400 });
     }
 
-    // 1. Fetch all nilai for this kelas (all mapels)
+    // 1. Fetch all students and parse them like API siswa
+    const allStudents = await getAllCachedDataInduk();
+    const parsedStudents = allStudents.flatMap((row: any) => {
+      const metadata = row.metadata || {};
+      const nama = metadata['NAMA'] || row.nama || '';
+      const nisn = metadata['NISN'] || row.nisn || '';
+      const jk = metadata['JENIS KELAMIN'] || metadata['L/P'] || '';
+      const status = (metadata['STATUS SISWA'] || metadata['STATUS'] || 'Aktif').toLowerCase();
+
+      const records = [];
+      const ta7 = (metadata['TA KELAS 7'] || '').trim();
+      const rombel7 = (metadata['ROMBEL KELAS 7'] || '').trim();
+      if (ta7 && rombel7) records.push({ nisn, nama, jk, status, tahunAjaran: ta7, rombel: rombel7 });
+
+      const ta8 = (metadata['TA KELAS 8'] || '').trim();
+      const rombel8 = (metadata['ROMBEL KELAS 8'] || '').trim();
+      if (ta8 && rombel8) records.push({ nisn, nama, jk, status, tahunAjaran: ta8, rombel: rombel8 });
+
+      const ta9 = (metadata['TA KELAS 9'] || '').trim();
+      const rombel9 = (metadata['ROMBEL KELAS 9'] || '').trim();
+      if (ta9 && rombel9) records.push({ nisn, nama, jk, status, tahunAjaran: ta9, rombel: rombel9 });
+
+      if (records.length === 0) {
+        records.push({
+          nisn, nama, jk, status,
+          tahunAjaran: (metadata['TAHUN AJARAN'] || row.tahun_ajaran || '').trim(),
+          rombel: (metadata['ROMBEL'] || metadata['rombel'] || row.rombel || '').trim()
+        });
+      }
+      return records;
+    });
+
+    const siswaKelas = parsedStudents
+      .filter((s: any) => s.rombel === kelas && s.tahunAjaran === tahunAjaran && s.status.includes('aktif'))
+      .sort((a: any, b: any) => a.nama.localeCompare(b.nama));
+
+    if (siswaKelas.length === 0) {
+      // Jika data kosong
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet([['Data siswa tidak ditemukan untuk kelas ' + kelas]]);
+      XLSX.utils.book_append_sheet(wb, ws, 'Legger');
+      const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      return new Response(buf, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename=Legger_STS_${kelas}_${semester}_${tahunAjaran.replace('/', '-')}.xlsx`,
+        },
+      });
+    }
+
+    // 2. Fetch all possible mapels
+    const { data: dbMapels } = await supabase.from('mata_pelajaran').select('metadata');
+    const baseMapels = (dbMapels || []).map(r => getMapelName(r)).filter(Boolean);
+
+    // 3. Fetch all nilai for this kelas
     const { data: nilaiRows, error: nilaiError } = await supabase
       .from('nilai_sts')
       .select('mata_pelajaran, data_nilai')
       .eq('tahun_ajaran', tahunAjaran)
       .eq('semester', semester)
-      .eq('kelas', kelas)
-      .order('mata_pelajaran', { ascending: true });
+      .eq('kelas', kelas);
 
     if (nilaiError) throw nilaiError;
 
-    // 2. Fetch prosus/PK nilai (tipe = sts)
+    // 4. Fetch prosus/PK nilai
     const { data: pkRows, error: pkError } = await supabase
       .from('nilai_pk')
       .select('mata_pelajaran, data_nilai')
@@ -51,30 +115,18 @@ export async function GET(request: Request) {
 
     if (pkError) throw pkError;
 
+    // Build unified mapels list
+    const usedMapels = new Set<string>();
+    baseMapels.forEach(m => usedMapels.add(m));
+    (nilaiRows || []).forEach(r => { if (r.mata_pelajaran) usedMapels.add(r.mata_pelajaran) });
+    (pkRows || []).forEach(r => { if (r.mata_pelajaran) usedMapels.add(r.mata_pelajaran) });
+
+    const uniqueMapels = Array.from(usedMapels).sort();
+
     const allRows = [
       ...(nilaiRows || []),
       ...(pkRows || []).map(r => ({ mata_pelajaran: r.mata_pelajaran, data_nilai: r.data_nilai }))
     ];
-
-    // 3. Fetch student list for this kelas
-    const allStudents = await getAllCachedDataInduk();
-    const siswaKelas = allStudents
-      .filter((s: any) => {
-        const rombelRaw = s.metadata?.['ROMBEL'] || s.metadata?.['rombel'] || s.rombel || '';
-        const taRaw = s.metadata?.['TAHUN_AJARAN'] || s.tahun_ajaran || '';
-        const statusRaw = (s.metadata?.['STATUS'] || s.status || '').toLowerCase();
-        return rombelRaw === kelas && taRaw === tahunAjaran && statusRaw.includes('aktif');
-      })
-      .sort((a: any, b: any) => {
-        const namaA = (a.metadata?.['NAMA'] || a.nama || '').toUpperCase();
-        const namaB = (b.metadata?.['NAMA'] || b.nama || '').toUpperCase();
-        return namaA.localeCompare(namaB);
-      });
-
-    // 4. Get sorted list of mapels
-    const mapelList = allRows.map(r => r.mata_pelajaran).filter(Boolean);
-    // Remove duplicate mapels (keep order)
-    const uniqueMapels = Array.from(new Set(mapelList));
 
     // 5. Build a lookup: mapel -> { nisn -> nilaiAkhir }
     const mapelNilaiMap: Record<string, Record<string, string | number>> = {};
@@ -97,24 +149,21 @@ export async function GET(request: Request) {
     const rows: (string | number)[][] = [];
 
     siswaKelas.forEach((s: any, idx: number) => {
-      const nisn = (s.metadata?.['NISN'] || s.nisn || '').toString().trim();
-      const nama = (s.metadata?.['NAMA'] || s.nama || '').toString().trim();
-      const lp = (s.metadata?.['JENIS_KELAMIN'] || s.jenis_kelamin || s.metadata?.['L/P'] || '').toString().trim();
-
-      const rowData: (string | number)[] = [idx + 1, nisn, nama, lp];
+      const rowData: (string | number)[] = [idx + 1, s.nisn || '', s.nama || '', s.jk || ''];
+      
       for (const mapel of uniqueMapels) {
         const nilaiByMapel = mapelNilaiMap[mapel] || {};
         let nilai: string | number = '';
-        // Try by NISN first
-        if (nisn && nilaiByMapel[nisn] !== undefined) {
-          nilai = nilaiByMapel[nisn];
-        } else {
-          // Fallback by name
-          const namaUpper = nama.toUpperCase();
+        
+        if (s.nisn && nilaiByMapel[s.nisn] !== undefined) {
+          nilai = nilaiByMapel[s.nisn];
+        } else if (s.nama) {
+          const namaUpper = s.nama.toUpperCase();
           if (nilaiByMapel['__nama__' + namaUpper] !== undefined) {
             nilai = nilaiByMapel['__nama__' + namaUpper];
           }
         }
+        
         rowData.push(nilai);
       }
       rows.push(rowData);
@@ -123,7 +172,6 @@ export async function GET(request: Request) {
     // 7. Create Excel workbook
     const wb = XLSX.utils.book_new();
 
-    // Title rows
     const titleRows = [
       [`LEGGER NILAI STS - KELAS ${kelas}`],
       [`Tahun Ajaran: ${tahunAjaran} | Semester: ${semester}`],
@@ -134,7 +182,6 @@ export async function GET(request: Request) {
 
     const ws = XLSX.utils.aoa_to_sheet(titleRows);
 
-    // Column widths
     ws['!cols'] = [
       { wch: 5 },   // No
       { wch: 14 },  // NISN
@@ -143,7 +190,6 @@ export async function GET(request: Request) {
       ...uniqueMapels.map(() => ({ wch: 18 }))
     ];
 
-    // Merge title cell
     ws['!merges'] = [
       { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } },
       { s: { r: 1, c: 0 }, e: { r: 1, c: headers.length - 1 } },
