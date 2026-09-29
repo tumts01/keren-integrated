@@ -1321,16 +1321,21 @@ function TabLaporanKeuangan({ onPrint }: { onPrint: (url: string) => void }) {
         setFilterUser(u.nama || '');
       }
     }
-    fetch('/api/user?t=' + Date.now()).then(r => r.json()).then(j => {
-      setAvailableUsers(j.data || []);
-    });
   }, []);
 
   const fetchData = async () => {
     setLoading(true);
     const res = await fetch(`/api/bon?t=${Date.now()}`);
     const json = await res.json();
-    setData(json.data || []);
+    const bonData = json.data || [];
+    setData(bonData);
+    
+    const uniqueNames = Array.from(new Set(
+      bonData.map((d: any) => (d.Nama || d.nama || '').trim()).filter(Boolean)
+    )).sort() as string[];
+    
+    setAvailableUsers(uniqueNames.map(n => ({ nama: n, Nama: n })));
+    
     setLoading(false);
   };
 
