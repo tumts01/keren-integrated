@@ -339,7 +339,7 @@ export default function RekapOlimpiadeSeni() {
                               <div style={{ fontWeight: 700, color: '#0f172a' }}>{row.metadata.NAMA || '-'}</div>
                               <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>NISN: {row.metadata.NISN || '-'}</div>
                               <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Asal: {row.metadata.ASAL_SEKOLAH || '-'}</div>
-                              {row.metadata.NO_WA && (
+                              {isAdmin && row.metadata.NO_WA && (
                                 <div style={{ fontSize: '0.8rem', color: '#16a34a', marginTop: '2px', fontWeight: 600 }}>WA: <a href={`https://wa.me/${row.metadata.NO_WA.replace(/[^0-9]/g, '').replace(/^0/, '62')}`} target="_blank" rel="noopener noreferrer" style={{ color: '#16a34a', textDecoration: 'underline' }}>{row.metadata.NO_WA}</a></div>
                               )}
                               {isAdmin && row.metadata.USERNAME_CBT && (
@@ -354,7 +354,7 @@ export default function RekapOlimpiadeSeni() {
                             <div>
                               <div style={{ fontWeight: 700, color: '#0f172a' }}>Pendaftaran Kolektif</div>
                               <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>Asal Instansi: {row.metadata.ASAL_SEKOLAH || '-'}</div>
-                              {row.metadata.NO_WA && (
+                              {isAdmin && row.metadata.NO_WA && (
                                 <div style={{ fontSize: '0.8rem', color: '#16a34a', marginTop: '2px', fontWeight: 600 }}>WA Pendamping: <a href={`https://wa.me/${row.metadata.NO_WA.replace(/[^0-9]/g, '').replace(/^0/, '62')}`} target="_blank" rel="noopener noreferrer" style={{ color: '#16a34a', textDecoration: 'underline' }}>{row.metadata.NO_WA}</a></div>
                               )}
                               {isAdmin && row.file_excel_url && (
