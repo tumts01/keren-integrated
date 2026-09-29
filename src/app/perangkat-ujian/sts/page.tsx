@@ -32,7 +32,25 @@ export default function StsPage() {
   // Data
   const [siswaList, setSiswaList] = useState<Siswa[]>([]);
   const [kelasList, setKelasList] = useState<any[]>([]);
-  const [allMapel, setAllMapel] = useState<string[]>([]);
+  const [allMapel, setAllMapel] = useState<string[]>([
+    'Alquran Hadis',
+    'Akidah Akhlak',
+    'Fikih',
+    'Sejarah Kebudayaan Islam',
+    'Pendidikan Pancasila',
+    'Bahasa Indonesia',
+    'Bahasa Arab',
+    'Matematika',
+    'Ilmu Pengetahuan Alam',
+    'Ilmu Pengetahuan Sosial',
+    'Bahasa Inggris',
+    'Pendidikan Jasmani, Olah Raga dan Kesehatan',
+    'Informatika',
+    'Seni Budaya',
+    'Prakarya',
+    'Bahasa Daerah',
+    'KE-NU-AN'
+  ]);
   
   // Upload Data
   const [previewData, setPreviewData] = useState<any[]>([]);
@@ -62,49 +80,12 @@ export default function StsPage() {
     fetchDataAwal();
   }, []);
 
-  // Fetch Mapel dari API Jadwal dan nilai_pk
+  // Set initial mapel when allMapel is ready (on mount)
   useEffect(() => {
-    const fetchAllMapels = async () => {
-      try {
-        const [resPK, resUmum] = await Promise.all([
-          (kelas && tahunAjaran) ? fetch(`/api/nilai-pk/mapel?kelas=${encodeURIComponent(kelas)}&tahunAjaran=${encodeURIComponent(tahunAjaran)}&tipe=sts`) : Promise.resolve(null),
-          fetch(`/api/jadwal/mapel`)
-        ]);
-
-        let combinedMapels = new Set<string>();
-
-        // Tambahkan mapel umum
-        if (resUmum) {
-          const jsonUmum = await resUmum.json();
-          if (jsonUmum.success && jsonUmum.data) {
-            jsonUmum.data.forEach((m: any) => m.namaMapel && combinedMapels.add(m.namaMapel));
-          }
-        }
-
-        // Tambahkan mapel PK (jika kelas dipilih)
-        if (resPK) {
-          const jsonPK = await resPK.json();
-          if (jsonPK.success && jsonPK.data) {
-            jsonPK.data.forEach((m: string) => m && combinedMapels.add(m));
-          }
-        }
-
-        const finalMapels = Array.from(combinedMapels).sort();
-        setAllMapel(finalMapels);
-        
-        if (finalMapels.length > 0) {
-          setMapel(finalMapels[0]);
-        } else {
-          setMapel('');
-        }
-      } catch (err) {
-        console.error('Gagal fetch mapel gabungan', err);
-        setAllMapel([]);
-        setMapel('');
-      }
-    };
-    fetchAllMapels();
-  }, [kelas, tahunAjaran]);
+    if (!mapel && allMapel.length > 0) {
+      setMapel(allMapel[0]);
+    }
+  }, [allMapel, mapel]);
 
   useEffect(() => {
     if (activeTab === 'cetak' && kelas) {
