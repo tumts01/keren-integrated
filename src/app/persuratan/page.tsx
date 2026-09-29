@@ -312,6 +312,21 @@ export default function PersuratanPage() {
       if (result.success) {
         setShowGenerateModal(false);
         setSuccessNoSurat(result.noSurat);
+        // Optimistic update — tambah baris baru ke state lokal tanpa re-fetch
+        const newEntry: SuratKeluar = {
+          id: Date.now(),
+          rowNumber: result.rowNumber || (dataKeluar.length > 0 ? dataKeluar[0].rowNumber + 1 : 1),
+          no: result.no || '',
+          tanggal: formTanggal,
+          namaSurat: formNamaSurat,
+          yangDitugaskan: formSasaran === 'Siswa' ? 'Siswa' : formDitugaskan.join('; '),
+          topik: formTopik,
+          pj: formPj,
+          noSurat: result.noSurat || '',
+          fileScan: '',
+          batasWaktu: formBatasWaktu,
+        };
+        setDataKeluar(prev => [newEntry, ...prev]);
         // Reset form
         setFormNamaSurat('');
         setFormSasaran('Guru');
@@ -322,8 +337,6 @@ export default function PersuratanPage() {
         setSearchGuru('');
         setSearchPj('');
         setSearchTopik('');
-        // Refresh data
-        fetchData();
       } else {
         showToast(`Gagal: ${result.error}`, 'error');
       }
@@ -362,8 +375,14 @@ export default function PersuratanPage() {
       if (result.success) {
         showToast('File berhasil diarsipkan ke Google Drive!', 'success');
         setShowUploadModal(false);
+        // Optimistic update — update fileScan di state lokal
+        const fileUrl = result.fileUrl || '#';
+        if (uploadTarget.type === 'keluar') {
+          setDataKeluar(prev => prev.map(s => s.rowNumber === uploadTarget.rowNumber ? { ...s, fileScan: fileUrl } : s));
+        } else {
+          setDataMasuk(prev => prev.map(s => s.rowNumber === uploadTarget.rowNumber ? { ...s, fileScan: fileUrl } : s));
+        }
         setUploadTarget(null);
-        fetchData();
       } else {
         showToast(`Gagal upload: ${result.error}`, 'error');
       }
@@ -401,9 +420,18 @@ export default function PersuratanPage() {
       if (result.success) {
         showToast('Surat Masuk berhasil ditambahkan dan diarsipkan!', 'success');
         setShowAddMasukModal(false);
+        // Optimistic update — tambah langsung ke state lokal
+        const newMasuk: SuratMasuk = {
+          id: Date.now(),
+          rowNumber: result.rowNumber || (dataMasuk.length > 0 ? dataMasuk[0].rowNumber + 1 : 1),
+          tanggal: addMasukTanggal,
+          namaSurat: addMasukNama,
+          pengirim: addMasukPengirim,
+          fileScan: result.fileUrl || '',
+        };
+        setDataMasuk(prev => [newMasuk, ...prev]);
         setAddMasukNama('');
         setAddMasukPengirim('');
-        fetchData(); // Refresh table
       } else {
         showToast(`Gagal menambahkan surat: ${result.error}`, 'error');
       }
