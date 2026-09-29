@@ -21,20 +21,29 @@ export default function CetakLaporanKeuanganPage() {
   const user = decodeURIComponent(params.user as string);
   const bulan = params.bulan as string; // format YYYY-MM
   const [data, setData] = useState<any[]>([]);
+  const [guruList, setGuruList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const inIframe = typeof window !== 'undefined' && window !== window.parent;
 
   useEffect(() => {
-    fetch(`/api/bon`)
-      .then(r => r.json())
-      .then(j => { setData(j.data || []); setLoading(false); });
+    Promise.all([
+      fetch(`/api/bon`).then(r => r.json()),
+      fetch(`/api/guru`).then(r => r.json())
+    ]).then(([resBon, resGuru]) => {
+      setData(resBon.data || []);
+      setGuruList(resGuru.data || []);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
   }, []);
 
   useEffect(() => {
-    if (data.length > 0 && !loading && !inIframe) {
+    if (!loading && !inIframe) {
       setTimeout(() => window.print(), 500);
     }
-  }, [data, loading]);
+  }, [loading]);
 
   if (loading) {
     return <LoadingScreen />;
@@ -46,7 +55,10 @@ export default function CetakLaporanKeuanganPage() {
   let totalPemasukan = 0;
   let totalPengeluaran = 0;
   let jabatanUser = '';
-  
+  const matchedGuru = guruList.find(g => (g.nama || '').trim().toUpperCase() === user.trim().toUpperCase());
+  if (matchedGuru && matchedGuru.jabatan) {
+    jabatanUser = matchedGuru.jabatan;
+  }
   const sortedData = [...data].reverse();
   
   let currentSaldo = 0; // running saldo lintas semua bulan
