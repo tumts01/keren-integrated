@@ -9,6 +9,21 @@ export default function PendaftaranOlimpiadeSeni() {
   const [jenisPendaftaran, setJenisPendaftaran] = useState<'individu' | 'kolektif' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  const [isBuka, setIsBuka] = useState(true);
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/olimpiade-seni/config-pendaftaran')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.pendaftaran_buka !== undefined) {
+          setIsBuka(data.pendaftaran_buka);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIsChecking(false));
+  }, []);
+
   // State for Individu
   const [form, setForm] = useState({
     nama: '',
@@ -252,6 +267,34 @@ export default function PendaftaranOlimpiadeSeni() {
       setLoading(false);
     }
   };
+
+  if (isChecking) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
+        <i className="fas fa-spinner fa-spin fa-3x" style={{ color: '#0284c7' }}></i>
+      </div>
+    );
+  }
+
+  if (!isBuka) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '40px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ maxWidth: '500px', width: '100%', background: 'white', padding: '40px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', textAlign: 'center' }}>
+          <i className="fas fa-lock" style={{ fontSize: '48px', color: '#cbd5e1', marginBottom: '24px' }}></i>
+          <h2 style={{ fontSize: '1.5rem', color: '#0f172a', marginBottom: '12px', fontWeight: 700 }}>Pendaftaran Ditutup</h2>
+          <p style={{ color: '#64748b', lineHeight: 1.6, marginBottom: '24px' }}>
+            Mohon maaf, pendaftaran Olimpiade & Seni MTs Almaarif 01 Singosari saat ini sedang ditutup. Silakan hubungi panitia untuk informasi lebih lanjut.
+          </p>
+          <button 
+            onClick={() => router.push('/olimpiade-seni')}
+            style={{ padding: '12px 24px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}
+          >
+            Kembali ke Beranda
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '40px 20px' }}>

@@ -18,6 +18,8 @@ export default function RekapOlimpiadeSeni() {
   const [loading, setLoading] = useState(true);
   const [filterJenis, setFilterJenis] = useState<'semua' | 'individu' | 'kolektif'>('semua');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isBuka, setIsBuka] = useState(true);
+  const [toggling, setToggling] = useState(false);
 
   useEffect(() => {
     const sessionStr = localStorage.getItem('keren_user_data');
@@ -30,7 +32,53 @@ export default function RekapOlimpiadeSeni() {
       }
     }
     fetchData();
+    fetchConfig();
   }, []);
+
+  const fetchConfig = async () => {
+    try {
+      const res = await fetch('/api/olimpiade-seni/config-pendaftaran');
+      const json = await res.json();
+      if (json.success && json.pendaftaran_buka !== undefined) {
+        setIsBuka(json.pendaftaran_buka);
+      }
+    } catch (err) {}
+  };
+
+  const handleToggleBuka = async () => {
+    const actionText = isBuka ? 'Menutup' : 'Membuka';
+    const confirm = await Swal.fire({
+      title: `${actionText} Pendaftaran?`,
+      text: isBuka ? 'Pendaftar baru tidak akan bisa mendaftar. Lanjutkan?' : 'Pendaftaran akan dibuka kembali untuk umum. Lanjutkan?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: isBuka ? '#ef4444' : '#10b981',
+      confirmButtonText: `Ya, ${isBuka ? 'Tutup' : 'Buka'}`,
+      cancelButtonText: 'Batal'
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    setToggling(true);
+    try {
+      const res = await fetch('/api/olimpiade-seni/config-pendaftaran', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ buka: !isBuka })
+      });
+      const json = await res.json();
+      if (json.success) {
+        setIsBuka(!isBuka);
+        Swal.fire('Berhasil', `Pendaftaran berhasil di${isBuka ? 'tutup' : 'buka'}.`, 'success');
+      } else {
+        Swal.fire('Gagal', json.error, 'error');
+      }
+    } catch (err: any) {
+      Swal.fire('Error', 'Terjadi kesalahan sistem', 'error');
+    } finally {
+      setToggling(false);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -184,6 +232,21 @@ export default function RekapOlimpiadeSeni() {
           </div>
           
           <div style={{ display: 'flex', gap: '8px' }}>
+            {isAdmin && (
+              <button
+                onClick={handleToggleBuka}
+                disabled={toggling}
+                style={{
+                  padding: '10px 16px', borderRadius: '8px',
+                  background: isBuka ? '#ef4444' : '#10b981', color: 'white', border: 'none',
+                  fontWeight: 600, cursor: toggling ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '8px', opacity: toggling ? 0.7 : 1
+                }}
+              >
+                <i className={`fas ${toggling ? 'fa-spinner fa-spin' : isBuka ? 'fa-lock' : 'fa-lock-open'}`}></i>
+                {isBuka ? 'Tutup Pendaftaran' : 'Buka Pendaftaran'}
+              </button>
+            )}
             <select 
               value={filterJenis}
               onChange={(e) => setFilterJenis(e.target.value as any)}
