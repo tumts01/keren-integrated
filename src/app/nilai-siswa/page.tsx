@@ -23,6 +23,7 @@ export default function NilaiSiswaPage() {
   
   const [students, setStudents] = useState<any[]>([]);
   const [rekapStudents, setRekapStudents] = useState<any[]>([]);
+  const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   
@@ -70,6 +71,7 @@ export default function NilaiSiswaPage() {
       return;
     }
     setLoading(true);
+    setIsEditing(false);
     const finalMapel = mapel === 'Lainnya' ? mapelLain : mapel;
     try {
       const res = await fetch(`/api/nilai-siswa/pk/rekap?kelas=${encodeURIComponent(kelas)}&mapel=${encodeURIComponent(finalMapel)}&tahunAjaran=${encodeURIComponent(tahunAjaran)}`);
@@ -83,6 +85,76 @@ export default function NilaiSiswaPage() {
       Swal.fire('Error', err.message, 'error');
     }
     setLoading(false);
+  };
+
+  const handleEditRekap = (idx: number, field: string, value: string) => {
+    const updated = [...rekapStudents];
+    updated[idx].scores[field] = value;
+    
+    const s = updated[idx].scores;
+    const allHarian = [s.m1s1, s.m1s2, s.m1s3, s.m2s1, s.m2s2, s.m2s3, s.m3s1, s.m3s2, s.m3s3, s.m4s1, s.m4s2, s.m4s3, s.m5s1, s.m5s2, s.m5s3, s.m6s1, s.m6s2, s.m6s3];
+    const validHarian = allHarian.filter(v => v !== '' && v !== undefined && !isNaN(Number(v))).map(Number);
+    const avgHarian = validHarian.length > 0 ? validHarian.reduce((a,b)=>a+b,0) / validHarian.length : 0;
+    
+    let bobotHarian = 0.6;
+    let bobotSts = 0;
+    let bobotSas = 0;
+    let denom = 0;
+    
+    if (validHarian.length > 0) denom += bobotHarian;
+    if (s.sts && !isNaN(Number(s.sts))) { bobotSts = 0.2; denom += bobotSts; }
+    if (s.sas && !isNaN(Number(s.sas))) { bobotSas = 0.2; denom += bobotSas; }
+    
+    if (denom > 0) {
+      const rata = ((avgHarian * bobotHarian) + (Number(s.sts||0) * bobotSts) + (Number(s.sas||0) * bobotSas)) / denom;
+      s.rata = Math.round(rata);
+    } else {
+      s.rata = '';
+    }
+    
+    setRekapStudents(updated);
+  };
+
+  const saveRekap = async () => {
+    setSaving(true);
+    const finalMapel = mapel === 'Lainnya' ? mapelLain : mapel;
+    
+    const dataNilai = rekapStudents.map(s => {
+      const obj: any = { induk: s.induk, nama: s.nama, jk: s.jk };
+      obj['MATERI 1 S1'] = s.scores.m1s1; obj['MATERI 1 S2'] = s.scores.m1s2; obj['MATERI 1 S3'] = s.scores.m1s3;
+      obj['MATERI 2 S1'] = s.scores.m2s1; obj['MATERI 2 S2'] = s.scores.m2s2; obj['MATERI 2 S3'] = s.scores.m2s3;
+      obj['MATERI 3 S1'] = s.scores.m3s1; obj['MATERI 3 S2'] = s.scores.m3s2; obj['MATERI 3 S3'] = s.scores.m3s3;
+      obj['MATERI 4 S1'] = s.scores.m4s1; obj['MATERI 4 S2'] = s.scores.m4s2; obj['MATERI 4 S3'] = s.scores.m4s3;
+      obj['MATERI 5 S1'] = s.scores.m5s1; obj['MATERI 5 S2'] = s.scores.m5s2; obj['MATERI 5 S3'] = s.scores.m5s3;
+      obj['MATERI 6 S1'] = s.scores.m6s1; obj['MATERI 6 S2'] = s.scores.m6s2; obj['MATERI 6 S3'] = s.scores.m6s3;
+      obj['STS'] = s.scores.sts;
+      obj['SAS'] = s.scores.sas;
+      return obj;
+    });
+
+    try {
+      const res = await fetch('/api/nilai-siswa/pk/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kelas,
+          mapel: finalMapel,
+          tahunAjaran,
+          dataNilai,
+          guru: (user as any)?.nama || ''
+        })
+      });
+      const result = await res.json();
+      if (result.success) {
+        Swal.fire('Berhasil', 'Nilai berhasil diupdate', 'success');
+        setIsEditing(false);
+      } else {
+        Swal.fire('Gagal', result.error, 'error');
+      }
+    } catch (err: any) {
+      Swal.fire('Error', err.message, 'error');
+    }
+    setSaving(false);
   };
 
   const fetchStudents = async () => {
@@ -470,7 +542,24 @@ export default function NilaiSiswaPage() {
               </div>
 
               {rekapStudents.length > 0 && (
-                <div className={styles.tableWrapper}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px', gap: '12px' }}>
+                    {isEditing ? (
+                      <>
+                        <button className={styles.btnSubmit} onClick={saveRekap} disabled={saving}>
+                          {saving ? <><i className="fas fa-spinner fa-spin"></i> Menyimpan...</> : <><i className="fas fa-save"></i> Simpan Perubahan</>}
+                        </button>
+                        <button style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }} onClick={() => { setIsEditing(false); fetchRekap(); }}>
+                          Batal
+                        </button>
+                      </>
+                    ) : (
+                      <button style={{ background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }} onClick={() => setIsEditing(true)}>
+                        <i className="fas fa-edit"></i> Edit Data
+                      </button>
+                    )}
+                  </div>
+                  <div className={styles.tableWrapper}>
                   <table className={styles.table} style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>
                     <thead>
                       <tr>
@@ -504,18 +593,39 @@ export default function NilaiSiswaPage() {
                           <td style={{textAlign: 'center'}}>{s.jk}</td>
                           {[1,2,3,4,5,6].map(m => (
                             <React.Fragment key={m}>
-                              <td style={{borderLeft: '1px solid #e2e8f0', textAlign: 'center'}}>{s.scores[`m${m}s1`]}</td>
-                              <td style={{textAlign: 'center'}}>{s.scores[`m${m}s2`]}</td>
-                              <td style={{textAlign: 'center'}}>{s.scores[`m${m}s3`]}</td>
+                              <td style={{borderLeft: '1px solid #e2e8f0', textAlign: 'center'}}>
+                                {isEditing ? (
+                                  <input type="number" style={{width: '45px', textAlign: 'center', padding: '2px', border: '1px solid #cbd5e1', borderRadius: '4px'}} value={s.scores[`m${m}s1`] || ''} onChange={(e) => handleEditRekap(idx, `m${m}s1`, e.target.value)} />
+                                ) : s.scores[`m${m}s1`]}
+                              </td>
+                              <td style={{textAlign: 'center'}}>
+                                {isEditing ? (
+                                  <input type="number" style={{width: '45px', textAlign: 'center', padding: '2px', border: '1px solid #cbd5e1', borderRadius: '4px'}} value={s.scores[`m${m}s2`] || ''} onChange={(e) => handleEditRekap(idx, `m${m}s2`, e.target.value)} />
+                                ) : s.scores[`m${m}s2`]}
+                              </td>
+                              <td style={{textAlign: 'center'}}>
+                                {isEditing ? (
+                                  <input type="number" style={{width: '45px', textAlign: 'center', padding: '2px', border: '1px solid #cbd5e1', borderRadius: '4px'}} value={s.scores[`m${m}s3`] || ''} onChange={(e) => handleEditRekap(idx, `m${m}s3`, e.target.value)} />
+                                ) : s.scores[`m${m}s3`]}
+                              </td>
                             </React.Fragment>
                           ))}
-                          <td style={{borderLeft: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 'bold'}}>{s.scores.sts}</td>
-                          <td style={{textAlign: 'center', fontWeight: 'bold'}}>{s.scores.sas}</td>
+                          <td style={{borderLeft: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 'bold'}}>
+                            {isEditing ? (
+                              <input type="number" style={{width: '45px', textAlign: 'center', padding: '2px', border: '1px solid #cbd5e1', borderRadius: '4px'}} value={s.scores.sts || ''} onChange={(e) => handleEditRekap(idx, 'sts', e.target.value)} />
+                            ) : s.scores.sts}
+                          </td>
+                          <td style={{textAlign: 'center', fontWeight: 'bold'}}>
+                            {isEditing ? (
+                              <input type="number" style={{width: '45px', textAlign: 'center', padding: '2px', border: '1px solid #cbd5e1', borderRadius: '4px'}} value={s.scores.sas || ''} onChange={(e) => handleEditRekap(idx, 'sas', e.target.value)} />
+                            ) : s.scores.sas}
+                          </td>
                           <td style={{textAlign: 'center', fontWeight: 'bold', color: '#0ea5e9'}}>{s.scores.rata}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               )}
             </div>
