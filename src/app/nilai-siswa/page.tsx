@@ -141,7 +141,7 @@ export default function NilaiSiswaPage() {
           mapel: finalMapel,
           tahunAjaran,
           dataNilai,
-          guru: (user as any)?.nama || ''
+          guru: profile?.nama || ''
         })
       });
       const result = await res.json();
