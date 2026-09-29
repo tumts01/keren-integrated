@@ -79,7 +79,7 @@ export default function DashboardCBT() {
   const handleMulaiUjian = () => {
     Swal.fire({
       title: 'Mulai Ujian?',
-      text: "Waktu akan berjalan selama 60 menit. Pastikan koneksi internet Anda stabil.",
+      text: "Waktu akan berjalan selama 90 menit. Pastikan koneksi internet Anda stabil.",
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#0284c7',
@@ -226,7 +226,7 @@ export default function DashboardCBT() {
                 <div style={{ background: '#fef3c7', border: '1px solid #fde68a', padding: '20px', borderRadius: '12px', marginBottom: '32px' }}>
                   <h3 style={{ margin: '0 0 12px 0', color: '#b45309', fontSize: '1.1rem' }}><i className="fas fa-info-circle"></i> Tata Tertib Ujian</h3>
                   <ul style={{ margin: 0, paddingLeft: '20px', color: '#92400e', lineHeight: '1.6' }}>
-                    <li>Waktu ujian adalah <strong>60 menit</strong>.</li>
+                    <li>Waktu ujian adalah <strong>90 menit</strong>.</li>
                     <li>Pilih jawaban yang paling tepat. Jawaban otomatis tersimpan.</li>
                     <li>Jangan menutup jendela *browser* sebelum mengklik tombol <strong>Selesai</strong> di akhir ujian.</li>
                     <li>Jika terjadi gangguan koneksi, Anda bisa masuk kembali ke sistem dan melanjutkan ujian dari soal terakhir.</li>
