@@ -166,7 +166,7 @@ export default function OlimpiadeSeniPage() {
           borderTop: '1px solid #e2e8f0'
         }}>
           <button 
-            onClick={() => window.open('https://drive.google.com/file/d/1tDsEhRGpk7OvvMVRYUhliN_ZPsN1MHf2/view?usp=sharing', '_blank')}
+            onClick={() => window.open('https://drive.google.com/file/d/1Mx9AI1sOTnL8W4bv-3TJAcLuD64CshwN/view?usp=sharing', '_blank')}
             style={{
               padding: '12px 24px',
               borderRadius: '8px',
@@ -189,7 +189,7 @@ export default function OlimpiadeSeniPage() {
           </button>
 
           <button 
-            onClick={() => window.open('https://drive.google.com/file/d/1Qc_hj2tA434rlhesnn_eL3AxrRfX7l7V/view?usp=sharing', '_blank')}
+            onClick={() => window.open('https://drive.google.com/open?id=13uiEHa5LE-nwY4neCwf2yUqTHqjC96pr&usp=drive_fs', '_blank')}
             style={{
               padding: '12px 24px',
               borderRadius: '8px',
