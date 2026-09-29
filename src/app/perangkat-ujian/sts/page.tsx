@@ -949,8 +949,8 @@ export default function StsPage() {
         <div className={styles.card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h3 style={{ margin: 0 }}>Daftar Siswa Kelas {kelas}</h3>
-            <div>
-              <span style={{ fontSize: '0.85rem', color: '#64748b', marginRight: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <span style={{ fontSize: '0.85rem', color: '#64748b', marginRight: '8px' }}>
                 {isFetchingGrades ? 'Memuat data nilai...' : `Data nilai dari ${gradesData.length} mata pelajaran ditemukan`}
               </span>
               <button 
@@ -962,7 +962,7 @@ export default function StsPage() {
               </button>
               <button 
                 className={styles.btnSecondary} 
-                style={{ marginLeft: '8px', background: '#10b981', color: 'white', border: 'none' }}
+                style={{ background: '#10b981', color: 'white', border: 'none' }}
                 disabled={!kelas || isFetchingGrades}
                 onClick={() => {
                   if (!kelas) { Swal.fire('Peringatan', 'Pilih kelas terlebih dahulu!', 'warning'); return; }
