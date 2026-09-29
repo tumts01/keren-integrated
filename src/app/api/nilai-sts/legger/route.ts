@@ -91,9 +91,26 @@ export async function GET(request: Request) {
       });
     }
 
-    // 2. Fetch all possible mapels
-    const { data: dbMapels } = await supabase.from('mata_pelajaran').select('metadata');
-    const baseMapels = (dbMapels || []).map(r => getMapelName(r)).filter(Boolean);
+    // 2. Definisi urutan mapel baku
+    const uniqueMapels = [
+      'Alquran Hadis',
+      'Akidah Akhlak',
+      'Fikih',
+      'Sejarah Kebudayaan Islam',
+      'Pendidikan Pancasila',
+      'Bahasa Indonesia',
+      'Bahasa Arab',
+      'Matematika',
+      'Ilmu Pengetahuan Alam',
+      'Ilmu Pengetahuan Sosial',
+      'Bahasa Inggris',
+      'Pendidikan Jasmani, Olah Raga dan Kesehatan',
+      'Informatika',
+      'Seni Budaya',
+      'Prakarya',
+      'Bahasa Daerah',
+      'KE-NU-AN'
+    ];
 
     // 3. Fetch all nilai for this kelas
     const { data: nilaiRows, error: nilaiError } = await supabase
@@ -115,18 +132,23 @@ export async function GET(request: Request) {
 
     if (pkError) throw pkError;
 
-    // Build unified mapels list
-    const usedMapels = new Set<string>();
-    baseMapels.forEach(m => usedMapels.add(m));
-    (nilaiRows || []).forEach(r => { if (r.mata_pelajaran) usedMapels.add(r.mata_pelajaran) });
-    (pkRows || []).forEach(r => { if (r.mata_pelajaran) usedMapels.add(r.mata_pelajaran) });
-
-    const uniqueMapels = Array.from(usedMapels).sort();
-
+    // Append any extra mapels that might exist in the DB but aren't in the hardcoded list (optional, but let's strictly use the requested list or append them at the end)
+    const usedMapels = new Set(uniqueMapels);
+    const extraMapels = new Set<string>();
+    
     const allRows = [
       ...(nilaiRows || []),
       ...(pkRows || []).map(r => ({ mata_pelajaran: r.mata_pelajaran, data_nilai: r.data_nilai }))
     ];
+
+    allRows.forEach(r => { 
+      if (r.mata_pelajaran && !usedMapels.has(r.mata_pelajaran)) {
+        extraMapels.add(r.mata_pelajaran);
+      }
+    });
+    
+    // Add extra mapels to the end of the list before 'Jumlah'
+    uniqueMapels.push(...Array.from(extraMapels).sort());
 
     // 5. Build a lookup: mapel -> { nisn -> nilaiAkhir }
     const mapelNilaiMap: Record<string, Record<string, string | number>> = {};
@@ -145,11 +167,13 @@ export async function GET(request: Request) {
     }
 
     // 6. Build Excel rows
-    const headers = ['No', 'NISN', 'Nama Siswa', 'L/P', ...uniqueMapels];
+    const headers = ['No', 'NISN', 'Nama Siswa', 'L/P', ...uniqueMapels, 'Jumlah'];
     const rows: (string | number)[][] = [];
 
     siswaKelas.forEach((s: any, idx: number) => {
       const rowData: (string | number)[] = [idx + 1, s.nisn || '', s.nama || '', s.jk || ''];
+      
+      let sum = 0;
       
       for (const mapel of uniqueMapels) {
         const nilaiByMapel = mapelNilaiMap[mapel] || {};
@@ -164,8 +188,16 @@ export async function GET(request: Request) {
           }
         }
         
+        const numVal = parseFloat(nilai as string);
+        if (!isNaN(numVal)) {
+          sum += numVal;
+        }
+        
         rowData.push(nilai);
       }
+      
+      // Push Jumlah to row data
+      rowData.push(sum > 0 ? sum : '');
       rows.push(rowData);
     });
 
@@ -187,7 +219,8 @@ export async function GET(request: Request) {
       { wch: 14 },  // NISN
       { wch: 30 },  // Nama
       { wch: 5 },   // L/P
-      ...uniqueMapels.map(() => ({ wch: 18 }))
+      ...uniqueMapels.map(() => ({ wch: 18 })),
+      { wch: 12 }   // Jumlah
     ];
 
     ws['!merges'] = [
