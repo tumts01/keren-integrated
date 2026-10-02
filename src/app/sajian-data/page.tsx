@@ -10,7 +10,7 @@ export default function SajianDataPage() {
   const [error, setError] = useState('');
 
   // States for Top Asal Sekolah Filters
-  const [filterDomisili, setFilterDomisili] = useState('');
+  const [filterDomisili, setFilterDomisili] = useState(''); // '' = Semua, 'Pesantren', 'Sekolah'
   const [filterKelas, setFilterKelas] = useState('');
   const [filterTA, setFilterTA] = useState('');
 
@@ -33,12 +33,11 @@ export default function SajianDataPage() {
 
   const rawAsalSekolah = data?.siswa?.rincianAsalSekolah7 || [];
 
-  // Get unique options for filters
-  const uniqueDomisili = useMemo(() => {
-    const set = new Set<string>();
-    rawAsalSekolah.forEach((r: any) => { if (r.domisili) set.add(r.domisili) });
-    return [...set].sort();
-  }, [rawAsalSekolah]);
+  // Helper: is this row categorized as Pesantren?
+  const isPesantren = (r: any) => {
+    const dom = (r.domisili || '').toLowerCase().trim();
+    return dom !== '' && dom !== 'rumah' && !dom.includes('rumah');
+  };
 
   const uniqueKelas = useMemo(() => {
     const set = new Set<string>();
@@ -59,24 +58,26 @@ export default function SajianDataPage() {
   // Apply filters
   const filteredAsalSekolah = useMemo(() => {
     return rawAsalSekolah.filter((r: any) => {
-      if (filterDomisili && r.domisili !== filterDomisili) return false;
+      if (filterDomisili === 'Pesantren' && !isPesantren(r)) return false;
+      if (filterDomisili === 'Sekolah' && isPesantren(r)) return false;
       if (filterKelas && r.kelas !== filterKelas) return false;
       if (filterTA && r.ta7 !== filterTA && r.ta8 !== filterTA && r.ta9 !== filterTA) return false;
       return true;
     });
   }, [rawAsalSekolah, filterDomisili, filterKelas, filterTA]);
 
-  // Aggregate Top 10
+  // Aggregate Top 10 — group by pesantren name when Pesantren filter active, else by SD/MI name
   const top10Sekolah = useMemo(() => {
     const map: Record<string, number> = {};
     filteredAsalSekolah.forEach((r: any) => {
-      map[r.asal] = (map[r.asal] || 0) + 1;
+      const key = filterDomisili === 'Pesantren' ? (r.namaPesantren || 'TIDAK DIKETAHUI') : r.asal;
+      map[key] = (map[key] || 0) + 1;
     });
     return Object.entries(map)
       .map(([nama, jumlah]) => ({ nama, jumlah }))
       .sort((a, b) => b.jumlah - a.jumlah)
       .slice(0, 10);
-  }, [filteredAsalSekolah]);
+  }, [filteredAsalSekolah, filterDomisili]);
 
 
   if (loading) return <LoadingScreen />;
@@ -237,7 +238,8 @@ export default function SajianDataPage() {
               <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '4px' }}>Domisili</label>
               <select value={filterDomisili} onChange={(e) => setFilterDomisili(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                 <option value="">Semua Domisili</option>
-                {uniqueDomisili.map(d => <option key={d} value={d}>{d}</option>)}
+                <option value="Pesantren">Pesantren</option>
+                <option value="Sekolah">Sekolah</option>
               </select>
             </div>
             <div style={{ flex: '1 1 200px' }}>
@@ -261,7 +263,7 @@ export default function SajianDataPage() {
               <thead>
                 <tr>
                   <th style={{ width: '60px', textAlign: 'center' }}>No</th>
-                  <th>Asal Sekolah (SD/MI)</th>
+                  <th>{filterDomisili === 'Pesantren' ? 'Nama Pesantren' : 'Asal Sekolah (SD/MI)'}</th>
                   <th style={{ textAlign: 'center' }}>Jumlah Siswa</th>
                 </tr>
               </thead>

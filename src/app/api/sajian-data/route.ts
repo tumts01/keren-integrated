@@ -188,9 +188,12 @@ export async function GET() {
         const getVal = (k1: string, k2?: string) => (r.metadata?.[k1] || (k2 ? r.metadata?.[k2] : ''))?.toString() || '';
         let asal = getVal('SD/MI', 'ASAL SEKOLAH').toUpperCase().trim();
         if (!asal || asal === '-') asal = 'TIDAK DIKETAHUI';
+        const dom = getVal('DOMISILI', 'Domisili').trim();
+        const namaPesantren = getVal('NAMA PESANTREN', 'Nama Pesantren').trim().toUpperCase();
         return {
           asal,
-          domisili: getVal('DOMISILI', 'Domisili').trim(),
+          domisili: dom,
+          namaPesantren: namaPesantren || 'TIDAK DIKETAHUI',
           kelas: getVal('KELAS', 'Kelas').trim(),
           ta7: getVal('TA KELAS 7').trim(),
           ta8: getVal('TA KELAS 8').trim(),
