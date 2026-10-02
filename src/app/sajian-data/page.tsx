@@ -10,7 +10,7 @@ export default function SajianDataPage() {
   const [error, setError] = useState('');
 
   // States for Top Asal Sekolah Filters
-  const [filterDomisili, setFilterDomisili] = useState(''); // '' = Semua, 'Pesantren', 'Sekolah'
+  const [filterDomisili, setFilterDomisili] = useState('Sekolah');
   const [filterKelas, setFilterKelas] = useState('');
   const [filterTADari, setFilterTADari] = useState('');
   const [filterTASampai, setFilterTASampai] = useState('');
@@ -60,7 +60,6 @@ export default function SajianDataPage() {
   const filteredAsalSekolah = useMemo(() => {
     return rawAsalSekolah.filter((r: any) => {
       if (filterDomisili === 'Pesantren' && !isPesantren(r)) return false;
-      if (filterDomisili === 'Sekolah' && isPesantren(r)) return false;
       if (filterKelas && r.kelas !== filterKelas) return false;
       if (filterTADari || filterTASampai) {
         const ta = r.ta7 || r.ta8 || r.ta9 || '';
@@ -243,9 +242,8 @@ export default function SajianDataPage() {
             <div style={{ flex: '1 1 200px' }}>
               <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '4px' }}>Domisili</label>
               <select value={filterDomisili} onChange={(e) => setFilterDomisili(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-                <option value="">Semua Domisili</option>
-                <option value="Pesantren">Pesantren</option>
                 <option value="Sekolah">Sekolah</option>
+                <option value="Pesantren">Pesantren</option>
               </select>
             </div>
             <div style={{ flex: '1 1 200px' }}>
