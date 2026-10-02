@@ -30,7 +30,7 @@ function generateUsernameCbt() {
 }
 
 function generatePasswordCbt() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const chars = '0123456789';
   let pass = '';
   for (let i = 0; i < 6; i++) {
     pass += chars.charAt(Math.floor(Math.random() * chars.length));
