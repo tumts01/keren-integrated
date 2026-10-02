@@ -170,6 +170,7 @@ export async function POST(request: Request) {
       'NO SERI IJAZAH SD/MI':       fields.noIjazahSd || '',
 
       'STATUS SISWA':               'Aktif',
+      'TAHUN AJARAN':               fields.tahunAjaran || '',
       'DITERIMA DI MTs KELAS':      fields.kelas || '',
       [`TA KELAS ${fields.kelas || '7'}`]: fields.tahunAjaran || '',
       [`ROMBEL KELAS ${fields.kelas || '7'}`]: fields.rombel || '',
