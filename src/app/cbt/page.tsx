@@ -8,6 +8,7 @@ export default function LoginCBT() {
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -55,20 +56,29 @@ export default function LoginCBT() {
               required
               value={username} 
               onChange={e => setUsername(e.target.value)}
-              style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none' }}
+              style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', boxSizing: 'border-box' }}
               placeholder="Masukkan Username CBT"
             />
           </div>
           <div style={{ marginBottom: '32px' }}>
             <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Password</label>
-            <input 
-              type="password" 
-              required
-              value={password} 
-              onChange={e => setPassword(e.target.value)}
-              style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none' }}
-              placeholder="Masukkan Password CBT"
-            />
+            <div style={{ position: 'relative' }}>
+              <input 
+                type={showPassword ? 'text' : 'password'} 
+                required
+                value={password} 
+                onChange={e => setPassword(e.target.value)}
+                style={{ width: '100%', padding: '12px 48px 12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', boxSizing: 'border-box' }}
+                placeholder="Masukkan Password CBT"
+              />
+              <button 
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 0 }}
+              >
+                <i className={showPassword ? "fas fa-eye-slash" : "fas fa-eye"}></i>
+              </button>
+            </div>
           </div>
           <button 
             type="submit" 
