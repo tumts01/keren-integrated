@@ -70,7 +70,7 @@ export default function SajianDataPage() {
   const top10Sekolah = useMemo(() => {
     const map: Record<string, number> = {};
     filteredAsalSekolah.forEach((r: any) => {
-      const key = filterDomisili === 'Pesantren' ? (r.namaPesantren || 'TIDAK DIKETAHUI') : r.asal;
+      const key = filterDomisili === 'Pesantren' ? (r.domisili || 'TIDAK DIKETAHUI') : r.asal;
       map[key] = (map[key] || 0) + 1;
     });
     return Object.entries(map)
