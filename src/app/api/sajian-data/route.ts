@@ -130,7 +130,7 @@ export async function GET() {
       };
 
       const statusAktif = getVal('Status Siswa', 'STATUS SISWA', 'Ket', 'KETERANGAN').toLowerCase().trim();
-      if (statusAktif !== 'aktif') return;
+      if (statusAktif !== 'aktif' && statusAktif !== 'lulus') return;
 
       const nama = r.nama;
       if (!nama) return; 
@@ -182,7 +182,7 @@ export async function GET() {
       .filter((r: any) => {
         const getVal = (key1: string, key2?: string, key3?: string, key4?: string) => (r.metadata?.[key1] || (key2 ? r.metadata?.[key2] : '') || (key3 ? r.metadata?.[key3] : '') || (key4 ? r.metadata?.[key4] : ''))?.toString() || '';
         const statusAktif = getVal('Status Siswa', 'STATUS SISWA', 'Ket', 'KETERANGAN').toLowerCase().trim();
-        return statusAktif === 'aktif' && r.nama;
+        return (statusAktif === 'aktif' || statusAktif === 'lulus') && r.nama;
       })
       .map((r: any) => {
         const getVal = (k1: string, k2?: string) => (r.metadata?.[k1] || (k2 ? r.metadata?.[k2] : ''))?.toString() || '';
