@@ -12,7 +12,8 @@ export default function SajianDataPage() {
   // States for Top Asal Sekolah Filters
   const [filterDomisili, setFilterDomisili] = useState(''); // '' = Semua, 'Pesantren', 'Sekolah'
   const [filterKelas, setFilterKelas] = useState('');
-  const [filterTA, setFilterTA] = useState('');
+  const [filterTADari, setFilterTADari] = useState('');
+  const [filterTASampai, setFilterTASampai] = useState('');
 
   useEffect(() => {
     fetch('/api/sajian-data')
@@ -61,10 +62,15 @@ export default function SajianDataPage() {
       if (filterDomisili === 'Pesantren' && !isPesantren(r)) return false;
       if (filterDomisili === 'Sekolah' && isPesantren(r)) return false;
       if (filterKelas && r.kelas !== filterKelas) return false;
-      if (filterTA && r.ta7 !== filterTA && r.ta8 !== filterTA && r.ta9 !== filterTA) return false;
+      if (filterTADari || filterTASampai) {
+        const ta = r.ta7 || r.ta8 || r.ta9 || '';
+        if (!ta) return false;
+        if (filterTADari && ta < filterTADari) return false;
+        if (filterTASampai && ta > filterTASampai) return false;
+      }
       return true;
     });
-  }, [rawAsalSekolah, filterDomisili, filterKelas, filterTA]);
+  }, [rawAsalSekolah, filterDomisili, filterKelas, filterTADari, filterTASampai]);
 
   // Aggregate Top 10 — group by pesantren name when Pesantren filter active, else by SD/MI name
   const top10Sekolah = useMemo(() => {
@@ -249,12 +255,22 @@ export default function SajianDataPage() {
                 {uniqueKelas.map(k => <option key={k} value={k}>Kelas {k}</option>)}
               </select>
             </div>
-            <div style={{ flex: '1 1 200px' }}>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '4px' }}>Tahun Ajaran Masuk</label>
-              <select value={filterTA} onChange={(e) => setFilterTA(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-                <option value="">Semua Tahun Ajaran</option>
-                {uniqueTA.map(ta => <option key={ta} value={ta}>{ta}</option>)}
-              </select>
+            <div style={{ flex: '2 1 300px', display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '4px' }}>Tahun Ajaran Masuk (Dari)</label>
+                <select value={filterTADari} onChange={(e) => setFilterTADari(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                  <option value="">Semua</option>
+                  {uniqueTA.slice().reverse().map(ta => <option key={ta} value={ta}>{ta}</option>)}
+                </select>
+              </div>
+              <span style={{ padding: '10px 4px', color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap' }}>—</span>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '4px' }}>Sampai</label>
+                <select value={filterTASampai} onChange={(e) => setFilterTASampai(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                  <option value="">Semua</option>
+                  {uniqueTA.slice().reverse().map(ta => <option key={ta} value={ta}>{ta}</option>)}
+                </select>
+              </div>
             </div>
           </div>
           
