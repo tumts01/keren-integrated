@@ -49,9 +49,7 @@ export default function SajianDataPage() {
   const uniqueTA = useMemo(() => {
     const set = new Set<string>();
     rawAsalSekolah.forEach((r: any) => { 
-      if (r.ta7) set.add(r.ta7);
-      if (r.ta8) set.add(r.ta8);
-      if (r.ta9) set.add(r.ta9);
+      if (r.taMasuk) set.add(r.taMasuk);
     });
     return [...set].sort().reverse(); // Reverse for newest first
   }, [rawAsalSekolah]);
@@ -62,7 +60,7 @@ export default function SajianDataPage() {
       if (filterDomisili === 'Pesantren' && !isPesantren(r)) return false;
       if (filterKelas && r.kelas !== filterKelas) return false;
       if (filterTADari || filterTASampai) {
-        const ta = r.ta7 || r.ta8 || r.ta9 || '';
+        const ta = r.taMasuk || '';
         if (!ta) return false;
         if (filterTADari && ta < filterTADari) return false;
         if (filterTASampai && ta > filterTASampai) return false;

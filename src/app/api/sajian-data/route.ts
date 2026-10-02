@@ -154,16 +154,6 @@ export async function GET() {
         }
       }
 
-      const ta7 = getVal('TA KELAS 7');
-      const ta8 = getVal('TA KELAS 8');
-      const ta9 = getVal('TA KELAS 9');
-      
-      if (ta7 && !ta8 && !ta9) {
-        let key = asal;
-        if (!key || key === '-') key = 'TIDAK DIKETAHUI';
-        siswaStats.rincianAsalSekolah7[key] = (siswaStats.rincianAsalSekolah7[key] || 0) + 1;
-      }
-
       const dom = getVal('DOMISILI', 'Domisili').toLowerCase().trim();
       let domKey = 'Belum terdata';
       if (!dom) {
@@ -195,9 +185,7 @@ export async function GET() {
           domisili: dom,
           namaPesantren: namaPesantren || 'TIDAK DIKETAHUI',
           kelas: getVal('KELAS', 'Kelas').trim(),
-          ta7: getVal('TA KELAS 7').trim(),
-          ta8: getVal('TA KELAS 8').trim(),
-          ta9: getVal('TA KELAS 9').trim()
+          taMasuk: getVal('TAHUN AJARAN', 'Tahun Ajaran').trim()
         };
       });
 
