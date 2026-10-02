@@ -90,6 +90,14 @@ export default function PendaftaranOlimpiadeSeni() {
       return;
     }
     setLoading(true);
+    Swal.fire({
+      title: 'Memproses Pendaftaran...',
+      text: 'Mohon tunggu, data sedang dikirim ke server.',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
 
     try {
       const formData = new FormData();
@@ -218,6 +226,14 @@ export default function PendaftaranOlimpiadeSeni() {
     }
     
     setLoading(true);
+    Swal.fire({
+      title: 'Memproses Pendaftaran...',
+      text: 'Mohon tunggu, data sedang dikirim ke server.',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
 
     try {
       const formData = new FormData();
