@@ -15,10 +15,10 @@ export async function GET(req: Request) {
 
     if (errNilai) throw errNilai;
 
-    // Ambil data nilai CBT (including cheat logs)
+    // Ambil data nilai CBT (including cheat logs and time)
     const { data: cbtData, error: errCbt } = await supabase
       .from('cbt_sesi')
-      .select('nomor_peserta, nilai_akhir, log_kecurangan');
+      .select('nomor_peserta, nilai_akhir, log_kecurangan, waktu_mulai, waktu_selesai');
       
     if (errCbt && errCbt.code !== '42P01') { // Ignore relation doesn't exist just in case
       console.warn('CBT Table error or missing', errCbt);
@@ -75,7 +75,9 @@ export async function GET(req: Request) {
           rata_rata: Number(cbtSesi.nilai_akhir).toFixed(2),
           jumlah_juri: 1,
           detail_nilai: [{ nilai: cbtSesi.nilai_akhir, olimpiade_juri: { nama_juri: 'Sistem CBT' } }],
-          log_kecurangan: cbtSesi.log_kecurangan || []
+          log_kecurangan: cbtSesi.log_kecurangan || [],
+          waktu_mulai: cbtSesi.waktu_mulai || null,
+          waktu_selesai: cbtSesi.waktu_selesai || null
         };
       }
 

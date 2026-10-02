@@ -313,6 +313,7 @@ export default function MonitoringOlimpiadePage() {
                   {filterCabang === 'Semua' && <th style={{ padding: '15px' }}>Cabang Lomba</th>}
                   <th style={{ padding: '15px', textAlign: 'center' }}>Juri/CBT</th>
                   <th style={{ padding: '15px', textAlign: 'center' }}>Pelanggaran</th>
+                  <th style={{ padding: '15px', textAlign: 'center' }}>Waktu Mengerjakan</th>
                   <th style={{ padding: '15px', textAlign: 'right' }}>Nilai</th>
                   <th style={{ padding: '15px', textAlign: 'center' }}>Status (Top {MAX_LOLOS})</th>
                 </tr>
@@ -320,13 +321,26 @@ export default function MonitoringOlimpiadePage() {
               <tbody>
                 {sortedData.length === 0 ? (
                   <tr>
-                    <td colSpan={filterCabang === 'Semua' ? 7 : 6} style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
+                    <td colSpan={filterCabang === 'Semua' ? 8 : 7} style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
                       Belum ada data nilai masuk.
                     </td>
                   </tr>
                 ) : (
                   sortedData.map((d, i) => {
                     const lolos = isLolos(d);
+                    const durationText = (() => {
+                      if (d.waktu_mulai && d.waktu_selesai) {
+                        const start = new Date(d.waktu_mulai).getTime();
+                        const end = new Date(d.waktu_selesai).getTime();
+                        const diffInSeconds = Math.floor((end - start) / 1000);
+                        if (diffInSeconds < 0) return '-';
+                        const minutes = Math.floor(diffInSeconds / 60);
+                        const seconds = diffInSeconds % 60;
+                        return `${minutes}m ${seconds}s`;
+                      }
+                      return '-';
+                    })();
+                    
                     return (
                     <tr key={d.id} style={{ borderBottom: '1px solid #e2e8f0', background: lolos ? (i === 0 ? '#fef9c3' : i === 1 ? '#f0fdf4' : i === 2 ? '#fff7ed' : '#f0fdf4') : '#fff5f5' }}>
                       <td style={{ padding: '15px', fontWeight: 'bold', color: i === 0 ? '#ca8a04' : i === 1 ? '#64748b' : i === 2 ? '#ea580c' : '#334155' }}>
@@ -356,6 +370,13 @@ export default function MonitoringOlimpiadePage() {
                             <i className="fas fa-check-circle"></i> Bersih
                           </span>
                         )}
+                      </td>
+                      <td style={{ padding: '15px', textAlign: 'center', color: '#64748b', fontSize: '0.9rem', fontWeight: 500 }}>
+                        {durationText !== '-' ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#f1f5f9', padding: '4px 10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                            <i className="fas fa-clock" style={{ color: '#94a3b8' }}></i> {durationText}
+                          </span>
+                        ) : '-'}
                       </td>
                       <td style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold', fontSize: '1.1rem', color: lolos ? '#10b981' : '#94a3b8' }}>
                         {d.rata_rata}
