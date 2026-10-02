@@ -540,12 +540,29 @@ export default function PersuratanPage() {
     if (s.yangDitugaskan) {
       let isExpired = false;
       if (s.batasWaktu) {
-        const parts = s.batasWaktu.split('/'); // DD/MM/YYYY
-        if (parts.length === 3) {
-          const batasDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
-          if (batasDate < today) {
-            isExpired = true;
+        let batasDate: Date | null = null;
+        if (s.batasWaktu.includes('-')) {
+          const parts = s.batasWaktu.split('-');
+          if (parts.length === 3) {
+            if (parts[0].length === 4) {
+              batasDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            } else {
+              batasDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+            }
           }
+        } else if (s.batasWaktu.includes('/')) {
+          const parts = s.batasWaktu.split('/');
+          if (parts.length === 3) {
+            if (parts[2].length === 4) {
+              batasDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+            } else if (parts[0].length === 4) {
+              batasDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            }
+          }
+        }
+
+        if (batasDate && !isNaN(batasDate.getTime()) && batasDate < today) {
+          isExpired = true;
         }
       }
 
