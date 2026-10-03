@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import Swal from 'sweetalert2';
+import * as XLSX from 'xlsx';
 import styles from './Prestasi.module.css';
 import InlineLoading from '@/components/InlineLoading';
 
@@ -176,6 +177,30 @@ export default function PrestasiPage() {
     return s;
   }, [filteredData]);
 
+  const handleExportExcel = () => {
+    if (filteredData.length === 0) {
+      Swal.fire('Info', 'Tidak ada data untuk diekspor', 'info');
+      return;
+    }
+    const ws_data = filteredData.map((item, index) => ({
+      'No': index + 1,
+      'Tahun Pelajaran': item.tahun_pelajaran,
+      'Tanggal': item.tanggal,
+      'Siswa': item.nama,
+      'Kelas': item.kelas,
+      'Nama Lomba': item.nama_lomba,
+      'Penyelenggara': item.penyelenggara,
+      'Peringkat': item.peringkat,
+      'Tingkat': item.tingkat,
+      'Link Sertifikat': item.link_sertifikat
+    }));
+    
+    const ws = XLSX.utils.json_to_sheet(ws_data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Data Prestasi");
+    XLSX.writeFile(wb, `Data_Prestasi_Siswa_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -184,9 +209,14 @@ export default function PrestasiPage() {
           <p className={styles.subtitle}>Kelola rekapitulasi data prestasi siswa madrasah</p>
         </div>
         {isAdmin && (
-          <button className={styles.btnAdd} onClick={() => handleOpenModal()}>
-            <i className="fas fa-plus"></i> Tambah Prestasi
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button className={styles.btnAdd} onClick={handleExportExcel} style={{ backgroundColor: '#10b981' }}>
+              <i className="fas fa-file-excel"></i> Export Excel
+            </button>
+            <button className={styles.btnAdd} onClick={() => handleOpenModal()}>
+              <i className="fas fa-plus"></i> Tambah Prestasi
+            </button>
+          </div>
         )}
       </div>
 
