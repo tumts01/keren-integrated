@@ -291,35 +291,37 @@
 }
 
 @media print {
+  @page {
+    margin-top: 10mm;
+  }
+
   html, body {
     background-color: white !important;
   }
-  
-  body * {
-    visibility: hidden;
-    background: transparent !important;
-  }
 
-  .printOnly, .printOnly * {
-    visibility: visible;
-  }
-
-  :global(.print-header) {
+  :global(.print-header),
+  :global(header),
+  :global(nav),
+  :global(aside),
+  :global(footer) {
     display: none !important;
   }
 
   .container {
-    position: static !important;
     padding: 0 !important;
     margin: 0 !important;
+    position: static !important;
+  }
+
+  /* Sembunyikan semua elemen UI layar di dalam container */
+  .container > *:not(.printOnly) {
+    display: none !important;
   }
 
   .printOnly {
-    display: block;
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
     background: white !important;
     font-size: 10pt;
   }
