@@ -304,6 +304,16 @@
     visibility: visible;
   }
 
+  :global(.print-header) {
+    display: none !important;
+  }
+
+  .container {
+    position: static !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
   .printOnly {
     display: block;
     position: absolute;
