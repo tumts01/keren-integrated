@@ -298,6 +298,10 @@
 
   html, body {
     background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
   body * {
@@ -308,13 +312,16 @@
   .printOnly {
     visibility: visible !important;
     display: block !important;
-    position: absolute !important;
+    position: fixed !important;
     top: 0 !important;
     left: 0 !important;
+    right: 0 !important;
     width: 100% !important;
     background: white !important;
     font-size: 8.5pt !important;
     color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
   }
 
   .printOnly * {
@@ -376,7 +383,7 @@
   }
 
   .printRecapTable td {
-    padding: 6px 4px;
+    padding: 7px 4px;
     text-align: center;
     border-bottom: 1px solid #e2e8f0;
     white-space: nowrap;
