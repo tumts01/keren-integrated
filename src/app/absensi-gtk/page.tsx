@@ -962,9 +962,6 @@ export default function AbsensiGTK() {
       {/* Print Layout */}
       {activeTab === 'rekap' && (
         <div className={styles.printOnly}>
-          <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-            <img src="/kop_surat_mts.png" alt="Kop Surat MTs Almaarif 01" style={{ width: '100%', height: 'auto' }} />
-          </div>
           <div className={styles.printHeader}>
             ATTENDANCE RECORD
           </div>
