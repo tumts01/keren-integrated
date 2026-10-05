@@ -27,7 +27,9 @@ export default function BukuIndukPage() {
       const siswaJson = await siswaRes.json();
 
       if (kelasJson.success) {
-        setDaftarKelas(kelasJson.data.map((k: any) => k.nama_kelas));
+        // Since we want unique class names, let's use Set just in case
+        const classNames = Array.from(new Set(kelasJson.data.map((k: any) => k.rombel)));
+        setDaftarKelas(classNames as string[]);
       }
       if (siswaJson.success) {
         setSiswa(siswaJson.data.filter((s: any) => (s.status || '').toUpperCase() === 'AKTIF'));
@@ -77,13 +79,25 @@ export default function BukuIndukPage() {
               
               <div className={styles.formGroup} style={{ flex: '2', minWidth: '300px' }}>
                 <label className={styles.label}>Cari Nama/NISN</label>
-                <input 
-                  type="text" 
-                  className={styles.input} 
-                  placeholder="Ketik untuk mencari..." 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <input 
+                    type="text" 
+                    className={styles.input} 
+                    style={{ flex: 1 }}
+                    placeholder="Ketik untuk mencari..." 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  {kelas && (
+                    <Link 
+                      href={`/buku-induk/cetak-masal/${kelas}`}
+                      className={styles.primaryButton}
+                      style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', backgroundColor: '#10b981' }}
+                    >
+                      <i className="fa-solid fa-print"></i> Cetak Sekelas
+                    </Link>
+                  )}
+                </div>
               </div>
             </div>
 
