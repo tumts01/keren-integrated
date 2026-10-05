@@ -10,7 +10,11 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     
     // 1. Get Data Induk
     const allStudents = await getAllCachedDataInduk();
-    const student = allStudents.find((s: any) => s.id_siswa === id || (s.metadata && s.metadata['ID SISWA'] === id));
+    const student = allStudents.find((s: any) => 
+      String(s.id_siswa) === String(id) || 
+      (s.metadata && String(s.metadata['ID SISWA']) === String(id)) || 
+      (s.metadata && String(s.metadata['NISN']) === String(id))
+    );
     
     if (!student) {
       return NextResponse.json({ success: false, error: 'Student not found' }, { status: 404 });

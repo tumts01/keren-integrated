@@ -30,7 +30,7 @@ export default function BukuIndukPage() {
         setDaftarKelas(kelasJson.data.map((k: any) => k.nama_kelas));
       }
       if (siswaJson.success) {
-        setSiswa(siswaJson.data.filter((s: any) => s.status === 'Aktif'));
+        setSiswa(siswaJson.data.filter((s: any) => (s.status || '').toUpperCase() === 'AKTIF'));
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -101,15 +101,15 @@ export default function BukuIndukPage() {
                 </thead>
                 <tbody>
                   {filteredSiswa.map((s, idx) => (
-                    <tr key={s.id_siswa}>
+                    <tr key={s.nis || idx}>
                       <td>{idx + 1}</td>
-                      <td>{s.id_siswa}</td>
+                      <td>{s.nis}</td>
                       <td>{s.nisn}</td>
                       <td>{s.nama}</td>
                       <td>{s.rombel}</td>
                       <td>
                         <Link 
-                          href={`/buku-induk/cetak/${s.id_siswa}`}
+                          href={`/buku-induk/cetak/${s.nis}`}
                           className={styles.primaryButton}
                           style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}
                         >
