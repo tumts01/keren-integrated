@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Swal from 'sweetalert2';
@@ -62,7 +62,7 @@ export default function SpmbEditPage() {
 
   const fetchData = async () => {
     try {
-      const res = await fetch(\/api/spmb/\\);
+      const res = await fetch(`/api/spmb/${id}`);
       const result = await res.json();
       if (result.success && result.data) {
         const meta = result.data.metadata || {};
@@ -118,7 +118,7 @@ export default function SpmbEditPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(\/api/spmb/\\, {
+      const res = await fetch(`/api/spmb/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)

@@ -21,9 +21,9 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     if (findError) throw findError;
 
     let fullAlamat = payload.alamatLengkap || '';
-    if (payload.desa) fullAlamat += \, Desa/Kel. \\;
-    if (payload.kecamatan) fullAlamat += \, Kec. \\;
-    if (payload.kabupaten) fullAlamat += \, \\;
+    if (payload.desa) fullAlamat += `, Desa/Kel. ${payload.desa}`;
+    if (payload.kecamatan) fullAlamat += `, Kec. ${payload.kecamatan}`;
+    if (payload.kabupaten) fullAlamat += `, ${payload.kabupaten}`;
 
     const newMetadata = {
       ...existing.metadata,
