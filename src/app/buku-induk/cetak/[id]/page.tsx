@@ -62,8 +62,8 @@ export default function CetakBukuIndukPage() {
   if (!data) return null;
 
   return (
-    <div style={{ backgroundColor: '#525659', minHeight: '100vh', padding: '2rem 0' }}>
-      <div style={{ maxWidth: '1000px', margin: '0 auto', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
+    <div className="print-bg" style={{ minHeight: '100vh', padding: '2rem 0' }}>
+      <div className="no-print" style={{ maxWidth: '1000px', margin: '0 auto', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
         <button 
           onClick={() => router.back()}
           style={{ padding: '0.5rem 1rem', cursor: 'pointer', backgroundColor: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}

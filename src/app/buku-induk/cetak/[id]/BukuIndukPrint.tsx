@@ -92,8 +92,13 @@ export default function BukuIndukPrint({ data }: { data: any }) {
             margin: 15mm;
           }
           .no-print { display: none !important; }
+          .print-bg { background-color: transparent !important; padding: 0 !important; }
         }
         
+        @media screen {
+          .print-bg { background-color: #525659; }
+        }
+
         .buku-induk-page {
           background: white;
           width: 210mm;
