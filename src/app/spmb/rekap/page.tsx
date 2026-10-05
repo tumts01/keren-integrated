@@ -14,8 +14,21 @@ export default function RekapSpmb() {
   // Modal states
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const [viewerTitle, setViewerTitle] = useState('');
+  
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user.role === 'admin' || user.role === 'Admin') {
+          setIsAdmin(true);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
     fetchData();
   }, []);
 
@@ -147,9 +160,19 @@ export default function RekapSpmb() {
                       </div>
                     </td>
                     <td>
-                      <button onClick={() => openViewer(`/spmb/cetak/${item.rowNumber}`, `Cetak Kartu - ${item.namaLengkap}`)} className={styles.btnPrint}>
-                        <i className="fas fa-print"></i> Cetak Kartu
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
+                        <button onClick={() => openViewer(`/spmb/cetak/${item.rowNumber}`, `Cetak Kartu - ${item.namaLengkap}`)} className={styles.btnPrint}>
+                          <i className="fas fa-print"></i> Cetak Kartu
+                        </button>
+                        {isAdmin && (
+                          <button 
+                            onClick={() => router.push(`/spmb/edit/${item.rowNumber}`)} 
+                            style={{ padding: '6px 12px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                          >
+                            <i className="fas fa-edit"></i> Edit Data
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
