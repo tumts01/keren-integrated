@@ -232,13 +232,10 @@ export default function SpmbEditPage() {
     }
   };
 
+  if (fetching) return <div style={{ padding: '40px', textAlign: 'center' }}>Memuat data...</div>;
+
   return (
     <div className={styles.container}>
-      {fetching && (
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(255,255,255,0.8)', zIndex: 999, display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'black' }}>
-          <h3>Memuat data... ID: {id}</h3>
-        </div>
-      )}
       {toast && (
         <div className={styles.toastContainer}>
           <div className={`${styles.toast} ${styles[toast.type]}`}>
