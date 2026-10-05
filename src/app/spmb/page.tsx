@@ -137,6 +137,7 @@ export default function SpmbPage() {
         jenisKelamin: formData.jenisKelamin,
         agama: formData.agama,
         asalSekolah: formData.asalSekolah,
+        npsnSekolahAsal: formData.npsnSekolahAsal,
         alamatSekolahAsal: formData.alamatSekolahAsal,
         namaAyah: formData.namaAyah,
         pekerjaanAyah: formData.pekerjaanAyah,
