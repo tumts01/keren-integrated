@@ -18,11 +18,11 @@ export default function RekapSpmb() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const userStr = localStorage.getItem('user');
+    const userStr = localStorage.getItem('keren_user_data');
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
-        if (user.role === 'admin' || user.role === 'Admin') {
+        if (user.role?.toLowerCase() === 'admin') {
           setIsAdmin(true);
         }
       } catch (e) {

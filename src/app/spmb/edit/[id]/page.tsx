@@ -37,14 +37,14 @@ export default function SpmbEditPage() {
 
   useEffect(() => {
     // Check admin auth
-    const userStr = localStorage.getItem('user');
+    const userStr = localStorage.getItem('keren_user_data');
     if (!userStr) {
-      router.push('/login');
+      router.push('/portal/login');
       return;
     }
     const user = JSON.parse(userStr);
-    if (user.role !== 'admin' && user.role !== 'Admin') {
-      router.push('/dashboard');
+    if (user.role?.toLowerCase() !== 'admin') {
+      router.push('/portal/dashboard');
       return;
     }
 
