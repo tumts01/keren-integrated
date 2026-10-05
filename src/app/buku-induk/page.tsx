@@ -46,6 +46,16 @@ export default function BukuIndukPage() {
     const matchSearch = s.nama.toLowerCase().includes(searchTerm.toLowerCase()) || 
                         (s.nisn && s.nisn.includes(searchTerm));
     return matchKelas && matchSearch;
+  }).sort((a, b) => {
+    // Sort by rombel (kelas)
+    const rombelA = a.rombel || '';
+    const rombelB = b.rombel || '';
+    const compRombel = rombelA.localeCompare(rombelB);
+    if (compRombel !== 0) return compRombel;
+    // Then sort by nama
+    const namaA = a.nama || '';
+    const namaB = b.nama || '';
+    return namaA.localeCompare(namaB);
   });
 
   return (

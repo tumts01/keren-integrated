@@ -64,6 +64,20 @@ export default function BukuIndukPrint({ data }: { data: any }) {
     { label: '9 / Genap', k: '9', s: 'Genap' }
   ];
 
+  const getImageUrl = (url: string) => {
+    if (!url) return '';
+    if (url.includes('drive.google.com')) {
+      const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        // We use proxy if available, but for print page thumbnail is fine
+        return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w400-h600`;
+      }
+    }
+    return url;
+  };
+
+  const fotoUrl = getImageUrl(val('LINK FOTO TERBARU') || val('LINK URL FOTO 1') || val('LINK URL FOTO 2'));
+
   return (
     <>
       <style dangerouslySetInnerHTML={{__html: `
@@ -204,8 +218,8 @@ export default function BukuIndukPrint({ data }: { data: any }) {
         </div>
 
         <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
-          <div className="foto-box" style={{ backgroundImage: val('LINK FOTO TERBARU') ? `url(${val('LINK FOTO TERBARU').replace('drive.google.com/thumbnail', 'drive.google.com/uc')})` : 'none' }}>
-            {!val('LINK FOTO TERBARU') && "FOTO"}
+          <div className="foto-box" style={{ backgroundImage: fotoUrl ? `url(${fotoUrl})` : 'none' }}>
+            {!fotoUrl && "FOTO"}
           </div>
           <div style={{ flex: 1 }}>
             <table className="bi-table-noborder">
