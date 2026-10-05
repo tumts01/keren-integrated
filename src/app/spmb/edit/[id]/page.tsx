@@ -13,33 +13,46 @@ export default function SpmbEditPage() {
   const [sekolahRef, setSekolahRef] = useState<{nama: string, alamat: string, npsn?: string}[]>([]);
 
   useEffect(() => {
-    // Check admin
-    const userStr = localStorage.getItem('keren_user_data');
-    if (!userStr) {
-      router.push('/portal/login');
-      return;
-    }
-    const user = JSON.parse(userStr);
-    if (user.role?.toLowerCase() !== 'admin') {
-      router.push('/portal/dashboard');
-      return;
-    }
-
-    // Fetch sekolah
-    fetch('/api/spmb/sekolah')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setSekolahRef(data.data);
+    let isMounted = true;
+    
+    const loadData = async () => {
+      try {
+        const userStr = localStorage.getItem('keren_user_data');
+        if (!userStr) {
+          router.push('/portal/login');
+          return;
         }
-      })
-      .catch(err => console.error('Gagal memuat referensi sekolah', err));
+        
+        let user;
+        try {
+          user = JSON.parse(userStr);
+        } catch(e) {
+          router.push('/portal/login');
+          return;
+        }
+        
+        if (user?.role?.toLowerCase() !== 'admin') {
+          router.push('/portal/dashboard');
+          return;
+        }
 
-    // Fetch existing SPMB
-    fetch(`/api/spmb/${id}`)
-      .then(res => res.json())
-      .then(resData => {
-        if (resData.success && resData.data) {
+        // Fetch sekolah reference
+        fetch('/api/spmb/sekolah')
+          .then(res => res.json())
+          .then(data => {
+            if (isMounted && data.success) {
+              setSekolahRef(data.data);
+            }
+          })
+          .catch(err => console.error('Gagal memuat referensi sekolah', err));
+
+        if (!id) return;
+
+        // Fetch existing SPMB
+        const res = await fetch(`/api/spmb/${id}`);
+        const resData = await res.json();
+        
+        if (resData.success && resData.data && isMounted) {
           const meta = resData.data.metadata || {};
           let ttl = meta['Tempat, Tanggal Lahir'] || '';
           let tLahir = '';
@@ -77,9 +90,18 @@ export default function SpmbEditPage() {
             linkAkta: meta['File Akta'] || ''
           }));
         }
-      })
-      .finally(() => setFetching(false));
+      } catch (err) {
+        console.error('Error loading SPMB edit data:', err);
+      } finally {
+        if (isMounted) setFetching(false);
+      }
+    };
 
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [id, router]);
 
   const showToast = (message: string, type: 'success' | 'error') => {
@@ -210,10 +232,13 @@ export default function SpmbEditPage() {
     }
   };
 
-  if (fetching) return <div style={{ padding: '40px', textAlign: 'center' }}>Memuat data...</div>;
-
   return (
     <div className={styles.container}>
+      {fetching && (
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(255,255,255,0.8)', zIndex: 999, display: 'flex', justifyContent: 'center', alignItems: 'center', color: 'black' }}>
+          <h3>Memuat data... ID: {id}</h3>
+        </div>
+      )}
       {toast && (
         <div className={styles.toastContainer}>
           <div className={`${styles.toast} ${styles[toast.type]}`}>
