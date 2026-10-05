@@ -61,10 +61,13 @@ export default function SpmbEditPage() {
     desa: '',
     kecamatan: '',
     kabupaten: '',
-    prestasi: ''
+    prestasi: '',
+    linkKk: '',
+    linkAkta: ''
   });
 
   const [fileKk, setFileKk] = useState<File | null>(null);
+  const [fileAkta, setFileAkta] = useState<File | null>(null);
 
   const fileKkRef = useRef<HTMLInputElement>(null);
 
