@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -49,7 +49,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       'Kecamatan': payload.kecamatan || '',
       'Kabupaten/Kota': payload.kabupaten || '',
       'Alamat Lengkap': fullAlamat,
-      'Prestasi (Jika Ada)': payload.prestasi || ''
+      'Prestasi (Jika Ada)': payload.prestasi || '',
+      ...(payload.linkKk ? { 'File KK': payload.linkKk } : {}),
+      ...(payload.linkAkta ? { 'File Akta': payload.linkAkta } : {})
     };
 
     const { error } = await supabase.from('data_spmb').update({
@@ -64,3 +66,4 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
