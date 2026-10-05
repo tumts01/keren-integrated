@@ -3,9 +3,10 @@ import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { data, error } = await supabase.from('data_spmb').select('*').eq('id', params.id).single();
+    const { id } = await params;
+    const { data, error } = await supabase.from('data_spmb').select('*').eq('id', id).single();
     if (error) throw error;
     return NextResponse.json({ success: true, data });
   } catch (error: any) {
@@ -13,11 +14,12 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 }
 
-export async function PUT(req: Request, { params }: { params: { id: string } }) {
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const payload = await req.json();
     
-    const { data: existing, error: findError } = await supabase.from('data_spmb').select('metadata').eq('id', params.id).single();
+    const { data: existing, error: findError } = await supabase.from('data_spmb').select('metadata').eq('id', id).single();
     if (findError) throw findError;
 
     let fullAlamat = payload.alamatLengkap || '';
@@ -54,7 +56,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
       nama: payload.namaLengkap || '',
       nisn: payload.nisn || '',
       metadata: newMetadata
-    }).eq('id', params.id);
+    }).eq('id', id);
 
     if (error) throw error;
     return NextResponse.json({ success: true, message: 'Data berhasil diupdate' });
