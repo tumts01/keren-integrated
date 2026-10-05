@@ -13,6 +13,19 @@ export default function SpmbEditPage() {
   const [sekolahRef, setSekolahRef] = useState<{nama: string, alamat: string, npsn?: string}[]>([]);
 
   useEffect(() => {
+    // Check admin
+    const userStr = localStorage.getItem('keren_user_data');
+    if (!userStr) {
+      router.push('/portal/login');
+      return;
+    }
+    const user = JSON.parse(userStr);
+    if (user.role?.toLowerCase() !== 'admin') {
+      router.push('/portal/dashboard');
+      return;
+    }
+
+    // Fetch sekolah
     fetch('/api/spmb/sekolah')
       .then(res => res.json())
       .then(data => {
@@ -21,7 +34,53 @@ export default function SpmbEditPage() {
         }
       })
       .catch(err => console.error('Gagal memuat referensi sekolah', err));
-  }, []);
+
+    // Fetch existing SPMB
+    fetch(`/api/spmb/${id}`)
+      .then(res => res.json())
+      .then(resData => {
+        if (resData.success && resData.data) {
+          const meta = resData.data.metadata || {};
+          let ttl = meta['Tempat, Tanggal Lahir'] || '';
+          let tLahir = '';
+          let dLahir = '';
+          if (ttl.includes(', ')) {
+            const parts = ttl.split(', ');
+            tLahir = parts[0];
+            dLahir = parts[1];
+          }
+
+          setFormData(prev => ({
+            ...prev,
+            jalurPendaftaran: meta['Jalur Pendaftaran'] || 'Reguler',
+            namaLengkap: meta['Nama Lengkap'] || '',
+            nisn: meta['NISN'] || '',
+            tempatLahir: tLahir,
+            tanggalLahir: dLahir,
+            jenisKelamin: meta['Jenis Kelamin'] || 'Laki-laki',
+            agama: meta['Agama'] || 'Islam',
+            asalSekolah: meta['Asal Sekolah'] || '',
+            npsnSekolahAsal: meta['NPSN SD/MI'] || '',
+            alamatSekolahAsal: meta['Alamat Sekolah Asal'] || '',
+            namaAyah: meta['Nama Ayah'] || '',
+            pekerjaanAyah: meta['Pekerjaan Ayah'] || '',
+            namaIbu: meta['Nama Ibu'] || '',
+            pekerjaanIbu: meta['Pekerjaan Ibu'] || '',
+            nomorWaAyah: meta['Nomor WA Ayah'] || '',
+            nomorWaIbu: meta['Nomor WA Ibu'] || '',
+            alamatLengkap: meta['Alamat (Jalan/RT/RW)'] || '',
+            desa: meta['Desa/Kelurahan'] || '',
+            kecamatan: meta['Kecamatan'] || '',
+            kabupaten: meta['Kabupaten/Kota'] || '',
+            prestasi: meta['Prestasi (Jika Ada)'] || '',
+            linkKk: meta['File KK'] || '',
+            linkAkta: meta['File Akta'] || ''
+          }));
+        }
+      })
+      .finally(() => setFetching(false));
+
+  }, [id, router]);
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
