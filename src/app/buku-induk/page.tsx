@@ -1,0 +1,134 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import styles from './BukuInduk.module.css';
+import InlineLoading from '@/components/InlineLoading';
+
+export default function BukuIndukPage() {
+  const [kelas, setKelas] = useState('');
+  const [daftarKelas, setDaftarKelas] = useState<string[]>([]);
+  const [siswa, setSiswa] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [kelasRes, siswaRes] = await Promise.all([
+        fetch('/api/kelas'),
+        fetch('/api/siswa')
+      ]);
+      const kelasJson = await kelasRes.json();
+      const siswaJson = await siswaRes.json();
+
+      if (kelasJson.success) {
+        setDaftarKelas(kelasJson.data.map((k: any) => k.nama_kelas));
+      }
+      if (siswaJson.success) {
+        setSiswa(siswaJson.data.filter((s: any) => s.status === 'Aktif'));
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredSiswa = siswa.filter(s => {
+    const matchKelas = kelas ? s.rombel === kelas : true;
+    const matchSearch = s.nama.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                        (s.nisn && s.nisn.includes(searchTerm));
+    return matchKelas && matchSearch;
+  });
+
+  return (
+    <div className={styles.pageContainer}>
+      <div className={styles.pageHeader}>
+        <div>
+          <h1 className={styles.pageTitle}>Buku Induk</h1>
+          <p className={styles.pageDescription}>Pilih siswa untuk mencetak Buku Induk.</p>
+        </div>
+      </div>
+
+      <div className={styles.card}>
+        {loading ? (
+          <InlineLoading message="Memuat data..." />
+        ) : (
+          <>
+            <div className={styles.filterSection} style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+              <div className={styles.formGroup} style={{ flex: '1', minWidth: '200px' }}>
+                <label className={styles.label}>Pilih Kelas</label>
+                <select 
+                  className={styles.input} 
+                  value={kelas} 
+                  onChange={(e) => setKelas(e.target.value)}
+                >
+                  <option value="">Semua Kelas</option>
+                  {daftarKelas.map(k => (
+                    <option key={k} value={k}>{k}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className={styles.formGroup} style={{ flex: '2', minWidth: '300px' }}>
+                <label className={styles.label}>Cari Nama/NISN</label>
+                <input 
+                  type="text" 
+                  className={styles.input} 
+                  placeholder="Ketik untuk mencari..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className={styles.tableContainer}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>No</th>
+                    <th>ID Siswa</th>
+                    <th>NISN</th>
+                    <th>Nama Lengkap</th>
+                    <th>Rombel</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredSiswa.map((s, idx) => (
+                    <tr key={s.id_siswa}>
+                      <td>{idx + 1}</td>
+                      <td>{s.id_siswa}</td>
+                      <td>{s.nisn}</td>
+                      <td>{s.nama}</td>
+                      <td>{s.rombel}</td>
+                      <td>
+                        <Link 
+                          href={`/buku-induk/cetak/${s.id_siswa}`}
+                          className={styles.primaryButton}
+                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}
+                        >
+                          <i className="fa-solid fa-print"></i> Cetak
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredSiswa.length === 0 && (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>Tidak ada data siswa.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
