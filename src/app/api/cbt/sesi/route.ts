@@ -45,6 +45,13 @@ export async function POST(req: Request) {
     const { action, nomorPeserta, lomba } = body;
 
     if (action === 'start') {
+      // Cek apakah ujian sedang dibuka
+      const { data: config } = await supabase.from('profil_lembaga').select('metadata').eq('jenis', 'CONFIG_OLIMPIADE').single();
+      const cbtBuka = config?.metadata?.cbt_buka ?? false;
+      if (!cbtBuka) {
+        return NextResponse.json({ success: false, error: 'Ujian CBT saat ini sedang ditutup/disembunyikan oleh panitia.' }, { status: 403 });
+      }
+
       // Cek apakah sudah ada sesi
       const { data: existing } = await supabase.from('cbt_sesi').select('*').eq('nomor_peserta', nomorPeserta).single();
       

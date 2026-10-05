@@ -12,6 +12,7 @@ export default function DashboardCBT() {
   const [uploading, setUploading] = useState(false);
   const [hasilPublished, setHasilPublished] = useState(false);
   const [statusLolos, setStatusLolos] = useState<boolean | null>(null);
+  const [cbtBuka, setCbtBuka] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -24,7 +25,18 @@ export default function DashboardCBT() {
     setUser(parsed);
     fetchSesi(parsed.nomorPeserta);
     fetchConfig(parsed.nomorPeserta);
+    fetchCbtConfig();
   }, [router]);
+
+  const fetchCbtConfig = async () => {
+    try {
+      const res = await fetch('/api/olimpiade-seni/config-cbt');
+      const json = await res.json();
+      if (json.success) {
+        setCbtBuka(json.cbt_buka);
+      }
+    } catch { /* silent */ }
+  };
 
   const fetchConfig = async (nomorPeserta: string) => {
     try {
@@ -77,6 +89,10 @@ export default function DashboardCBT() {
   };
 
   const handleMulaiUjian = () => {
+    if (!cbtBuka && (!sesi || sesi.status !== 'selesai')) {
+      Swal.fire('Ujian Belum Dibuka', 'Ujian CBT saat ini sedang disembunyikan/ditutup oleh panitia.', 'info');
+      return;
+    }
     Swal.fire({
       title: 'Mulai Ujian?',
       text: "Waktu akan berjalan selama 90 menit. Pastikan koneksi internet Anda stabil.",
@@ -236,9 +252,9 @@ export default function DashboardCBT() {
 
                 <button 
                   onClick={handleMulaiUjian}
-                  style={{ width: '100%', padding: '16px', borderRadius: '12px', background: '#10b981', color: 'white', border: 'none', fontWeight: 700, fontSize: '1.2rem', cursor: 'pointer', boxShadow: '0 4px 14px rgba(16, 185, 129, 0.4)' }}
+                  style={{ width: '100%', padding: '16px', borderRadius: '12px', background: cbtBuka ? '#10b981' : '#94a3b8', color: 'white', border: 'none', fontWeight: 700, fontSize: '1.2rem', cursor: cbtBuka ? 'pointer' : 'not-allowed', boxShadow: cbtBuka ? '0 4px 14px rgba(16, 185, 129, 0.4)' : 'none' }}
                 >
-                  <i className="fas fa-play" style={{ marginRight: '8px' }}></i> {sesi ? 'Lanjutkan Ujian' : 'Mulai Ujian Sekarang'}
+                  <i className={`fas ${cbtBuka ? 'fa-play' : 'fa-lock'}`} style={{ marginRight: '8px' }}></i> {!cbtBuka ? 'Ujian Belum Dibuka' : (sesi ? 'Lanjutkan Ujian' : 'Mulai Ujian Sekarang')}
                 </button>
               </>
             )}

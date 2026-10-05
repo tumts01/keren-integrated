@@ -13,12 +13,47 @@ export default function AdminSoalCBT() {
   // State untuk melacak ID soal yang sedang diupload gambarnya
   const [uploadingImageId, setUploadingImageId] = useState<number | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const [cbtBuka, setCbtBuka] = useState(false);
 
   const lombaOptions = ['Matematika', 'IPAS', 'PAI', 'Inggris', 'Arab'];
 
   useEffect(() => {
     fetchSoal();
   }, [lombaFilter]);
+
+  useEffect(() => {
+    fetchConfig();
+  }, []);
+
+  const fetchConfig = async () => {
+    try {
+      const res = await fetch('/api/olimpiade-seni/config-cbt');
+      const json = await res.json();
+      if (json.success) {
+        setCbtBuka(json.cbt_buka);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleToggleCbt = async () => {
+    try {
+      const newVal = !cbtBuka;
+      const res = await fetch('/api/olimpiade-seni/config-cbt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ buka: newVal })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCbtBuka(newVal);
+        Swal.fire('Berhasil', newVal ? 'Ujian CBT telah BUKA (bisa diakses siswa)' : 'Ujian CBT telah DITUTUP (disembunyikan dari siswa)', 'success');
+      }
+    } catch (err: any) {
+      Swal.fire('Error', err.message, 'error');
+    }
+  };
 
   const fetchSoal = async () => {
     setLoading(true);
@@ -154,7 +189,27 @@ export default function AdminSoalCBT() {
   return (
     <div style={{ padding: '40px', background: '#f8fafc', minHeight: '100vh' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto', background: 'white', padding: '32px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-        <h1 style={{ fontSize: '1.8rem', color: '#0f172a', marginBottom: '24px' }}>Bank Soal CBT Olimpiade</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+          <h1 style={{ fontSize: '1.8rem', color: '#0f172a', margin: 0 }}>Bank Soal CBT Olimpiade</h1>
+          <button 
+            onClick={handleToggleCbt}
+            style={{ 
+              padding: '10px 20px', 
+              borderRadius: '8px', 
+              background: cbtBuka ? '#ef4444' : '#10b981', 
+              color: 'white', 
+              border: 'none', 
+              cursor: 'pointer', 
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <i className={`fas ${cbtBuka ? 'fa-eye-slash' : 'fa-eye'}`}></i> 
+            {cbtBuka ? 'Tutup CBT (Sembunyikan)' : 'Buka CBT (Tampilkan)'}
+          </button>
+        </div>
 
         <div style={{ display: 'flex', gap: '16px', marginBottom: '32px', flexWrap: 'wrap', alignItems: 'center' }}>
           <select 
