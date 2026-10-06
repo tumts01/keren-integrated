@@ -19,10 +19,17 @@ export async function GET(request: Request) {
 
     // 1. Fetch Students
     const allStudents = await getAllCachedDataInduk();
-    const students = allStudents.filter((s: any) => 
-      s.rombel && s.rombel.toUpperCase() === kelas.toUpperCase() &&
-      s.status && s.status.toLowerCase() === 'aktif'
-    ).sort((a: any, b: any) => {
+    const students = allStudents.filter((s: any) => {
+      const meta = s.metadata || {};
+      const history = [
+        { ta: meta['TA KELAS 7'], r: meta['ROMBEL KELAS 7'] },
+        { ta: meta['TA KELAS 8'], r: meta['ROMBEL KELAS 8'] },
+        { ta: meta['TA KELAS 9'], r: meta['ROMBEL KELAS 9'] }
+      ];
+      const isCurrent = s.rombel && s.rombel.toUpperCase() === kelas.toUpperCase();
+      const isHistory = history.some(h => h.ta === ta && h.r && h.r.toUpperCase() === kelas.toUpperCase());
+      return isCurrent || isHistory;
+    }).sort((a: any, b: any) => {
       const namaA = (a.metadata?.['NAMA LENGKAP'] || '').toUpperCase();
       const namaB = (b.metadata?.['NAMA LENGKAP'] || '').toUpperCase();
       return namaA.localeCompare(namaB);

@@ -12,16 +12,26 @@ export default function UploadEkstraPage() {
 
   // Download Form
   const [kelas, setKelas] = useState('');
+  const [daftarKelas, setDaftarKelas] = useState<string[]>([]);
   const [semester, setSemester] = useState('Ganjil');
   const [ta, setTa] = useState('2025/2026');
 
   const fetchRekap = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/buku-induk/ekstra/rekap');
-      const json = await res.json();
+      const [rekapRes, kelasRes] = await Promise.all([
+        fetch('/api/buku-induk/ekstra/rekap'),
+        fetch('/api/kelas')
+      ]);
+      const json = await rekapRes.json();
+      const kelasJson = await kelasRes.json();
+
       if (json.success) {
         setRekap(json.data);
+      }
+      if (kelasJson.success) {
+        const classNames = Array.from(new Set(kelasJson.data.map((k: any) => k.rombel)));
+        setDaftarKelas(classNames as string[]);
       }
     } catch (err) {
       console.error(err);
@@ -150,22 +160,25 @@ export default function UploadEkstraPage() {
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', flex: 1, minWidth: '150px' }}>
             <label style={{ fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Kelas (Contoh: 7A, 8B, 9C)</label>
-            <input 
-              type="text" 
-              className={styles.searchInput} 
+            <select 
+              className={styles.input} 
               value={kelas}
-              onChange={e => setKelas(e.target.value.toUpperCase())}
-              placeholder="Ketik kelas..."
-              style={{ padding: '0.6rem 1rem' }}
-            />
+              onChange={e => setKelas(e.target.value)}
+              style={{ width: '100%' }}
+            >
+              <option value="">-- Pilih Kelas --</option>
+              {daftarKelas.map(k => (
+                <option key={k} value={k}>{k}</option>
+              ))}
+            </select>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', flex: 1, minWidth: '150px' }}>
             <label style={{ fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Semester</label>
             <select 
-              className={styles.filterSelect}
+              className={styles.input}
               value={semester}
               onChange={e => setSemester(e.target.value)}
-              style={{ padding: '0.6rem 1rem' }}
+              style={{ width: '100%' }}
             >
               <option value="Ganjil">Ganjil</option>
               <option value="Genap">Genap</option>
@@ -175,11 +188,11 @@ export default function UploadEkstraPage() {
             <label style={{ fontSize: '0.875rem', fontWeight: '600', color: '#4b5563' }}>Tahun Ajaran</label>
             <input 
               type="text" 
-              className={styles.searchInput} 
+              className={styles.input} 
               value={ta}
               onChange={e => setTa(e.target.value)}
               placeholder="Contoh: 2025/2026"
-              style={{ padding: '0.6rem 1rem' }}
+              style={{ width: '100%' }}
             />
           </div>
           <button 
