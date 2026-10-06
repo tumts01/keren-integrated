@@ -100,6 +100,7 @@ export default function BukuIndukPrint({ data }: { data: any }) {
             min-height: auto !important;
             page-break-after: auto !important;
             break-after: auto !important;
+            border-top: 1px solid transparent;
           }
           .buku-induk-page + .buku-induk-page {
             page-break-before: always !important;
