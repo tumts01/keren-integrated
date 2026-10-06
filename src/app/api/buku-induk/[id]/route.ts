@@ -52,7 +52,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
             nilaiData.push({
               tahun_ajaran: row.tahun_ajaran,
               semester: row.semester,
-              kelas: row.kelas,
+              kelas: history.find(h => h.rombel === row.kelas && h.tahun_ajaran === row.tahun_ajaran)?.kelas || row.kelas,
               mata_pelajaran: row.mata_pelajaran,
               nilai: studentGrades.nilai
             });
