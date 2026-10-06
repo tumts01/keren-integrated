@@ -425,17 +425,30 @@ export default function BukuIndukPrint({ data }: { data: any }) {
                 </tr>
               </thead>
               <tbody>
-                {semRows.map((row, i) => {
-                  const key = `${row.k}-${row.s}`;
-                  const p = data.presensi?.[key] || { S: 0, I: 0, A: 0 };
+                {(() => {
+                  const total = Object.values(data.presensi || {}).reduce((acc: any, curr: any) => {
+                    acc.S += curr.S || 0;
+                    acc.I += curr.I || 0;
+                    acc.A += curr.A || 0;
+                    return acc;
+                  }, { S: 0, I: 0, A: 0 });
+
                   return (
-                    <tr key={i} className={i % 2 === 0 ? 'row-cyan' : ''}>
-                      <td>{p.S || '-'}</td>
-                      <td>{p.I || '-'}</td>
-                      <td>{p.A || '-'}</td>
-                    </tr>
+                    <>
+                      <tr className="row-cyan">
+                        <td>{total.S || '-'}</td>
+                        <td>{total.I || '-'}</td>
+                        <td>{total.A || '-'}</td>
+                      </tr>
+                      {/* Empty rows to maintain table height alignment with Ekstrakurikuler */}
+                      <tr><td>&nbsp;</td><td></td><td></td></tr>
+                      <tr className="row-cyan"><td>&nbsp;</td><td></td><td></td></tr>
+                      <tr><td>&nbsp;</td><td></td><td></td></tr>
+                      <tr className="row-cyan"><td>&nbsp;</td><td></td><td></td></tr>
+                      <tr><td>&nbsp;</td><td></td><td></td></tr>
+                    </>
                   );
-                })}
+                })()}
               </tbody>
             </table>
           </div>
