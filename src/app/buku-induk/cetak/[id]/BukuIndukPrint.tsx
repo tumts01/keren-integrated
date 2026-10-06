@@ -404,10 +404,13 @@ export default function BukuIndukPrint({ data }: { data: any }) {
                 </tr>
               </thead>
               <tbody>
-                <tr><td>&nbsp;</td><td></td><td></td></tr>
-                <tr><td>&nbsp;</td><td></td><td></td></tr>
-                <tr><td>&nbsp;</td><td></td><td></td></tr>
-                <tr><td>&nbsp;</td><td></td><td></td></tr>
+                {semRows.map((_, i) => (
+                  <tr key={i} className={i % 2 === 0 ? 'row-cyan' : ''}>
+                    <td>&nbsp;</td>
+                    <td></td>
+                    <td></td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -422,10 +425,17 @@ export default function BukuIndukPrint({ data }: { data: any }) {
                 </tr>
               </thead>
               <tbody>
-                <tr><td className="row-cyan">&nbsp;</td><td className="row-cyan"></td><td className="row-cyan"></td></tr>
-                <tr><td>&nbsp;</td><td></td><td></td></tr>
-                <tr><td className="row-cyan">&nbsp;</td><td className="row-cyan"></td><td className="row-cyan"></td></tr>
-                <tr><td>&nbsp;</td><td></td><td></td></tr>
+                {semRows.map((row, i) => {
+                  const key = `${row.k}-${row.s}`;
+                  const p = data.presensi?.[key] || { S: 0, I: 0, A: 0 };
+                  return (
+                    <tr key={i} className={i % 2 === 0 ? 'row-cyan' : ''}>
+                      <td>{p.S || '-'}</td>
+                      <td>{p.I || '-'}</td>
+                      <td>{p.A || '-'}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

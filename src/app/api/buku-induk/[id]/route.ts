@@ -73,6 +73,43 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         .filter(m => m && (m.nama === nama || m.induk === nis));
     }
 
+    // 4. Fetch Presensi
+    let rekapPresensi: Record<string, { S: number; I: number; A: number }> = {};
+    if (nisn || nama) {
+      const orQuery = [];
+      if (nisn) orQuery.push(`metadata->>NISN.eq.${nisn}`);
+      if (nama) orQuery.push(`metadata->>NAMA SISWA.eq.${nama}`);
+      
+      const { data: presensiData, error: presensiError } = await supabase
+        .from('data_presensi_siswa')
+        .select('tanggal, metadata')
+        .or(orQuery.join(','));
+        
+      if (!presensiError && presensiData) {
+        presensiData.forEach(p => {
+          if (!p.tanggal) return;
+          const d = new Date(p.tanggal);
+          const month = d.getMonth() + 1; // 1-12
+          const semester = (month >= 7 && month <= 12) ? 'Ganjil' : 'Genap';
+          const kelas = p.metadata?.['KELAS'] || '';
+          
+          let level = '';
+          if (kelas.startsWith('7')) level = '7';
+          else if (kelas.startsWith('8')) level = '8';
+          else if (kelas.startsWith('9')) level = '9';
+          else return;
+  
+          const key = `${level}-${semester}`;
+          if (!rekapPresensi[key]) rekapPresensi[key] = { S: 0, I: 0, A: 0 };
+          
+          const hadir = p.metadata?.['KEHADIRAN']?.toUpperCase();
+          if (hadir === 'S') rekapPresensi[key].S += 1;
+          if (hadir === 'I') rekapPresensi[key].I += 1;
+          if (hadir === 'A') rekapPresensi[key].A += 1;
+        });
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: {
@@ -82,7 +119,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         },
         history,
         nilai: nilaiData,
-        prestasi: prestasiList
+        prestasi: prestasiList,
+        presensi: rekapPresensi
       }
     });
 
