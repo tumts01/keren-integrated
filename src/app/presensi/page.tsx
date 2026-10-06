@@ -153,10 +153,10 @@ export default function PresensiPage() {
   const [isSavingEditPiket, setIsSavingEditPiket] = useState(false);
   const [rekapJurnalLoading, setRekapJurnalLoading] = useState(false);
   const [filterFrom, setFilterFrom] = useState(() => {
-    const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+    const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split('T')[0];
   });
   const [filterTo, setFilterTo] = useState(() => {
-    const d = new Date(); return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+    return new Date().toISOString().split('T')[0];
   });
   const [filterGuruRekap, setFilterGuruRekap] = useState('');
   const [guruListRekap, setGuruListRekap] = useState<string[]>([]);
@@ -191,10 +191,10 @@ export default function PresensiPage() {
   const [rekapPiketData, setRekapPiketData] = useState<any[]>([]);
   const [rekapPiketLoading, setRekapPiketLoading] = useState(false);
   const [rpFilterFrom, setRpFilterFrom] = useState(() => {
-    const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+    const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split('T')[0];
   });
   const [rpFilterTo, setRpFilterTo] = useState(() => {
-    const d = new Date(); return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+    return new Date().toISOString().split('T')[0];
   });
 
   // Load classes and mapel
@@ -2729,6 +2729,7 @@ export default function PresensiPage() {
     </div>
   );
 }
+
 
 
 
