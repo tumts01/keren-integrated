@@ -18,27 +18,26 @@ export default function BukuIndukPrint({ data }: { data: any }) {
   };
 
   // Nilai mapping
-  const mapels = ["AQ", "AA", "FQ", "SKI", "PP", "BIND", "BA", "MTK", "IPA", "IPS", "BING", "PJOK", "IF", "SB", "PR", "BD", "NU", "SKU"];
+  const mapels = ["QH", "AA", "FIK", "SKI", "PP", "BINDO", "BAR", "MTK", "IPA", "IPS", "BING", "PJOK", "INFO", "SBP", "BD", "Ke-NU"];
   
   // Actually, we need to map the full mapel names to these codes.
   const mapelNames: Record<string, string> = {
-    "Alquran Hadis": "AQ",
+    "Alquran Hadis": "QH",
     "Akidah Akhlak": "AA",
-    "Fikih": "FQ",
+    "Fikih": "FIK",
     "Sejarah Kebudayaan Islam": "SKI",
     "Pendidikan Pancasila": "PP",
-    "Bahasa Indonesia": "BIND",
-    "Bahasa Arab": "BA",
+    "Bahasa Indonesia": "BINDO",
+    "Bahasa Arab": "BAR",
     "Matematika": "MTK",
     "Ilmu Pengetahuan Alam": "IPA",
     "Ilmu Pengetahuan Sosial": "IPS",
     "Bahasa Inggris": "BING",
     "Pendidikan Jasmani, Olah Raga dan Kesehatan": "PJOK",
-    "Informatika": "IF",
-    "Seni Budaya": "SB",
-    "Prakarya": "PR",
+    "Informatika": "INFO",
+    "Seni Budaya": "SBP",
     "Bahasa Daerah": "BD",
-    "KE-NU-AN": "NU"
+    "KE-NU-AN": "Ke-NU"
   };
 
   const getNilai = (kelas: string, semester: string, code: string) => {
