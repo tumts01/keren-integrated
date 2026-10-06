@@ -76,7 +76,21 @@ export default function UploadLeggerPage() {
             className={styles.primaryButton} 
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#3b82f6' }}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.5rem', 
+              backgroundColor: '#3b82f6',
+              padding: '0.75rem 1.5rem',
+              fontSize: '1rem',
+              fontWeight: '600',
+              borderRadius: '0.5rem',
+              boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.3), 0 2px 4px -1px rgba(59, 130, 246, 0.06)',
+              cursor: isUploading ? 'not-allowed' : 'pointer',
+              color: 'white',
+              border: 'none',
+              transition: 'all 0.2s ease-in-out'
+            }}
           >
             <i className={`fa-solid ${isUploading ? 'fa-spinner fa-spin' : 'fa-upload'}`}></i> 
             {isUploading ? 'Mengupload...' : 'Upload Legger Excel'}
