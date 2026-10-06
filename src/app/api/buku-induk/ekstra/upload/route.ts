@@ -62,8 +62,8 @@ export async function POST(request: Request) {
         let nilaiCol = 6;
         
         if (headerRowIdx !== -1) {
-           const headers = data[headerRowIdx].map(h => String(h || '').toLowerCase().trim());
-           const findCol = (name) => headers.findIndex(h => h.includes(name));
+           const headers = data[headerRowIdx].map((h: any) => String(h || '').toLowerCase().trim());
+           const findCol = (name: string) => headers.findIndex((h: string) => h.includes(name));
            nisCol = findCol('nis') > -1 ? findCol('nis') : 1;
            namaCol = findCol('nama') > -1 ? findCol('nama') : 3;
            ekstraCol = findCol('jenis ekstra') > -1 ? findCol('jenis ekstra') : 5;
