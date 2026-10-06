@@ -25,54 +25,18 @@ const mapelsIndex = [
 
 export async function POST(request: Request) {
   try {
-    const url = new URL(request.url);
-    const action = url.searchParams.get('action');
+    const formData = await request.formData();
+    const files = formData.getAll('file') as File[];
+    
+    if (!files || files.length === 0) {
+      return NextResponse.json({ success: false, error: 'No files provided' }, { status: 400 });
+    }
 
-    if (action === 'save') {
-      const body = await request.json();
-      const payloadsToSave = body.payloads;
+    let totalSaved = 0;
+    const errors: string[] = [];
 
-      if (!payloadsToSave || payloadsToSave.length === 0) {
-        return NextResponse.json({ success: false, error: 'Tidak ada data untuk disimpan' }, { status: 400 });
-      }
-
-      let totalSaved = 0;
-
-      for (const item of payloadsToSave) {
-        const { kelas, semester, tahun_ajaran, insertPayload } = item;
-        
-        // Delete existing
-        const { error: delError } = await supabase
-          .from('nilai_buku_induk')
-          .delete()
-          .match({ kelas, semester, tahun_ajaran });
-          
-        if (delError) throw delError;
-
-        // Insert new
-        if (insertPayload && insertPayload.length > 0) {
-          const { error: insError } = await supabase
-            .from('nilai_buku_induk')
-            .insert(insertPayload);
-            
-          if (insError) throw insError;
-          totalSaved += insertPayload.length;
-        }
-      }
-
-      return NextResponse.json({ success: true, count: totalSaved });
-    } else {
-      // Preview Mode
-      const formData = await request.formData();
-      const files = formData.getAll('file') as File[];
-      
-      if (!files || files.length === 0) {
-        return NextResponse.json({ success: false, error: 'No files provided' }, { status: 400 });
-      }
-
-      const results = [];
-
-      for (const file of files) {
+    for (const file of files) {
+      try {
         const buffer = Buffer.from(await file.arrayBuffer());
         const wb = xlsx.read(buffer, { type: 'buffer' });
         const sheetName = wb.SheetNames[0];
@@ -84,19 +48,16 @@ export async function POST(request: Request) {
         const tahun_ajaran = String(data[2]?.[4] || '').trim();
 
         if (!kelas || !semester || !tahun_ajaran) {
-          results.push({ fileName: file.name, error: 'Format Excel tidak valid. Pastikan Kelas, Semester, dan Tahun Ajaran ada di posisinya.' });
+          errors.push(`File ${file.name}: Format tidak valid.`);
           continue;
         }
 
         const mapelDataMap: Record<string, any[]> = {};
         mapelsIndex.forEach(m => { mapelDataMap[m.name] = []; });
 
-        let siswaSet = new Set<string>();
-
-        // Rows start at index 7 (Row 8)
         for (let i = 7; i < data.length; i++) {
           const row = data[i];
-          if (!row || !row[1] || !row[3]) continue; // Skip empty rows
+          if (!row || !row[1] || !row[3]) continue;
 
           const nis = String(row[1]).trim();
           const nama = String(row[3]).trim();
@@ -105,7 +66,6 @@ export async function POST(request: Request) {
             const val = row[m.col];
             if (val !== undefined && val !== null && val !== '') {
               mapelDataMap[m.name].push({ nis, nama, nilai: val });
-              siswaSet.add(nis);
             }
           });
         }
@@ -118,20 +78,31 @@ export async function POST(request: Request) {
           data_nilai: mapelDataMap[m.name]
         })).filter(payload => payload.data_nilai.length > 0);
 
-        results.push({
-          fileName: file.name,
-          kelas,
-          semester,
-          tahun_ajaran,
-          siswaCount: siswaSet.size,
-          insertPayload
-        });
-      }
+        // Delete existing
+        await supabase
+          .from('nilai_buku_induk')
+          .delete()
+          .match({ kelas, semester, tahun_ajaran });
 
-      return NextResponse.json({ success: true, previews: results });
+        // Insert new
+        if (insertPayload.length > 0) {
+          const { error: insError } = await supabase
+            .from('nilai_buku_induk')
+            .insert(insertPayload);
+          if (insError) throw insError;
+          totalSaved += insertPayload.length;
+        }
+      } catch (err: any) {
+        errors.push(`File ${file.name} gagal: ${err.message}`);
+      }
     }
+
+    if (errors.length > 0 && totalSaved === 0) {
+      return NextResponse.json({ success: false, error: errors.join(', ') }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: true, count: totalSaved, errors });
   } catch (err: any) {
-    console.error('Error uploading legger:', err);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }

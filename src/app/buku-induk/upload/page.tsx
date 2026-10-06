@@ -8,8 +8,7 @@ export default function UploadLeggerPage() {
   const [loading, setLoading] = useState(true);
   const [rekap, setRekap] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [previewData, setPreviewData] = useState<any[] | null>(null);
-  const [viewData, setViewData] = useState<any | null>(null);
+    const [viewData, setViewData] = useState<any | null>(null);
   const [isLoadingView, setIsLoadingView] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -77,52 +76,20 @@ export default function UploadLeggerPage() {
       });
       const result = await res.json();
       if (result.success) {
-        setPreviewData(result.previews);
+        let msg = `Berhasil upload dan menyimpan ${result.count} data nilai!`;
+        if (result.errors && result.errors.length > 0) {
+          msg += '\nSebagian gagal:\n' + result.errors.join('\n');
+        }
+        alert(msg);
+        fetchRekap(); // refresh table
       } else {
-        alert(`Gagal membaca file: ${result.error}`);
+        alert(`Gagal upload: ${result.error}`);
       }
     } catch (err: any) {
       alert(`Error upload: ${err.message}`);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const handleConfirmSave = async () => {
-    if (!previewData) return;
-    setIsUploading(true);
-    try {
-      const payloads = previewData.filter(p => !p.error).map(p => ({
-        kelas: p.kelas,
-        semester: p.semester,
-        tahun_ajaran: p.tahun_ajaran,
-        insertPayload: p.insertPayload
-      }));
-
-      if (payloads.length === 0) {
-        alert('Tidak ada file valid untuk disimpan.');
-        setIsUploading(false);
-        return;
-      }
-
-      const res = await fetch('/api/buku-induk/upload-legger?action=save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payloads })
-      });
-      const result = await res.json();
-      if (result.success) {
-        alert(`Berhasil menyimpan ${result.count} data nilai!`);
-        setPreviewData(null);
-        fetchRekap();
-      } else {
-        alert('Gagal menyimpan: ' + result.error);
-      }
-    } catch (err: any) {
-      alert('Error: ' + err.message);
-    } finally {
-      setIsUploading(false);
     }
   };
 
@@ -193,56 +160,7 @@ export default function UploadLeggerPage() {
         </div>
       </div>
 
-      {previewData && (
-        <div className={styles.card} style={{ marginBottom: '1.5rem', border: '2px solid #3b82f6' }}>
-          <div className="section-title" style={{ marginBottom: '1rem', fontWeight: 'bold', color: '#1e40af' }}>
-            Review Data Legger (Belum Disimpan)
-          </div>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Nama File</th>
-                <th>Status</th>
-                <th>Tahun Ajaran</th>
-                <th>Semester</th>
-                <th>Kelas</th>
-                <th>Jumlah Siswa Terdeteksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {previewData.map((p, idx) => (
-                <tr key={idx} style={{ backgroundColor: p.error ? '#fee2e2' : 'inherit' }}>
-                  <td>{p.fileName}</td>
-                  <td>{p.error ? <span style={{color: 'red'}}>{p.error}</span> : <span style={{color: 'green'}}>Valid</span>}</td>
-                  <td>{p.tahun_ajaran || '-'}</td>
-                  <td>{p.semester || '-'}</td>
-                  <td>{p.kelas || '-'}</td>
-                  <td>{p.siswaCount ? `${p.siswaCount} Siswa` : '-'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-            <button 
-              className={styles.primaryButton}
-              onClick={() => setPreviewData(null)}
-              style={{ backgroundColor: '#6b7280', padding: '0.6rem 1.2rem', borderRadius: '0.5rem', color: 'white', border: 'none', cursor: 'pointer' }}
-            >
-              Batal
-            </button>
-            <button 
-              className={styles.primaryButton}
-              onClick={handleConfirmSave}
-              disabled={isUploading || !previewData.some(p => !p.error)}
-              style={{ backgroundColor: '#10b981', padding: '0.6rem 1.2rem', borderRadius: '0.5rem', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 'bold' }}
-            >
-              {isUploading ? 'Menyimpan...' : 'Simpan Semua Data Valid'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className={styles.card}>
+            <div className={styles.card}>
         <div className="section-title" style={{ marginBottom: '1rem', fontWeight: 'bold' }}>
           Monitoring Legger Terupload
         </div>
