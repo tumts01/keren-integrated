@@ -426,10 +426,9 @@ export default function BukuIndukPrint({ data }: { data: any }) {
             </table>
           </div>
         </div>
-      </div>
 
-      {/* PAGE 3: PRESTASI */}
-      <div className="buku-induk-page">
+        {/* PRESTASI (Merged to Page 2) */}
+        <div style={{ marginTop: '15px' }}></div>
         <div className="section-title" style={{ marginBottom: '15px' }}>PRESTASI SISWA</div>
         <table className="bi-table">
           <thead>
