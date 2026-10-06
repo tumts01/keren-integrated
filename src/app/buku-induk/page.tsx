@@ -10,9 +10,7 @@ export default function BukuIndukPage() {
   const [daftarKelas, setDaftarKelas] = useState<string[]>([]);
   const [siswa, setSiswa] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isUploading, setIsUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchData();
@@ -44,33 +42,6 @@ export default function BukuIndukPage() {
     }
   };
 
-  const handleUploadLegger = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const res = await fetch('/api/buku-induk/upload-legger', {
-        method: 'POST',
-        body: formData,
-      });
-      const result = await res.json();
-      if (result.success) {
-        alert(`Berhasil upload legger Kelas ${result.kelas} Semester ${result.semester}! (${result.count} data nilai tersimpan)`);
-      } else {
-        alert(`Gagal upload: ${result.error}`);
-      }
-    } catch (err: any) {
-      alert(`Error upload: ${err.message}`);
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
   const filteredSiswa = siswa.filter(s => {
     const matchKelas = kelas ? (s.rombel || '').trim().toUpperCase() === kelas.trim().toUpperCase() : true;
     const matchSearch = (s.nama || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -94,24 +65,6 @@ export default function BukuIndukPage() {
         <div>
           <h1 className={styles.pageTitle}>Buku Induk</h1>
           <p className={styles.pageDescription}>Pilih siswa untuk mencetak Buku Induk.</p>
-        </div>
-        <div>
-          <input 
-            type="file" 
-            accept=".xlsx" 
-            ref={fileInputRef} 
-            onChange={handleUploadLegger} 
-            style={{ display: 'none' }} 
-          />
-          <button 
-            className={styles.primaryButton} 
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#3b82f6' }}
-          >
-            <i className={`fa-solid ${isUploading ? 'fa-spinner fa-spin' : 'fa-upload'}`}></i> 
-            {isUploading ? 'Mengupload...' : 'Upload Legger'}
-          </button>
         </div>
       </div>
 
