@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 
 export default function BukuIndukPrint({ data }: { data: any }) {
   const { induk, history, nilai, prestasi } = data;
@@ -474,7 +475,7 @@ export default function BukuIndukPrint({ data }: { data: any }) {
                 <td style={{ textAlign: 'center' }}>{p.peringkat}</td>
                 <td style={{ textAlign: 'center', fontSize: '10px' }}>
                   {p.link_sertifikat ? (
-                    <a href={p.link_sertifikat} target="_blank" rel="noreferrer">Lihat</a>
+                    <div style={{ display: "flex", justifyContent: "center" }}><QRCodeSVG value={p.link_sertifikat} size={40} level="L" /></div>
                   ) : '-'}
                 </td>
               </tr>
