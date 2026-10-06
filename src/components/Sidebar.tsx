@@ -74,7 +74,15 @@ export default function Sidebar() {
       items: [
         { name: 'Data Guru & Staf', path: '/guru', icon: 'fa-chalkboard-teacher' },
         { name: 'Data Siswa', path: '/siswa', icon: 'fa-users' },
-        [object Object]
+        { 
+          name: 'Buku Induk', 
+          path: '/buku-induk-parent', 
+          icon: 'fa-book-open',
+          subItems: [
+            { name: 'Cetak Buku Induk', path: '/buku-induk' },
+            { name: 'Upload Legger', path: '/buku-induk/upload' }
+          ]
+        },
         { name: 'Data Kelas', path: '/kelas', icon: 'fa-chalkboard' },
         { name: 'Presensi & Jurnal', path: '/presensi', icon: 'fa-calendar-check' },
         { name: 'Dispo Siswa', path: '/dispo', icon: 'fa-user-clock' },
