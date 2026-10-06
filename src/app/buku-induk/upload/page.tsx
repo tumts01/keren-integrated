@@ -3,12 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import styles from '../BukuInduk.module.css';
 import InlineLoading from '@/components/InlineLoading';
+import Swal from 'sweetalert2';
 
 export default function UploadLeggerPage() {
   const [loading, setLoading] = useState(true);
   const [rekap, setRekap] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-    const [viewData, setViewData] = useState<any | null>(null);
+  const [viewData, setViewData] = useState<any | null>(null);
   const [isLoadingView, setIsLoadingView] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -52,10 +53,10 @@ export default function UploadLeggerPage() {
         const students = Object.values(studentMap).sort((a: any, b: any) => a.nama.localeCompare(b.nama));
         setViewData({ r, mapels, students });
       } else {
-        alert('Gagal mengambil data: ' + json.error);
+        Swal.fire('Gagal!', 'Gagal mengambil data: ' + json.error, 'error');
       }
     } catch (err: any) {
-      alert('Error: ' + err.message);
+      Swal.fire('Error!', err.message, 'error');
     } finally {
       setIsLoadingView(false);
     }
@@ -76,17 +77,27 @@ export default function UploadLeggerPage() {
       });
       const result = await res.json();
       if (result.success) {
-        let msg = `Berhasil upload dan menyimpan ${result.count} data nilai!`;
         if (result.errors && result.errors.length > 0) {
-          msg += '\nSebagian gagal:\n' + result.errors.join('\n');
+          Swal.fire({
+            title: 'Berhasil dengan Catatan',
+            html: `Berhasil menyimpan <b>${result.count}</b> data nilai.<br/><br/><span style="color:red">Sebagian file gagal:</span><br/>${result.errors.join('<br/>')}`,
+            icon: 'warning'
+          });
+        } else {
+          Swal.fire({
+            title: 'Berhasil!',
+            text: `Upload selesai. ${result.count} data nilai berhasil disimpan!`,
+            icon: 'success',
+            timer: 2000,
+            showConfirmButton: false
+          });
         }
-        alert(msg);
         fetchRekap(); // refresh table
       } else {
-        alert(`Gagal upload: ${result.error}`);
+        Swal.fire('Gagal!', `Gagal upload: ${result.error}`, 'error');
       }
     } catch (err: any) {
-      alert(`Error upload: ${err.message}`);
+      Swal.fire('Error!', `Terjadi kesalahan sistem: ${err.message}`, 'error');
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -94,7 +105,18 @@ export default function UploadLeggerPage() {
   };
 
   const handleDelete = async (r: any) => {
-    if (!confirm(`Yakin ingin menghapus Legger Kelas ${r.kelas} Semester ${r.semester} Tahun Ajaran ${r.tahun_ajaran}? Data nilai yang terhapus tidak bisa dikembalikan.`)) return;
+    const confirmResult = await Swal.fire({
+      title: 'Hapus Data Legger?',
+      text: `Legger Kelas ${r.kelas} Semester ${r.semester} (${r.tahun_ajaran}) akan dihapus permanen!`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Ya, Hapus!',
+      cancelButtonText: 'Batal'
+    });
+
+    if (!confirmResult.isConfirmed) return;
     
     try {
       const res = await fetch('/api/buku-induk/rekap-upload', {
@@ -108,13 +130,13 @@ export default function UploadLeggerPage() {
       });
       const json = await res.json();
       if (json.success) {
-        alert('Data berhasil dihapus!');
+        Swal.fire('Terhapus!', 'Data legger berhasil dihapus.', 'success');
         fetchRekap();
       } else {
-        alert('Gagal menghapus: ' + json.error);
+        Swal.fire('Gagal!', 'Gagal menghapus: ' + json.error, 'error');
       }
     } catch (err: any) {
-      alert('Error: ' + err.message);
+      Swal.fire('Error!', err.message, 'error');
     }
   };
 
