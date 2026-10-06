@@ -6,6 +6,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const tag = searchParams.get('tag') || 'data_induk';
     
+    // @ts-ignore
     revalidateTag(tag);
     
     return NextResponse.json({ success: true, revalidated: tag, time: Date.now() });
