@@ -30,8 +30,8 @@ export async function GET(request: Request) {
       const isHistory = history.some(h => h.ta === ta && h.r && h.r.toUpperCase() === kelas.toUpperCase());
       return isCurrent || isHistory;
     }).sort((a: any, b: any) => {
-      const namaA = (a.metadata?.['NAMA LENGKAP'] || '').toUpperCase();
-      const namaB = (b.metadata?.['NAMA LENGKAP'] || '').toUpperCase();
+      const namaA = (a.nama || a.metadata?.['NAMA LENGKAP'] || '').toUpperCase();
+      const namaB = (b.nama || b.metadata?.['NAMA LENGKAP'] || '').toUpperCase();
       return namaA.localeCompare(namaB);
     });
 
@@ -66,7 +66,7 @@ export async function GET(request: Request) {
         idx + 1,
         meta['NIS'] || '',
         meta['NISN'] || '',
-        meta['NAMA LENGKAP'] || '',
+        s.nama || meta['NAMA LENGKAP'] || '',
         meta['JENIS KELAMIN'] || '',
         '', // JENIS EKSTRA (To be filled by user)
         ''  // NILAI (To be filled by user)
