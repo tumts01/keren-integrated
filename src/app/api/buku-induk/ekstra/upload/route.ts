@@ -57,6 +57,7 @@ export async function POST(request: Request) {
         const startIdx = headerRowIdx !== -1 ? headerRowIdx + 1 : 6;
         
         let nisCol = 1;
+        let nisnCol = 2;
         let namaCol = 3;
         let ekstraCol = 5;
         let nilaiCol = 6;
@@ -64,7 +65,8 @@ export async function POST(request: Request) {
         if (headerRowIdx !== -1) {
            const headers = data[headerRowIdx].map((h: any) => String(h || '').toLowerCase().trim());
            const findCol = (name: string) => headers.findIndex((h: string) => h.includes(name));
-           nisCol = findCol('nis') > -1 ? findCol('nis') : 1;
+           nisCol = headers.findIndex((h: string) => h === 'nis') > -1 ? headers.findIndex((h: string) => h === 'nis') : 1;
+           nisnCol = findCol('nisn') > -1 ? findCol('nisn') : 2;
            namaCol = findCol('nama') > -1 ? findCol('nama') : 3;
            ekstraCol = findCol('jenis ekstra') > -1 ? findCol('jenis ekstra') : 5;
            nilaiCol = findCol('nilai') > -1 ? findCol('nilai') : 6;
@@ -75,6 +77,7 @@ export async function POST(request: Request) {
           if (!row) continue;
           
           let nis = String(row[nisCol] || '').trim();
+          let nisn = String(row[nisnCol] || '').trim();
           let nama = String(row[namaCol] || '').trim();
           let jenisEkstra = String(row[ekstraCol] || '').trim();
           let nilai = String(row[nilaiCol] || '').trim();
@@ -82,7 +85,7 @@ export async function POST(request: Request) {
           if (!nama || nama === 'undefined') continue;
 
           if (jenisEkstra && nilai && jenisEkstra !== 'undefined' && nilai !== 'undefined') {
-            dataEkstra.push({ nis, nama, jenis_ekstra: jenisEkstra, nilai });
+            dataEkstra.push({ nis, nisn, nama, jenis_ekstra: jenisEkstra, nilai });
           }
         }
 

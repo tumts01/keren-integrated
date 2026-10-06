@@ -109,7 +109,13 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         
       if (!exsError && exs) {
         for (const row of exs) {
-          const studentEkstra = (row.data_ekstra || []).filter((d: any) => d.nis === nis || d.nama === nama);
+          const normName = (v: any) => String(v || '').toUpperCase().replace(/\s+/g, ' ').trim();
+          const studentEkstra = (row.data_ekstra || []).filter((d: any) =>
+            (nisn && d.nisn && String(d.nisn).trim() === String(nisn).trim()) ||
+            (nis && d.nis && String(d.nis).trim() === String(nis).trim()) ||
+            (normName(d.nama) !== '' && normName(d.nama) === normName(nama)) ||
+            (normName(d.nama) !== '' && normName(d.nama) === normName(student.nama))
+          );
           if (studentEkstra && studentEkstra.length > 0) {
             const matchedHistory = history.find(h => getRombelVariations(h.rombel).includes(row.kelas) && h.tahun_ajaran === row.tahun_ajaran);
             for (const ek of studentEkstra) {
