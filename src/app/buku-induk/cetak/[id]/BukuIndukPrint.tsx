@@ -98,6 +98,12 @@ export default function BukuIndukPrint({ data }: { data: any }) {
           .buku-induk-page {
             padding-top: 0 !important;
             min-height: auto !important;
+            page-break-after: auto !important;
+            break-after: auto !important;
+          }
+          .buku-induk-page + .buku-induk-page {
+            page-break-before: always !important;
+            break-before: page !important;
           }
           .no-print { display: none !important; }
           .print-bg { background-color: transparent !important; padding: 0 !important; }
