@@ -24,9 +24,29 @@ export async function POST(request: Request) {
         const sheet = wb.Sheets[sheetName];
         const data = xlsx.utils.sheet_to_json<any[]>(sheet, { header: 1 });
 
-        const kelas = String(data[1]?.[1] || '').trim();
-        const semester = String(data[1]?.[4] || '').trim();
-        const tahun_ajaran = String(data[2]?.[4] || '').trim();
+        let kelas = '';
+        let semester = '';
+        let tahun_ajaran = '';
+        let headerRowIdx = -1;
+
+        for (let i = 0; i < Math.min(data.length, 10); i++) {
+          const rowStr = (data[i] || []).join(' ').toLowerCase();
+          if (rowStr.includes('kelas:')) {
+            const kIdx = data[i].findIndex(c => String(c).toLowerCase().includes('kelas:'));
+            if (kIdx !== -1 && data[i][kIdx + 1]) kelas = String(data[i][kIdx + 1]).trim();
+          }
+          if (rowStr.includes('semester:')) {
+            const sIdx = data[i].findIndex(c => String(c).toLowerCase().includes('semester:'));
+            if (sIdx !== -1 && data[i][sIdx + 1]) semester = String(data[i][sIdx + 1]).trim();
+          }
+          if (rowStr.includes('tahun ajaran:')) {
+            const tIdx = data[i].findIndex(c => String(c).toLowerCase().includes('tahun ajaran:'));
+            if (tIdx !== -1 && data[i][tIdx + 1]) tahun_ajaran = String(data[i][tIdx + 1]).trim();
+          }
+          if (rowStr.includes('nis') && rowStr.includes('nama') && rowStr.includes('nilai')) {
+            headerRowIdx = i;
+          }
+        }
 
         if (!kelas || !semester || !tahun_ajaran) {
           errors.push(`File ${file.name}: Format tidak valid. Pastikan Kelas, Semester, dan Tahun Ajaran ada di posisinya.`);
@@ -34,18 +54,34 @@ export async function POST(request: Request) {
         }
 
         const dataEkstra: any[] = [];
+        const startIdx = headerRowIdx !== -1 ? headerRowIdx + 1 : 6;
+        
+        let nisCol = 1;
+        let namaCol = 3;
+        let ekstraCol = 5;
+        let nilaiCol = 6;
+        
+        if (headerRowIdx !== -1) {
+           const headers = data[headerRowIdx].map(h => String(h || '').toLowerCase().trim());
+           const findCol = (name) => headers.findIndex(h => h.includes(name));
+           nisCol = findCol('nis') > -1 ? findCol('nis') : 1;
+           namaCol = findCol('nama') > -1 ? findCol('nama') : 3;
+           ekstraCol = findCol('jenis ekstra') > -1 ? findCol('jenis ekstra') : 5;
+           nilaiCol = findCol('nilai') > -1 ? findCol('nilai') : 6;
+        }
 
-        // Rows start at index 6 (Row 7)
-        for (let i = 6; i < data.length; i++) {
+        for (let i = startIdx; i < data.length; i++) {
           const row = data[i];
-          if (!row || !row[1] || !row[3]) continue; // Skip empty rows
+          if (!row) continue;
+          
+          let nis = String(row[nisCol] || '').trim();
+          let nama = String(row[namaCol] || '').trim();
+          let jenisEkstra = String(row[ekstraCol] || '').trim();
+          let nilai = String(row[nilaiCol] || '').trim();
+          
+          if (!nis || !nama || nis === 'undefined' || nama === 'undefined') continue;
 
-          const nis = String(row[1]).trim();
-          const nama = String(row[3]).trim();
-          const jenisEkstra = String(row[5] || '').trim();
-          const nilai = String(row[6] || '').trim();
-
-          if (jenisEkstra && nilai) {
+          if (jenisEkstra && nilai && jenisEkstra !== 'undefined' && nilai !== 'undefined') {
             dataEkstra.push({ nis, nama, jenis_ekstra: jenisEkstra, nilai });
           }
         }
