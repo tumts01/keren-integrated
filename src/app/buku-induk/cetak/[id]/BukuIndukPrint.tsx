@@ -404,7 +404,7 @@ export default function BukuIndukPrint({ data }: { data: any }) {
                 </tr>
               </thead>
               <tbody>
-                {semRows.map((_, i) => (
+                {Array.from({ length: 3 }).map((_, i) => (
                   <tr key={i} className={i % 2 === 0 ? 'row-cyan' : ''}>
                     <td>&nbsp;</td>
                     <td></td>
@@ -443,9 +443,6 @@ export default function BukuIndukPrint({ data }: { data: any }) {
                       {/* Empty rows to maintain table height alignment with Ekstrakurikuler */}
                       <tr><td>&nbsp;</td><td></td><td></td></tr>
                       <tr className="row-cyan"><td>&nbsp;</td><td></td><td></td></tr>
-                      <tr><td>&nbsp;</td><td></td><td></td></tr>
-                      <tr className="row-cyan"><td>&nbsp;</td><td></td><td></td></tr>
-                      <tr><td>&nbsp;</td><td></td><td></td></tr>
                     </>
                   );
                 })()}
