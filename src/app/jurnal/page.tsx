@@ -34,8 +34,8 @@ export default function JurnalPage() {
   // --- REKAP STATE ---
   const [rekapData, setRekapData] = useState<JurnalRecord[]>([]);
   const [rekapLoading, setRekapLoading] = useState(false);
-  const [filterFrom, setFilterFrom] = useState('');
-  const [filterTo, setFilterTo] = useState('');
+  const [filterFrom, setFilterFrom] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split('T')[0]; });
+  const [filterTo, setFilterTo] = useState(() => new Date().toISOString().split('T')[0]);
   const [filterGuru, setFilterGuru] = useState('');
   const [guruList, setGuruList] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -79,7 +79,10 @@ export default function JurnalPage() {
   const fetchRekap = useCallback(async () => {
     setRekapLoading(true);
     try {
-      const res = await fetch('/api/jurnal');
+      const qs = new URLSearchParams();
+      if (filterFrom) qs.set('from', filterFrom);
+      if (filterTo) qs.set('to', filterTo);
+      const res = await fetch('/api/jurnal?' + qs.toString());
       const json = await res.json();
       if (json.success) {
         setRekapData(json.data);
@@ -93,7 +96,7 @@ export default function JurnalPage() {
     } finally {
       setRekapLoading(false);
     }
-  }, []);
+  }, [filterFrom, filterTo]);
 
   useEffect(() => {
     if (activeTab === 'rekap') fetchRekap();
@@ -559,3 +562,4 @@ export default function JurnalPage() {
     </div>
   );
 }
+
