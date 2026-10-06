@@ -80,7 +80,8 @@ export default function Sidebar() {
           icon: 'fa-book-open',
           subItems: [
             { name: 'Cetak Buku Induk', path: '/buku-induk' },
-            { name: 'Upload Legger', path: '/buku-induk/upload' }
+            { name: 'Upload Legger', path: '/buku-induk/upload' },
+            { name: 'Upload Ekstra', path: '/buku-induk/ekstrakurikuler' }
           ]
         },
         { name: 'Data Kelas', path: '/kelas', icon: 'fa-chalkboard' },

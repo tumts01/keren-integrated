@@ -3,7 +3,7 @@ import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 
 export default function BukuIndukPrint({ data }: { data: any }) {
-  const { induk, history, nilai, prestasi } = data;
+  const { induk, history, nilai, ekstra, prestasi } = data;
 
   // Helpers
   const val = (key: string) => induk[key] || '';

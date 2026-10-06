@@ -95,6 +95,37 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       }
     }
 
+    // 2.5. Fetch Nilai Ekstra for these classes
+    let ekstraData: any[] = [];
+    if (history.length > 0) {
+      const allRombels = Array.from(new Set(history.flatMap(h => getRombelVariations(h.rombel))));
+      const tas = history.map(h => h.tahun_ajaran);
+      
+      const { data: exs, error: exsError } = await supabase
+        .from('ekstra_buku_induk')
+        .select('*')
+        .in('kelas', allRombels)
+        .in('tahun_ajaran', tas);
+        
+      if (!exsError && exs) {
+        for (const row of exs) {
+          const studentEkstra = (row.data_ekstra || []).filter((d: any) => d.nis === nis || d.nama === nama);
+          if (studentEkstra && studentEkstra.length > 0) {
+            const matchedHistory = history.find(h => getRombelVariations(h.rombel).includes(row.kelas) && h.tahun_ajaran === row.tahun_ajaran);
+            for (const ek of studentEkstra) {
+              ekstraData.push({
+                tahun_ajaran: row.tahun_ajaran,
+                semester: row.semester,
+                kelas: matchedHistory ? matchedHistory.kelas : row.kelas,
+                jenis_ekstra: ek.jenis_ekstra,
+                nilai: ek.nilai
+              });
+            }
+          }
+        }
+      }
+    }
+
     // 3. Fetch Prestasi
     const { data: prestasi, error: prestasiError } = await supabase
       .from('data_prestasi')
