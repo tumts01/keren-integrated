@@ -404,13 +404,21 @@ export default function BukuIndukPrint({ data }: { data: any }) {
                 </tr>
               </thead>
               <tbody>
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <tr key={i} className={i % 2 === 0 ? 'row-cyan' : ''}>
-                    <td>&nbsp;</td>
-                    <td></td>
-                    <td></td>
-                  </tr>
-                ))}
+                {[
+                  { k: '7', s: 'Ganjil' }, { k: '7', s: 'Genap' },
+                  { k: '8', s: 'Ganjil' }, { k: '8', s: 'Genap' },
+                  { k: '9', s: 'Ganjil' }, { k: '9', s: 'Genap' },
+                ].map((slot, i) => {
+                  const items = (ekstra || []).filter((e: any) =>
+                    String(e.kelas) === slot.k && String(e.semester).toLowerCase() === slot.s.toLowerCase());
+                  return (
+                    <tr key={i} className={i % 2 === 0 ? 'row-cyan' : ''}>
+                      <td style={{ textAlign: 'center' }}>{slot.k} {slot.s}</td>
+                      <td>{items.map((e: any) => e.jenis_ekstra).join(', ')}</td>
+                      <td style={{ textAlign: 'center' }}>{items.map((e: any) => e.nilai).join(', ')}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -441,8 +449,9 @@ export default function BukuIndukPrint({ data }: { data: any }) {
                         <td>{total.A || '-'}</td>
                       </tr>
                       {/* Empty rows to maintain table height alignment with Ekstrakurikuler */}
-                      <tr><td>&nbsp;</td><td></td><td></td></tr>
-                      <tr className="row-cyan"><td>&nbsp;</td><td></td><td></td></tr>
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <tr key={n} className={n % 2 === 0 ? 'row-cyan' : ''}><td>&nbsp;</td><td></td><td></td></tr>
+                      ))}
                     </>
                   );
                 })()}
