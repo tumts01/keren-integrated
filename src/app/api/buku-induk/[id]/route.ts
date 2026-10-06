@@ -32,14 +32,14 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       { kelas: '9', tahun_ajaran: metadata['TA KELAS 9'], rombel: metadata['ROMBEL KELAS 9'] }
     ].filter(h => h.rombel && h.tahun_ajaran);
 
-    // 2. Fetch Nilai STS for these classes
+    // 2. Fetch Nilai Buku Induk for these classes
     let nilaiData: any[] = [];
     if (history.length > 0) {
       const rombels = history.map(h => h.rombel);
       const tas = history.map(h => h.tahun_ajaran);
       
       const { data: sts, error: stsError } = await supabase
-        .from('nilai_sts')
+        .from('nilai_buku_induk')
         .select('*')
         .in('kelas', rombels)
         .in('tahun_ajaran', tas);
