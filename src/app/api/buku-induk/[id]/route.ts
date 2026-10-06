@@ -190,6 +190,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         },
         history,
         nilai: nilaiData,
+        ekstra: ekstraData,
         prestasi: prestasiList,
         presensi: rekapPresensi
       }
