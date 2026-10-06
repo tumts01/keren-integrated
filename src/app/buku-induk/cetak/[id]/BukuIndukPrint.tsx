@@ -55,13 +55,17 @@ export default function BukuIndukPrint({ data }: { data: any }) {
     return n ? n.nilai : '';
   };
 
+  const r7 = val('ROMBEL KELAS 7') || '7';
+  const r8 = val('ROMBEL KELAS 8') || '8';
+  const r9 = val('ROMBEL KELAS 9') || '9';
+
   const semRows = [
-    { label: '7 / Ganjil', k: '7', s: 'Ganjil' },
-    { label: '7 / Genap', k: '7', s: 'Genap' },
-    { label: '8 / Ganjil', k: '8', s: 'Ganjil' },
-    { label: '8 / Genap', k: '8', s: 'Genap' },
-    { label: '9 / Ganjil', k: '9', s: 'Ganjil' },
-    { label: '9 / Genap', k: '9', s: 'Genap' }
+    { label: `${r7} / Ganjil`, k: '7', s: 'Ganjil' },
+    { label: `${r7} / Genap`, k: '7', s: 'Genap' },
+    { label: `${r8} / Ganjil`, k: '8', s: 'Ganjil' },
+    { label: `${r8} / Genap`, k: '8', s: 'Genap' },
+    { label: `${r9} / Ganjil`, k: '9', s: 'Ganjil' },
+    { label: `${r9} / Genap`, k: '9', s: 'Genap' }
   ];
 
   const getImageUrl = (url: string) => {
