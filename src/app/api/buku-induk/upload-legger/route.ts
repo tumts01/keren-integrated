@@ -25,82 +25,111 @@ const mapelsIndex = [
 
 export async function POST(request: Request) {
   try {
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
-    if (!file) return NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 });
+    const url = new URL(request.url);
+    const action = url.searchParams.get('action');
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const wb = xlsx.read(buffer, { type: 'buffer' });
-    const sheetName = wb.SheetNames[0];
-    const sheet = wb.Sheets[sheetName];
-    const data = xlsx.utils.sheet_to_json<any[]>(sheet, { header: 1 });
+    if (action === 'save') {
+      const body = await request.json();
+      const payloadsToSave = body.payloads;
 
-    const kelas = String(data[1]?.[1] || '').trim();
-    const semester = String(data[1]?.[4] || '').trim();
-    const tahunAjaran = String(data[2]?.[4] || '').trim();
+      if (!payloadsToSave || payloadsToSave.length === 0) {
+        return NextResponse.json({ success: false, error: 'Tidak ada data untuk disimpan' }, { status: 400 });
+      }
 
-    if (!kelas || !semester || !tahunAjaran) {
-      return NextResponse.json({ success: false, error: 'Format Excel tidak valid. Pastikan Kelas, Semester, dan Tahun Ajaran ada di posisinya.' }, { status: 400 });
-    }
+      let totalSaved = 0;
 
-    // Collect data per mapel
-    const mapelDataMap: Record<string, any[]> = {};
-    mapelsIndex.forEach(m => {
-      mapelDataMap[m.name] = [];
-    });
+      for (const item of payloadsToSave) {
+        const { kelas, semester, tahun_ajaran, insertPayload } = item;
+        
+        // Delete existing
+        const { error: delError } = await supabase
+          .from('nilai_buku_induk')
+          .delete()
+          .match({ kelas, semester, tahun_ajaran });
+          
+        if (delError) throw delError;
 
-    // Rows start at index 7 (Row 8)
-    for (let i = 7; i < data.length; i++) {
-      const row = data[i];
-      if (!row || !row[1] || !row[3]) continue; // Skip empty rows (NIS or Nama missing)
+        // Insert new
+        if (insertPayload && insertPayload.length > 0) {
+          const { error: insError } = await supabase
+            .from('nilai_buku_induk')
+            .insert(insertPayload);
+            
+          if (insError) throw insError;
+          totalSaved += insertPayload.length;
+        }
+      }
 
-      const nis = String(row[1]).trim();
-      const nama = String(row[3]).trim();
+      return NextResponse.json({ success: true, count: totalSaved });
+    } else {
+      // Preview Mode
+      const formData = await request.formData();
+      const files = formData.getAll('file') as File[];
+      
+      if (!files || files.length === 0) {
+        return NextResponse.json({ success: false, error: 'No files provided' }, { status: 400 });
+      }
 
-      mapelsIndex.forEach(m => {
-        const val = row[m.col];
-        if (val !== undefined && val !== null && val !== '') {
-          mapelDataMap[m.name].push({
-            nis,
-            nama,
-            nilai: val
+      const results = [];
+
+      for (const file of files) {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const wb = xlsx.read(buffer, { type: 'buffer' });
+        const sheetName = wb.SheetNames[0];
+        const sheet = wb.Sheets[sheetName];
+        const data = xlsx.utils.sheet_to_json<any[]>(sheet, { header: 1 });
+
+        const kelas = String(data[1]?.[1] || '').trim();
+        const semester = String(data[1]?.[4] || '').trim();
+        const tahun_ajaran = String(data[2]?.[4] || '').trim();
+
+        if (!kelas || !semester || !tahun_ajaran) {
+          results.push({ fileName: file.name, error: 'Format Excel tidak valid. Pastikan Kelas, Semester, dan Tahun Ajaran ada di posisinya.' });
+          continue;
+        }
+
+        const mapelDataMap: Record<string, any[]> = {};
+        mapelsIndex.forEach(m => { mapelDataMap[m.name] = []; });
+
+        let siswaSet = new Set<string>();
+
+        // Rows start at index 7 (Row 8)
+        for (let i = 7; i < data.length; i++) {
+          const row = data[i];
+          if (!row || !row[1] || !row[3]) continue; // Skip empty rows
+
+          const nis = String(row[1]).trim();
+          const nama = String(row[3]).trim();
+
+          mapelsIndex.forEach(m => {
+            const val = row[m.col];
+            if (val !== undefined && val !== null && val !== '') {
+              mapelDataMap[m.name].push({ nis, nama, nilai: val });
+              siswaSet.add(nis);
+            }
           });
         }
-      });
-    }
 
-    // Delete existing records for this class/semester/ta
-    const { error: delError } = await supabase
-      .from('nilai_buku_induk')
-      .delete()
-      .match({ kelas, semester, tahun_ajaran: tahunAjaran });
-      
-    if (delError) {
-      console.error('Delete error:', delError);
-      return NextResponse.json({ success: false, error: 'Gagal menghapus data lama' }, { status: 500 });
-    }
+        const insertPayload = mapelsIndex.map(m => ({
+          kelas,
+          semester,
+          tahun_ajaran,
+          mata_pelajaran: m.name,
+          data_nilai: mapelDataMap[m.name]
+        })).filter(payload => payload.data_nilai.length > 0);
 
-    // Insert new records
-    const insertPayload = mapelsIndex.map(m => ({
-      kelas,
-      semester,
-      tahun_ajaran: tahunAjaran,
-      mata_pelajaran: m.name,
-      data_nilai: mapelDataMap[m.name]
-    })).filter(payload => payload.data_nilai.length > 0);
-
-    if (insertPayload.length > 0) {
-      const { error: insError } = await supabase
-        .from('nilai_buku_induk')
-        .insert(insertPayload);
-        
-      if (insError) {
-        console.error('Insert error:', insError);
-        return NextResponse.json({ success: false, error: 'Gagal menyimpan data baru' }, { status: 500 });
+        results.push({
+          fileName: file.name,
+          kelas,
+          semester,
+          tahun_ajaran,
+          siswaCount: siswaSet.size,
+          insertPayload
+        });
       }
-    }
 
-    return NextResponse.json({ success: true, kelas, semester, count: insertPayload.length });
+      return NextResponse.json({ success: true, previews: results });
+    }
   } catch (err: any) {
     console.error('Error uploading legger:', err);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
