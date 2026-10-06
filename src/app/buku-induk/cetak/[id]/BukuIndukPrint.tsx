@@ -145,7 +145,7 @@ export default function BukuIndukPrint({ data }: { data: any }) {
         }
         .bi-table th, .bi-table td {
           border: 1px solid black;
-          padding: 4px 6px;
+          padding: 5px 6px;
           vertical-align: middle;
         }
         .bi-table-noborder {
