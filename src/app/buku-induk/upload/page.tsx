@@ -9,6 +9,8 @@ export default function UploadLeggerPage() {
   const [rekap, setRekap] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [previewData, setPreviewData] = useState<any[] | null>(null);
+  const [viewData, setViewData] = useState<any | null>(null);
+  const [isLoadingView, setIsLoadingView] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const fetchRekap = async () => {
@@ -29,6 +31,36 @@ export default function UploadLeggerPage() {
   useEffect(() => {
     fetchRekap();
   }, []);
+
+  const handleView = async (r: any) => {
+    setIsLoadingView(true);
+    try {
+      const res = await fetch(`/api/buku-induk/review-legger?kelas=${encodeURIComponent(r.kelas)}&semester=${encodeURIComponent(r.semester)}&ta=${encodeURIComponent(r.tahun_ajaran)}`);
+      const json = await res.json();
+      if (json.success) {
+        const mapels = json.data.map((d: any) => d.mata_pelajaran);
+        const studentMap: Record<string, any> = {};
+        
+        json.data.forEach((m: any) => {
+          m.data_nilai.forEach((d: any) => {
+            if (!studentMap[d.nis]) {
+              studentMap[d.nis] = { nis: d.nis, nama: d.nama, mapels: {} };
+            }
+            studentMap[d.nis].mapels[m.mata_pelajaran] = d.nilai;
+          });
+        });
+
+        const students = Object.values(studentMap).sort((a: any, b: any) => a.nama.localeCompare(b.nama));
+        setViewData({ r, mapels, students });
+      } else {
+        alert('Gagal mengambil data: ' + json.error);
+      }
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    } finally {
+      setIsLoadingView(false);
+    }
+  };
 
   const handleUploadLegger = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -239,7 +271,24 @@ export default function UploadLeggerPage() {
                     <td>{r.kelas}</td>
                     <td>{r.mapel_count} Mapel</td>
                     <td>{new Date(r.created_at).toLocaleString('id-ID')}</td>
-                    <td>
+                    <td style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button 
+                        onClick={() => handleView(r)}
+                        style={{
+                          backgroundColor: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          padding: '0.4rem 0.8rem',
+                          borderRadius: '0.375rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.3rem',
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        <i className="fa-solid fa-eye"></i> Lihat Data
+                      </button>
                       <button 
                         onClick={() => handleDelete(r)}
                         style={{
@@ -270,6 +319,47 @@ export default function UploadLeggerPage() {
           </div>
         )}
       </div>
+
+      {viewData && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999,
+          display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '2rem'
+        }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '0.5rem', width: '100%', maxWidth: '1200px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '1.5rem', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, fontSize: '1.25rem' }}>
+                Review Nilai Kelas {viewData.r.kelas} - Semester {viewData.r.semester} ({viewData.r.tahun_ajaran})
+              </h2>
+              <button onClick={() => setViewData(null)} style={{ border: 'none', background: 'transparent', fontSize: '1.5rem', cursor: 'pointer' }}>&times;</button>
+            </div>
+            <div style={{ padding: '1.5rem', overflow: 'auto', flex: 1 }}>
+              <table className={styles.table} style={{ whiteSpace: 'nowrap' }}>
+                <thead>
+                  <tr>
+                    <th style={{ position: 'sticky', left: 0, backgroundColor: '#f3f4f6' }}>No</th>
+                    <th style={{ position: 'sticky', left: '40px', backgroundColor: '#f3f4f6' }}>NIS</th>
+                    <th style={{ position: 'sticky', left: '120px', backgroundColor: '#f3f4f6', minWidth: '200px' }}>Nama Siswa</th>
+                    {viewData.mapels.map((m: string) => <th key={m}>{m}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {viewData.students.map((s: any, idx: number) => (
+                    <tr key={s.nis}>
+                      <td style={{ position: 'sticky', left: 0, backgroundColor: 'white' }}>{idx + 1}</td>
+                      <td style={{ position: 'sticky', left: '40px', backgroundColor: 'white' }}>{s.nis}</td>
+                      <td style={{ position: 'sticky', left: '120px', backgroundColor: 'white' }}>{s.nama}</td>
+                      {viewData.mapels.map((m: string) => (
+                        <td key={m} style={{ textAlign: 'center' }}>{s.mapels[m] ?? '-'}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
