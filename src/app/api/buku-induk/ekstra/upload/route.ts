@@ -79,7 +79,7 @@ export async function POST(request: Request) {
           let jenisEkstra = String(row[ekstraCol] || '').trim();
           let nilai = String(row[nilaiCol] || '').trim();
           
-          if (!nis || !nama || nis === 'undefined' || nama === 'undefined') continue;
+          if (!nama || nama === 'undefined') continue;
 
           if (jenisEkstra && nilai && jenisEkstra !== 'undefined' && nilai !== 'undefined') {
             dataEkstra.push({ nis, nama, jenis_ekstra: jenisEkstra, nilai });
