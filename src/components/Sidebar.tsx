@@ -86,7 +86,16 @@ export default function Sidebar() {
         },
         { name: 'Data Kelas', path: '/kelas', icon: 'fa-chalkboard' },
         { name: 'Presensi & Jurnal', path: '/presensi', icon: 'fa-calendar-check' },
-        { name: 'Dispo Siswa', path: '/dispo', icon: 'fa-user-clock' },
+        { 
+          name: 'Dispo Siswa', 
+          path: '/dispo-parent', 
+          icon: 'fa-user-clock',
+          subItems: [
+            { name: 'Keterlambatan', path: '/dispo' },
+            { name: 'Apresiasi', path: '/dispo/apresiasi' },
+            { name: 'Pelanggaran', path: '/dispo/pelanggaran' }
+          ]
+        },
         ...(isAdmin ? [
           { name: 'Jadwal Mengajar', path: '/jadwal-mengajar', icon: 'fa-clock' },
         ] : []),
