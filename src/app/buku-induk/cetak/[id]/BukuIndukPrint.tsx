@@ -93,7 +93,7 @@ export default function BukuIndukPrint({ data }: { data: any }) {
           }
           @page {
             size: A4 portrait;
-            margin: 6mm 15mm 15mm 15mm;
+            margin: 10mm 15mm 15mm 15mm;
           }
           .buku-induk-page {
             padding-top: 0 !important;
