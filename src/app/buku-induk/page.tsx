@@ -32,7 +32,9 @@ export default function BukuIndukPage() {
         setDaftarKelas(classNames as string[]);
       }
       if (siswaJson.success) {
-        setSiswa(siswaJson.data.filter((s: any) => (s.status || '').toUpperCase() === 'AKTIF'));
+        setSiswa(siswaJson.data.filter((s: any) => 
+          (s.status || '').toUpperCase() === 'AKTIF' && s.isLatest === true
+        ));
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -42,9 +44,9 @@ export default function BukuIndukPage() {
   };
 
   const filteredSiswa = siswa.filter(s => {
-    const matchKelas = kelas ? s.rombel === kelas : true;
-    const matchSearch = s.nama.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                        (s.nisn && s.nisn.includes(searchTerm));
+    const matchKelas = kelas ? (s.rombel || '').trim().toUpperCase() === kelas.trim().toUpperCase() : true;
+    const matchSearch = (s.nama || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                        (s.nisn || '').toLowerCase().includes(searchTerm.toLowerCase());
     return matchKelas && matchSearch;
   }).sort((a, b) => {
     // Sort by rombel (kelas)
