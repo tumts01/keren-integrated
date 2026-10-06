@@ -57,6 +57,31 @@ export default function UploadLeggerPage() {
     }
   };
 
+  const handleDelete = async (r: any) => {
+    if (!confirm(`Yakin ingin menghapus Legger Kelas ${r.kelas} Semester ${r.semester} Tahun Ajaran ${r.tahun_ajaran}? Data nilai yang terhapus tidak bisa dikembalikan.`)) return;
+    
+    try {
+      const res = await fetch('/api/buku-induk/rekap-upload', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kelas: r.kelas,
+          semester: r.semester,
+          tahun_ajaran: r.tahun_ajaran
+        })
+      });
+      const json = await res.json();
+      if (json.success) {
+        alert('Data berhasil dihapus!');
+        fetchRekap();
+      } else {
+        alert('Gagal menghapus: ' + json.error);
+      }
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    }
+  };
+
   return (
     <div className={styles.pageContainer}>
       <div className={styles.pageHeader}>
@@ -115,6 +140,7 @@ export default function UploadLeggerPage() {
                   <th>Kelas</th>
                   <th>Jumlah Mapel Terupload</th>
                   <th>Waktu Upload Terakhir</th>
+                  <th>Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -126,11 +152,30 @@ export default function UploadLeggerPage() {
                     <td>{r.kelas}</td>
                     <td>{r.mapel_count} Mapel</td>
                     <td>{new Date(r.created_at).toLocaleString('id-ID')}</td>
+                    <td>
+                      <button 
+                        onClick={() => handleDelete(r)}
+                        style={{
+                          backgroundColor: '#ef4444',
+                          color: 'white',
+                          border: 'none',
+                          padding: '0.4rem 0.8rem',
+                          borderRadius: '0.375rem',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.3rem',
+                          fontSize: '0.875rem'
+                        }}
+                      >
+                        <i className="fa-solid fa-trash"></i> Hapus
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {rekap.length === 0 && (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>Belum ada Legger yang diupload.</td>
+                    <td colSpan={7} style={{ textAlign: 'center', padding: '2rem' }}>Belum ada Legger yang diupload.</td>
                   </tr>
                 )}
               </tbody>

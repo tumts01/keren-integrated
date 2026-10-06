@@ -38,3 +38,25 @@ export async function GET() {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const body = await request.json();
+    const { kelas, semester, tahun_ajaran } = body;
+    
+    if (!kelas || !semester || !tahun_ajaran) {
+      return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
+    }
+
+    const { error } = await supabase
+      .from('nilai_buku_induk')
+      .delete()
+      .match({ kelas, semester, tahun_ajaran });
+
+    if (error) throw error;
+    
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
