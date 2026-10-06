@@ -111,7 +111,7 @@ export default function BukuIndukPrint({ data }: { data: any }) {
           padding: 15mm;
           box-sizing: border-box;
           font-family: Arial, sans-serif;
-          font-size: 11px;
+          font-size: 12px;
           color: black;
           page-break-after: always;
           position: relative;
@@ -139,7 +139,7 @@ export default function BukuIndukPrint({ data }: { data: any }) {
         }
         .bi-header-text p {
           margin: 0;
-          font-size: 11px;
+          font-size: 12px;
         }
 
         .bi-table {
@@ -200,11 +200,11 @@ export default function BukuIndukPrint({ data }: { data: any }) {
         .nilai-table th {
           background-color: #e0f2f1;
           text-align: center;
-          font-size: 9px;
+          font-size: 10px;
         }
         .nilai-table td {
           text-align: center;
-          font-size: 10px;
+          font-size: 11px;
         }
         
         .row-cyan { background-color: #b2ebf2; }
@@ -482,7 +482,7 @@ export default function BukuIndukPrint({ data }: { data: any }) {
                 <td>{p.nama_lomba} ({p.tingkat})</td>
                 <td>{p.penyelenggara}</td>
                 <td style={{ textAlign: 'center' }}>{p.peringkat}</td>
-                <td style={{ textAlign: 'center', fontSize: '10px' }}>
+                <td style={{ textAlign: 'center', fontSize: '11px' }}>
                   {p.link_sertifikat ? (
                     <div style={{ display: "flex", justifyContent: "center" }}><QRCodeSVG value={p.link_sertifikat} size={40} level="L" /></div>
                   ) : '-'}
