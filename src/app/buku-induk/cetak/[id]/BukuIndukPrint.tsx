@@ -431,7 +431,7 @@ export default function BukuIndukPrint({ data }: { data: any }) {
                     acc.I += curr.I || 0;
                     acc.A += curr.A || 0;
                     return acc;
-                  }, { S: 0, I: 0, A: 0 });
+                  }, { S: 0, I: 0, A: 0 }) as { S: number, I: number, A: number };
 
                   return (
                     <>
