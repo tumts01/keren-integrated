@@ -61,6 +61,7 @@ const compressImage = async (file: File): Promise<File> => {
 export default function JurnalKegiatanPage() {
   const [activeTab, setActiveTab] = useState<'notulen' | 'lpj' | 'jurnal-staf' | 'jurnal-mgmp'>('notulen');
   const [jurnalStafSubTab, setJurnalStafSubTab] = useState<'isi' | 'rekap'>('isi');
+  const [currentPage, setCurrentPage] = useState(1);
   const [jurnalStafData, setJurnalStafData] = useState<any[]>([]);
   const [savingJurnalStaf, setSavingJurnalStaf] = useState(false);
   const [jurnalStafForm, setJurnalStafForm] = useState({
@@ -459,7 +460,7 @@ export default function JurnalKegiatanPage() {
                 <i className="fas fa-pen" style={{ marginRight: '8px' }}></i> Isi Jurnal Kegiatan
               </button>
               <button 
-                onClick={() => setJurnalStafSubTab('rekap')}
+                onClick={() => { setJurnalStafSubTab('rekap'); setCurrentPage(1); }}
                 style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: jurnalStafSubTab === 'rekap' ? '#eff6ff' : 'transparent', color: jurnalStafSubTab === 'rekap' ? '#3b82f6' : '#64748b', fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }}
               >
                 <i className="fas fa-table" style={{ marginRight: '8px' }}></i> Rekap Jurnal Kegiatan
@@ -548,15 +549,15 @@ export default function JurnalKegiatanPage() {
                 <div className={styles.noPrint} style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                   <div style={{ flex: '1 1 200px' }}>
                     <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Dari Tanggal</label>
-                    <input type="date" style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }} value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} />
+                    <input type="date" style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }} value={filterStartDate} onChange={e => { setFilterStartDate(e.target.value); setCurrentPage(1); }} />
                   </div>
                   <div style={{ flex: '1 1 200px' }}>
                     <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Sampai Tanggal</label>
-                    <input type="date" style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }} value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} />
+                    <input type="date" style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }} value={filterEndDate} onChange={e => { setFilterEndDate(e.target.value); setCurrentPage(1); }} />
                   </div>
                   <div style={{ flex: '2 1 300px' }}>
                     <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Cari Nama Guru / Staf</label>
-                    <input type="text" list="stafNamesList" placeholder="Ketik nama..." style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }} value={filterName} onChange={e => setFilterName(e.target.value)} />
+                    <input type="text" list="stafNamesList" placeholder="Ketik nama..." style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }} value={filterName} onChange={e => { setFilterName(e.target.value); setCurrentPage(1); }} />
                     <datalist id="stafNamesList">
                       {Array.from(new Set(jurnalStafData.map((j: any) => j.namaStaf).filter(Boolean))).sort().map((name: any, idx) => (
                         <option key={idx} value={name} />
@@ -627,7 +628,7 @@ export default function JurnalKegiatanPage() {
                         return dStr;
                       };
 
-                      const filtered = jurnalStafData.filter(j => {
+                      const filteredAll = jurnalStafData.filter(j => {
                         let match = true;
                         const jTgl = parseDateStr(j.tanggal);
                         if (filterStartDate && jTgl < filterStartDate) match = false;
@@ -635,9 +636,9 @@ export default function JurnalKegiatanPage() {
                         if (filterName && !j.namaStaf?.toLowerCase().includes(filterName.toLowerCase())) match = false;
                         return match;
                       });
-                      return filtered.length > 0 ? filtered.map((j, i) => (
+                      const itemsPerPage = 20; const totalPages = Math.ceil(filteredAll.length / itemsPerPage) || 1; const filtered = filteredAll.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage); return filtered.length > 0 ? filtered.map((j, i) => (
                       <tr key={i}>
-                        <td style={{ textAlign: 'center' }}>{i + 1}</td>
+                        <td style={{ textAlign: 'center' }}>{(currentPage - 1) * 20 + i + 1}</td>
                         <td>
                           <div style={{ fontWeight: 600, color: '#334155' }}>{j.tanggal}</div>
                           <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
