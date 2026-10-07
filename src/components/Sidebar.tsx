@@ -24,7 +24,10 @@ type MenuCategory = {
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isPinnedCollapsed, setIsPinnedCollapsed] = useState(true);
+  const [isHovered, setIsHovered] = useState(false);
+  const isDesktop = typeof window !== 'undefined' ? window.innerWidth > 768 : true;
+  const isCollapsed = isPinnedCollapsed && !(isHovered && isDesktop);
   const [userRole, setUserRole] = useState<string>('');
   const [userName, setUserName] = useState<string>('');
   const [hasNewPengumuman, setHasNewPengumuman] = useState(false);
@@ -207,7 +210,7 @@ export default function Sidebar() {
     if (savedCollapse !== null) {
       // Only apply saved collapse state on desktop, mobile is always collapsed initially
       if (window.innerWidth > 768) {
-        setIsCollapsed(savedCollapse === 'true');
+        setIsPinnedCollapsed(savedCollapse === 'true');
       }
     }
   }, []);
@@ -282,8 +285,8 @@ export default function Sidebar() {
   };
 
   const handleToggleSidebar = () => {
-    const newVal = !isCollapsed;
-    setIsCollapsed(newVal);
+    const newVal = !isPinnedCollapsed;
+    setIsPinnedCollapsed(newVal);
     if (isClient && window.innerWidth > 768) {
       localStorage.setItem('sidebar_is_collapsed', String(newVal));
     }
@@ -293,17 +296,21 @@ export default function Sidebar() {
     <>
       {/* Mobile Overlay */}
       <div 
-        className={`${styles.mobileOverlay} ${!isCollapsed ? styles.show : ''}`} 
-        onClick={() => setIsCollapsed(true)}
-      ></div>
+          className={`${styles.mobileOverlay} ${!isPinnedCollapsed ? styles.show : ''}`} 
+          onClick={() => setIsPinnedCollapsed(true)}
+        ></div>
 
-      <aside className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}>
+      <aside 
+        className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         <button 
           className={styles.toggleBtnTop} 
           onClick={handleToggleSidebar}
-          title={isCollapsed ? "Buka Sidebar" : "Sembunyikan Sidebar"}
+          title={isPinnedCollapsed ? "Kunci Sidebar Terbuka" : "Sembunyikan Sidebar"}
         >
-          <i className={`fas ${isCollapsed ? 'fa-bars' : 'fa-chevron-left'}`}></i>
+          <i className={`fas ${isPinnedCollapsed ? 'fa-thumbtack' : 'fa-chevron-left'}`}></i>
         </button>
 
         <div className={styles.brand}>
@@ -347,7 +354,7 @@ export default function Sidebar() {
                           if (hasSub) {
                             toggleSubmenu(item.name, e);
                           } else {
-                            if (window.innerWidth <= 768) setIsCollapsed(true);
+                            if (window.innerWidth <= 768) setIsPinnedCollapsed(true);
                           }
                         }}
                       >
@@ -395,7 +402,7 @@ export default function Sidebar() {
                                       if (hasSubSub) {
                                         toggleSubmenu(sub.name, e);
                                       } else {
-                                        if (window.innerWidth <= 768) setIsCollapsed(true);
+                                        if (window.innerWidth <= 768) setIsPinnedCollapsed(true);
                                       }
                                     }}
                                     style={{
@@ -439,7 +446,7 @@ export default function Sidebar() {
                                             key={ss.path} 
                                             href={ss.path}
                                             onClick={() => {
-                                              if (window.innerWidth <= 768) setIsCollapsed(true);
+                                              if (window.innerWidth <= 768) setIsPinnedCollapsed(true);
                                             }}
                                             style={{
                                               fontSize: '0.8rem',
@@ -481,7 +488,7 @@ export default function Sidebar() {
           href="/panduan"
           className={`${styles.menuItem} ${pathname === '/panduan' ? styles.active : ''}`}
           title={isCollapsed ? 'Panduan' : ''}
-          onClick={() => { if (window.innerWidth <= 768) setIsCollapsed(true); }}
+          onClick={() => { if (window.innerWidth <= 768) setIsPinnedCollapsed(true); }}
           style={{ borderRadius: 8 }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
