@@ -30,7 +30,6 @@ export default function PendaftaranOlimpiadeSeni() {
     nisn: '',
     noWa: '',
     namaSekolah: '',
-    npsn: '',
     kelas: '',
     kategori: 'Olimpiade Akademik',
     lombaDipilih: 'Matematika',
@@ -424,7 +423,7 @@ export default function PendaftaranOlimpiadeSeni() {
                   />
                 </div>
 
-                <div>
+                <div style={{ gridColumn: '1 / -1' }}>
                   <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Asal Sekolah (SD/MI) <span style={{ color: 'red' }}>*</span></label>
                   <input 
                     type="text" required value={form.namaSekolah} onChange={e => setForm({...form, namaSekolah: e.target.value})}
@@ -433,14 +432,7 @@ export default function PendaftaranOlimpiadeSeni() {
                   />
                 </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>NPSN Sekolah <span style={{ color: 'red' }}>*</span></label>
-                  <input 
-                    type="text" required value={form.npsn} onChange={e => setForm({...form, npsn: e.target.value})}
-                    style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none' }}
-                    placeholder="Contoh: 20500000"
-                  />
-                </div>
+                
 
                 <div>
                   <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Kategori Pendaftaran <span style={{ color: 'red' }}>*</span></label>

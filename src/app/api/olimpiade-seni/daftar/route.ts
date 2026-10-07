@@ -239,7 +239,6 @@ export async function POST(req: Request) {
         'NISN': formData.get('nisn') || '',
         'KELAS': formData.get('kelas') || '',
         'ASAL_SEKOLAH': formData.get('namaSekolah') || '',
-        'NPSN': formData.get('npsn') || '',
         'KATEGORI': kategori,
         'LOMBA_DIPILIH': lombaDipilih,
         'NAMA_REGU': formData.get('namaRegu') || '',
