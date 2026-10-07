@@ -12,6 +12,7 @@ interface Penelitian {
   judul: string;
   target: string;
   keterangan: string;
+  tanggal?: string;
   dokumentasi?: string;
   created_at?: string;
 }
@@ -68,6 +69,7 @@ export default function PenelitianMahasiswaTab() {
     judul: string;
     target: string;
     keterangan: string;
+    tanggal: string;
   }>({
     namaMahasiswa: [''],
     universitas: '',
@@ -75,6 +77,7 @@ export default function PenelitianMahasiswaTab() {
     judul: '',
     target: '',
     keterangan: '',
+    tanggal: '',
   });
 
   const fetchData = async () => {
@@ -100,6 +103,7 @@ export default function PenelitianMahasiswaTab() {
       judul: '',
       target: '',
       keterangan: '',
+      tanggal: '',
     });
   };
 
@@ -112,6 +116,7 @@ export default function PenelitianMahasiswaTab() {
       judul: item.judul || '',
       target: item.target || '',
       keterangan: item.keterangan || '',
+      tanggal: item.tanggal || '',
     });
     setShowModal(true);
   };
@@ -262,6 +267,7 @@ export default function PenelitianMahasiswaTab() {
           <thead>
             <tr>
               <th style={{ width: '50px', textAlign: 'center' }}>No</th>
+              <th style={{ width: '120px' }}>Tanggal</th>
               <th style={{ width: '220px' }}>Mahasiswa & Universitas</th>
               <th style={{ width: '250px' }}>Judul & Jenis</th>
               <th>Target & Ket</th>
@@ -275,6 +281,7 @@ export default function PenelitianMahasiswaTab() {
             ) : data.map((item, idx) => (
               <tr key={item.id}>
                 <td style={{ textAlign: 'center' }}>{idx + 1}</td>
+                <td style={{ fontSize: '0.85rem', color: '#475569' }}>{item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}</td>
                 <td>
                   <ul style={{ margin: 0, paddingLeft: '16px', color: '#0f172a', fontWeight: 600, fontSize: '0.9rem' }}>
                     {(item.namaMahasiswa || []).map((nm, i) => <li key={i}>{nm}</li>)}
@@ -380,6 +387,17 @@ export default function PenelitianMahasiswaTab() {
                 >
                   <i className="fas fa-plus"></i> Tambah Baris Nama
                 </button>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Tanggal</label>
+                <input
+                  type="date"
+                  required
+                  value={form.tanggal}
+                  onChange={e => setForm({ ...form, tanggal: e.target.value })}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box', marginBottom: '16px' }}
+                />
               </div>
 
               <div>
