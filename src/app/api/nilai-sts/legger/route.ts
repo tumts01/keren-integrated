@@ -122,23 +122,11 @@ export async function GET(request: Request) {
 
     if (nilaiError) throw nilaiError;
 
-    // 4. Fetch prosus/PK nilai
-    const { data: pkRows, error: pkError } = await supabase
-      .from('nilai_pk')
-      .select('mata_pelajaran, data_nilai')
-      .eq('tahun_ajaran', tahunAjaran)
-      .eq('kelas', kelas)
-      .eq('tipe', 'sts');
-
-    if (pkError) throw pkError;
-
-    // Append any extra mapels that might exist in the DB but aren't in the hardcoded list (optional, but let's strictly use the requested list or append them at the end)
     const usedMapels = new Set(uniqueMapels);
     const extraMapels = new Set<string>();
     
     const allRows = [
-      ...(nilaiRows || []),
-      ...(pkRows || []).map(r => ({ mata_pelajaran: r.mata_pelajaran, data_nilai: r.data_nilai }))
+      ...(nilaiRows || [])
     ];
 
     allRows.forEach(r => { 
