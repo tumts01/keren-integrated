@@ -590,19 +590,20 @@ export default function StsPage() {
       return { tp1, tp2, tp3, tp4, tp5, tp6, sts, na };
     };
 
+    const fN = (v: any) => (v === null || v === undefined || v === '') ? '' : isNaN(Number(v)) ? v : Math.round(Number(v));
     const mkRow = (no: string, mapelName: string) => {
       const n = getNilai(mapelName);
       return `<tr>
         <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${no}</td>
         <td style="border:1px solid #333;padding:5px 4px;padding-left:14px;">${mapelName}</td>
-        <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${n.tp1}</td>
-        <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${n.tp2}</td>
-        <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${n.tp3}</td>
-        <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${n.tp4}</td>
-        <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${n.tp5}</td>
-        <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${n.tp6}</td>
-        <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${n.sts}</td>
-        <td style="text-align:center;border:1px solid #333;padding:5px 4px;font-weight:bold;">${n.na}</td>
+        <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${fN(n.tp1)}</td>
+        <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${fN(n.tp2)}</td>
+        <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${fN(n.tp3)}</td>
+        <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${fN(n.tp4)}</td>
+        <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${fN(n.tp5)}</td>
+        <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${fN(n.tp6)}</td>
+        <td style="text-align:center;border:1px solid #333;padding:5px 4px;">${fN(n.sts)}</td>
+        <td style="text-align:center;border:1px solid #333;padding:5px 4px;font-weight:bold;">${fN(n.na)}</td>
       </tr>`;
     };
 
