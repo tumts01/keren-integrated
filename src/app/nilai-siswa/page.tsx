@@ -58,7 +58,7 @@ export default function NilaiSiswaPage() {
     
     // Set initial mapel correctly since we removed API fetch
     setMapel(prevMapel => {
-      if (!pkMapelList.includes(prevMapel) && prevMapel !== 'Lainnya' && pkMapelList.length > 0) {
+      if (!pkMapelList.includes(prevMapel) && pkMapelList.length > 0) {
         return pkMapelList[0];
       }
       return prevMapel;
@@ -72,7 +72,7 @@ export default function NilaiSiswaPage() {
     }
     setLoading(true);
     setIsEditing(false);
-    const finalMapel = mapel === 'Lainnya' ? mapelLain : mapel;
+    const finalMapel = mapel;
     try {
       const res = await fetch(`/api/nilai-siswa/pk/rekap?kelas=${encodeURIComponent(kelas)}&mapel=${encodeURIComponent(finalMapel)}&tahunAjaran=${encodeURIComponent(tahunAjaran)}`);
       const result = await res.json();
@@ -117,7 +117,7 @@ export default function NilaiSiswaPage() {
 
   const saveRekap = async () => {
     setSaving(true);
-    const finalMapel = mapel === 'Lainnya' ? mapelLain : mapel;
+    const finalMapel = mapel;
     
     const dataNilai = rekapStudents.map(s => {
       const obj: any = { induk: s.induk, nama: s.nama, jk: s.jk };
@@ -163,7 +163,7 @@ export default function NilaiSiswaPage() {
       return;
     }
     setLoading(true);
-    const finalMapel = mapel === 'Lainnya' ? mapelLain : mapel;
+    const finalMapel = mapel;
     try {
       const res = await fetch(`/api/nilai-siswa/pk?kelas=${encodeURIComponent(kelas)}&mapel=${encodeURIComponent(finalMapel)}&tipe=${tipe}&materi=${encodeURIComponent(materi)}&sub=${encodeURIComponent(subMateri)}&tahunAjaran=${encodeURIComponent(tahunAjaran)}`);
       const result = await res.json();
@@ -184,7 +184,7 @@ export default function NilaiSiswaPage() {
       return;
     }
     setLoading(true);
-    const finalMapel = mapel === 'Lainnya' ? mapelLain : mapel;
+    const finalMapel = mapel;
     try {
       // Just fetch students for the class (omit tipe so it returns empty scores)
       const res = await fetch(`/api/nilai-siswa/pk?kelas=${encodeURIComponent(kelas)}&mapel=${encodeURIComponent(finalMapel)}&tahunAjaran=${encodeURIComponent(tahunAjaran)}`);
@@ -281,7 +281,7 @@ export default function NilaiSiswaPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const finalMapel = mapel === 'Lainnya' ? mapelLain : mapel;
+    const finalMapel = mapel;
     const fileNameUpper = file.name.toUpperCase();
     
     // Check if filename contains the mapel words and kelas
@@ -323,7 +323,7 @@ export default function NilaiSiswaPage() {
     if (!confirm.isConfirmed) return;
 
     setSaving(true);
-    const finalMapel = mapel === 'Lainnya' ? mapelLain : mapel;
+    const finalMapel = mapel;
     try {
       const res = await fetch('/api/nilai-siswa/pk/bulk', {
         method: 'POST',
@@ -412,16 +412,11 @@ export default function NilaiSiswaPage() {
                   <label>Mata Pelajaran</label>
                   <select className={styles.select} value={mapel} onChange={e => setMapel(e.target.value)}>
                     {mapelList.map(m => <option key={m} value={m}>{m}</option>)}
-                    <option value="Lainnya">Lainnya...</option>
+                    
                   </select>
                 </div>
 
-                {mapel === 'Lainnya' && (
-                  <div className={styles.formGroup}>
-                    <label>Nama Mapel Lainnya</label>
-                    <input type="text" className={styles.input} value={mapelLain} onChange={e => setMapelLain(e.target.value)} placeholder="Tulis mapel..." />
-                  </div>
-                )}
+                
               </div>
 
               <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '16px 20px', marginBottom: '24px', display: 'flex', gap: '16px', alignItems: 'center' }}>
@@ -522,15 +517,10 @@ export default function NilaiSiswaPage() {
                   <label>Mata Pelajaran</label>
                   <select className={styles.select} value={mapel} onChange={e => setMapel(e.target.value)}>
                     {mapelList.map(m => <option key={m} value={m}>{m}</option>)}
-                    <option value="Lainnya">Lainnya...</option>
+                    
                   </select>
                 </div>
-                {mapel === 'Lainnya' && (
-                  <div className={styles.formGroup}>
-                    <label>Nama Mapel Lainnya</label>
-                    <input type="text" className={styles.input} value={mapelLain} onChange={e => setMapelLain(e.target.value)} placeholder="Tulis mapel..." />
-                  </div>
-                )}
+                
                 <div className={styles.formGroup} style={{ justifyContent: 'flex-end' }}>
                   <button className={styles.btnSubmit} onClick={fetchRekap} disabled={loading || !kelas}>
                     {loading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-search"></i>}
