@@ -380,9 +380,7 @@ export default function NilaiSiswaPage() {
             <button className={`${styles.tabBtn} ${subTab === 'input' ? styles.activeTab : ''}`} onClick={() => setSubTab('input')}>
               <i className="fas fa-edit"></i> Input Nilai
             </button>
-            <button className={`${styles.tabBtn} ${subTab === 'cetak' ? styles.activeTab : ''}`} onClick={() => setSubTab('cetak')}>
-              <i className="fas fa-print"></i> Cetak Rapor
-            </button>
+            
             <button className={`${styles.tabBtn} ${subTab === 'rekap' ? styles.activeTab : ''}`} onClick={() => setSubTab('rekap')}>
               <i className="fas fa-table"></i> Cek Nilai (Rekap)
             </button>
@@ -631,13 +629,7 @@ export default function NilaiSiswaPage() {
             </div>
           )}
 
-          {subTab === 'cetak' && (
-            <div style={{ textAlign: 'center', padding: '3rem', background: 'white', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
-              <i className="fas fa-print" style={{ fontSize: '3rem', color: '#94a3b8', marginBottom: '1rem' }}></i>
-              <h2 style={{ color: '#475569', marginBottom: '0.5rem' }}>Cetak Rapor Program Khusus</h2>
-              <p style={{ color: '#64748b' }}>Fitur cetak rapor sedang dalam tahap pengembangan.</p>
-            </div>
-          )}
+          
         </>
       )}
 
