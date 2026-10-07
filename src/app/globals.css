@@ -238,3 +238,7 @@ a, button, [role="button"], input[type="submit"], input[type="button"], input[ty
 button:disabled, input:disabled, a.disabled {
   cursor: not-allowed !important;
 }
+
+input[type="text"], input[type="password"], input[type="number"], input[type="email"], input[type="search"], textarea, .searchInput {
+  cursor: url('/kursor-ngetik.png'), text !important;
+}
