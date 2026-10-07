@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import styles from './JurnalKegiatan.module.css';
 import Swal from 'sweetalert2';
 import JurnalMgmpTab from '@/components/JurnalMgmpTab';
+import PenelitianMahasiswaTab from '@/components/PenelitianMahasiswaTab';
+import PenelitianMahasiswaTab from '@/components/PenelitianMahasiswaTab';
 import InlineLoading from '@/components/InlineLoading';
 
 const compressImage = async (file: File): Promise<File> => {
@@ -59,7 +61,7 @@ const compressImage = async (file: File): Promise<File> => {
 };
 
 export default function JurnalKegiatanPage() {
-  const [activeTab, setActiveTab] = useState<'notulen' | 'lpj' | 'jurnal-staf' | 'jurnal-mgmp'>('notulen');
+  const [activeTab, setActiveTab] = useState<'notulen' | 'lpj' | 'jurnal-staf' | 'jurnal-mgmp' | 'penelitian-mahasiswa'>('notulen');
   const [jurnalStafSubTab, setJurnalStafSubTab] = useState<'isi' | 'rekap'>('isi');
   const [currentPage, setCurrentPage] = useState(1);
   const [jurnalStafData, setJurnalStafData] = useState<any[]>([]);
@@ -352,11 +354,17 @@ export default function JurnalKegiatanPage() {
               <i className="fas fa-user-clock"></i> Jurnal Guru & Staf
             </button>
             <button 
-              className={`btn ${activeTab === 'jurnal-mgmp' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setActiveTab('jurnal-mgmp')}
-            >
-              <i className="fas fa-users-cog"></i> Jurnal MGMP
-            </button>
+                className={`btn ${activeTab === 'jurnal-mgmp' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setActiveTab('jurnal-mgmp')}
+              >
+                <i className="fas fa-users-cog"></i> Jurnal MGMP
+              </button>
+              <button 
+                className={`btn ${activeTab === 'penelitian-mahasiswa' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setActiveTab('penelitian-mahasiswa')}
+              >
+                <i className="fas fa-user-graduate"></i> Penelitian Mahasiswa
+              </button>
           </div>
           
           {activeTab === 'notulen' && (
@@ -759,7 +767,9 @@ export default function JurnalKegiatanPage() {
           )}
         </div>
       ) : activeTab === 'jurnal-mgmp' ? (
-        <JurnalMgmpTab />
+          <JurnalMgmpTab />
+        ) : activeTab === 'penelitian-mahasiswa' ? (
+          <PenelitianMahasiswaTab />
       ) : null}
     </div>
 

@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const { data: rows, error } = await supabase.from('data_lpj_kegiatan').select('*').order('id', { ascending: false });
+    const { data: rows, error } = await supabase.from('data_lpj_kegiatan').select('*').is('metadata->>jenis', null).order('id', { ascending: false });
     
     if (error) throw error;
 
