@@ -912,6 +912,7 @@ export default function PersuratanPage() {
             <i className="fas fa-print" style={{ marginRight: '8px' }}></i> Generate Surat
           </button>
         </div>
+        </div>
 
         {/* Dashboard Analytics for Surat Keluar */}
         {!loading && !error && activeTab === 'keluar' && (
@@ -950,7 +951,7 @@ export default function PersuratanPage() {
             </div>
           </div>
         )}
-      </div>
+      
 
       <div className={styles.card} style={{ marginTop: activeTab === 'masuk' ? '20px' : '0' }}>
         {loading ? (
