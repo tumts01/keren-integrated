@@ -206,7 +206,7 @@ export default function Sidebar() {
       setUserName(localStorage.getItem('username') || '');
     }
 
-    const savedCollapse = localStorage.getItem('sidebar_is_collapsed');
+    const savedCollapse = localStorage.getItem('sidebar_is_pinned_collapsed');
     if (savedCollapse !== null) {
       // Only apply saved collapse state on desktop, mobile is always collapsed initially
       if (window.innerWidth > 768) {
@@ -288,7 +288,7 @@ export default function Sidebar() {
     const newVal = !isPinnedCollapsed;
     setIsPinnedCollapsed(newVal);
     if (isClient && window.innerWidth > 768) {
-      localStorage.setItem('sidebar_is_collapsed', String(newVal));
+      localStorage.setItem('sidebar_is_pinned_collapsed', String(newVal));
     }
   };
 
