@@ -376,7 +376,7 @@ export default function JurnalKegiatanPage() {
         {loading ? (
           <InlineLoading message={`Memuat data ${activeTab === 'notulen' ? 'notulen' : 'LPJ'}...`} />
         ) : activeTab === 'notulen' ? (
-          <table className={styles.table}>
+          <table className={  jurnal-staf-print-table }>
             <thead>
               <tr>
                 <th>Tanggal</th>
@@ -414,7 +414,7 @@ export default function JurnalKegiatanPage() {
             </tbody>
           </table>
         ) : activeTab === 'lpj' ? (
-          <table className={styles.table}>
+          <table className={  jurnal-staf-print-table }>
             <thead>
               <tr>
                 <th>Tanggal</th>
@@ -597,7 +597,7 @@ export default function JurnalKegiatanPage() {
                 
                   <style type="text/css" media="print">
                     {`
-                      @page { margin-top: 5mm !important; }
+                      @page { margin-top: 5mm !important; } .jurnal-staf-print-table th:last-child, .jurnal-staf-print-table td:last-child { display: table-cell !important; }
                     `}
                   </style>
                   <div style={{ overflowX: 'auto' }}>
@@ -713,7 +713,7 @@ export default function JurnalKegiatanPage() {
                       return (
                         <>
                           <div className={styles.noPrint}>
-                            <table className={styles.table}>
+                            <table className={  jurnal-staf-print-table }>
                               {tableHeader}
                               <tbody>
                                 {renderRows(paginated, (currentPage - 1) * itemsPerPage)}
@@ -740,7 +740,7 @@ export default function JurnalKegiatanPage() {
                                     Lanjutan Rekap Jurnal Kegiatan Guru & Staf
                                   </div>
                                 )}
-                                <table className={styles.table} style={{ width: '100%', marginBottom: '20px' }}>
+                                <table className={  jurnal-staf-print-table } style={{ width: '100%', marginBottom: '20px' }}>
                                   {tableHeader}
                                   <tbody>
                                     {renderRows(chunk, chunkIdx * itemsPerPage)}
