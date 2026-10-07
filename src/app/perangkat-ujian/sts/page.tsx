@@ -459,10 +459,10 @@ export default function StsPage() {
           .kop { display: flex; align-items: center; border-bottom: 3px double #000; padding-bottom: 4px; margin-bottom: 6px; }
           .kop img { width: 60px; height: 60px; margin-right: 12px; }
           .kop-text { text-align: center; flex: 1; }
-          .kop-text .instansi { font-size: 7.5pt; }
-          .kop-text .yayasan { font-size: 9pt; font-weight: bold; }
-          .kop-text .sekolah { font-size: 12pt; font-weight: bold; }
-          .kop-text .alamat { font-size: 7.5pt; }
+          .kop-text .kemenag { font-size: 11pt; font-weight: normal; font-family: Arial, sans-serif; }
+          .kop-text .yayasan { font-size: 11pt; font-weight: normal; font-family: Arial, sans-serif; }
+          .kop-text .sekolah { font-size: 11pt; font-weight: normal; font-family: Arial, sans-serif; }
+          .kop-text .alamat { font-size: 9pt; font-weight: normal; font-family: Arial, sans-serif; }
           .judul { text-align: center; font-weight: bold; font-size: 11pt; border: 1px solid #000; padding: 4px; margin: 6px 0; }
           .info { width: 100%; margin-bottom: 6px; font-size: 9.5pt; }
           .info td { padding: 1px 4px; }
@@ -623,10 +623,11 @@ export default function StsPage() {
         <div class="kop">
           <img src="${logoUrl}" alt="Logo" />
           <div class="kop-text">
-            <div class="instansi">YAYASAN PENDIDIKAN ALMAARIF SINGOSARI</div>
-            <div class="yayasan">BADAN PELAKSANA PENDIDIKAN (BPP) ALMAARIF 01 SINGOSARI</div>
+            <div class="kemenag">KEMENTERIAN AGAMA REPUBLIK INDONESIA</div>
+            <div class="yayasan">YAYASAN PENDIDIKAN ALMAARIF SINGOSARI</div>
+            
             <div class="sekolah">MADRASAH TSANAWIYAH ALMAARIF 01 SINGOSARI</div>
-            <div class="alamat">Jalan Masjid 26 Singosari Telp. (0341) 458348 Fax. (0341) 458348 Kode Pos 65153 Malang</div>
+            <div class="alamat">Jl. Masjid No. 33 Singosari. Telp. 0341-458355</div>
           </div>
         </div>
 
