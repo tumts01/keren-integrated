@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 // Helper: get nilai akhir from a student record inside data_nilai
 function getNilaiAkhir(record: Record<string, any>): string | number {
-  const keys = ['NILAI AKHIR', 'Nilai Akhir', 'NA'];
+  const keys = ['NILAI AKHIR', 'Nilai Akhir', 'NA', 'nilai'];
   for (const k of keys) {
     if (record[k] !== undefined && record[k] !== '') return record[k];
   }
@@ -156,13 +156,15 @@ export async function GET(request: Request) {
       const mapel = row.mata_pelajaran;
       if (!mapel) continue;
       const dataNilai: any[] = Array.isArray(row.data_nilai) ? row.data_nilai : [];
-      mapelNilaiMap[mapel] = {};
+      if (!mapelNilaiMap[mapel]) mapelNilaiMap[mapel] = {};
       for (const rec of dataNilai) {
         const nisn = (rec['NISN'] || rec['nisn'] || '').toString().trim();
         const namaRec = (rec['NAMA SISWA'] || rec['NAMA'] || rec['nama'] || '').toString().trim().toUpperCase();
         const nilai = getNilaiAkhir(rec);
-        if (nisn) mapelNilaiMap[mapel][nisn] = nilai;
-        if (namaRec) mapelNilaiMap[mapel]['__nama__' + namaRec] = nilai;
+        if (nilai !== '') {
+          if (nisn && mapelNilaiMap[mapel][nisn] === undefined) mapelNilaiMap[mapel][nisn] = nilai;
+          if (namaRec && mapelNilaiMap[mapel]['__nama__' + namaRec] === undefined) mapelNilaiMap[mapel]['__nama__' + namaRec] = nilai;
+        }
       }
     }
 
@@ -243,3 +245,4 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
