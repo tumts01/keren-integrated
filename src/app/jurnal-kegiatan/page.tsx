@@ -488,12 +488,12 @@ export default function JurnalKegiatanPage() {
                       value={jurnalStafForm.kegiatan} onChange={e => setJurnalStafForm({...jurnalStafForm, kegiatan: e.target.value})} />
                   </div>
                   <div className={styles.formGroup} style={{ marginBottom: 0 }}>
-                    <label>Waktu Mulai Dari</label>
+                    <label>Waktu Mulai Dari (Opsional)</label>
                     <input type="time"
                       value={jurnalStafForm.mulaiDari} onChange={e => setJurnalStafForm({...jurnalStafForm, mulaiDari: e.target.value})} />
                   </div>
                   <div className={styles.formGroup} style={{ marginBottom: 0 }}>
-                    <label>Waktu Sampai Dengan</label>
+                    <label>Waktu Sampai Dengan (Opsional)</label>
                     <input type="time"
                       value={jurnalStafForm.sampaiDengan} onChange={e => setJurnalStafForm({...jurnalStafForm, sampaiDengan: e.target.value})} />
                   </div>
