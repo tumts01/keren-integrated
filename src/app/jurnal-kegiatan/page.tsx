@@ -376,7 +376,7 @@ export default function JurnalKegiatanPage() {
         {loading ? (
           <InlineLoading message={`Memuat data ${activeTab === 'notulen' ? 'notulen' : 'LPJ'}...`} />
         ) : activeTab === 'notulen' ? (
-          <table className={  jurnal-staf-print-table }>
+          <table className={styles.table}>
             <thead>
               <tr>
                 <th>Tanggal</th>
@@ -414,7 +414,7 @@ export default function JurnalKegiatanPage() {
             </tbody>
           </table>
         ) : activeTab === 'lpj' ? (
-          <table className={  jurnal-staf-print-table }>
+          <table className={styles.table}>
             <thead>
               <tr>
                 <th>Tanggal</th>
@@ -713,7 +713,7 @@ export default function JurnalKegiatanPage() {
                       return (
                         <>
                           <div className={styles.noPrint}>
-                            <table className={  jurnal-staf-print-table }>
+                            <table className={`${styles.table} jurnal-staf-print-table`}>
                               {tableHeader}
                               <tbody>
                                 {renderRows(paginated, (currentPage - 1) * itemsPerPage)}
@@ -740,7 +740,7 @@ export default function JurnalKegiatanPage() {
                                     Lanjutan Rekap Jurnal Kegiatan Guru & Staf
                                   </div>
                                 )}
-                                <table className={  jurnal-staf-print-table } style={{ width: '100%', marginBottom: '20px' }}>
+                                <table className={`${styles.table} jurnal-staf-print-table`} style={{ width: '100%', marginBottom: '20px' }}>
                                   {tableHeader}
                                   <tbody>
                                     {renderRows(chunk, chunkIdx * itemsPerPage)}
