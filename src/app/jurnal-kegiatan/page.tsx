@@ -4,7 +4,6 @@ import styles from './JurnalKegiatan.module.css';
 import Swal from 'sweetalert2';
 import JurnalMgmpTab from '@/components/JurnalMgmpTab';
 import PenelitianMahasiswaTab from '@/components/PenelitianMahasiswaTab';
-import PenelitianMahasiswaTab from '@/components/PenelitianMahasiswaTab';
 import InlineLoading from '@/components/InlineLoading';
 
 const compressImage = async (file: File): Promise<File> => {

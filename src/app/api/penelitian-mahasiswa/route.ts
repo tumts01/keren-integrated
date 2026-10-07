@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { revalidateTag } from 'next/cache';
+
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     }]);
 
     if (error) throw error;
-    revalidateTag('lpj-kegiatan');
+    
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Insert Penelitian Mahasiswa Error:', error);
@@ -62,7 +62,7 @@ export async function PUT(req: Request) {
       .eq('id', id);
 
     if (error) throw error;
-    revalidateTag('lpj-kegiatan');
+    
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Update Penelitian Mahasiswa Error:', error);
@@ -79,7 +79,7 @@ export async function DELETE(req: Request) {
     const { error } = await supabase.from('data_lpj_kegiatan').delete().eq('id', id);
     if (error) throw error;
     
-    revalidateTag('lpj-kegiatan');
+    
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: 'Gagal hapus data: ' + error.message }, { status: 500 });
