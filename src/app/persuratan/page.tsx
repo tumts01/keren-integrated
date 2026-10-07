@@ -916,36 +916,38 @@ export default function PersuratanPage() {
 
         {/* Dashboard Analytics for Surat Keluar */}
         {!loading && !error && activeTab === 'keluar' && (
-          <div className={styles.statsGrid} style={{ paddingTop: '20px', paddingBottom: '10px' }}>
-            <div className={styles.statCard} style={{ borderLeftColor: '#3b82f6' }}>
-              <div className={styles.statIcon} style={{ color: '#3b82f6', background: '#eff6ff' }}>
-                <i className="fas fa-envelope"></i>
+          <div style={{ padding: '20px 24px 10px 24px' }}>
+            <div style={{ 
+              background: 'white', 
+              borderRadius: '12px', 
+              padding: '16px 24px', 
+              display: 'flex', 
+              flexWrap: 'wrap',
+              gap: '24px', 
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+              border: '1px solid #e2e8f0',
+              borderLeft: '4px solid #3b82f6'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: '220px', flex: 1 }}>
+                <div className={styles.statIcon} style={{ color: '#3b82f6', background: '#eff6ff' }}>
+                  <i className="fas fa-envelope"></i>
+                </div>
+                <div className={styles.statInfo}>
+                  <span className={styles.statLabel}>TOTAL SURAT KELUAR</span>
+                  <span className={styles.statValue}>{totalKeluar}</span>
+                </div>
               </div>
-              <div className={styles.statInfo}>
-                <span className={styles.statLabel}>Total Surat Keluar</span>
-                <span className={styles.statValue}>{totalKeluar}</span>
-              </div>
-            </div>
-            <div className={styles.statCard} style={{ borderLeftColor: '#ef4444' }}>
-              <div className={styles.statIcon} style={{ color: '#ef4444', background: '#fef2f2' }}>
-                <i className="fas fa-exclamation-triangle"></i>
-              </div>
-              <div className={styles.statInfo}>
-                <span className={styles.statLabel}>Belum Diarsipkan</span>
-                <span className={styles.statValue} style={{ color: '#ef4444' }}>{totalBelumArsipKeluar}</span>
-                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Menunggu upload scan/PDF</span>
-              </div>
-            </div>
-            <div className={styles.statCard} style={{ borderLeftColor: '#10b981' }}>
-              <div className={styles.statIcon} style={{ color: '#10b981', background: '#dcfce7' }}>
-                <i className="fas fa-user-clock"></i>
-              </div>
-              <div className={styles.statInfo}>
-                <span className={styles.statLabel}>GURU YANG SEDANG BERTUGAS</span>
-                <div style={{ fontSize: '0.8rem', color: '#334155', fontWeight: 500, marginTop: '4px', display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '110px', overflowY: 'auto', paddingRight: '5px' }}>
-                  {topGuru.length > 0 ? topGuru.map(([nama, count], idx) => (
-                    <span key={idx}><i className="fas fa-circle" style={{ fontSize: '0.4rem', color: '#10b981', marginRight: '6px', transform: 'translateY(-2px)' }}></i> {nama} <span style={{ color: '#64748b' }}>({count} tugas)</span></span>
-                  )) : <span>Belum ada data tugas aktif</span>}
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: '220px', flex: 1 }}>
+                <div className={styles.statIcon} style={{ color: '#ef4444', background: '#fef2f2' }}>
+                  <i className="fas fa-exclamation-triangle"></i>
+                </div>
+                <div className={styles.statInfo}>
+                  <span className={styles.statLabel}>BELUM DIARSIPKAN</span>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span className={styles.statValue} style={{ color: '#ef4444' }}>{totalBelumArsipKeluar}</span>
+                    <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Menunggu upload scan/PDF</span>
+                  </div>
                 </div>
               </div>
             </div>
