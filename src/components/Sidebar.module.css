@@ -53,7 +53,13 @@
 }
 
 .categoryGroup {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
+}
+
+.categoryGroup:not(:first-child) {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 12px;
+  padding-top: 16px;
 }
 
 .categoryGroup:last-child {
@@ -68,7 +74,7 @@
   font-weight: 700;
   color: rgba(255, 255, 255, 0.4);
   margin-top: 8px;
-  cursor: pointer;
+  
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -181,7 +187,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
+  
   transition: all 0.2s;
   flex-shrink: 0;
   position: absolute;

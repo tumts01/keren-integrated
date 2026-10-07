@@ -322,19 +322,15 @@ export default function Sidebar() {
           return (
             <div key={idx} className={styles.categoryGroup}>
               {!isCollapsed ? (
-                <div 
-                  className={styles.categoryTitle} 
-                  onClick={() => toggleCategory(cat.title)}
-                >
+                <div className={styles.categoryTitle}>
                   <span>{cat.title}</span>
-                  <i className={`fas fa-chevron-${isOpen ? 'up' : 'down'}`} style={{ fontSize: '0.7rem', transition: 'transform 0.2s' }}></i>
                 </div>
               ) : (
                 <div className={styles.categorySeparator}></div>
               )}
               
               {/* Only show items if sidebar is collapsed OR category is open */}
-              <div className={`${styles.categoryItems} ${isOpen || isCollapsed ? styles.open : ''}`}>
+              <div className={`${styles.categoryItems} ${styles.open}`}>
                 {cat.items.map((item) => {
                   const hasSub = !!item.subItems;
                   const isSubOpen = openSubmenus.includes(item.name);
