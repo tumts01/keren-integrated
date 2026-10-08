@@ -1608,6 +1608,15 @@ export default function SiswaPage() {
     return matchSearch && matchTahun && matchTingkat && matchRombel && matchDomisili && matchAsalSekolah;
   });
 
+  filteredData.sort((a, b) => {
+    const rombelA = (a.rombel || '').trim();
+    const rombelB = (b.rombel || '').trim();
+    if (rombelA !== rombelB) {
+      return rombelA.localeCompare(rombelB, undefined, { numeric: true });
+    }
+    return (a.nama || '').localeCompare(b.nama || '');
+  });
+
   const statsData = data.filter(s => selectedTahun === 'Semua' ? s.isLatest : s.tahunAjaran === selectedTahun);
   const activeData = statsData.filter(s => ['aktif'].includes(s.status.toLowerCase().trim()));
   const nonActiveData = statsData.filter(s => !['aktif'].includes(s.status.toLowerCase().trim()) && s.status.trim() !== '');
