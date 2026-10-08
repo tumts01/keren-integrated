@@ -49,7 +49,10 @@ export default function PenilaianDiriPage() {
     const d = new Date();
     setPeriode(`${months[d.getMonth()]} ${d.getFullYear()}`);
 
+    
     const str = localStorage.getItem('keren_user_data');
+    const portalStr = localStorage.getItem('portal_session');
+    
     if (str) {
       try {
         const u = JSON.parse(str);
@@ -58,9 +61,18 @@ export default function PenilaianDiriPage() {
         setUserName(u.nama || '');
         setUserRombel(u.rombel || '');
       } catch(e){}
+    } else if (portalStr) {
+      try {
+        const u = JSON.parse(portalStr);
+        setUserRole('siswa');
+        setUserNisn(u.nisn || '');
+        setUserName(u.nama || '');
+        setUserRombel(u.rombel || '');
+      } catch(e){}
     }
 
     fetchSiswa();
+
   }, []);
 
   const fetchSiswa = async () => {
