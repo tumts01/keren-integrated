@@ -216,10 +216,6 @@ export default function PoinSiswaPage() {
     XLSX.writeFile(wb, `Rekap_Poin_Siswa_${new Date().toISOString().slice(0,10)}.xlsx`);
   };
 
-  if (loading) {
-    return <div className={styles.container}><div className={styles.loading}>Memuat data...</div></div>;
-  }
-
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -393,7 +389,9 @@ export default function PoinSiswaPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {riwayatData.length > 0 ? riwayatData.map((r, i) => (
+                  {loading ? (
+                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: '30px' }}><i className="fas fa-spinner fa-spin"></i> Memuat data...</td></tr>
+                  ) : riwayatData.length > 0 ? riwayatData.map((r, i) => (
                     <tr key={r.id}>
                       <td style={{ textAlign: 'center' }}>{i + 1}</td>
                       <td>{r.tanggal}</td>
@@ -446,7 +444,9 @@ export default function PoinSiswaPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rekapData.length > 0 ? rekapData.map((r, i) => (
+                  {loading ? (
+                    <tr><td colSpan={6} style={{ textAlign: 'center', padding: '30px' }}><i className="fas fa-spinner fa-spin"></i> Memuat data...</td></tr>
+                  ) : rekapData.length > 0 ? rekapData.map((r, i) => (
                     <tr key={i}>
                       <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#94a3b8' }}>#{i + 1}</td>
                       <td style={{ fontWeight: 'bold' }}>{r.nama}</td>
