@@ -229,8 +229,8 @@ export default function JurnalPage() {
 
   // Filter rekap
   const filtered = rekapData.filter(r => {
-    if (!isAdmin && r.namaGuru !== currentUsername) return false;
-    if (filterGuru && r.namaGuru !== filterGuru) return false;
+    if (!isAdmin && r.namaGuru?.trim().toLowerCase() !== currentUsername?.trim().toLowerCase()) return false;
+    if (filterGuru && r.namaGuru?.trim().toLowerCase() !== filterGuru?.trim().toLowerCase()) return false;
     if (filterFrom && r.tanggal < filterFrom) return false;
     if (filterTo && r.tanggal > filterTo) return false;
     return true;

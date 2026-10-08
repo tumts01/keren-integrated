@@ -381,7 +381,16 @@ export default function SpmbPage() {
                 accept="image/*,.pdf" 
                 className={styles.hiddenInput} 
                 ref={fileKkRef} 
-                onChange={(e) => setFileKk(e.target.files?.[0] || null)}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file && file.size > 2.5 * 1024 * 1024) {
+                    showToast('Ukuran file terlalu besar! Maksimal 2.5 MB.', 'error');
+                    if (fileKkRef.current) fileKkRef.current.value = '';
+                    setFileKk(null);
+                  } else {
+                    setFileKk(file || null);
+                  }
+                }}
               />
               <i className={`fas fa-id-card ${styles.fileIcon}`}></i>
               <div className={styles.fileTitle}>Kartu Keluarga (KK) <span>*</span></div>
