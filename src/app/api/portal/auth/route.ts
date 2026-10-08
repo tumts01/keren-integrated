@@ -48,11 +48,11 @@ export async function POST(req: Request) {
           asalSekolah: row.metadata?.['ASAL SEKOLAH'] || '',
           namaAyah: row.metadata?.['NAMA AYAH KANDUNG'] || '',
           namaIbu: row.metadata?.['NAMA IBU KANDUNG'] || '',
-          foto: getThumbUrl(row.metadata?.['FOTO SISWA'] || row.metadata?.['FOTO'] || row.metadata?.['PAS FOTO'] || ''),
+          foto: getThumbUrl(row.metadata?.['LINK FOTO TERBARU'] || row.metadata?.['LINK URL FOTO 1'] || row.metadata?.['LINK URL FOTO 2'] || ''),
           jenisKelamin: row.metadata?.['JENIS KELAMIN'] || '',
           noHp: row.metadata?.['NOMOR WHATSAPP'] || row.metadata?.['NO WA'] || row.metadata?.['NO. WA'] || row.metadata?.['NO. HP'] || '',
           domisili: row.metadata?.['DOMISILI'] || '',
-          alamat: row.metadata?.['ALAMAT'] || '',
+          alamat: row.metadata?.['ALAMAT ASAL SESUAI KK TERAKHIR'] || row.metadata?.['ALAMAT AYAH KANDUNG'] || '',
           tahunAjaran: row.metadata?.['TAHUN AJARAN'] || '2023/2024',
         };
         break;
