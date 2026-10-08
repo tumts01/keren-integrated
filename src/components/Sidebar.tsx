@@ -95,8 +95,7 @@ export default function Sidebar() {
           icon: 'fa-user-clock',
           subItems: [
             { name: 'Keterlambatan', path: '/dispo' },
-            { name: 'Apresiasi', path: '/dispo/apresiasi' },
-            { name: 'Pelanggaran', path: '/dispo/pelanggaran' }
+            { name: 'Apresiasi & Pelanggaran', path: '/dispo/poin' }
           ]
         },
         ...(isAdmin ? [
