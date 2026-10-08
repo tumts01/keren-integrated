@@ -390,12 +390,13 @@ export default function PoinSiswaPage() {
                   <th>Kelas</th>
                   <th>Keterangan</th>
                   <th style={{ textAlign: 'center' }}>Poin</th>
+                  <th>Petugas</th>
                   <th style={{ textAlign: 'center' }}>Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={8} style={{ textAlign: 'center', padding: '30px' }}><i className="fas fa-spinner fa-spin"></i> Memuat data...</td></tr>
+                  <tr><td colSpan={9} style={{ textAlign: 'center', padding: '30px' }}><i className="fas fa-spinner fa-spin"></i> Memuat data...</td></tr>
                 ) : riwayatData.length > 0 ? riwayatData.map((r, i) => (
                   <tr key={r.id}>
                     <td style={{ textAlign: 'center' }}>{i + 1}</td>
@@ -411,6 +412,7 @@ export default function PoinSiswaPage() {
                     <td style={{ textAlign: 'center', fontWeight: 'bold', color: r.tipe === 'Apresiasi' ? '#2563eb' : '#dc2626' }}>
                       {r.tipe === 'Apresiasi' ? '+' : '-'}{Math.abs(r.poin)}
                     </td>
+                    <td style={{ fontSize: '0.85rem', color: '#64748b' }}>{r.petugas}</td>
                     <td style={{ textAlign: 'center' }}>
                       <button onClick={() => handleDelete(r.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>
                         <i className="fas fa-trash"></i>
@@ -419,7 +421,7 @@ export default function PoinSiswaPage() {
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', padding: '20px' }}>Data tidak ditemukan.</td>
+                    <td colSpan={9} style={{ textAlign: 'center', padding: '20px' }}>Data tidak ditemukan.</td>
                   </tr>
                 )}
               </tbody>
