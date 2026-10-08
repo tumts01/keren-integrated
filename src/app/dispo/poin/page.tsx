@@ -225,246 +225,251 @@ export default function PoinSiswaPage() {
 
       <div className={styles.content}>
         <div className={styles.card} style={{ maxWidth: '600px', margin: '0 auto 30px' }}>
-            <form onSubmit={handleSubmit}>
-              <div className={styles.filterSection} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <div className={styles.filterGroup}>
-                  <label>Tipe Data</label>
-                  <div style={{ display: 'flex', gap: '20px', marginTop: '8px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#1d4ed8', fontWeight: 'bold' }}>
-                      <input type="radio" name="tipe" checked={tipe === 'Apresiasi'} onChange={() => { setTipe('Apresiasi'); setPoin(5); }} />
-                      Apresiasi
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#b91c1c', fontWeight: 'bold' }}>
-                      <input type="radio" name="tipe" checked={tipe === 'Pelanggaran'} onChange={() => { setTipe('Pelanggaran'); setPoin(5); }} />
-                      Pelanggaran
-                    </label>
-                  </div>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '15px' }}>
+            <i className="fas fa-edit" style={{ color: '#ea580c' }}></i> Input Data
+          </h2>
+          <form onSubmit={handleSubmit}>
+            <div className={styles.filterSection} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div className={styles.filterGroup}>
+                <label>Tipe Data</label>
+                <div style={{ display: 'flex', gap: '20px', marginTop: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#1d4ed8', fontWeight: 'bold' }}>
+                    <input type="radio" name="tipe" checked={tipe === 'Apresiasi'} onChange={() => { setTipe('Apresiasi'); setPoin(5); }} />
+                    Apresiasi
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#b91c1c', fontWeight: 'bold' }}>
+                    <input type="radio" name="tipe" checked={tipe === 'Pelanggaran'} onChange={() => { setTipe('Pelanggaran'); setPoin(5); }} />
+                    Pelanggaran
+                  </label>
                 </div>
+              </div>
 
-                <div style={{ display: 'flex', gap: '15px' }}>
-                  <div className={styles.filterGroup} style={{ flex: 1 }}>
-                    <label>Tanggal</label>
-                    <input 
-                      type="date" 
-                      value={tanggal} 
-                      onChange={e => setTanggal(e.target.value)}
-                      className={styles.inputField}
-                      required
-                    />
-                  </div>
-                  <div className={styles.filterGroup} style={{ flex: 1, position: 'relative' }}>
-                    <label>Cari Siswa</label>
-                    {!selectedSiswa ? (
-                      <>
-                        <input 
-                          type="text" 
-                          value={searchSiswa} 
-                          onChange={e => setSearchSiswa(e.target.value)}
-                          placeholder="Ketik nama siswa..."
-                          className={styles.inputField}
-                        />
-                        {filteredSiswaList.length > 0 && (
-                          <div style={{ position: 'absolute', zIndex: 10, width: '100%', marginTop: '5px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                            {filteredSiswaList.map(s => (
-                              <div 
-                                key={s.id} 
-                                onClick={() => setSelectedSiswa(s)}
-                                style={{ padding: '10px 15px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
-                              >
-                                <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1e293b' }}>{s.nama}</div>
-                                <div style={{ fontSize: '12px', color: '#64748b' }}>Kelas {s.rombel}</div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', border: '1px solid #22c55e', backgroundColor: '#f0fdf4', borderRadius: '8px' }}>
-                        <div>
-                          <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#166534' }}>{selectedSiswa.nama}</div>
-                          <div style={{ fontSize: '12px', color: '#15803d' }}>Kelas {selectedSiswa.rombel}</div>
-                        </div>
-                        <button type="button" onClick={() => setSelectedSiswa(null)} style={{ background: 'none', border: 'none', color: '#166534', cursor: 'pointer' }}>
-                          <i className="fas fa-times"></i>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className={styles.filterGroup}>
-                  <label>Keterangan {tipe}</label>
+              <div style={{ display: 'flex', gap: '15px' }}>
+                <div className={styles.filterGroup} style={{ flex: 1 }}>
+                  <label>Tanggal</label>
                   <input 
-                    type="text" 
-                    value={keterangan} 
-                    onChange={e => setKeterangan(e.target.value)}
-                    placeholder={tipe === 'Apresiasi' ? 'Contoh: Juara 1 Lomba Pidato' : 'Contoh: Terlambat masuk kelas, Membuang sampah sembarangan'}
+                    type="date" 
+                    value={tanggal} 
+                    onChange={e => setTanggal(e.target.value)}
                     className={styles.inputField}
                     required
                   />
                 </div>
-
-                <div className={styles.filterGroup}>
-                  <label>Poin {tipe}</label>
-                  <select 
-                    value={poin} 
-                    onChange={e => setPoin(Number(e.target.value))}
-                    className={styles.selectField}
-                  >
-                    <option value={5}>{tipe === 'Apresiasi' ? '+5 Poin (Ringan)' : '-5 Poin (Ringan)'}</option>
-                    <option value={10}>{tipe === 'Apresiasi' ? '+10 Poin (Sedang)' : '-10 Poin (Sedang)'}</option>
-                    <option value={15}>{tipe === 'Apresiasi' ? '+15 Poin (Tinggi)' : '-15 Poin (Berat)'}</option>
-                    <option value={20}>{tipe === 'Apresiasi' ? '+20 Poin (Sangat Tinggi)' : '-20 Poin (Sangat Berat)'}</option>
-                    <option value={50}>{tipe === 'Apresiasi' ? '+50 Poin (Luar Biasa)' : '-50 Poin (Fatal)'}</option>
-                  </select>
+                <div className={styles.filterGroup} style={{ flex: 1, position: 'relative' }}>
+                  <label>Cari Siswa</label>
+                  {!selectedSiswa ? (
+                    <>
+                      <input 
+                        type="text" 
+                        value={searchSiswa} 
+                        onChange={e => setSearchSiswa(e.target.value)}
+                        placeholder="Ketik nama siswa..."
+                        className={styles.inputField}
+                      />
+                      {filteredSiswaList.length > 0 && (
+                        <div style={{ position: 'absolute', zIndex: 10, width: '100%', marginTop: '5px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+                          {filteredSiswaList.map(s => (
+                            <div 
+                              key={s.id} 
+                              onClick={() => setSelectedSiswa(s)}
+                              style={{ padding: '10px 15px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
+                            >
+                              <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1e293b' }}>{s.nama}</div>
+                              <div style={{ fontSize: '12px', color: '#64748b' }}>Kelas {s.rombel}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', border: '1px solid #22c55e', backgroundColor: '#f0fdf4', borderRadius: '8px' }}>
+                      <div>
+                        <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#166534' }}>{selectedSiswa.nama}</div>
+                        <div style={{ fontSize: '12px', color: '#15803d' }}>Kelas {selectedSiswa.rombel}</div>
+                      </div>
+                      <button type="button" onClick={() => setSelectedSiswa(null)} style={{ background: 'none', border: 'none', color: '#166534', cursor: 'pointer' }}>
+                        <i className="fas fa-times"></i>
+                      </button>
+                    </div>
+                  )}
                 </div>
+              </div>
 
-                <button 
-                  type="submit" 
-                  disabled={isSubmitting || !selectedSiswa}
-                  className={styles.button}
-                  style={{ width: '100%', marginTop: '10px' }}
-                >
-                  {isSubmitting ? 'Menyimpan...' : 'Simpan Data'}
-                </button>
-              </div>
-            </form>
-          </div>
-
-        <div style={{ marginTop: '40px' }}><h2 style={{ marginBottom: '15px' }}>Riwayat Input</h2><div className={styles.card}>
-            <div className={styles.filterSection} style={{ marginBottom: '20px' }}>
               <div className={styles.filterGroup}>
-                <label>Filter Tipe</label>
-                <select value={filterTipe} onChange={e => setFilterTipe(e.target.value)} className={styles.selectField}>
-                  <option value="Semua">Semua Tipe</option>
-                  <option value="Apresiasi">Apresiasi</option>
-                  <option value="Pelanggaran">Pelanggaran</option>
-                </select>
-              </div>
-              <div className={styles.filterGroup}>
-                <label>Filter Kelas</label>
-                <select value={filterKelas} onChange={e => setFilterKelas(e.target.value)} className={styles.selectField}>
-                  <option value="Semua">Semua Kelas</option>
-                  {uniqueKelas.map(k => <option key={k} value={k}>{k}</option>)}
-                </select>
-              </div>
-              <div className={styles.filterGroup}>
-                <label>Filter Bulan</label>
-                <select value={filterBulan} onChange={e => setFilterBulan(e.target.value)} className={styles.selectField}>
-                  <option value="Semua">Semua Bulan</option>
-                  {Array.from({length: 12}).map((_, i) => (
-                    <option key={i+1} value={(i+1).toString()}>{new Date(2000, i).toLocaleString('id-ID', {month:'long'})}</option>
-                  ))}
-                </select>
-              </div>
-              <div className={styles.filterGroup}>
-                <label>Cari</label>
+                <label>Keterangan {tipe}</label>
                 <input 
                   type="text" 
-                  value={searchRiwayat}
-                  onChange={e => setSearchRiwayat(e.target.value)}
-                  placeholder="Cari siswa/keterangan..." 
+                  value={keterangan} 
+                  onChange={e => setKeterangan(e.target.value)}
+                  placeholder={tipe === 'Apresiasi' ? 'Contoh: Juara 1 Lomba Pidato' : 'Contoh: Terlambat masuk kelas, Membuang sampah sembarangan'}
                   className={styles.inputField}
+                  required
                 />
               </div>
-              <div className={styles.filterGroup} style={{ display: 'flex', alignItems: 'flex-end' }}>
-                <button onClick={handleExportRiwayat} className={styles.button} style={{ backgroundColor: '#10b981' }}>
-                  <i className="fas fa-file-excel"></i> Export Excel
-                </button>
-              </div>
-            </div>
 
-            <div className={styles.tableContainer}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>No</th>
-                    <th>Tanggal</th>
-                    <th>Tipe</th>
-                    <th>Nama Siswa</th>
-                    <th>Kelas</th>
-                    <th>Keterangan</th>
-                    <th style={{ textAlign: 'center' }}>Poin</th>
-                    <th style={{ textAlign: 'center' }}>Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: '30px' }}><i className="fas fa-spinner fa-spin"></i> Memuat data...</td></tr>
-                  ) : riwayatData.length > 0 ? riwayatData.map((r, i) => (
-                    <tr key={r.id}>
-                      <td style={{ textAlign: 'center' }}>{i + 1}</td>
-                      <td>{r.tanggal}</td>
-                      <td>
-                        <span style={{ padding: '4px 8px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', backgroundColor: r.tipe === 'Apresiasi' ? '#dbeafe' : '#fee2e2', color: r.tipe === 'Apresiasi' ? '#1d4ed8' : '#b91c1c' }}>
-                          {r.tipe}
-                        </span>
-                      </td>
-                      <td style={{ fontWeight: 'bold' }}>{r.namaSiswa}</td>
-                      <td>{r.kelas}</td>
-                      <td>{r.keterangan}</td>
-                      <td style={{ textAlign: 'center', fontWeight: 'bold', color: r.tipe === 'Apresiasi' ? '#2563eb' : '#dc2626' }}>
-                        {r.tipe === 'Apresiasi' ? '+' : '-'}{Math.abs(r.poin)}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <button onClick={() => handleDelete(r.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>
-                          <i className="fas fa-trash"></i>
-                        </button>
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan={8} style={{ textAlign: 'center', padding: '20px' }}>Data tidak ditemukan.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+              <div className={styles.filterGroup}>
+                <label>Poin {tipe}</label>
+                <select 
+                  value={poin} 
+                  onChange={e => setPoin(Number(e.target.value))}
+                  className={styles.selectField}
+                >
+                  <option value={5}>{tipe === 'Apresiasi' ? '+5 Poin (Ringan)' : '-5 Poin (Ringan)'}</option>
+                  <option value={10}>{tipe === 'Apresiasi' ? '+10 Poin (Sedang)' : '-10 Poin (Sedang)'}</option>
+                  <option value={15}>{tipe === 'Apresiasi' ? '+15 Poin (Tinggi)' : '-15 Poin (Berat)'}</option>
+                  <option value={20}>{tipe === 'Apresiasi' ? '+20 Poin (Sangat Tinggi)' : '-20 Poin (Sangat Berat)'}</option>
+                  <option value={50}>{tipe === 'Apresiasi' ? '+50 Poin (Luar Biasa)' : '-50 Poin (Fatal)'}</option>
+                </select>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={isSubmitting || !selectedSiswa}
+                style={{ width: '100%', background: (!selectedSiswa || isSubmitting) ? '#94a3b8' : (tipe === 'Apresiasi' ? '#2563eb' : '#dc2626'), color: 'white', padding: '12px', border: 'none', borderRadius: '8px', fontSize: '1rem', fontWeight: 600, cursor: (!selectedSiswa || isSubmitting) ? 'not-allowed' : 'pointer', marginTop: '10px' }}
+              >
+                {isSubmitting ? 'Menyimpan...' : 'Simpan Data'}
+              </button>
             </div>
+          </form>
+        </div>
+
+        <div className={styles.card} style={{ marginTop: '40px' }}>
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '15px' }}>
+            <i className="fas fa-history" style={{ color: '#475569' }}></i> Riwayat Input
+          </h2>
+          <div className={styles.filterSection} style={{ marginBottom: '20px' }}>
+            <div className={styles.filterGroup}>
+              <label>Filter Tipe</label>
+              <select value={filterTipe} onChange={e => setFilterTipe(e.target.value)} className={styles.selectField}>
+                <option value="Semua">Semua Tipe</option>
+                <option value="Apresiasi">Apresiasi</option>
+                <option value="Pelanggaran">Pelanggaran</option>
+              </select>
+            </div>
+            <div className={styles.filterGroup}>
+              <label>Filter Kelas</label>
+              <select value={filterKelas} onChange={e => setFilterKelas(e.target.value)} className={styles.selectField}>
+                <option value="Semua">Semua Kelas</option>
+                {uniqueKelas.map(k => <option key={k} value={k}>{k}</option>)}
+              </select>
+            </div>
+            <div className={styles.filterGroup}>
+              <label>Filter Bulan</label>
+              <select value={filterBulan} onChange={e => setFilterBulan(e.target.value)} className={styles.selectField}>
+                <option value="Semua">Semua Bulan</option>
+                {Array.from({length: 12}).map((_, i) => (
+                  <option key={i+1} value={(i+1).toString()}>{new Date(2000, i).toLocaleString('id-ID', {month:'long'})}</option>
+                ))}
+              </select>
+            </div>
+            <div className={styles.filterGroup}>
+              <label>Cari</label>
+              <input 
+                type="text" 
+                value={searchRiwayat}
+                onChange={e => setSearchRiwayat(e.target.value)}
+                placeholder="Cari siswa/keterangan..." 
+                className={styles.inputField}
+              />
+            </div>
+            <div className={styles.filterGroup} style={{ display: 'flex', alignItems: 'flex-end' }}>
+              <button onClick={handleExportRiwayat} style={{ background: '#10b981', border: 'none', padding: '8px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.9rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, height: '42px' }}>
+                <i className="fas fa-file-excel"></i> Export Excel
+              </button>
+            </div>
+          </div>
+
+          <div className={styles.tableWrapper}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'center' }}>No</th>
+                  <th>Tanggal</th>
+                  <th>Tipe</th>
+                  <th>Nama Siswa</th>
+                  <th>Kelas</th>
+                  <th>Keterangan</th>
+                  <th style={{ textAlign: 'center' }}>Poin</th>
+                  <th style={{ textAlign: 'center' }}>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={8} style={{ textAlign: 'center', padding: '30px' }}><i className="fas fa-spinner fa-spin"></i> Memuat data...</td></tr>
+                ) : riwayatData.length > 0 ? riwayatData.map((r, i) => (
+                  <tr key={r.id}>
+                    <td style={{ textAlign: 'center' }}>{i + 1}</td>
+                    <td>{r.tanggal}</td>
+                    <td>
+                      <span style={{ padding: '4px 8px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', backgroundColor: r.tipe === 'Apresiasi' ? '#dbeafe' : '#fee2e2', color: r.tipe === 'Apresiasi' ? '#1d4ed8' : '#b91c1c' }}>
+                        {r.tipe}
+                      </span>
+                    </td>
+                    <td style={{ fontWeight: 'bold' }}>{r.namaSiswa}</td>
+                    <td>{r.kelas}</td>
+                    <td>{r.keterangan}</td>
+                    <td style={{ textAlign: 'center', fontWeight: 'bold', color: r.tipe === 'Apresiasi' ? '#2563eb' : '#dc2626' }}>
+                      {r.tipe === 'Apresiasi' ? '+' : '-'}{Math.abs(r.poin)}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button onClick={() => handleDelete(r.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                )) : (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: '20px' }}>Data tidak ditemukan.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <div style={{ marginTop: '40px' }}><h2 style={{ marginBottom: '15px' }}>Rekapitulasi</h2><div className={styles.card}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ margin: 0 }}>Rekapitulasi Poin Siswa</h3>
-              <button onClick={handleExportRekap} className={styles.button} style={{ backgroundColor: '#10b981' }}>
-                <i className="fas fa-file-excel"></i> Export Rekap
-              </button>
-            </div>
-            
-            <div className={styles.tableContainer}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: 'center' }}>Peringkat</th>
-                    <th>Nama Siswa</th>
-                    <th>Kelas</th>
-                    <th style={{ textAlign: 'center' }}>Total Apresiasi</th>
-                    <th style={{ textAlign: 'center' }}>Total Pelanggaran</th>
-                    <th style={{ textAlign: 'center', backgroundColor: '#f8fafc' }}>Poin Bersih</th>
+        <div className={styles.card} style={{ marginTop: '40px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '15px' }}>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+              <i className="fas fa-chart-bar" style={{ color: '#475569' }}></i> Rekapitulasi Poin Siswa
+            </h2>
+            <button onClick={handleExportRekap} style={{ background: '#10b981', border: 'none', padding: '8px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.9rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+              <i className="fas fa-file-excel"></i> Export Rekap
+            </button>
+          </div>
+          
+          <div className={styles.tableWrapper}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'center' }}>Peringkat</th>
+                  <th>Nama Siswa</th>
+                  <th>Kelas</th>
+                  <th style={{ textAlign: 'center' }}>Total Apresiasi</th>
+                  <th style={{ textAlign: 'center' }}>Total Pelanggaran</th>
+                  <th style={{ textAlign: 'center', backgroundColor: '#f8fafc' }}>Poin Bersih</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: '30px' }}><i className="fas fa-spinner fa-spin"></i> Memuat data...</td></tr>
+                ) : rekapData.length > 0 ? rekapData.map((r, i) => (
+                  <tr key={i}>
+                    <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#94a3b8' }}>#{i + 1}</td>
+                    <td style={{ fontWeight: 'bold' }}>{r.nama}</td>
+                    <td>{r.kelas}</td>
+                    <td style={{ textAlign: 'center', color: '#2563eb' }}>+{r.apresiasi}</td>
+                    <td style={{ textAlign: 'center', color: '#dc2626' }}>-{r.pelanggaran}</td>
+                    <td style={{ textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f8fafc', color: r.total > 0 ? '#1d4ed8' : r.total < 0 ? '#b91c1c' : '#64748b' }}>
+                      {r.total > 0 ? '+' : ''}{r.total}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr><td colSpan={6} style={{ textAlign: 'center', padding: '30px' }}><i className="fas fa-spinner fa-spin"></i> Memuat data...</td></tr>
-                  ) : rekapData.length > 0 ? rekapData.map((r, i) => (
-                    <tr key={i}>
-                      <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#94a3b8' }}>#{i + 1}</td>
-                      <td style={{ fontWeight: 'bold' }}>{r.nama}</td>
-                      <td>{r.kelas}</td>
-                      <td style={{ textAlign: 'center', color: '#2563eb' }}>+{r.apresiasi}</td>
-                      <td style={{ textAlign: 'center', color: '#dc2626' }}>-{r.pelanggaran}</td>
-                      <td style={{ textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f8fafc', color: r.total > 0 ? '#1d4ed8' : r.total < 0 ? '#b91c1c' : '#64748b' }}>
-                        {r.total > 0 ? '+' : ''}{r.total}
-                      </td>
-                    </tr>
-                  )) : (
-                    <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', padding: '20px' }}>Belum ada data rekap.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                )) : (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '20px' }}>Belum ada data rekap.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
