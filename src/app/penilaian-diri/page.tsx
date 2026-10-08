@@ -67,7 +67,7 @@ export default function PenilaianDiriPage() {
       const res = await fetch('/api/siswa');
       const json = await res.json();
       if (json.success && json.data) {
-        const aktif = json.data.filter((s: any) => s.status === 'Aktif' && s.isLatest);
+        const aktif = json.data.filter((s: any) => (s.status || '').toLowerCase() === 'aktif' && s.isLatest);
         setSiswaData(aktif);
         // Filter by rombel later when we know the user
       }
@@ -207,7 +207,7 @@ export default function PenilaianDiriPage() {
                       <span>Tidak/Kurang {t.label.toLowerCase()}</span>
                     </label>
                   </div>
-                  <input type="text" className={styles.inputField} placeholder="Tuliskan alasannya..." value={dataDiri[t.id]?.alasan || ''} onChange={e => setDataDiri({ ...dataDiri, [t.id]: { ...dataDiri[t.id], alasan: e.target.value } })} />
+                  <input type="text" className={styles.inputField} style={{ width: '100%', boxSizing: 'border-box' }} placeholder="Tuliskan alasannya..." value={dataDiri[t.id]?.alasan || ''} onChange={e => setDataDiri({ ...dataDiri, [t.id]: { ...dataDiri[t.id], alasan: e.target.value } })} />
                 </div>
               ))}
 
@@ -232,7 +232,7 @@ export default function PenilaianDiriPage() {
                     onChange={val => setDataTeman({ ...dataTeman, [t.id]: { ...dataTeman[t.id], nisn: val } })} 
                     placeholder="-- Cari Teman Sekelas --" 
                   />
-                  <input type="text" className={styles.inputField} placeholder="Karena..." value={dataTeman[t.id]?.alasan || ''} onChange={e => setDataTeman({ ...dataTeman, [t.id]: { ...dataTeman[t.id], alasan: e.target.value } })} />
+                  <input type="text" className={styles.inputField} style={{ width: '100%', boxSizing: 'border-box' }} placeholder="Karena..." value={dataTeman[t.id]?.alasan || ''} onChange={e => setDataTeman({ ...dataTeman, [t.id]: { ...dataTeman[t.id], alasan: e.target.value } })} />
                 </div>
               ))}
             </>
@@ -254,7 +254,7 @@ export default function PenilaianDiriPage() {
                     placeholder="-- Cari Nama Siswa --" 
                   />
 
-                  <input type="text" className={styles.inputField} placeholder="Karena... (Opsional)" value={dataGuru[t.id]?.alasan || ''} onChange={e => setDataGuru({ ...dataGuru, [t.id]: { ...dataGuru[t.id], alasan: e.target.value } })} />
+                  <input type="text" className={styles.inputField} style={{ width: '100%', boxSizing: 'border-box' }} placeholder="Karena... (Opsional)" value={dataGuru[t.id]?.alasan || ''} onChange={e => setDataGuru({ ...dataGuru, [t.id]: { ...dataGuru[t.id], alasan: e.target.value } })} />
                 </div>
               ))}
             </>
