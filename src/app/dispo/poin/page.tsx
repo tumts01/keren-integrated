@@ -301,7 +301,7 @@ export default function PoinSiswaPage() {
                   type="text" 
                   value={keterangan} 
                   onChange={e => setKeterangan(e.target.value)}
-                  placeholder={tipe === 'Apresiasi' ? 'Contoh: Juara 1 Lomba Pidato' : 'Contoh: Terlambat masuk kelas, Membuang sampah sembarangan'}
+                  placeholder={tipe === 'Apresiasi' ? 'Contoh: Tidak menanam sawit sembarangan' : 'Contoh: Terlambat masuk kelas, Membuang sampah sembarangan'}
                   className={styles.inputField}
                   required
                 />
