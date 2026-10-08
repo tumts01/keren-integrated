@@ -27,7 +27,6 @@ export default function PoinSiswaPage() {
   const [data, setData] = useState<PoinRecord[]>([]);
   const [siswaList, setSiswaList] = useState<Siswa[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'input' | 'riwayat' | 'rekap'>('input');
   
   // Form States
   const [tipe, setTipe] = useState<'Apresiasi' | 'Pelanggaran'>('Apresiasi');
@@ -228,30 +227,8 @@ export default function PoinSiswaPage() {
         <p className={styles.subtitle}>Kelola poin apresiasi dan catatan pelanggaran siswa</p>
       </header>
 
-      <div className={styles.tabs} style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #e2e8f0' }}>
-        <button 
-          onClick={() => setActiveTab('input')} 
-          style={{ padding: '10px 20px', borderBottom: activeTab === 'input' ? '3px solid #2563eb' : 'none', color: activeTab === 'input' ? '#2563eb' : '#64748b', fontWeight: 'bold', background: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none', cursor: 'pointer' }}
-        >
-          <i className="fas fa-edit"></i> Input Data
-        </button>
-        <button 
-          onClick={() => setActiveTab('riwayat')} 
-          style={{ padding: '10px 20px', borderBottom: activeTab === 'riwayat' ? '3px solid #2563eb' : 'none', color: activeTab === 'riwayat' ? '#2563eb' : '#64748b', fontWeight: 'bold', background: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none', cursor: 'pointer' }}
-        >
-          <i className="fas fa-history"></i> Riwayat Input
-        </button>
-        <button 
-          onClick={() => setActiveTab('rekap')} 
-          style={{ padding: '10px 20px', borderBottom: activeTab === 'rekap' ? '3px solid #2563eb' : 'none', color: activeTab === 'rekap' ? '#2563eb' : '#64748b', fontWeight: 'bold', background: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none', cursor: 'pointer' }}
-        >
-          <i className="fas fa-chart-bar"></i> Rekap Poin
-        </button>
-      </div>
-
       <div className={styles.content}>
-        {activeTab === 'input' && (
-          <div className={styles.card} style={{ maxWidth: '600px', margin: '0 auto 30px' }}>
+        <div className={styles.card} style={{ maxWidth: '600px', margin: '0 auto 30px' }}>
             <form onSubmit={handleSubmit}>
               <div className={styles.filterSection} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 <div className={styles.filterGroup}>
@@ -357,10 +334,8 @@ export default function PoinSiswaPage() {
               </div>
             </form>
           </div>
-        )}
 
-        {activeTab === 'riwayat' && (
-          <div className={styles.card}>
+        <div style={{ marginTop: '40px' }}><h2 style={{ marginBottom: '15px' }}>Riwayat Input</h2><div className={styles.card}>
             <div className={styles.filterSection} style={{ marginBottom: '20px' }}>
               <div className={styles.filterGroup}>
                 <label>Filter Tipe</label>
@@ -448,10 +423,9 @@ export default function PoinSiswaPage() {
               </table>
             </div>
           </div>
-        )}
+        </div>
 
-        {activeTab === 'rekap' && (
-          <div className={styles.card}>
+        <div style={{ marginTop: '40px' }}><h2 style={{ marginBottom: '15px' }}>Rekapitulasi</h2><div className={styles.card}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h3 style={{ margin: 0 }}>Rekapitulasi Poin Siswa</h3>
               <button onClick={handleExportRekap} className={styles.button} style={{ backgroundColor: '#10b981' }}>
@@ -492,7 +466,7 @@ export default function PoinSiswaPage() {
               </table>
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
