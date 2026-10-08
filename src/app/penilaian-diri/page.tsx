@@ -1,9 +1,8 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import styles from '@/styles/presensi.module.css';
+import React from 'react';
+import styles from '@/app/presensi/presensi.module.css';
 
 export default function PenilaianDiriPage() {
-  const [loading, setLoading] = useState(false);
 
   return (
     <div className={styles.container}>
