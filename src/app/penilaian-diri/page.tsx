@@ -171,8 +171,26 @@ export default function PenilaianDiriPage() {
   return (
     <div className={styles.container}>
       {(userRole || '').toLowerCase().includes('siswa') && (
-        <button onClick={() => window.location.href = '/portal/dashboard'} style={{ background: 'white', border: '1px solid #e2e8f0', color: '#64748b', padding: '8px 15px', borderRadius: '8px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-          <i className="fas fa-arrow-left"></i> Kembali ke Dashboard
+        <button onClick={() => window.location.href = '/portal/dashboard'} 
+          style={{ 
+            background: '#1e293b', 
+            color: 'white', 
+            border: 'none',
+            padding: '10px 20px', 
+            borderRadius: '10px', 
+            cursor: 'pointer', 
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            gap: '10px', 
+            fontWeight: 'bold', 
+            marginBottom: '20px', 
+            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.2)',
+            fontSize: '0.95rem'
+          }}
+          onMouseOver={e => e.currentTarget.style.background = '#0f172a'}
+          onMouseOut={e => e.currentTarget.style.background = '#1e293b'}
+        >
+          <i className="fas fa-arrow-left"></i> KEMBALI KE DASHBOARD
         </button>
       )}
 
