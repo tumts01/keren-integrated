@@ -7,15 +7,46 @@ export const dynamic = 'force-dynamic';
 
 // Helper: get nilai akhir from a student record inside data_nilai
 function getNilaiAkhirSTS(record: Record<string, any>): string | number {
-  const naStsKeys = ['NA STS', 'NILAI AKHIR STS', 'NA_STS', 'NILAI_AKHIR_STS', 'NA', 'NILAI AKHIR', 'Nilai Akhir', 'nilai'];
+  const naStsKeys = ['NA STS', 'NILAI AKHIR STS', 'NA_STS', 'NILAI_AKHIR_STS'];
   for (const k of naStsKeys) {
     if (record[k] !== undefined && record[k] !== '') return record[k];
   }
+  
+  const calcAvg = (materiIndex: number) => {
+    let sum = 0; let count = 0;
+    ['S1','S2','S3','S4'].forEach(sub => {
+       const v = record[`Materi ${materiIndex} ${sub}`] || record[`MATERI ${materiIndex} ${sub}`];
+       if (v !== undefined && v !== '' && !isNaN(Number(v))) { sum += Number(v); count++; }
+    });
+    return count > 0 ? Math.round(sum / count) : '';
+  };
+
+  const tp1 = calcAvg(1); const tp2 = calcAvg(2); const tp3 = calcAvg(3);
+  const tp4 = calcAvg(4); const tp5 = calcAvg(5); const tp6 = calcAvg(6);
+  
+  let sts: string | number = '';
   const stsKeys = ['STS', 'SUMATIF TENGAH SEMESTER', 'Nilai STS', 'NILAI STS', 'NILAI_STS'];
   for (const k of stsKeys) {
+    if (record[k] !== undefined && record[k] !== '') {
+      sts = record[k];
+      break;
+    }
+  }
+
+  const tps = [tp1, tp2, tp3, tp4, tp5, tp6].filter(val => val !== '' && !isNaN(Number(val))).map(Number);
+  const stsNum = parseFloat(String(sts).replace(',', '.'));
+  
+  if (tps.length > 0 && !isNaN(stsNum)) {
+     const avgHarian = tps.reduce((a, b) => a + b, 0) / tps.length;
+     return Math.round((avgHarian * 0.6) + (stsNum * 0.4));
+  }
+  
+  const fallbackKeys = ['NA', 'NILAI AKHIR', 'Nilai Akhir', 'nilai'];
+  for (const k of fallbackKeys) {
     if (record[k] !== undefined && record[k] !== '') return record[k];
   }
-  return '';
+
+  return sts;
 }
 
 // Helper: get mapel name from mata_pelajaran metadata
@@ -129,8 +160,11 @@ export async function GET(request: Request) {
     ];
 
     allRows.forEach(r => { 
-      if (r.mata_pelajaran && !usedMapels.has(r.mata_pelajaran)) {
-        extraMapels.add(r.mata_pelajaran);
+      if (r.mata_pelajaran) {
+        const normalized = uniqueMapels.find(m => m.toLowerCase().trim() === r.mata_pelajaran.toLowerCase().trim()) || r.mata_pelajaran;
+        if (!usedMapels.has(normalized)) {
+          extraMapels.add(normalized);
+        }
       }
     });
     
