@@ -709,6 +709,8 @@ function PrintSiswaModal({
   const [angkatan, setAngkatan] = useState<string>('7');
   const [kelas, setKelas] = useState<string>('');
   const [manualSearch, setManualSearch] = useState<string>('');
+  const [customJudul, setCustomJudul] = useState('');
+  const [customKeterangan, setCustomKeterangan] = useState('');
   const [selectedManual, setSelectedManual] = useState<Siswa[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -987,6 +989,17 @@ function PrintSiswaModal({
             </div>
           )}
 
+          <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '16px', marginBottom: '16px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Judul Cetak (Opsional)</label>
+              <input type="text" value={customJudul} onChange={e => setCustomJudul(e.target.value)} placeholder="Contoh: DAFTAR NILAI, DAFTAR HADIR..." style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Nama Kolom Keterangan (Opsional)</label>
+              <input type="text" value={customKeterangan} onChange={e => setCustomKeterangan(e.target.value)} placeholder="Contoh: KET, NILAI, TTD..." style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }} />
+            </div>
+          </div>
+
           <div className={styles.printPreviewInfo}>
             <i className="fas fa-info-circle"></i>
             <span>
@@ -1026,7 +1039,7 @@ function PrintSiswaModal({
               // Setiap kelas = 1 halaman
               Object.entries(groupedByKelas).sort(([a], [b]) => a.localeCompare(b)).map(([rombel, siswaList]) => (
                 <div key={rombel} className="page-section">
-                  <div className="doc-title">Daftar Siswa — Kelas {rombel}</div>
+                  <div className="doc-title">{customJudul ? `${customJudul.toUpperCase()} ${rombel}` : `DAFTAR SISWA - KELAS ${rombel}`}</div>
                   <div className="doc-sub">
                     Tahun Ajaran {activeData[0]?.tahunAjaran || '2026/2027'} &nbsp;|&nbsp; Dicetak: {today} &nbsp;|&nbsp; {siswaList.length} Siswa
                   </div>
@@ -1036,8 +1049,8 @@ function PrintSiswaModal({
                         <th className="col-no">No</th>
                         <th className="col-nama">Nama Siswa</th>
                         <th className="col-domisili" style={{ width: '20%' }}>Domisili</th>
-                        <th className="col-ket">Keterangan</th>
-                        <th className="col-ket">Keterangan</th>
+                        <th className="col-ket">{customKeterangan || 'Keterangan'}</th>
+                          <th className="col-ket">{customKeterangan || 'Keterangan'}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1057,7 +1070,7 @@ function PrintSiswaModal({
             ) : (
               // Single kelas = 1 halaman
               <div className="page-section">
-                <div className="doc-title">Daftar Siswa — Kelas {kelas}</div>
+                <div className="doc-title">{customJudul ? `${customJudul.toUpperCase()} ${mode === 'kelas' ? kelas : ''}` : `DAFTAR SISWA ${mode === 'kelas' ? '- KELAS ' + kelas : '(MANUAL)'}`}</div>
                 <div className="doc-sub">
                   Tahun Ajaran {activeData[0]?.tahunAjaran || '2026/2027'} &nbsp;|&nbsp; Dicetak: {today} &nbsp;|&nbsp; {selectedData.length} Siswa
                 </div>
@@ -1074,8 +1087,8 @@ function PrintSiswaModal({
                       ) : (
                         <>
                           <th className="col-domisili" style={{ width: '20%' }}>Domisili</th>
-                          <th className="col-ket">Keterangan</th>
-                          <th className="col-ket">Keterangan</th>
+                          <th className="col-ket">{customKeterangan || 'Keterangan'}</th>
+                          <th className="col-ket">{customKeterangan || 'Keterangan'}</th>
                         </>
                       )}
                     </tr>
