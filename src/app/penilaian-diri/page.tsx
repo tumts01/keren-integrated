@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import styles from '@/app/presensi/presensi.module.css';
 import InlineLoading from '@/components/InlineLoading';
 import SearchableSelect from '@/components/SearchableSelect';
+import Swal from 'sweetalert2';
 
 const TRAITS = [
   { id: 'religius', label: 'Religius' },
@@ -115,13 +116,13 @@ export default function PenilaianDiriPage() {
       // Validation
       for (const t of TRAITS) {
         if (isSiswa) {
-          if (!dataDiri[t.id]?.jawaban) return alert(`Pilihan penilaian diri untuk sikap ${t.label} belum diisi!`);
-          if (!dataDiri[t.id]?.alasan) return alert(`Alasan penilaian diri untuk sikap ${t.label} wajib diisi!`);
-          if (!dataTeman[t.id]?.nisn) return alert(`Teman untuk sikap ${t.label} belum dipilih!`);
-          if (!dataTeman[t.id]?.alasan) return alert(`Alasan untuk teman (${t.label}) wajib diisi!`);
+          if (!dataDiri[t.id]?.jawaban) return Swal.fire('Oops!', `Pilihan penilaian diri untuk sikap ${t.label} belum diisi!`, 'warning');
+          if (!dataDiri[t.id]?.alasan) return Swal.fire('Oops!', `Alasan penilaian diri untuk sikap ${t.label} wajib diisi!`, 'warning');
+          if (!dataTeman[t.id]?.nisn) return Swal.fire('Oops!', `Teman untuk sikap ${t.label} belum dipilih!`, 'warning');
+          if (!dataTeman[t.id]?.alasan) return Swal.fire('Oops!', `Alasan untuk teman (${t.label}) wajib diisi!`, 'warning');
         }
         if (isGuru) {
-          if (!dataGuru[t.id]?.nisn) return alert(`Siswa untuk sikap ${t.label} belum dipilih!`);
+          if (!dataGuru[t.id]?.nisn) return Swal.fire('Oops!', `Siswa untuk sikap ${t.label} belum dipilih!`, 'warning');
         }
       }
 
@@ -142,12 +143,12 @@ export default function PenilaianDiriPage() {
       });
       const json = await res.json();
       if (json.success) {
-        alert('Berhasil menyimpan penilaian!');
+        Swal.fire('Berhasil!', 'Penilaian karakter berhasil disimpan.', 'success');
       } else {
-        alert('Gagal menyimpan: ' + json.error);
+        Swal.fire('Gagal!', 'Gagal menyimpan: ' + json.error, 'error');
       }
     } catch (e: any) {
-      alert('Error: ' + e.message);
+      Swal.fire('Error!', 'Terjadi kesalahan: ' + e.message, 'error');
     } finally {
       setSaving(false);
     }
