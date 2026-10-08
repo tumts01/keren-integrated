@@ -73,3 +73,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: 'Gagal memproses pendaftaran SPMB: ' + error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ success: false, error: 'ID tidak ditemukan' }, { status: 400 });
+    
+    const { error } = await supabase.from('data_spmb').delete().eq('id', id);
+    if (error) throw error;
+    
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('Delete SPMB Error:', error);
+    return NextResponse.json({ success: false, error: 'Gagal menghapus data: ' + error.message }, { status: 500 });
+  }
+}
