@@ -78,7 +78,7 @@ export default function PortalDashboard() {
             {/* Foto Top Section */}
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <div style={{ 
-                width: '120px', height: '120px', borderRadius: '12px', background: '#e2e8f0', 
+                width: '120px', height: '160px', borderRadius: '12px', background: '#e2e8f0', 
                 display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px', color: '#94a3b8',
                 overflow: 'hidden', border: '4px solid white', boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
               }}>
