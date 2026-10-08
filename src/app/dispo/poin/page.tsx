@@ -193,7 +193,7 @@ export default function PoinSiswaPage() {
       'Kelas': r.kelas,
       'Keterangan': r.keterangan,
       'Poin': Math.abs(r.poin),
-      'Petugas': r.petugas
+      'Diinput Oleh': r.petugas
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
@@ -390,7 +390,7 @@ export default function PoinSiswaPage() {
                   <th>Kelas</th>
                   <th>Keterangan</th>
                   <th style={{ textAlign: 'center' }}>Poin</th>
-                  <th>Petugas</th>
+                  <th>Diinput Oleh</th>
                   <th style={{ textAlign: 'center' }}>Aksi</th>
                 </tr>
               </thead>
