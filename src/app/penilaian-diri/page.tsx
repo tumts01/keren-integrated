@@ -301,7 +301,7 @@ export default function PenilaianDiriPage() {
       )}
 
       {activeTab === 'rekap' && (
-        <div className={styles.card} style={{ maxWidth: '1100px', margin: '20px auto', padding: '30px' }}>
+        <div className={styles.card} style={{ maxWidth: '100%', width: '95%', margin: '20px auto', padding: '30px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <h2 style={{ margin: 0 }}><i className="fas fa-trophy"></i> Rekapitulasi Poin Karakter ({periode})</h2>
             <button className={styles.btn} onClick={loadRekap} style={{ padding: '8px 16px' }}><i className="fas fa-sync-alt"></i> Segarkan</button>
@@ -317,7 +317,7 @@ export default function PenilaianDiriPage() {
                     <th>No</th>
                     <th>Kelas</th>
                     <th>Nama Siswa</th>
-                    {TRAITS.map(t => <th key={t.id} style={{ fontSize: '0.8rem', textAlign: 'center' }}>{t.label.substring(0,3)}</th>)}
+                    {TRAITS.map(t => <th key={t.id} style={{ fontSize: '0.8rem', textAlign: 'center' }}>{t.label}</th>)}
                     <th>TOTAL</th>
                   </tr>
                 </thead>
