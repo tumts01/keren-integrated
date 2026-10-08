@@ -141,6 +141,7 @@ export default function Sidebar() {
         { name: 'Jurnal Kegiatan', path: '/jurnal-kegiatan', icon: 'fa-book-open' },
 
         { name: 'Survey Madrasah', path: '/survey-madrasah', icon: 'fa-poll-h' },
+          { name: 'Penilaian Diri', path: '/penilaian-diri', icon: 'fa-clipboard-check' },
       ]
     },
     {
