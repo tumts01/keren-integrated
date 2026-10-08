@@ -277,10 +277,14 @@ export default function StsPage() {
         }, {});
         
         Object.keys(grouped).forEach(k => {
-          grouped[k].S = Number((grouped[k].S / 10).toFixed(1));
-          grouped[k].I = Number((grouped[k].I / 10).toFixed(1));
-          grouped[k].A = Number((grouped[k].A / 10).toFixed(1));
-        });
+            const calc = (v: number) => {
+              const hari = v / 10;
+              return hari <= 0.5 ? 0 : Math.ceil(hari);
+            };
+            grouped[k].S = calc(grouped[k].S);
+            grouped[k].I = calc(grouped[k].I);
+            grouped[k].A = calc(grouped[k].A);
+          });
         
         setRekapPresensi(grouped);
       }
