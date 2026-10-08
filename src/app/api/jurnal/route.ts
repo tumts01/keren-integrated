@@ -85,26 +85,31 @@ export async function POST(request: Request) {
     const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
     const id = crypto.randomUUID().substring(0, 8);
 
-    const { data: rows, error: readError } = await supabase.from('data_jurnal_mengajar').select('*').eq('tanggal', tanggal).eq('kelas', kelas);
+    const { data: rowsDay, error: readError } = await supabase.from('data_jurnal_mengajar').select('*').eq('tanggal', tanggal);
     if (readError) throw readError;
 
     const submittedJams = jamKeText.split(',').map(j => j.trim()).filter(Boolean);
-    let overlappingRow = null;
+    let overlappingClass = null;
+    let overlappingGuru = null;
     let isExactMatch = false;
 
-    if (rows && rows.length > 0) {
-      for (let i = rows.length - 1; i >= 0; i--) {
-        const r = rows[i];
+    if (rowsDay && rowsDay.length > 0) {
+      for (let i = rowsDay.length - 1; i >= 0; i--) {
+        const r = rowsDay[i];
         const existingJamKeStr = cleanJamKe(String(r.metadata?.['JAM KE'] || ''));
         const existingJams = existingJamKeStr.split(',').map(j => j.trim()).filter(Boolean);
-        
         const hasOverlap = submittedJams.some(j => existingJams.includes(j));
+        
         if (hasOverlap) {
-          overlappingRow = r;
-          if (existingJamKeStr === cleanJamKe(jamKeText) && r.metadata?.['MAPEL'] === mapel) {
-            isExactMatch = true;
+          if (r.kelas === kelas) {
+            overlappingClass = r;
+            if (existingJamKeStr === cleanJamKe(jamKeText) && r.metadata?.['MAPEL'] === mapel && (r.metadata?.['NAMA GURU'] || '').trim().toLowerCase() === guru.trim().toLowerCase()) {
+              isExactMatch = true;
+            }
           }
-          break;
+          if ((r.metadata?.['NAMA GURU'] || '').trim().toLowerCase() === guru.trim().toLowerCase()) {
+            overlappingGuru = r;
+          }
         }
       }
     }
@@ -113,9 +118,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Data jurnal ini sudah pernah Anda input sebelumnya (Anti-Dobel Aktif).' }, { status: 409 });
     }
 
-    if (overlappingRow) {
-      const dbMapel = overlappingRow.metadata?.['MAPEL'];
-      const dbGuru = overlappingRow.metadata?.['NAMA GURU'];
+    if (overlappingGuru) {
+      const dbKelas = overlappingGuru.kelas || overlappingGuru.metadata?.['KELAS'];
+      const dbJam = cleanJamKe(String(overlappingGuru.metadata?.['JAM KE'] || ''));
+      return NextResponse.json({
+        success: false,
+        error: `Gagal menyimpan: Anda tercatat sedang mengajar di kelas ${dbKelas} pada jam ke-${dbJam}. (Satu guru tidak bisa mengajar di kelas yang berbeda pada waktu yang sama)`
+      }, { status: 409 });
+    }
+
+    if (overlappingClass) {
+      const dbMapel = overlappingClass.metadata?.['MAPEL'];
+      const dbGuru = overlappingClass.metadata?.['NAMA GURU'];
       return NextResponse.json({ 
         success: false, 
         error: `Jam ke-${jamKeText} di kelas ${kelas} sudah diisi oleh ${dbGuru} (Mapel: ${dbMapel}). Anda tidak bisa menimpa jadwal orang lain.` 
@@ -165,36 +179,49 @@ export async function PUT(request: Request) {
       }
     }
 
-    // Get all rows for that date and class to check for overlap
-    const { data: rows, error: readError } = await supabase
+    // Get all rows for that date to check for overlap
+    const { data: rowsDay, error: readError } = await supabase
       .from('data_jurnal_mengajar')
       .select('*')
-      .eq('tanggal', tanggal)
-      .eq('kelas', kelas);
+      .eq('tanggal', tanggal);
 
     if (readError) throw readError;
 
     const submittedJams = jamKeText.split(',').map(j => j.trim()).filter(Boolean);
-    let overlappingRow = null;
+    let overlappingClass = null;
+    let overlappingGuru = null;
 
-    if (rows && rows.length > 0) {
-      for (const r of rows) {
+    if (rowsDay && rowsDay.length > 0) {
+      for (const r of rowsDay) {
         if (r.id.toString() === id.toString() || r.metadata?.['ID'] === id) continue;
 
         const existingJamKeStr = cleanJamKe(String(r.metadata?.['JAM KE'] || ''));
         const existingJams = existingJamKeStr.split(',').map(j => j.trim()).filter(Boolean);
-        
         const hasOverlap = submittedJams.some(j => existingJams.includes(j));
+        
         if (hasOverlap) {
-          overlappingRow = r;
-          break;
+          if (r.kelas === kelas) {
+            overlappingClass = r;
+          }
+          if ((r.metadata?.['NAMA GURU'] || '').trim().toLowerCase() === actualGuru.trim().toLowerCase()) {
+            overlappingGuru = r;
+          }
         }
       }
     }
 
-    if (overlappingRow) {
-      const dbMapel = overlappingRow.metadata?.['MAPEL'];
-      const dbGuru = overlappingRow.metadata?.['NAMA GURU'];
+    if (overlappingGuru) {
+      const dbKelas = overlappingGuru.kelas || overlappingGuru.metadata?.['KELAS'];
+      const dbJam = cleanJamKe(String(overlappingGuru.metadata?.['JAM KE'] || ''));
+      return NextResponse.json({
+        success: false,
+        error: `Gagal menyimpan: Anda tercatat sedang mengajar di kelas ${dbKelas} pada jam ke-${dbJam}. (Satu guru tidak bisa mengajar di kelas yang berbeda pada waktu yang sama)`
+      }, { status: 409 });
+    }
+
+    if (overlappingClass) {
+      const dbMapel = overlappingClass.metadata?.['MAPEL'];
+      const dbGuru = overlappingClass.metadata?.['NAMA GURU'];
       return NextResponse.json({ 
         success: false, 
         error: `Jam ke-${jamKeText} di kelas ${kelas} bertabrakan dengan isian milik ${dbGuru} (Mapel: ${dbMapel}).` 
