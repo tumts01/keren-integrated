@@ -170,7 +170,16 @@ export default function PenilaianDiriPage() {
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.pageTitle}>Penilaian Diri & Karakter</h1>
+      {(userRole || '').toLowerCase().includes('siswa') && (
+        <button onClick={() => window.location.href = '/portal/dashboard'} style={{ background: 'white', border: '1px solid #e2e8f0', color: '#64748b', padding: '8px 15px', borderRadius: '8px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', marginBottom: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+          <i className="fas fa-arrow-left"></i> Kembali ke Dashboard
+        </button>
+      )}
+
+      <div style={{ background: 'linear-gradient(135deg, var(--primary) 0%, #047857 100%)', color: 'white', padding: '30px 20px', borderRadius: '16px', textAlign: 'center', marginBottom: '30px', boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.2)' }}>
+        <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>Penilaian Diri & Karakter</h1>
+        <p style={{ margin: '10px 0 0 0', opacity: 0.9, fontSize: '0.95rem' }}>Formulir evaluasi sikap dan karakter antar siswa dan guru</p>
+      </div>
       
       <div className={styles.tabsContainer} style={{ maxWidth: 450, margin: "0 auto 20px auto" }}><div className={styles.tabsWrapper}><div className={styles.tabs}>
         <button className={`${styles.tab} ${activeTab === 'form' ? styles.activeTab : ''}`} onClick={() => setActiveTab('form')}>
