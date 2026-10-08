@@ -78,7 +78,7 @@ export default function PenilaianDiriPage() {
   };
 
   useEffect(() => {
-    if (userRole === 'siswa' && userRombel && siswaData.length > 0) {
+    if (userRole.toLowerCase().includes('siswa') && userRombel && siswaData.length > 0) {
       setTemanSekelas(siswaData.filter(s => s.rombel === userRombel && s.nisn !== userNisn));
     }
   }, [userRole, userRombel, siswaData, userNisn]);
@@ -108,8 +108,8 @@ export default function PenilaianDiriPage() {
     try {
       setSaving(true);
       
-      const isSiswa = userRole === 'siswa';
-      const isGuru = userRole === 'guru' || userRole === 'admin';
+      const isSiswa = userRole.toLowerCase().includes('siswa');
+      const isGuru = (userRole.toLowerCase().includes('guru') || userRole.toLowerCase().includes('admin') || userRole.toLowerCase().includes('wali'));
 
       // Validation
       for (const t of TRAITS) {
@@ -158,14 +158,14 @@ export default function PenilaianDiriPage() {
     <div className={styles.container}>
       <h1 className={styles.pageTitle}>Penilaian Diri & Karakter</h1>
       
-      <div className={styles.tabs}>
-        <button className={`${styles.tabBtn} ${activeTab === 'form' ? styles.active : ''}`} onClick={() => setActiveTab('form')}>
+      <div className={styles.tabsContainer} style={{ maxWidth: 450, margin: "0 auto 20px auto" }}><div className={styles.tabsWrapper}><div className={styles.tabs}>
+        <button className={`${styles.tab} ${activeTab === 'form' ? styles.activeTab : ''}`} onClick={() => setActiveTab('form')}>
           <i className="fas fa-clipboard-list"></i> Formulir Penilaian
         </button>
-        <button className={`${styles.tabBtn} ${activeTab === 'rekap' ? styles.active : ''}`} onClick={() => setActiveTab('rekap')}>
+        <button className={`${styles.tab} ${activeTab === 'rekap' ? styles.activeTab : ''}`} onClick={() => setActiveTab('rekap')}>
           <i className="fas fa-chart-bar"></i> Rekapitulasi Poin
         </button>
-      </div>
+      </div></div></div>
 
       {activeTab === 'form' && (
         <div className={styles.card} style={{ maxWidth: '900px', margin: '20px auto', padding: '30px' }}>
@@ -174,7 +174,7 @@ export default function PenilaianDiriPage() {
             <input type="text" className={styles.inputField} value={periode} onChange={e => setPeriode(e.target.value)} />
           </div>
 
-          {userRole === 'siswa' && (
+          {userRole.toLowerCase().includes('siswa') && (
             <>
               <h2 style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: 10, marginTop: 30 }}>A. Penilaian Diri</h2>
               <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: 20 }}>Nilailah dirimu sendiri secara objektif untuk karakter-karakter di bawah ini.</p>
@@ -227,7 +227,7 @@ export default function PenilaianDiriPage() {
             </>
           )}
 
-          {(userRole === 'guru' || userRole === 'admin') && (
+          {((userRole.toLowerCase().includes('guru') || userRole.toLowerCase().includes('admin') || userRole.toLowerCase().includes('wali'))) && (
             <>
               <h2 style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: 10, marginTop: 10 }}>Penilaian Murid oleh Guru / Wali Kelas</h2>
               <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: 20 }}>Pilih murid (dari kelas berapapun) yang paling mewakili karakter di bawah ini. Alasan bersifat opsional.</p>
@@ -255,7 +255,17 @@ export default function PenilaianDiriPage() {
             </>
           )}
 
+          
+          {(!userRole.toLowerCase().includes('siswa') && !userRole.toLowerCase().includes('guru') && !userRole.toLowerCase().includes('admin') && !userRole.toLowerCase().includes('wali')) && (
+            <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+              <i className="fas fa-lock" style={{ fontSize: '3rem', marginBottom: '15px', color: '#cbd5e1' }}></i>
+              <h3>Akses Terbatas</h3>
+              <p>Maaf, peran akun Anda ({userRole || 'Tidak diketahui'}) tidak memiliki akses untuk mengisi formulir ini.</p>
+            </div>
+          )}
+          
           <div style={{ textAlign: 'right', marginTop: 30 }}>
+
             <button className={styles.btn} style={{ background: 'var(--primary)', color: 'white', padding: '12px 24px', fontSize: '1rem' }} onClick={handleSave} disabled={saving}>
               {saving ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>} {saving ? 'Menyimpan...' : 'Kirim Penilaian'}
             </button>
@@ -274,7 +284,7 @@ export default function PenilaianDiriPage() {
             <InlineLoading message="Menghitung poin rekapitulasi..." />
           ) : (
             <div className={styles.tableWrapper}>
-              <table className={styles.dataTable}>
+              <table className={styles.table}>
                 <thead>
                   <tr>
                     <th>No</th>
