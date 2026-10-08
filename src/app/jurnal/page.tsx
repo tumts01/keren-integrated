@@ -228,13 +228,23 @@ export default function JurnalPage() {
   };
 
   // Filter rekap
-  const filtered = rekapData.filter(r => {
-    if (!isAdmin && r.namaGuru?.trim().toLowerCase() !== currentUsername?.trim().toLowerCase()) return false;
-    if (filterGuru && r.namaGuru?.trim().toLowerCase() !== filterGuru?.trim().toLowerCase()) return false;
-    if (filterFrom && r.tanggal < filterFrom) return false;
-    if (filterTo && r.tanggal > filterTo) return false;
-    return true;
-  });
+  let filtered = rekapData.filter(r => {
+      if (!isAdmin && r.namaGuru?.trim().toLowerCase() !== currentUsername?.trim().toLowerCase()) return false;
+      if (filterGuru && r.namaGuru?.trim().toLowerCase() !== filterGuru?.trim().toLowerCase()) return false;
+      if (filterFrom && r.tanggal < filterFrom) return false;
+      if (filterTo && r.tanggal > filterTo) return false;
+      return true;
+    });
+
+    // Urutkan berdasarkan tanggal (terbaru ke terlama) lalu jam ke (awal ke akhir)
+    filtered.sort((a, b) => {
+      if (a.tanggal > b.tanggal) return -1;
+      if (a.tanggal < b.tanggal) return 1;
+      
+      const jamA = parseInt(a.jamKe.split(',')[0]) || 0;
+      const jamB = parseInt(b.jamKe.split(',')[0]) || 0;
+      return jamA - jamB;
+    });
 
   // Group by guru for admin summary
   const guruSummary = filtered.reduce((acc: Record<string, number>, r) => {
