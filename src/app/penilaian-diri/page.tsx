@@ -203,9 +203,11 @@ export default function PenilaianDiriPage() {
         <button className={`${styles.tab} ${activeTab === 'form' ? styles.activeTab : ''}`} onClick={() => setActiveTab('form')}>
           <i className="fas fa-clipboard-list"></i> Formulir Penilaian
         </button>
-        <button className={`${styles.tab} ${activeTab === 'rekap' ? styles.activeTab : ''}`} onClick={() => setActiveTab('rekap')}>
-          <i className="fas fa-chart-bar"></i> Rekapitulasi Poin
-        </button>
+        {!(userRole || '').toLowerCase().includes('siswa') && (
+            <button className={`${styles.tab} ${activeTab === 'rekap' ? styles.activeTab : ''}`} onClick={() => setActiveTab('rekap')}>
+              <i className="fas fa-chart-bar"></i> Rekapitulasi Poin
+            </button>
+          )}
       </div></div></div>
 
       {activeTab === 'form' && (
@@ -340,7 +342,7 @@ export default function PenilaianDiriPage() {
         </div>
       )}
 
-      {activeTab === 'rekap' && (
+      {activeTab === 'rekap' && !(userRole || '').toLowerCase().includes('siswa') && (
         <div className={styles.card} style={{ maxWidth: '100%', width: '95%', margin: '20px auto', padding: '30px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <h2 style={{ margin: 0 }}><i className="fas fa-trophy"></i> Rekapitulasi Poin Karakter ({periode})</h2>
