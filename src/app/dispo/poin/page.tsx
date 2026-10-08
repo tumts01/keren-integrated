@@ -169,7 +169,7 @@ export default function PoinSiswaPage() {
   const rekapData = useMemo(() => {
     const map: Record<string, { nama: string, kelas: string, apresiasi: number, pelanggaran: number, total: number }> = {};
     data.forEach(r => {
-      const key = \`\${r.namaSiswa}_\${r.kelas}\`;
+      const key = `${r.namaSiswa}_${r.kelas}`;
       if (!map[key]) map[key] = { nama: r.namaSiswa, kelas: r.kelas, apresiasi: 0, pelanggaran: 0, total: 0 };
       if (r.tipe === 'Apresiasi') {
         map[key].apresiasi += Math.abs(r.poin);
@@ -199,7 +199,7 @@ export default function PoinSiswaPage() {
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Riwayat Poin");
-    XLSX.writeFile(wb, \`Riwayat_Poin_Siswa_\${new Date().toISOString().slice(0,10)}.xlsx\`);
+    XLSX.writeFile(wb, `Riwayat_Poin_Siswa_${new Date().toISOString().slice(0,10)}.xlsx`);
   };
 
   const handleExportRekap = () => {
@@ -214,7 +214,7 @@ export default function PoinSiswaPage() {
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Rekap Poin");
-    XLSX.writeFile(wb, \`Rekap_Poin_Siswa_\${new Date().toISOString().slice(0,10)}.xlsx\`);
+    XLSX.writeFile(wb, `Rekap_Poin_Siswa_${new Date().toISOString().slice(0,10)}.xlsx`);
   };
 
   if (loading) {
