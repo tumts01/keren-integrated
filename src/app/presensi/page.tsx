@@ -2510,7 +2510,7 @@ export default function PresensiPage() {
               </div>
             ) : (() => {
               const matchName = (a: string, b: string) => { if (!a || !b) return false; return a.trim().toLowerCase() === b.trim().toLowerCase(); };
-              const filtered = rekapJurnalData.filter(r => { if (!isAdmin && !matchName(r.namaGuru, currentUsername)) return false; if (filterGuruRekap && !matchName(r.namaGuru, filterGuruRekap)) return false; if (filterKelasRekap && r.kelas !== filterKelasRekap) return false; if (filterFromRekap && r.tanggal < filterFromRekap) return false; if (filterToRekap && r.tanggal > filterToRekap) return false; return true; });
+              const filtered = rekapJurnalData.filter(r => { if (!isAdmin && !matchName(r.namaGuru, currentUsername)) return false; if (filterGuruRekap && !matchName(r.namaGuru, filterGuruRekap)) return false; if (filterKelasRekap && r.kelas !== filterKelasRekap) return false; if (filterFrom && r.tanggal < filterFrom) return false; if (filterTo && r.tanggal > filterTo) return false; return true; });
               filtered.sort((a, b) => { if (a.tanggal > b.tanggal) return -1; if (a.tanggal < b.tanggal) return 1; const jamA = parseInt(a.jamKe.split(',')[0]) || 0; const jamB = parseInt(b.jamKe.split(',')[0]) || 0; return jamA - jamB; });
               return (
                 <div>
