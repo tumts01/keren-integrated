@@ -123,7 +123,7 @@ export async function POST(request: Request) {
       const dbJam = cleanJamKe(String(overlappingGuru.metadata?.['JAM KE'] || ''));
       return NextResponse.json({
         success: false,
-        error: `Gagal menyimpan: Anda tercatat sedang mengajar di kelas ${dbKelas} pada jam ke-${dbJam}. (Satu guru tidak bisa mengajar di kelas yang berbeda pada waktu yang sama)`
+        error: `Ups: Anda tercatat sedang mengajar di kelas ${dbKelas} pada jam ke-${dbJam}. (Satu guru tidak bisa mengajar di kelas yang berbeda pada waktu yang sama) atau jangan2 anda punya jurus Kagebunshin?!`
       }, { status: 409 });
     }
 
@@ -215,7 +215,7 @@ export async function PUT(request: Request) {
       const dbJam = cleanJamKe(String(overlappingGuru.metadata?.['JAM KE'] || ''));
       return NextResponse.json({
         success: false,
-        error: `Gagal menyimpan: Anda tercatat sedang mengajar di kelas ${dbKelas} pada jam ke-${dbJam}. (Satu guru tidak bisa mengajar di kelas yang berbeda pada waktu yang sama)`
+        error: `Ups: Anda tercatat sedang mengajar di kelas ${dbKelas} pada jam ke-${dbJam}. (Satu guru tidak bisa mengajar di kelas yang berbeda pada waktu yang sama) atau jangan2 anda punya jurus Kagebunshin?!`
       }, { status: 409 });
     }
 
