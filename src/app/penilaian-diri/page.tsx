@@ -170,9 +170,19 @@ export default function PenilaianDiriPage() {
 
       {activeTab === 'form' && (
         <div className={styles.card} style={{ maxWidth: '900px', margin: '20px auto', padding: '30px' }}>
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ fontWeight: 'bold' }}>Periode Penilaian:</label>
-            <input type="text" className={styles.inputField} value={periode} onChange={e => setPeriode(e.target.value)} />
+          <div style={{ marginBottom: 30, display: 'flex', alignItems: 'center', gap: '15px', background: '#f8fafc', padding: '15px 20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+            <label style={{ fontWeight: 'bold', color: '#1e293b', margin: 0, whiteSpace: 'nowrap' }}>
+              <i className="fas fa-calendar-alt" style={{ color: 'var(--primary)', marginRight: 8 }}></i>
+              Periode Penilaian:
+            </label>
+            <select className={styles.inputField} style={{ margin: 0, flex: 1, maxWidth: '250px', cursor: 'pointer', fontWeight: 'bold', color: 'var(--primary)' }} value={periode} onChange={e => setPeriode(e.target.value)}>
+              {Array.from({length: 12}).map((_, i) => {
+                 const d = new Date();
+                 d.setMonth(d.getMonth() - i);
+                 const val = d.toLocaleString('id-ID', {month: 'long'}) + ' ' + d.getFullYear();
+                 return <option key={val} value={val}>{val}</option>
+              })}
+            </select>
           </div>
 
           {userRole.toLowerCase().includes('siswa') && (
@@ -259,10 +269,32 @@ export default function PenilaianDiriPage() {
             </div>
           )}
           
-          <div style={{ textAlign: 'right', marginTop: 30 }}>
+          <div style={{ textAlign: 'right', marginTop: 40, borderTop: '2px dashed #e2e8f0', paddingTop: 25 }}>
 
-            <button className={styles.btn} style={{ background: 'var(--primary)', color: 'white', padding: '12px 24px', fontSize: '1rem' }} onClick={handleSave} disabled={saving}>
-              {saving ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>} {saving ? 'Menyimpan...' : 'Kirim Penilaian'}
+            <button 
+              onClick={handleSave} 
+              disabled={saving}
+              style={{ 
+                background: 'linear-gradient(135deg, var(--primary) 0%, #047857 100%)', 
+                color: 'white', 
+                padding: '14px 32px', 
+                fontSize: '1.05rem', 
+                fontWeight: 'bold',
+                border: 'none',
+                borderRadius: '50px',
+                cursor: saving ? 'not-allowed' : 'pointer',
+                boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.3)',
+                transition: 'all 0.3s ease',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '10px',
+                opacity: saving ? 0.7 : 1
+              }}
+              onMouseOver={e => { if(!saving) e.currentTarget.style.transform = 'translateY(-2px)' }}
+              onMouseOut={e => { if(!saving) e.currentTarget.style.transform = 'translateY(0)' }}
+            >
+              {saving ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-paper-plane"></i>} 
+              {saving ? 'Sedang Menyimpan...' : 'Kirim Penilaian Sekarang'}
             </button>
           </div>
         </div>
