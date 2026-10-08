@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     const { error } = await supabase.from('data_dispo_siswa').insert([{ tanggal, metadata }]);
     if (error) throw error;
 
-    revalidateTag('poin-siswa');
+    revalidateTag('poin-siswa', {});
     return NextResponse.json({ success: true, id });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -97,7 +97,7 @@ export async function DELETE(request: Request) {
       if (error) throw error;
     }
 
-    revalidateTag('poin-siswa');
+    revalidateTag('poin-siswa', {});
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
