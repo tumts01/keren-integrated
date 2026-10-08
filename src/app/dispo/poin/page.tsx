@@ -312,7 +312,7 @@ export default function PoinSiswaPage() {
                 <select 
                   value={poin} 
                   onChange={e => setPoin(Number(e.target.value))}
-                  className={styles.selectField}
+                  className={styles.inputField}
                 >
                   <option value={5}>{tipe === 'Apresiasi' ? '+5 Poin (Ringan)' : '-5 Poin (Ringan)'}</option>
                   <option value={10}>{tipe === 'Apresiasi' ? '+10 Poin (Sedang)' : '-10 Poin (Sedang)'}</option>
@@ -333,14 +333,14 @@ export default function PoinSiswaPage() {
           </form>
         </div>
 
-        <div className={styles.card} style={{ marginTop: '40px' }}>
+        <div className={styles.card} style={{ maxWidth: '1100px', margin: '40px auto 30px' }}>
           <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '15px' }}>
             <i className="fas fa-history" style={{ color: '#475569' }}></i> Riwayat Input
           </h2>
           <div className={styles.filterSection} style={{ marginBottom: '20px' }}>
             <div className={styles.filterGroup}>
               <label>Filter Tipe</label>
-              <select value={filterTipe} onChange={e => setFilterTipe(e.target.value)} className={styles.selectField}>
+              <select value={filterTipe} onChange={e => setFilterTipe(e.target.value)} className={styles.inputField}>
                 <option value="Semua">Semua Tipe</option>
                 <option value="Apresiasi">Apresiasi</option>
                 <option value="Pelanggaran">Pelanggaran</option>
@@ -348,14 +348,14 @@ export default function PoinSiswaPage() {
             </div>
             <div className={styles.filterGroup}>
               <label>Filter Kelas</label>
-              <select value={filterKelas} onChange={e => setFilterKelas(e.target.value)} className={styles.selectField}>
+              <select value={filterKelas} onChange={e => setFilterKelas(e.target.value)} className={styles.inputField}>
                 <option value="Semua">Semua Kelas</option>
                 {uniqueKelas.map(k => <option key={k} value={k}>{k}</option>)}
               </select>
             </div>
             <div className={styles.filterGroup}>
               <label>Filter Bulan</label>
-              <select value={filterBulan} onChange={e => setFilterBulan(e.target.value)} className={styles.selectField}>
+              <select value={filterBulan} onChange={e => setFilterBulan(e.target.value)} className={styles.inputField}>
                 <option value="Semua">Semua Bulan</option>
                 {Array.from({length: 12}).map((_, i) => (
                   <option key={i+1} value={(i+1).toString()}>{new Date(2000, i).toLocaleString('id-ID', {month:'long'})}</option>
@@ -427,7 +427,7 @@ export default function PoinSiswaPage() {
           </div>
         </div>
 
-        <div className={styles.card} style={{ marginTop: '40px' }}>
+        <div className={styles.card} style={{ maxWidth: '1100px', margin: '40px auto 30px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '15px' }}>
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
               <i className="fas fa-chart-bar" style={{ color: '#475569' }}></i> Rekapitulasi Poin Siswa
