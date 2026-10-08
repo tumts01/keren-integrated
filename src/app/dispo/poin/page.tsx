@@ -334,9 +334,14 @@ export default function PoinSiswaPage() {
         </div>
 
         <div className={styles.card} style={{ maxWidth: '1100px', margin: '40px auto 30px' }}>
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '15px' }}>
-            <i className="fas fa-history" style={{ color: '#475569' }}></i> Riwayat Input
-          </h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '15px' }}>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+              <i className="fas fa-history" style={{ color: '#475569' }}></i> Riwayat Input
+            </h2>
+            <button onClick={handleExportRiwayat} style={{ background: '#10b981', border: 'none', padding: '8px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.9rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+              <i className="fas fa-file-excel"></i> Export Excel
+            </button>
+          </div>
           <div className={styles.filterSection} style={{ marginBottom: '20px' }}>
             <div className={styles.filterGroup}>
               <label>Filter Tipe</label>
@@ -372,11 +377,7 @@ export default function PoinSiswaPage() {
                 className={styles.inputField}
               />
             </div>
-            <div className={styles.filterGroup} style={{ display: 'flex', alignItems: 'flex-end' }}>
-              <button onClick={handleExportRiwayat} style={{ background: '#10b981', border: 'none', padding: '8px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.9rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, height: '42px' }}>
-                <i className="fas fa-file-excel"></i> Export Excel
-              </button>
-            </div>
+            
           </div>
 
           <div className={styles.tableWrapper}>
