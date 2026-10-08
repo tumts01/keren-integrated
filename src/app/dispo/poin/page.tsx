@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
+import styles from '../../presensi/presensi.module.css';
 
 interface PoinRecord {
   id: string;
@@ -66,7 +67,7 @@ export default function PoinSiswaPage() {
       
       if (resPoin.success) setData(resPoin.data);
       if (resSiswa.success) {
-        setSiswaList(resSiswa.data.filter((s: any) => s.isLatest && s.status?.toLowerCase() === 'aktif'));
+        setSiswaList(resSiswa.data.filter((s: any) => s.isLatest && (s.status || '').toLowerCase() === 'aktif'));
       }
     } catch (err) {
       console.error(err);
@@ -168,7 +169,7 @@ export default function PoinSiswaPage() {
   const rekapData = useMemo(() => {
     const map: Record<string, { nama: string, kelas: string, apresiasi: number, pelanggaran: number, total: number }> = {};
     data.forEach(r => {
-      const key = `${r.namaSiswa}_${r.kelas}`;
+      const key = \`\${r.namaSiswa}_\${r.kelas}\`;
       if (!map[key]) map[key] = { nama: r.namaSiswa, kelas: r.kelas, apresiasi: 0, pelanggaran: 0, total: 0 };
       if (r.tipe === 'Apresiasi') {
         map[key].apresiasi += Math.abs(r.poin);
@@ -179,7 +180,7 @@ export default function PoinSiswaPage() {
     return Object.values(map).map(m => ({
       ...m,
       total: m.apresiasi - m.pelanggaran
-    })).sort((a, b) => b.total - a.total); // Sort by highest points
+    })).sort((a, b) => b.total - a.total);
   }, [data]);
 
   const uniqueKelas = Array.from(new Set(siswaList.map(s => s.rombel))).sort();
@@ -198,7 +199,7 @@ export default function PoinSiswaPage() {
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Riwayat Poin");
-    XLSX.writeFile(wb, `Riwayat_Poin_Siswa_${new Date().toISOString().slice(0,10)}.xlsx`);
+    XLSX.writeFile(wb, \`Riwayat_Poin_Siswa_\${new Date().toISOString().slice(0,10)}.xlsx\`);
   };
 
   const handleExportRekap = () => {
@@ -213,273 +214,286 @@ export default function PoinSiswaPage() {
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Rekap Poin");
-    XLSX.writeFile(wb, `Rekap_Poin_Siswa_${new Date().toISOString().slice(0,10)}.xlsx`);
+    XLSX.writeFile(wb, \`Rekap_Poin_Siswa_\${new Date().toISOString().slice(0,10)}.xlsx\`);
   };
 
   if (loading) {
-    return <div className="p-6 text-center text-gray-500">Memuat data...</div>;
+    return <div className={styles.container}><div className={styles.loading}>Memuat data...</div></div>;
   }
 
   return (
-    <div className="p-4 md:p-6 pb-20">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">Apresiasi & Pelanggaran</h1>
-          <p className="text-gray-500 text-sm mt-1">Kelola poin apresiasi dan catatan pelanggaran siswa</p>
-        </div>
-      </div>
+    <div className={styles.container}>
+      <header className={styles.header}>
+        <h1 className={styles.title}>Apresiasi & Pelanggaran</h1>
+        <p className={styles.subtitle}>Kelola poin apresiasi dan catatan pelanggaran siswa</p>
+      </header>
 
-      <div className="flex gap-2 mb-6 border-b border-gray-200">
+      <div className={styles.tabs} style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '1px solid #e2e8f0' }}>
         <button 
           onClick={() => setActiveTab('input')} 
-          className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${activeTab === 'input' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          style={{ padding: '10px 20px', borderBottom: activeTab === 'input' ? '3px solid #2563eb' : 'none', color: activeTab === 'input' ? '#2563eb' : '#64748b', fontWeight: 'bold', background: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none', cursor: 'pointer' }}
         >
-          <i className="fas fa-edit mr-2"></i> Input Data
+          <i className="fas fa-edit"></i> Input Data
         </button>
         <button 
           onClick={() => setActiveTab('riwayat')} 
-          className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${activeTab === 'riwayat' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          style={{ padding: '10px 20px', borderBottom: activeTab === 'riwayat' ? '3px solid #2563eb' : 'none', color: activeTab === 'riwayat' ? '#2563eb' : '#64748b', fontWeight: 'bold', background: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none', cursor: 'pointer' }}
         >
-          <i className="fas fa-history mr-2"></i> Riwayat Input
+          <i className="fas fa-history"></i> Riwayat Input
         </button>
         <button 
           onClick={() => setActiveTab('rekap')} 
-          className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${activeTab === 'rekap' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+          style={{ padding: '10px 20px', borderBottom: activeTab === 'rekap' ? '3px solid #2563eb' : 'none', color: activeTab === 'rekap' ? '#2563eb' : '#64748b', fontWeight: 'bold', background: 'none', borderTop: 'none', borderLeft: 'none', borderRight: 'none', cursor: 'pointer' }}
         >
-          <i className="fas fa-chart-bar mr-2"></i> Rekap Poin
+          <i className="fas fa-chart-bar"></i> Rekap Poin
         </button>
       </div>
 
-      {activeTab === 'input' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 max-w-2xl">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Tipe Data</label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" name="tipe" checked={tipe === 'Apresiasi'} onChange={() => { setTipe('Apresiasi'); setPoin(5); }} className="w-4 h-4 text-blue-600" />
-                  <span className="font-medium text-blue-700">Apresiasi</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" name="tipe" checked={tipe === 'Pelanggaran'} onChange={() => { setTipe('Pelanggaran'); setPoin(5); }} className="w-4 h-4 text-red-600" />
-                  <span className="font-medium text-red-700">Pelanggaran</span>
-                </label>
-              </div>
-            </div>
+      <div className={styles.content}>
+        {activeTab === 'input' && (
+          <div className={styles.card} style={{ maxWidth: '600px', margin: '0 auto 30px' }}>
+            <form onSubmit={handleSubmit}>
+              <div className={styles.filterSection} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <div className={styles.filterGroup}>
+                  <label>Tipe Data</label>
+                  <div style={{ display: 'flex', gap: '20px', marginTop: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#1d4ed8', fontWeight: 'bold' }}>
+                      <input type="radio" name="tipe" checked={tipe === 'Apresiasi'} onChange={() => { setTipe('Apresiasi'); setPoin(5); }} />
+                      Apresiasi
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', color: '#b91c1c', fontWeight: 'bold' }}>
+                      <input type="radio" name="tipe" checked={tipe === 'Pelanggaran'} onChange={() => { setTipe('Pelanggaran'); setPoin(5); }} />
+                      Pelanggaran
+                    </label>
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Tanggal</label>
-                <input 
-                  type="date" 
-                  value={tanggal} 
-                  onChange={e => setTanggal(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  required
-                />
-              </div>
-              <div className="relative">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Cari Siswa</label>
-                {!selectedSiswa ? (
-                  <>
+                <div style={{ display: 'flex', gap: '15px' }}>
+                  <div className={styles.filterGroup} style={{ flex: 1 }}>
+                    <label>Tanggal</label>
                     <input 
-                      type="text" 
-                      value={searchSiswa} 
-                      onChange={e => setSearchSiswa(e.target.value)}
-                      placeholder="Ketik nama siswa..."
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                      type="date" 
+                      value={tanggal} 
+                      onChange={e => setTanggal(e.target.value)}
+                      className={styles.inputField}
+                      required
                     />
-                    {filteredSiswaList.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg">
-                        {filteredSiswaList.map(s => (
-                          <div 
-                            key={s.id} 
-                            onClick={() => setSelectedSiswa(s)}
-                            className="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b last:border-0"
-                          >
-                            <div className="font-medium text-sm text-gray-800">{s.nama}</div>
-                            <div className="text-xs text-gray-500">Kelas {s.rombel}</div>
+                  </div>
+                  <div className={styles.filterGroup} style={{ flex: 1, position: 'relative' }}>
+                    <label>Cari Siswa</label>
+                    {!selectedSiswa ? (
+                      <>
+                        <input 
+                          type="text" 
+                          value={searchSiswa} 
+                          onChange={e => setSearchSiswa(e.target.value)}
+                          placeholder="Ketik nama siswa..."
+                          className={styles.inputField}
+                        />
+                        {filteredSiswaList.length > 0 && (
+                          <div style={{ position: 'absolute', zIndex: 10, width: '100%', marginTop: '5px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+                            {filteredSiswaList.map(s => (
+                              <div 
+                                key={s.id} 
+                                onClick={() => setSelectedSiswa(s)}
+                                style={{ padding: '10px 15px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
+                              >
+                                <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#1e293b' }}>{s.nama}</div>
+                                <div style={{ fontSize: '12px', color: '#64748b' }}>Kelas {s.rombel}</div>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        )}
+                      </>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', border: '1px solid #22c55e', backgroundColor: '#f0fdf4', borderRadius: '8px' }}>
+                        <div>
+                          <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#166534' }}>{selectedSiswa.nama}</div>
+                          <div style={{ fontSize: '12px', color: '#15803d' }}>Kelas {selectedSiswa.rombel}</div>
+                        </div>
+                        <button type="button" onClick={() => setSelectedSiswa(null)} style={{ background: 'none', border: 'none', color: '#166534', cursor: 'pointer' }}>
+                          <i className="fas fa-times"></i>
+                        </button>
                       </div>
                     )}
-                  </>
-                ) : (
-                  <div className="flex items-center justify-between px-4 py-2 border border-green-500 bg-green-50 rounded-lg">
-                    <div>
-                      <div className="font-medium text-sm text-green-800">{selectedSiswa.nama}</div>
-                      <div className="text-xs text-green-600">Kelas {selectedSiswa.rombel}</div>
-                    </div>
-                    <button type="button" onClick={() => setSelectedSiswa(null)} className="text-green-700 hover:text-green-900">
-                      <i className="fas fa-times"></i>
-                    </button>
                   </div>
-                )}
+                </div>
+
+                <div className={styles.filterGroup}>
+                  <label>Keterangan {tipe}</label>
+                  <input 
+                    type="text" 
+                    value={keterangan} 
+                    onChange={e => setKeterangan(e.target.value)}
+                    placeholder={tipe === 'Apresiasi' ? 'Contoh: Juara 1 Lomba Pidato' : 'Contoh: Terlambat masuk kelas, Membuang sampah sembarangan'}
+                    className={styles.inputField}
+                    required
+                  />
+                </div>
+
+                <div className={styles.filterGroup}>
+                  <label>Poin {tipe}</label>
+                  <select 
+                    value={poin} 
+                    onChange={e => setPoin(Number(e.target.value))}
+                    className={styles.selectField}
+                  >
+                    <option value={5}>{tipe === 'Apresiasi' ? '+5 Poin (Ringan)' : '-5 Poin (Ringan)'}</option>
+                    <option value={10}>{tipe === 'Apresiasi' ? '+10 Poin (Sedang)' : '-10 Poin (Sedang)'}</option>
+                    <option value={15}>{tipe === 'Apresiasi' ? '+15 Poin (Tinggi)' : '-15 Poin (Berat)'}</option>
+                    <option value={20}>{tipe === 'Apresiasi' ? '+20 Poin (Sangat Tinggi)' : '-20 Poin (Sangat Berat)'}</option>
+                    <option value={50}>{tipe === 'Apresiasi' ? '+50 Poin (Luar Biasa)' : '-50 Poin (Fatal)'}</option>
+                  </select>
+                </div>
+
+                <button 
+                  type="submit" 
+                  disabled={isSubmitting || !selectedSiswa}
+                  className={styles.button}
+                  style={{ width: '100%', marginTop: '10px' }}
+                >
+                  {isSubmitting ? 'Menyimpan...' : 'Simpan Data'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {activeTab === 'riwayat' && (
+          <div className={styles.card}>
+            <div className={styles.filterSection} style={{ marginBottom: '20px' }}>
+              <div className={styles.filterGroup}>
+                <label>Filter Tipe</label>
+                <select value={filterTipe} onChange={e => setFilterTipe(e.target.value)} className={styles.selectField}>
+                  <option value="Semua">Semua Tipe</option>
+                  <option value="Apresiasi">Apresiasi</option>
+                  <option value="Pelanggaran">Pelanggaran</option>
+                </select>
+              </div>
+              <div className={styles.filterGroup}>
+                <label>Filter Kelas</label>
+                <select value={filterKelas} onChange={e => setFilterKelas(e.target.value)} className={styles.selectField}>
+                  <option value="Semua">Semua Kelas</option>
+                  {uniqueKelas.map(k => <option key={k} value={k}>{k}</option>)}
+                </select>
+              </div>
+              <div className={styles.filterGroup}>
+                <label>Filter Bulan</label>
+                <select value={filterBulan} onChange={e => setFilterBulan(e.target.value)} className={styles.selectField}>
+                  <option value="Semua">Semua Bulan</option>
+                  {Array.from({length: 12}).map((_, i) => (
+                    <option key={i+1} value={(i+1).toString()}>{new Date(2000, i).toLocaleString('id-ID', {month:'long'})}</option>
+                  ))}
+                </select>
+              </div>
+              <div className={styles.filterGroup}>
+                <label>Cari</label>
+                <input 
+                  type="text" 
+                  value={searchRiwayat}
+                  onChange={e => setSearchRiwayat(e.target.value)}
+                  placeholder="Cari siswa/keterangan..." 
+                  className={styles.inputField}
+                />
+              </div>
+              <div className={styles.filterGroup} style={{ display: 'flex', alignItems: 'flex-end' }}>
+                <button onClick={handleExportRiwayat} className={styles.button} style={{ backgroundColor: '#10b981' }}>
+                  <i className="fas fa-file-excel"></i> Export Excel
+                </button>
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Keterangan {tipe}
-              </label>
-              <input 
-                type="text" 
-                value={keterangan} 
-                onChange={e => setKeterangan(e.target.value)}
-                placeholder={tipe === 'Apresiasi' ? 'Contoh: Juara 1 Lomba Pidato' : 'Contoh: Terlambat masuk kelas, Membuang sampah sembarangan'}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Poin {tipe}
-              </label>
-              <select 
-                value={poin} 
-                onChange={e => setPoin(Number(e.target.value))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              >
-                <option value={5}>{tipe === 'Apresiasi' ? '+5 Poin (Ringan)' : '-5 Poin (Ringan)'}</option>
-                <option value={10}>{tipe === 'Apresiasi' ? '+10 Poin (Sedang)' : '-10 Poin (Sedang)'}</option>
-                <option value={15}>{tipe === 'Apresiasi' ? '+15 Poin (Tinggi)' : '-15 Poin (Berat)'}</option>
-                <option value={20}>{tipe === 'Apresiasi' ? '+20 Poin (Sangat Tinggi)' : '-20 Poin (Sangat Berat)'}</option>
-                <option value={50}>{tipe === 'Apresiasi' ? '+50 Poin (Luar Biasa)' : '-50 Poin (Fatal)'}</option>
-              </select>
-            </div>
-
-            <button 
-              type="submit" 
-              disabled={isSubmitting || !selectedSiswa}
-              className="mt-2 w-full py-2.5 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              {isSubmitting ? 'Menyimpan...' : 'Simpan Data'}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {activeTab === 'riwayat' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 flex flex-wrap gap-4 items-center justify-between">
-            <div className="flex flex-wrap gap-3">
-              <select value={filterTipe} onChange={e => setFilterTipe(e.target.value)} className="px-3 py-1.5 border border-gray-300 rounded-md text-sm outline-none">
-                <option value="Semua">Semua Tipe</option>
-                <option value="Apresiasi">Apresiasi</option>
-                <option value="Pelanggaran">Pelanggaran</option>
-              </select>
-              <select value={filterKelas} onChange={e => setFilterKelas(e.target.value)} className="px-3 py-1.5 border border-gray-300 rounded-md text-sm outline-none">
-                <option value="Semua">Semua Kelas</option>
-                {uniqueKelas.map(k => <option key={k} value={k}>{k}</option>)}
-              </select>
-              <select value={filterBulan} onChange={e => setFilterBulan(e.target.value)} className="px-3 py-1.5 border border-gray-300 rounded-md text-sm outline-none">
-                <option value="Semua">Semua Bulan</option>
-                {Array.from({length: 12}).map((_, i) => (
-                  <option key={i+1} value={(i+1).toString()}>{new Date(2000, i).toLocaleString('id-ID', {month:'long'})}</option>
-                ))}
-              </select>
-              <input 
-                type="text" 
-                value={searchRiwayat}
-                onChange={e => setSearchRiwayat(e.target.value)}
-                placeholder="Cari siswa/keterangan..." 
-                className="px-3 py-1.5 border border-gray-300 rounded-md text-sm outline-none min-w-[200px]"
-              />
-            </div>
-            <button onClick={handleExportRiwayat} className="px-4 py-1.5 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 flex items-center gap-2">
-              <i className="fas fa-file-excel"></i> Export Excel
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left text-gray-600">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-center">No</th>
-                  <th className="px-4 py-3">Tanggal</th>
-                  <th className="px-4 py-3">Tipe</th>
-                  <th className="px-4 py-3">Nama Siswa</th>
-                  <th className="px-4 py-3">Kelas</th>
-                  <th className="px-4 py-3">Keterangan</th>
-                  <th className="px-4 py-3 text-center">Poin</th>
-                  <th className="px-4 py-3 text-center">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {riwayatData.length > 0 ? riwayatData.map((r, i) => (
-                  <tr key={r.id} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-3 text-center">{i + 1}</td>
-                    <td className="px-4 py-3">{r.tanggal}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-1 text-xs rounded-full font-medium ${r.tipe === 'Apresiasi' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>
-                        {r.tipe}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-medium text-gray-900">{r.namaSiswa}</td>
-                    <td className="px-4 py-3">{r.kelas}</td>
-                    <td className="px-4 py-3">{r.keterangan}</td>
-                    <td className={`px-4 py-3 text-center font-bold ${r.tipe === 'Apresiasi' ? 'text-blue-600' : 'text-red-600'}`}>
-                      {r.tipe === 'Apresiasi' ? '+' : '-'}{Math.abs(r.poin)}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <button onClick={() => handleDelete(r.id)} className="text-red-500 hover:text-red-700 p-1">
-                        <i className="fas fa-trash"></i>
-                      </button>
-                    </td>
-                  </tr>
-                )) : (
+            <div className={styles.tableContainer}>
+              <table className={styles.table}>
+                <thead>
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-gray-500">Data tidak ditemukan.</td>
+                    <th>No</th>
+                    <th>Tanggal</th>
+                    <th>Tipe</th>
+                    <th>Nama Siswa</th>
+                    <th>Kelas</th>
+                    <th>Keterangan</th>
+                    <th style={{ textAlign: 'center' }}>Poin</th>
+                    <th style={{ textAlign: 'center' }}>Aksi</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {riwayatData.length > 0 ? riwayatData.map((r, i) => (
+                    <tr key={r.id}>
+                      <td style={{ textAlign: 'center' }}>{i + 1}</td>
+                      <td>{r.tanggal}</td>
+                      <td>
+                        <span style={{ padding: '4px 8px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', backgroundColor: r.tipe === 'Apresiasi' ? '#dbeafe' : '#fee2e2', color: r.tipe === 'Apresiasi' ? '#1d4ed8' : '#b91c1c' }}>
+                          {r.tipe}
+                        </span>
+                      </td>
+                      <td style={{ fontWeight: 'bold' }}>{r.namaSiswa}</td>
+                      <td>{r.kelas}</td>
+                      <td>{r.keterangan}</td>
+                      <td style={{ textAlign: 'center', fontWeight: 'bold', color: r.tipe === 'Apresiasi' ? '#2563eb' : '#dc2626' }}>
+                        {r.tipe === 'Apresiasi' ? '+' : '-'}{Math.abs(r.poin)}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button onClick={() => handleDelete(r.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={8} style={{ textAlign: 'center', padding: '20px' }}>Data tidak ditemukan.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {activeTab === 'rekap' && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-            <h3 className="font-semibold text-gray-700">Rekapitulasi Poin Siswa</h3>
-            <button onClick={handleExportRekap} className="px-4 py-1.5 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 flex items-center gap-2">
-              <i className="fas fa-file-excel"></i> Export Rekap
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left text-gray-600">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-center">Peringkat</th>
-                  <th className="px-4 py-3">Nama Siswa</th>
-                  <th className="px-4 py-3">Kelas</th>
-                  <th className="px-4 py-3 text-center">Total Apresiasi</th>
-                  <th className="px-4 py-3 text-center">Total Pelanggaran</th>
-                  <th className="px-4 py-3 text-center bg-gray-100">Poin Bersih</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rekapData.length > 0 ? rekapData.map((r, i) => (
-                  <tr key={i} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-3 text-center font-bold text-gray-400">#{i + 1}</td>
-                    <td className="px-4 py-3 font-medium text-gray-900">{r.nama}</td>
-                    <td className="px-4 py-3">{r.kelas}</td>
-                    <td className="px-4 py-3 text-center text-blue-600">+{r.apresiasi}</td>
-                    <td className="px-4 py-3 text-center text-red-600">-{r.pelanggaran}</td>
-                    <td className={`px-4 py-3 text-center font-bold bg-gray-50 ${r.total > 0 ? 'text-blue-700' : r.total < 0 ? 'text-red-700' : 'text-gray-500'}`}>
-                      {r.total > 0 ? '+' : ''}{r.total}
-                    </td>
-                  </tr>
-                )) : (
+        {activeTab === 'rekap' && (
+          <div className={styles.card}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0 }}>Rekapitulasi Poin Siswa</h3>
+              <button onClick={handleExportRekap} className={styles.button} style={{ backgroundColor: '#10b981' }}>
+                <i className="fas fa-file-excel"></i> Export Rekap
+              </button>
+            </div>
+            
+            <div className={styles.tableContainer}>
+              <table className={styles.table}>
+                <thead>
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">Belum ada data rekap.</td>
+                    <th style={{ textAlign: 'center' }}>Peringkat</th>
+                    <th>Nama Siswa</th>
+                    <th>Kelas</th>
+                    <th style={{ textAlign: 'center' }}>Total Apresiasi</th>
+                    <th style={{ textAlign: 'center' }}>Total Pelanggaran</th>
+                    <th style={{ textAlign: 'center', backgroundColor: '#f8fafc' }}>Poin Bersih</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {rekapData.length > 0 ? rekapData.map((r, i) => (
+                    <tr key={i}>
+                      <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#94a3b8' }}>#{i + 1}</td>
+                      <td style={{ fontWeight: 'bold' }}>{r.nama}</td>
+                      <td>{r.kelas}</td>
+                      <td style={{ textAlign: 'center', color: '#2563eb' }}>+{r.apresiasi}</td>
+                      <td style={{ textAlign: 'center', color: '#dc2626' }}>-{r.pelanggaran}</td>
+                      <td style={{ textAlign: 'center', fontWeight: 'bold', backgroundColor: '#f8fafc', color: r.total > 0 ? '#1d4ed8' : r.total < 0 ? '#b91c1c' : '#64748b' }}>
+                        {r.total > 0 ? '+' : ''}{r.total}
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '20px' }}>Belum ada data rekap.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
