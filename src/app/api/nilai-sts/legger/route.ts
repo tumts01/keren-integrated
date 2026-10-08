@@ -6,14 +6,13 @@ import { getAllCachedDataInduk } from '@/lib/data-induk';
 export const dynamic = 'force-dynamic';
 
 // Helper: get nilai akhir from a student record inside data_nilai
-function getNilaiAkhir(record: Record<string, any>): string | number {
-  const keys = ['NILAI AKHIR', 'Nilai Akhir', 'NA', 'nilai'];
-  for (const k of keys) {
+function getNilaiSTS(record: Record<string, any>): string | number {
+  const stsKeys = ['STS', 'SUMATIF TENGAH SEMESTER', 'Nilai STS', 'NILAI STS', 'NILAI_STS'];
+  for (const k of stsKeys) {
     if (record[k] !== undefined && record[k] !== '') return record[k];
   }
-  // Fallback to STS score
-  const stsKeys = ['STS', 'SUMATIF TENGAH SEMESTER', 'Nilai STS', 'NILAI STS'];
-  for (const k of stsKeys) {
+  const fallbackKeys = ['NILAI AKHIR', 'Nilai Akhir', 'NA', 'nilai'];
+  for (const k of fallbackKeys) {
     if (record[k] !== undefined && record[k] !== '') return record[k];
   }
   return '';
@@ -148,7 +147,7 @@ export async function GET(request: Request) {
       for (const rec of dataNilai) {
         const nisn = (rec['NISN'] || rec['nisn'] || '').toString().trim();
         const namaRec = (rec['NAMA SISWA'] || rec['NAMA'] || rec['nama'] || '').toString().trim().toUpperCase();
-        const nilai = getNilaiAkhir(rec);
+        const nilai = getNilaiSTS(rec);
         if (nilai !== '') {
           if (nisn && mapelNilaiMap[mapel][nisn] === undefined) mapelNilaiMap[mapel][nisn] = nilai;
           if (namaRec && mapelNilaiMap[mapel]['__nama__' + namaRec] === undefined) mapelNilaiMap[mapel]['__nama__' + namaRec] = nilai;
