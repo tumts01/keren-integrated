@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import Swal from 'sweetalert2';
 import styles from './Spmb.module.css';
 
 export default function SpmbPage() {
@@ -161,8 +162,20 @@ export default function SpmbPage() {
 
       const result = await res.json();
 
-      if (result.success) {
-        showToast('Pendaftaran Berhasil! Data Anda telah tersimpan.', 'success');
+            if (result.success) {
+        if (result.id) {
+          Swal.fire({
+            title: 'Pendaftaran Berhasil!',
+            text: 'Data Anda telah tersimpan. Klik tombol di bawah ini untuk mencetak atau mengunduh Kartu Pendaftaran.',
+            icon: 'success',
+            confirmButtonText: 'Tampilkan Kartu',
+            confirmButtonColor: '#0ea5e9'
+          }).then(() => {
+            router.push('/spmb/cetak/' + result.id);
+          });
+        } else {
+          showToast('Pendaftaran Berhasil! Data Anda telah tersimpan.', 'success');
+        }
         
         // Reset Form
         setFormData({

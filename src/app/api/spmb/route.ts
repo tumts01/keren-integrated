@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     if (payload.kecamatan) fullAlamat += `, Kec. ${payload.kecamatan}`;
     if (payload.kabupaten) fullAlamat += `, ${payload.kabupaten}`;
     
-    const { error } = await supabase.from('data_spmb').insert({
+    const { data: insertedData, error } = await supabase.from('data_spmb').insert({
       nama: payload.namaLengkap || '',
       nisn: payload.nisn || '',
       metadata: {
@@ -64,9 +64,9 @@ export async function POST(req: Request) {
       'File KK': payload.linkKk || '',
       'File Akta': payload.linkAkta || ''
       }
-    });
+    }).select();
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, id: insertedData && insertedData[0] ? insertedData[0].id : null });
 
   } catch (error: any) {
     console.error('Submit SPMB Error:', error);
