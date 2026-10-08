@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import styles from '@/app/presensi/presensi.module.css';
 import InlineLoading from '@/components/InlineLoading';
+import SearchableSelect from '@/components/SearchableSelect';
 
 const TRAITS = [
   { id: 'religius', label: 'Religius' },
@@ -215,12 +216,12 @@ export default function PenilaianDiriPage() {
               {TRAITS.map((t, idx) => (
                 <div key={`teman_${t.id}`} style={{ marginBottom: 25, padding: 15, background: '#f8fafc', borderRadius: 8 }}>
                   <p style={{ fontWeight: 'bold', margin: '0 0 10px 0' }}>{idx + 1}. Teman saya yang paling {t.label.toLowerCase()} adalah:</p>
-                  <select className={styles.inputField} style={{ marginBottom: 10 }} value={dataTeman[t.id]?.nisn || ''} onChange={e => setDataTeman({ ...dataTeman, [t.id]: { ...dataTeman[t.id], nisn: e.target.value } })}>
-                    <option value="">-- Pilih Teman Sekelas --</option>
-                    {temanSekelas.map(s => (
-                      <option key={s.nisn} value={s.nisn}>{s.nama}</option>
-                    ))}
-                  </select>
+                  <SearchableSelect 
+                    options={temanSekelas.map(s => ({ value: s.nisn, label: s.nama }))} 
+                    value={dataTeman[t.id]?.nisn || ''} 
+                    onChange={val => setDataTeman({ ...dataTeman, [t.id]: { ...dataTeman[t.id], nisn: val } })} 
+                    placeholder="-- Cari Teman Sekelas --" 
+                  />
                   <input type="text" className={styles.inputField} placeholder="Karena..." value={dataTeman[t.id]?.alasan || ''} onChange={e => setDataTeman({ ...dataTeman, [t.id]: { ...dataTeman[t.id], alasan: e.target.value } })} />
                 </div>
               ))}
@@ -236,18 +237,12 @@ export default function PenilaianDiriPage() {
                 <div key={`guru_${t.id}`} style={{ marginBottom: 25, padding: 15, background: '#f8fafc', borderRadius: 8 }}>
                   <p style={{ fontWeight: 'bold', margin: '0 0 10px 0' }}>{idx + 1}. Murid yang paling {t.label.toLowerCase()} adalah:</p>
                   
-                  <select className={styles.inputField} style={{ marginBottom: 10 }} value={dataGuru[t.id]?.nisn || ''} onChange={e => setDataGuru({ ...dataGuru, [t.id]: { ...dataGuru[t.id], nisn: e.target.value } })}>
-                    <option value="">-- Pilih Murid --</option>
-                    {['7A','7B','7C','7D','7E','8A','8B','8C','8D','8E','9A','9B','9C','9D','9E'].map(kelas => {
-                      const m = siswaData.filter(s => s.rombel === kelas);
-                      if (m.length === 0) return null;
-                      return (
-                        <optgroup key={kelas} label={`Kelas ${kelas}`}>
-                          {m.map(s => <option key={s.nisn} value={s.nisn}>{s.nama}</option>)}
-                        </optgroup>
-                      );
-                    })}
-                  </select>
+                  <SearchableSelect 
+                    options={siswaData.map(s => ({ value: s.nisn, label: s.nama, subLabel: 'Kelas ' + s.rombel }))} 
+                    value={dataGuru[t.id]?.nisn || ''} 
+                    onChange={val => setDataGuru({ ...dataGuru, [t.id]: { ...dataGuru[t.id], nisn: val } })} 
+                    placeholder="-- Cari Nama Siswa --" 
+                  />
 
                   <input type="text" className={styles.inputField} placeholder="Karena... (Opsional)" value={dataGuru[t.id]?.alasan || ''} onChange={e => setDataGuru({ ...dataGuru, [t.id]: { ...dataGuru[t.id], alasan: e.target.value } })} />
                 </div>
