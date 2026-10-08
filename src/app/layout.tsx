@@ -21,6 +21,7 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "KEREN",
   },
+  manifest: '/manifest.json',
 };
 
 export const viewport = {
