@@ -710,7 +710,8 @@ function PrintSiswaModal({
   const [kelas, setKelas] = useState<string>('');
   const [manualSearch, setManualSearch] = useState<string>('');
   const [customJudul, setCustomJudul] = useState('');
-  const [customKeterangan, setCustomKeterangan] = useState('');
+  const [customKeterangan1, setCustomKeterangan1] = useState('');
+  const [customKeterangan2, setCustomKeterangan2] = useState('');
   const [selectedManual, setSelectedManual] = useState<Siswa[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
 
@@ -994,9 +995,15 @@ function PrintSiswaModal({
               <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Judul Cetak (Opsional)</label>
               <input type="text" value={customJudul} onChange={e => setCustomJudul(e.target.value)} placeholder="Contoh: DAFTAR NILAI, DAFTAR HADIR..." style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }} />
             </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Nama Kolom Keterangan (Opsional)</label>
-              <input type="text" value={customKeterangan} onChange={e => setCustomKeterangan(e.target.value)} placeholder="Contoh: KET, NILAI, TTD..." style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }} />
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Kolom Keterangan 1</label>
+                <input type="text" value={customKeterangan1} onChange={e => setCustomKeterangan1(e.target.value)} placeholder="Opsional (misal: NILAI)" style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', marginBottom: '4px', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Kolom Keterangan 2</label>
+                <input type="text" value={customKeterangan2} onChange={e => setCustomKeterangan2(e.target.value)} placeholder="Opsional (misal: TTD)" style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '0.9rem' }} />
+              </div>
             </div>
           </div>
 
@@ -1049,8 +1056,8 @@ function PrintSiswaModal({
                         <th className="col-no">No</th>
                         <th className="col-nama">Nama Siswa</th>
                         <th className="col-domisili" style={{ width: '20%' }}>Domisili</th>
-                        <th className="col-ket">{customKeterangan || 'Keterangan'}</th>
-                          <th className="col-ket">{customKeterangan || 'Keterangan'}</th>
+                        <th className="col-ket">{customKeterangan1 || 'Keterangan'}</th>
+                          <th className="col-ket">{customKeterangan2 || 'Keterangan'}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1087,8 +1094,8 @@ function PrintSiswaModal({
                       ) : (
                         <>
                           <th className="col-domisili" style={{ width: '20%' }}>Domisili</th>
-                          <th className="col-ket">{customKeterangan || 'Keterangan'}</th>
-                          <th className="col-ket">{customKeterangan || 'Keterangan'}</th>
+                          <th className="col-ket">{customKeterangan1 || 'Keterangan'}</th>
+                          <th className="col-ket">{customKeterangan2 || 'Keterangan'}</th>
                         </>
                       )}
                     </tr>
