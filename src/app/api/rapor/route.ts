@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
+import { unstable_cache, revalidateTag } from 'next/cache';
 import { supabase } from '@/lib/supabase';
 import { getAllCachedDataInduk } from '@/lib/data-induk';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  try {
-    // 1. Fetch Students from Supabase (handle >1000 rows)
+const getCachedRaporData = unstable_cache(async () => {
     let rawSiswa = await getAllCachedDataInduk();
     
     const activeStudents = (rawSiswa || []).map((row: any) => {
@@ -23,7 +22,6 @@ export async function GET() {
         }
     }).filter((s: any) => s.status === 'aktif' && s.kelas && s.nis);
 
-    // 2. Fetch Config & Returned Report Cards from Supabase in Parallel
     const configRes = await supabase.from('rapor_config').select('*');
     
     let returnedResData: any[] = [];
@@ -49,7 +47,7 @@ export async function GET() {
     if (returnedResData.length > 0) {
       returnedResData.forEach(r => {
         const scanData = (r.scan_data || '').trim();
-        const nis = scanData.split(' ')[0]; // Extract NIS from first word
+        const nis = scanData.split(' ')[0]; 
         
         let isValidDate = true;
         if (startDate || endDate) {
@@ -63,7 +61,7 @@ export async function GET() {
             if (startDate && yyyymmdd < startDate) isValidDate = false;
             if (endDate && yyyymmdd > endDate) isValidDate = false;
           } else {
-            isValidDate = false; // No time -> invalid if filter is active
+            isValidDate = false; 
           }
         }
         
@@ -73,10 +71,8 @@ export async function GET() {
       });
     }
 
-    // 4. Calculate Missing Report Cards
     const missingStudents = activeStudents.filter((s: any) => !returnedNis.has(s.nis));
     
-    // 5. Aggregate by Class
     const rekap: Record<string, {total: number, missing: number}> = {};
     for (const s of activeStudents) {
       if (!rekap[s.kelas]) {
@@ -98,16 +94,13 @@ export async function GET() {
       returned: rekap[k].total - rekap[k].missing
     })).sort((a, b) => a.kelas.localeCompare(b.kelas));
 
-    return NextResponse.json({ 
-      success: true, 
-      startDate, 
-      endDate,
-      rekap: rekapArray,
-      missingList: missingStudents,
-      allActive: activeStudents
-    }, {
-      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' }
-    });
+    return { startDate, endDate, rekap: rekapArray, missingList: missingStudents, allActive: activeStudents };
+}, ['rapor-data-all'], { tags: ['rapor'], revalidate: 3600 });
+
+export async function GET() {
+  try {
+    const data = await getCachedRaporData();
+    return NextResponse.json({ success: true, ...data });
 
   } catch (error: any) {
     console.error('Rapor GET Error:', error);
@@ -126,6 +119,7 @@ export async function POST(request: Request) {
     const { error } = await supabase.from('rapor_pengembalian').insert([{ scan_data, waktu }]);
     if (error) throw error;
 
+    revalidateTag('rapor', {});
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -145,6 +139,7 @@ export async function PUT(request: Request) {
       if (error) throw error;
     }
 
+    revalidateTag('rapor', {});
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
