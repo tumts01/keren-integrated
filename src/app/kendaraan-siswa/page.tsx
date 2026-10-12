@@ -267,6 +267,70 @@ export default function KendaraanSiswaPage() {
     }));
   }, [siswaOptions]);
 
+  // Dynamic suggestions from already inputted data + common defaults
+  const motorSuggestions = useMemo(() => {
+    const defaultList = [
+      'Honda Beat',
+      'Honda Vario 125',
+      'Honda Vario 160',
+      'Honda Scoopy',
+      'Honda Genio',
+      'Honda PCX 160',
+      'Honda Supra X 125',
+      'Yamaha Mio M3',
+      'Yamaha Fazzio',
+      'Yamaha Gear 125',
+      'Yamaha NMAX',
+      'Yamaha Aerox 155',
+      'Yamaha Grand Filano',
+      'Suzuki Nex II',
+      'Suzuki Satria F150'
+    ];
+
+    const fromData = data
+      .map(d => (d.merk_motor || '').trim())
+      .filter(Boolean);
+
+    const seen = new Set<string>();
+    const result: string[] = [];
+
+    // Prioritaskan yang sudah pernah diinput di sekolah
+    for (const m of fromData) {
+      const lower = m.toLowerCase();
+      if (!seen.has(lower)) {
+        seen.add(lower);
+        result.push(m);
+      }
+    }
+
+    // Tambahkan default yang belum ada
+    for (const m of defaultList) {
+      const lower = m.toLowerCase();
+      if (!seen.has(lower)) {
+        seen.add(lower);
+        result.push(m);
+      }
+    }
+
+    return result.sort((a, b) => a.localeCompare(b));
+  }, [data]);
+
+  const warnaSuggestions = useMemo(() => {
+    const defaultList = ['Hitam', 'Putih', 'Merah', 'Biru', 'Abu-abu / Grey', 'Silver', 'Hitam Merah', 'Hitam Doff'];
+    const fromData = data.map(d => (d.warna_motor || '').trim()).filter(Boolean);
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const w of [...fromData, ...defaultList]) {
+      const lower = w.toLowerCase();
+      if (!seen.has(lower)) {
+        seen.add(lower);
+        result.push(w);
+      }
+    }
+    return result.sort((a, b) => a.localeCompare(b));
+  }, [data]);
+
+
   const handleExportCSV = () => {
     if (data.length === 0) {
       Swal.fire('Info', 'Belum ada data untuk diekspor', 'info');
@@ -592,17 +656,9 @@ export default function KendaraanSiswaPage() {
                   onChange={e => setMerkMotor(e.target.value)}
                 />
                 <datalist id="motorSuggestions">
-                  <option value="Honda Beat" />
-                  <option value="Honda Vario 125" />
-                  <option value="Honda Vario 160" />
-                  <option value="Honda Scoopy" />
-                  <option value="Honda Genio" />
-                  <option value="Yamaha Mio" />
-                  <option value="Yamaha Fazzio" />
-                  <option value="Yamaha Gear" />
-                  <option value="Yamaha NMAX" />
-                  <option value="Yamaha Aerox" />
-                  <option value="Suzuki Nex" />
+                  {motorSuggestions.map(m => (
+                    <option key={m} value={m} />
+                  ))}
                 </datalist>
               </div>
 
@@ -611,11 +667,17 @@ export default function KendaraanSiswaPage() {
                 <label>Warna Kendaraan (Opsional)</label>
                 <input
                   type="text"
+                  list="warnaSuggestions"
                   className={styles.formInput}
                   placeholder="Contoh: Hitam, Merah Putih, dll"
                   value={warnaMotor}
                   onChange={e => setWarnaMotor(e.target.value)}
                 />
+                <datalist id="warnaSuggestions">
+                  {warnaSuggestions.map(w => (
+                    <option key={w} value={w} />
+                  ))}
+                </datalist>
               </div>
 
               {/* Status Izin Ortu */}
