@@ -5,18 +5,17 @@ import { getAllCachedDataInduk } from '@/lib/data-induk';
 
 export const dynamic = 'force-dynamic';
 
-// Helper: get nilai akhir from a student record inside data_nilai
+// Helper: get nilai akhir from a student record inside data_nilai (selaras 100% dengan cetak Rapor STS)
 function getNilaiAkhirSTS(record: Record<string, any>): string | number {
-  const naStsKeys = ['NA STS', 'NILAI AKHIR STS', 'NA_STS', 'NILAI_AKHIR_STS'];
-  for (const k of naStsKeys) {
-    if (record[k] !== undefined && record[k] !== '') return record[k];
-  }
-  
   const calcAvg = (materiIndex: number) => {
     let sum = 0; let count = 0;
     ['S1','S2','S3','S4'].forEach(sub => {
        const v = record[`Materi ${materiIndex} ${sub}`] || record[`MATERI ${materiIndex} ${sub}`];
-       if (v !== undefined && v !== '' && !isNaN(Number(v))) { sum += Number(v); count++; }
+       // Mengabaikan nilai 0 / kosong karena 0 pada template nilai guru adalah sel yang belum diajarkan
+       if (v && !isNaN(Number(v)) && Number(v) > 0) { 
+         sum += Number(v); 
+         count++; 
+       }
     });
     return count > 0 ? Math.round(sum / count) : '';
   };
@@ -41,7 +40,7 @@ function getNilaiAkhirSTS(record: Record<string, any>): string | number {
      return Math.round((avgHarian * 0.6) + (stsNum * 0.4));
   }
   
-  const fallbackKeys = ['NA', 'NILAI AKHIR', 'Nilai Akhir', 'nilai'];
+  const fallbackKeys = ['NA STS', 'NILAI AKHIR STS', 'NA_STS', 'NILAI_AKHIR_STS', 'NA', 'NILAI AKHIR', 'Nilai Akhir', 'nilai'];
   for (const k of fallbackKeys) {
     if (record[k] !== undefined && record[k] !== '') return record[k];
   }
