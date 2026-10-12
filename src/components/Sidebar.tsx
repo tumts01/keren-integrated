@@ -102,6 +102,7 @@ export default function Sidebar() {
           { name: 'Jadwal Mengajar', path: '/jadwal-mengajar', icon: 'fa-clock' },
         ] : []),
         { name: 'Pengembalian Rapor', path: '/pengembalian-rapor', icon: 'fa-file-signature' },
+        { name: 'Kendaraan Siswa', path: '/kendaraan-siswa', icon: 'fa-motorcycle' },
         { name: 'EMIS', path: '/emis', icon: 'fa-database' },
         { 
           name: 'Perangkat Ujian', 

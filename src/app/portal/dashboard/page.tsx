@@ -6,6 +6,7 @@ import Swal from 'sweetalert2';
 export default function PortalDashboard() {
   const router = useRouter();
   const [student, setStudent] = useState<any>(null);
+  const [kendaraan, setKendaraan] = useState<any>(null);
 
   useEffect(() => {
     const sessionStr = localStorage.getItem('portal_session');
@@ -38,6 +39,21 @@ export default function PortalDashboard() {
       }
     });
   };
+
+  
+  useEffect(() => {
+    if (student?.nis || student?.nisn) {
+      const q = student.nis || student.nisn;
+      fetch('/api/kendaraan-siswa?nis=' + encodeURIComponent(q))
+        .then(r => r.json())
+        .then(res => {
+          if (res.success && res.data) {
+            setKendaraan(res.data);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [student]);
 
   if (!student) return null;
 
@@ -144,7 +160,54 @@ export default function PortalDashboard() {
           </div>
         </div>
 
-        {/* Info Box */}
+        
+          {/* Badge Kendaraan Terdaftar */}
+          {kendaraan && (
+            <div style={{
+              background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+              color: 'white',
+              borderRadius: '16px',
+              padding: '18px 20px',
+              marginTop: '16px',
+              marginBottom: '20px',
+              boxShadow: '0 4px 10px rgba(15, 23, 42, 0.15)',
+              border: '1px solid #334155'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', fontWeight: 700, color: '#38bdf8' }}>
+                  <i className="fas fa-motorcycle" style={{ fontSize: '15px' }}></i>
+                  KENDARAAN TERDAFTAR (PARKIR YAYASAN)
+                </div>
+                {kendaraan.izin_ortu ? (
+                  <span style={{ background: '#059669', color: 'white', fontSize: '10px', fontWeight: 800, padding: '3px 8px', borderRadius: '12px' }}>
+                    <i className="fas fa-check-circle"></i> ADA IZIN ORTU
+                  </span>
+                ) : (
+                  <span style={{ background: '#d97706', color: 'white', fontSize: '10px', fontWeight: 800, padding: '3px 8px', borderRadius: '12px' }}>
+                    <i className="fas fa-exclamation-triangle"></i> BELUM IZIN
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '10px' }}>
+                <div>
+                  <div style={{ fontSize: '20px', fontWeight: 900, letterSpacing: '1.5px', fontFamily: 'monospace' }}>
+                    {kendaraan.plat_nomor}
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#cbd5e1', marginTop: '2px' }}>
+                    {kendaraan.merk_motor || 'Sepeda Motor'} {kendaraan.warna_motor ? '(' + kendaraan.warna_motor + ')' : ''}
+                  </div>
+                </div>
+                {kendaraan.keterangan && (
+                  <div style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic', maxWidth: '200px', textAlign: 'right' }}>
+                    {kendaraan.keterangan}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Info Box */}
         <div style={{ background: '#eff6ff', borderRadius: '12px', padding: '16px', marginBottom: '24px', border: '1px solid #bfdbfe' }}>
           <p style={{ margin: 0, fontSize: '13px', color: '#1e40af', lineHeight: 1.5 }}>
             <i className="fas fa-info-circle" style={{ marginRight: '6px' }}></i>
