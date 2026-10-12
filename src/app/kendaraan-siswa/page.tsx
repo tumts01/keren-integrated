@@ -96,14 +96,24 @@ export default function KendaraanSiswaPage() {
       const res = await fetch('/api/siswa');
       const json = await res.json();
       const raw = json.data || (Array.isArray(json) ? json : []);
-      const active = raw
-        .filter((s: any) => (s.status || '').toLowerCase() === 'aktif')
-        .map((s: any) => ({
-          nis: s.nis || s.id_siswa || '',
-          nama: s.nama || '',
-          kelas: s.kelas || s.rombel || ''
-        }))
-        .filter((s: SiswaOption) => s.nis && s.nama);
+      
+      const seenNis = new Set<string>();
+      const active: SiswaOption[] = [];
+
+      for (const s of raw) {
+        const isAktif = (s.status || '').toLowerCase() === 'aktif';
+        const isLatest = Boolean(s.isLatest);
+        const nis = s.nis || s.id_siswa || '';
+        const nama = s.nama || '';
+        const kelas = s.kelas || s.rombel || '';
+
+        if (isAktif && isLatest && nis && nama && !seenNis.has(nis)) {
+          seenNis.add(nis);
+          active.push({ nis, nama, kelas });
+        }
+      }
+
+      active.sort((a, b) => a.nama.localeCompare(b.nama));
       setSiswaOptions(active);
     } catch (e) {
       console.error('Failed to load students:', e);
@@ -252,7 +262,8 @@ export default function KendaraanSiswaPage() {
   const studentSelectOptions = useMemo(() => {
     return siswaOptions.map(s => ({
       value: s.nis,
-      label: `${s.nama} (${s.kelas || '-'}) - NIS: ${s.nis}`
+      label: s.nama,
+      subLabel: `Kelas ${s.kelas || '-'} • NIS: ${s.nis}`
     }));
   }, [siswaOptions]);
 

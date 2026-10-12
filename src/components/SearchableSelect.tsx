@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 
 interface Option {
   value: string;
@@ -30,8 +30,10 @@ export default function SearchableSelect({ options, value, onChange, placeholder
   }, []);
 
   useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus();
+    if (isOpen) {
+      setTimeout(() => {
+        if (inputRef.current) inputRef.current.focus();
+      }, 50);
     } else {
       setSearch('');
     }
@@ -39,10 +41,17 @@ export default function SearchableSelect({ options, value, onChange, placeholder
 
   const selectedOpt = options.find(o => o.value === value);
   
-  const filtered = options.filter(o => 
-    o.label.toLowerCase().includes(search.toLowerCase()) || 
-    (o.subLabel && o.subLabel.toLowerCase().includes(search.toLowerCase()))
-  );
+  const searchWords = useMemo(() => {
+    return search.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  }, [search]);
+
+  const filtered = useMemo(() => {
+    if (searchWords.length === 0) return options.slice(0, 50); // Batasi render awal 50 item agar super cepat
+    return options.filter(o => {
+      const target = `${o.label} ${o.subLabel || ''} ${o.value}`.toLowerCase();
+      return searchWords.every(word => target.includes(word));
+    }).slice(0, 100); // Batasi maksimal 100 hasil pencarian
+  }, [options, searchWords]);
 
   return (
     <div ref={wrapperRef} style={{ position: 'relative', width: '100%', marginBottom: '10px' }}>
@@ -61,14 +70,14 @@ export default function SearchableSelect({ options, value, onChange, placeholder
           color: selectedOpt ? '#1e293b' : '#94a3b8'
         }}
       >
-        <span>
+        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {selectedOpt ? (
             <>
               {selectedOpt.label} {selectedOpt.subLabel && <span style={{ color: '#64748b', fontSize: '0.8rem', marginLeft: 6 }}>({selectedOpt.subLabel})</span>}
             </>
           ) : placeholder}
         </span>
-        <i className={`fas fa-chevron-${isOpen ? 'up' : 'down'}`} style={{ color: '#cbd5e1', fontSize: '0.8rem' }}></i>
+        <i className={`fas fa-chevron-${isOpen ? 'up' : 'down'}`} style={{ color: '#94a3b8', fontSize: '0.8rem', marginLeft: '8px' }}></i>
       </div>
 
       {isOpen && (
@@ -77,12 +86,12 @@ export default function SearchableSelect({ options, value, onChange, placeholder
           top: '100%', 
           left: 0, 
           right: 0, 
-          zIndex: 50, 
+          zIndex: 9999, 
           marginTop: '4px',
           background: 'white',
           border: '1px solid #cbd5e1',
           borderRadius: '8px',
-          boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15)',
           overflow: 'hidden'
         }}>
           <div style={{ padding: '8px', borderBottom: '1px solid #f1f5f9' }}>
@@ -91,44 +100,53 @@ export default function SearchableSelect({ options, value, onChange, placeholder
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Ketik untuk mencari..."
+              placeholder="Ketik nama siswa, kelas, atau NIS..."
               style={{ 
                 width: '100%', 
-                padding: '8px 12px', 
-                border: '1px solid #e2e8f0', 
-                borderRadius: '4px',
+                padding: '9px 12px', 
+                border: '1.5px solid #10b981', 
+                borderRadius: '6px',
                 outline: 'none',
-                fontSize: '0.9rem'
+                fontSize: '0.9rem',
+                boxSizing: 'border-box'
               }}
             />
           </div>
           <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
-            {filtered.length > 0 ? filtered.map(o => (
-              <div 
-                key={o.value}
-                onClick={() => {
-                  onChange(o.value);
-                  setIsOpen(false);
-                }}
-                onMouseOver={e => e.currentTarget.style.background = '#f8fafc'}
-                onMouseOut={e => e.currentTarget.style.background = 'white'}
-                style={{ 
-                  padding: '10px 14px', 
-                  cursor: 'pointer',
-                  borderBottom: '1px solid #f8fafc',
-                  fontSize: '0.9rem',
-                  color: '#1e293b',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}
-              >
-                <span>{o.label}</span>
-                {o.subLabel && <span style={{ color: '#94a3b8', fontSize: '0.8rem', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>{o.subLabel}</span>}
-              </div>
-            )) : (
-              <div style={{ padding: '15px', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem' }}>
-                Pencarian tidak ditemukan
+            {filtered.length > 0 ? (
+              filtered.map((o, idx) => (
+                <div 
+                  key={`${o.value}_${idx}`}
+                  onClick={() => {
+                    onChange(o.value);
+                    setIsOpen(false);
+                    setSearch('');
+                  }}
+                  onMouseOver={e => e.currentTarget.style.background = '#f0fdf4'}
+                  onMouseOut={e => e.currentTarget.style.background = 'white'}
+                  style={{ 
+                    padding: '10px 14px', 
+                    cursor: 'pointer',
+                    borderBottom: '1px solid #f8fafc',
+                    fontSize: '0.9rem',
+                    color: '#1e293b',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
+                >
+                  <span style={{ fontWeight: 600 }}>{o.label}</span>
+                  {o.subLabel && (
+                    <span style={{ color: '#0369a1', fontSize: '0.8rem', background: '#e0f2fe', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                      {o.subLabel}
+                    </span>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '0.9rem' }}>
+                <i className="fas fa-search" style={{ marginBottom: '6px', fontSize: '1.2rem', display: 'block', opacity: 0.5 }}></i>
+                Tidak ditemukan siswa dengan kata kunci "{search}"
               </div>
             )}
           </div>
