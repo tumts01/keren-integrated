@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import styles from './kendaraan.module.css';
 import SearchableSelect from '@/components/SearchableSelect';
 import Swal from 'sweetalert2';
+import * as XLSX from 'xlsx';
 
 interface Kendaraan {
   id: string;
@@ -331,31 +332,83 @@ export default function KendaraanSiswaPage() {
   }, [data]);
 
 
-  const handleExportCSV = () => {
-    if (data.length === 0) {
-      Swal.fire('Info', 'Belum ada data untuk diekspor', 'info');
+  const handleExportExcel = () => {
+    if (filteredData.length === 0) {
+      Swal.fire('Info', 'Tidak ada data kendaraan untuk diekspor', 'info');
       return;
     }
-    const headers = ['No', 'NIS', 'Nama Siswa', 'Kelas', 'Plat Nomor', 'Merk Motor', 'Izin Ortu', 'Keterangan'];
-    const rows = filteredData.map((d, idx) => [
+
+    const titleRows = [
+      ['DATA KENDARAAN SISWA & IZIN PARKIR YAYASAN'],
+      ['MTs ALMAARIF 01 SINGOSARI'],
+      [`Filter: ${selectedKelas === 'all' ? 'Semua Kelas' : 'Kelas ' + selectedKelas} | Total: ${filteredData.length} Motor | Tanggal Unduh: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`],
+      []
+    ];
+
+    const headers = [
+      'No',
+      'NIS',
+      'Nama Siswa',
+      'Kelas',
+      'Plat Nomor',
+      'Merk / Jenis Motor',
+      'Warna Kendaraan',
+      'Status Izin Ortu',
+      'Catatan / Keterangan',
+      'Diinput Oleh'
+    ];
+
+    const dataRows = filteredData.map((d, idx) => [
       idx + 1,
-      `'${d.nis}`,
-      `"${d.nama.replace(/"/g, '""')}"`,
-      d.kelas,
-      d.plat_nomor,
-      `"${(d.merk_motor || '').replace(/"/g, '""')}"`,
+      d.nis || '-',
+      d.nama || '-',
+      d.kelas || '-',
+      d.plat_nomor || '-',
+      d.merk_motor || '-',
+      d.warna_motor || '-',
       d.izin_ortu ? 'Ada Izin' : 'Belum Izin',
-      `"${(d.keterangan || '').replace(/"/g, '""')}"`
+      d.keterangan || '-',
+      d.diinput_oleh || '-'
     ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `data_kendaraan_siswa_${selectedKelas}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const aoa = [...titleRows, headers, ...dataRows];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+    // Set lebar kolom rapi & proporsional
+    ws['!cols'] = [
+      { wch: 6 },   // No
+      { wch: 14 },  // NIS
+      { wch: 32 },  // Nama Siswa
+      { wch: 10 },  // Kelas
+      { wch: 16 },  // Plat Nomor
+      { wch: 24 },  // Merk Motor
+      { wch: 18 },  // Warna
+      { wch: 18 },  // Izin Ortu
+      { wch: 30 },  // Keterangan
+      { wch: 20 }   // Diinput Oleh
+    ];
+
+    // Merge judul atas
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: headers.length - 1 } },
+      { s: { r: 2, c: 0 }, e: { r: 2, c: headers.length - 1 } }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Kendaraan Siswa');
+
+    const cleanKelasName = selectedKelas === 'all' ? 'Semua_Kelas' : `Kelas_${selectedKelas}`;
+    const filename = `Data_Kendaraan_Siswa_${cleanKelasName}.xlsx`;
+    XLSX.writeFile(wb, filename);
+
+    Swal.fire({
+      icon: 'success',
+      title: 'Berhasil Ekspor!',
+      text: `File ${filename} berhasil diunduh.`,
+      timer: 2000,
+      showConfirmButton: false
+    });
   };
 
   return (
@@ -370,8 +423,8 @@ export default function KendaraanSiswaPage() {
           <p>Pendataan resmi siswa yang membawa kendaraan bermotor dan izin parkir yayasan</p>
         </div>
         <div className={styles.actionArea}>
-          <button className={styles.btnSecondary} onClick={handleExportCSV}>
-            <i className="fas fa-file-excel"></i> Ekspor CSV / Excel
+          <button className={styles.btnSecondary} onClick={handleExportExcel}>
+            <i className="fas fa-file-excel" style={{ color: '#16a34a' }}></i> Ekspor Excel (.xlsx)
           </button>
           <button className={styles.btnPrimary} onClick={handleOpenAddModal}>
             <i className="fas fa-plus"></i> + Input Kendaraan
