@@ -15,6 +15,7 @@ export default function CBTUjianPage() {
   
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fontSize, setFontSize] = useState<'sm' | 'md' | 'lg'>('md');
 
   // Anti-cheat state
   const [warningCount, setWarningCount] = useState(0);
@@ -29,6 +30,11 @@ export default function CBTUjianPage() {
   const MAX_WARNINGS = 3;
 
   useEffect(() => {
+    const savedFont = localStorage.getItem('cbt_font_size');
+    if (savedFont === 'sm' || savedFont === 'md' || savedFont === 'lg') {
+      setFontSize(savedFont);
+    }
+
     const data = localStorage.getItem('cbt_user');
     if (!data) {
       router.push('/cbt');
@@ -39,6 +45,15 @@ export default function CBTUjianPage() {
     userRef.current = parsedUser;
     initSesi(parsedUser);
   }, []);
+
+  const handleFontSizeChange = (size: 'sm' | 'md' | 'lg') => {
+    setFontSize(size);
+    try {
+      localStorage.setItem('cbt_font_size', size);
+    } catch {
+      // ignore
+    }
+  };
 
   // --- ANTI-CHEAT: Setup all guards ---
   useEffect(() => {
@@ -347,10 +362,87 @@ export default function CBTUjianPage() {
       {/* KIRI: Area Soal */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
-        <div style={{ background: 'white', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', zIndex: 10 }}>
-          <div style={{ fontWeight: 700, fontSize: '1.2rem', color: '#0f172a' }}>{user.lomba}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ fontSize: '0.9rem', color: '#64748b' }}>{user.nama} ({user.nomorPeserta})</div>
+        <div style={{ background: 'white', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', zIndex: 10, flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ fontWeight: 800, fontSize: '1.25rem', color: '#0f172a', letterSpacing: '-0.3px' }}>{user.lomba}</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            {/* Pengatur Ukuran Font Soal */}
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '10px',
+              padding: '3px',
+              gap: '2px',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+            }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', padding: '0 6px 0 8px', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                <i className="fas fa-text-height" style={{ color: '#0284c7' }}></i> Font:
+              </span>
+              <button
+                type="button"
+                onClick={() => handleFontSizeChange('sm')}
+                title="Ukuran Font Kecil"
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '7px',
+                  border: 'none',
+                  background: fontSize === 'sm' ? '#0284c7' : 'transparent',
+                  color: fontSize === 'sm' ? 'white' : '#475569',
+                  fontWeight: 800,
+                  fontSize: '0.8rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  boxShadow: fontSize === 'sm' ? '0 2px 4px rgba(2,132,199,0.3)' : 'none'
+                }}
+              >
+                A-
+              </button>
+              <button
+                type="button"
+                onClick={() => handleFontSizeChange('md')}
+                title="Ukuran Font Normal (Sedang)"
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '7px',
+                  border: 'none',
+                  background: fontSize === 'md' ? '#0284c7' : 'transparent',
+                  color: fontSize === 'md' ? 'white' : '#475569',
+                  fontWeight: 800,
+                  fontSize: '0.9rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  boxShadow: fontSize === 'md' ? '0 2px 4px rgba(2,132,199,0.3)' : 'none'
+                }}
+              >
+                A
+              </button>
+              <button
+                type="button"
+                onClick={() => handleFontSizeChange('lg')}
+                title="Ukuran Font Besar"
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '7px',
+                  border: 'none',
+                  background: fontSize === 'lg' ? '#0284c7' : 'transparent',
+                  color: fontSize === 'lg' ? 'white' : '#475569',
+                  fontWeight: 800,
+                  fontSize: '1rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  boxShadow: fontSize === 'lg' ? '0 2px 4px rgba(2,132,199,0.3)' : 'none'
+                }}
+              >
+                A+
+              </button>
+            </div>
+
+            <div style={{ fontSize: '0.9rem', color: '#475569', background: '#f8fafc', padding: '6px 12px', borderRadius: '8px', border: '1px solid #e2e8f0', fontWeight: 600 }}>
+              {user.nama} ({user.nomorPeserta})
+            </div>
             
             {/* Warning Counter */}
             {warningCount > 0 && (
@@ -380,9 +472,15 @@ export default function CBTUjianPage() {
         <div style={{ padding: '32px', flex: 1, overflowY: 'auto' }}>
           <div style={{ background: 'white', padding: '32px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
             <div style={{ display: 'flex', gap: '16px' }}>
-              <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0284c7' }}>{currentSoal.nomor_soal}.</div>
+              <div style={{ fontSize: fontSize === 'lg' ? '1.85rem' : fontSize === 'sm' ? '1.3rem' : '1.5rem', fontWeight: 800, color: '#0284c7', transition: 'font-size 0.2s ease' }}>{currentSoal.nomor_soal}.</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '1.2rem', color: '#1e293b', lineHeight: '1.6', marginBottom: '24px' }}>
+                <div style={{ 
+                  fontSize: fontSize === 'lg' ? '1.45rem' : fontSize === 'sm' ? '1.05rem' : '1.2rem', 
+                  color: '#1e293b', 
+                  lineHeight: '1.6', 
+                  marginBottom: '24px',
+                  transition: 'font-size 0.2s ease'
+                }}>
                   {currentSoal.pertanyaan}
                 </div>
                 {currentSoal.gambar_url && (
@@ -412,10 +510,31 @@ export default function CBTUjianPage() {
                           transition: 'all 0.2s'
                         }}
                       >
-                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: isSelected ? '#3b82f6' : '#f1f5f9', color: isSelected ? 'white' : '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, marginRight: '16px', flexShrink: 0 }}>
+                      <div style={{ 
+                        width: fontSize === 'lg' ? '40px' : fontSize === 'sm' ? '30px' : '34px', 
+                        height: fontSize === 'lg' ? '40px' : fontSize === 'sm' ? '30px' : '34px', 
+                        borderRadius: '50%', 
+                        background: isSelected ? '#3b82f6' : '#f1f5f9', 
+                        color: isSelected ? 'white' : '#64748b', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        fontWeight: 700, 
+                        marginRight: '16px', 
+                        flexShrink: 0,
+                        fontSize: fontSize === 'lg' ? '1.15rem' : fontSize === 'sm' ? '0.9rem' : '1rem',
+                        transition: 'all 0.2s ease'
+                      }}>
                         {optKey}
                       </div>
-                      <div style={{ fontSize: '1.1rem', color: '#334155', alignSelf: 'center', overflow: 'hidden' }}>
+                      <div style={{ 
+                        fontSize: fontSize === 'lg' ? '1.3rem' : fontSize === 'sm' ? '0.95rem' : '1.1rem', 
+                        color: '#334155', 
+                        alignSelf: 'center', 
+                        overflow: 'hidden',
+                        lineHeight: '1.5',
+                        transition: 'font-size 0.2s ease'
+                      }}>
                         {opsiValue.startsWith('http') && opsiValue.includes('drive.google.com') ? (
                           <img 
                             src={`/api/proxy-image?url=${encodeURIComponent(opsiValue)}`} 
