@@ -50,14 +50,14 @@ export async function GET(request: Request, context: { params: Promise<{ kelas: 
       };
     });
 
-    // 2. Fetch Nilai STS for all collected classes
+    // 2. Fetch Nilai Buku Induk for all collected classes
     const uniqueTas = Array.from(new Set(Array.from(historySet).map(s => s.split('::')[0])));
     const uniqueRombels = Array.from(new Set(Array.from(historySet).map(s => s.split('::')[1])));
 
     let stsData: any[] = [];
     if (uniqueTas.length > 0 && uniqueRombels.length > 0) {
       const { data: sts, error: stsError } = await supabase
-        .from('nilai_sts')
+        .from('nilai_buku_induk')
         .select('*')
         .in('kelas', uniqueRombels)
         .in('tahun_ajaran', uniqueTas);
@@ -79,7 +79,7 @@ export async function GET(request: Request, context: { params: Promise<{ kelas: 
 
     // 4. Map everything together
     studentsData.forEach(student => {
-      // Map Nilai
+      // Map Nilai from legger
       stsData.forEach(row => {
         // Only consider this row if it belongs to one of the student's historical classes
         const matchesHistory = student.history.some(h => h.tahun_ajaran === row.tahun_ajaran && h.rombel === row.kelas);
@@ -95,6 +95,43 @@ export async function GET(request: Request, context: { params: Promise<{ kelas: 
             });
           }
         }
+      });
+
+      // Also merge manual DKN R_GRADES (e.g. for transfer students or missing legger)
+      const manualR = student.induk?.['R_GRADES'] || student.induk?.['DKN_R'] || {};
+      const rKeyMap: Record<string, { k: string; s: string; ta?: string }> = {
+        r1: { k: '7', s: 'Ganjil', ta: student.induk?.['TA KELAS 7'] },
+        r2: { k: '7', s: 'Genap', ta: student.induk?.['TA KELAS 7'] },
+        r3: { k: '8', s: 'Ganjil', ta: student.induk?.['TA KELAS 8'] },
+        r4: { k: '8', s: 'Genap', ta: student.induk?.['TA KELAS 8'] },
+        r5: { k: '9', s: 'Ganjil', ta: student.induk?.['TA KELAS 9'] || student.induk?.['TAHUN AJARAN'] },
+      };
+
+      Object.keys(manualR).forEach(mapelName => {
+        const mapelObj = manualR[mapelName] || {};
+        (['r1', 'r2', 'r3', 'r4', 'r5'] as const).forEach(rKey => {
+          const val = mapelObj[rKey];
+          if (val !== undefined && val !== null && val !== '') {
+            const conf = rKeyMap[rKey];
+            const existingIdx = student.nilai.findIndex((item: any) =>
+              item.kelas?.includes(conf.k) &&
+              item.semester?.toLowerCase() === conf.s.toLowerCase() &&
+              item.mata_pelajaran?.toLowerCase() === mapelName.toLowerCase()
+            );
+
+            if (existingIdx !== -1) {
+              student.nilai[existingIdx].nilai = val;
+            } else {
+              student.nilai.push({
+                tahun_ajaran: conf.ta || '',
+                semester: conf.s,
+                kelas: conf.k,
+                mata_pelajaran: mapelName,
+                nilai: val
+              });
+            }
+          }
+        });
       });
 
       // Map Prestasi

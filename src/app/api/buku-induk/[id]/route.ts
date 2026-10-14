@@ -95,6 +95,43 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       }
     }
 
+    // 2.1. Merge manual grades from DKN (metadata['R_GRADES']) for transfer students or missing report grades
+    const manualR = metadata['R_GRADES'] || metadata['DKN_R'] || {};
+    const rKeyMap: Record<string, { k: string; s: string; ta?: string }> = {
+      r1: { k: '7', s: 'Ganjil', ta: metadata['TA KELAS 7'] },
+      r2: { k: '7', s: 'Genap', ta: metadata['TA KELAS 7'] },
+      r3: { k: '8', s: 'Ganjil', ta: metadata['TA KELAS 8'] },
+      r4: { k: '8', s: 'Genap', ta: metadata['TA KELAS 8'] },
+      r5: { k: '9', s: 'Ganjil', ta: metadata['TA KELAS 9'] || metadata['TAHUN AJARAN'] },
+    };
+
+    Object.keys(manualR).forEach(mapelName => {
+      const mapelObj = manualR[mapelName] || {};
+      (['r1', 'r2', 'r3', 'r4', 'r5'] as const).forEach(rKey => {
+        const val = mapelObj[rKey];
+        if (val !== undefined && val !== null && val !== '') {
+          const conf = rKeyMap[rKey];
+          const existingIdx = nilaiData.findIndex(item =>
+            item.kelas?.includes(conf.k) &&
+            item.semester?.toLowerCase() === conf.s.toLowerCase() &&
+            item.mata_pelajaran?.toLowerCase() === mapelName.toLowerCase()
+          );
+
+          if (existingIdx !== -1) {
+            nilaiData[existingIdx].nilai = val;
+          } else {
+            nilaiData.push({
+              tahun_ajaran: conf.ta || '',
+              semester: conf.s,
+              kelas: conf.k,
+              mata_pelajaran: mapelName,
+              nilai: val
+            });
+          }
+        }
+      });
+    });
+
     // 2.5. Fetch Nilai Ekstra for these classes
     let ekstraData: any[] = [];
     if (history.length > 0) {
