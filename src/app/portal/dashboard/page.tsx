@@ -423,6 +423,24 @@ export default function PortalDashboard() {
             <i className="fas fa-sign-out-alt"></i>
           </button>
         </div>
+
+        {/* Teks Sambutan Portal */}
+        <div style={{ 
+          marginTop: '16px', 
+          background: 'rgba(255, 255, 255, 0.15)', 
+          backdropFilter: 'blur(8px)',
+          borderRadius: '12px', 
+          padding: '10px 14px', 
+          border: '1px solid rgba(255, 255, 255, 0.25)',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '10px'
+        }}>
+          <i className="fas fa-info-circle" style={{ marginTop: '2px', fontSize: '13px', color: '#ffffff', opacity: 0.9 }}></i>
+          <p style={{ margin: 0, fontSize: '12px', color: '#ffffff', lineHeight: 1.5, fontWeight: 500 }}>
+            Selamat datang di Portal Wali Murid. Anda dapat memantau kehadiran, kegiatan belajar, rapor, dan status data anak Anda di sini.
+          </p>
+        </div>
       </div>
 
       <div className="portal-content" style={{ marginTop: '-20px' }}>
@@ -900,14 +918,6 @@ export default function PortalDashboard() {
             </div>
           </div>
         )}
-
-        {/* Info Box */}
-        <div style={{ background: '#eff6ff', borderRadius: '12px', padding: '16px', marginBottom: '24px', border: '1px solid #bfdbfe' }}>
-          <p style={{ margin: 0, fontSize: '13px', color: '#1e40af', lineHeight: 1.5 }}>
-            <i className="fas fa-info-circle" style={{ marginRight: '6px' }}></i>
-            Selamat datang di Portal Wali Murid. Anda dapat memantau kehadiran, kegiatan belajar, rapor, dan status data anak Anda di sini.
-          </p>
-        </div>
 
         <h3 style={{ fontSize: '16px', margin: '0 0 16px 0', color: '#334155' }}>Menu Utama</h3>
 
