@@ -42,8 +42,9 @@ export default function DknPage() {
   // Success / error message toast
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Role Access Control (Admin only)
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  // Role Access Control: Admin can edit, Guru/GTK can view (read-only)
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
     try {
@@ -51,22 +52,34 @@ export default function DknPage() {
       if (stored) {
         const user = JSON.parse(stored);
         const role = (user.role || '').toLowerCase();
-        if (role === 'admin' || role === 'pimpinan') {
-          setIsAdmin(true);
+        // Siswa tidak diperkenankan melihat rekap DKN sekolah
+        if (role === 'siswa') {
+          setIsAuthorized(false);
+          setIsAdmin(false);
           return;
         }
+        setIsAuthorized(true);
+        if (role === 'admin' || role === 'pimpinan') {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+        }
+        return;
       }
+      // Standar: boleh melihat (read-only) jika tidak ada role khusus siswa
+      setIsAuthorized(true);
       setIsAdmin(false);
     } catch {
+      setIsAuthorized(true);
       setIsAdmin(false);
     }
   }, []);
 
   useEffect(() => {
-    if (isAdmin === true) {
+    if (isAuthorized === true) {
       fetchDknData();
     }
-  }, [selectedTa, selectedKelas, isAdmin]);
+  }, [selectedTa, selectedKelas, isAuthorized]);
 
   const fetchDknData = async () => {
     setLoading(true);
@@ -140,6 +153,7 @@ export default function DknPage() {
 
   // Handle Inline Edit: Nomor Peserta
   const handleNoPesertaChange = (studentId: string | number, newNoPes: string) => {
+    if (!isAdmin) return;
     setStudents(prev => prev.map(s => {
       if (s.id === studentId) {
         return { ...s, nomor_peserta: newNoPes };
@@ -158,6 +172,7 @@ export default function DknPage() {
 
   // Handle Inline Edit: NUM (Nilai Ujian Madrasah)
   const handleNumChange = (studentId: string | number, mapelName: string, valStr: string) => {
+    if (!isAdmin) return;
     const parsedNum = valStr === '' ? null : Number(valStr);
 
     setStudents(prev => prev.map(s => {
@@ -208,6 +223,7 @@ export default function DknPage() {
 
   // Handle Inline Edit: R1..R5 (Nilai Rapor Manual)
   const handleRChange = (studentId: string | number, mapelName: string, rKey: 'r1' | 'r2' | 'r3' | 'r4' | 'r5', valStr: string) => {
+    if (!isAdmin) return;
     const parsedR = valStr === '' ? null : Number(valStr);
 
     setStudents(prev => prev.map(s => {
@@ -270,6 +286,7 @@ export default function DknPage() {
     fieldType: 'nomor_peserta' | 'num' | 'r1' | 'r2' | 'r3' | 'r4' | 'r5',
     mapelName?: string
   ) => {
+    if (!isAdmin) return;
     const text = e.clipboardData.getData('text');
     if (!text) return;
 
@@ -370,6 +387,7 @@ export default function DknPage() {
 
   // Generate Nomor Peserta Berurutan
   const handleGenerateNoPeserta = () => {
+    if (!isAdmin) return;
     let currentCounter = genStartNo;
     let modifiedCount = 0;
 
@@ -408,6 +426,7 @@ export default function DknPage() {
 
   // Save changes to database
   const handleSaveChanges = async () => {
+    if (!isAdmin) return;
     if (dirtyMap.size === 0) return;
 
     setSaving(true);
@@ -460,6 +479,7 @@ export default function DknPage() {
   // Import Excel Submit
   const handleImportSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) return;
     if (!importFile) {
       setImportFeedback({ type: 'error', message: 'Silakan pilih file Excel terlebih dahulu' });
       return;
@@ -502,7 +522,7 @@ export default function DknPage() {
     }
   };
 
-  if (isAdmin === null) {
+  if (isAuthorized === null) {
     return (
       <div className={styles.container}>
         <InlineLoading message="Memverifikasi hak akses..." />
@@ -510,7 +530,7 @@ export default function DknPage() {
     );
   }
 
-  if (!isAdmin) {
+  if (!isAuthorized) {
     return (
       <div className={styles.container} style={{ minHeight: '65vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{
@@ -538,10 +558,10 @@ export default function DknPage() {
             <i className="fas fa-lock"></i>
           </div>
           <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a', marginBottom: 10 }}>
-            Akses Khusus Administrator
+            Akses Terbatas
           </h2>
           <p style={{ color: '#64748b', fontSize: '0.92rem', lineHeight: 1.6, marginBottom: 24 }}>
-            Halaman <strong>DKN (Daftar Kumpulan Nilai)</strong> berisi data rekapitulasi nilai akhir dan kelulusan siswa kelas 9 yang bersifat rahasia dan hanya dapat diakses serta dikelola oleh akun <strong>Admin</strong>.
+            Halaman <strong>DKN (Daftar Kumpulan Nilai)</strong> berisi data rekapitulasi nilai akhir dan kelulusan siswa kelas 9 yang bersifat rahasia dan hanya dapat diakses oleh akun <strong>Guru / GTK</strong> dan <strong>Admin</strong>.
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
             <Link
@@ -612,9 +632,42 @@ export default function DknPage() {
       {/* Page Header */}
       <div className={styles.header}>
         <div className={styles.titleArea}>
-          <h1 className={styles.mainTitle}>
-            <span>📋</span> DKN (Daftar Kumpulan Nilai)
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', marginBottom: '6px' }}>
+            <h1 className={styles.mainTitle} style={{ margin: 0 }}>
+              <span>📋</span> DKN (Daftar Kumpulan Nilai)
+            </h1>
+            {!isAdmin ? (
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 12px',
+                background: '#eff6ff',
+                color: '#1d4ed8',
+                borderRadius: '20px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                border: '1px solid #bfdbfe'
+              }}>
+                <i className="fas fa-eye"></i> Mode Lihat Saja (Guru)
+              </span>
+            ) : (
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 12px',
+                background: '#f0fdf4',
+                color: '#15803d',
+                borderRadius: '20px',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                border: '1px solid #bbf7d0'
+              }}>
+                <i className="fas fa-edit"></i> Mode Edit (Admin)
+              </span>
+            )}
+          </div>
           <p className={styles.subtitle}>
             Daftar Kumpulan Nilai Kelas 9: Rapor Semester 1-5 (R1-R5), Nilai Ujian Madrasah (NUM), dan Nilai Madrasah (NM)
           </p>
@@ -730,7 +783,7 @@ export default function DknPage() {
 
           {/* Action Buttons */}
           <div className={styles.actionButtons}>
-            {dirtyMap.size > 0 && (
+            {isAdmin && dirtyMap.size > 0 && (
               <button
                 type="button"
                 className={styles.btnSuccess}
@@ -741,23 +794,27 @@ export default function DknPage() {
               </button>
             )}
 
-            <button
-              type="button"
-              className={styles.btnOutline}
-              onClick={() => setShowGeneratorModal(true)}
-              title="Otomatis mengisi Nomor Peserta berurutan"
-            >
-              ⚡ Auto-No. Peserta
-            </button>
+            {isAdmin && (
+              <>
+                <button
+                  type="button"
+                  className={styles.btnOutline}
+                  onClick={() => setShowGeneratorModal(true)}
+                  title="Otomatis mengisi Nomor Peserta berurutan"
+                >
+                  ⚡ Auto-No. Peserta
+                </button>
 
-            <button
-              type="button"
-              className={styles.btnOutline}
-              onClick={() => setShowImportModal(true)}
-              title="Import file Excel NOPES & NUM"
-            >
-              📥 Import Excel
-            </button>
+                <button
+                  type="button"
+                  className={styles.btnOutline}
+                  onClick={() => setShowImportModal(true)}
+                  title="Import file Excel NOPES & NUM"
+                >
+                  📥 Import Excel
+                </button>
+              </>
+            )}
 
             <button
               type="button"
@@ -903,15 +960,21 @@ export default function DknPage() {
                       {idx + 1}
                     </td>
                     <td className={`${styles.tdCell} ${styles.tdStickyLeft} ${styles.tdPeserta} ${rowClass}`}>
-                      <input
-                        type="text"
-                        className={styles.inputPeserta}
-                        value={s.nomor_peserta}
-                        placeholder="Contoh: 26-13-..."
-                        onChange={e => handleNoPesertaChange(s.id, e.target.value)}
-                        onPaste={e => handlePasteColumn(e, idx, 'nomor_peserta')}
-                        title="Bisa paste kolom dari Excel (Ctrl+V) langsung ke bawah"
-                      />
+                      {isAdmin ? (
+                        <input
+                          type="text"
+                          className={styles.inputPeserta}
+                          value={s.nomor_peserta}
+                          placeholder="Contoh: 26-13-..."
+                          onChange={e => handleNoPesertaChange(s.id, e.target.value)}
+                          onPaste={e => handlePasteColumn(e, idx, 'nomor_peserta')}
+                          title="Bisa paste kolom dari Excel (Ctrl+V) langsung ke bawah"
+                        />
+                      ) : (
+                        <span style={{ fontWeight: 600, color: s.nomor_peserta ? '#0f172a' : '#94a3b8' }}>
+                          {s.nomor_peserta || '-'}
+                        </span>
+                      )}
                     </td>
                     <td className={`${styles.tdCell} ${styles.tdStickyLeft} ${styles.tdNisn} ${rowClass}`}>
                       {s.nisn || '-'}
@@ -943,69 +1006,89 @@ export default function DknPage() {
                           {viewMode === 'full' && (
                             <>
                               <td className={`${styles.tdCell} ${styles.tdNumber} ${rowClass}`}>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  step="any"
-                                  className={styles.inputR}
-                                  value={grade.r1 !== null && grade.r1 !== undefined ? grade.r1 : ''}
-                                  onChange={e => handleRChange(s.id, m.name, 'r1', e.target.value)}
-                                  onPaste={e => handlePasteColumn(e, idx, 'r1', m.name)}
-                                  placeholder="-"
-                                />
+                                {isAdmin ? (
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="any"
+                                    className={styles.inputR}
+                                    value={grade.r1 !== null && grade.r1 !== undefined ? grade.r1 : ''}
+                                    onChange={e => handleRChange(s.id, m.name, 'r1', e.target.value)}
+                                    onPaste={e => handlePasteColumn(e, idx, 'r1', m.name)}
+                                    placeholder="-"
+                                  />
+                                ) : (
+                                  grade.r1 !== null && grade.r1 !== undefined ? grade.r1 : '-'
+                                )}
                               </td>
                               <td className={`${styles.tdCell} ${styles.tdNumber} ${rowClass}`}>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  step="any"
-                                  className={styles.inputR}
-                                  value={grade.r2 !== null && grade.r2 !== undefined ? grade.r2 : ''}
-                                  onChange={e => handleRChange(s.id, m.name, 'r2', e.target.value)}
-                                  onPaste={e => handlePasteColumn(e, idx, 'r2', m.name)}
-                                  placeholder="-"
-                                />
+                                {isAdmin ? (
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="any"
+                                    className={styles.inputR}
+                                    value={grade.r2 !== null && grade.r2 !== undefined ? grade.r2 : ''}
+                                    onChange={e => handleRChange(s.id, m.name, 'r2', e.target.value)}
+                                    onPaste={e => handlePasteColumn(e, idx, 'r2', m.name)}
+                                    placeholder="-"
+                                  />
+                                ) : (
+                                  grade.r2 !== null && grade.r2 !== undefined ? grade.r2 : '-'
+                                )}
                               </td>
                               <td className={`${styles.tdCell} ${styles.tdNumber} ${rowClass}`}>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  step="any"
-                                  className={styles.inputR}
-                                  value={grade.r3 !== null && grade.r3 !== undefined ? grade.r3 : ''}
-                                  onChange={e => handleRChange(s.id, m.name, 'r3', e.target.value)}
-                                  onPaste={e => handlePasteColumn(e, idx, 'r3', m.name)}
-                                  placeholder="-"
-                                />
+                                {isAdmin ? (
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="any"
+                                    className={styles.inputR}
+                                    value={grade.r3 !== null && grade.r3 !== undefined ? grade.r3 : ''}
+                                    onChange={e => handleRChange(s.id, m.name, 'r3', e.target.value)}
+                                    onPaste={e => handlePasteColumn(e, idx, 'r3', m.name)}
+                                    placeholder="-"
+                                  />
+                                ) : (
+                                  grade.r3 !== null && grade.r3 !== undefined ? grade.r3 : '-'
+                                )}
                               </td>
                               <td className={`${styles.tdCell} ${styles.tdNumber} ${rowClass}`}>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  step="any"
-                                  className={styles.inputR}
-                                  value={grade.r4 !== null && grade.r4 !== undefined ? grade.r4 : ''}
-                                  onChange={e => handleRChange(s.id, m.name, 'r4', e.target.value)}
-                                  onPaste={e => handlePasteColumn(e, idx, 'r4', m.name)}
-                                  placeholder="-"
-                                />
+                                {isAdmin ? (
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="any"
+                                    className={styles.inputR}
+                                    value={grade.r4 !== null && grade.r4 !== undefined ? grade.r4 : ''}
+                                    onChange={e => handleRChange(s.id, m.name, 'r4', e.target.value)}
+                                    onPaste={e => handlePasteColumn(e, idx, 'r4', m.name)}
+                                    placeholder="-"
+                                  />
+                                ) : (
+                                  grade.r4 !== null && grade.r4 !== undefined ? grade.r4 : '-'
+                                )}
                               </td>
                               <td className={`${styles.tdCell} ${styles.tdNumber} ${rowClass}`}>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  step="any"
-                                  className={styles.inputR}
-                                  value={grade.r5 !== null && grade.r5 !== undefined ? grade.r5 : ''}
-                                  onChange={e => handleRChange(s.id, m.name, 'r5', e.target.value)}
-                                  onPaste={e => handlePasteColumn(e, idx, 'r5', m.name)}
-                                  placeholder="-"
-                                />
+                                {isAdmin ? (
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="any"
+                                    className={styles.inputR}
+                                    value={grade.r5 !== null && grade.r5 !== undefined ? grade.r5 : ''}
+                                    onChange={e => handleRChange(s.id, m.name, 'r5', e.target.value)}
+                                    onPaste={e => handlePasteColumn(e, idx, 'r5', m.name)}
+                                    placeholder="-"
+                                  />
+                                ) : (
+                                  grade.r5 !== null && grade.r5 !== undefined ? grade.r5 : '-'
+                                )}
                               </td>
                             </>
                           )}
@@ -1013,18 +1096,24 @@ export default function DknPage() {
                             {grade.nr > 0 ? grade.nr.toFixed(1) : '-'}
                           </td>
                           <td className={`${styles.tdCell} ${styles.tdNUM}`}>
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              step="any"
-                              className={styles.inputNum}
-                              value={grade.num !== null && grade.num !== undefined ? grade.num : ''}
-                              onChange={e => handleNumChange(s.id, m.name, e.target.value)}
-                              onPaste={e => handlePasteColumn(e, idx, 'num', m.name)}
-                              placeholder="-"
-                              title="Bisa paste kolom dari Excel (Ctrl+V) langsung ke bawah"
-                            />
+                            {isAdmin ? (
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="any"
+                                className={styles.inputNum}
+                                value={grade.num !== null && grade.num !== undefined ? grade.num : ''}
+                                onChange={e => handleNumChange(s.id, m.name, e.target.value)}
+                                onPaste={e => handlePasteColumn(e, idx, 'num', m.name)}
+                                placeholder="-"
+                                title="Bisa paste kolom dari Excel (Ctrl+V) langsung ke bawah"
+                              />
+                            ) : (
+                              <span style={{ fontWeight: 600, color: grade.num !== null && grade.num !== undefined ? '#0f172a' : '#94a3b8' }}>
+                                {grade.num !== null && grade.num !== undefined ? grade.num : '-'}
+                              </span>
+                            )}
                           </td>
                           <td className={`${styles.tdCell} ${styles.tdNM}`}>
                             {grade.nm > 0 ? grade.nm.toFixed(2) : '-'}
@@ -1052,7 +1141,7 @@ export default function DknPage() {
       )}
 
       {/* Auto-Generate Nomor Peserta Modal */}
-      {showGeneratorModal && (
+      {isAdmin && showGeneratorModal && (
         <div className={styles.modalOverlay} onClick={() => setShowGeneratorModal(false)}>
           <div className={styles.modalCard} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHeader}>
@@ -1157,7 +1246,7 @@ export default function DknPage() {
       )}
 
       {/* Import Modal */}
-      {showImportModal && (
+      {isAdmin && showImportModal && (
         <div className={styles.modalOverlay} onClick={() => setShowImportModal(false)}>
           <div className={styles.modalCard} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHeader}>

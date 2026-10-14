@@ -83,9 +83,7 @@ export default function Sidebar() {
           icon: 'fa-book-open',
           subItems: [
             { name: 'Cetak Buku Induk', path: '/buku-induk' },
-            ...(isAdmin ? [
-              { name: 'DKN (Daftar Kumpulan Nilai)', path: '/buku-induk/dkn' },
-            ] : []),
+            { name: 'DKN (Daftar Kumpulan Nilai)', path: '/buku-induk/dkn' },
             { name: 'Upload Legger', path: '/buku-induk/upload' },
             { name: 'Upload Ekstra', path: '/buku-induk/ekstrakurikuler' }
           ]
