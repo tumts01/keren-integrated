@@ -1,0 +1,394 @@
+.pageContainer {
+  padding: 1.5rem 2rem;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #1e293b;
+  min-height: 100vh;
+  background-color: #f8fafc;
+}
+
+.pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.pageTitle {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.pageTitleIcon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  box-shadow: 0 4px 6px -1px rgba(2, 132, 199, 0.2);
+}
+
+.pageDescription {
+  color: #64748b;
+  margin-top: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+  border: 1px solid #e2e8f0;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.filterGrid {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+  flex: 1;
+}
+
+.label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.select, .input {
+  padding: 0.6rem 0.85rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  background-color: white;
+  color: #0f172a;
+  transition: all 0.15s ease;
+}
+
+.select:focus, .input:focus {
+  outline: none;
+  border-color: #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.statCard {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-left-width: 4px;
+}
+
+.statIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.statValue {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.actionButtons {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+}
+
+.btnPrimary {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: white;
+}
+.btnPrimary:hover {
+  background: linear-gradient(135deg, #0369a1, #075985);
+  box-shadow: 0 4px 6px -1px rgba(2, 132, 199, 0.25);
+}
+
+.btnSuccess {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+}
+.btnSuccess:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.25);
+}
+
+.btnOutline {
+  background: white;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+.btnOutline:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  max-height: 70vh;
+}
+
+.dknTable {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.825rem;
+}
+
+.dknTable th {
+  background: #f8fafc;
+  color: #475569;
+  padding: 0.65rem 0.6rem;
+  font-weight: 600;
+  border-bottom: 2px solid #cbd5e1;
+  border-right: 1px solid #e2e8f0;
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+.dknTable td {
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.dknTable tr:hover td {
+  background-color: #f0f9ff !important;
+}
+
+.stickyCol0 {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  background-color: white;
+}
+.dknTable th.stickyCol0 {
+  z-index: 15;
+  background-color: #f8fafc;
+}
+
+.stickyCol1 {
+  position: sticky;
+  left: 45px;
+  z-index: 5;
+  background-color: white;
+}
+.dknTable th.stickyCol1 {
+  z-index: 15;
+  background-color: #f8fafc;
+}
+
+.stickyCol2 {
+  position: sticky;
+  left: 125px;
+  z-index: 5;
+  background-color: white;
+}
+.dknTable th.stickyCol2 {
+  z-index: 15;
+  background-color: #f8fafc;
+}
+
+.rankBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+.rankGold {
+  background: #fef08a;
+  color: #854d0e;
+  border: 1px solid #facc15;
+}
+
+.rankSilver {
+  background: #e2e8f0;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.rankBronze {
+  background: #ffedd5;
+  color: #9a3412;
+  border: 1px solid #fdba74;
+}
+
+.rankNormal {
+  color: #64748b;
+}
+
+.tableFooterRow {
+  background-color: #f1f5f9 !important;
+  font-weight: 700;
+}
+.tableFooterRow td {
+  background-color: #f1f5f9 !important;
+  border-top: 2px solid #cbd5e1;
+  color: #1e293b;
+  text-align: center;
+}
+
+.printContainer {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: landscape;
+    margin: 8mm 10mm;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-family: "Times New Roman", Times, serif !important;
+  }
+
+  /* Hide everything on the page except the print container */
+  .noPrint, .pageHeader, .card, .statsGrid, .actionButtons, .tableWrapper, nav, aside {
+    display: none !important;
+  }
+
+  .printContainer {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .printKop {
+    text-align: center;
+    border-bottom: 2px solid black;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+  }
+
+  .printKop h3 {
+    margin: 0;
+    font-size: 13pt;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+
+  .printKop h2 {
+    margin: 2px 0;
+    font-size: 15pt;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+
+  .printKop p {
+    margin: 0;
+    font-size: 9pt;
+  }
+
+  .printMeta {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    font-size: 9pt;
+    font-weight: bold;
+  }
+
+  .printTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8pt;
+  }
+
+  .printTable th, .printTable td {
+    border: 1px solid black !important;
+    padding: 3px 4px;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .printTable th {
+    background-color: #e5e7eb !important;
+    font-weight: bold;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .printSignatures {
+    margin-top: 25px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 9.5pt;
+    page-break-inside: avoid;
+  }
+
+  .signBox {
+    text-align: center;
+    min-width: 220px;
+  }
+}
