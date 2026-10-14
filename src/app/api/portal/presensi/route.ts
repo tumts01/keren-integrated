@@ -9,58 +9,89 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const nisn = searchParams.get('nisn');
+    const namaParam = searchParams.get('nama');
     
-    if (!nisn) {
-      return NextResponse.json({ success: false, error: 'Parameter nisn diperlukan' }, { status: 400 });
+    if (!nisn && !namaParam) {
+      return NextResponse.json({ success: false, error: 'Parameter nisn atau nama diperlukan' }, { status: 400 });
     }
 
     const cleanInputNisn = cleanNisn(nisn);
-    
-    // Using simple query since we are filtering by NISN, the number of records won't exceed 1000 for a single student.
-    // Notice that Supabase JSONB path query can be tricky if they have leading ' or zeros. 
-    // Best is to fetch all records matching the clean NISN or do a text search.
-    // Actually, `metadata->>NISN` is a string. If it has a single quote prefix in the DB, it's better to fetch and filter.
-    // But fetching ALL rows for all students is too slow just for one portal user.
-    // Let's use ilike on metadata->>NISN.
-    
-    const { data: rows, error } = await supabase
-      .from('data_presensi_siswa')
-      .select('*')
-      .ilike('metadata->>NISN', `%${cleanInputNisn}%`)
-      .order('tanggal', { ascending: false });
+    let rows: any[] = [];
 
-    if (error) throw error;
+    // 1. Primary Query by NISN
+    if (cleanInputNisn) {
+      const { data, error } = await supabase
+        .from('data_presensi_siswa')
+        .select('*')
+        .ilike('metadata->>NISN', `%${cleanInputNisn}%`)
+        .order('tanggal', { ascending: false });
+
+      if (error) throw error;
+      if (data) rows = data;
+    }
+
+    // 2. Secondary fallback by Nama Siswa if rows is empty and nama is provided
+    if (rows.length === 0 && namaParam) {
+      const cleanNama = namaParam.trim();
+      const { data, error } = await supabase
+        .from('data_presensi_siswa')
+        .select('*')
+        .ilike('metadata->>NAMA SISWA', `%${cleanNama}%`)
+        .order('tanggal', { ascending: false });
+
+      if (!error && data) rows = data;
+    }
 
     const history = rows.map((r: any) => {
+      // Check KEHADIRAN (S, I, A, H) or KETERANGAN
+      const rawKet = (r.metadata?.['KEHADIRAN'] || r.metadata?.['KETERANGAN'] || '').trim().toUpperCase();
+      let status = 'HADIR';
+      let statusLabel = 'Hadir';
+
+      if (rawKet === 'S' || rawKet.includes('SAKIT')) {
+        status = 'SAKIT';
+        statusLabel = 'Sakit';
+      } else if (rawKet === 'I' || rawKet.includes('IZIN') || rawKet.includes('IJIN')) {
+        status = 'IZIN';
+        statusLabel = 'Izin';
+      } else if (rawKet === 'A' || rawKet.includes('ALPHA') || rawKet.includes('ALFA')) {
+        status = 'ALPHA';
+        statusLabel = 'Alpha';
+      } else if (rawKet === 'H' || rawKet.includes('HADIR')) {
+        status = 'HADIR';
+        statusLabel = 'Hadir';
+      }
+
+      const rawTgl = (r.metadata?.['TANGGAL'] || r.tanggal || '').trim();
+
       return {
-        id: r.id,
-        tanggal: r.tanggal,
-        jamKe: r.metadata?.['JAM KE'] || '',
-        keterangan: (r.metadata?.['KETERANGAN'] || '').trim() || 'Hadir', // Default Hadir jika tidak ada keterangan sakit/izin/alpha khusus
-        guru: r.metadata?.['NAMA GURU'] || '',
-        mapel: r.metadata?.['MATA PELAJARAN'] || ''
+        id: r.metadata?.['ID'] || r.id?.toString() || Math.random().toString(),
+        tanggal: rawTgl,
+        jamKe: (r.metadata?.['JAM KE'] || '').trim(),
+        status, // 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPHA'
+        keterangan: statusLabel,
+        guru: (r.metadata?.['GURU PENGINPUT'] || r.metadata?.['NAMA GURU'] || '').trim(),
+        mapel: (r.metadata?.['MAPEL'] || r.metadata?.['MATA PELAJARAN'] || '').trim(),
+        kelas: (r.metadata?.['KELAS'] || r.kelas || '').trim()
       };
     });
 
-    // Hitung rekap 
-    // (Asumsi: di sistem ini, jika dicatat artinya Sakit/Izin/Alpha. Jika tidak dicatat artinya hadir)
-    // Tapi karena ini data per siswa yang tercatat, kita hitung dari data ini.
-    let sakit = 0, izin = 0, alpha = 0;
+    let hadir = 0, sakit = 0, izin = 0, alpha = 0;
     history.forEach((h: any) => {
-      const ket = h.keterangan.toLowerCase();
-      if (ket.includes('sakit') || ket === 's') sakit++;
-      else if (ket.includes('izin') || ket.includes('ijin') || ket === 'i') izin++;
-      else if (ket.includes('alpha') || ket.includes('alfa') || ket === 'a') alpha++;
+      if (h.status === 'SAKIT') sakit++;
+      else if (h.status === 'IZIN') izin++;
+      else if (h.status === 'ALPHA') alpha++;
+      else hadir++;
     });
 
     return NextResponse.json({ 
       success: true, 
       data: history,
-      rekap: { sakit, izin, alpha }
+      rekap: { hadir, sakit, izin, alpha, total: history.length }
     });
 
   } catch (error: any) {
     console.error('Portal Presensi Error:', error);
-    return NextResponse.json({ success: false, error: 'Gagal mengambil data' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Gagal mengambil data presensi' }, { status: 500 });
   }
 }
