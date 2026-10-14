@@ -83,84 +83,122 @@ export default function BukuIndukPrint({ data }: { data: any }) {
   const fotoUrl = getImageUrl(val('LINK FOTO TERBARU') || val('LINK URL FOTO 1') || val('LINK URL FOTO 2'));
 
   return (
-    <>
+    <div className="buku-induk-student">
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
-          body {
-            background-color: white !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
-          }
           @page {
             size: A4 portrait;
-            margin: 10mm 15mm 15mm 15mm;
+            margin: 8mm 12mm 10mm 12mm;
           }
-          .buku-induk-page {
-            padding-top: 0 !important;
-            min-height: auto !important;
-            page-break-after: auto !important;
-            break-after: auto !important;
-            border-top: 1px solid transparent;
-          }
-          .buku-induk-page + .buku-induk-page {
-            page-break-before: always !important;
-            break-before: page !important;
+          html, body {
+            background-color: white !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
           .no-print { display: none !important; }
-          .print-bg { background-color: transparent !important; padding: 0 !important; }
+          .print-bg {
+            background-color: transparent !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            min-height: 0 !important;
+          }
+          /* Per-student wrapper: force page break between students, except after last student */
+          .buku-induk-student {
+            display: block !important;
+            page-break-after: always !important;
+            break-after: page !important;
+          }
+          .buku-induk-student:last-child {
+            page-break-after: auto !important;
+            break-after: auto !important;
+          }
+          /* Individual A4 sheets inside student */
+          .buku-induk-page {
+            background: white !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+            box-sizing: border-box !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            font-family: Arial, sans-serif !important;
+            font-size: 11px !important;
+            color: black !important;
+          }
+          /* Page 1 (Data Induk) breaks to Page 2 */
+          .buku-induk-page-1 {
+            page-break-after: always !important;
+            break-after: page !important;
+          }
+          /* Page 2 (Rekam Studi) does not break internally; break between students is handled by .buku-induk-student */
+          .buku-induk-page-2 {
+            page-break-after: auto !important;
+            break-after: auto !important;
+          }
         }
         
         @media screen {
           .print-bg { background-color: #525659; }
+          .buku-induk-student {
+            margin-bottom: 25px;
+          }
+          .buku-induk-page {
+            background: white;
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto 20px auto;
+            padding: 15mm;
+            box-sizing: border-box;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+          }
         }
 
         .buku-induk-page {
-          background: white;
-          width: 210mm;
-          min-height: 297mm;
-          margin: 0 auto;
-          padding: 15mm;
-          box-sizing: border-box;
           font-family: Arial, sans-serif;
           font-size: 12px;
           color: black;
-          page-break-after: always;
           position: relative;
         }
 
         .bi-header {
           display: flex;
           align-items: center;
-          margin-bottom: 20px;
-          border-bottom: 3px solid black;
-          padding-bottom: 10px;
+          margin-bottom: 12px;
+          border-bottom: 2.5px solid black;
+          padding-bottom: 8px;
         }
         .bi-header img {
-          width: 70px;
+          width: 65px;
           height: auto;
-          margin-right: 20px;
+          margin-right: 18px;
         }
         .bi-header-text h2 {
-          margin: 0 0 5px 0;
-          font-size: 16px;
+          margin: 0 0 4px 0;
+          font-size: 15px;
         }
         .bi-header-text h1 {
-          margin: 0 0 5px 0;
-          font-size: 20px;
+          margin: 0 0 4px 0;
+          font-size: 19px;
         }
         .bi-header-text p {
           margin: 0;
-          font-size: 12px;
+          font-size: 11.5px;
         }
 
         .bi-table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 15px;
+          margin-bottom: 10px;
         }
         .bi-table th, .bi-table td {
           border: 1px solid black;
-          padding: 5px 6px;
+          padding: 4px 5px;
           vertical-align: middle;
         }
         .bi-table-noborder {
@@ -168,7 +206,7 @@ export default function BukuIndukPrint({ data }: { data: any }) {
           border-collapse: collapse;
         }
         .bi-table-noborder td {
-          padding: 3px 2px;
+          padding: 2.5px 2px;
           vertical-align: top;
         }
         .lbl { width: 140px; font-weight: normal; }
@@ -179,9 +217,10 @@ export default function BukuIndukPrint({ data }: { data: any }) {
           color: white;
           text-align: center;
           font-weight: bold;
-          padding: 4px;
+          padding: 3.5px;
           border: 1px solid black;
           margin-top: -1px;
+          font-size: 11px;
         }
 
         .two-cols {
@@ -191,15 +230,15 @@ export default function BukuIndukPrint({ data }: { data: any }) {
         }
         .col-half {
           flex: 1;
-          padding: 5px;
+          padding: 4px 5px;
         }
         .col-half:first-child {
           border-right: 1px solid black;
         }
 
         .foto-box {
-          width: 110px;
-          height: 150px;
+          width: 105px;
+          height: 140px;
           border: 1px solid black;
           display: flex;
           align-items: center;
@@ -211,18 +250,20 @@ export default function BukuIndukPrint({ data }: { data: any }) {
         .nilai-table th {
           background-color: #e0f2f1;
           text-align: center;
-          font-size: 10px;
+          font-size: 9.5px;
+          padding: 3px 2px;
         }
         .nilai-table td {
           text-align: center;
-          font-size: 11px;
+          font-size: 10px;
+          padding: 3px 2px;
         }
         
         .row-cyan { background-color: #b2ebf2; }
       `}} />
 
       {/* PAGE 1: DATA INDUK */}
-      <div className="buku-induk-page">
+      <div className="buku-induk-page buku-induk-page-1">
         <div className="bi-header">
           <img src="/logo.png" alt="Logo" />
           <div className="bi-header-text">
@@ -342,10 +383,10 @@ export default function BukuIndukPrint({ data }: { data: any }) {
       </div>
 
       {/* PAGE 2: REKAM STUDI */}
-      <div className="buku-induk-page">
-        <div className="section-title" style={{ marginBottom: '15px' }}>REKAM STUDI PESERTA DIDIK</div>
+      <div className="buku-induk-page buku-induk-page-2">
+        <div className="section-title" style={{ marginBottom: '8px' }}>REKAM STUDI PESERTA DIDIK</div>
         
-        <div className="two-cols" style={{ marginBottom: '15px' }}>
+        <div className="two-cols" style={{ marginBottom: '10px' }}>
           <div className="col-half">
             <table className="bi-table-noborder">
               <tbody>
@@ -469,8 +510,7 @@ export default function BukuIndukPrint({ data }: { data: any }) {
         </div>
 
         {/* PRESTASI (Merged to Page 2) */}
-        <div style={{ marginTop: '15px' }}></div>
-        <div className="section-title" style={{ marginBottom: '15px' }}>PRESTASI SISWA</div>
+        <div className="section-title" style={{ marginTop: '8px', marginBottom: '8px' }}>PRESTASI SISWA</div>
         <table className="bi-table">
           <thead>
             <tr style={{ backgroundColor: '#e0f2f1' }}>
@@ -499,12 +539,12 @@ export default function BukuIndukPrint({ data }: { data: any }) {
             ))}
             {prestasi.length === 0 && (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '20px' }}>Belum ada data prestasi</td>
+                <td colSpan={6} style={{ textAlign: 'center', padding: '10px' }}>Belum ada data prestasi</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-    </>
+    </div>
   );
 }

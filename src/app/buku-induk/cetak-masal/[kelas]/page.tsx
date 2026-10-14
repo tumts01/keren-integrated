@@ -62,22 +62,22 @@ export default function CetakMasalBukuIndukPage() {
   if (studentsData.length === 0) return null;
 
   return (
-    <div className="print-bg" style={{ minHeight: '100vh', padding: '2rem 0' }}>
-      <div className="no-print" style={{ maxWidth: '1000px', margin: '0 auto', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
+    <div className="print-bg" style={{ minHeight: '100vh', padding: '1.5rem 0' }}>
+      <div className="no-print" style={{ maxWidth: '1000px', margin: '0 auto', marginBottom: '1rem', padding: '0.75rem 1rem', background: '#1e293b', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
         <button 
           onClick={() => router.back()}
-          style={{ padding: '0.5rem 1rem', cursor: 'pointer', backgroundColor: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}
+          style={{ padding: '0.5rem 1rem', cursor: 'pointer', backgroundColor: '#334155', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 600, fontSize: '0.875rem' }}
         >
           &larr; Kembali
         </button>
-        <div style={{ color: 'white', fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
-          Cetak Masal Kelas {kelas} ({studentsData.length} Siswa)
+        <div style={{ color: 'white', fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span>📑 Cetak Masal Kelas {kelas} ({studentsData.length} Siswa — {studentsData.length * 2} Halaman)</span>
         </div>
         <button 
           onClick={() => window.print()}
-          style={{ padding: '0.5rem 1rem', cursor: 'pointer', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}
+          style={{ padding: '0.5rem 1.25rem', cursor: 'pointer', backgroundColor: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 2px 6px rgba(16, 185, 129, 0.4)' }}
         >
-          <i className="fa-solid fa-print"></i> Cetak {studentsData.length * 3} Lembar
+          <i className="fa-solid fa-print"></i> Cetak Dokumen
         </button>
       </div>
       
