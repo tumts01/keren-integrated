@@ -1,4 +1,5 @@
 'use client';
+import PortalFooter from '@/components/PortalFooter';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
@@ -934,6 +935,8 @@ export default function PortalDashboard() {
         </div>
 
       </div>
+
+      <PortalFooter />
 
       {/* ========================================================================= */}
       {/* MODAL: PENGAJUAN PERBAIKAN DATA */}

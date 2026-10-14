@@ -1,4 +1,5 @@
 'use client';
+import PortalFooter from '@/components/PortalFooter';
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -337,6 +338,7 @@ export default function PortalJurnal() {
         )}
 
       </div>
+        <PortalFooter />
     </div>
   );
 }
