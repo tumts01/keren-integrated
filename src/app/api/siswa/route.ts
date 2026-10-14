@@ -78,6 +78,16 @@ export async function GET() {
         noHpWali: row.get('NOMOR TELEPON WALI') || row.get('NOMOR HP WALI') || '',
         alamatWali: row.get('ALAMAT WALI') || '',
         tanggalDiterima: row.get('TANGGAL MASUK MTs/SMP') || row.get('TA KELAS 7') || row.get('TANGGAL DITERIMA') || '',
+        isMutasiMasuk: Boolean(
+          (row.get('TANGGAL MUTASI MASUK') || '').trim() ||
+          (row.get('NOMOR SURAT MUTASI MASUK') || '').trim() ||
+          (row.get('TA MUTASI KELAS 7') || '').trim() ||
+          (row.get('TA MUTASI KELAS 8') || '').trim() ||
+          (row.get('SMP/MTs SEBELUMNYA') || '').trim()
+        ),
+        tanggalMutasiMasuk: (row.get('TANGGAL MUTASI MASUK') || '').trim(),
+        nomorSuratMutasiMasuk: (row.get('NOMOR SURAT MUTASI MASUK') || '').trim(),
+        sekolahSebelumnya: (row.get('SMP/MTs SEBELUMNYA') || row.get('SEKOLAH SEBELUMNYA') || '').trim(),
       };
 
       const records = [];

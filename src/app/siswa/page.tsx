@@ -32,6 +32,10 @@ interface Siswa {
   noHp: string;
   tahunAjaran: string;
   isLatest: boolean;
+  isMutasiMasuk?: boolean;
+  tanggalMutasiMasuk?: string;
+  nomorSuratMutasiMasuk?: string;
+  sekolahSebelumnya?: string;
 }
 
 
@@ -1510,6 +1514,7 @@ export default function SiswaPage() {
   const [selectedRombel, setSelectedRombel] = useState<string>('Semua');
   const [selectedDomisili, setSelectedDomisili] = useState<string>('Semua');
   const [selectedAsalSekolah, setSelectedAsalSekolah] = useState<string>('Semua');
+  const [selectedMutasi, setSelectedMutasi] = useState<string>('Semua');
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showPresensiModal, setShowPresensiModal] = useState(false);
@@ -1625,7 +1630,16 @@ export default function SiswaPage() {
     const matchDomisili = selectedDomisili === 'Semua' ? true : (s.domisili || '').trim() === selectedDomisili;
     const asalSekolah = (s.rawMetadata?.['SD/MI'] || s.rawMetadata?.['ASAL SEKOLAH'] || '').trim();
     const matchAsalSekolah = selectedAsalSekolah === 'Semua' ? true : asalSekolah.toLowerCase().includes(selectedAsalSekolah.toLowerCase());
-    return matchSearch && matchTahun && matchTingkat && matchRombel && matchDomisili && matchAsalSekolah;
+    const isSiswaMutasi = Boolean(
+      s.isMutasiMasuk ||
+      (s.rawMetadata?.['TANGGAL MUTASI MASUK'] || '').trim() ||
+      (s.rawMetadata?.['NOMOR SURAT MUTASI MASUK'] || '').trim() ||
+      (s.rawMetadata?.['TA MUTASI KELAS 7'] || '').trim() ||
+      (s.rawMetadata?.['TA MUTASI KELAS 8'] || '').trim() ||
+      (s.rawMetadata?.['SMP/MTs SEBELUMNYA'] || '').trim()
+    );
+    const matchMutasi = selectedMutasi === 'Semua' ? true : selectedMutasi === 'Mutasi' ? isSiswaMutasi : !isSiswaMutasi;
+    return matchSearch && matchTahun && matchTingkat && matchRombel && matchDomisili && matchAsalSekolah && matchMutasi;
   });
 
   filteredData.sort((a, b) => {
@@ -1653,13 +1667,22 @@ export default function SiswaPage() {
   const totalKelas8Non = nonActiveData.filter(s => s.rombel.startsWith('8')).length;
   const totalKelas9Non = nonActiveData.filter(s => s.rombel.startsWith('9')).length;
 
+  const totalMutasi = activeData.filter(s => Boolean(
+    s.isMutasiMasuk ||
+    (s.rawMetadata?.['TANGGAL MUTASI MASUK'] || '').trim() ||
+    (s.rawMetadata?.['NOMOR SURAT MUTASI MASUK'] || '').trim() ||
+    (s.rawMetadata?.['TA MUTASI KELAS 7'] || '').trim() ||
+    (s.rawMetadata?.['TA MUTASI KELAS 8'] || '').trim() ||
+    (s.rawMetadata?.['SMP/MTs SEBELUMNYA'] || '').trim()
+  )).length;
+
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentData = filteredData.slice(startIndex, startIndex + itemsPerPage);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedTahun, selectedTingkat]);
+  }, [searchTerm, selectedTahun, selectedTingkat, selectedMutasi]);
 
   const handleExportExcel = () => {
     const sortedData = [...filteredData].sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
@@ -1675,6 +1698,10 @@ export default function SiswaPage() {
       'Tanggal Lahir': s.tanggalLahir,
       'Rombel/Kelas': s.rombel,
       'Asal Sekolah': s.rawMetadata?.['SD/MI'] || s.rawMetadata?.['ASAL SEKOLAH'] || '',
+      'Jenis Masuk': (s.isMutasiMasuk || (s.rawMetadata?.['TANGGAL MUTASI MASUK'] || '').trim() || (s.rawMetadata?.['NOMOR SURAT MUTASI MASUK'] || '').trim()) ? 'Mutasi Masuk' : 'Reguler',
+      'Tgl Mutasi Masuk': s.rawMetadata?.['TANGGAL MUTASI MASUK'] || s.tanggalMutasiMasuk || '',
+      'No. Surat Mutasi': s.rawMetadata?.['NOMOR SURAT MUTASI MASUK'] || s.nomorSuratMutasiMasuk || '',
+      'Sekolah Sebelumnya': s.rawMetadata?.['SMP/MTs SEBELUMNYA'] || s.sekolahSebelumnya || '',
       'Status': s.status,
       'Tahun Ajaran': s.tahunAjaran,
       'Domisili': s.domisili,
@@ -1890,6 +1917,23 @@ const handleExportMissingNisnNik = () => {
                   <span className={styles.infoLabel}>No. HP / WA (Ortu)</span>
                   <div className={styles.infoValue}><i className="fab fa-whatsapp" style={{ color: '#22c55e', marginRight: '6px' }}></i> {selectedSiswa.noHp || '-'}</div>
                 </div>
+                {Boolean(
+                  selectedSiswa.isMutasiMasuk ||
+                  (selectedSiswa.rawMetadata?.['TANGGAL MUTASI MASUK'] || '').trim() ||
+                  (selectedSiswa.rawMetadata?.['NOMOR SURAT MUTASI MASUK'] || '').trim() ||
+                  (selectedSiswa.rawMetadata?.['SMP/MTs SEBELUMNYA'] || '').trim()
+                ) && (
+                  <div className={`${styles.infoGroup} ${styles.infoFull}`} style={{ background: '#f0f9ff', padding: '12px 16px', borderRadius: '8px', border: '1px solid #bae6fd' }}>
+                    <span className={styles.infoLabel} style={{ color: '#0369a1', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <i className="fas fa-exchange-alt"></i> Informasi Siswa Mutasi Masuk
+                    </span>
+                    <div className={styles.infoValue} style={{ fontSize: '0.85rem', color: '#1e293b', marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div><strong>Tanggal Mutasi Masuk:</strong> {selectedSiswa.rawMetadata?.['TANGGAL MUTASI MASUK'] || selectedSiswa.tanggalMutasiMasuk || '-'}</div>
+                      <div><strong>Nomor Surat Mutasi:</strong> {selectedSiswa.rawMetadata?.['NOMOR SURAT MUTASI MASUK'] || selectedSiswa.nomorSuratMutasiMasuk || '-'}</div>
+                      <div><strong>Sekolah Sebelumnya:</strong> {selectedSiswa.rawMetadata?.['SMP/MTs SEBELUMNYA'] || selectedSiswa.rawMetadata?.['SEKOLAH SEBELUMNYA'] || selectedSiswa.sekolahSebelumnya || '-'}</div>
+                    </div>
+                  </div>
+                )}
                 <div className={`${styles.infoGroup} ${styles.infoFull}`}>
                   <span className={styles.infoLabel}>Nama Orang Tua</span>
                   <div className={styles.infoValue}>
@@ -1962,6 +2006,16 @@ const handleExportMissingNisnNik = () => {
               {uniqueDomisili.map(d => (
                 <option key={d} value={d}>{d}</option>
               ))}
+            </select>
+            <select
+              className={styles.filterSelect}
+              value={selectedMutasi}
+              onChange={(e) => setSelectedMutasi(e.target.value)}
+              style={selectedMutasi !== 'Semua' ? { borderColor: '#0ea5e9', backgroundColor: '#f0f9ff', fontWeight: 600, color: '#0369a1' } : undefined}
+            >
+              <option value="Semua">Semua Jenis Masuk</option>
+              <option value="Mutasi">🔄 Hanya Siswa Mutasi Masuk ({totalMutasi})</option>
+              <option value="Reguler">Siswa Reguler (Bukan Mutasi)</option>
             </select>
             <div style={{ position: 'relative' }}>
               <input
@@ -2044,6 +2098,28 @@ const handleExportMissingNisnNik = () => {
                 <span className={styles.statValue}>{totalPr}</span>
               </div>
             </div>
+            <div 
+              className={styles.statCard} 
+              style={{ 
+                borderLeftColor: '#0ea5e9', 
+                cursor: 'pointer',
+                background: selectedMutasi === 'Mutasi' ? '#f0f9ff' : undefined,
+                transition: 'all 0.2s ease'
+              }}
+              onClick={() => setSelectedMutasi(prev => prev === 'Mutasi' ? 'Semua' : 'Mutasi')}
+              title="Klik untuk filter hanya siswa mutasi masuk"
+            >
+              <div className={styles.statIcon} style={{ color: '#0ea5e9', background: '#e0f2fe' }}>
+                <i className="fas fa-exchange-alt"></i>
+              </div>
+              <div className={styles.statInfo}>
+                <span className={styles.statLabel}>Mutasi Masuk</span>
+                <span className={styles.statValue}>{totalMutasi}</span>
+                <div style={{ fontSize: '0.7rem', color: selectedMutasi === 'Mutasi' ? '#0284c7' : '#64748b', fontWeight: selectedMutasi === 'Mutasi' ? 700 : 400 }}>
+                  {selectedMutasi === 'Mutasi' ? '✓ Filter Aktif (Klik Reset)' : 'Klik untuk filter'}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -2097,7 +2173,36 @@ const handleExportMissingNisnNik = () => {
                             </div>
                           )}
                           <div>
-                            <span className={styles.nama}>{siswa.nama || '-'}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                              <span className={styles.nama}>{siswa.nama || '-'}</span>
+                              {Boolean(
+                                siswa.isMutasiMasuk ||
+                                (siswa.rawMetadata?.['TANGGAL MUTASI MASUK'] || '').trim() ||
+                                (siswa.rawMetadata?.['NOMOR SURAT MUTASI MASUK'] || '').trim() ||
+                                (siswa.rawMetadata?.['TA MUTASI KELAS 7'] || '').trim() ||
+                                (siswa.rawMetadata?.['TA MUTASI KELAS 8'] || '').trim() ||
+                                (siswa.rawMetadata?.['SMP/MTs SEBELUMNYA'] || '').trim()
+                              ) && (
+                                <span 
+                                  style={{
+                                    fontSize: '0.68rem',
+                                    padding: '2px 7px',
+                                    borderRadius: '4px',
+                                    fontWeight: 700,
+                                    background: '#e0f2fe',
+                                    color: '#0369a1',
+                                    border: '1px solid #bae6fd',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    cursor: 'help'
+                                  }}
+                                  title={`Siswa Mutasi Masuk${siswa.rawMetadata?.['TANGGAL MUTASI MASUK'] ? ` • Tgl: ${siswa.rawMetadata['TANGGAL MUTASI MASUK']}` : ''}${siswa.rawMetadata?.['NOMOR SURAT MUTASI MASUK'] ? ` • No. Surat: ${siswa.rawMetadata['NOMOR SURAT MUTASI MASUK']}` : ''}`}
+                                >
+                                  <i className="fas fa-exchange-alt" style={{ fontSize: '0.65rem' }}></i> Mutasi Masuk
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
