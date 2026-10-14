@@ -188,6 +188,13 @@ export default function BukuIndukPage() {
             📤 Upload Legger
           </Link>
           <Link
+            href="/buku-induk/verifikasi"
+            className={styles.primaryButton}
+            style={{ padding: '0.6rem 1.1rem', backgroundColor: '#059669', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '0.875rem', borderRadius: '8px', textDecoration: 'none' }}
+          >
+            🛡️ Verifikasi Data Ortu
+          </Link>
+          <Link
             href="/buku-induk/dkn"
             className={styles.primaryButton}
             style={{ padding: '0.6rem 1.1rem', backgroundColor: '#0284c7', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, fontSize: '0.875rem', borderRadius: '8px', textDecoration: 'none' }}
