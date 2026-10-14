@@ -444,28 +444,25 @@ export default function BukuIndukPrint({ data }: { data: any }) {
                 </tr>
               </thead>
               <tbody>
-                {(() => {
-                  const total = Object.values(data.presensi || {}).reduce((acc: any, curr: any) => {
-                    acc.S += curr.S || 0;
-                    acc.I += curr.I || 0;
-                    acc.A += curr.A || 0;
-                    return acc;
-                  }, { S: 0, I: 0, A: 0 }) as { S: number, I: number, A: number };
-
+                {[
+                  { k: '7', s: 'Ganjil' }, { k: '7', s: 'Genap' },
+                  { k: '8', s: 'Ganjil' }, { k: '8', s: 'Genap' },
+                  { k: '9', s: 'Ganjil' }, { k: '9', s: 'Genap' },
+                ].map((slot, i) => {
+                  const pres = data.presensi?.[`${slot.k}-${slot.s}`] || 
+                               data.presensi?.[`${slot.k} ${slot.s}`] || 
+                               data.presensi?.[`${slot.k}_${slot.s}`] || {};
+                  const sVal = pres.S !== undefined && pres.S > 0 ? pres.S : '-';
+                  const iVal = pres.I !== undefined && pres.I > 0 ? pres.I : '-';
+                  const aVal = pres.A !== undefined && pres.A > 0 ? pres.A : '-';
                   return (
-                    <>
-                      <tr className="row-cyan">
-                        <td>{total.S || '-'}</td>
-                        <td>{total.I || '-'}</td>
-                        <td>{total.A || '-'}</td>
-                      </tr>
-                      {/* Empty rows to maintain table height alignment with Ekstrakurikuler */}
-                      {[1, 2, 3, 4, 5].map(n => (
-                        <tr key={n} className={n % 2 === 0 ? 'row-cyan' : ''}><td>&nbsp;</td><td></td><td></td></tr>
-                      ))}
-                    </>
+                    <tr key={i} className={i % 2 === 0 ? 'row-cyan' : ''}>
+                      <td style={{ textAlign: 'center' }}>{sVal}</td>
+                      <td style={{ textAlign: 'center' }}>{iVal}</td>
+                      <td style={{ textAlign: 'center' }}>{aVal}</td>
+                    </tr>
                   );
-                })()}
+                })}
               </tbody>
             </table>
           </div>

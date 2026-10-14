@@ -46,7 +46,16 @@ export async function GET(request: Request, context: { params: Promise<{ kelas: 
         nama,
         history,
         nilai: [] as any[],
-        prestasi: [] as any[]
+        ekstra: [] as any[],
+        prestasi: [] as any[],
+        presensi: {
+          '7-Ganjil': { S: 0, I: 0, A: 0 },
+          '7-Genap': { S: 0, I: 0, A: 0 },
+          '8-Ganjil': { S: 0, I: 0, A: 0 },
+          '8-Genap': { S: 0, I: 0, A: 0 },
+          '9-Ganjil': { S: 0, I: 0, A: 0 },
+          '9-Genap': { S: 0, I: 0, A: 0 }
+        } as Record<string, { S: number; I: number; A: number }>
       };
     });
 
@@ -67,6 +76,20 @@ export async function GET(request: Request, context: { params: Promise<{ kelas: 
       }
     }
 
+    // 2.5. Fetch Nilai Ekstra for these classes
+    let exsData: any[] = [];
+    if (uniqueTas.length > 0 && uniqueRombels.length > 0) {
+      const { data: exs, error: exsError } = await supabase
+        .from('ekstra_buku_induk')
+        .select('*')
+        .in('kelas', uniqueRombels)
+        .in('tahun_ajaran', uniqueTas);
+        
+      if (!exsError && exs) {
+        exsData = exs;
+      }
+    }
+
     // 3. Fetch Prestasi for these students
     const { data: prestasi, error: prestasiError } = await supabase
       .from('data_prestasi')
@@ -75,6 +98,26 @@ export async function GET(request: Request, context: { params: Promise<{ kelas: 
     let prestasiList: any[] = [];
     if (!prestasiError && prestasi) {
       prestasiList = prestasi.map(p => p.metadata).filter(Boolean);
+    }
+
+    // 3.5. Fetch Presensi for these students
+    const studentNisns = studentsInClass.map((s: any) => s.metadata?.['NISN']).filter(Boolean);
+    const studentNames = studentsInClass.map((s: any) => s.metadata?.['NAMA'] || s.nama).filter(Boolean);
+
+    let presensiRows: any[] = [];
+    if (studentNisns.length > 0 || studentNames.length > 0) {
+      const orClauses: string[] = [];
+      studentNisns.forEach((n: string) => orClauses.push(`metadata->>NISN.eq.${n}`));
+      studentNames.forEach((nm: string) => orClauses.push(`metadata->>NAMA SISWA.eq.${nm}`));
+
+      const { data: pRows } = await supabase
+        .from('data_presensi_siswa')
+        .select('tanggal, metadata')
+        .or(orClauses.slice(0, 60).join(','));
+
+      if (pRows) {
+        presensiRows = pRows;
+      }
     }
 
     // 4. Map everything together
@@ -132,6 +175,79 @@ export async function GET(request: Request, context: { params: Promise<{ kelas: 
             }
           }
         });
+      });
+
+      // Map Ekstra
+      exsData.forEach(row => {
+        const matchesHistory = student.history.some(h => h.tahun_ajaran === row.tahun_ajaran && h.rombel === row.kelas);
+        if (matchesHistory) {
+          const normName = (v: any) => String(v || '').toUpperCase().replace(/\s+/g, ' ').trim();
+          const studentEkstra = (row.data_ekstra || []).filter((d: any) =>
+            (student.induk?.['NISN'] && d.nisn && String(d.nisn).trim() === String(student.induk?.['NISN']).trim()) ||
+            (student.nis && d.nis && String(d.nis).trim() === String(student.nis).trim()) ||
+            (normName(d.nama) !== '' && normName(d.nama) === normName(student.nama))
+          );
+          if (studentEkstra && studentEkstra.length > 0) {
+            const matchedHistory = student.history.find(h => h.rombel === row.kelas && h.tahun_ajaran === row.tahun_ajaran);
+            for (const ek of studentEkstra) {
+              student.ekstra.push({
+                tahun_ajaran: row.tahun_ajaran,
+                semester: row.semester,
+                kelas: matchedHistory ? matchedHistory.kelas : row.kelas,
+                jenis_ekstra: ek.jenis_ekstra,
+                nilai: ek.nilai
+              });
+            }
+          }
+        }
+      });
+
+      // Map Presensi
+      const studentSeenDates = new Set<string>();
+      presensiRows.forEach(p => {
+        if (!p.tanggal) return;
+        const hadir = (p.metadata?.['KEHADIRAN'] || '').trim().toUpperCase();
+        if (hadir !== 'S' && hadir !== 'I' && hadir !== 'A') return;
+
+        const pNisn = (p.metadata?.['NISN'] || '').trim();
+        const pNama = (p.metadata?.['NAMA SISWA'] || '').trim().toUpperCase();
+        const sNisn = (student.induk?.['NISN'] || '').trim();
+        const sNama = (student.nama || '').trim().toUpperCase();
+
+        const isMatch = (pNisn && sNisn && pNisn === sNisn) || (pNama && sNama && pNama === sNama);
+        if (!isMatch) return;
+
+        const dateKey = `${p.tanggal}::${hadir}`;
+        if (studentSeenDates.has(dateKey)) return;
+        studentSeenDates.add(dateKey);
+
+        const d = new Date(p.tanggal);
+        const month = d.getMonth() + 1;
+        const semester = (month >= 7 && month <= 12) ? 'Ganjil' : 'Genap';
+        const kelas = (p.metadata?.['KELAS'] || '').trim().toUpperCase();
+
+        let level = '';
+        if (kelas.startsWith('7') || kelas.startsWith('VII')) level = '7';
+        else if (kelas.startsWith('8') || kelas.startsWith('VIII')) level = '8';
+        else if (kelas.startsWith('9') || kelas.startsWith('IX')) level = '9';
+        else return;
+
+        const key = `${level}-${semester}`;
+        if (!student.presensi[key]) {
+          student.presensi[key] = { S: 0, I: 0, A: 0 };
+        }
+        if (hadir === 'S') student.presensi[key].S += 1;
+        if (hadir === 'I') student.presensi[key].I += 1;
+        if (hadir === 'A') student.presensi[key].A += 1;
+      });
+
+      // Support manual presensi override from metadata
+      const manualPres = student.induk?.['MANUAL_PRESENSI'] || student.induk?.['PRESENSI'] || {};
+      Object.keys(manualPres).forEach(k => {
+        if (!student.presensi[k]) student.presensi[k] = { S: 0, I: 0, A: 0 };
+        if (manualPres[k]?.S !== undefined) student.presensi[k].S = manualPres[k].S;
+        if (manualPres[k]?.I !== undefined) student.presensi[k].I = manualPres[k].I;
+        if (manualPres[k]?.A !== undefined) student.presensi[k].A = manualPres[k].A;
       });
 
       // Map Prestasi

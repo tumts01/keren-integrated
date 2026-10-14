@@ -182,7 +182,14 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     }
 
     // 4. Fetch Presensi
-    let rekapPresensi: Record<string, { S: number; I: number; A: number }> = {};
+    let rekapPresensi: Record<string, { S: number; I: number; A: number }> = {
+      '7-Ganjil': { S: 0, I: 0, A: 0 },
+      '7-Genap': { S: 0, I: 0, A: 0 },
+      '8-Ganjil': { S: 0, I: 0, A: 0 },
+      '8-Genap': { S: 0, I: 0, A: 0 },
+      '9-Ganjil': { S: 0, I: 0, A: 0 },
+      '9-Genap': { S: 0, I: 0, A: 0 }
+    };
     if (nisn || nama) {
       const orQuery = [];
       if (nisn) orQuery.push(`metadata->>NISN.eq.${nisn}`);
@@ -194,28 +201,46 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         .or(orQuery.join(','));
         
       if (!presensiError && presensiData) {
+        const seenDateStatus = new Set<string>();
+
         presensiData.forEach(p => {
           if (!p.tanggal) return;
+          const hadir = (p.metadata?.['KEHADIRAN'] || '').trim().toUpperCase();
+          if (hadir !== 'S' && hadir !== 'I' && hadir !== 'A') return;
+
+          // Prevent counting duplicate subject periods on the same date for the same status
+          const dateKey = `${p.tanggal}::${hadir}`;
+          if (seenDateStatus.has(dateKey)) return;
+          seenDateStatus.add(dateKey);
+
           const d = new Date(p.tanggal);
           const month = d.getMonth() + 1; // 1-12
           const semester = (month >= 7 && month <= 12) ? 'Ganjil' : 'Genap';
-          const kelas = p.metadata?.['KELAS'] || '';
+          const kelas = (p.metadata?.['KELAS'] || '').trim().toUpperCase();
           
           let level = '';
-          if (kelas.startsWith('7')) level = '7';
-          else if (kelas.startsWith('8')) level = '8';
-          else if (kelas.startsWith('9')) level = '9';
+          if (kelas.startsWith('7') || kelas.startsWith('VII')) level = '7';
+          else if (kelas.startsWith('8') || kelas.startsWith('VIII')) level = '8';
+          else if (kelas.startsWith('9') || kelas.startsWith('IX')) level = '9';
           else return;
   
           const key = `${level}-${semester}`;
           if (!rekapPresensi[key]) rekapPresensi[key] = { S: 0, I: 0, A: 0 };
           
-          const hadir = p.metadata?.['KEHADIRAN']?.toUpperCase();
           if (hadir === 'S') rekapPresensi[key].S += 1;
           if (hadir === 'I') rekapPresensi[key].I += 1;
           if (hadir === 'A') rekapPresensi[key].A += 1;
         });
       }
+
+      // Also support manual presensi override if present in metadata
+      const manualPres = metadata['MANUAL_PRESENSI'] || metadata['PRESENSI'] || {};
+      Object.keys(manualPres).forEach(k => {
+        if (!rekapPresensi[k]) rekapPresensi[k] = { S: 0, I: 0, A: 0 };
+        if (manualPres[k]?.S !== undefined) rekapPresensi[k].S = manualPres[k].S;
+        if (manualPres[k]?.I !== undefined) rekapPresensi[k].I = manualPres[k].I;
+        if (manualPres[k]?.A !== undefined) rekapPresensi[k].A = manualPres[k].A;
+      });
     }
 
     return NextResponse.json({
