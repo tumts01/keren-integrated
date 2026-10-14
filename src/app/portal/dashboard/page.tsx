@@ -38,6 +38,7 @@ export default function PortalDashboard() {
     }
     
     try {
+      localStorage.setItem('keren_app_preference', 'portal');
       const parsed = JSON.parse(sessionStr);
       setStudent(parsed);
       if (parsed.verifikasiIjazah) {

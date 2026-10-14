@@ -9,6 +9,9 @@ export default function PortalLogin() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    try {
+      localStorage.setItem('keren_app_preference', 'portal');
+    } catch {}
     // If already logged in, redirect to dashboard
     if (localStorage.getItem('portal_session')) {
       router.replace('/portal/dashboard');
@@ -30,6 +33,7 @@ export default function PortalLogin() {
       
       if (data.success) {
         localStorage.setItem('portal_session', JSON.stringify(data.data));
+        localStorage.setItem('keren_app_preference', 'portal');
         router.push('/portal/dashboard');
       } else {
         Swal.fire('Login Gagal', data.error, 'error');
@@ -100,11 +104,23 @@ export default function PortalLogin() {
           </button>
         </form>
 
-        <div style={{ marginTop: '32px', padding: '16px', background: '#fef3c7', borderRadius: '12px', textAlign: 'left' }}>
-          <p style={{ margin: 0, fontSize: '13px', color: '#92400e', lineHeight: 1.5 }}>
-            <i className="fas fa-info-circle" style={{ marginRight: '6px' }}></i>
-            Pastikan NISN yang dimasukkan sesuai dengan data madrasah. Jika kesulitan login, silakan hubungi Wali Kelas.
-          </p>
+        <div style={{ marginTop: '24px', textAlign: 'center' }}>
+          <a 
+            href="/"
+            onClick={() => {
+              try { localStorage.setItem('keren_app_preference', 'guru'); } catch {}
+            }}
+            style={{ 
+              fontSize: '12.5px', 
+              color: '#64748b', 
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <i className="fas fa-chalkboard-teacher" style={{ color: '#0284c7' }}></i> Masuk sebagai Guru / Staf Madrasah
+          </a>
         </div>
       </div>
       </div>

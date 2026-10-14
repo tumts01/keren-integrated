@@ -1,11 +1,13 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import Header from '@/components/Header';
 import styles from './Auth.module.css';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [usernameInput, setUsernameInput] = useState('');
   const [mounted, setMounted] = useState(false);
@@ -20,8 +22,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMounted(true);
     const storedUser = localStorage.getItem('keren_user_data');
-    if (storedUser) setUser(JSON.parse(storedUser));
-  }, []);
+    const portalSession = localStorage.getItem('portal_session');
+    const appPref = localStorage.getItem('keren_app_preference');
+
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+      try { localStorage.setItem('keren_app_preference', 'guru'); } catch {}
+    } else if (portalSession && pathname === '/') {
+      // User is logged into student/wali murid portal!
+      router.replace('/portal/dashboard');
+      return;
+    } else if (appPref === 'portal' && pathname === '/') {
+      // User preferred student portal
+      router.replace('/portal/login');
+      return;
+    }
+  }, [pathname, router]);
 
   // Popup Pengumuman Baru saat user berhasil login / load
   useEffect(() => {
@@ -248,6 +264,32 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 Klik disini untuk bantuan akses login
               </button>
             </form>
+
+            {/* Switch to Portal Siswa & Wali Murid */}
+            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px dashed #e2e8f0', textAlign: 'center' }}>
+              <p style={{ margin: '0 0 8px 0', fontSize: '0.8rem', color: '#64748b' }}>
+                Wali Murid atau Siswa MTs?
+              </p>
+              <Link 
+                href="/portal/login"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  padding: '10px 14px',
+                  background: '#f0f9ff',
+                  color: '#0284c7',
+                  border: '1px solid #bae6fd',
+                  borderRadius: '10px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  textDecoration: 'none'
+                }}
+              >
+                <i className="fas fa-user-graduate"></i> Masuk ke Portal Siswa & Wali Murid
+              </Link>
+            </div>
             
             <div className={styles.footer}>
               &copy; {new Date().getFullYear()} KEREN Integrated from Aa' Icoll

@@ -15,6 +15,18 @@ export default function Home() {
 
   useEffect(() => {
     const storedUser = localStorage.getItem('keren_user_data');
+    const portalSession = localStorage.getItem('portal_session');
+    const appPref = localStorage.getItem('keren_app_preference');
+
+    if (!storedUser && portalSession) {
+      window.location.replace('/portal/dashboard');
+      return;
+    }
+    if (!storedUser && appPref === 'portal') {
+      window.location.replace('/portal/login');
+      return;
+    }
+
     if (storedUser) {
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
