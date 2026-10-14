@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
 import styles from './presensi.module.css';
@@ -113,7 +113,7 @@ export default function PresensiPage() {
   // Semua nama siswa aktif (untuk datalist piket, tidak terbatas kelas)
   const [allSiswaNames, setAllSiswaNames] = useState<string[]>([]);
 
-  const [piketStudents, setPiketStudents] = useState<string[]>([]);
+  const [piketMap, setPiketMap] = useState<Record<string, { status: string; jamKe: string; jams: string[] }>>({});
   // Piket: dynamic rows (1 row = 1 siswa, bisa tambah)
   const [piketRows, setPiketRows] = useState<Array<{ id: string; nama: string; status: string; kelas?: string }>>([
     { id: `row_${Date.now()}`, nama: '', status: 'A', kelas: '' }
@@ -121,18 +121,41 @@ export default function PresensiPage() {
   const [piketDropdownOpenId, setPiketDropdownOpenId] = useState<string | null>(null);
   const [piketSearchSiswa, setPiketSearchSiswa] = useState('');
 
-  useEffect(() => {
-    if (!tanggal || !selectedKelas) {
-      setPiketStudents([]);
+  const fetchPiketData = useCallback(async () => {
+    if (!tanggal) {
+      setPiketMap({});
       return;
     }
-    fetch(`/api/presensi?tanggal=${tanggal}`).then(r => r.json()).then(res => {
-      if (res.success) {
-        const pikets = res.data.filter((r: any) => r.mapel === 'PIKET' && r.kelas === selectedKelas);
-        setPiketStudents(pikets.map((r: any) => r.namaSiswa));
+    try {
+      const res = await fetch(`/api/presensi?tanggal=${tanggal}&_t=${Date.now()}`, { cache: 'no-store' });
+      const json = await res.json();
+      if (json.success && Array.isArray(json.data)) {
+        const map: Record<string, { status: string; jamKe: string; jams: string[] }> = {};
+        json.data.forEach((r: any) => {
+          const mapel = (r.mapel || '').trim().toUpperCase();
+          if (mapel === 'PIKET') {
+            const normName = (r.namaSiswa || '').trim().replace(/\s+/g, ' ').toUpperCase();
+            if (normName) {
+              const jamKeStr = String(r.jamKe || '').trim();
+              const jams = jamKeStr.split(',').map(j => j.trim()).filter(Boolean);
+              map[normName] = {
+                status: (r.kehadiran || 'S').trim().toUpperCase(),
+                jamKe: jamKeStr,
+                jams
+              };
+            }
+          }
+        });
+        setPiketMap(map);
       }
-    });
-  }, [tanggal, selectedKelas, activeTab]);
+    } catch (err) {
+      console.error('Fetch piket error:', err);
+    }
+  }, [tanggal]);
+
+  useEffect(() => {
+    fetchPiketData();
+  }, [fetchPiketData, activeTab]);
 
   // Jurnal: guru yang mengajar
   const [guruList, setGuruList] = useState<string[]>([]);
@@ -201,6 +224,7 @@ export default function PresensiPage() {
   useEffect(() => {
     fetch('/api/kelas').then(res => res.json()).then(data => {
       if (data.success) {
+        fetchPiketData();
         // Unique kelas list, filter out invalid names like '-' or '7'
         const uniqueKelas = Array.from(new Set(data.data.map((k: any) => k.rombel)))
           .filter((k: any) => k && k.length >= 2 && k !== '-') as string[];
@@ -897,7 +921,7 @@ export default function PresensiPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [materi, setMateri] = useState('');
 
-  const displaySiswa = activeTab === 'absen' ? siswaList.filter(s => !piketStudents.includes(s.nama)) : siswaList;
+  const displaySiswa = siswaList;
 
   const handlePresensiChange = (id: string, status: string) => {
     setPresensi(prev => ({
@@ -957,8 +981,24 @@ export default function PresensiPage() {
         siswaPayload = validRows.map(r => ({ id: r.id, nama: r.nama, nisn: '', kelas: r.kelas }));
         presensiPayload = Object.fromEntries(validRows.map(r => [r.nama, r.status]));
       } else {
-        siswaPayload = displaySiswa;
+        const selectedJamStr = selectedJam.map(String);
+        siswaPayload = displaySiswa.filter((s: any) => {
+          const normName = (s.nama || '').trim().replace(/\s+/g, ' ').toUpperCase();
+          const piket = piketMap[normName];
+          if (!piket) return true;
+          const isPiketActive = piket.jams.length === 0 || selectedJamStr.some(j => piket.jams.includes(j));
+          return !isPiketActive;
+        });
         presensiPayload = presensi;
+        if (siswaPayload.length === 0) {
+          Swal.fire({
+            icon: 'info',
+            title: 'Info Presensi',
+            text: `Semua siswa di kelas ${selectedKelas} sudah tercatat oleh Guru Piket untuk jam tersebut.`
+          });
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       const res = await fetch('/api/presensi', {
@@ -1506,39 +1546,132 @@ export default function PresensiPage() {
                 <div className={styles.loading}>Memuat data siswa...</div>
               ) : displaySiswa.length > 0 ? (
                 <div className={styles.tableContainer}>
+                  {(() => {
+                    const selectedJamStr = selectedJam.map(String);
+                    const piketInClassCount = displaySiswa.filter((s: any) => {
+                      const norm = (s.nama || '').trim().replace(/\s+/g, ' ').toUpperCase();
+                      const p = piketMap[norm];
+                      return p && (selectedJamStr.length === 0 || p.jams.length === 0 || selectedJamStr.some(j => p.jams.includes(j)));
+                    }).length;
+
+                    if (piketInClassCount > 0) {
+                      return (
+                        <div style={{
+                          padding: '10px 16px',
+                          background: '#fffbeb',
+                          border: '1px solid #fde68a',
+                          borderRadius: '8px',
+                          marginBottom: '16px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          color: '#92400e',
+                          fontSize: '0.88rem'
+                        }}>
+                          <i className="fas fa-info-circle" style={{ fontSize: '1.2rem', color: '#d97706' }}></i>
+                          <span>
+                            Terdapat <strong>{piketInClassCount} siswa</strong> yang sudah tercatat izin di <strong>Guru Piket</strong> hari ini (baris ditandai warna kuning dan otomatis terkunci agar tidak terhitung Alpa).
+                          </span>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                   <table className={styles.table}>
                     <thead>
                       <tr>
                         <th style={{ width: '50px', textAlign: 'center' }}>No</th>
                         <th>NISN</th>
                         <th>Nama Siswa</th>
-                        <th style={{ textAlign: 'center', width: '200px' }}>Kehadiran</th>
+                        <th style={{ textAlign: 'center', width: '220px' }}>Kehadiran</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {displaySiswa.map((siswa: any, i: number) => (
-                        <tr key={siswa.id}>
-                          <td style={{ textAlign: 'center' }}>{i + 1}</td>
-                          <td className={styles.nisn}>{siswa.nisn}</td>
-                          <td className={styles.nama}>{siswa.nama}</td>
-                          <td>
-                            <div className={styles.radioGroup}>
-                              {['H', 'S', 'I', 'A'].map(status => (
-                                <label key={status} className={`${styles.radioLabel} ${presensi[siswa.id] === status ? (status === 'H' ? styles.radioCheckedH : status === 'S' ? styles.radioCheckedS : status === 'I' ? styles.radioCheckedI : styles.radioCheckedA) : ''}`}>
-                                  <input
-                                    type="radio"
-                                    name={`presensi_${siswa.id}`}
-                                    value={status}
-                                    checked={presensi[siswa.id] === status}
-                                    onChange={() => handlePresensiChange(siswa.id, status)}
-                                  />
-                                  {status}
-                                </label>
-                              ))}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                      {displaySiswa.map((siswa: any, i: number) => {
+                        const normName = (siswa.nama || '').trim().replace(/\s+/g, ' ').toUpperCase();
+                        const piket = piketMap[normName];
+                        const selectedJamStr = selectedJam.map(String);
+                        const isPiketActive = Boolean(
+                          piket && (
+                            selectedJamStr.length === 0 ||
+                            piket.jams.length === 0 ||
+                            selectedJamStr.some(j => piket.jams.includes(j))
+                          )
+                        );
+                        const piketLabel = piket ? (
+                          piket.status === 'S' ? 'SAKIT' :
+                          piket.status === 'I' ? 'IZIN' :
+                          piket.status === 'D' ? 'DISPENSASI' : piket.status
+                        ) : '';
+
+                        return (
+                          <tr 
+                            key={siswa.id} 
+                            style={isPiketActive ? { backgroundColor: '#fffbeb' } : undefined}
+                          >
+                            <td style={{ textAlign: 'center' }}>{i + 1}</td>
+                            <td className={styles.nisn}>{siswa.nisn}</td>
+                            <td className={styles.nama}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                <span>{siswa.nama}</span>
+                                {isPiketActive && (
+                                  <span style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '2px 8px',
+                                    borderRadius: '6px',
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    background: '#fef3c7',
+                                    color: '#b45309',
+                                    border: '1px solid #fcd34d'
+                                  }}>
+                                    <i className="fas fa-shield-alt" style={{ fontSize: '10px' }}></i>
+                                    {piketLabel} (PIKET{piket.jamKe ? ` • Jam ${piket.jamKe}` : ''})
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td>
+                              {isPiketActive ? (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <span style={{
+                                    padding: '4px 12px',
+                                    borderRadius: '6px',
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    background: '#fef3c7',
+                                    color: '#92400e',
+                                    border: '1px dashed #f59e0b',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                  }}>
+                                    <i className="fas fa-check-circle" style={{ color: '#d97706' }}></i>
+                                    {piketLabel} (Oleh Piket)
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className={styles.radioGroup}>
+                                  {['H', 'S', 'I', 'A'].map(status => (
+                                    <label key={status} className={`${styles.radioLabel} ${presensi[siswa.id] === status ? (status === 'H' ? styles.radioCheckedH : status === 'S' ? styles.radioCheckedS : status === 'I' ? styles.radioCheckedI : styles.radioCheckedA) : ''}`}>
+                                      <input
+                                        type="radio"
+                                        name={`presensi_${siswa.id}`}
+                                        value={status}
+                                        checked={presensi[siswa.id] === status}
+                                        onChange={() => handlePresensiChange(siswa.id, status)}
+                                      />
+                                      {status}
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                   <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '24px' }}>
@@ -1556,7 +1689,7 @@ export default function PresensiPage() {
               ) : selectedKelas ? (
                 <div className={styles.emptyState}>
                   <i className="fas fa-users-slash"></i>
-                  <p>{piketStudents.length > 0 ? `Semua siswa di kelas ${selectedKelas} telah diabsen S/I/A oleh Guru Piket hari ini.` : `Data siswa kelas ${selectedKelas} tidak ditemukan.`}</p>
+                  <p>Data siswa kelas {selectedKelas} tidak ditemukan.</p>
                 </div>
               ) : (
                 <div className={styles.emptyState}>

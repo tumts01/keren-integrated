@@ -9,6 +9,8 @@ const cleanJamKe = (val: string) => {
   return val.replace(/,(19|20)\d{2}$/g, '').trim();
 };
 
+const normalizeNama = (val: any) => String(val || '').trim().replace(/\s+/g, ' ').toUpperCase();
+
 import { getAllCachedDataInduk } from '@/lib/data-induk';
 
 const getMapDomisili = async () => {
@@ -82,7 +84,7 @@ export async function GET(request: Request) {
       };
     });
 
-    return NextResponse.json({ success: true, data: mappedData }, { headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' } });
+    return NextResponse.json({ success: true, data: mappedData }, { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } });
   } catch (error: any) {
     console.error('Fetch Presensi Error:', error);
     return NextResponse.json({ success: false, error: 'Gagal memuat data presensi: ' + error.message }, { status: 500 });
@@ -222,60 +224,103 @@ export async function POST(request: Request) {
       }, { status: 409 });
     }
 
-    // ── ANTI-DOBEL KHUSUS PIKET ──
-    if (kelas === "MULTIPLE" && mapel === "PIKET") {
+    // ── LOGIKA KHUSUS PIKET ──
+    if (mapel === "PIKET") {
+      // 1. Anti-dobel internal piket (siswa yang sama di jam yang sama)
       const { data: piketPresensi, error: pError } = await supabase
         .from('data_presensi_siswa')
         .select('metadata')
         .eq('tanggal', tanggal)
-        .contains('metadata', { 'MAPEL': 'PIKET' });
+        .eq('metadata->>MAPEL', 'PIKET');
 
       if (!pError && piketPresensi) {
         listSiswa = listSiswa.filter((s: any) => {
           return !piketPresensi.some(p => {
             const existingJams = String(p.metadata?.['JAM KE'] || '').split(',').map(j => j.trim()).filter(Boolean);
-            const hasOverlap = submittedJams.some(j => existingJams.includes(j));
-            return hasOverlap && p.metadata?.['NAMA SISWA'] === s.nama;
+            const hasOverlap = existingJams.length === 0 || submittedJams.some(j => existingJams.includes(j));
+            return hasOverlap && normalizeNama(p.metadata?.['NAMA SISWA']) === normalizeNama(s.nama);
           });
         });
         
         if (listSiswa.length === 0) {
-          return NextResponse.json({ success: false, error: 'Data absensi piket sudah ada sebelumnya (Anti-Dobel Aktif).' }, { status: 409 });
+          return NextResponse.json({ success: false, error: 'Data absensi piket untuk siswa ini pada jam tersebut sudah ada sebelumnya (Anti-Dobel Aktif).' }, { status: 409 });
+        }
+      }
+
+      // 2. Auto-resolve conflict: Jika ada guru mapel/kelas yang terlanjur mengabsen siswa ini di jam yang sama (misal terlanjur di-Alpa-kan), hapus entri guru mapel tersebut karena izin piket adalah data resmi
+      const { data: existingNonPiket, error: nonPiketErr } = await supabase
+        .from('data_presensi_siswa')
+        .select('id, metadata')
+        .eq('tanggal', tanggal)
+        .neq('metadata->>MAPEL', 'PIKET');
+
+      if (!nonPiketErr && existingNonPiket && existingNonPiket.length > 0) {
+        const piketStudentNames = new Set(listSiswa.map((s: any) => normalizeNama(s.nama)));
+        const idsToDelete: number[] = [];
+
+        for (const row of existingNonPiket) {
+          const rowNama = normalizeNama(row.metadata?.['NAMA SISWA']);
+          if (piketStudentNames.has(rowNama)) {
+            const rowJams = String(row.metadata?.['JAM KE'] || '').split(',').map(j => j.trim()).filter(Boolean);
+            const hasOverlap = rowJams.length === 0 || submittedJams.some(j => rowJams.includes(j));
+            if (hasOverlap) {
+              idsToDelete.push(row.id);
+            }
+          }
+        }
+
+        if (idsToDelete.length > 0) {
+          const chunkSize = 20;
+          for (let i = 0; i < idsToDelete.length; i += chunkSize) {
+            const chunk = idsToDelete.slice(i, i + chunkSize);
+            await supabase.from('data_presensi_siswa').delete().in('id', chunk);
+          }
         }
       }
     }
 
-    // ── FILTER: Jika guru kelas mengabsen, siswa yg sudah tercatat PIKET di hari itu dikeluarkan otomatis ──
+    // ── FILTER: Jika guru kelas mengabsen, siswa yg sudah tercatat PIKET di jam tersebut dikeluarkan otomatis ──
     if (mapel !== 'PIKET') {
       const { data: piketHariIni, error: pErr } = await supabase
         .from('data_presensi_siswa')
         .select('metadata')
         .eq('tanggal', tanggal)
-        .contains('metadata', { 'MAPEL': 'PIKET' });
+        .eq('metadata->>MAPEL', 'PIKET');
 
       if (!pErr && piketHariIni && piketHariIni.length > 0) {
-        const namaSiswaYgSudahDiPiket = new Set(
-          piketHariIni.map(p => (p.metadata?.['NAMA SISWA'] || '').trim().toUpperCase())
-        );
+        const piketStudentJamMap = new Map<string, string[]>();
+        for (const p of piketHariIni) {
+          const normName = normalizeNama(p.metadata?.['NAMA SISWA']);
+          const pJams = String(p.metadata?.['JAM KE'] || '').split(',').map(j => j.trim()).filter(Boolean);
+          if (normName) {
+            const existing = piketStudentJamMap.get(normName) || [];
+            piketStudentJamMap.set(normName, [...existing, ...pJams]);
+          }
+        }
 
         const beforeCount = listSiswa.length;
         listSiswa = listSiswa.filter((s: any) => {
-          const nama = (s.nama || '').trim().toUpperCase();
-          return !namaSiswaYgSudahDiPiket.has(nama);
+          const normName = normalizeNama(s.nama);
+          if (piketStudentJamMap.has(normName)) {
+            const pJams = piketStudentJamMap.get(normName) || [];
+            const hasOverlap = pJams.length === 0 || submittedJams.some(j => pJams.includes(j));
+            return !hasOverlap;
+          }
+          return true;
         });
         const skippedCount = beforeCount - listSiswa.length;
 
-        if (listSiswa.length === 0) {
-          return NextResponse.json({
-            success: false,
-            error: `Semua siswa yang tidak hadir sudah tercatat oleh Guru Piket hari ini. Tidak ada data baru yang disimpan.`
-          }, { status: 409 });
+        if (skippedCount > 0) {
+          (body as any)._skippedPiket = skippedCount;
         }
 
-        // Lanjut simpan, tapi tandai ada yang diskip
-        if (skippedCount > 0) {
-          // Kita set flag agar response bisa memberi tahu frontend
-          (body as any)._skippedPiket = skippedCount;
+        if (listSiswa.length === 0) {
+          return NextResponse.json({
+            success: true,
+            totalSaved: 0,
+            skippedPiket: skippedCount,
+            info: `Semua siswa yang diabsen sudah tercatat oleh Guru Piket untuk jam tersebut.`
+          });
         }
       }
     }
