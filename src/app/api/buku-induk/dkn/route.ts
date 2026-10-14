@@ -28,16 +28,23 @@ export async function GET(request: Request) {
     // 1. Fetch All Students from Cache
     const allStudents = await getAllCachedDataInduk();
 
-    // 2. Filter for Kelas 9 Students
+    // 2. Filter for Valid Active / Graduated Kelas 9 Students
+    const isValidK9Rombel = (r: string) => /^(9|IX)[\s\.-]?[A-Z]/i.test(r.trim());
+
     const k9Students = allStudents.filter((s: any) => {
       const meta = s.metadata || {};
+      const status = (meta['STATUS SISWA'] || '').toUpperCase().trim();
+      if (status === 'TIDAK AKTIF' || status.includes('KELUAR') || status.includes('PINDAH')) {
+        return false;
+      }
+
       const r9 = (meta['ROMBEL KELAS 9'] || '').trim();
       const currRombel = (meta['ROMBEL'] || '').trim();
-      const ta9 = (meta['TA KELAS 9'] || '').trim();
-      const currTa = (meta['TAHUN AJARAN'] || '').trim();
 
-      const isK9 = r9.startsWith('9') || r9.startsWith('IX') || currRombel.startsWith('9') || currRombel.startsWith('IX');
-      return isK9 || (ta9 && r9);
+      const isCurrentK9 = isValidK9Rombel(currRombel) && status === 'AKTIF';
+      const isHistoricalK9 = isValidK9Rombel(r9) && (status === 'AKTIF' || status === 'LULUS');
+
+      return isCurrentK9 || isHistoricalK9;
     });
 
     // 3. Extract unique available TAs and Classes
@@ -47,9 +54,9 @@ export async function GET(request: Request) {
     k9Students.forEach((s: any) => {
       const meta = s.metadata || {};
       const ta = meta['TA KELAS 9'] || meta['TAHUN AJARAN'];
-      const rombel = meta['ROMBEL KELAS 9'] || meta['ROMBEL'];
+      const rombel = meta['ROMBEL KELAS 9'] || meta['ROMBEL'] || '';
       if (ta) tasSet.add(ta.trim());
-      if (rombel && (rombel.startsWith('9') || rombel.startsWith('IX'))) {
+      if (isValidK9Rombel(rombel)) {
         kelasSet.add(rombel.trim().toUpperCase());
       }
     });

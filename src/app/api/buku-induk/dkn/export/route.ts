@@ -27,12 +27,22 @@ export async function GET(request: Request) {
     // 1. Fetch Students
     const allStudents = await getAllCachedDataInduk();
 
+    const isValidK9Rombel = (r: string) => /^(9|IX)[\s\.-]?[A-Z]/i.test(r.trim());
+
     const k9Students = allStudents.filter((s: any) => {
       const meta = s.metadata || {};
+      const status = (meta['STATUS SISWA'] || '').toUpperCase().trim();
+      if (status === 'TIDAK AKTIF' || status.includes('KELUAR') || status.includes('PINDAH')) {
+        return false;
+      }
+
       const r9 = (meta['ROMBEL KELAS 9'] || '').trim();
       const currRombel = (meta['ROMBEL'] || '').trim();
-      const isK9 = r9.startsWith('9') || r9.startsWith('IX') || currRombel.startsWith('9') || currRombel.startsWith('IX');
-      return isK9;
+
+      const isCurrentK9 = isValidK9Rombel(currRombel) && status === 'AKTIF';
+      const isHistoricalK9 = isValidK9Rombel(r9) && (status === 'AKTIF' || status === 'LULUS');
+
+      return isCurrentK9 || isHistoricalK9;
     });
 
     const tasSet = new Set<string>();
