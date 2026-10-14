@@ -37,6 +37,8 @@ export default function JurnalPage() {
   const [filterFrom, setFilterFrom] = useState(() => { const d = new Date(); d.setDate(d.getDate() - 7); return d.toISOString().split('T')[0]; });
   const [filterTo, setFilterTo] = useState(() => new Date().toISOString().split('T')[0]);
   const [filterGuru, setFilterGuru] = useState('');
+  const [filterKelas, setFilterKelas] = useState('');
+  const [filterMapel, setFilterMapel] = useState('');
   const [guruList, setGuruList] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUsername, setCurrentUsername] = useState('');
@@ -231,6 +233,8 @@ export default function JurnalPage() {
   let filtered = rekapData.filter(r => {
       if (!isAdmin && r.namaGuru?.trim().toLowerCase() !== currentUsername?.trim().toLowerCase()) return false;
       if (filterGuru && r.namaGuru?.trim().toLowerCase() !== filterGuru?.trim().toLowerCase()) return false;
+      if (filterKelas && r.kelas?.trim().toLowerCase() !== filterKelas?.trim().toLowerCase()) return false;
+      if (filterMapel && r.mapel?.trim().toLowerCase() !== filterMapel?.trim().toLowerCase()) return false;
       if (filterFrom && r.tanggal < filterFrom) return false;
       if (filterTo && r.tanggal > filterTo) return false;
       return true;
@@ -415,6 +419,22 @@ export default function JurnalPage() {
               <input type="date" value={filterTo} onChange={e => setFilterTo(e.target.value)}
                 style={{ padding: '7px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: '0.9rem' }} />
             </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>Filter Kelas</label>
+              <select value={filterKelas} onChange={e => setFilterKelas(e.target.value)}
+                style={{ padding: '7px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: '0.9rem', minWidth: 130 }}>
+                <option value="">Semua Kelas</option>
+                {kelasList.map(k => <option key={k} value={k}>{k}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>Filter Mapel</label>
+              <select value={filterMapel} onChange={e => setFilterMapel(e.target.value)}
+                style={{ padding: '7px 12px', border: '1px solid #cbd5e1', borderRadius: 8, fontSize: '0.9rem', minWidth: 150 }}>
+                <option value="">Semua Mapel</option>
+                {mapelList.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
             {isAdmin && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>Filter Guru</label>
@@ -425,9 +445,9 @@ export default function JurnalPage() {
                 </select>
               </div>
             )}
-            {(filterFrom || filterTo || (isAdmin && filterGuru)) && (
+            {(filterFrom || filterTo || filterKelas || filterMapel || (isAdmin && filterGuru)) && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, justifyContent: 'flex-end' }}>
-                <button onClick={() => { setFilterFrom(''); setFilterTo(''); if (isAdmin) setFilterGuru(''); }}
+                <button onClick={() => { setFilterFrom(''); setFilterTo(''); setFilterKelas(''); setFilterMapel(''); if (isAdmin) setFilterGuru(''); }}
                   style={{ padding: '7px 14px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>
                   <i className="fas fa-times"></i> Reset Filter
                 </button>
