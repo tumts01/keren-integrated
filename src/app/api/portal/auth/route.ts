@@ -39,13 +39,18 @@ export async function POST(req: Request) {
           return url;
         };
 
+        const rawTtl = row.metadata?.['TEMPAT, TANGGAL LAHIR'] || '';
+        const rawTempat = row.metadata?.['TEMPAT LAHIR'] || rawTtl.split(',')[0]?.trim() || '';
+        const rawTanggal = row.metadata?.['TANGGAL LAHIR'] || rawTtl.split(',').slice(1).join(',')?.trim() || '';
+
         foundStudent = {
+          supabaseId: row.id,
           nisn: row.metadata?.['NISN'] || '',
           nis: row.metadata?.['ID SISWA'] || row.id_siswa || '',
           nama: row.metadata?.['NAMA'] || row.nama || '',
           kelas: rombel,
           status: (row.metadata?.['STATUS SISWA'] || '').toUpperCase().trim(),
-          asalSekolah: row.metadata?.['ASAL SEKOLAH'] || '',
+          asalSekolah: row.metadata?.['SD/MI'] || row.metadata?.['ASAL SEKOLAH'] || '',
           namaAyah: row.metadata?.['NAMA AYAH KANDUNG'] || '',
           namaIbu: row.metadata?.['NAMA IBU KANDUNG'] || '',
           foto: getThumbUrl(row.metadata?.['LINK FOTO TERBARU'] || row.metadata?.['LINK URL FOTO 1'] || row.metadata?.['LINK URL FOTO 2'] || ''),
@@ -54,6 +59,12 @@ export async function POST(req: Request) {
           domisili: row.metadata?.['DOMISILI'] || '',
           alamat: row.metadata?.['ALAMAT ASAL SESUAI KK TERAKHIR'] || row.metadata?.['ALAMAT AYAH KANDUNG'] || '',
           tahunAjaran: row.metadata?.['TAHUN AJARAN'] || '2023/2024',
+          ttl: rawTtl,
+          tempatLahir: rawTempat,
+          tanggalLahir: rawTanggal,
+          nik: row.metadata?.['NIK'] || '',
+          nism: row.metadata?.['NISM'] || '',
+          verifikasiIjazah: row.metadata?.['VERIFIKASI_IJAZAH'] || null,
         };
         break;
       }
