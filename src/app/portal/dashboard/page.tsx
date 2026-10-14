@@ -384,8 +384,9 @@ export default function PortalDashboard() {
 
   const menus = [
     { title: 'Presensi', icon: 'fa-calendar-check', color: '#10b981', path: '/portal/presensi' },
-    { title: 'Jurnal Kelas', icon: 'fa-book-open', color: '#f59e0b', path: '/portal/jurnal' },
+    { title: 'Jurnal Kelas', icon: 'fa-book-open', color: '#0284c7', path: '/portal/jurnal' },
     { title: 'Nilai & Rapor', icon: 'fa-file-alt', color: '#3b82f6', path: '/portal/nilai' },
+    { title: 'Prestasi Siswa', icon: 'fa-trophy', color: '#f59e0b', path: '/portal/prestasi' },
     { title: 'Pengumuman', icon: 'fa-bullhorn', color: '#8b5cf6', path: '/portal/pengumuman' },
     { title: 'Penilaian Karakter', icon: 'fa-star', color: '#ec4899', path: '/portal/penilaian-diri' }
   ];
