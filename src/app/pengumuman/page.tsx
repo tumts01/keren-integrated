@@ -185,7 +185,8 @@ export default function PengumumanPage() {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
-  const [sendingTo, setSendingTo] = useState<'all' | 'pimpinan' | null>(null);
+  const [shareToPortal, setShareToPortal] = useState(false);
+  const [sendingTo, setSendingTo] = useState<'all' | 'pimpinan' | 'siswa' | null>(null);
   const [status, setStatus] = useState<{ type: 'success' | 'error' | null, text: string }>({ type: null, text: '' });
   const [history, setHistory] = useState<any[]>([]);
   const [showCustomModal, setShowCustomModal] = useState(false);
@@ -210,7 +211,7 @@ export default function PengumumanPage() {
 
   const isAdmin = user?.role?.toLowerCase() === 'admin';
 
-  const handleSend = async (target: 'all' | 'pimpinan') => {
+  const handleSend = async (target: 'all' | 'pimpinan' | 'siswa') => {
     if (!message.trim() && !attachment) {
       setStatus({ type: 'error', text: 'Isi pengumuman atau lampiran tidak boleh kosong.' });
       return;
@@ -221,7 +222,14 @@ export default function PengumumanPage() {
       const fd = new FormData();
       fd.append('pesan', message);
       fd.append('pengirim', user?.nama || 'Admin');
-      fd.append('target', target === 'pimpinan' ? 'pimpinan' : 'semua');
+
+      let finalTarget = target === 'pimpinan' ? 'pimpinan' : target === 'siswa' ? 'siswa' : 'semua';
+      if (target === 'all' && shareToPortal) {
+        finalTarget = 'semua_all';
+      }
+
+      fd.append('target', finalTarget);
+      fd.append('kirimKePortal', (target === 'siswa' || shareToPortal).toString());
       fd.append('viaAppOnly', 'true');
       if (attachment) fd.append('file', attachment);
 
@@ -231,9 +239,13 @@ export default function PengumumanPage() {
       });
       const data = await response.json();
       if (response.ok && data.success) {
-        const label = target === 'pimpinan' ? 'Pimpinan' : 'seluruh Guru & Staf';
-        setStatus({ type: 'success', text: `Pengumuman berhasil diposting di Aplikasi untuk ${label}!` });
-        setMessage(''); setAttachment(null); fetchHistory();
+        let label = 'seluruh Guru & Staf';
+        if (target === 'pimpinan') label = 'Pimpinan';
+        else if (target === 'siswa') label = 'Portal Siswa & Wali Murid';
+        else if (shareToPortal) label = 'Guru, Staf, & Portal Siswa';
+
+        setStatus({ type: 'success', text: `Pengumuman berhasil diposting untuk ${label}!` });
+        setMessage(''); setAttachment(null); setShareToPortal(false); fetchHistory();
       } else {
         setStatus({ type: 'error', text: data.error || 'Gagal mengirim pengumuman.' });
       }
@@ -241,14 +253,43 @@ export default function PengumumanPage() {
     finally { setSendingTo(null); }
   };
 
-  const badgeStyle = (target: string) => ({
-    background: target === 'Pimpinan' ? '#ede9fe' : target?.includes('Guru Pilihan') ? '#e0f2fe' : '#dcfce7',
-    color: target === 'Pimpinan' ? '#7c3aed' : target?.includes('Guru Pilihan') ? '#0284c7' : '#15803d',
-    borderRadius: 20, padding: '2px 10px', fontSize: '0.75rem', fontWeight: 700
-  });
+  const togglePortalShare = async (id: number, currentStatus: boolean) => {
+    try {
+      const res = await fetch('/api/pengumuman', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, kirimKePortal: !currentStatus })
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchHistory();
+      } else {
+        alert('Gagal mengubah status portal: ' + (data.error || 'Error'));
+      }
+    } catch (e: any) {
+      alert('Gagal mengubah status: ' + e.message);
+    }
+  };
 
-  const badgeIcon = (target: string) =>
-    target === 'Pimpinan' ? 'fa-user-tie' : target?.includes('Guru Pilihan') ? 'fa-user-check' : 'fa-users';
+  const badgeStyle = (target: string) => {
+    if (target?.includes('Portal Siswa') || target?.includes('Siswa')) {
+      return { background: '#ecfdf5', color: '#059669', borderRadius: 20, padding: '2px 10px', fontSize: '0.75rem', fontWeight: 700, border: '1px solid #a7f3d0' };
+    }
+    if (target === 'Pimpinan' || target?.includes('Pimpinan')) {
+      return { background: '#ede9fe', color: '#7c3aed', borderRadius: 20, padding: '2px 10px', fontSize: '0.75rem', fontWeight: 700 };
+    }
+    if (target?.includes('Guru Pilihan')) {
+      return { background: '#e0f2fe', color: '#0284c7', borderRadius: 20, padding: '2px 10px', fontSize: '0.75rem', fontWeight: 700 };
+    }
+    return { background: '#dcfce7', color: '#15803d', borderRadius: 20, padding: '2px 10px', fontSize: '0.75rem', fontWeight: 700 };
+  };
+
+  const badgeIcon = (target: string) => {
+    if (target?.includes('Portal Siswa') || target?.includes('Siswa')) return 'fa-graduation-cap';
+    if (target?.includes('Pimpinan')) return 'fa-user-tie';
+    if (target?.includes('Guru Pilihan')) return 'fa-user-check';
+    return 'fa-users';
+  };
 
   if (loading) {
     return <LoadingScreen />;
@@ -269,7 +310,7 @@ export default function PengumumanPage() {
 
       <div className={styles.header}>
         <h1>{isAdmin ? 'Broadcast Pengumuman' : 'Papan Pengumuman'}</h1>
-        <p>{isAdmin ? 'Kirim Pengumuman ke Semua GTK atau Guru Tertentu' : 'Daftar informasi dan pengumuman terbaru'}</p>
+        <p>{isAdmin ? 'Kirim Pengumuman ke GTK atau Portal Siswa & Wali Murid' : 'Daftar informasi dan pengumuman terbaru'}</p>
       </div>
 
       {isAdmin && (
@@ -321,9 +362,41 @@ export default function PengumumanPage() {
                 </div>
               )}
             </div>
+
+            {/* Opsi Kirim ke Portal Siswa Checkbox */}
+            <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px', background: '#f0fdf4', padding: '10px 14px', borderRadius: '10px', border: '1px solid #bbf7d0' }}>
+              <input
+                type="checkbox"
+                id="shareToPortal"
+                checked={shareToPortal}
+                onChange={(e) => setShareToPortal(e.target.checked)}
+                style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#10b981' }}
+              />
+              <label htmlFor="shareToPortal" style={{ fontSize: '0.875rem', color: '#166534', fontWeight: 600, cursor: 'pointer' }}>
+                <i className="fas fa-graduation-cap" style={{ marginRight: '6px', color: '#10b981' }}></i>
+                Tayangkan juga di Portal Siswa & Wali Murid
+              </label>
+            </div>
             
             {/* Tombol kirim */}
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {/* Tombol Kirim ke Portal Siswa */}
+              <button type="button"
+                disabled={sendingTo !== null || (!message.trim() && !attachment)}
+                onClick={() => handleSend('siswa')}
+                style={{
+                  flex: 1, minWidth: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  padding: '12px 16px',
+                  background: (sendingTo !== null || (!message.trim() && !attachment)) ? '#bbf7d0' : 'linear-gradient(135deg, #10b981, #059669)',
+                  color: 'white', border: 'none', borderRadius: 12, fontSize: '0.9rem', fontWeight: 700,
+                  cursor: (sendingTo !== null || (!message.trim() && !attachment)) ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 2px 8px rgba(16,185,129,0.25)', transition: 'all 0.2s'
+                }}>
+                {sendingTo === 'siswa'
+                  ? <><i className="fa-solid fa-spinner fa-spin"></i> Mengirim...</>
+                  : <><i className="fa-solid fa-graduation-cap"></i> Kirim ke Portal Siswa</>}
+              </button>
+
               {/* Semua GTK */}
               <button type="button" className={styles.submitBtn}
                 disabled={sendingTo !== null || (!message.trim() && !attachment)}
@@ -331,7 +404,7 @@ export default function PengumumanPage() {
                 style={{ flex: 1, minWidth: 160 }}>
                 {sendingTo === 'all'
                   ? <><i className="fa-solid fa-spinner fa-spin"></i> Mengirim...</>
-                  : <><i className="fa-solid fa-bullhorn"></i> Kirim ke Semua GTK</>}
+                  : <><i className="fa-solid fa-bullhorn"></i> {shareToPortal ? 'Kirim ke GTK & Portal' : 'Kirim ke Semua GTK'}</>}
               </button>
 
               {/* Guru Tertentu */}
@@ -398,8 +471,10 @@ export default function PengumumanPage() {
                     )}
                   </div>
                   <div className={styles.historyMessage}>{h.pesan}</div>
-                  {h.lampiran && (
-                    <div style={{ marginTop: '12px' }}>
+                  
+                  {/* Actions / Lampiran row */}
+                  <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    {h.lampiran ? (
                       <a href={h.lampiran} target="_blank" rel="noreferrer" style={{
                         display: 'inline-flex', alignItems: 'center', gap: '6px',
                         padding: '6px 12px', background: '#f1f5f9', color: '#0ea5e9',
@@ -408,8 +483,34 @@ export default function PengumumanPage() {
                       }}>
                         <i className="fas fa-paperclip"></i> Lihat Lampiran
                       </a>
-                    </div>
-                  )}
+                    ) : <div />}
+
+                    {/* Admin Portal Toggle Button */}
+                    {isAdmin && h.id && (
+                      <button
+                        type="button"
+                        onClick={() => togglePortalShare(h.id, h.kirimKePortal)}
+                        style={{
+                          background: h.kirimKePortal ? '#ecfdf5' : '#f8fafc',
+                          border: h.kirimKePortal ? '1px solid #10b981' : '1px solid #cbd5e1',
+                          color: h.kirimKePortal ? '#059669' : '#64748b',
+                          padding: '5px 12px',
+                          borderRadius: '8px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.15s ease'
+                        }}
+                        title={h.kirimKePortal ? 'Klik untuk menarik pengumuman dari Portal Siswa' : 'Klik untuk menampilkan pengumuman ini di Portal Siswa'}
+                      >
+                        <i className={`fas ${h.kirimKePortal ? 'fa-check-circle' : 'fa-share-square'}`}></i>
+                        {h.kirimKePortal ? 'Tayang di Portal Siswa' : 'Bagikan ke Portal Siswa'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))
             );
