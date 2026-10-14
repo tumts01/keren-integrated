@@ -7,33 +7,12 @@ export default function PortalFooter() {
   return (
     <footer className="no-print" style={{
       marginTop: '32px',
-      padding: '24px 16px 20px',
+      padding: '20px 16px',
       borderTop: '1px solid #e2e8f0',
       background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
       borderRadius: '20px 20px 0 0',
       textAlign: 'center'
     }}>
-      {/* Brand & Logo Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '10px' }}>
-        <img 
-          src="/logo.png" 
-          alt="Logo MTs Almaarif 01 Singosari" 
-          style={{ width: '42px', height: '42px', objectFit: 'contain' }} 
-        />
-        <div style={{ textAlign: 'left' }}>
-          <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0f172a', letterSpacing: '0.3px', lineHeight: 1.2 }}>
-            MTs ALMAARIF 01 SINGOSARI
-          </div>
-          <div style={{ fontSize: '10px', fontWeight: 700, color: '#0284c7', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '2px' }}>
-            Akreditasi A (Unggul) • LP Ma'arif NU
-          </div>
-        </div>
-      </div>
-
-      <p style={{ margin: '0 0 14px 0', fontSize: '11px', color: '#64748b', lineHeight: 1.5, fontStyle: 'italic' }}>
-        "Madrasah Digital, Mandiri Berprestasi, dan Berakhlak Mulia"
-      </p>
-
       {/* Info Kontak & Alamat Box */}
       <div style={{
         background: '#ffffff',

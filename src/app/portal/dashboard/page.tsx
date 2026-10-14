@@ -1,5 +1,6 @@
 'use client';
 import PortalFooter from '@/components/PortalFooter';
+import PortalHeaderBrand from '@/components/PortalHeaderBrand';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
@@ -401,6 +402,7 @@ export default function PortalDashboard() {
 
   return (
     <div className="portal-container" style={{ paddingBottom: '80px' }}>
+      <PortalHeaderBrand />
       
       {/* Header Profile */}
       <div className="portal-header">

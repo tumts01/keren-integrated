@@ -1,5 +1,6 @@
 'use client';
 import PortalFooter from '@/components/PortalFooter';
+import PortalHeaderBrand from '@/components/PortalHeaderBrand';
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -57,6 +58,7 @@ export default function PortalPengumuman() {
 
   return (
     <div className="portal-container" style={{ paddingBottom: '40px' }}>
+      <PortalHeaderBrand />
       
       {/* Header */}
       <div className="portal-header" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
