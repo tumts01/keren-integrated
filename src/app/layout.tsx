@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AppLayout from "@/components/AppLayout";
+import PWAInstallBanner from "@/components/PWAInstallBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,11 +22,14 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "KEREN",
   },
-  manifest: '/manifest.json',
+  icons: {
+    icon: '/icon-192x192.png',
+    apple: '/icon-192x192.png',
+  },
 };
 
 export const viewport = {
-  themeColor: "#237227",
+  themeColor: "#0284c7",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -46,6 +50,7 @@ export default function RootLayout({
         <AppLayout>
           {children}
         </AppLayout>
+        <PWAInstallBanner />
       </body>
     </html>
   );
