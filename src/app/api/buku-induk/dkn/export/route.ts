@@ -198,20 +198,21 @@ export async function GET(request: Request) {
       DKN_MAPELS.forEach((m, idx) => {
         const colStart = 8 + (idx * 8);
         const tplGrade = templateItem?.grades?.[m.name];
+        const savedR = meta['R_GRADES']?.[m.name] || meta['DKN_R']?.[m.name] || {};
 
-        let r1 = findLeggerGrade(h7.ta, r7Vars, 'Ganjil', m.name);
+        let r1 = savedR.r1 !== undefined && savedR.r1 !== null && savedR.r1 !== '' ? Number(savedR.r1) : findLeggerGrade(h7.ta, r7Vars, 'Ganjil', m.name);
         if (r1 === null && tplGrade?.r1 !== undefined && tplGrade?.r1 !== null) r1 = tplGrade.r1;
 
-        let r2 = findLeggerGrade(h7.ta, r7Vars, 'Genap', m.name);
+        let r2 = savedR.r2 !== undefined && savedR.r2 !== null && savedR.r2 !== '' ? Number(savedR.r2) : findLeggerGrade(h7.ta, r7Vars, 'Genap', m.name);
         if (r2 === null && tplGrade?.r2 !== undefined && tplGrade?.r2 !== null) r2 = tplGrade.r2;
 
-        let r3 = findLeggerGrade(h8.ta, r8Vars, 'Ganjil', m.name);
+        let r3 = savedR.r3 !== undefined && savedR.r3 !== null && savedR.r3 !== '' ? Number(savedR.r3) : findLeggerGrade(h8.ta, r8Vars, 'Ganjil', m.name);
         if (r3 === null && tplGrade?.r3 !== undefined && tplGrade?.r3 !== null) r3 = tplGrade.r3;
 
-        let r4 = findLeggerGrade(h8.ta, r8Vars, 'Genap', m.name);
+        let r4 = savedR.r4 !== undefined && savedR.r4 !== null && savedR.r4 !== '' ? Number(savedR.r4) : findLeggerGrade(h8.ta, r8Vars, 'Genap', m.name);
         if (r4 === null && tplGrade?.r4 !== undefined && tplGrade?.r4 !== null) r4 = tplGrade.r4;
 
-        let r5 = findLeggerGrade(h9.ta, r9Vars, 'Ganjil', m.name);
+        let r5 = savedR.r5 !== undefined && savedR.r5 !== null && savedR.r5 !== '' ? Number(savedR.r5) : findLeggerGrade(h9.ta, r9Vars, 'Ganjil', m.name);
         if (r5 === null && tplGrade?.r5 !== undefined && tplGrade?.r5 !== null) r5 = tplGrade.r5;
 
         let nr = calculateNR(r1, r2, r3, r4, r5);

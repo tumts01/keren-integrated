@@ -53,6 +53,7 @@ export async function POST(request: Request) {
       id: any;
       nomor_peserta: string;
       numMap: Record<string, number>;
+      rGradesMap?: Record<string, any>;
     }> = [];
 
     const notFoundList: string[] = [];
@@ -78,8 +79,28 @@ export async function POST(request: Request) {
         }
 
         const numMap: Record<string, number> = {};
+        const rGradesMap: Record<string, any> = {};
+
         DKN_MAPELS.forEach((m, idx) => {
-          const colNum = 8 + (idx * 8) + 6; // Col index for NUM
+          const colStart = 8 + (idx * 8);
+
+          // R1..R5
+          const r1 = row[colStart + 0];
+          const r2 = row[colStart + 1];
+          const r3 = row[colStart + 2];
+          const r4 = row[colStart + 3];
+          const r5 = row[colStart + 4];
+
+          const rObj: any = {};
+          if (r1 !== undefined && r1 !== null && r1 !== '' && !isNaN(Number(r1))) rObj.r1 = Number(r1);
+          if (r2 !== undefined && r2 !== null && r2 !== '' && !isNaN(Number(r2))) rObj.r2 = Number(r2);
+          if (r3 !== undefined && r3 !== null && r3 !== '' && !isNaN(Number(r3))) rObj.r3 = Number(r3);
+          if (r4 !== undefined && r4 !== null && r4 !== '' && !isNaN(Number(r4))) rObj.r4 = Number(r4);
+          if (r5 !== undefined && r5 !== null && r5 !== '' && !isNaN(Number(r5))) rObj.r5 = Number(r5);
+          if (Object.keys(rObj).length > 0) rGradesMap[m.name] = rObj;
+
+          // NUM
+          const colNum = colStart + 6;
           const numVal = row[colNum];
           if (numVal !== undefined && numVal !== null && numVal !== '' && !isNaN(Number(numVal))) {
             numMap[m.name] = Number(numVal);
@@ -89,7 +110,8 @@ export async function POST(request: Request) {
         updatesToApply.push({
           id: student.id,
           nomor_peserta,
-          numMap
+          numMap,
+          rGradesMap
         });
       }
     } else {
@@ -179,6 +201,16 @@ export async function POST(request: Request) {
 
         if (Object.keys(u.numMap).length > 0) {
           newMeta['NUM'] = { ...(newMeta['NUM'] || {}), ...u.numMap };
+        }
+
+        const rMap = u.rGradesMap;
+        if (rMap && Object.keys(rMap).length > 0) {
+          const currentR = newMeta['R_GRADES'] || {};
+          const mergedR = { ...currentR };
+          Object.keys(rMap).forEach(mapel => {
+            mergedR[mapel] = { ...(mergedR[mapel] || {}), ...rMap[mapel] };
+          });
+          newMeta['R_GRADES'] = mergedR;
         }
 
         const { error: upErr } = await supabase

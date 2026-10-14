@@ -195,25 +195,26 @@ export async function GET(request: Request) {
 
       DKN_MAPELS.forEach(m => {
         const tplGrade = templateItem?.grades?.[m.name];
+        const savedR = meta['R_GRADES']?.[m.name] || meta['DKN_R']?.[m.name] || {};
 
-        // R1: 7 Ganjil
-        let r1 = findLeggerGrade(h7.ta, r7Vars, 'Ganjil', m.name);
+        // R1: 7 Ganjil (Prioritaskan manual edit, lalu legger, lalu template fallback)
+        let r1 = savedR.r1 !== undefined && savedR.r1 !== null && savedR.r1 !== '' ? Number(savedR.r1) : findLeggerGrade(h7.ta, r7Vars, 'Ganjil', m.name);
         if (r1 === null && tplGrade?.r1 !== undefined && tplGrade?.r1 !== null) r1 = tplGrade.r1;
 
         // R2: 7 Genap
-        let r2 = findLeggerGrade(h7.ta, r7Vars, 'Genap', m.name);
+        let r2 = savedR.r2 !== undefined && savedR.r2 !== null && savedR.r2 !== '' ? Number(savedR.r2) : findLeggerGrade(h7.ta, r7Vars, 'Genap', m.name);
         if (r2 === null && tplGrade?.r2 !== undefined && tplGrade?.r2 !== null) r2 = tplGrade.r2;
 
         // R3: 8 Ganjil
-        let r3 = findLeggerGrade(h8.ta, r8Vars, 'Ganjil', m.name);
+        let r3 = savedR.r3 !== undefined && savedR.r3 !== null && savedR.r3 !== '' ? Number(savedR.r3) : findLeggerGrade(h8.ta, r8Vars, 'Ganjil', m.name);
         if (r3 === null && tplGrade?.r3 !== undefined && tplGrade?.r3 !== null) r3 = tplGrade.r3;
 
         // R4: 8 Genap
-        let r4 = findLeggerGrade(h8.ta, r8Vars, 'Genap', m.name);
+        let r4 = savedR.r4 !== undefined && savedR.r4 !== null && savedR.r4 !== '' ? Number(savedR.r4) : findLeggerGrade(h8.ta, r8Vars, 'Genap', m.name);
         if (r4 === null && tplGrade?.r4 !== undefined && tplGrade?.r4 !== null) r4 = tplGrade.r4;
 
         // R5: 9 Ganjil
-        let r5 = findLeggerGrade(h9.ta, r9Vars, 'Ganjil', m.name);
+        let r5 = savedR.r5 !== undefined && savedR.r5 !== null && savedR.r5 !== '' ? Number(savedR.r5) : findLeggerGrade(h9.ta, r9Vars, 'Ganjil', m.name);
         if (r5 === null && tplGrade?.r5 !== undefined && tplGrade?.r5 !== null) r5 = tplGrade.r5;
 
         // NR: Average of R1..R5
@@ -332,6 +333,15 @@ export async function POST(request: Request) {
 
         if (u.num && typeof u.num === 'object') {
           newMeta['NUM'] = { ...(newMeta['NUM'] || {}), ...u.num };
+        }
+
+        if (u.r_grades && typeof u.r_grades === 'object') {
+          const currentR = newMeta['R_GRADES'] || {};
+          const mergedR = { ...currentR };
+          Object.keys(u.r_grades).forEach(mapel => {
+            mergedR[mapel] = { ...(mergedR[mapel] || {}), ...u.r_grades[mapel] };
+          });
+          newMeta['R_GRADES'] = mergedR;
         }
 
         const { error: upErr } = await supabase
