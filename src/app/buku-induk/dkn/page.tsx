@@ -42,9 +42,31 @@ export default function DknPage() {
   // Success / error message toast
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Role Access Control (Admin only)
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+
   useEffect(() => {
-    fetchDknData();
-  }, [selectedTa, selectedKelas]);
+    try {
+      const stored = localStorage.getItem('keren_user_data');
+      if (stored) {
+        const user = JSON.parse(stored);
+        const role = (user.role || '').toLowerCase();
+        if (role === 'admin' || role === 'pimpinan') {
+          setIsAdmin(true);
+          return;
+        }
+      }
+      setIsAdmin(false);
+    } catch {
+      setIsAdmin(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAdmin === true) {
+      fetchDknData();
+    }
+  }, [selectedTa, selectedKelas, isAdmin]);
 
   const fetchDknData = async () => {
     setLoading(true);
@@ -479,6 +501,88 @@ export default function DknPage() {
       setImporting(false);
     }
   };
+
+  if (isAdmin === null) {
+    return (
+      <div className={styles.container}>
+        <InlineLoading message="Memverifikasi hak akses..." />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className={styles.container} style={{ minHeight: '65vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{
+          maxWidth: 480,
+          width: '100%',
+          background: '#ffffff',
+          borderRadius: 20,
+          padding: '40px 28px',
+          textAlign: 'center',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.06)',
+          border: '1px solid #e2e8f0'
+        }}>
+          <div style={{
+            width: 72,
+            height: 72,
+            borderRadius: '50%',
+            background: '#fee2e2',
+            color: '#ef4444',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '2rem',
+            margin: '0 auto 20px'
+          }}>
+            <i className="fas fa-lock"></i>
+          </div>
+          <h2 style={{ fontSize: '1.3rem', fontWeight: 800, color: '#0f172a', marginBottom: 10 }}>
+            Akses Khusus Administrator
+          </h2>
+          <p style={{ color: '#64748b', fontSize: '0.92rem', lineHeight: 1.6, marginBottom: 24 }}>
+            Halaman <strong>DKN (Daftar Kumpulan Nilai)</strong> berisi data rekapitulasi nilai akhir dan kelulusan siswa kelas 9 yang bersifat rahasia dan hanya dapat diakses serta dikelola oleh akun <strong>Admin</strong>.
+          </p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+            <Link
+              href="/buku-induk"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 20px',
+                background: '#0284c7',
+                color: '#ffffff',
+                borderRadius: 10,
+                textDecoration: 'none',
+                fontWeight: 600,
+                fontSize: '0.9rem'
+              }}
+            >
+              <i className="fas fa-book-open"></i> Ke Buku Induk
+            </Link>
+            <Link
+              href="/"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 20px',
+                background: '#f1f5f9',
+                color: '#475569',
+                borderRadius: 10,
+                textDecoration: 'none',
+                fontWeight: 600,
+                fontSize: '0.9rem'
+              }}
+            >
+              <i className="fas fa-home"></i> Ke Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={styles.container}>

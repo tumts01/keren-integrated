@@ -59,7 +59,7 @@ export default function Sidebar() {
     checkPengumuman();
   }, [pathname]);
 
-  const isAdmin = userRole.toLowerCase() === 'admin';
+  const isAdmin = userRole.toLowerCase() === 'admin' || userRole.toLowerCase() === 'pimpinan';
   const isIzzatul = userName.toLowerCase().includes('izzatul ulfa');
   const showKeuangan = isAdmin || isIzzatul;
 
@@ -83,7 +83,9 @@ export default function Sidebar() {
           icon: 'fa-book-open',
           subItems: [
             { name: 'Cetak Buku Induk', path: '/buku-induk' },
-            { name: 'DKN (Daftar Kumpulan Nilai)', path: '/buku-induk/dkn' },
+            ...(isAdmin ? [
+              { name: 'DKN (Daftar Kumpulan Nilai)', path: '/buku-induk/dkn' },
+            ] : []),
             { name: 'Upload Legger', path: '/buku-induk/upload' },
             { name: 'Upload Ekstra', path: '/buku-induk/ekstrakurikuler' }
           ]
