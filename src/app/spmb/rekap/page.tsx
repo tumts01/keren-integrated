@@ -47,6 +47,24 @@ export default function RekapSpmb() {
     }
   };
 
+  const handleUpdateStatus = async (id: string, field: 'statusVerifikasi' | 'statusKelulusan', value: string) => {
+    try {
+      const res = await fetch(`/api/spmb/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value })
+      });
+      const resJson = await res.json();
+      if (resJson.success) {
+        setData(prev => prev.map(item => item.rowNumber === id ? { ...item, [field]: value } : item));
+      } else {
+        Swal.fire('Gagal', resJson.error || 'Gagal mengubah status', 'error');
+      }
+    } catch (err) {
+      Swal.fire('Error', 'Gagal menghubungi server', 'error');
+    }
+  };
+
   useEffect(() => {
     const userStr = localStorage.getItem('keren_user_data');
     if (userStr) {
@@ -154,8 +172,10 @@ export default function RekapSpmb() {
               <thead>
                 <tr>
                   <th>Waktu Daftar</th>
-                  <th>Nama Lengkap</th>
+                  <th>No. Reg & Nama</th>
                   <th>Jalur</th>
+                  <th>Verifikasi Berkas</th>
+                  <th>Status Kelulusan</th>
                   <th>Asal Sekolah</th>
                   <th>No. WA Ayah</th>
                   <th>No. WA Ibu</th>
@@ -175,6 +195,19 @@ export default function RekapSpmb() {
                       </div>
                     </td>
                     <td>
+                      <div style={{
+                        display: 'inline-block',
+                        background: '#ecfdf5',
+                        color: '#047857',
+                        border: '1px solid #a7f3d0',
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.78rem',
+                        fontWeight: 800,
+                        marginBottom: '4px'
+                      }}>
+                        {item.nomorPendaftaran || '-'}
+                      </div>
                       <div style={{ fontWeight: 700 }}>{item.namaLengkap}</div>
                       <div style={{ fontSize: '0.8rem', color: '#64748b' }}>NISN: {item.nisn}</div>
                     </td>
@@ -182,6 +215,77 @@ export default function RekapSpmb() {
                       <span className={`${styles.badge} ${styles[item.jalurPendaftaran] || styles.Reguler}`}>
                         {item.jalurPendaftaran}
                       </span>
+                    </td>
+                    <td>
+                      {isAdmin ? (
+                        <select
+                          value={item.statusVerifikasi || 'menunggu'}
+                          onChange={(e) => handleUpdateStatus(item.rowNumber, 'statusVerifikasi', e.target.value)}
+                          style={{
+                            padding: '5px 8px',
+                            borderRadius: '6px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            border: '1px solid',
+                            borderColor: item.statusVerifikasi === 'valid' ? '#86efac' : item.statusVerifikasi === 'perbaikan' ? '#fca5a5' : '#fde68a',
+                            background: item.statusVerifikasi === 'valid' ? '#f0fdf4' : item.statusVerifikasi === 'perbaikan' ? '#fef2f2' : '#fffbeb',
+                            color: item.statusVerifikasi === 'valid' ? '#15803d' : item.statusVerifikasi === 'perbaikan' ? '#b91c1c' : '#b45309',
+                            cursor: 'pointer',
+                            outline: 'none'
+                          }}
+                        >
+                          <option value="menunggu">Menunggu</option>
+                          <option value="valid">Valid / Lengkap</option>
+                          <option value="perbaikan">Perlu Perbaikan</option>
+                        </select>
+                      ) : (
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          background: item.statusVerifikasi === 'valid' ? '#dcfce7' : item.statusVerifikasi === 'perbaikan' ? '#fee2e2' : '#fef3c7',
+                          color: item.statusVerifikasi === 'valid' ? '#15803d' : item.statusVerifikasi === 'perbaikan' ? '#b91c1c' : '#b45309'
+                        }}>
+                          {item.statusVerifikasi === 'valid' ? 'Valid' : item.statusVerifikasi === 'perbaikan' ? 'Perbaikan' : 'Menunggu'}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {isAdmin ? (
+                        <select
+                          value={item.statusKelulusan || 'proses'}
+                          onChange={(e) => handleUpdateStatus(item.rowNumber, 'statusKelulusan', e.target.value)}
+                          style={{
+                            padding: '5px 8px',
+                            borderRadius: '6px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            border: '1px solid',
+                            borderColor: item.statusKelulusan === 'diterima' ? '#86efac' : item.statusKelulusan === 'tidak_diterima' ? '#fca5a5' : '#cbd5e1',
+                            background: item.statusKelulusan === 'diterima' ? '#f0fdf4' : item.statusKelulusan === 'tidak_diterima' ? '#fef2f2' : '#f8fafc',
+                            color: item.statusKelulusan === 'diterima' ? '#15803d' : item.statusKelulusan === 'tidak_diterima' ? '#b91c1c' : '#475569',
+                            cursor: 'pointer',
+                            outline: 'none'
+                          }}
+                        >
+                          <option value="proses">Dalam Proses</option>
+                          <option value="diterima">Diterima</option>
+                          <option value="cadangan">Cadangan</option>
+                          <option value="tidak_diterima">Tidak Diterima</option>
+                        </select>
+                      ) : (
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          background: item.statusKelulusan === 'diterima' ? '#dcfce7' : item.statusKelulusan === 'tidak_diterima' ? '#fee2e2' : '#f1f5f9',
+                          color: item.statusKelulusan === 'diterima' ? '#15803d' : item.statusKelulusan === 'tidak_diterima' ? '#b91c1c' : '#64748b'
+                        }}>
+                          {item.statusKelulusan === 'diterima' ? 'Diterima' : item.statusKelulusan === 'tidak_diterima' ? 'Tidak Diterima' : item.statusKelulusan === 'cadangan' ? 'Cadangan' : 'Proses'}
+                        </span>
+                      )}
                     </td>
                     <td>{item.asalSekolah}</td>
                     <td>

@@ -23,11 +23,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setMounted(true);
     const storedUser = localStorage.getItem('keren_user_data');
     const portalSession = localStorage.getItem('portal_session');
+    const spmbSession = localStorage.getItem('spmb_session');
     const appPref = localStorage.getItem('keren_app_preference');
 
     if (storedUser) {
       setUser(JSON.parse(storedUser));
       try { localStorage.setItem('keren_app_preference', 'guru'); } catch {}
+    } else if (spmbSession && pathname === '/') {
+      router.replace('/spmb/portal');
+      return;
+    } else if (appPref === 'spmb' && pathname === '/') {
+      router.replace('/spmb/login');
+      return;
     } else if (portalSession && pathname === '/') {
       // User is logged into student/wali murid portal!
       router.replace('/portal/dashboard');
@@ -265,10 +272,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </button>
             </form>
 
-            {/* Switch to Portal Siswa & Wali Murid */}
-            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px dashed #e2e8f0', textAlign: 'center' }}>
-              <p style={{ margin: '0 0 8px 0', fontSize: '0.8rem', color: '#64748b' }}>
-                Wali Murid atau Siswa MTs?
+            {/* Switch to Portal Siswa & Wali Murid & SPMB */}
+            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px dashed #e2e8f0', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <p style={{ margin: '0 0 4px 0', fontSize: '0.8rem', color: '#64748b' }}>
+                Wali Murid atau Calon Siswa?
               </p>
               <Link 
                 href="/portal/login"
@@ -277,7 +284,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
-                  padding: '10px 14px',
+                  padding: '9px 14px',
                   background: '#f0f9ff',
                   color: '#0284c7',
                   border: '1px solid #bae6fd',
@@ -288,6 +295,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 }}
               >
                 <i className="fas fa-user-graduate"></i> Masuk ke Portal Siswa & Wali Murid
+              </Link>
+
+              <Link 
+                href="/spmb/login"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  padding: '9px 14px',
+                  background: '#f0fdf4',
+                  color: '#15803d',
+                  border: '1px solid #bbf7d0',
+                  borderRadius: '10px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  textDecoration: 'none'
+                }}
+              >
+                <i className="fas fa-id-card"></i> Masuk ke Portal Calon Siswa (SPMB)
               </Link>
             </div>
             

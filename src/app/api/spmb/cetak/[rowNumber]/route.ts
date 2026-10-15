@@ -13,6 +13,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ rowNumbe
     }
 
     const data = {
+      nomorPendaftaran: targetRow.metadata?.['Nomor Pendaftaran'] || (`SPMB-2026-${String(targetRow.id).padStart(4, '0')}`),
       timestamp: targetRow.metadata?.['Timestamp'] || '',
       jalurPendaftaran: targetRow.metadata?.['Jalur Pendaftaran'] || '',
       namaLengkap: targetRow.metadata?.['Nama Lengkap'] || '',
@@ -25,7 +26,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ rowNumbe
       namaAyah: targetRow.metadata?.['Nama Ayah'] || '',
       namaIbu: targetRow.metadata?.['Nama Ibu'] || '',
       alamatLengkap: targetRow.metadata?.['Alamat Lengkap'] || '',
-      prestasi: targetRow.metadata?.['Prestasi (Jika Ada)'] || ''
+      prestasi: targetRow.metadata?.['Prestasi (Jika Ada)'] || '',
+      statusVerifikasi: targetRow.metadata?.['status_verifikasi'] || 'menunggu',
+      statusKelulusan: targetRow.metadata?.['status_kelulusan'] || 'proses'
     };
 
     return NextResponse.json({ success: true, data }, {

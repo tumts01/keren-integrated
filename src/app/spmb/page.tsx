@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import Swal from 'sweetalert2';
 import styles from './Spmb.module.css';
 import ModalAturJalur, { JalurItem } from './components/ModalAturJalur';
@@ -236,11 +237,58 @@ export default function SpmbPage() {
       const result = await res.json();
 
       if (result.success) {
-        if (result.id) {
-          router.push('/spmb/cetak/' + result.id);
-        } else {
-          showToast('Pendaftaran Berhasil! Data Anda telah tersimpan.', 'success');
+        const noReg = result.nomorPendaftaran || '';
+        const regId = result.id;
+        const studentName = formData.namaLengkap;
+
+        // Auto-save SPMB session so parent can directly access portal
+        if (regId) {
+          try {
+            const sessionData = {
+              id: regId,
+              nomorPendaftaran: noReg,
+              namaLengkap: studentName,
+              nisn: formData.nisn,
+              jalurPendaftaran: formData.jalurPendaftaran,
+              asalSekolah: formData.asalSekolah,
+              statusVerifikasi: 'menunggu',
+              statusKelulusan: 'proses'
+            };
+            localStorage.setItem('spmb_session', JSON.stringify(sessionData));
+            localStorage.setItem('keren_app_preference', 'spmb');
+          } catch (e) {
+            console.error('Error saving spmb session', e);
+          }
         }
+
+        Swal.fire({
+          icon: 'success',
+          title: '🎉 Pendaftaran Berhasil!',
+          html: `
+            <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.6; margin-top: 10px;">
+              <p style="margin: 0 0 12px 0;">Alhamdulillah, data pendaftaran ananda <b>${studentName}</b> telah berhasil tersimpan di sistem.</p>
+              <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 14px; text-align: center; margin-bottom: 14px;">
+                <div style="font-size: 12px; color: #166534; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Nomor Pendaftaran Anda:</div>
+                <div style="font-size: 22px; font-weight: 800; color: #15803d; letter-spacing: 1px; margin-top: 4px;">${noReg || 'SPMB-2026-XXXX'}</div>
+              </div>
+              <p style="margin: 0; font-size: 12.5px; color: #64748b;">
+                <b>Catatan Penting:</b> Simpan Nomor Pendaftaran ini. Anda dapat menggunakannya kapan saja untuk masuk ke <b>Portal Calon Siswa</b> guna memantau verifikasi berkas dan pengumuman kelulusan.
+              </p>
+            </div>
+          `,
+          showCancelButton: true,
+          confirmButtonColor: '#059669',
+          cancelButtonColor: '#0284c7',
+          confirmButtonText: '<i class="fas fa-user-check"></i> Masuk ke Portal Calon Siswa',
+          cancelButtonText: '<i class="fas fa-print"></i> Cetak Kartu Sekarang',
+          allowOutsideClick: false
+        }).then((choice) => {
+          if (choice.isConfirmed) {
+            router.push('/spmb/portal');
+          } else if (regId) {
+            router.push('/spmb/cetak/' + regId);
+          }
+        });
         
         // Reset Form
         setFormData({
@@ -330,6 +378,53 @@ export default function SpmbPage() {
             </button>
           </div>
         )}
+
+        {/* Banner Masuk ke Portal Calon Siswa bagi yang sudah mendaftar */}
+        <div style={{
+          marginTop: '16px',
+          background: '#ecfdf5',
+          border: '1.5px solid #a7f3d0',
+          borderRadius: '14px',
+          padding: '12px 20px',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '12px',
+          maxWidth: '520px',
+          textAlign: 'left',
+          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.1)'
+        }}>
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '50%',
+            background: '#10b981',
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '15px',
+            flexShrink: 0
+          }}>
+            <i className="fas fa-id-card"></i>
+          </div>
+          <div style={{ flex: 1, fontSize: '13px', color: '#064e3b', lineHeight: 1.4 }}>
+            <span>Sudah pernah mengisi formulir? </span>
+            <Link 
+              href="/spmb/login"
+              style={{
+                color: '#047857',
+                fontWeight: 800,
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <span>Masuk ke Portal Calon Siswa</span> &rarr;
+            </Link>
+          </div>
+        </div>
       </div>
 
       <div className={styles.card} style={{ position: 'relative' }}>

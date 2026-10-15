@@ -117,6 +117,11 @@ export default function CetakSpmb() {
             <table className={styles.table}>
               <tbody>
                 <tr>
+                  <td>Nomor Pendaftaran</td>
+                  <td>:</td>
+                  <td><strong style={{ fontSize: '1.1rem', color: '#047857', letterSpacing: '0.5px' }}>{data.nomorPendaftaran || '-'}</strong></td>
+                </tr>
+                <tr>
                   <td>Waktu Pendaftaran</td>
                   <td>:</td>
                   <td>{data.timestamp}</td>

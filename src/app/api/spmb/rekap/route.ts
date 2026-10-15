@@ -11,6 +11,7 @@ export async function GET() {
       return {
         id: index,
         rowNumber: r.id,
+        nomorPendaftaran: row.get('Nomor Pendaftaran') || (`SPMB-2026-${String(r.id).padStart(4, '0')}`),
         timestamp: row.get('Timestamp') || '',
         jalurPendaftaran: row.get('Jalur Pendaftaran') || '',
         namaLengkap: row.get('Nama Lengkap') || '',
@@ -27,7 +28,10 @@ export async function GET() {
         alamatLengkap: row.get('Alamat Lengkap') || '',
         prestasi: row.get('Prestasi (Jika Ada)') || '',
         linkKk: row.get('File KK') || '',
-        linkAkta: row.get('File Akta') || ''
+        linkAkta: row.get('File Akta') || '',
+        statusVerifikasi: row.get('status_verifikasi') || 'menunggu',
+        catatanVerifikasi: row.get('catatan_verifikasi') || '',
+        statusKelulusan: row.get('status_kelulusan') || 'proses'
       };
     }).filter((item: any) => item.namaLengkap !== ''); // filter out empty rows
 

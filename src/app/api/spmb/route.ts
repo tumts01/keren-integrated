@@ -34,39 +34,71 @@ export async function POST(req: Request) {
     if (payload.desa) fullAlamat += `, Desa/Kel. ${payload.desa}`;
     if (payload.kecamatan) fullAlamat += `, Kec. ${payload.kecamatan}`;
     if (payload.kabupaten) fullAlamat += `, ${payload.kabupaten}`;
+
+    // Auto-generate Nomor Pendaftaran
+    const currentYear = new Date().getFullYear();
+    const { data: latestRows } = await supabase
+      .from('data_spmb')
+      .select('id, metadata')
+      .order('id', { ascending: false })
+      .limit(1);
+
+    let nextSeq = 1;
+    if (latestRows && latestRows.length > 0) {
+      const lastNomor = latestRows[0].metadata?.['Nomor Pendaftaran'] || '';
+      const match = lastNomor.match(/SPMB-\d{4}-(\d+)/);
+      if (match && match[1]) {
+        nextSeq = parseInt(match[1], 10) + 1;
+      } else {
+        const { count } = await supabase.from('data_spmb').select('*', { count: 'exact', head: true });
+        nextSeq = (count || 0) + 1;
+      }
+    }
+    const nomorPendaftaran = `SPMB-${currentYear}-${String(nextSeq).padStart(4, '0')}`;
     
     const { data: insertedData, error } = await supabase.from('data_spmb').insert({
       nama: payload.namaLengkap || '',
       nisn: payload.nisn || '',
       metadata: {
-      'Timestamp': timestamp,
-      'Jalur Pendaftaran': payload.jalurPendaftaran || '',
-      'Nama Lengkap': payload.namaLengkap || '',
-      'NISN': payload.nisn || '',
-      'Tempat, Tanggal Lahir': payload.tempatTanggalLahir || '',
-      'Jenis Kelamin': payload.jenisKelamin || '',
-      'Agama': payload.agama || '',
-      'Asal Sekolah': payload.asalSekolah || '',
-      'NPSN SD/MI': payload.npsnSekolahAsal || '',
-      'Alamat Sekolah Asal': payload.alamatSekolahAsal || '',
-      'Nama Ayah': payload.namaAyah || '',
-      'Pekerjaan Ayah': payload.pekerjaanAyah || '',
-      'Nama Ibu': payload.namaIbu || '',
-      'Pekerjaan Ibu': payload.pekerjaanIbu || '',
-      'Nomor WA Ayah': payload.nomorWaAyah || '',
-      'Nomor WA Ibu': payload.nomorWaIbu || '',
-      'Alamat (Jalan/RT/RW)': payload.alamatLengkap || '',
-      'Desa/Kelurahan': payload.desa || '',
-      'Kecamatan': payload.kecamatan || '',
-      'Kabupaten/Kota': payload.kabupaten || '',
-      'Alamat Lengkap': fullAlamat,
-      'Prestasi (Jika Ada)': payload.prestasi || '',
-      'File KK': payload.linkKk || '',
-      'File Akta': payload.linkAkta || ''
+        'Timestamp': timestamp,
+        'Nomor Pendaftaran': nomorPendaftaran,
+        'status_verifikasi': 'menunggu',
+        'status_kelulusan': 'proses',
+        'catatan_verifikasi': '',
+        'Jalur Pendaftaran': payload.jalurPendaftaran || '',
+        'Nama Lengkap': payload.namaLengkap || '',
+        'NISN': payload.nisn || '',
+        'Tempat, Tanggal Lahir': payload.tempatTanggalLahir || '',
+        'Jenis Kelamin': payload.jenisKelamin || '',
+        'Agama': payload.agama || '',
+        'Asal Sekolah': payload.asalSekolah || '',
+        'NPSN SD/MI': payload.npsnSekolahAsal || '',
+        'Alamat Sekolah Asal': payload.alamatSekolahAsal || '',
+        'Nama Ayah': payload.namaAyah || '',
+        'Pekerjaan Ayah': payload.pekerjaanAyah || '',
+        'Nama Ibu': payload.namaIbu || '',
+        'Pekerjaan Ibu': payload.pekerjaanIbu || '',
+        'Nomor WA Ayah': payload.nomorWaAyah || '',
+        'Nomor WA Ibu': payload.nomorWaIbu || '',
+        'Alamat (Jalan/RT/RW)': payload.alamatLengkap || '',
+        'Desa/Kelurahan': payload.desa || '',
+        'Kecamatan': payload.kecamatan || '',
+        'Kabupaten/Kota': payload.kabupaten || '',
+        'Alamat Lengkap': fullAlamat,
+        'Prestasi (Jika Ada)': payload.prestasi || '',
+        'File KK': payload.linkKk || '',
+        'File Akta': payload.linkAkta || ''
       }
     }).select();
 
-    return NextResponse.json({ success: true, id: insertedData && insertedData[0] ? insertedData[0].id : null });
+    if (error) throw error;
+
+    return NextResponse.json({ 
+      success: true, 
+      id: insertedData && insertedData[0] ? insertedData[0].id : null,
+      nomorPendaftaran,
+      nama: payload.namaLengkap || ''
+    });
 
   } catch (error: any) {
     console.error('Submit SPMB Error:', error);

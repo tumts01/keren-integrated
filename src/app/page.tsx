@@ -16,8 +16,17 @@ export default function Home() {
   useEffect(() => {
     const storedUser = localStorage.getItem('keren_user_data');
     const portalSession = localStorage.getItem('portal_session');
+    const spmbSession = localStorage.getItem('spmb_session');
     const appPref = localStorage.getItem('keren_app_preference');
 
+    if (!storedUser && spmbSession) {
+      window.location.replace('/spmb/portal');
+      return;
+    }
+    if (!storedUser && appPref === 'spmb') {
+      window.location.replace('/spmb/login');
+      return;
+    }
     if (!storedUser && portalSession) {
       window.location.replace('/portal/dashboard');
       return;

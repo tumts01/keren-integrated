@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -66,4 +66,39 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const body = await req.json();
+
+    const { data: existing, error: findError } = await supabase
+      .from('data_spmb')
+      .select('metadata')
+      .eq('id', id)
+      .single();
+
+    if (findError || !existing) throw new Error('Data tidak ditemukan');
+
+    const updatedMetadata = {
+      ...existing.metadata,
+      ...(body.statusVerifikasi !== undefined ? { status_verifikasi: body.statusVerifikasi } : {}),
+      ...(body.catatanVerifikasi !== undefined ? { catatan_verifikasi: body.catatanVerifikasi } : {}),
+      ...(body.statusKelulusan !== undefined ? { status_kelulusan: body.statusKelulusan } : {}),
+      ...(body.jadwalTes !== undefined ? { jadwal_tes: body.jadwalTes } : {})
+    };
+
+    const { error: updateError } = await supabase
+      .from('data_spmb')
+      .update({ metadata: updatedMetadata })
+      .eq('id', id);
+
+    if (updateError) throw updateError;
+
+    return NextResponse.json({ success: true, message: 'Status berhasil diperbarui' });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
 
