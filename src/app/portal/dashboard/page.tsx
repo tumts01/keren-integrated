@@ -382,13 +382,18 @@ export default function PortalDashboard() {
 
   if (!student) return null;
 
+  const isKelas7 = /^(7|VII)/i.test(String(student.kelas || '').trim());
+
   const menus = [
     { title: 'Presensi', icon: 'fa-calendar-check', color: '#10b981', path: '/portal/presensi' },
     { title: 'Jurnal Kelas', icon: 'fa-book-open', color: '#0284c7', path: '/portal/jurnal' },
     { title: 'Nilai & Rapor', icon: 'fa-file-alt', color: '#3b82f6', path: '/portal/nilai' },
     { title: 'Prestasi Siswa', icon: 'fa-trophy', color: '#f59e0b', path: '/portal/prestasi' },
     { title: 'Pengumuman', icon: 'fa-bullhorn', color: '#8b5cf6', path: '/portal/pengumuman' },
-    { title: 'Penilaian Karakter', icon: 'fa-star', color: '#ec4899', path: '/portal/penilaian-diri' }
+    { title: 'Penilaian Karakter', icon: 'fa-star', color: '#ec4899', path: '/portal/penilaian-diri' },
+    ...(isKelas7 ? [
+      { title: 'Survey Madrasah', icon: 'fa-poll-h', color: '#6366f1', path: '/portal/survey-madrasah' }
+    ] : [])
   ];
 
   // Helper date formatter
@@ -918,6 +923,57 @@ export default function PortalDashboard() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* BANNER SURVEY MADRASAH KHUSUS KELAS 7 */}
+        {isKelas7 && (
+          <div 
+            onClick={() => router.push('/portal/survey-madrasah')}
+            style={{
+              background: 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)',
+              border: '1.5px solid #c7d2fe',
+              borderRadius: '16px',
+              padding: '16px 18px',
+              marginTop: '16px',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.1)',
+              transition: 'transform 0.15s ease'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '12px',
+                background: '#4f46e5',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '20px',
+                flexShrink: 0
+              }}>
+                <i className="fas fa-poll-h"></i>
+              </div>
+              <div>
+                <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#1e1b4b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>Survey Madrasah</span>
+                  <span style={{ background: '#4f46e5', color: 'white', fontSize: '10px', padding: '2px 7px', borderRadius: '12px', fontWeight: 800 }}>Kelas 7</span>
+                </div>
+                <div style={{ fontSize: '11.5px', color: '#4338ca', marginTop: '2px', lineHeight: 1.4 }}>
+                  Mohon kesediaan Bapak/Ibu Wali Murid dan Ananda untuk mengisi angket survey.
+                </div>
+              </div>
+            </div>
+            <span style={{ color: '#4f46e5', fontSize: '16px', fontWeight: 800, flexShrink: 0 }}>
+              &rarr;
+            </span>
           </div>
         )}
 
