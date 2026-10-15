@@ -24,7 +24,7 @@ export default function SpmbLogin() {
     e.preventDefault();
     const clean = nomorPendaftaran.trim();
     if (!clean) {
-      Swal.fire('Perhatian', 'Silakan masukkan Nomor Pendaftaran lengkap Anda (Contoh: MTS01-2026-0001).', 'warning');
+      Swal.fire('Perhatian', 'Silakan masukkan Nomor Pendaftaran lengkap Anda.', 'warning');
       return;
     }
 
@@ -111,7 +111,7 @@ export default function SpmbLogin() {
                 </span>
                 <input 
                   type="text"
-                  placeholder="Contoh: MTS01-2026-0001"
+                  placeholder="Masukkan Nomor Pendaftaran..."
                   value={nomorPendaftaran}
                   onChange={e => setNomorPendaftaran(e.target.value)}
                   autoFocus
@@ -142,7 +142,7 @@ export default function SpmbLogin() {
               </div>
               <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#64748b', lineHeight: 1.4 }}>
                 <i className="fas fa-info-circle" style={{ color: '#059669', marginRight: '4px' }}></i>
-                Masukkan Nomor Pendaftaran lengkap sesuai yang tertera pada Kartu Bukti Pendaftaran (Contoh: MTS01-2026-0001).
+                Masukkan Nomor Pendaftaran lengkap sesuai yang tertera pada Kartu Bukti Pendaftaran.
               </p>
             </div>
 

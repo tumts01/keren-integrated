@@ -71,7 +71,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { 
           success: false, 
-          error: `Nomor Pendaftaran "${rawInput}" tidak ditemukan. Pastikan Anda memasukkan nomor pendaftaran lengkap sesuai kartu (Contoh: MTS01-2026-0001).` 
+          error: `Nomor Pendaftaran "${rawInput}" tidak ditemukan. Pastikan Anda memasukkan nomor pendaftaran lengkap sesuai kartu.` 
         },
         { status: 404 }
       );
