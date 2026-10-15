@@ -1,11 +1,12 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Script from 'next/script';
 import styles from './Cetak.module.css';
 import LoadingScreen from '@/components/LoadingScreen';
 
 export default function CetakSpmb() {
+  const router = useRouter();
   const { rowNumber } = useParams();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -77,6 +78,16 @@ export default function CetakSpmb() {
     });
   };
 
+  const handleKembali = () => {
+    if (typeof window !== 'undefined' && localStorage.getItem('spmb_session')) {
+      router.push('/spmb/portal');
+    } else if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/spmb/portal');
+    }
+  };
+
   if (loading) {
     return <LoadingScreen />;
   }
@@ -94,6 +105,9 @@ export default function CetakSpmb() {
         
         {/* Toolbar (Hidden when printing via CSS) */}
         <div className={styles.toolbar}>
+          <button onClick={handleKembali} className={`${styles.btnToolbar} ${styles.btnBack}`}>
+            <i className="fas fa-arrow-left"></i> Kembali ke Portal
+          </button>
           <button onClick={handlePrint} className={`${styles.btnToolbar} ${styles.btnPrint}`}>
             <i className="fas fa-print"></i> Cetak Langsung
           </button>
