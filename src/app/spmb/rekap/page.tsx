@@ -30,6 +30,10 @@ export default function RekapSpmb() {
   const [filterKelulusan, setFilterKelulusan] = useState('semua');
   const [filterJadwal, setFilterJadwal] = useState('semua');
 
+  // Pagination States (default 20 pendaftar per halaman)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+
   // Filtered data calculation
   const filteredData = data.filter(item => {
     // Search Term match
@@ -78,18 +82,37 @@ export default function RekapSpmb() {
     return true;
   });
 
+  // Reset to page 1 when any filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterJalur, filterVerifikasi, filterKelulusan, filterJadwal]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, filteredData.length);
+  const paginatedData = filteredData.slice(startIndex, startIndex + itemsPerPage);
+
+  const isCurrentPageAllSelected = paginatedData.length > 0 && paginatedData.every(item => selectedIds.includes(item.rowNumber));
+
   const handleToggleSelect = (id: string) => {
     setSelectedIds(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
   };
 
-  const handleSelectAll = () => {
-    if (filteredData.length > 0 && selectedIds.length === filteredData.length) {
-      setSelectedIds([]);
+  const handleSelectAllCurrentPage = () => {
+    const pageIds = paginatedData.map(d => d.rowNumber);
+    if (isCurrentPageAllSelected) {
+      setSelectedIds(prev => prev.filter(id => !pageIds.includes(id)));
     } else {
-      setSelectedIds(filteredData.map(d => d.rowNumber));
+      setSelectedIds(prev => Array.from(new Set([...prev, ...pageIds])));
     }
+  };
+
+  const handleSelectAllFiltered = () => {
+    setSelectedIds(filteredData.map(d => d.rowNumber));
   };
 
   const handleResetFilter = () => {
@@ -98,6 +121,23 @@ export default function RekapSpmb() {
     setFilterVerifikasi('semua');
     setFilterKelulusan('semua');
     setFilterJadwal('semua');
+    setCurrentPage(1);
+  };
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (safeCurrentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, '...', totalPages);
+      } else if (safeCurrentPage >= totalPages - 3) {
+        pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', safeCurrentPage - 1, safeCurrentPage, safeCurrentPage + 1, '...', totalPages);
+      }
+    }
+    return pages;
   };
 
   const isFiltered = searchTerm.trim() !== '' || filterJalur !== 'semua' || filterVerifikasi !== 'semua' || filterKelulusan !== 'semua' || filterJadwal !== 'semua';
@@ -745,6 +785,25 @@ export default function RekapSpmb() {
                 Terapkan jadwal tes atau kosongkan jadwal secara serentak
               </div>
             </div>
+            {selectedIds.length < filteredData.length && (
+              <button
+                type="button"
+                onClick={handleSelectAllFiltered}
+                style={{
+                  background: 'rgba(2, 132, 199, 0.25)',
+                  color: '#38bdf8',
+                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  marginLeft: '8px'
+                }}
+              >
+                Pilih Semua {filteredData.length} Siswa
+              </button>
+            )}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -852,7 +911,8 @@ export default function RekapSpmb() {
             </button>
           </div>
         ) : (
-          <div className={styles.tableContainer}>
+          <>
+            <div className={styles.tableContainer}>
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -860,10 +920,10 @@ export default function RekapSpmb() {
                     <th style={{ width: '40px', textAlign: 'center' }}>
                       <input
                         type="checkbox"
-                        checked={filteredData.length > 0 && selectedIds.length === filteredData.length}
-                        onChange={handleSelectAll}
+                        checked={isCurrentPageAllSelected}
+                        onChange={handleSelectAllCurrentPage}
                         style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#047857' }}
-                        title="Pilih Semua Siswa"
+                        title="Pilih Semua Siswa di Halaman Ini"
                       />
                     </th>
                   )}
@@ -881,7 +941,7 @@ export default function RekapSpmb() {
                 </tr>
               </thead>
               <tbody>
-                {filteredData.map((item) => (
+                {paginatedData.map((item) => (
                   <tr key={item.id} style={{ background: selectedIds.includes(item.rowNumber) ? '#f0fdf4' : undefined }}>
                     {isAdmin && (
                       <td style={{ textAlign: 'center' }}>
@@ -1109,8 +1169,131 @@ export default function RekapSpmb() {
               </tbody>
             </table>
           </div>
-        )}
-      </div>
+
+          {/* Pagination Controls */}
+          {filteredData.length > 0 && (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '14px 20px',
+              borderTop: '1px solid #e2e8f0',
+              background: '#f8fafc',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}>
+              <div style={{ fontSize: '13px', color: '#475569', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontWeight: 600 }}>Tampilkan:</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    style={{
+                      padding: '5px 10px',
+                      borderRadius: '6px',
+                      border: '1.5px solid #cbd5e1',
+                      outline: 'none',
+                      background: 'white',
+                      color: '#334155',
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value={10}>10 per halaman</option>
+                    <option value={20}>20 per halaman</option>
+                    <option value={50}>50 per halaman</option>
+                    <option value={100}>100 per halaman</option>
+                  </select>
+                </div>
+                <span>
+                  Menampilkan <b>{startIndex + 1} - {endIndex}</b> dari <b>{filteredData.length}</b> pendaftar
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={safeCurrentPage === 1}
+                  style={{
+                    padding: '6px 12px',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    background: safeCurrentPage === 1 ? '#f1f5f9' : 'white',
+                    cursor: safeCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                    color: safeCurrentPage === 1 ? '#94a3b8' : '#334155',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <i className="fas fa-chevron-left" style={{ fontSize: '11px' }}></i> Sebelumnya
+                </button>
+
+                {getPageNumbers().map((page, idx) => (
+                  typeof page === 'number' ? (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setCurrentPage(page)}
+                      style={{
+                        minWidth: '34px',
+                        height: '34px',
+                        padding: '0 8px',
+                        border: safeCurrentPage === page ? 'none' : '1px solid #cbd5e1',
+                        borderRadius: '6px',
+                        background: safeCurrentPage === page ? '#047857' : 'white',
+                        color: safeCurrentPage === page ? 'white' : '#334155',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: safeCurrentPage === page ? 700 : 500,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: safeCurrentPage === page ? '0 2px 4px rgba(4, 120, 87, 0.25)' : 'none'
+                      }}
+                    >
+                      {page}
+                    </button>
+                  ) : (
+                    <span key={idx} style={{ padding: '0 6px', color: '#94a3b8', fontSize: '13px', userSelect: 'none' }}>
+                      {page}
+                    </span>
+                  )
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={safeCurrentPage >= totalPages}
+                  style={{
+                    padding: '6px 12px',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    background: safeCurrentPage >= totalPages ? '#f1f5f9' : 'white',
+                    cursor: safeCurrentPage >= totalPages ? 'not-allowed' : 'pointer',
+                    color: safeCurrentPage >= totalPages ? '#94a3b8' : '#334155',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  Selanjutnya <i className="fas fa-chevron-right" style={{ fontSize: '11px' }}></i>
+                </button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
 
       {/* Document Viewer Modal */}
       {viewerUrl && (
