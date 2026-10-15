@@ -1,8 +1,9 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Swal from 'sweetalert2';
 import styles from './Spmb.module.css';
+import ModalAturJalur, { JalurItem } from './components/ModalAturJalur';
 
 export default function SpmbPage() {
   const router = useRouter();
@@ -11,7 +12,50 @@ export default function SpmbPage() {
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [sekolahRef, setSekolahRef] = useState<{nama: string, alamat: string, npsn?: string}[]>([]);
 
+  // Admin & Jalur Config States
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [jalurList, setJalurList] = useState<JalurItem[]>([]);
+  const [pendaftaranBuka, setPendaftaranBuka] = useState(true);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [loadingConfig, setLoadingConfig] = useState(true);
+
   useEffect(() => {
+    // Check if logged in user is admin
+    const userStr = localStorage.getItem('keren_user_data');
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        const role = (u.role || '').toLowerCase();
+        if (role === 'admin' || role === 'pimpinan') {
+          setIsAdmin(true);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // Load SPMB config (jalur aktif/tidak & status buka)
+    fetch('/api/spmb/config')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.jalur)) {
+          setJalurList(data.jalur);
+          setPendaftaranBuka(data.pendaftaran_buka ?? true);
+          const activeList = data.jalur.filter((j: JalurItem) => j.aktif);
+          if (activeList.length > 0) {
+            setFormData(prev => ({
+              ...prev,
+              jalurPendaftaran: activeList.some((j: JalurItem) => j.nama === prev.jalurPendaftaran)
+                ? prev.jalurPendaftaran
+                : activeList[0].nama
+            }));
+          }
+        }
+      })
+      .catch(err => console.error('Gagal memuat konfigurasi jalur SPMB', err))
+      .finally(() => setLoadingConfig(false));
+
+    // Load referensi sekolah
     fetch('/api/spmb/sekolah')
       .then(res => res.json())
       .then(data => {
@@ -21,6 +65,24 @@ export default function SpmbPage() {
       })
       .catch(err => console.error('Gagal memuat referensi sekolah', err));
   }, []);
+
+  const activeJalurList = useMemo(() => {
+    return jalurList.filter(j => j.aktif);
+  }, [jalurList]);
+
+  const handleSaveConfigSuccess = (updatedJalur: JalurItem[], buka: boolean) => {
+    setJalurList(updatedJalur);
+    setPendaftaranBuka(buka);
+    const activeList = updatedJalur.filter(j => j.aktif);
+    if (activeList.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        jalurPendaftaran: activeList.some(j => j.nama === prev.jalurPendaftaran)
+          ? prev.jalurPendaftaran
+          : activeList[0].nama
+      }));
+    }
+  };
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
@@ -109,6 +171,17 @@ export default function SpmbPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!pendaftaranBuka) {
+      showToast('Pendaftaran SPMB Online sedang ditutup sementara oleh madrasah.', 'error');
+      return;
+    }
+
+    if (activeJalurList.length === 0) {
+      showToast('Tidak ada jalur pendaftaran yang aktif saat ini.', 'error');
+      return;
+    }
+
     if (!fileKk) {
       showToast('File Kartu Keluarga wajib diunggah!', 'error');
       return;
@@ -162,7 +235,7 @@ export default function SpmbPage() {
 
       const result = await res.json();
 
-            if (result.success) {
+      if (result.success) {
         if (result.id) {
           router.push('/spmb/cetak/' + result.id);
         } else {
@@ -171,7 +244,7 @@ export default function SpmbPage() {
         
         // Reset Form
         setFormData({
-          jalurPendaftaran: 'Reguler',
+          jalurPendaftaran: activeJalurList[0]?.nama || 'Reguler',
           namaLengkap: '',
           nisn: '',
           tempatLahir: '',
@@ -218,8 +291,6 @@ export default function SpmbPage() {
         </div>
       )}
 
-
-
       <div className={styles.header}>
         <img src="/logo.png" alt="Logo MTs Almaarif" style={{ width: '80px', height: 'auto', marginBottom: '16px' }} />
         <div className={styles.title}>
@@ -232,6 +303,33 @@ export default function SpmbPage() {
           Seleksi Penerimaan Murid Baru MTs Almaarif 01 Singosari<br />
           <strong>Tahun Ajaran {spmbYear}</strong>
         </p>
+
+        {/* Admin Quick Control Button */}
+        {isAdmin && (
+          <div style={{ marginTop: '16px' }}>
+            <button
+              type="button"
+              onClick={() => setShowConfigModal(true)}
+              style={{
+                background: '#047857',
+                color: 'white',
+                border: 'none',
+                padding: '9px 20px',
+                borderRadius: '50px',
+                fontSize: '0.88rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 10px rgba(4, 120, 87, 0.25)',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <i className="fas fa-sliders-h"></i> Atur Jalur Pendaftaran (Admin)
+            </button>
+          </div>
+        )}
       </div>
 
       <div className={styles.card} style={{ position: 'relative' }}>
@@ -244,19 +342,97 @@ export default function SpmbPage() {
 
         <form onSubmit={handleSubmit}>
           
-          <div className={styles.sectionTitle}>
-            <i className="fas fa-info-circle"></i> Informasi Pendaftaran
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+            <div className={styles.sectionTitle} style={{ margin: 0 }}>
+              <i className="fas fa-info-circle"></i> Informasi Pendaftaran
+            </div>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setShowConfigModal(true)}
+                style={{
+                  background: '#f0fdf4',
+                  color: '#15803d',
+                  border: '1.5px solid #86efac',
+                  padding: '5px 12px',
+                  borderRadius: '8px',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <i className="fas fa-sliders-h"></i> Atur Jalur Aktif
+              </button>
+            )}
           </div>
+
+          {/* Banner jika Pendaftaran ditutup */}
+          {!pendaftaranBuka && (
+            <div style={{
+              background: '#fef2f2',
+              border: '1.5px solid #fecaca',
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+              color: '#991b1b'
+            }}>
+              <i className="fas fa-lock fa-2x" style={{ color: '#ef4444' }}></i>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: '0.98rem' }}>Pendaftaran SPMB Ditutup Sementara</div>
+                <div style={{ fontSize: '0.85rem', color: '#b91c1c', marginTop: '2px' }}>
+                  Mohon maaf, pendaftaran murid baru online saat ini sedang ditutup oleh pihak madrasah.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Banner jika tidak ada jalur aktif */}
+          {pendaftaranBuka && activeJalurList.length === 0 && !loadingConfig && (
+            <div style={{
+              background: '#fffbeb',
+              border: '1.5px solid #fde68a',
+              borderRadius: '12px',
+              padding: '16px',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+              color: '#92400e'
+            }}>
+              <i className="fas fa-exclamation-triangle fa-2x" style={{ color: '#f59e0b' }}></i>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: '0.98rem' }}>Belum Ada Jalur Pendaftaran yang Aktif</div>
+                <div style={{ fontSize: '0.85rem', color: '#b45309', marginTop: '2px' }}>
+                  Seluruh jalur pendaftaran sedang dinonaktifkan sementara. Silakan hubungi pihak panitia SPMB madrasah.
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className={styles.formGrid}>
             <div className={styles.formGroup}>
               <label className={styles.label}>Jalur Pendaftaran <span>*</span></label>
-              <select name="jalurPendaftaran" className={styles.select} value={formData.jalurPendaftaran} onChange={handleInputChange} required>
-                <option value="Inden">Inden</option>
-                <option value="Reguler">Reguler</option>
-                <option value="Terpadu">Terpadu</option>
-                <option value="Afirmasi">Afirmasi</option>
-                <option value="Prestasi">Prestasi</option>
-                <option value="Mandiri">Mandiri</option>
+              <select
+                name="jalurPendaftaran"
+                className={styles.select}
+                value={formData.jalurPendaftaran}
+                onChange={handleInputChange}
+                required
+                disabled={!pendaftaranBuka || activeJalurList.length === 0}
+              >
+                {activeJalurList.length > 0 ? (
+                  activeJalurList.map(j => (
+                    <option key={j.id} value={j.nama}>{j.nama}</option>
+                  ))
+                ) : (
+                  <option value="" disabled>-- Tidak ada jalur pendaftaran yang aktif --</option>
+                )}
               </select>
             </div>
           </div>
@@ -273,14 +449,20 @@ export default function SpmbPage() {
               <label className={styles.label}>NISN <span>*</span></label>
               <input type="text" name="nisn" className={styles.input} placeholder="Nomor Induk Siswa Nasional" value={formData.nisn} onChange={handleInputChange} required />
             </div>
+          </div>
+
+          <div className={styles.formGrid}>
             <div className={styles.formGroup}>
               <label className={styles.label}>Tempat Lahir <span>*</span></label>
-              <input type="text" name="tempatLahir" className={styles.input} placeholder="Contoh: Malang" value={formData.tempatLahir} onChange={handleInputChange} required />
+              <input type="text" name="tempatLahir" className={styles.input} value={formData.tempatLahir} onChange={handleInputChange} required />
             </div>
             <div className={styles.formGroup}>
               <label className={styles.label}>Tanggal Lahir <span>*</span></label>
               <input type="date" name="tanggalLahir" className={styles.input} value={formData.tanggalLahir} onChange={handleInputChange} required />
             </div>
+          </div>
+
+          <div className={styles.formGrid}>
             <div className={styles.formGroup}>
               <label className={styles.label}>Jenis Kelamin <span>*</span></label>
               <select name="jenisKelamin" className={styles.select} value={formData.jenisKelamin} onChange={handleInputChange} required>
@@ -296,25 +478,9 @@ export default function SpmbPage() {
                 <option value="Katolik">Katolik</option>
                 <option value="Hindu">Hindu</option>
                 <option value="Buddha">Buddha</option>
-                <option value="Konghucu">Konghucu</option>
+                <option value="Khonghucu">Khonghucu</option>
               </select>
             </div>
-              <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
-                <label className={styles.label}>Jalan / RT / RW (Tempat Tinggal) <span>*</span></label>
-                <textarea name="alamatLengkap" className={styles.textarea} placeholder="Contoh: Jl. Diponegoro No. 10, RT 01 RW 02" value={formData.alamatLengkap} onChange={handleInputChange} required></textarea>
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Desa / Kelurahan <span>*</span></label>
-                <input type="text" name="desa" className={styles.input} placeholder="Contoh: Toyomarto" value={formData.desa} onChange={handleInputChange} required />
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Kecamatan <span>*</span></label>
-                <input type="text" name="kecamatan" className={styles.input} placeholder="Contoh: Singosari" value={formData.kecamatan} onChange={handleInputChange} required />
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Kabupaten / Kota <span>*</span></label>
-                <input type="text" name="kabupaten" className={styles.input} placeholder="Contoh: Malang" value={formData.kabupaten} onChange={handleInputChange} required />
-              </div>
           </div>
 
           <div className={styles.sectionTitle}>
@@ -322,60 +488,109 @@ export default function SpmbPage() {
           </div>
           <div className={styles.formGrid}>
             <div className={styles.formGroup}>
-              <label className={styles.label}>Nama Asal Sekolah (SD/MI) <span>*</span></label>
-              <input type="text" name="asalSekolah" className={styles.input} placeholder="Contoh: MI Almaarif 01" value={formData.asalSekolah} onChange={handleInputChange} list="sekolah-list" required />
-              <datalist id="sekolah-list">
+              <label className={styles.label}>Asal Sekolah / Madrasah <span>*</span></label>
+              <input 
+                type="text" 
+                name="asalSekolah" 
+                list="daftarSekolah" 
+                className={styles.input} 
+                placeholder="Ketik atau pilih nama SD/MI asal..." 
+                value={formData.asalSekolah} 
+                onChange={handleInputChange} 
+                required 
+              />
+              <datalist id="daftarSekolah">
                 {sekolahRef.map((s, idx) => (
-                  <option key={idx} value={s.nama} />
+                  <option key={idx} value={s.nama}>{s.alamat ? `${s.nama} (${s.alamat})` : s.nama}</option>
                 ))}
               </datalist>
             </div>
             <div className={styles.formGroup}>
-              <label className={styles.label}>NPSN SD/MI <span>*</span></label>
-              <input type="text" name="npsnSekolahAsal" className={styles.input} placeholder="Contoh: 20554142" value={formData.npsnSekolahAsal} onChange={handleInputChange} required />
+              <label className={styles.label}>NPSN Sekolah Asal</label>
+              <input type="text" name="npsnSekolahAsal" className={styles.input} placeholder="Contoh: 20512345" value={formData.npsnSekolahAsal} onChange={handleInputChange} />
             </div>
-            <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
-              <label className={styles.label}>Alamat Sekolah Asal <span>*</span></label>
-              <input type="text" name="alamatSekolahAsal" className={styles.input} placeholder="Contoh: Singosari, Kab. Malang" value={formData.alamatSekolahAsal} onChange={handleInputChange} required />
-            </div>
-            <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
-              <label className={styles.label}>Prestasi (Jika Ada)</label>
-              <input type="text" name="prestasi" className={styles.input} placeholder="Tuliskan prestasi yang pernah diraih (Contoh: Juara 1 Lomba Puisi Tingkat Kabupaten)" value={formData.prestasi} onChange={handleInputChange} />
+          </div>
+
+          <div className={styles.formGrid}>
+            <div className={styles.formGroupFull}>
+              <label className={styles.label}>Alamat Sekolah Asal</label>
+              <input type="text" name="alamatSekolahAsal" className={styles.input} placeholder="Desa/Kelurahan, Kecamatan, Kota/Kabupaten" value={formData.alamatSekolahAsal} onChange={handleInputChange} />
             </div>
           </div>
 
           <div className={styles.sectionTitle}>
-            <i className="fas fa-users"></i> Data Orang Tua
+            <i className="fas fa-users"></i> Data Orang Tua / Wali
           </div>
           <div className={styles.formGrid}>
             <div className={styles.formGroup}>
-              <label className={styles.label}>Nama Ayah <span>*</span></label>
+              <label className={styles.label}>Nama Ayah Kandung <span>*</span></label>
               <input type="text" name="namaAyah" className={styles.input} value={formData.namaAyah} onChange={handleInputChange} required />
             </div>
             <div className={styles.formGroup}>
               <label className={styles.label}>Pekerjaan Ayah <span>*</span></label>
               <input type="text" name="pekerjaanAyah" className={styles.input} value={formData.pekerjaanAyah} onChange={handleInputChange} required />
             </div>
+          </div>
+
+          <div className={styles.formGrid}>
             <div className={styles.formGroup}>
-              <label className={styles.label}>Nomor WA Ayah <span>*</span></label>
-              <input type="tel" name="nomorWaAyah" className={styles.input} placeholder="Contoh: 081234567890" value={formData.nomorWaAyah} onChange={handleInputChange} required />
-            </div>
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Nama Ibu <span>*</span></label>
+              <label className={styles.label}>Nama Ibu Kandung <span>*</span></label>
               <input type="text" name="namaIbu" className={styles.input} value={formData.namaIbu} onChange={handleInputChange} required />
             </div>
             <div className={styles.formGroup}>
               <label className={styles.label}>Pekerjaan Ibu <span>*</span></label>
               <input type="text" name="pekerjaanIbu" className={styles.input} value={formData.pekerjaanIbu} onChange={handleInputChange} required />
             </div>
+          </div>
+
+          <div className={styles.formGrid}>
             <div className={styles.formGroup}>
-              <label className={styles.label}>Nomor WA Ibu <span>*</span></label>
-              <input type="tel" name="nomorWaIbu" className={styles.input} placeholder="Contoh: 081234567890" value={formData.nomorWaIbu} onChange={handleInputChange} required />
+              <label className={styles.label}>Nomor WhatsApp Ayah <span>*</span></label>
+              <input type="tel" name="nomorWaAyah" className={styles.input} placeholder="08xxxxxxxxxx" value={formData.nomorWaAyah} onChange={handleInputChange} required />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Nomor WhatsApp Ibu</label>
+              <input type="tel" name="nomorWaIbu" className={styles.input} placeholder="08xxxxxxxxxx" value={formData.nomorWaIbu} onChange={handleInputChange} />
             </div>
           </div>
 
           <div className={styles.sectionTitle}>
-            <i className="fas fa-file-upload"></i> Upload Berkas Persyaratan
+            <i className="fas fa-map-marker-alt"></i> Alamat Tempat Tinggal
+          </div>
+          <div className={styles.formGrid}>
+            <div className={styles.formGroupFull}>
+              <label className={styles.label}>Alamat Lengkap (Jalan / RT / RW) <span>*</span></label>
+              <textarea name="alamatLengkap" className={styles.textarea} rows={3} placeholder="Contoh: Jl. Raya Singosari No. 12 RT 02 RW 01" value={formData.alamatLengkap} onChange={handleInputChange} required></textarea>
+            </div>
+          </div>
+
+          <div className={styles.formGrid}>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Desa / Kelurahan <span>*</span></label>
+              <input type="text" name="desa" className={styles.input} value={formData.desa} onChange={handleInputChange} required />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Kecamatan <span>*</span></label>
+              <input type="text" name="kecamatan" className={styles.input} value={formData.kecamatan} onChange={handleInputChange} required />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Kabupaten / Kota <span>*</span></label>
+              <input type="text" name="kabupaten" className={styles.input} value={formData.kabupaten} onChange={handleInputChange} required />
+            </div>
+          </div>
+
+          <div className={styles.sectionTitle}>
+            <i className="fas fa-trophy"></i> Prestasi (Opsional)
+          </div>
+          <div className={styles.formGrid}>
+            <div className={styles.formGroupFull}>
+              <label className={styles.label}>Prestasi yang Pernah Diraih</label>
+              <textarea name="prestasi" className={styles.textarea} rows={2} placeholder="Sebutkan prestasi akademik / non-akademik beserta tingkat kejuaraan jika ada" value={formData.prestasi} onChange={handleInputChange}></textarea>
+            </div>
+          </div>
+
+          <div className={styles.sectionTitle}>
+            <i className="fas fa-file-upload"></i> Unggah Berkas Persyaratan
           </div>
           <div className={styles.fileGrid}>
             
@@ -408,12 +623,35 @@ export default function SpmbPage() {
 
           </div>
 
-          <button type="submit" className={styles.submitBtn} disabled={loading}>
-            <i className="fas fa-paper-plane"></i> Kirim Pendaftaran SPMB
+          <button
+            type="submit"
+            className={styles.submitBtn}
+            disabled={loading || !pendaftaranBuka || activeJalurList.length === 0}
+          >
+            {!pendaftaranBuka ? (
+              <>
+                <i className="fas fa-lock"></i> Pendaftaran SPMB Ditutup
+              </>
+            ) : activeJalurList.length === 0 ? (
+              <>
+                <i className="fas fa-ban"></i> Tidak Ada Jalur Aktif
+              </>
+            ) : (
+              <>
+                <i className="fas fa-paper-plane"></i> Kirim Pendaftaran SPMB
+              </>
+            )}
           </button>
 
         </form>
       </div>
+
+      {/* Modal Pengaturan Jalur SPMB (Khusus Admin) */}
+      <ModalAturJalur
+        isOpen={showConfigModal}
+        onClose={() => setShowConfigModal(false)}
+        onSaveSuccess={handleSaveConfigSuccess}
+      />
     </div>
   );
 }

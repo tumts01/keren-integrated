@@ -11,6 +11,7 @@ export default function SpmbEditPage() {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [sekolahRef, setSekolahRef] = useState<{nama: string, alamat: string, npsn?: string}[]>([]);
+  const [jalurList, setJalurList] = useState<string[]>(['Inden', 'Reguler', 'Terpadu', 'Afirmasi', 'Prestasi', 'Mandiri']);
 
   useEffect(() => {
     let isMounted = true;
@@ -45,6 +46,16 @@ export default function SpmbEditPage() {
             }
           })
           .catch(err => console.error('Gagal memuat referensi sekolah', err));
+
+        // Fetch jalur config
+        fetch('/api/spmb/config')
+          .then(res => res.json())
+          .then(data => {
+            if (isMounted && data.success && Array.isArray(data.jalur)) {
+              setJalurList(data.jalur.map((j: any) => j.nama));
+            }
+          })
+          .catch(err => console.error('Gagal memuat konfigurasi jalur', err));
 
         if (!id) return;
 
@@ -278,12 +289,9 @@ export default function SpmbEditPage() {
             <div className={styles.formGroup}>
               <label className={styles.label}>Jalur Pendaftaran <span>*</span></label>
               <select name="jalurPendaftaran" className={styles.select} value={formData.jalurPendaftaran} onChange={handleInputChange} required>
-                <option value="Inden">Inden</option>
-                <option value="Reguler">Reguler</option>
-                <option value="Terpadu">Terpadu</option>
-                <option value="Afirmasi">Afirmasi</option>
-                <option value="Prestasi">Prestasi</option>
-                <option value="Mandiri">Mandiri</option>
+                {Array.from(new Set([...jalurList, formData.jalurPendaftaran].filter(Boolean))).map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
               </select>
             </div>
           </div>

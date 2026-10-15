@@ -4,6 +4,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Swal from 'sweetalert2';
 import styles from './Rekap.module.css';
+import ModalAturJalur from '../components/ModalAturJalur';
 
 export default function RekapSpmb() {
   const router = useRouter();
@@ -17,6 +18,7 @@ export default function RekapSpmb() {
   const [viewerTitle, setViewerTitle] = useState('');
   
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showConfigModal, setShowConfigModal] = useState(false);
 
   const handleDelete = async (id: string, nama: string) => {
     const result = await Swal.fire({
@@ -105,6 +107,29 @@ export default function RekapSpmb() {
             )}
           </div>
         </div>
+
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => setShowConfigModal(true)}
+            style={{
+              background: '#047857',
+              color: 'white',
+              border: 'none',
+              padding: '9px 18px',
+              borderRadius: '10px',
+              fontSize: '0.88rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: '0 2px 4px rgba(4, 120, 87, 0.2)'
+            }}
+          >
+            <i className="fas fa-sliders-h"></i> Atur Jalur SPMB
+          </button>
+        )}
       </div>
 
       <div className={styles.card}>
@@ -238,6 +263,12 @@ export default function RekapSpmb() {
           </div>
         </div>
       )}
+
+      {/* Modal Pengaturan Jalur SPMB */}
+      <ModalAturJalur
+        isOpen={showConfigModal}
+        onClose={() => setShowConfigModal(false)}
+      />
 
     </div>
   );
