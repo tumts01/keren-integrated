@@ -107,10 +107,24 @@ export default function RekapOlimpiadeSeni() {
     try {
       const res = await fetch('/api/olimpiade-seni/rekap');
       const json = await res.json();
-      if (json.success) {
-        setData(json.data);
+      if (json.success && Array.isArray(json.data)) {
+        const cleaned = json.data.map((item: any) => {
+          let meta = item.metadata;
+          if (typeof meta === 'string') {
+            try {
+              meta = JSON.parse(meta);
+            } catch (e) {
+              meta = {};
+            }
+          }
+          return {
+            ...item,
+            metadata: meta && typeof meta === 'object' ? meta : {}
+          };
+        });
+        setData(cleaned);
       } else {
-        Swal.fire('Error', json.error, 'error');
+        Swal.fire('Error', json.error || 'Gagal memuat data', 'error');
       }
     } catch (err: any) {
       Swal.fire('Error', 'Gagal memuat data: ' + err.message, 'error');
@@ -177,9 +191,9 @@ export default function RekapOlimpiadeSeni() {
     }
   };
 
-  const normalizeLomba = (lombaName: string) => {
+  const normalizeLomba = (lombaName: any) => {
     if (!lombaName) return 'Lainnya';
-    const l = lombaName.toLowerCase();
+    const l = String(lombaName).toLowerCase();
     if (l.includes('matematika')) return 'Matematika';
     if (l.includes('ipa') || l.includes('ips') || l.includes('ipas')) return 'IPAS';
     if (l.includes('pai')) return 'PAI';
@@ -188,7 +202,7 @@ export default function RekapOlimpiadeSeni() {
     if (l.includes('banjari')) return 'Al Banjari';
     if (l.includes('singer')) return 'Singer (solo)';
     if (l.includes('sandi') || l.includes('sms') || l.includes('morse')) return 'Sandi Morse Semaphore (SMS)';
-    return lombaName;
+    return String(lombaName);
   };
 
   // Ringkasan Pendaftaran (Filter Out peserta_kolektif untuk Tab 1)
@@ -206,10 +220,10 @@ export default function RekapOlimpiadeSeni() {
   const filteredAllPeserta = useMemo(() => {
     return allPesertaList.filter(item => {
       const meta = item.metadata || {};
-      const nama = (meta.NAMA || meta.NAMA_REGU || '').toLowerCase();
-      const nopes = (meta.NOMOR_PESERTA || '').toLowerCase();
-      const sekolah = (meta.ASAL_SEKOLAH || meta['NAMA SD/MI'] || '').toLowerCase();
-      const nisn = (meta.NISN || '').toLowerCase();
+      const nama = String(meta.NAMA || meta.NAMA_REGU || '').toLowerCase();
+      const nopes = String(meta.NOMOR_PESERTA || '').toLowerCase();
+      const sekolah = String(meta.ASAL_SEKOLAH || meta['NAMA SD/MI'] || '').toLowerCase();
+      const nisn = String(meta.NISN || '').toLowerCase();
       const rawLomba = meta.LOMBA_DIPILIH || meta['LOMBA YANG DIPILIH'] || '';
       const lomba = normalizeLomba(rawLomba);
 
@@ -244,11 +258,20 @@ export default function RekapOlimpiadeSeni() {
         summaryCounts[lomba] = (summaryCounts[lomba] || 0) + 1;
       }
     } else if (row.jenis_pendaftaran === 'kolektif' && row.metadata?.REKAP_PESERTA) {
-      const rekap = row.metadata.REKAP_PESERTA;
-      Object.keys(rekap).forEach(rawLomba => {
-        const lomba = normalizeLomba(rawLomba);
-        summaryCounts[lomba] = (summaryCounts[lomba] || 0) + Number(rekap[rawLomba] || 0);
-      });
+      let rekap = row.metadata.REKAP_PESERTA;
+      if (typeof rekap === 'string') {
+        try {
+          rekap = JSON.parse(rekap);
+        } catch (e) {
+          rekap = {};
+        }
+      }
+      if (rekap && typeof rekap === 'object') {
+        Object.keys(rekap).forEach(rawLomba => {
+          const lomba = normalizeLomba(rawLomba);
+          summaryCounts[lomba] = (summaryCounts[lomba] || 0) + Number(rekap[rawLomba] || 0);
+        });
+      }
     }
   });
 
@@ -261,7 +284,7 @@ export default function RekapOlimpiadeSeni() {
     } else if (row.jenis_pendaftaran === 'kolektif') {
       const peserta = data.filter(d => 
         d.jenis_pendaftaran === 'peserta_kolektif' &&
-        d.metadata?.ASAL_SEKOLAH?.trim().toLowerCase() === row.metadata?.ASAL_SEKOLAH?.trim().toLowerCase()
+        String(d.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase() === String(row.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase()
       ).map(d => d.metadata);
 
       if (peserta.length > 0) {
@@ -287,17 +310,17 @@ export default function RekapOlimpiadeSeni() {
     const isAkademik = ['Matematika', 'IPAS', 'PAI', 'Inggris', 'Arab'].includes(lomba);
 
     setEditFormData({
-      nama,
-      nomorPeserta: meta.NOMOR_PESERTA || '',
-      nisn: meta.NISN || '',
-      asalSekolah: meta.ASAL_SEKOLAH || meta['NAMA SD/MI'] || '',
-      kelas: meta.KELAS || '',
+      nama: String(nama || ''),
+      nomorPeserta: String(meta.NOMOR_PESERTA || ''),
+      nisn: String(meta.NISN || ''),
+      asalSekolah: String(meta.ASAL_SEKOLAH || meta['NAMA SD/MI'] || ''),
+      kelas: String(meta.KELAS || ''),
       lomba,
-      namaRegu: meta.NAMA_REGU || meta['NAMA REGU/GRUP (LOMBA MAPEL TIDAK PERLU MENGISI)'] || '',
-      noWa: meta.NO_WA || '',
-      statusPembayaran: meta.STATUS_PEMBAYARAN || (isAkademik ? 'Valid' : 'Menunggu'),
-      usernameCbt: meta.USERNAME_CBT || '',
-      passwordCbt: meta.PASSWORD_CBT || '',
+      namaRegu: String(meta.NAMA_REGU || meta['NAMA REGU/GRUP (LOMBA MAPEL TIDAK PERLU MENGISI)'] || ''),
+      noWa: String(meta.NO_WA || ''),
+      statusPembayaran: String(meta.STATUS_PEMBAYARAN || (isAkademik ? 'Valid' : 'Menunggu')),
+      usernameCbt: String(meta.USERNAME_CBT || ''),
+      passwordCbt: String(meta.PASSWORD_CBT || ''),
     });
     setEditingPeserta(item);
   };
@@ -305,7 +328,7 @@ export default function RekapOlimpiadeSeni() {
   // Simpan Perubahan Edit Peserta
   const handleSaveEdit = async () => {
     if (!editingPeserta) return;
-    if (!editFormData.nama || !editFormData.nama.trim()) {
+    if (!editFormData.nama || !String(editFormData.nama).trim()) {
       Swal.fire('Peringatan', 'Nama Peserta tidak boleh kosong!', 'warning');
       return;
     }
@@ -314,25 +337,25 @@ export default function RekapOlimpiadeSeni() {
     try {
       const isAkademik = ['Matematika', 'IPAS', 'PAI', 'Inggris', 'Arab'].includes(editFormData.lomba);
       const updatedMetadata = {
-        ...editingPeserta.metadata,
-        NAMA: editFormData.nama.trim(),
-        NOMOR_PESERTA: editFormData.nomorPeserta.trim(),
-        NISN: editFormData.nisn.trim(),
-        ASAL_SEKOLAH: editFormData.asalSekolah.trim(),
-        'NAMA SD/MI': editFormData.asalSekolah.trim(),
-        KELAS: editFormData.kelas.trim(),
+        ...(editingPeserta.metadata || {}),
+        NAMA: String(editFormData.nama || '').trim(),
+        NOMOR_PESERTA: String(editFormData.nomorPeserta || '').trim(),
+        NISN: String(editFormData.nisn || '').trim(),
+        ASAL_SEKOLAH: String(editFormData.asalSekolah || '').trim(),
+        'NAMA SD/MI': String(editFormData.asalSekolah || '').trim(),
+        KELAS: String(editFormData.kelas || '').trim(),
         LOMBA_DIPILIH: editFormData.lomba,
         'LOMBA YANG DIPILIH': editFormData.lomba,
         KATEGORI: isAkademik ? 'Olimpiade Akademik' : 'Lomba Seni',
-        NAMA_REGU: editFormData.namaRegu.trim(),
-        'NAMA REGU/GRUP (LOMBA MAPEL TIDAK PERLU MENGISI)': editFormData.namaRegu.trim(),
-        NO_WA: editFormData.noWa.trim(),
+        NAMA_REGU: String(editFormData.namaRegu || '').trim(),
+        'NAMA REGU/GRUP (LOMBA MAPEL TIDAK PERLU MENGISI)': String(editFormData.namaRegu || '').trim(),
+        NO_WA: String(editFormData.noWa || '').trim(),
         STATUS_PEMBAYARAN: editFormData.statusPembayaran,
       };
 
       if (isAkademik) {
-        if (editFormData.usernameCbt) updatedMetadata.USERNAME_CBT = editFormData.usernameCbt.trim();
-        if (editFormData.passwordCbt) updatedMetadata.PASSWORD_CBT = editFormData.passwordCbt.trim();
+        if (editFormData.usernameCbt) updatedMetadata.USERNAME_CBT = String(editFormData.usernameCbt).trim();
+        if (editFormData.passwordCbt) updatedMetadata.PASSWORD_CBT = String(editFormData.passwordCbt).trim();
       }
 
       const res = await fetch('/api/olimpiade-seni/rekap', {
@@ -370,7 +393,7 @@ export default function RekapOlimpiadeSeni() {
     if (!kelolaKolektif) return [];
     return data.filter(d => 
       d.jenis_pendaftaran === 'peserta_kolektif' &&
-      d.metadata?.ASAL_SEKOLAH?.trim().toLowerCase() === kelolaKolektif.metadata?.ASAL_SEKOLAH?.trim().toLowerCase()
+      String(d.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase() === String(kelolaKolektif.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase()
     );
   }, [data, kelolaKolektif]);
 
@@ -565,7 +588,7 @@ export default function RekapOlimpiadeSeni() {
                       const isIndividu = row.jenis_pendaftaran === 'individu';
                       const pesertaSekolahCount = isIndividu ? 1 : data.filter(d => 
                         d.jenis_pendaftaran === 'peserta_kolektif' &&
-                        d.metadata?.ASAL_SEKOLAH?.trim().toLowerCase() === row.metadata?.ASAL_SEKOLAH?.trim().toLowerCase()
+                        String(d.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase() === String(row.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase()
                       ).length;
 
                       return (
@@ -583,7 +606,7 @@ export default function RekapOlimpiadeSeni() {
                               background: isIndividu ? '#e0f2fe' : '#dcfce7',
                               color: isIndividu ? '#0284c7' : '#16a34a'
                             }}>
-                              {row.jenis_pendaftaran.toUpperCase()}
+                              {String(row.jenis_pendaftaran || '').toUpperCase()}
                             </span>
                           </td>
                           <td style={{ padding: '16px' }}>
@@ -594,7 +617,7 @@ export default function RekapOlimpiadeSeni() {
                                 <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Asal: {row.metadata?.ASAL_SEKOLAH || '-'}</div>
                                 {row.metadata?.NO_WA && (
                                   <div style={{ fontSize: '0.8rem', color: '#16a34a', marginTop: '2px', fontWeight: 600 }}>
-                                    WA: <a href={`https://wa.me/${row.metadata.NO_WA.replace(/[^0-9]/g, '').replace(/^0/, '62')}`} target="_blank" rel="noopener noreferrer" style={{ color: '#16a34a', textDecoration: 'underline' }}>{row.metadata.NO_WA}</a>
+                                    WA: <a href={`https://wa.me/${String(row.metadata.NO_WA).replace(/[^0-9]/g, '').replace(/^0/, '62')}`} target="_blank" rel="noopener noreferrer" style={{ color: '#16a34a', textDecoration: 'underline' }}>{String(row.metadata.NO_WA)}</a>
                                   </div>
                                 )}
                                 {row.metadata?.USERNAME_CBT && (
@@ -609,7 +632,7 @@ export default function RekapOlimpiadeSeni() {
                                 <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.95rem' }}>{row.metadata?.ASAL_SEKOLAH || 'Pendaftaran Kolektif'}</div>
                                 {row.metadata?.NO_WA && (
                                   <div style={{ fontSize: '0.8rem', color: '#16a34a', marginTop: '2px', fontWeight: 600 }}>
-                                    WA Pendamping: <a href={`https://wa.me/${row.metadata.NO_WA.replace(/[^0-9]/g, '').replace(/^0/, '62')}`} target="_blank" rel="noopener noreferrer" style={{ color: '#16a34a', textDecoration: 'underline' }}>{row.metadata.NO_WA}</a>
+                                    WA Pendamping: <a href={`https://wa.me/${String(row.metadata.NO_WA).replace(/[^0-9]/g, '').replace(/^0/, '62')}`} target="_blank" rel="noopener noreferrer" style={{ color: '#16a34a', textDecoration: 'underline' }}>{String(row.metadata.NO_WA)}</a>
                                   </div>
                                 )}
                                 <div style={{ marginTop: '8px', display: 'flex', gap: '8px', alignItems: 'center' }}>

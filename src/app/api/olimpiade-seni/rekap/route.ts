@@ -31,7 +31,7 @@ async function syncCollectiveRecap(sekolah: string) {
       .select('metadata')
       .eq('jenis_pendaftaran', 'peserta_kolektif');
 
-    const pesertaSekolah = (allPeserta || []).filter(p => p.metadata?.ASAL_SEKOLAH?.trim() === sekolah.trim());
+    const pesertaSekolah = (allPeserta || []).filter(p => String(p.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase() === String(sekolah || '').trim().toLowerCase());
     const rekap: Record<string, number> = {};
     pesertaSekolah.forEach(p => {
       const l = p.metadata?.LOMBA_DIPILIH || p.metadata?.['LOMBA YANG DIPILIH'] || '';
@@ -45,7 +45,7 @@ async function syncCollectiveRecap(sekolah: string) {
       .select('id, metadata')
       .eq('jenis_pendaftaran', 'kolektif');
 
-    const master = (masters || []).find(m => m.metadata?.ASAL_SEKOLAH?.trim() === sekolah.trim());
+    const master = (masters || []).find(m => String(m.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase() === String(sekolah || '').trim().toLowerCase());
     if (master) {
       await supabase
         .from('data_olimpiade_seni')
