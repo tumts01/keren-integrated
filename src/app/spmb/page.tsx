@@ -512,7 +512,7 @@ export default function SpmbPage() {
           </div>
 
           <div className={styles.formGrid}>
-            <div className={styles.formGroupFull}>
+            <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
               <label className={styles.label}>Alamat Sekolah Asal</label>
               <input type="text" name="alamatSekolahAsal" className={styles.input} placeholder="Desa/Kelurahan, Kecamatan, Kota/Kabupaten" value={formData.alamatSekolahAsal} onChange={handleInputChange} />
             </div>
@@ -558,13 +558,13 @@ export default function SpmbPage() {
             <i className="fas fa-map-marker-alt"></i> Alamat Tempat Tinggal
           </div>
           <div className={styles.formGrid}>
-            <div className={styles.formGroupFull}>
+            <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
               <label className={styles.label}>Alamat Lengkap (Jalan / RT / RW) <span>*</span></label>
               <textarea name="alamatLengkap" className={styles.textarea} rows={3} placeholder="Contoh: Jl. Raya Singosari No. 12 RT 02 RW 01" value={formData.alamatLengkap} onChange={handleInputChange} required></textarea>
             </div>
           </div>
 
-          <div className={styles.formGrid}>
+          <div className={styles.formGrid3}>
             <div className={styles.formGroup}>
               <label className={styles.label}>Desa / Kelurahan <span>*</span></label>
               <input type="text" name="desa" className={styles.input} value={formData.desa} onChange={handleInputChange} required />
@@ -583,7 +583,7 @@ export default function SpmbPage() {
             <i className="fas fa-trophy"></i> Prestasi (Opsional)
           </div>
           <div className={styles.formGrid}>
-            <div className={styles.formGroupFull}>
+            <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
               <label className={styles.label}>Prestasi yang Pernah Diraih</label>
               <textarea name="prestasi" className={styles.textarea} rows={2} placeholder="Sebutkan prestasi akademik / non-akademik beserta tingkat kejuaraan jika ada" value={formData.prestasi} onChange={handleInputChange}></textarea>
             </div>
