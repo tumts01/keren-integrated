@@ -29,8 +29,11 @@ export default function RekapOlimpiadeSeni() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'ringkasan' | 'peserta'>('ringkasan');
   const [filterJenis, setFilterJenis] = useState<'semua' | 'individu' | 'kolektif'>('semua');
-  const [searchPeserta, setSearchPeserta] = useState('');
   const [filterCabang, setFilterCabang] = useState('semua');
+  const [filterStatus, setFilterStatus] = useState<'semua' | 'valid' | 'menunggu'>('semua');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(15);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBuka, setIsBuka] = useState(true);
   const [toggling, setToggling] = useState(false);
@@ -205,12 +208,56 @@ export default function RekapOlimpiadeSeni() {
     return String(lombaName);
   };
 
-  // Ringkasan Pendaftaran (Filter Out peserta_kolektif untuk Tab 1)
-  const ringkasanData = data.filter(item => {
-    if (item.jenis_pendaftaran === 'peserta_kolektif') return false;
-    if (filterJenis === 'semua') return true;
-    return item.jenis_pendaftaran === filterJenis;
-  });
+  // Filter Ringkasan Pendaftaran (Tab 1)
+  const filteredRingkasanData = useMemo(() => {
+    return data.filter(item => {
+      if (item.jenis_pendaftaran === 'peserta_kolektif') return false;
+
+      const meta = item.metadata || {};
+      const isIndividu = item.jenis_pendaftaran === 'individu';
+      const nama = String(meta.NAMA || meta.NAMA_REGU || '').toLowerCase();
+      const nopes = String(meta.NOMOR_PESERTA || '').toLowerCase();
+      const sekolah = String(meta.ASAL_SEKOLAH || meta['NAMA SD/MI'] || '').toLowerCase();
+      const nisn = String(meta.NISN || '').toLowerCase();
+      const wa = String(meta.NO_WA || '').toLowerCase();
+      const rawLomba = meta.LOMBA_DIPILIH || meta['LOMBA YANG DIPILIH'] || '';
+      const lomba = normalizeLomba(rawLomba);
+
+      // Jalur Filter
+      if (filterJenis !== 'semua') {
+        if (item.jenis_pendaftaran !== filterJenis) return false;
+      }
+
+      // Status Pembayaran Filter
+      if (filterStatus !== 'semua') {
+        const isLunas = meta.STATUS_PEMBAYARAN === 'Valid';
+        if (filterStatus === 'valid' && !isLunas) return false;
+        if (filterStatus === 'menunggu' && isLunas) return false;
+      }
+
+      // Cabang Lomba Filter
+      if (filterCabang !== 'semua') {
+        if (isIndividu) {
+          if (lomba !== filterCabang) return false;
+        } else {
+          const rekap = meta.REKAP_PESERTA || {};
+          const hasBranch = Object.keys(rekap).some(
+            k => normalizeLomba(k) === filterCabang && Number(rekap[k]) > 0
+          );
+          if (!hasBranch) return false;
+        }
+      }
+
+      // Search Filter
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase().trim();
+        const matches = nama.includes(q) || nopes.includes(q) || sekolah.includes(q) || nisn.includes(q) || wa.includes(q);
+        if (!matches) return false;
+      }
+
+      return true;
+    });
+  }, [data, filterJenis, filterStatus, filterCabang, searchTerm]);
 
   // Semua Peserta Siswa (Untuk Tab 2)
   const allPesertaList = useMemo(() => {
@@ -224,28 +271,76 @@ export default function RekapOlimpiadeSeni() {
       const nopes = String(meta.NOMOR_PESERTA || '').toLowerCase();
       const sekolah = String(meta.ASAL_SEKOLAH || meta['NAMA SD/MI'] || '').toLowerCase();
       const nisn = String(meta.NISN || '').toLowerCase();
-      const rawLomba = meta.LOMBA_DIPILIH || meta['LOMBA YANG DIPILIH'] || '';
+      const wa = String(meta.NO_WA || '').toLowerCase();
+      const rawLomba = meta.LOMBA_DIPILIH || meta['LOMBA YANG DIPILIH'] || meta.LOMBA || '';
       const lomba = normalizeLomba(rawLomba);
 
-      if (searchPeserta.trim()) {
-        const q = searchPeserta.toLowerCase().trim();
-        if (!nama.includes(q) && !nopes.includes(q) && !sekolah.includes(q) && !nisn.includes(q)) {
-          return false;
-        }
-      }
-
-      if (filterCabang !== 'semua') {
-        if (lomba !== filterCabang) return false;
-      }
-
+      // Jalur Filter
       if (filterJenis !== 'semua') {
         if (filterJenis === 'individu' && item.jenis_pendaftaran !== 'individu') return false;
         if (filterJenis === 'kolektif' && item.jenis_pendaftaran !== 'peserta_kolektif') return false;
       }
 
+      // Status Pembayaran Filter
+      if (filterStatus !== 'semua') {
+        const isLunas = meta.STATUS_PEMBAYARAN === 'Valid';
+        if (filterStatus === 'valid' && !isLunas) return false;
+        if (filterStatus === 'menunggu' && isLunas) return false;
+      }
+
+      // Cabang Lomba Filter
+      if (filterCabang !== 'semua') {
+        if (lomba !== filterCabang) return false;
+      }
+
+      // Search Filter
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase().trim();
+        const matches = nama.includes(q) || nopes.includes(q) || sekolah.includes(q) || nisn.includes(q) || wa.includes(q);
+        if (!matches) return false;
+      }
+
       return true;
     });
-  }, [allPesertaList, searchPeserta, filterCabang, filterJenis]);
+  }, [allPesertaList, filterJenis, filterStatus, filterCabang, searchTerm]);
+
+  // Reset pagination on filter or viewMode change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterCabang, filterJenis, filterStatus, viewMode]);
+
+  const activeFilteredList = viewMode === 'ringkasan' ? filteredRingkasanData : filteredAllPeserta;
+  const totalPages = itemsPerPage === 999999 ? 1 : Math.ceil(activeFilteredList.length / itemsPerPage) || 1;
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, activeFilteredList.length);
+  const paginatedData = itemsPerPage === 999999 ? activeFilteredList : activeFilteredList.slice(startIndex, startIndex + itemsPerPage);
+
+  const isFiltered = searchTerm.trim() !== '' || filterCabang !== 'semua' || filterJenis !== 'semua' || filterStatus !== 'semua';
+
+  const handleResetFilter = () => {
+    setSearchTerm('');
+    setFilterCabang('semua');
+    setFilterJenis('semua');
+    setFilterStatus('semua');
+    setCurrentPage(1);
+  };
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (safeCurrentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, '...', totalPages);
+      } else if (safeCurrentPage >= totalPages - 3) {
+        pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', safeCurrentPage - 1, safeCurrentPage, safeCurrentPage + 1, '...', totalPages);
+      }
+    }
+    return pages;
+  };
 
   // Hitung total peserta per cabang lomba
   const summaryCounts: Record<string, number> = {};
@@ -507,49 +602,94 @@ export default function RekapOlimpiadeSeni() {
           </div>
 
           {/* Filter Dropdowns */}
+          {/* Filter Controls Bar */}
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            {viewMode === 'peserta' && (
-              <div style={{ position: 'relative' }}>
-                <i className="fas fa-search" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '13px' }}></i>
-                <input
-                  type="text"
-                  placeholder="Cari nama, no. peserta, sekolah..."
-                  value={searchPeserta}
-                  onChange={e => setSearchPeserta(e.target.value)}
-                  style={{
-                    padding: '8px 12px 8px 34px',
-                    borderRadius: '8px',
-                    border: '1.5px solid #cbd5e1',
-                    fontSize: '13px',
-                    outline: 'none',
-                    width: '230px'
-                  }}
-                />
-              </div>
-            )}
+            {/* Search Input */}
+            <div style={{ position: 'relative' }}>
+              <i className="fas fa-search" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '13px' }}></i>
+              <input
+                type="text"
+                placeholder="Cari nama, sekolah, NISN, WA..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                style={{
+                  padding: '8px 30px 8px 34px',
+                  borderRadius: '8px',
+                  border: '1.5px solid #cbd5e1',
+                  fontSize: '13px',
+                  outline: 'none',
+                  width: '230px'
+                }}
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '12px' }}
+                  title="Hapus pencarian"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              )}
+            </div>
 
-            {viewMode === 'peserta' && (
-              <select 
-                value={filterCabang}
-                onChange={(e) => setFilterCabang(e.target.value)}
-                style={{ padding: '8px 14px', borderRadius: '8px', border: '1.5px solid #cbd5e1', outline: 'none', fontSize: '13px', cursor: 'pointer' }}
-              >
-                <option value="semua">Semua Cabang Lomba</option>
-                {OFFICIAL_LOMBA.map(l => (
-                  <option key={l} value={l}>{l}</option>
-                ))}
-              </select>
-            )}
+            {/* Cabang Lomba Filter */}
+            <select 
+              value={filterCabang}
+              onChange={(e) => setFilterCabang(e.target.value)}
+              style={{ padding: '8px 14px', borderRadius: '8px', border: '1.5px solid #cbd5e1', outline: 'none', fontSize: '13px', cursor: 'pointer', background: 'white' }}
+            >
+              <option value="semua">Semua Cabang Lomba</option>
+              {OFFICIAL_LOMBA.map(l => (
+                <option key={l} value={l}>{l}</option>
+              ))}
+            </select>
 
+            {/* Jalur Filter */}
             <select 
               value={filterJenis}
               onChange={(e) => setFilterJenis(e.target.value as any)}
-              style={{ padding: '8px 14px', borderRadius: '8px', border: '1.5px solid #cbd5e1', outline: 'none', fontSize: '13px', cursor: 'pointer' }}
+              style={{ padding: '8px 14px', borderRadius: '8px', border: '1.5px solid #cbd5e1', outline: 'none', fontSize: '13px', cursor: 'pointer', background: 'white' }}
             >
               <option value="semua">Semua Jalur</option>
               <option value="individu">Individu</option>
               <option value="kolektif">Kolektif</option>
             </select>
+
+            {/* Status Pembayaran Filter */}
+            <select 
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as any)}
+              style={{ padding: '8px 14px', borderRadius: '8px', border: '1.5px solid #cbd5e1', outline: 'none', fontSize: '13px', cursor: 'pointer', background: 'white' }}
+            >
+              <option value="semua">Semua Status Bayar</option>
+              <option value="valid">Lunas / Valid</option>
+              <option value="menunggu">Menunggu</option>
+            </select>
+
+            {/* Reset Button */}
+            {isFiltered && (
+              <button
+                type="button"
+                onClick={handleResetFilter}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid #fee2e2',
+                  background: '#fff1f2',
+                  color: '#e11d48',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+                title="Reset Semua Filter"
+              >
+                <i className="fas fa-undo"></i> Reset
+              </button>
+            )}
           </div>
         </div>
 
@@ -562,10 +702,21 @@ export default function RekapOlimpiadeSeni() {
             </div>
           ) : viewMode === 'ringkasan' ? (
             /* TAB 1: RINGKASAN PENDAFTARAN (Individu & Lembaga Kolektif) */
-            ringkasanData.length === 0 ? (
+            filteredRingkasanData.length === 0 ? (
               <div style={{ padding: '50px 20px', textAlign: 'center', color: '#94a3b8' }}>
                 <i className="fas fa-folder-open" style={{ fontSize: '3rem', marginBottom: '16px' }}></i>
-                <p style={{ margin: 0, fontWeight: 600 }}>Belum ada data pendaftar yang masuk.</p>
+                <p style={{ margin: 0, fontWeight: 600 }}>
+                  {isFiltered ? 'Tidak ada pendaftar yang cocok dengan filter / pencarian.' : 'Belum ada data pendaftar yang masuk.'}
+                </p>
+                {isFiltered && (
+                  <button
+                    type="button"
+                    onClick={handleResetFilter}
+                    style={{ marginTop: '12px', padding: '6px 14px', borderRadius: '6px', background: '#e2e8f0', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: '#475569' }}
+                  >
+                    Reset Filter
+                  </button>
+                )}
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
@@ -584,7 +735,7 @@ export default function RekapOlimpiadeSeni() {
                     </tr>
                   </thead>
                   <tbody>
-                    {ringkasanData.map((row, index) => {
+                    {paginatedData.map((row, index) => {
                       const isIndividu = row.jenis_pendaftaran === 'individu';
                       const pesertaSekolahCount = isIndividu ? 1 : data.filter(d => 
                         d.jenis_pendaftaran === 'peserta_kolektif' &&
@@ -593,7 +744,7 @@ export default function RekapOlimpiadeSeni() {
 
                       return (
                         <tr key={row.id} style={{ borderBottom: '1px solid #e2e8f0', background: 'white' }}>
-                          <td style={{ padding: '16px', color: '#64748b' }}>{index + 1}</td>
+                          <td style={{ padding: '16px', color: '#64748b' }}>{startIndex + index + 1}</td>
                           <td style={{ padding: '16px', whiteSpace: 'nowrap' }}>
                             {new Date(row.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </td>
@@ -803,7 +954,18 @@ export default function RekapOlimpiadeSeni() {
             filteredAllPeserta.length === 0 ? (
               <div style={{ padding: '50px 20px', textAlign: 'center', color: '#94a3b8' }}>
                 <i className="fas fa-search" style={{ fontSize: '2.5rem', marginBottom: '14px' }}></i>
-                <p style={{ margin: 0, fontWeight: 600 }}>Tidak ada peserta yang cocok dengan pencarian / filter.</p>
+                <p style={{ margin: 0, fontWeight: 600 }}>
+                  {isFiltered ? 'Tidak ada peserta yang cocok dengan pencarian / filter.' : 'Belum ada data peserta yang terdaftar.'}
+                </p>
+                {isFiltered && (
+                  <button
+                    type="button"
+                    onClick={handleResetFilter}
+                    style={{ marginTop: '12px', padding: '6px 14px', borderRadius: '6px', background: '#e2e8f0', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: '#475569' }}
+                  >
+                    Reset Filter
+                  </button>
+                )}
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
@@ -822,7 +984,7 @@ export default function RekapOlimpiadeSeni() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredAllPeserta.map((row, idx) => {
+                    {paginatedData.map((row, idx) => {
                       const meta = row.metadata || {};
                       const rawLomba = meta.LOMBA_DIPILIH || meta['LOMBA YANG DIPILIH'] || meta.LOMBA || '';
                       const lombaName = normalizeLomba(rawLomba);
@@ -831,7 +993,7 @@ export default function RekapOlimpiadeSeni() {
 
                       return (
                         <tr key={row.id} style={{ borderBottom: '1px solid #e2e8f0', background: 'white' }}>
-                          <td style={{ padding: '14px 16px', color: '#64748b' }}>{idx + 1}</td>
+                          <td style={{ padding: '14px 16px', color: '#64748b' }}>{startIndex + idx + 1}</td>
                           <td style={{ padding: '14px 16px' }}>
                             <span style={{
                               display: 'inline-block',
@@ -938,6 +1100,127 @@ export default function RekapOlimpiadeSeni() {
                 </table>
               </div>
             )
+          )}
+
+          {/* Pagination Bar */}
+          {!loading && activeFilteredList.length > 0 && (
+            <div style={{
+              padding: '16px 20px',
+              borderTop: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '14px',
+              background: '#fafafa'
+            }}>
+              <div style={{ fontSize: '13px', color: '#475569', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontWeight: 600 }}>Tampilkan:</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    style={{
+                      padding: '5px 10px',
+                      borderRadius: '6px',
+                      border: '1.5px solid #cbd5e1',
+                      outline: 'none',
+                      background: 'white',
+                      color: '#334155',
+                      fontWeight: 600,
+                      fontSize: '13px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value={15}>15 per halaman</option>
+                    <option value={30}>30 per halaman</option>
+                    <option value={50}>50 per halaman</option>
+                    <option value={999999}>Semua</option>
+                  </select>
+                </div>
+                <span>
+                  Menampilkan <b>{startIndex + 1} - {endIndex}</b> dari <b>{activeFilteredList.length}</b> {viewMode === 'ringkasan' ? 'pendaftar' : 'peserta'}
+                </span>
+              </div>
+
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={safeCurrentPage === 1}
+                    style={{
+                      padding: '6px 12px',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      background: safeCurrentPage === 1 ? '#f1f5f9' : 'white',
+                      cursor: safeCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                      color: safeCurrentPage === 1 ? '#94a3b8' : '#334155',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <i className="fas fa-chevron-left" style={{ fontSize: '11px' }}></i> Sebelumnya
+                  </button>
+
+                  {getPageNumbers().map((page, idx) => (
+                    typeof page === 'number' ? (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setCurrentPage(page)}
+                        style={{
+                          minWidth: '34px',
+                          height: '34px',
+                          padding: '0 8px',
+                          border: safeCurrentPage === page ? 'none' : '1px solid #cbd5e1',
+                          borderRadius: '6px',
+                          background: safeCurrentPage === page ? '#047857' : 'white',
+                          color: safeCurrentPage === page ? 'white' : '#334155',
+                          cursor: 'pointer',
+                          fontSize: '13px',
+                          fontWeight: safeCurrentPage === page ? 700 : 500,
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        {page}
+                      </button>
+                    ) : (
+                      <span key={idx} style={{ padding: '0 6px', color: '#94a3b8', fontSize: '14px' }}>
+                        {page}
+                      </span>
+                    )
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={safeCurrentPage === totalPages}
+                    style={{
+                      padding: '6px 12px',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      background: safeCurrentPage === totalPages ? '#f1f5f9' : 'white',
+                      cursor: safeCurrentPage === totalPages ? 'not-allowed' : 'pointer',
+                      color: safeCurrentPage === totalPages ? '#94a3b8' : '#334155',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    Selanjutnya <i className="fas fa-chevron-right" style={{ fontSize: '11px' }}></i>
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
