@@ -31,7 +31,8 @@ export async function GET() {
         linkAkta: row.get('File Akta') || '',
         statusVerifikasi: row.get('status_verifikasi') || 'menunggu',
         catatanVerifikasi: row.get('catatan_verifikasi') || '',
-        statusKelulusan: row.get('status_kelulusan') || 'proses'
+        statusKelulusan: row.get('status_kelulusan') || 'proses',
+        jadwalTes: row.get('jadwal_tes') || ''
       };
     }).filter((item: any) => item.namaLengkap !== ''); // filter out empty rows
 

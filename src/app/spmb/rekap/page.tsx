@@ -49,7 +49,7 @@ export default function RekapSpmb() {
     }
   };
 
-  const handleUpdateStatus = async (id: string, field: 'statusVerifikasi' | 'statusKelulusan', value: string) => {
+  const handleUpdateStatus = async (id: string, field: 'statusVerifikasi' | 'statusKelulusan' | 'jadwalTes', value: string) => {
     try {
       const res = await fetch(`/api/spmb/${id}`, {
         method: 'PATCH',
@@ -64,6 +64,107 @@ export default function RekapSpmb() {
       }
     } catch (err) {
       Swal.fire('Error', 'Gagal menghubungi server', 'error');
+    }
+  };
+
+  const handleEditJadwalTes = async (id: string, nama: string, currentJadwal: string) => {
+    const result = await Swal.fire({
+      title: 'Atur Jadwal Tes / Observasi',
+      html: `
+        <div style="text-align: left; font-size: 13px; color: #475569; margin-bottom: 8px;">
+          Tentukan jadwal tes/observasi untuk <b>${nama}</b>.<br/>
+          Jadwal ini akan langsung ditampilkan di kartu status portal siswa.
+        </div>
+      `,
+      input: 'text',
+      inputValue: currentJadwal || '',
+      inputPlaceholder: 'Contoh: Sabtu, 24 Mei 2026, Pukul 08.00 WIB (Ruang 1)',
+      showCancelButton: true,
+      confirmButtonText: 'Simpan Jadwal',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#059669',
+      cancelButtonColor: '#94a3b8',
+      showDenyButton: !!currentJadwal,
+      denyButtonText: 'Hapus / Kosongkan',
+      denyButtonColor: '#ef4444'
+    });
+
+    if (result.isConfirmed) {
+      await handleUpdateStatus(id, 'jadwalTes', result.value || '');
+      Swal.fire({ icon: 'success', title: 'Tersimpan!', text: 'Jadwal tes berhasil disimpan.', timer: 1500, showConfirmButton: false });
+    } else if (result.isDenied) {
+      await handleUpdateStatus(id, 'jadwalTes', '');
+      Swal.fire({ icon: 'success', title: 'Dihapus!', text: 'Jadwal tes telah dikosongkan.', timer: 1500, showConfirmButton: false });
+    }
+  };
+
+  const handleAturJadwalMassal = async () => {
+    const jalurs = Array.from(new Set(data.map(d => d.jalurPendaftaran).filter(Boolean)));
+    const jalurOptions = ['Semua Jalur', ...jalurs];
+    const optionsHtml = jalurOptions.map(j => `<option value="${j}">${j}</option>`).join('');
+
+    const { value: formValues } = await Swal.fire({
+      title: 'Atur Jadwal Tes Massal',
+      html: `
+        <div style="text-align: left; font-size: 13px; color: #475569; margin-bottom: 14px;">
+          Atur jadwal tes / observasi serentak untuk pendaftar pada jalur yang dipilih:
+        </div>
+        <div style="text-align: left; margin-bottom: 12px;">
+          <label style="display: block; font-size: 12.5px; font-weight: 700; margin-bottom: 4px; color: #1e293b;">Pilih Target Jalur:</label>
+          <select id="swal-target-jalur" class="swal2-input" style="width: 100%; margin: 0; padding: 8px 12px; font-size: 13.5px; border-radius: 8px; box-sizing: border-box;">
+            ${optionsHtml}
+          </select>
+        </div>
+        <div style="text-align: left;">
+          <label style="display: block; font-size: 12.5px; font-weight: 700; margin-bottom: 4px; color: #1e293b;">Jadwal & Waktu Tes:</label>
+          <input id="swal-jadwal-input" class="swal2-input" placeholder="Contoh: Sabtu, 24 Mei 2026, Pukul 08.00 WIB (Ruang 1)" style="width: 100%; margin: 0; padding: 8px 12px; font-size: 13.5px; border-radius: 8px; box-sizing: border-box;" />
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Terapkan Jadwal',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#0284c7',
+      cancelButtonColor: '#94a3b8',
+      preConfirm: () => {
+        const targetJalur = (document.getElementById('swal-target-jalur') as HTMLSelectElement)?.value;
+        const jadwalTes = (document.getElementById('swal-jadwal-input') as HTMLInputElement)?.value;
+        if (!jadwalTes?.trim()) {
+          Swal.showValidationMessage('Isian jadwal tes tidak boleh kosong!');
+          return false;
+        }
+        return { targetJalur, jadwalTes: jadwalTes.trim() };
+      }
+    });
+
+    if (formValues) {
+      try {
+        Swal.fire({
+          title: 'Menerapkan Jadwal...',
+          allowOutsideClick: false,
+          didOpen: () => Swal.showLoading()
+        });
+
+        const res = await fetch('/api/spmb/jadwal-massal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formValues)
+        });
+
+        const resJson = await res.json();
+        if (resJson.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Berhasil!',
+            text: `Jadwal tes berhasil diterapkan untuk ${resJson.updatedCount} siswa (${formValues.targetJalur}).`
+          });
+          fetchData();
+        } else {
+          Swal.fire('Gagal', resJson.error || 'Gagal menerapkan jadwal', 'error');
+        }
+      } catch (err: any) {
+        Swal.fire('Error', 'Gagal menghubungi server', 'error');
+      }
     }
   };
 
@@ -130,6 +231,27 @@ export default function RekapSpmb() {
 
         {isAdmin && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={handleAturJadwalMassal}
+              style={{
+                background: '#0891b2',
+                color: 'white',
+                border: 'none',
+                padding: '9px 18px',
+                borderRadius: '10px',
+                fontSize: '0.88rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 2px 4px rgba(8, 145, 178, 0.2)'
+              }}
+            >
+              <i className="fas fa-calendar-alt"></i> Jadwal Tes Massal
+            </button>
+
             <button
               type="button"
               onClick={() => setShowPengumumanModal(true)}
@@ -200,6 +322,7 @@ export default function RekapSpmb() {
                   <th>No. Reg & Nama</th>
                   <th>Jalur</th>
                   <th>Verifikasi Berkas</th>
+                  <th>Jadwal Tes / Observasi</th>
                   <th>Status Kelulusan</th>
                   <th>Asal Sekolah</th>
                   <th>No. WA Ayah</th>
@@ -273,6 +396,64 @@ export default function RekapSpmb() {
                           color: item.statusVerifikasi === 'valid' ? '#15803d' : item.statusVerifikasi === 'perbaikan' ? '#b91c1c' : '#b45309'
                         }}>
                           {item.statusVerifikasi === 'valid' ? 'Valid' : item.statusVerifikasi === 'perbaikan' ? 'Perbaikan' : 'Menunggu'}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {isAdmin ? (
+                        <div>
+                          {item.jadwalTes ? (
+                            <button
+                              type="button"
+                              onClick={() => handleEditJadwalTes(item.rowNumber, item.namaLengkap, item.jadwalTes)}
+                              style={{
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                fontSize: '0.78rem',
+                                fontWeight: 700,
+                                background: '#e0f2fe',
+                                color: '#0369a1',
+                                border: '1px solid #bae6fd',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                textAlign: 'left',
+                                maxWidth: '180px'
+                              }}
+                              title="Klik untuk mengubah atau menghapus jadwal tes"
+                            >
+                              <i className="fas fa-calendar-alt"></i>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.jadwalTes}</span>
+                              <i className="fas fa-pen" style={{ fontSize: '9px', opacity: 0.7 }}></i>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleEditJadwalTes(item.rowNumber, item.namaLengkap, '')}
+                              style={{
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                fontSize: '0.78rem',
+                                fontWeight: 600,
+                                background: '#f8fafc',
+                                color: '#64748b',
+                                border: '1px dashed #cbd5e1',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                              title="Klik untuk menentukan jadwal tes"
+                            >
+                              <i className="fas fa-plus-circle" style={{ color: '#0284c7' }}></i>
+                              <span>Atur Jadwal</span>
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '0.8rem', color: item.jadwalTes ? '#0369a1' : '#94a3b8', fontWeight: item.jadwalTes ? 700 : 400 }}>
+                          {item.jadwalTes || '-'}
                         </span>
                       )}
                     </td>
