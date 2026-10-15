@@ -13,6 +13,129 @@ export default function PortalFooter() {
       borderRadius: '20px 20px 0 0',
       textAlign: 'center'
     }}>
+      {/* Media Sosial Resmi Madrasah */}
+      <div style={{
+        background: '#ffffff',
+        border: '1px solid #e2e8f0',
+        borderRadius: '16px',
+        padding: '16px 18px',
+        marginBottom: '16px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+        textAlign: 'center'
+      }}>
+        <div style={{
+          fontSize: '13px',
+          fontWeight: 800,
+          color: '#0f172a',
+          marginBottom: '4px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px'
+        }}>
+          <i className="fas fa-globe" style={{ color: '#0284c7' }}></i>
+          Media Sosial Resmi Madrasah
+        </div>
+        <p style={{ margin: '0 0 12px 0', fontSize: '11.5px', color: '#64748b' }}>
+          Ikuti info kegiatan belajar, prestasi siswa, dan video seputar MTs Almaarif 01 Singosari:
+        </p>
+
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: '10px',
+          maxWidth: '560px',
+          margin: '0 auto'
+        }}>
+          {/* YouTube */}
+          <a
+            href="https://www.youtube.com/@mtsalmaarif01singosari"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '10px 14px',
+              borderRadius: '10px',
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              textDecoration: 'none',
+              color: '#991b1b',
+              textAlign: 'left',
+              transition: 'all 0.2s'
+            }}
+          >
+            <div style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '8px',
+              background: '#dc2626',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.25rem',
+              flexShrink: 0
+            }}>
+              <i className="fab fa-youtube"></i>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '12.5px', fontWeight: 800, color: '#991b1b', lineHeight: 1.2 }}>
+                YouTube Resmi
+              </div>
+              <div style={{ fontSize: '11px', color: '#b91c1c', opacity: 0.85, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                @mtsalmaarif01singosari
+              </div>
+            </div>
+            <i className="fas fa-external-link-alt" style={{ fontSize: '10px', color: '#ef4444' }}></i>
+          </a>
+
+          {/* Instagram */}
+          <a
+            href="https://www.instagram.com/mtsalmaarif01singosari/"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '10px 14px',
+              borderRadius: '10px',
+              background: '#fdf2f8',
+              border: '1px solid #fbcfe8',
+              textDecoration: 'none',
+              color: '#831843',
+              textAlign: 'left',
+              transition: 'all 0.2s'
+            }}
+          >
+            <div style={{
+              width: '38px',
+              height: '38px',
+              borderRadius: '8px',
+              background: 'linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%)',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.25rem',
+              flexShrink: 0
+            }}>
+              <i className="fab fa-instagram"></i>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '12.5px', fontWeight: 800, color: '#831843', lineHeight: 1.2 }}>
+                Instagram Resmi
+              </div>
+              <div style={{ fontSize: '11px', color: '#9d174d', opacity: 0.85, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                @mtsalmaarif01singosari
+              </div>
+            </div>
+            <i className="fas fa-external-link-alt" style={{ fontSize: '10px', color: '#ec4899' }}></i>
+          </a>
+        </div>
+      </div>
       {/* Info Kontak & Alamat Box */}
       <div style={{
         background: '#ffffff',

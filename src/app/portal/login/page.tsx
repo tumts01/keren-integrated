@@ -121,6 +121,53 @@ export default function PortalLogin() {
           >
             <i className="fas fa-chalkboard-teacher" style={{ color: '#0284c7' }}></i> Masuk sebagai Guru / Staf Madrasah
           </a>
+
+          {/* Social Links */}
+          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px dashed #e2e8f0', display: 'flex', justifyContent: 'center', gap: '14px' }}>
+            <a
+              href="https://www.youtube.com/@mtsalmaarif01singosari"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="YouTube MTs Almaarif 01 Singosari"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: '#fef2f2',
+                color: '#dc2626',
+                fontSize: '12px',
+                fontWeight: 700,
+                textDecoration: 'none',
+                border: '1px solid #fecaca'
+              }}
+            >
+              <i className="fab fa-youtube"></i> YouTube
+            </a>
+
+            <a
+              href="https://www.instagram.com/mtsalmaarif01singosari/"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Instagram MTs Almaarif 01 Singosari"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: '#fdf2f8',
+                color: '#db2777',
+                fontSize: '12px',
+                fontWeight: 700,
+                textDecoration: 'none',
+                border: '1px solid #fbcfe8'
+              }}
+            >
+              <i className="fab fa-instagram"></i> Instagram
+            </a>
+          </div>
         </div>
       </div>
       </div>
