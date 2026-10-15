@@ -60,45 +60,18 @@ export async function POST(req: Request) {
       );
     }
 
-    // Matching logic
+    // Strict exact match on full Nomor Pendaftaran (e.g. MTS01-2026-0001)
     const found = rows.find((r: any) => {
       const meta = r.metadata || {};
       const noReg = String(meta['Nomor Pendaftaran'] || (`MTS01-2026-${String(r.id).padStart(4, '0')}`)).toUpperCase().trim();
-      const nisn = String(r.nisn || meta['NISN'] || '').trim();
-      const idStr = String(r.id);
-
-      // Exact match on full Nomor Pendaftaran (e.g. MTS01-2026-0001 or SPMB-2026-0001)
-      if (noReg === cleanInput) return true;
-
-      // Match without year prefix (e.g. MTS01-0001 or SPMB-0001)
-      const noRegShort = noReg.replace(/-\d{4}-/, '-');
-      if (noRegShort === cleanInput) return true;
-
-      // Match if user enters MTS-0001 or MTS01-0001
-      if (cleanInput.replace(/^MTS(01)?-?/, '') === noReg.replace(/^MTS(01)?-?\d{4}-?/, '')) {
-        return true;
-      }
-
-      // Match just the sequence digits (e.g. "1" or "0001" or "22")
-      const regDigits = noReg.replace(/\D/g, '').replace(/^(01)?2026/, '');
-      const inputDigits = cleanInput.replace(/\D/g, '').replace(/^(01)?2026/, '');
-      if (inputDigits && (parseInt(inputDigits, 10) === parseInt(regDigits, 10) || inputDigits === idStr)) {
-        return true;
-      }
-
-      // Fallback match on NISN if valid
-      if (nisn && nisn !== '0' && nisn !== '0000000000' && (nisn === cleanInput || nisn === rawInput)) {
-        return true;
-      }
-
-      return false;
+      return noReg === cleanInput;
     });
 
     if (!found) {
       return NextResponse.json(
         { 
           success: false, 
-          error: `Nomor Pendaftaran "${rawInput}" tidak ditemukan. Silakan periksa kembali kartu pendaftaran Anda atau hubungi panitia SPMB.` 
+          error: `Nomor Pendaftaran "${rawInput}" tidak ditemukan. Pastikan Anda memasukkan nomor pendaftaran lengkap sesuai kartu (Contoh: MTS01-2026-0001).` 
         },
         { status: 404 }
       );
