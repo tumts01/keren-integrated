@@ -21,6 +21,115 @@ export default function RekapSpmb() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showPengumumanModal, setShowPengumumanModal] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.length === data.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(data.map(d => d.rowNumber));
+    }
+  };
+
+  const handleSetJadwalSelected = async () => {
+    if (selectedIds.length === 0) return;
+
+    const { value: jadwalTes } = await Swal.fire({
+      title: `Atur Jadwal untuk ${selectedIds.length} Siswa`,
+      html: `
+        <div style="text-align: left; font-size: 13px; color: #475569; margin-bottom: 12px;">
+          Tentukan jadwal tes / observasi yang akan diterapkan serentak untuk <b>${selectedIds.length} siswa terpilih</b>:
+        </div>
+      `,
+      input: 'text',
+      inputPlaceholder: 'Contoh: Sabtu, 24 Mei 2026, Pukul 08.00 WIB (Ruang 1)',
+      showCancelButton: true,
+      confirmButtonText: 'Terapkan Jadwal',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#0284c7',
+      cancelButtonColor: '#94a3b8',
+      inputValidator: (val) => {
+        if (!val || !val.trim()) {
+          return 'Isian jadwal tes tidak boleh kosong!';
+        }
+      }
+    });
+
+    if (jadwalTes) {
+      try {
+        Swal.fire({ title: 'Menerapkan Jadwal...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        const res = await fetch('/api/spmb/jadwal-massal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: selectedIds, jadwalTes: jadwalTes.trim() })
+        });
+        const resJson = await res.json();
+        if (resJson.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Berhasil!',
+            text: `Jadwal tes berhasil diterapkan untuk ${resJson.updatedCount} siswa terpilih.`,
+            timer: 2000,
+            showConfirmButton: false
+          });
+          setSelectedIds([]);
+          fetchData();
+        } else {
+          Swal.fire('Gagal', resJson.error || 'Gagal menerapkan jadwal', 'error');
+        }
+      } catch (e: any) {
+        Swal.fire('Error', 'Gagal menghubungi server', 'error');
+      }
+    }
+  };
+
+  const handleClearJadwalSelected = async () => {
+    if (selectedIds.length === 0) return;
+
+    const confirm = await Swal.fire({
+      title: 'Kosongkan Jadwal?',
+      text: `Yakin ingin mengosongkan / menghapus jadwal tes untuk ${selectedIds.length} siswa terpilih?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Ya, Kosongkan',
+      cancelButtonText: 'Batal'
+    });
+
+    if (confirm.isConfirmed) {
+      try {
+        Swal.fire({ title: 'Mengosongkan Jadwal...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        const res = await fetch('/api/spmb/jadwal-massal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: selectedIds, jadwalTes: '' })
+        });
+        const resJson = await res.json();
+        if (resJson.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Berhasil!',
+            text: `Jadwal tes telah dikosongkan untuk ${resJson.updatedCount} siswa.`,
+            timer: 2000,
+            showConfirmButton: false
+          });
+          setSelectedIds([]);
+          fetchData();
+        } else {
+          Swal.fire('Gagal', resJson.error || 'Gagal mengosongkan jadwal', 'error');
+        }
+      } catch (e: any) {
+        Swal.fire('Error', 'Gagal menghubungi server', 'error');
+      }
+    }
+  };
 
   const handleDelete = async (id: string, nama: string) => {
     const result = await Swal.fire({
@@ -293,6 +402,112 @@ export default function RekapSpmb() {
         )}
       </div>
 
+      {/* Floating / Sticky Bulk Action Bar for Selected Students */}
+      {isAdmin && selectedIds.length > 0 && (
+        <div style={{
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+          color: 'white',
+          padding: '14px 20px',
+          borderRadius: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '16px',
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.25)',
+          border: '1px solid #334155',
+          flexWrap: 'wrap',
+          gap: '12px',
+          position: 'sticky',
+          top: '12px',
+          zIndex: 100
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              background: '#0284c7',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 800,
+              fontSize: '13px'
+            }}>
+              {selectedIds.length}
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '14px' }}>
+                {selectedIds.length} Siswa Terpilih
+              </div>
+              <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
+                Terapkan jadwal tes atau kosongkan jadwal secara serentak
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={handleSetJadwalSelected}
+              style={{
+                background: '#0284c7',
+                color: 'white',
+                border: 'none',
+                padding: '9px 16px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 2px 6px rgba(2, 132, 199, 0.3)'
+              }}
+            >
+              <i className="fas fa-calendar-check"></i> Atur Jadwal ({selectedIds.length} Siswa)
+            </button>
+
+            <button
+              type="button"
+              onClick={handleClearJadwalSelected}
+              style={{
+                background: '#ef4444',
+                color: 'white',
+                border: 'none',
+                padding: '9px 14px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <i className="fas fa-calendar-times"></i> Kosongkan Jadwal
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedIds([])}
+              style={{
+                background: 'rgba(255, 255, 255, 0.1)',
+                color: '#e2e8f0',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className={styles.card}>
         {loading ? (
           <div className={styles.loadingState}>
@@ -314,6 +529,17 @@ export default function RekapSpmb() {
             <table className={styles.table}>
               <thead>
                 <tr>
+                  {isAdmin && (
+                    <th style={{ width: '40px', textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={data.length > 0 && selectedIds.length === data.length}
+                        onChange={handleSelectAll}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#047857' }}
+                        title="Pilih Semua Siswa"
+                      />
+                    </th>
+                  )}
                   <th>Waktu Daftar</th>
                   <th>No. Reg & Nama</th>
                   <th>Jalur</th>
@@ -329,7 +555,17 @@ export default function RekapSpmb() {
               </thead>
               <tbody>
                 {data.map((item) => (
-                  <tr key={item.id}>
+                  <tr key={item.id} style={{ background: selectedIds.includes(item.rowNumber) ? '#f0fdf4' : undefined }}>
+                    {isAdmin && (
+                      <td style={{ textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(item.rowNumber)}
+                          onChange={() => handleToggleSelect(item.rowNumber)}
+                          style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#047857' }}
+                        />
+                      </td>
+                    )}
                     <td>
                       <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
                         {item.timestamp.split(' ')[0]}
