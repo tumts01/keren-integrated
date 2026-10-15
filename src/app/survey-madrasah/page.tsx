@@ -1,9 +1,10 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Swal from 'sweetalert2';
 import styles from './page.module.css';
 import EVoting from '@/components/EVoting';
 import InlineLoading from '@/components/InlineLoading';
+import SurveyAnalisisDashboard from './components/SurveyAnalisisDashboard';
 
 export default function SurveyMadrasahPage() {
   const [activeSurvey, setActiveSurvey] = useState<string | null>(null);
@@ -16,10 +17,28 @@ export default function SurveyMadrasahPage() {
   const [formDataPemetaan, setFormDataPemetaan] = useState({ nama: '', kelas: '' });
   const [searchPemetaan, setSearchPemetaan] = useState('');
   const [mainTab, setMainTab] = useState<'humas'|'pemetaan_kelas7'|'e_voting'>('humas');
-  const [activeTab, setActiveTab] = useState<'isi'|'monitor'>('isi');
+  const [activeTab, setActiveTab] = useState<'isi'|'monitor'|'analisis'>('analisis');
   const [activeTabPemetaan, setActiveTabPemetaan] = useState<'isi'|'monitor'>('isi');
   const [isAdmin, setIsAdmin] = useState(false);
   const [rekapData, setRekapData] = useState<any[]>([]);
+  const [allSubmissions, setAllSubmissions] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [monitorSearch, setMonitorSearch] = useState('');
+  const [monitorFilter, setMonitorFilter] = useState('semua');
+  const [selectedDetail, setSelectedDetail] = useState<any>(null);
+
+  const filteredSubmissions = useMemo(() => {
+    return allSubmissions.filter(sub => {
+      const matchFilter = monitorFilter === 'semua' || sub.tipe === monitorFilter;
+      const q = monitorSearch.toLowerCase();
+      const matchSearch = !monitorSearch || 
+        (sub.nama && sub.nama.toLowerCase().includes(q)) ||
+        (sub.namaSiswa && sub.namaSiswa.toLowerCase().includes(q)) ||
+        (sub.kelas && sub.kelas.toLowerCase().includes(q)) ||
+        (sub.tipe && sub.tipe.toLowerCase().includes(q));
+      return matchFilter && matchSearch;
+    });
+  }, [allSubmissions, monitorFilter, monitorSearch]);
   const [loadingRekap, setLoadingRekap] = useState(false);
   const [rekapPemetaan, setRekapPemetaan] = useState<any[]>([]);
   const [loadingPemetaan, setLoadingPemetaan] = useState(false);
@@ -35,7 +54,11 @@ export default function SurveyMadrasahPage() {
       try {
         const user = JSON.parse(userStr);
         const role = (user.role || user.role || '').toLowerCase();
-        if (role === 'admin') setIsAdmin(true);
+        if (role === 'admin') {
+          setIsAdmin(true);
+        } else {
+          setActiveTab('isi');
+        }
       } catch (e) {}
     }
 
@@ -62,7 +85,9 @@ export default function SurveyMadrasahPage() {
       const res = await fetch('/api/survey-madrasah/rekap');
       const data = await res.json();
       if (data.success) {
-        setRekapData(data.data);
+        setRekapData(data.data || []);
+        setAllSubmissions(data.allSubmissions || []);
+        setAnalytics(data.analytics || null);
       }
     } catch (e) {
       console.error(e);
@@ -72,7 +97,7 @@ export default function SurveyMadrasahPage() {
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
-    if (activeTab === 'monitor') {
+    if (activeTab === 'monitor' || activeTab === 'analisis') {
       fetchRekap(false); // First load shows spinner
       intervalId = setInterval(() => {
         fetchRekap(true); // Silent auto-refresh
@@ -325,17 +350,310 @@ export default function SurveyMadrasahPage() {
       {mainTab === 'humas' && (
         <>
           {isAdmin && (
-            <div className={styles.tabContainer} style={{ marginTop: '-10px', transform: 'scale(0.9)' }}>
-              <button className={`${styles.tabBtn} ${activeTab === 'isi' ? styles.activeTab : ''}`} onClick={() => { setActiveTab('isi'); setActiveSurvey(null); }}>
-                <i className="fas fa-edit"></i> Isi Angket
+            <div className={styles.tabContainer} style={{ marginTop: '-10px', transform: 'scale(0.9)', flexWrap: 'wrap', gap: '8px' }}>
+              <button className={`${styles.tabBtn} ${activeTab === 'analisis' ? styles.activeTab : ''}`} onClick={() => setActiveTab('analisis')}>
+                <i className="fas fa-chart-pie"></i> Dasbor Evaluasi & Prosentase
               </button>
               <button className={`${styles.tabBtn} ${activeTab === 'monitor' ? styles.activeTab : ''}`} onClick={() => setActiveTab('monitor')}>
-                <i className="fas fa-chart-bar"></i> Monitoring (Admin)
+                <i className="fas fa-list-check"></i> Monitoring Responden
+              </button>
+              <button className={`${styles.tabBtn} ${activeTab === 'isi' ? styles.activeTab : ''}`} onClick={() => { setActiveTab('isi'); setActiveSurvey(null); }}>
+                <i className="fas fa-edit"></i> Isi Angket
               </button>
             </div>
           )}
 
-      {activeTab === 'isi' ? (
+      {isAdmin && activeTab === 'analisis' ? (
+        <SurveyAnalisisDashboard analytics={analytics} loading={loadingRekap} onRefresh={() => fetchRekap(false)} />
+      ) : isAdmin && activeTab === 'monitor' ? (
+        <div className={styles.monitorContainer}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h2 style={{ color: '#1e293b', fontSize: '1.25rem', fontWeight: 800, margin: '0 0 4px 0' }}>
+                <i className="fas fa-list-check" style={{ color: '#3b82f6', marginRight: '8px' }}></i>
+                Monitoring Responden Survey
+              </h2>
+              <p style={{ margin: 0, fontSize: '0.88rem', color: '#64748b' }}>
+                Pantau seluruh isian data angket yang masuk secara real-time
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                onClick={() => setActiveTab('analisis')} 
+                style={{
+                  background: '#e0e7ff',
+                  color: '#4338ca',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  fontSize: '0.88rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <i className="fas fa-chart-pie"></i> Lihat Dasbor Prosentase
+              </button>
+              <button onClick={() => fetchRekap(false)} disabled={loadingRekap} className={styles.btnAction} style={{ padding: '8px 16px', fontSize: '0.9rem' }}>
+                <i className={`fas fa-sync-alt ${loadingRekap ? 'fa-spin' : ''}`}></i> Refresh
+              </button>
+            </div>
+          </div>
+
+          {loadingRekap ? (
+            <div style={{textAlign: 'center', padding: '40px', color: '#64748b'}}>
+              <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#3b82f6', marginBottom: '10px' }}></i>
+              <p>Memuat data rekap...</p>
+            </div>
+          ) : (
+            <>
+              {/* 3 Summary Cards */}
+              <div className={styles.gridContainer} style={{ marginBottom: '24px' }}>
+                {rekapData.map((rek, idx) => (
+                  <div key={idx} className={styles.rekapCard}>
+                    <h3>{rek.nama}</h3>
+                    <div className={styles.rekapTotal}>
+                      <span className={styles.totalNumber}>{rek.total}</span>
+                      <span className={styles.totalLabel}>Responden</span>
+                    </div>
+                    <div className={styles.rekapDetail}>
+                      <h4>5 Input Terakhir:</h4>
+                      {rek.latest && rek.latest.length > 0 ? (
+                        <ul>
+                          {rek.latest.slice(0, 5).map((item: any, i: number) => (
+                            <li key={i}>
+                              <strong>{item.nama}</strong> <span style={{ color: '#64748b' }}>({item.kelas})</span><br/>
+                              <small>{item.timestamp}</small>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p style={{color: '#94a3b8', fontSize: '0.85rem'}}>Belum ada data</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Search & Filter Table of All Submissions */}
+              <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '20px', boxShadow: '0 2px 4px rgba(0,0,0,0.03)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
+                    Daftar Semua Respon ({filteredSubmissions.length})
+                  </h3>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <select
+                      value={monitorFilter}
+                      onChange={(e) => setMonitorFilter(e.target.value)}
+                      style={{
+                        padding: '8px 12px',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '8px',
+                        fontSize: '0.85rem',
+                        background: '#f8fafc',
+                        fontWeight: 600,
+                        color: '#334155'
+                      }}
+                    >
+                      <option value="semua">Semua Jenis Angket</option>
+                      <option value="wali_murid">Angket Persepsi Wali Murid</option>
+                      <option value="siswa">Angket Persepsi Siswa</option>
+                      <option value="kepuasan_ortu">Angket Kepuasan Orang Tua</option>
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Cari nama atau kelas..."
+                      value={monitorSearch}
+                      onChange={(e) => setMonitorSearch(e.target.value)}
+                      style={{
+                        padding: '8px 14px',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '8px',
+                        fontSize: '0.85rem',
+                        minWidth: '220px'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {filteredSubmissions.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: '#94a3b8', padding: '30px 0', fontSize: '0.9rem' }}>
+                    Tidak ada respon survey yang cocok dengan pencarian.
+                  </p>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+                      <thead>
+                        <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569', textAlign: 'left' }}>
+                          <th style={{ padding: '10px 12px', width: '50px' }}>No</th>
+                          <th style={{ padding: '10px 12px' }}>Waktu</th>
+                          <th style={{ padding: '10px 12px' }}>Jenis Angket</th>
+                          <th style={{ padding: '10px 12px' }}>Nama</th>
+                          <th style={{ padding: '10px 12px' }}>Kelas</th>
+                          <th style={{ padding: '10px 12px', textAlign: 'center' }}>Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredSubmissions.slice(0, 50).map((sub, i) => {
+                          const badge = sub.tipe === 'wali_murid'
+                            ? { label: 'Persepsi Wali', bg: '#dbeafe', color: '#1e40af' }
+                            : sub.tipe === 'siswa'
+                            ? { label: 'Persepsi Siswa', bg: '#fef3c7', color: '#92400e' }
+                            : { label: 'Kepuasan Ortu', bg: '#dcfce7', color: '#166534' };
+                          return (
+                            <tr key={sub.id || i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                              <td style={{ padding: '10px 12px', color: '#64748b' }}>{i + 1}</td>
+                              <td style={{ padding: '10px 12px', color: '#64748b', fontSize: '0.82rem' }}>{sub.timestamp}</td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <span style={{ padding: '3px 8px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 700, background: badge.bg, color: badge.color }}>
+                                  {badge.label}
+                                </span>
+                              </td>
+                              <td style={{ padding: '10px 12px', fontWeight: 600, color: '#1e293b' }}>{sub.nama}</td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <span style={{ padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', fontWeight: 700, color: '#334155' }}>
+                                  {sub.kelas || '-'}
+                                </span>
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                                <button
+                                  onClick={() => setSelectedDetail(sub)}
+                                  style={{
+                                    background: '#f1f5f9',
+                                    color: '#2563eb',
+                                    border: '1px solid #cbd5e1',
+                                    padding: '5px 12px',
+                                    borderRadius: '6px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  <i className="fas fa-eye"></i> Detail
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    {filteredSubmissions.length > 50 && (
+                      <p style={{ textAlign: 'center', fontSize: '0.82rem', color: '#64748b', marginTop: '12px' }}>
+                        Menampilkan 50 data teratas dari {filteredSubmissions.length} total isian.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Modal Detail Submission */}
+          {selectedDetail && (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(15, 23, 42, 0.6)',
+              backdropFilter: 'blur(3px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 99999,
+              padding: '20px'
+            }}>
+              <div style={{
+                background: '#fff',
+                borderRadius: '16px',
+                maxWidth: '650px',
+                width: '100%',
+                maxHeight: '90vh',
+                overflowY: 'auto',
+                boxShadow: '0 20px 25px -5px rgba(0,0,0,0.2)',
+                padding: '24px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #e2e8f0', paddingBottom: '14px', marginBottom: '16px' }}>
+                  <div>
+                    <span style={{
+                      display: 'inline-block',
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      marginBottom: '6px',
+                      background: selectedDetail.tipe === 'wali_murid' ? '#dbeafe' : selectedDetail.tipe === 'siswa' ? '#fef3c7' : '#dcfce7',
+                      color: selectedDetail.tipe === 'wali_murid' ? '#1e40af' : selectedDetail.tipe === 'siswa' ? '#92400e' : '#166534'
+                    }}>
+                      {selectedDetail.tipe === 'wali_murid' ? 'Angket Persepsi Wali Murid' : selectedDetail.tipe === 'siswa' ? 'Angket Persepsi Siswa' : 'Angket Kepuasan Orang Tua'}
+                    </span>
+                    <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>
+                      {selectedDetail.nama}
+                    </h3>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                      Kelas: <strong>{selectedDetail.kelas || '-'}</strong> | Waktu: {selectedDetail.timestamp}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedDetail(null)}
+                    style={{
+                      background: '#f1f5f9',
+                      border: 'none',
+                      borderRadius: '8px',
+                      width: '32px',
+                      height: '32px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: '#475569'
+                    }}
+                  >
+                    <i className="fas fa-times"></i>
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  {Object.entries(selectedDetail.metadata || {}).map(([key, value]: [string, any]) => {
+                    if (key === 'Timestamp') return null;
+                    return (
+                      <div key={key} style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                          {key}
+                        </div>
+                        <div style={{ fontSize: '0.9rem', color: '#0f172a', whiteSpace: 'pre-wrap' }}>
+                          {String(value || '-')}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div style={{ marginTop: '20px', textAlign: 'right' }}>
+                  <button
+                    onClick={() => setSelectedDetail(null)}
+                    style={{
+                      background: '#475569',
+                      color: 'white',
+                      border: 'none',
+                      padding: '8px 20px',
+                      borderRadius: '8px',
+                      fontSize: '0.88rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Tutup
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
         <>
           {!activeSurvey && (
         <div className={styles.gridContainer}>
@@ -640,48 +958,6 @@ export default function SurveyMadrasahPage() {
         </form>
       )}
       </>
-      ) : (
-        <div className={styles.monitorContainer}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h2 style={{ color: '#1e293b', fontSize: '1.25rem' }}>Rekapitulasi Survey</h2>
-            <button onClick={() => fetchRekap(false)} disabled={loadingRekap} className={styles.btnAction} style={{ padding: '8px 16px', fontSize: '0.9rem' }}>
-              <i className={`fas fa-sync-alt ${loadingRekap ? 'fa-spin' : ''}`}></i> Refresh
-            </button>
-          </div>
-          {loadingRekap ? (
-            <div style={{textAlign: 'center', padding: '40px', color: '#64748b'}}>
-              <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#3b82f6', marginBottom: '10px' }}></i>
-              <p>Memuat data rekap...</p>
-            </div>
-          ) : (
-            <div className={styles.gridContainer}>
-              {rekapData.map((rek, idx) => (
-                <div key={idx} className={styles.rekapCard}>
-                  <h3>{rek.nama}</h3>
-                  <div className={styles.rekapTotal}>
-                    <span className={styles.totalNumber}>{rek.total}</span>
-                    <span className={styles.totalLabel}>Responden</span>
-                  </div>
-                  <div className={styles.rekapDetail}>
-                    <h4>10 Input Terakhir:</h4>
-                    {rek.latest && rek.latest.length > 0 ? (
-                      <ul>
-                        {rek.latest.map((item: any, i: number) => (
-                          <li key={i}>
-                            <strong>{item.nama}</strong> <span style={{ color: '#64748b' }}>({item.kelas})</span><br/>
-                            <small>{item.timestamp}</small>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p style={{color: '#94a3b8', fontSize: '0.85rem'}}>Belum ada data</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       )}
       </>
       )}
