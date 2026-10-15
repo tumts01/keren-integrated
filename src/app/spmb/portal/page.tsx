@@ -12,6 +12,19 @@ export default function SpmbPortalDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showBiodata, setShowBiodata] = useState(false);
+  const [pengumumanList, setPengumumanList] = useState<any[]>([]);
+
+  const fetchPengumuman = async (jalur: string) => {
+    try {
+      const res = await fetch(`/api/spmb/pengumuman?jalur=${encodeURIComponent(jalur || '')}`);
+      const resJson = await res.json();
+      if (resJson.success) {
+        setPengumumanList(resJson.data || []);
+      }
+    } catch (e) {
+      console.warn('Gagal memuat pengumuman SPMB', e);
+    }
+  };
 
   useEffect(() => {
     try {
@@ -29,6 +42,7 @@ export default function SpmbPortalDashboard() {
       setData(parsed);
       // Fetch latest updates in background
       refreshData(parsed.id);
+      fetchPengumuman(parsed.jalurPendaftaran || '');
     } catch (e) {
       localStorage.removeItem('spmb_session');
       router.replace('/spmb/login');
@@ -46,6 +60,7 @@ export default function SpmbPortalDashboard() {
       if (resJson.success && resJson.data) {
         setData(resJson.data);
         localStorage.setItem('spmb_session', JSON.stringify(resJson.data));
+        fetchPengumuman(resJson.data.jalurPendaftaran || '');
       }
     } catch (err) {
       console.warn('Gagal memuat status terbaru SPMB', err);
@@ -93,7 +108,7 @@ export default function SpmbPortalDashboard() {
     const text = encodeURIComponent(
       `Assalamu'alaikum Panitia SPMB MTs Almaarif 01 Singosari.\n\nSaya wali dari calon santri:\nNama: ${data.namaLengkap}\nNo. Pendaftaran: ${data.nomorPendaftaran}\nJalur: ${data.jalurPendaftaran}\n\nIngin menanyakan perihal seleksi SPMB. Terima kasih.`
     );
-    return `https://wa.me/6281233445566?text=${text}`; // Fallback atau default
+    return `https://wa.me/6289510384057?text=${text}`;
   };
 
   return (
@@ -485,6 +500,86 @@ export default function SpmbPortalDashboard() {
           </div>
         </div>
 
+        {/* Card Pengumuman Resmi SPMB */}
+        <div style={{
+          background: 'white',
+          borderRadius: '16px',
+          padding: '24px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+          border: '1px solid #e2e8f0',
+          marginBottom: '24px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+            <h2 style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <i className="fas fa-bullhorn" style={{ color: '#0284c7' }}></i>
+              Pengumuman Resmi SPMB
+            </h2>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>
+              Jalur Pendaftaran: <strong style={{ color: '#047857' }}>{data.jalurPendaftaran || 'Reguler'}</strong>
+            </span>
+          </div>
+
+          {pengumumanList.length === 0 ? (
+            <div style={{
+              background: '#f8fafc',
+              borderRadius: '12px',
+              padding: '24px 20px',
+              textAlign: 'center',
+              color: '#64748b',
+              fontSize: '13.5px',
+              border: '1px dashed #cbd5e1'
+            }}>
+              <i className="fas fa-bell-slash" style={{ fontSize: '2rem', color: '#94a3b8', marginBottom: '8px', display: 'block' }}></i>
+              Belum ada pengumuman terbaru untuk jalur pendaftaran Anda. Silakan pantau halaman ini secara berkala.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {pengumumanList.map(item => {
+                const isGeneral = (item.targetJalur || '').toLowerCase() === 'semua jalur' || (item.targetJalur || '').toLowerCase() === 'semua';
+                return (
+                  <div
+                    key={item.id}
+                    style={{
+                      background: isGeneral ? '#f0fdf4' : '#eff6ff',
+                      border: `1.5px solid ${isGeneral ? '#bbf7d0' : '#bfdbfe'}`,
+                      borderRadius: '12px',
+                      padding: '18px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+                      <span style={{
+                        background: isGeneral ? '#dcfce7' : '#dbeafe',
+                        color: isGeneral ? '#166534' : '#1e40af',
+                        border: `1px solid ${isGeneral ? '#86efac' : '#93c5fd'}`,
+                        padding: '3px 10px',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        fontWeight: 800,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.4px'
+                      }}>
+                        {isGeneral ? '📢 Pengumuman Umum' : `⭐ Khusus Jalur: ${item.targetJalur}`}
+                      </span>
+                      <span style={{ fontSize: '12px', color: '#64748b' }}>
+                        <i className="far fa-clock" style={{ marginRight: '4px' }}></i>
+                        {item.tanggal} &bull; {item.jam}
+                      </span>
+                    </div>
+
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>
+                      {item.judul}
+                    </h3>
+
+                    <p style={{ margin: 0, fontSize: '13.5px', color: '#334155', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                      {item.pesan}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Quick Actions Grid */}
         <div style={{
           display: 'grid',
@@ -572,7 +667,7 @@ export default function SpmbPortalDashboard() {
                 Hubungi Panitia SPMB
               </div>
               <div style={{ fontSize: '12px', color: '#64748b' }}>
-                Konsultasi & konfirmasi langsung via WhatsApp panitia
+                +62 895-1038-4057 (WhatsApp Panitia)
               </div>
             </div>
           </a>
