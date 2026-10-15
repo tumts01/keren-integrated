@@ -129,11 +129,7 @@ export default function RekapSpmb() {
       preConfirm: () => {
         const targetJalur = (document.getElementById('swal-target-jalur') as HTMLSelectElement)?.value;
         const jadwalTes = (document.getElementById('swal-jadwal-input') as HTMLInputElement)?.value;
-        if (!jadwalTes?.trim()) {
-          Swal.showValidationMessage('Isian jadwal tes tidak boleh kosong!');
-          return false;
-        }
-        return { targetJalur, jadwalTes: jadwalTes.trim() };
+        return { targetJalur, jadwalTes: jadwalTes ? jadwalTes.trim() : '' };
       }
     });
 
@@ -156,7 +152,7 @@ export default function RekapSpmb() {
           Swal.fire({
             icon: 'success',
             title: 'Berhasil!',
-            text: `Jadwal tes berhasil diterapkan untuk ${resJson.updatedCount} siswa (${formValues.targetJalur}).`
+            text: `Jadwal tes berhasil diperbarui untuk ${resJson.updatedCount} siswa (${formValues.targetJalur}).`
           });
           fetchData();
         } else {
@@ -173,7 +169,7 @@ export default function RekapSpmb() {
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
-        if (user.role?.toLowerCase() === 'admin') {
+        if (user) {
           setIsAdmin(true);
         }
       } catch (e) {

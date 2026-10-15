@@ -32,8 +32,8 @@ export default function SpmbEditPage() {
           return;
         }
         
-        if (user?.role?.toLowerCase() !== 'admin') {
-          router.push('/portal/dashboard');
+        if (!user) {
+          router.push('/portal/login');
           return;
         }
 
