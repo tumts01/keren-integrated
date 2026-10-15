@@ -111,7 +111,7 @@ export default function SpmbLogin() {
                 </span>
                 <input 
                   type="text"
-                  placeholder="Contoh: SPMB-2026-0001 atau 0001"
+                  placeholder="Contoh: MTS01-2026-0001 atau 0001"
                   value={nomorPendaftaran}
                   onChange={e => setNomorPendaftaran(e.target.value)}
                   autoFocus

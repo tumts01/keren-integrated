@@ -13,7 +13,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ rowNumbe
     }
 
     const data = {
-      nomorPendaftaran: targetRow.metadata?.['Nomor Pendaftaran'] || (`SPMB-2026-${String(targetRow.id).padStart(4, '0')}`),
+      nomorPendaftaran: targetRow.metadata?.['Nomor Pendaftaran'] || (`MTS01-2026-${String(targetRow.id).padStart(4, '0')}`),
       timestamp: targetRow.metadata?.['Timestamp'] || '',
       jalurPendaftaran: targetRow.metadata?.['Jalur Pendaftaran'] || '',
       namaLengkap: targetRow.metadata?.['Nama Lengkap'] || '',

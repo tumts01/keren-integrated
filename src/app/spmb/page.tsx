@@ -269,7 +269,7 @@ export default function SpmbPage() {
               <p style="margin: 0 0 12px 0;">Alhamdulillah, data pendaftaran ananda <b>${studentName}</b> telah berhasil tersimpan di sistem.</p>
               <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 14px; text-align: center; margin-bottom: 14px;">
                 <div style="font-size: 12px; color: #166534; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Nomor Pendaftaran Anda:</div>
-                <div style="font-size: 22px; font-weight: 800; color: #15803d; letter-spacing: 1px; margin-top: 4px;">${noReg || 'SPMB-2026-XXXX'}</div>
+                <div style="font-size: 22px; font-weight: 800; color: #15803d; letter-spacing: 1px; margin-top: 4px;">${noReg || 'MTS01-2026-XXXX'}</div>
               </div>
               <p style="margin: 0; font-size: 12.5px; color: #64748b;">
                 <b>Catatan Penting:</b> Simpan Nomor Pendaftaran ini. Anda dapat menggunakannya kapan saja untuk masuk ke <b>Portal Calon Siswa</b> guna memantau verifikasi berkas dan pengumuman kelulusan.

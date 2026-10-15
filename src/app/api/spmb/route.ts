@@ -46,7 +46,7 @@ export async function POST(req: Request) {
     let nextSeq = 1;
     if (latestRows && latestRows.length > 0) {
       const lastNomor = latestRows[0].metadata?.['Nomor Pendaftaran'] || '';
-      const match = lastNomor.match(/SPMB-\d{4}-(\d+)/);
+      const match = lastNomor.match(/(?:MTS01|SPMB)-\d{4}-(\d+)/);
       if (match && match[1]) {
         nextSeq = parseInt(match[1], 10) + 1;
       } else {
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
         nextSeq = (count || 0) + 1;
       }
     }
-    const nomorPendaftaran = `SPMB-${currentYear}-${String(nextSeq).padStart(4, '0')}`;
+    const nomorPendaftaran = `MTS01-${currentYear}-${String(nextSeq).padStart(4, '0')}`;
     
     const { data: insertedData, error } = await supabase.from('data_spmb').insert({
       nama: payload.namaLengkap || '',

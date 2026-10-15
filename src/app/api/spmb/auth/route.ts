@@ -7,7 +7,7 @@ function mapStudentData(r: any) {
   const meta = r.metadata || {};
   return {
     id: r.id,
-    nomorPendaftaran: meta['Nomor Pendaftaran'] || (`SPMB-2026-${String(r.id).padStart(4, '0')}`),
+    nomorPendaftaran: meta['Nomor Pendaftaran'] || (`MTS01-2026-${String(r.id).padStart(4, '0')}`),
     namaLengkap: r.nama || meta['Nama Lengkap'] || '',
     nisn: r.nisn || meta['NISN'] || '',
     jalurPendaftaran: meta['Jalur Pendaftaran'] || '',
@@ -63,20 +63,25 @@ export async function POST(req: Request) {
     // Matching logic
     const found = rows.find((r: any) => {
       const meta = r.metadata || {};
-      const noReg = String(meta['Nomor Pendaftaran'] || (`SPMB-2026-${String(r.id).padStart(4, '0')}`)).toUpperCase().trim();
+      const noReg = String(meta['Nomor Pendaftaran'] || (`MTS01-2026-${String(r.id).padStart(4, '0')}`)).toUpperCase().trim();
       const nisn = String(r.nisn || meta['NISN'] || '').trim();
       const idStr = String(r.id);
 
-      // Exact match on full Nomor Pendaftaran (e.g. SPMB-2026-0001)
+      // Exact match on full Nomor Pendaftaran (e.g. MTS01-2026-0001 or SPMB-2026-0001)
       if (noReg === cleanInput) return true;
 
-      // Match without year prefix (e.g. SPMB-0001)
+      // Match without year prefix (e.g. MTS01-0001 or SPMB-0001)
       const noRegShort = noReg.replace(/-\d{4}-/, '-');
       if (noRegShort === cleanInput) return true;
 
-      // Match just the digits (e.g. "1" or "0001" or "22")
-      const regDigits = noReg.replace(/\D/g, '').replace(/^2026/, '');
-      const inputDigits = cleanInput.replace(/\D/g, '').replace(/^2026/, '');
+      // Match if user enters MTS-0001 or MTS01-0001
+      if (cleanInput.replace(/^MTS(01)?-?/, '') === noReg.replace(/^MTS(01)?-?\d{4}-?/, '')) {
+        return true;
+      }
+
+      // Match just the sequence digits (e.g. "1" or "0001" or "22")
+      const regDigits = noReg.replace(/\D/g, '').replace(/^(01)?2026/, '');
+      const inputDigits = cleanInput.replace(/\D/g, '').replace(/^(01)?2026/, '');
       if (inputDigits && (parseInt(inputDigits, 10) === parseInt(regDigits, 10) || inputDigits === idStr)) {
         return true;
       }

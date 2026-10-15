@@ -11,7 +11,7 @@ export async function GET() {
       return {
         id: index,
         rowNumber: r.id,
-        nomorPendaftaran: row.get('Nomor Pendaftaran') || (`SPMB-2026-${String(r.id).padStart(4, '0')}`),
+        nomorPendaftaran: row.get('Nomor Pendaftaran') || (`MTS01-2026-${String(r.id).padStart(4, '0')}`),
         timestamp: row.get('Timestamp') || '',
         jalurPendaftaran: row.get('Jalur Pendaftaran') || '',
         namaLengkap: row.get('Nama Lengkap') || '',
