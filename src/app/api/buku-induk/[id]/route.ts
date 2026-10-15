@@ -37,6 +37,23 @@ function getRombelVariations(rombel: string) {
   return Array.from(vars);
 }
 
+function matchNis(a: any, b: any): boolean {
+  if (!a || !b) return false;
+  const strA = String(a).trim();
+  const strB = String(b).trim();
+  if (strA === strB) return true;
+  const cleanA = strA.replace(/\D/g, '');
+  const cleanB = strB.replace(/\D/g, '');
+  return cleanA !== '' && cleanB !== '' && cleanA === cleanB;
+}
+
+function matchNama(a: any, b: any): boolean {
+  if (!a || !b) return false;
+  const normA = String(a).toUpperCase().replace(/\s+/g, ' ').trim();
+  const normB = String(b).toUpperCase().replace(/\s+/g, ' ').trim();
+  return normA !== '' && normB !== '' && normA === normB;
+}
+
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params;
@@ -80,16 +97,27 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       if (!stsError && sts) {
         // filter the jsonb array for this student
         for (const row of sts) {
-          const studentGrades = (row.data_nilai || []).find((d: any) => d.nis === nis || d.nama === nama);
-          if (studentGrades) {
-            const matchedHistory = history.find(h => getRombelVariations(h.rombel).includes(row.kelas) && h.tahun_ajaran === row.tahun_ajaran);
-            nilaiData.push({
-              tahun_ajaran: row.tahun_ajaran,
-              semester: row.semester,
-              kelas: matchedHistory ? matchedHistory.kelas : row.kelas,
-              mata_pelajaran: row.mata_pelajaran,
-              nilai: studentGrades.nilai
-            });
+          const matchedHistory = history.find(h =>
+            h.tahun_ajaran === row.tahun_ajaran &&
+            getRombelVariations(h.rombel).some(v => v.toUpperCase() === String(row.kelas || '').trim().toUpperCase())
+          );
+
+          if (matchedHistory) {
+            const studentGrades = (row.data_nilai || []).find((d: any) =>
+              matchNis(d.nis, nis) ||
+              matchNama(d.nama, nama) ||
+              (nisn && matchNis(d.nisn, nisn))
+            );
+
+            if (studentGrades) {
+              nilaiData.push({
+                tahun_ajaran: row.tahun_ajaran,
+                semester: row.semester,
+                kelas: matchedHistory.kelas,
+                mata_pelajaran: row.mata_pelajaran,
+                nilai: studentGrades.nilai
+              });
+            }
           }
         }
       }
@@ -146,23 +174,29 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         
       if (!exsError && exs) {
         for (const row of exs) {
-          const normName = (v: any) => String(v || '').toUpperCase().replace(/\s+/g, ' ').trim();
-          const studentEkstra = (row.data_ekstra || []).filter((d: any) =>
-            (nisn && d.nisn && String(d.nisn).trim() === String(nisn).trim()) ||
-            (nis && d.nis && String(d.nis).trim() === String(nis).trim()) ||
-            (normName(d.nama) !== '' && normName(d.nama) === normName(nama)) ||
-            (normName(d.nama) !== '' && normName(d.nama) === normName(student.nama))
+          const matchedHistory = history.find(h =>
+            h.tahun_ajaran === row.tahun_ajaran &&
+            getRombelVariations(h.rombel).some(v => v.toUpperCase() === String(row.kelas || '').trim().toUpperCase())
           );
-          if (studentEkstra && studentEkstra.length > 0) {
-            const matchedHistory = history.find(h => getRombelVariations(h.rombel).includes(row.kelas) && h.tahun_ajaran === row.tahun_ajaran);
-            for (const ek of studentEkstra) {
-              ekstraData.push({
-                tahun_ajaran: row.tahun_ajaran,
-                semester: row.semester,
-                kelas: matchedHistory ? matchedHistory.kelas : row.kelas,
-                jenis_ekstra: ek.jenis_ekstra,
-                nilai: ek.nilai
-              });
+
+          if (matchedHistory) {
+            const studentEkstra = (row.data_ekstra || []).filter((d: any) =>
+              (nisn && matchNis(d.nisn, nisn)) ||
+              (nis && matchNis(d.nis, nis)) ||
+              (nama && matchNama(d.nama, nama)) ||
+              (student.nama && matchNama(d.nama, student.nama))
+            );
+
+            if (studentEkstra && studentEkstra.length > 0) {
+              for (const ek of studentEkstra) {
+                ekstraData.push({
+                  tahun_ajaran: row.tahun_ajaran,
+                  semester: row.semester,
+                  kelas: matchedHistory.kelas,
+                  jenis_ekstra: ek.jenis_ekstra,
+                  nilai: ek.nilai
+                });
+              }
             }
           }
         }

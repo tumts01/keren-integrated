@@ -4,6 +4,57 @@ import { getAllCachedDataInduk } from '@/lib/data-induk';
 
 export const dynamic = 'force-dynamic';
 
+function getRombelVariations(rombel: string): string[] {
+  if (!rombel) return [];
+  const vars = new Set<string>();
+  vars.add(rombel.trim());
+
+  const numMap: Record<string, string> = { '7': 'VII', '8': 'VIII', '9': 'IX' };
+  const romanMap: Record<string, string> = { 'VII': '7', 'VIII': '8', 'IX': '9' };
+
+  const m1 = rombel.trim().match(/^(\d)(.*)$/);
+  if (m1) {
+    const num = m1[1];
+    const rest = m1[2].replace(/^[\s\.]+/, '');
+    if (numMap[num]) {
+      const rom = numMap[num];
+      vars.add(rom + rest);
+      vars.add(rom + '.' + rest);
+      vars.add(rom + ' ' + rest);
+    }
+  }
+
+  const m2 = rombel.trim().match(/^(VII|VIII|IX)(.*)$/i);
+  if (m2) {
+    const rom = m2[1].toUpperCase();
+    const rest = m2[2].replace(/^[\s\.]+/, '');
+    if (romanMap[rom]) {
+      const num = romanMap[rom];
+      vars.add(num + rest);
+      vars.add(num + '.' + rest);
+      vars.add(num + ' ' + rest);
+    }
+  }
+  return Array.from(vars);
+}
+
+function matchNis(a: any, b: any): boolean {
+  if (!a || !b) return false;
+  const strA = String(a).trim();
+  const strB = String(b).trim();
+  if (strA === strB) return true;
+  const cleanA = strA.replace(/\D/g, '');
+  const cleanB = strB.replace(/\D/g, '');
+  return cleanA !== '' && cleanB !== '' && cleanA === cleanB;
+}
+
+function matchNama(a: any, b: any): boolean {
+  if (!a || !b) return false;
+  const normA = String(a).toUpperCase().replace(/\s+/g, ' ').trim();
+  const normB = String(b).toUpperCase().replace(/\s+/g, ' ').trim();
+  return normA !== '' && normB !== '' && normA === normB;
+}
+
 export async function GET(request: Request, context: { params: Promise<{ kelas: string }> }) {
   try {
     const { kelas } = await context.params;
@@ -60,8 +111,9 @@ export async function GET(request: Request, context: { params: Promise<{ kelas: 
     });
 
     // 2. Fetch Nilai Buku Induk for all collected classes
-    const uniqueTas = Array.from(new Set(Array.from(historySet).map(s => s.split('::')[0])));
-    const uniqueRombels = Array.from(new Set(Array.from(historySet).map(s => s.split('::')[1])));
+    const uniqueTas = Array.from(new Set(Array.from(historySet).map(s => s.split('::')[0]))).filter(Boolean);
+    const rawRombels = Array.from(new Set(Array.from(historySet).map(s => s.split('::')[1]))).filter(Boolean);
+    const uniqueRombels = Array.from(new Set(rawRombels.flatMap(r => getRombelVariations(r))));
 
     let stsData: any[] = [];
     if (uniqueTas.length > 0 && uniqueRombels.length > 0) {
@@ -125,14 +177,23 @@ export async function GET(request: Request, context: { params: Promise<{ kelas: 
       // Map Nilai from legger
       stsData.forEach(row => {
         // Only consider this row if it belongs to one of the student's historical classes
-        const matchesHistory = student.history.some(h => h.tahun_ajaran === row.tahun_ajaran && h.rombel === row.kelas);
-        if (matchesHistory) {
-          const studentGrades = (row.data_nilai || []).find((d: any) => d.nis === student.nis || d.nama === student.nama);
+        const matchedHistory = student.history.find(h =>
+          h.tahun_ajaran === row.tahun_ajaran &&
+          getRombelVariations(h.rombel).some(v => v.toUpperCase() === String(row.kelas || '').trim().toUpperCase())
+        );
+
+        if (matchedHistory) {
+          const studentGrades = (row.data_nilai || []).find((d: any) =>
+            matchNis(d.nis, student.nis) ||
+            matchNama(d.nama, student.nama) ||
+            (student.induk?.['NISN'] && matchNis(d.nisn, student.induk?.['NISN']))
+          );
+
           if (studentGrades) {
             student.nilai.push({
               tahun_ajaran: row.tahun_ajaran,
               semester: row.semester,
-              kelas: row.kelas,
+              kelas: matchedHistory.kelas,
               mata_pelajaran: row.mata_pelajaran,
               nilai: studentGrades.nilai
             });
@@ -179,21 +240,25 @@ export async function GET(request: Request, context: { params: Promise<{ kelas: 
 
       // Map Ekstra
       exsData.forEach(row => {
-        const matchesHistory = student.history.some(h => h.tahun_ajaran === row.tahun_ajaran && h.rombel === row.kelas);
-        if (matchesHistory) {
-          const normName = (v: any) => String(v || '').toUpperCase().replace(/\s+/g, ' ').trim();
+        const matchedHistory = student.history.find(h =>
+          h.tahun_ajaran === row.tahun_ajaran &&
+          getRombelVariations(h.rombel).some(v => v.toUpperCase() === String(row.kelas || '').trim().toUpperCase())
+        );
+
+        if (matchedHistory) {
+          const sNisn = student.induk?.['NISN'];
           const studentEkstra = (row.data_ekstra || []).filter((d: any) =>
-            (student.induk?.['NISN'] && d.nisn && String(d.nisn).trim() === String(student.induk?.['NISN']).trim()) ||
-            (student.nis && d.nis && String(d.nis).trim() === String(student.nis).trim()) ||
-            (normName(d.nama) !== '' && normName(d.nama) === normName(student.nama))
+            (sNisn && matchNis(d.nisn, sNisn)) ||
+            (student.nis && matchNis(d.nis, student.nis)) ||
+            (student.nama && matchNama(d.nama, student.nama))
           );
+
           if (studentEkstra && studentEkstra.length > 0) {
-            const matchedHistory = student.history.find(h => h.rombel === row.kelas && h.tahun_ajaran === row.tahun_ajaran);
             for (const ek of studentEkstra) {
               student.ekstra.push({
                 tahun_ajaran: row.tahun_ajaran,
                 semester: row.semester,
-                kelas: matchedHistory ? matchedHistory.kelas : row.kelas,
+                kelas: matchedHistory.kelas,
                 jenis_ekstra: ek.jenis_ekstra,
                 nilai: ek.nilai
               });

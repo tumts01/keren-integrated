@@ -37,6 +37,23 @@ function getRombelVariations(rombel: string) {
   return Array.from(vars);
 }
 
+function matchNis(a: any, b: any): boolean {
+  if (!a || !b) return false;
+  const strA = String(a).trim();
+  const strB = String(b).trim();
+  if (strA === strB) return true;
+  const cleanA = strA.replace(/\D/g, '');
+  const cleanB = strB.replace(/\D/g, '');
+  return cleanA !== '' && cleanB !== '' && cleanA === cleanB;
+}
+
+function matchNama(a: any, b: any): boolean {
+  if (!a || !b) return false;
+  const normA = String(a).toUpperCase().replace(/\s+/g, ' ').trim();
+  const normB = String(b).toUpperCase().replace(/\s+/g, ' ').trim();
+  return normA !== '' && normB !== '' && normA === normB;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -127,7 +144,8 @@ async function processBatchStudents(requestedIds: string[]) {
   });
 
   const uniqueTas = Array.from(new Set(Array.from(historySet).map(s => s.split('::')[0]))).filter(Boolean);
-  const uniqueRombels = Array.from(new Set(Array.from(historySet).map(s => s.split('::')[1]))).filter(Boolean);
+  const rawRombels = Array.from(new Set(Array.from(historySet).map(s => s.split('::')[1]))).filter(Boolean);
+  const uniqueRombels = Array.from(new Set(rawRombels.flatMap(r => getRombelVariations(r))));
 
   // 2. Fetch Nilai Buku Induk in bulk
   let stsData: any[] = [];
@@ -181,14 +199,23 @@ async function processBatchStudents(requestedIds: string[]) {
   studentsData.forEach(student => {
     // Map Nilai
     stsData.forEach(row => {
-      const matchesHistory = student.history.some(h => h.tahun_ajaran === row.tahun_ajaran && h.rombel === row.kelas);
-      if (matchesHistory) {
-        const studentGrades = (row.data_nilai || []).find((d: any) => d.nis === student.nis || d.nama === student.nama);
+      const matchedHistory = student.history.find(h =>
+        h.tahun_ajaran === row.tahun_ajaran &&
+        getRombelVariations(h.rombel).some(v => v.toUpperCase() === String(row.kelas || '').trim().toUpperCase())
+      );
+
+      if (matchedHistory) {
+        const studentGrades = (row.data_nilai || []).find((d: any) =>
+          matchNis(d.nis, student.nis) ||
+          matchNama(d.nama, student.nama) ||
+          (student.induk?.['NISN'] && matchNis(d.nisn, student.induk?.['NISN']))
+        );
+
         if (studentGrades) {
           student.nilai.push({
             tahun_ajaran: row.tahun_ajaran,
             semester: row.semester,
-            kelas: row.kelas,
+            kelas: matchedHistory.kelas,
             mata_pelajaran: row.mata_pelajaran,
             nilai: studentGrades.nilai
           });
@@ -235,21 +262,25 @@ async function processBatchStudents(requestedIds: string[]) {
 
     // Map Ekstra
     exsData.forEach(row => {
-      const matchesHistory = student.history.some(h => h.tahun_ajaran === row.tahun_ajaran && h.rombel === row.kelas);
-      if (matchesHistory) {
-        const normName = (v: any) => String(v || '').toUpperCase().replace(/\s+/g, ' ').trim();
+      const matchedHistory = student.history.find(h =>
+        h.tahun_ajaran === row.tahun_ajaran &&
+        getRombelVariations(h.rombel).some(v => v.toUpperCase() === String(row.kelas || '').trim().toUpperCase())
+      );
+
+      if (matchedHistory) {
+        const sNisn = student.induk?.['NISN'];
         const studentEkstra = (row.data_ekstra || []).filter((d: any) =>
-          (student.induk?.['NISN'] && d.nisn && String(d.nisn).trim() === String(student.induk?.['NISN']).trim()) ||
-          (student.nis && d.nis && String(d.nis).trim() === String(student.nis).trim()) ||
-          (normName(d.nama) !== '' && normName(d.nama) === normName(student.nama))
+          (sNisn && matchNis(d.nisn, sNisn)) ||
+          (student.nis && matchNis(d.nis, student.nis)) ||
+          (student.nama && matchNama(d.nama, student.nama))
         );
+
         if (studentEkstra && studentEkstra.length > 0) {
-          const matchedHistory = student.history.find(h => h.rombel === row.kelas && h.tahun_ajaran === row.tahun_ajaran);
           for (const ek of studentEkstra) {
             student.ekstra.push({
               tahun_ajaran: row.tahun_ajaran,
               semester: row.semester,
-              kelas: matchedHistory ? matchedHistory.kelas : row.kelas,
+              kelas: matchedHistory.kelas,
               jenis_ekstra: ek.jenis_ekstra,
               nilai: ek.nilai
             });
