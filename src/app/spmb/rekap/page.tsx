@@ -23,6 +23,61 @@ export default function RekapSpmb() {
   const [showPengumumanModal, setShowPengumumanModal] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
+  // Filter States
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterJalur, setFilterJalur] = useState('semua');
+  const [filterVerifikasi, setFilterVerifikasi] = useState('semua');
+  const [filterKelulusan, setFilterKelulusan] = useState('semua');
+  const [filterJadwal, setFilterJadwal] = useState('semua');
+
+  // Filtered data calculation
+  const filteredData = data.filter(item => {
+    // Search Term match
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase().trim();
+      const matchNama = (item.namaLengkap || '').toLowerCase().includes(q);
+      const matchNopes = (item.nomorPendaftaran || '').toLowerCase().includes(q);
+      const matchNisn = (item.nisn || '').toLowerCase().includes(q);
+      const matchAsal = (item.asalSekolah || '').toLowerCase().includes(q);
+      const matchOrtu = (item.namaAyah || '').toLowerCase().includes(q) || (item.namaIbu || '').toLowerCase().includes(q);
+      if (!matchNama && !matchNopes && !matchNisn && !matchAsal && !matchOrtu) {
+        return false;
+      }
+    }
+
+    // Filter Jalur
+    if (filterJalur !== 'semua') {
+      if ((item.jalurPendaftaran || '').toLowerCase() !== filterJalur.toLowerCase()) {
+        return false;
+      }
+    }
+
+    // Filter Verifikasi
+    if (filterVerifikasi !== 'semua') {
+      const verif = (item.statusVerifikasi || 'menunggu').toLowerCase();
+      if (verif !== filterVerifikasi.toLowerCase()) {
+        return false;
+      }
+    }
+
+    // Filter Kelulusan
+    if (filterKelulusan !== 'semua') {
+      const lulus = (item.statusKelulusan || 'proses').toLowerCase();
+      if (lulus !== filterKelulusan.toLowerCase()) {
+        return false;
+      }
+    }
+
+    // Filter Jadwal
+    if (filterJadwal === 'sudah') {
+      if (!item.jadwalTes || !item.jadwalTes.trim()) return false;
+    } else if (filterJadwal === 'belum') {
+      if (item.jadwalTes && item.jadwalTes.trim()) return false;
+    }
+
+    return true;
+  });
+
   const handleToggleSelect = (id: string) => {
     setSelectedIds(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
@@ -30,12 +85,27 @@ export default function RekapSpmb() {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.length === data.length) {
+    if (filteredData.length > 0 && selectedIds.length === filteredData.length) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(data.map(d => d.rowNumber));
+      setSelectedIds(filteredData.map(d => d.rowNumber));
     }
   };
+
+  const handleResetFilter = () => {
+    setSearchTerm('');
+    setFilterJalur('semua');
+    setFilterVerifikasi('semua');
+    setFilterKelulusan('semua');
+    setFilterJadwal('semua');
+  };
+
+  const isFiltered = searchTerm.trim() !== '' || filterJalur !== 'semua' || filterVerifikasi !== 'semua' || filterKelulusan !== 'semua' || filterJadwal !== 'semua';
+
+  const allJalurOptions = Array.from(new Set(data.map(d => d.jalurPendaftaran).filter(Boolean)));
+  if (!allJalurOptions.includes('Reguler')) allJalurOptions.push('Reguler');
+  if (!allJalurOptions.includes('Inden')) allJalurOptions.push('Inden');
+  if (!allJalurOptions.includes('Prestasi')) allJalurOptions.push('Prestasi');
 
   const handleSetJadwalSelected = async () => {
     if (selectedIds.length === 0) return;
@@ -402,6 +472,237 @@ export default function RekapSpmb() {
         )}
       </div>
 
+      {/* Filter & Pencarian Bar */}
+      <div style={{
+        background: 'white',
+        borderRadius: '16px',
+        padding: '18px 20px',
+        marginBottom: '20px',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+        border: '1px solid #e2e8f0'
+      }}>
+        {/* Baris 1: Search Box, Counter & Reset */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          marginBottom: '14px',
+          flexWrap: 'wrap'
+        }}>
+          {/* Input Pencarian */}
+          <div style={{
+            flex: '1 1 300px',
+            position: 'relative'
+          }}>
+            <i className="fas fa-search" style={{
+              position: 'absolute',
+              left: '14px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: '#94a3b8',
+              fontSize: '14px'
+            }}></i>
+            <input
+              type="text"
+              placeholder="Cari nama siswa, no. pendaftaran, NISN, atau asal sekolah..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 14px 10px 38px',
+                borderRadius: '10px',
+                border: '1.5px solid #cbd5e1',
+                fontSize: '13.5px',
+                outline: 'none',
+                boxSizing: 'border-box',
+                background: '#f8fafc'
+              }}
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            )}
+          </div>
+
+          {/* Counter Badge */}
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '9px 14px',
+            borderRadius: '8px',
+            background: '#f1f5f9',
+            color: '#334155',
+            fontSize: '13px',
+            fontWeight: 700
+          }}>
+            <i className="fas fa-users" style={{ color: '#047857' }}></i>
+            <span>{filteredData.length} dari {data.length} Pendaftar</span>
+          </div>
+
+          {/* Tombol Reset Filter */}
+          {isFiltered && (
+            <button
+              type="button"
+              onClick={handleResetFilter}
+              style={{
+                background: '#fee2e2',
+                border: '1px solid #fecaca',
+                color: '#b91c1c',
+                padding: '9px 14px',
+                borderRadius: '8px',
+                fontSize: '12.5px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <i className="fas fa-undo-alt"></i> Reset Filter
+            </button>
+          )}
+        </div>
+
+        {/* Baris 2: Dropdown Filters */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+          gap: '12px'
+        }}>
+          {/* Filter Jalur */}
+          <div>
+            <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+              Jalur Pendaftaran
+            </label>
+            <select
+              value={filterJalur}
+              onChange={e => setFilterJalur(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1.5px solid #cbd5e1',
+                fontSize: '13px',
+                background: filterJalur !== 'semua' ? '#ecfdf5' : 'white',
+                fontWeight: filterJalur !== 'semua' ? 700 : 500,
+                color: filterJalur !== 'semua' ? '#047857' : '#334155',
+                outline: 'none',
+                cursor: 'pointer',
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="semua">Semua Jalur</option>
+              {allJalurOptions.map(j => (
+                <option key={j} value={j}>{j}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filter Verifikasi */}
+          <div>
+            <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+              Verifikasi Berkas
+            </label>
+            <select
+              value={filterVerifikasi}
+              onChange={e => setFilterVerifikasi(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1.5px solid #cbd5e1',
+                fontSize: '13px',
+                background: filterVerifikasi !== 'semua' ? '#ecfdf5' : 'white',
+                fontWeight: filterVerifikasi !== 'semua' ? 700 : 500,
+                color: filterVerifikasi !== 'semua' ? '#047857' : '#334155',
+                outline: 'none',
+                cursor: 'pointer',
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="semua">Semua Verifikasi</option>
+              <option value="menunggu">Menunggu</option>
+              <option value="valid">Valid / Lengkap</option>
+              <option value="perbaikan">Perlu Perbaikan</option>
+            </select>
+          </div>
+
+          {/* Filter Jadwal Tes */}
+          <div>
+            <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+              Jadwal Tes / Observasi
+            </label>
+            <select
+              value={filterJadwal}
+              onChange={e => setFilterJadwal(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1.5px solid #cbd5e1',
+                fontSize: '13px',
+                background: filterJadwal !== 'semua' ? '#e0f2fe' : 'white',
+                fontWeight: filterJadwal !== 'semua' ? 700 : 500,
+                color: filterJadwal !== 'semua' ? '#0284c7' : '#334155',
+                outline: 'none',
+                cursor: 'pointer',
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="semua">Semua Jadwal</option>
+              <option value="sudah">Sudah Dijadwalkan</option>
+              <option value="belum">Belum Dijadwalkan</option>
+            </select>
+          </div>
+
+          {/* Filter Kelulusan */}
+          <div>
+            <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+              Status Kelulusan
+            </label>
+            <select
+              value={filterKelulusan}
+              onChange={e => setFilterKelulusan(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1.5px solid #cbd5e1',
+                fontSize: '13px',
+                background: filterKelulusan !== 'semua' ? '#ecfdf5' : 'white',
+                fontWeight: filterKelulusan !== 'semua' ? 700 : 500,
+                color: filterKelulusan !== 'semua' ? '#047857' : '#334155',
+                outline: 'none',
+                cursor: 'pointer',
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="semua">Semua Kelulusan</option>
+              <option value="proses">Dalam Proses</option>
+              <option value="diterima">Diterima</option>
+              <option value="cadangan">Cadangan</option>
+              <option value="tidak_diterima">Tidak Diterima</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       {/* Floating / Sticky Bulk Action Bar for Selected Students */}
       {isAdmin && selectedIds.length > 0 && (
         <div style={{
@@ -524,6 +825,32 @@ export default function RekapSpmb() {
             <i className="fas fa-folder-open" style={{ fontSize: '3rem' }}></i>
             <p>Belum ada data pendaftar yang masuk.</p>
           </div>
+        ) : filteredData.length === 0 ? (
+          <div className={styles.emptyState}>
+            <i className="fas fa-search" style={{ fontSize: '2.5rem', color: '#94a3b8' }}></i>
+            <p style={{ marginTop: '12px', fontSize: '15px', fontWeight: 700, color: '#334155' }}>
+              Tidak ada pendaftar yang cocok dengan filter.
+            </p>
+            <p style={{ margin: '4px 0 16px 0', fontSize: '13px', color: '#64748b' }}>
+              Coba sesuaikan kata kunci pencarian atau reset filter.
+            </p>
+            <button
+              type="button"
+              onClick={handleResetFilter}
+              style={{
+                background: '#047857',
+                color: 'white',
+                border: 'none',
+                padding: '8px 18px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              Reset Filter
+            </button>
+          </div>
         ) : (
           <div className={styles.tableContainer}>
             <table className={styles.table}>
@@ -533,7 +860,7 @@ export default function RekapSpmb() {
                     <th style={{ width: '40px', textAlign: 'center' }}>
                       <input
                         type="checkbox"
-                        checked={data.length > 0 && selectedIds.length === data.length}
+                        checked={filteredData.length > 0 && selectedIds.length === filteredData.length}
                         onChange={handleSelectAll}
                         style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: '#047857' }}
                         title="Pilih Semua Siswa"
@@ -554,7 +881,7 @@ export default function RekapSpmb() {
                 </tr>
               </thead>
               <tbody>
-                {data.map((item) => (
+                {filteredData.map((item) => (
                   <tr key={item.id} style={{ background: selectedIds.includes(item.rowNumber) ? '#f0fdf4' : undefined }}>
                     {isAdmin && (
                       <td style={{ textAlign: 'center' }}>
