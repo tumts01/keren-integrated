@@ -36,8 +36,17 @@ export async function GET() {
       };
     }).filter((item: any) => item.namaLengkap !== ''); // filter out empty rows
 
-    // Reverse to show newest first
-    return NextResponse.json({ success: true, data: data.reverse() }, {
+    // Urutkan berdasarkan nomor pendaftaran (ascending)
+    data.sort((a: any, b: any) => {
+      const valA = (a.nomorPendaftaran || '').trim();
+      const valB = (b.nomorPendaftaran || '').trim();
+      if (!valA && !valB) return 0;
+      if (!valA) return 1;
+      if (!valB) return -1;
+      return valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    return NextResponse.json({ success: true, data }, {
       headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
     });
 

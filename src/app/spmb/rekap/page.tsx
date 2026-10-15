@@ -29,63 +29,77 @@ export default function RekapSpmb() {
   const [filterVerifikasi, setFilterVerifikasi] = useState('semua');
   const [filterKelulusan, setFilterKelulusan] = useState('semua');
   const [filterJadwal, setFilterJadwal] = useState('semua');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   // Pagination States (default 20 pendaftar per halaman)
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
 
-  // Filtered data calculation
-  const filteredData = data.filter(item => {
-    // Search Term match
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase().trim();
-      const matchNama = (item.namaLengkap || '').toLowerCase().includes(q);
-      const matchNopes = (item.nomorPendaftaran || '').toLowerCase().includes(q);
-      const matchNisn = (item.nisn || '').toLowerCase().includes(q);
-      const matchAsal = (item.asalSekolah || '').toLowerCase().includes(q);
-      const matchOrtu = (item.namaAyah || '').toLowerCase().includes(q) || (item.namaIbu || '').toLowerCase().includes(q);
-      if (!matchNama && !matchNopes && !matchNisn && !matchAsal && !matchOrtu) {
-        return false;
+  // Filtered and Sorted data calculation (diurutkan berdasarkan No. Registrasi)
+  const filteredData = data
+    .filter(item => {
+      // Search Term match
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase().trim();
+        const matchNama = (item.namaLengkap || '').toLowerCase().includes(q);
+        const matchNopes = (item.nomorPendaftaran || '').toLowerCase().includes(q);
+        const matchNisn = (item.nisn || '').toLowerCase().includes(q);
+        const matchAsal = (item.asalSekolah || '').toLowerCase().includes(q);
+        const matchOrtu = (item.namaAyah || '').toLowerCase().includes(q) || (item.namaIbu || '').toLowerCase().includes(q);
+        if (!matchNama && !matchNopes && !matchNisn && !matchAsal && !matchOrtu) {
+          return false;
+        }
       }
-    }
 
-    // Filter Jalur
-    if (filterJalur !== 'semua') {
-      if ((item.jalurPendaftaran || '').toLowerCase() !== filterJalur.toLowerCase()) {
-        return false;
+      // Filter Jalur
+      if (filterJalur !== 'semua') {
+        if ((item.jalurPendaftaran || '').toLowerCase() !== filterJalur.toLowerCase()) {
+          return false;
+        }
       }
-    }
 
-    // Filter Verifikasi
-    if (filterVerifikasi !== 'semua') {
-      const verif = (item.statusVerifikasi || 'menunggu').toLowerCase();
-      if (verif !== filterVerifikasi.toLowerCase()) {
-        return false;
+      // Filter Verifikasi
+      if (filterVerifikasi !== 'semua') {
+        const verif = (item.statusVerifikasi || 'menunggu').toLowerCase();
+        if (verif !== filterVerifikasi.toLowerCase()) {
+          return false;
+        }
       }
-    }
 
-    // Filter Kelulusan
-    if (filterKelulusan !== 'semua') {
-      const lulus = (item.statusKelulusan || 'proses').toLowerCase();
-      if (lulus !== filterKelulusan.toLowerCase()) {
-        return false;
+      // Filter Kelulusan
+      if (filterKelulusan !== 'semua') {
+        const lulus = (item.statusKelulusan || 'proses').toLowerCase();
+        if (lulus !== filterKelulusan.toLowerCase()) {
+          return false;
+        }
       }
-    }
 
-    // Filter Jadwal
-    if (filterJadwal === 'sudah') {
-      if (!item.jadwalTes || !item.jadwalTes.trim()) return false;
-    } else if (filterJadwal === 'belum') {
-      if (item.jadwalTes && item.jadwalTes.trim()) return false;
-    }
+      // Filter Jadwal
+      if (filterJadwal === 'sudah') {
+        if (!item.jadwalTes || !item.jadwalTes.trim()) return false;
+      } else if (filterJadwal === 'belum') {
+        if (item.jadwalTes && item.jadwalTes.trim()) return false;
+      }
 
-    return true;
-  });
+      return true;
+    })
+    .sort((a, b) => {
+      const valA = (a.nomorPendaftaran || '').trim();
+      const valB = (b.nomorPendaftaran || '').trim();
+      if (!valA && !valB) return 0;
+      if (!valA) return 1;
+      if (!valB) return -1;
+      const cmp = valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+      if (cmp !== 0) {
+        return sortOrder === 'asc' ? cmp : -cmp;
+      }
+      return String(a.rowNumber).localeCompare(String(b.rowNumber), undefined, { numeric: true });
+    });
 
-  // Reset to page 1 when any filter changes
+  // Reset to page 1 when any filter or sort changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterJalur, filterVerifikasi, filterKelulusan, filterJadwal]);
+  }, [searchTerm, filterJalur, filterVerifikasi, filterKelulusan, filterJadwal, sortOrder]);
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
@@ -121,6 +135,7 @@ export default function RekapSpmb() {
     setFilterVerifikasi('semua');
     setFilterKelulusan('semua');
     setFilterJadwal('semua');
+    setSortOrder('asc');
     setCurrentPage(1);
   };
 
@@ -140,7 +155,7 @@ export default function RekapSpmb() {
     return pages;
   };
 
-  const isFiltered = searchTerm.trim() !== '' || filterJalur !== 'semua' || filterVerifikasi !== 'semua' || filterKelulusan !== 'semua' || filterJadwal !== 'semua';
+  const isFiltered = searchTerm.trim() !== '' || filterJalur !== 'semua' || filterVerifikasi !== 'semua' || filterKelulusan !== 'semua' || filterJadwal !== 'semua' || sortOrder !== 'asc';
 
   const allJalurOptions = Array.from(new Set(data.map(d => d.jalurPendaftaran).filter(Boolean)));
   if (!allJalurOptions.includes('Reguler')) allJalurOptions.push('Reguler');
@@ -740,6 +755,33 @@ export default function RekapSpmb() {
               <option value="tidak_diterima">Tidak Diterima</option>
             </select>
           </div>
+
+          {/* Urutan No. Registrasi */}
+          <div>
+            <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+              Urutan No. Registrasi
+            </label>
+            <select
+              value={sortOrder}
+              onChange={e => setSortOrder(e.target.value as 'asc' | 'desc')}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1.5px solid #cbd5e1',
+                fontSize: '13px',
+                background: sortOrder !== 'asc' ? '#eff6ff' : 'white',
+                fontWeight: sortOrder !== 'asc' ? 700 : 500,
+                color: sortOrder !== 'asc' ? '#1d4ed8' : '#334155',
+                outline: 'none',
+                cursor: 'pointer',
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="asc">No. Reg: Kecil &rarr; Besar (1-9)</option>
+              <option value="desc">No. Reg: Besar &rarr; Kecil (9-1)</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -928,7 +970,30 @@ export default function RekapSpmb() {
                     </th>
                   )}
                   <th>Waktu Daftar</th>
-                  <th>No. Reg & Nama</th>
+                  <th
+                    onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                    style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                    title="Klik untuk mengubah urutan No. Registrasi"
+                  >
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <span>No. Reg & Nama</span>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: '#ecfdf5',
+                        color: '#047857',
+                        border: '1px solid #a7f3d0',
+                        borderRadius: '4px',
+                        padding: '1px 6px',
+                        fontSize: '11px',
+                        fontWeight: 700
+                      }}>
+                        <i className={`fas fa-sort-numeric-${sortOrder === 'asc' ? 'down' : 'up-alt'}`} style={{ marginRight: '4px' }}></i>
+                        {sortOrder === 'asc' ? '1-9' : '9-1'}
+                      </span>
+                    </div>
+                  </th>
                   <th>Jalur</th>
                   <th>Verifikasi Berkas</th>
                   <th>Jadwal Tes / Observasi</th>
