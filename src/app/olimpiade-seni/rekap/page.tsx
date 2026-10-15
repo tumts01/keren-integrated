@@ -398,8 +398,8 @@ export default function RekapOlimpiadeSeni() {
   }, [data, kelolaKolektif]);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '40px 20px' }}>
-      <div style={{ maxWidth: '1240px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '24px', width: '100%', boxSizing: 'border-box' }}>
+      <div style={{ width: '100%', maxWidth: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
         
         {/* Header Bar */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
@@ -1181,7 +1181,7 @@ export default function RekapOlimpiadeSeni() {
             background: 'white',
             borderRadius: '16px',
             width: '100%',
-            maxWidth: '960px',
+            maxWidth: '1100px',
             maxHeight: '90vh',
             display: 'flex',
             flexDirection: 'column',
