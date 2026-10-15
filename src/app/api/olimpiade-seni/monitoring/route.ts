@@ -39,8 +39,8 @@ export async function GET(req: Request) {
       // Wait, let's just include all for now to avoid participants missing in monitoring if they haven't been manually validated, or we can check if it's Lomba Seni and valid.
       // But for CBT, they don't have status pembayaran. So we include them.
       
-      if (row.jenis_pendaftaran?.toLowerCase() === 'individu') {
-        let cabang = meta.LOMBA_DIPILIH || '';
+      if (row.jenis_pendaftaran?.toLowerCase() === 'individu' || row.jenis_pendaftaran?.toLowerCase() === 'peserta_kolektif') {
+        let cabang = meta.LOMBA_DIPILIH || meta['LOMBA YANG DIPILIH'] || '';
         
         // Normalisasi nama cabang lomba agar tidak ada duplikasi kategori
         const l = cabang.toLowerCase();

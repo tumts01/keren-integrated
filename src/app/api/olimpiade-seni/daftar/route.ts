@@ -38,6 +38,41 @@ function generatePasswordCbt() {
   return pass;
 }
 
+function isDummyOrInstructionRow(row: any): boolean {
+  if (!row) return true;
+  const str = Object.values(row).map(v => String(v ?? '').trim()).join(' ').toLowerCase();
+
+  // Baris instruksi / catatan penting
+  if (str.includes('*** penting') || str.includes('pilihan "lomba') || str.includes('tanpa typo')) {
+    return true;
+  }
+
+  // Baris contoh template bawaan
+  if (str.includes('ahmad budi') || str.includes('0123456789') || str.includes('sdit ahmad yani') || str.includes('grup al-banjari') || str.includes('grup shalawat a')) {
+    return true;
+  }
+
+  // Cari apakah ada nama dan lomba
+  let nama = '';
+  let lomba = '';
+  for (const [k, v] of Object.entries(row)) {
+    const key = k.toLowerCase();
+    if (key.includes('nama') && !key.includes('sekolah') && !key.includes('sd') && !key.includes('regu')) {
+      nama = String(v ?? '').trim();
+    }
+    if (key.includes('lomba')) {
+      lomba = String(v ?? '').trim();
+    }
+  }
+
+  if (!nama && !lomba) return true;
+  if (nama.toLowerCase().includes('contoh') || nama.toLowerCase().includes('sample') || nama.toLowerCase().includes('dummy')) {
+    return true;
+  }
+
+  return false;
+}
+
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
@@ -111,9 +146,14 @@ export async function POST(req: Request) {
       const buffer = Buffer.from(arrayBuffer);
       
       const workbook = xlsx.read(buffer, { type: 'buffer' });
-      const sheetName = workbook.SheetNames[0];
+      const sheetName = workbook.SheetNames.includes('Form Pendaftaran') ? 'Form Pendaftaran' : workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      const dataExcel = xlsx.utils.sheet_to_json<any>(worksheet);
+      const rawExcelData = xlsx.utils.sheet_to_json<any>(worksheet);
+      const dataExcel = rawExcelData.filter((row: any) => !isDummyOrInstructionRow(row));
+
+      if (dataExcel.length === 0) {
+        return NextResponse.json({ success: false, error: 'Tidak ada data peserta yang valid di dalam file Excel' }, { status: 400 });
+      }
 
       const namaSekolahKolektif = formData.get('namaSekolah') as string || '';
       

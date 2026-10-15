@@ -133,25 +133,82 @@ export default function PendaftaranOlimpiadeSeni() {
     }
   };
 
-  const handleDownloadTemplate = () => {
-    const ws_data = [
-      ['NO', 'NAMA', 'NISN', 'NAMA SD/MI', 'NPSN SD/MI', 'KELAS', 'LOMBA YANG DIPILIH', 'NAMA REGU/GRUP (LOMBA MAPEL TIDAK PERLU MENGISI)'],
-      // Contoh isi
-      [1, 'Ahmad Budi', '0123456789', 'MIN 1 Malang', '20500000', '6', 'Matematika', ''],
-      [2, 'Grup Al-Banjari', '-', 'SDIT Ahmad Yani', '20511111', '5', 'Al Banjari', 'Grup Shalawat A'],
-      [],
-      ['*** PENTING: Pilihan "LOMBA YANG DIPILIH" harus sama persis dengan daftar di bawah ini (tanpa typo): ***'],
-      ['Matematika, IPAS, PAI, Inggris, Arab, Singer (solo), Al Banjari, Sandi Morse Semaphore (SMS)']
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(ws_data);
-    
-    // Atur lebar kolom
-    ws['!cols'] = [
-      { wch: 5 }, { wch: 25 }, { wch: 15 }, { wch: 30 }, { wch: 15 }, { wch: 10 }, { wch: 35 }, { wch: 50 }
-    ];
+  const isDummyOrInstructionRow = (row: any): boolean => {
+    if (!row) return true;
+    const str = Object.values(row).map(v => String(v ?? '').trim()).join(' ').toLowerCase();
 
+    // Baris instruksi / catatan penting
+    if (str.includes('*** penting') || str.includes('pilihan "lomba') || str.includes('tanpa typo')) {
+      return true;
+    }
+
+    // Baris contoh template bawaan
+    if (str.includes('ahmad budi') || str.includes('0123456789') || str.includes('sdit ahmad yani') || str.includes('grup al-banjari') || str.includes('grup shalawat a')) {
+      return true;
+    }
+
+    // Cari apakah ada nama dan lomba
+    let nama = '';
+    let lomba = '';
+    for (const [k, v] of Object.entries(row)) {
+      const key = k.toLowerCase();
+      if (key.includes('nama') && !key.includes('sekolah') && !key.includes('sd') && !key.includes('regu')) {
+        nama = String(v ?? '').trim();
+      }
+      if (key.includes('lomba')) {
+        lomba = String(v ?? '').trim();
+      }
+    }
+
+    if (!nama && !lomba) return true;
+    if (nama.toLowerCase().includes('contoh') || nama.toLowerCase().includes('sample') || nama.toLowerCase().includes('dummy')) {
+      return true;
+    }
+
+    return false;
+  };
+
+  const handleDownloadTemplate = () => {
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template Pendaftaran");
+
+    // Sheet 1: Form Pendaftaran (BERSIH - Hanya Header Kolom, siap diisi tanpa dummy data)
+    const formHeaders = [
+      ['NO', 'NAMA LENGKAP SISWA', 'NISN', 'NAMA SD/MI', 'NPSN SD/MI', 'KELAS', 'LOMBA YANG DIPILIH', 'NAMA REGU/GRUP (KHUSUS LOMBA BEREGU)']
+    ];
+    const wsForm = XLSX.utils.aoa_to_sheet(formHeaders);
+    wsForm['!cols'] = [
+      { wch: 6 }, { wch: 30 }, { wch: 18 }, { wch: 30 }, { wch: 15 }, { wch: 10 }, { wch: 32 }, { wch: 35 }
+    ];
+    XLSX.utils.book_append_sheet(wb, wsForm, "Form Pendaftaran");
+
+    // Sheet 2: Petunjuk & Contoh Pengisian (Terpisah agar tidak ikut terupload sebagai data)
+    const petunjukData = [
+      ['PETUNJUK PENGISIAN TEMPLATE KOLEKTIF OLIMPIADE & LOMBA SENI'],
+      [''],
+      ['1. Isi data calon peserta hanya pada Sheet "Form Pendaftaran".'],
+      ['2. Kolom "LOMBA YANG DIPILIH" WAJIB diisi sama persis dengan nama resmi di bawah ini (tanpa typo):'],
+      ['   - Matematika'],
+      ['   - IPAS'],
+      ['   - PAI'],
+      ['   - Inggris'],
+      ['   - Arab'],
+      ['   - Singer (solo)'],
+      ['   - Al Banjari'],
+      ['   - Sandi Morse Semaphore (SMS)'],
+      ['3. Kolom "NAMA REGU/GRUP" hanya diisi untuk cabang beregu (Al Banjari atau SMS). Untuk lomba mapel/solo dikosongkan.'],
+      ['4. Akun CBT (Username & Password) untuk lomba akademik akan di-generate otomatis oleh sistem setelah upload.'],
+      [''],
+      ['CONTOH PENGISIAN YANG BENAR (Lihat di bawah ini, JANGAN isi di sheet ini):'],
+      ['NO', 'NAMA LENGKAP SISWA', 'NISN', 'NAMA SD/MI', 'NPSN SD/MI', 'KELAS', 'LOMBA YANG DIPILIH', 'NAMA REGU/GRUP'],
+      [1, 'Fulan bin Fulan', '0081234567', 'MIN 1 Malang', '20500000', '6', 'Matematika', ''],
+      [2, 'Grup Shalawat Al-Ikhlas', '-', 'SDIT Harapan', '20511111', '5', 'Al Banjari', 'Grup Al-Ikhlas A']
+    ];
+    const wsPetunjuk = XLSX.utils.aoa_to_sheet(petunjukData);
+    wsPetunjuk['!cols'] = [
+      { wch: 6 }, { wch: 30 }, { wch: 18 }, { wch: 30 }, { wch: 15 }, { wch: 10 }, { wch: 32 }, { wch: 35 }
+    ];
+    XLSX.utils.book_append_sheet(wb, wsPetunjuk, "Petunjuk & Contoh");
+
     XLSX.writeFile(wb, "Template_Pendaftaran_Kolektif.xlsx");
   };
 
@@ -162,20 +219,44 @@ export default function PendaftaranOlimpiadeSeni() {
       try {
         const buffer = await file.arrayBuffer();
         const wb = XLSX.read(buffer, { type: 'array' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const excelData = XLSX.utils.sheet_to_json(ws);
-        
+        const sheetName = wb.SheetNames.includes('Form Pendaftaran') ? 'Form Pendaftaran' : wb.SheetNames[0];
+        const ws = wb.Sheets[sheetName];
+        const rawExcelData = XLSX.utils.sheet_to_json<any>(ws);
+
+        // Filter baris contoh dummy atau baris petunjuk secara otomatis
+        const excelData = rawExcelData.filter((row: any) => !isDummyOrInstructionRow(row));
+
+        if (excelData.length === 0) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'File Excel Kosong!',
+            text: 'Tidak ditemukan data siswa yang valid di dalam file Excel. Silakan isi data peserta pada sheet Form Pendaftaran.'
+          });
+          if (fileInputRef.current) fileInputRef.current.value = '';
+          setUploadedFile(null);
+          setKolektifLombaList([]);
+          return;
+        }
+
         const validLomba = [...lombaOptions['Olimpiade Akademik'], ...lombaOptions['Lomba Seni']];
         const errorMsgs: string[] = [];
         const uniqueLombas = new Set<string>();
         
         excelData.forEach((row: any, index: number) => {
-          const namaLomba = row['LOMBA YANG DIPILIH'];
-          // Lewati baris kosong atau baris instruksi yang kita tambahkan di bawah
-          if (namaLomba && typeof namaLomba === 'string' && !namaLomba.includes('*** PENTING')) {
+          let namaLomba = row['LOMBA YANG DIPILIH'];
+          if (!namaLomba) {
+            for (const key of Object.keys(row)) {
+              if (key.toLowerCase().includes('lomba')) {
+                namaLomba = row[key];
+                break;
+              }
+            }
+          }
+
+          if (namaLomba && typeof namaLomba === 'string') {
             const trimmed = namaLomba.trim();
             if (!validLomba.includes(trimmed)) {
-              errorMsgs.push(`Baris excel ke-${index + 2}: "${trimmed}"`);
+              errorMsgs.push(`Baris ke-${index + 2}: "${trimmed}"`);
             } else {
               uniqueLombas.add(trimmed);
             }
@@ -193,6 +274,17 @@ export default function PendaftaranOlimpiadeSeni() {
           setUploadedFile(null);
           setKolektifLombaList([]);
           return;
+        }
+
+        const dummyIgnoredCount = rawExcelData.length - excelData.length;
+        if (dummyIgnoredCount > 0) {
+          Swal.fire({
+            icon: 'info',
+            title: 'Excel Berhasil Dibaca',
+            html: `Terdeteksi <b>${excelData.length} peserta valid</b>.<br><small style="color: #64748b;">(${dummyIgnoredCount} baris contoh/instruksi otomatis diabaikan sistem)</small>`,
+            timer: 2500,
+            showConfirmButton: false
+          });
         }
 
         setKolektifLombaList(Array.from(uniqueLombas));
@@ -248,16 +340,26 @@ export default function PendaftaranOlimpiadeSeni() {
       formData.append('noWa', formKolektif.noWa);
       formData.append('detailLomba', kolektifLombaList.join(', '));
 
-      // Parse Excel untuk menghitung jumlah peserta per lomba
+      // Parse Excel untuk menghitung jumlah peserta per lomba (abaikan baris dummy/contoh)
       try {
         const buffer = await uploadedFile.arrayBuffer();
         const wb = XLSX.read(buffer, { type: 'array' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const excelData = XLSX.utils.sheet_to_json(ws);
+        const sheetName = wb.SheetNames.includes('Form Pendaftaran') ? 'Form Pendaftaran' : wb.SheetNames[0];
+        const ws = wb.Sheets[sheetName];
+        const rawExcelData = XLSX.utils.sheet_to_json<any>(ws);
+        const excelData = rawExcelData.filter((row: any) => !isDummyOrInstructionRow(row));
         
         const counts: Record<string, number> = {};
         excelData.forEach((row: any) => {
-          const lomba = row['LOMBA YANG DIPILIH'];
+          let lomba = row['LOMBA YANG DIPILIH'];
+          if (!lomba) {
+            for (const key of Object.keys(row)) {
+              if (key.toLowerCase().includes('lomba')) {
+                lomba = row[key];
+                break;
+              }
+            }
+          }
           if (lomba && typeof lomba === 'string') {
             counts[lomba.trim()] = (counts[lomba.trim()] || 0) + 1;
           }
