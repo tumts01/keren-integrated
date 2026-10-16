@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import InlineLoading from '@/components/InlineLoading';
 import styles from '@/app/jurnal-kegiatan/JurnalKegiatan.module.css';
@@ -51,6 +51,11 @@ export default function PenelitianMahasiswaTab() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Filters
+  const [filterSearch, setFilterSearch] = useState('');
+  const [filterJenis, setFilterJenis] = useState('');
+  const [filterBulan, setFilterBulan] = useState('');
 
   // Detail Modal
   const [selectedDetail, setSelectedDetail] = useState<Penelitian | null>(null);
@@ -110,7 +115,7 @@ export default function PenelitianMahasiswaTab() {
   const handleEdit = (item: Penelitian) => {
     setEditId(item.id);
     setForm({
-      namaMahasiswa: item.namaMahasiswa || [''],
+      namaMahasiswa: item.namaMahasiswa && item.namaMahasiswa.length > 0 ? item.namaMahasiswa : [''],
       universitas: item.universitas || '',
       jenisPenelitian: item.jenisPenelitian || '',
       judul: item.judul || '',
@@ -129,7 +134,8 @@ export default function PenelitianMahasiswaTab() {
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
       cancelButtonColor: '#64748b',
-      confirmButtonText: 'Ya, Hapus!'
+      confirmButtonText: 'Ya, Hapus!',
+      cancelButtonText: 'Batal'
     });
 
     if (result.isConfirmed) {
@@ -137,7 +143,7 @@ export default function PenelitianMahasiswaTab() {
         const res = await fetch(`/api/penelitian-mahasiswa?id=${id}`, { method: 'DELETE' });
         const json = await res.json();
         if (json.success) {
-          Swal.fire('Terhapus!', 'Data berhasil dihapus.', 'success');
+          Swal.fire({ icon: 'success', title: 'Terhapus!', text: 'Data berhasil dihapus.', timer: 1500, showConfirmButton: false });
           fetchData();
         } else {
           Swal.fire('Gagal', json.error, 'error');
@@ -153,7 +159,6 @@ export default function PenelitianMahasiswaTab() {
     setSubmitting(true);
 
     try {
-      // Filter out empty names
       const filteredNames = form.namaMahasiswa.map(n => n.trim()).filter(Boolean);
       if (filteredNames.length === 0) {
         Swal.fire('Peringatan', 'Minimal satu nama mahasiswa harus diisi.', 'warning');
@@ -178,7 +183,7 @@ export default function PenelitianMahasiswaTab() {
       const json = await res.json();
       
       if (json.success) {
-        Swal.fire('Berhasil', 'Data penelitian mahasiswa tersimpan.', 'success');
+        Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Data penelitian mahasiswa tersimpan.', timer: 1500, showConfirmButton: false });
         setShowModal(false);
         resetForm();
         fetchData();
@@ -195,7 +200,6 @@ export default function PenelitianMahasiswaTab() {
   const uploadFile = async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append('file', file);
-    // Kita gunakan endpoint upload MGMP karena tujuannya sama-sama upload ke folder drive publik
     const res = await fetch('/api/jurnal-mgmp/upload', { method: 'POST', body: formData });
     const json = await res.json();
     if (!json.success) throw new Error(json.error);
@@ -231,7 +235,7 @@ export default function PenelitianMahasiswaTab() {
       const json = await res.json();
 
       if (json.success) {
-        Swal.fire('Berhasil', 'Dokumentasi berhasil ditambahkan', 'success');
+        Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Dokumentasi berhasil ditambahkan', timer: 1500, showConfirmButton: false });
         setUploadTarget(null);
         setUploadFiles([]);
         fetchData();
@@ -244,103 +248,252 @@ export default function PenelitianMahasiswaTab() {
     setUploadingDoc(false);
   };
 
-  if (loading) {
-    return <InlineLoading message="Memuat data penelitian mahasiswa..." />;
-  }
+  const formatDate = (str?: string) => {
+    if (!str) return '-';
+    try {
+      return new Date(str).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch { return str; }
+  };
+
+  // Unique list of jenis penelitian
+  const jenisList = Array.from(new Set(data.map(d => d.jenisPenelitian).filter(Boolean))).sort();
+
+  // Filtered data
+  const filtered = data.filter(item => {
+    const q = filterSearch.toLowerCase().trim();
+    const matchSearch = !q || 
+      (item.namaMahasiswa || []).some(m => m.toLowerCase().includes(q)) ||
+      (item.universitas || '').toLowerCase().includes(q) ||
+      (item.judul || '').toLowerCase().includes(q) ||
+      (item.target || '').toLowerCase().includes(q);
+
+    const matchJenis = !filterJenis || (item.jenisPenelitian || '').toLowerCase() === filterJenis.toLowerCase();
+    const matchBulan = !filterBulan || (item.tanggal || '').startsWith(filterBulan);
+
+    return matchSearch && matchJenis && matchBulan;
+  });
 
   return (
-    <div style={{ marginTop: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-        <h2 style={{ fontSize: '1.2rem', fontWeight: 600, color: '#1e293b', margin: 0 }}>
-          Daftar Penelitian Mahasiswa
-        </h2>
-        <button 
-          className="btn btn-primary"
+    <div style={{ marginTop: '20px' }}>
+      {/* Header & Filter Bar */}
+      <div style={{ 
+        background: '#f8fafc', 
+        padding: '16px 20px', 
+        borderRadius: '12px', 
+        border: '1px solid #e2e8f0', 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        flexWrap: 'wrap', 
+        gap: '12px',
+        marginBottom: '20px' 
+      }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ position: 'relative' }}>
+            <i className="fas fa-search" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '0.85rem' }}></i>
+            <input
+              type="text"
+              placeholder="Cari mahasiswa, kampus, judul..."
+              value={filterSearch}
+              onChange={e => setFilterSearch(e.target.value)}
+              style={{ padding: '8px 12px 8px 34px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.85rem', minWidth: '240px', background: 'white' }}
+            />
+          </div>
+
+          <select
+            value={filterJenis}
+            onChange={e => setFilterJenis(e.target.value)}
+            style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.85rem', background: 'white', color: '#334155' }}
+          >
+            <option value="">Semua Jenis Penelitian</option>
+            {jenisList.map((j, i) => (
+              <option key={i} value={j}>{j}</option>
+            ))}
+          </select>
+
+          <input
+            type="month"
+            value={filterBulan}
+            onChange={e => setFilterBulan(e.target.value)}
+            style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.85rem', background: 'white', color: '#334155' }}
+          />
+
+          {(filterSearch || filterJenis || filterBulan) && (
+            <button 
+              type="button" 
+              onClick={() => { setFilterSearch(''); setFilterJenis(''); setFilterBulan(''); }}
+              style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <i className="fas fa-times"></i> Reset Filter
+            </button>
+          )}
+        </div>
+
+        <button
           onClick={() => { resetForm(); setShowModal(true); }}
+          className={styles.btnPrimary}
         >
-          <i className="fas fa-plus"></i> Tambah Data
+          <i className="fas fa-plus"></i> Tambah Data Penelitian
         </button>
       </div>
 
-      <div className={styles.tableContainer} style={{ overflowX: 'auto', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th style={{ width: '50px', textAlign: 'center' }}>No</th>
-              <th style={{ width: '120px' }}>Tanggal</th>
-              <th style={{ width: '220px' }}>Mahasiswa & Universitas</th>
-              <th style={{ width: '250px' }}>Judul & Jenis</th>
-              <th>Target & Ket</th>
-              <th style={{ width: '150px', textAlign: 'center' }}>Dokumentasi</th>
-              <th style={{ width: '100px', textAlign: 'center' }}>Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.length === 0 ? (
-              <tr><td colSpan={6} style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>Belum ada data penelitian mahasiswa.</td></tr>
-            ) : data.map((item, idx) => (
-              <tr key={item.id}>
-                <td style={{ textAlign: 'center' }}>{idx + 1}</td>
-                <td style={{ fontSize: '0.85rem', color: '#475569' }}>{item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}</td>
-                <td>
-                  <ul style={{ margin: 0, paddingLeft: '16px', color: '#0f172a', fontWeight: 600, fontSize: '0.9rem' }}>
-                    {(item.namaMahasiswa || []).map((nm, i) => <li key={i}>{nm}</li>)}
-                  </ul>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>
-                    <i className="fas fa-university" style={{ marginRight: '4px' }}></i> {item.universitas}
-                  </div>
-                </td>
-                <td>
-                  <div style={{ fontWeight: 600, color: '#334155', fontSize: '0.9rem' }}>{item.judul}</div>
-                  <span style={{ display: 'inline-block', padding: '2px 8px', background: '#eff6ff', color: '#3b82f6', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, marginTop: '6px' }}>
-                    {item.jenisPenelitian}
-                  </span>
-                </td>
-                <td>
-                  <div style={{ fontSize: '0.85rem' }}><strong>Target:</strong> {item.target || '-'}</div>
-                  <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '4px' }}><strong>Ket:</strong> {item.keterangan || '-'}</div>
-                </td>
-                <td style={{ textAlign: 'center' }}>
-                  {item.dokumentasi ? (
-                    <button 
-                      onClick={() => setSelectedDetail(item)}
-                      style={{ padding: '6px 12px', background: '#f0fdf4', color: '#10b981', border: '1px solid #bbf7d0', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', margin: '0 auto' }}
-                    >
-                      <i className="fas fa-images"></i> {item.dokumentasi.split(' || ').filter(Boolean).length} Foto
-                    </button>
-                  ) : (
-                    <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Belum ada</span>
-                  )}
-                  <button 
-                    onClick={() => { setUploadTarget(item); setUploadFiles([]); }}
-                    style={{ marginTop: '8px', padding: '4px 8px', background: 'white', color: '#3b82f6', border: '1px dashed #93c5fd', borderRadius: '6px', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', margin: '8px auto 0' }}
-                  >
-                    <i className="fas fa-upload"></i> Upload
-                  </button>
-                </td>
-                <td>
-                  <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                    <button onClick={() => handleEdit(item)} style={{ width: '32px', height: '32px', borderRadius: '8px', border: 'none', background: '#f8fafc', color: '#3b82f6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Edit">
-                      <i className="fas fa-edit"></i>
-                    </button>
-                    <button onClick={() => handleDelete(item.id)} style={{ width: '32px', height: '32px', borderRadius: '8px', border: 'none', background: '#fcf8f8', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Hapus">
-                      <i className="fas fa-trash"></i>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Table Container */}
+      <div className={styles.tableContainer} style={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+        {loading ? (
+          <div style={{ padding: '40px 0' }}>
+            <InlineLoading message="Memuat data penelitian mahasiswa..." />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
+            <i className="fas fa-user-graduate" style={{ fontSize: '48px', marginBottom: '16px', color: '#cbd5e1' }}></i>
+            <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 500, color: '#64748b' }}>
+              {data.length === 0 ? 'Belum ada data penelitian mahasiswa.' : 'Tidak ada data penelitian yang cocok dengan filter.'}
+            </p>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className={styles.table} style={{ width: '100%', minWidth: '960px' }}>
+              <thead>
+                <tr>
+                  <th style={{ width: '45px', textAlign: 'center' }}>No</th>
+                  <th style={{ width: '115px' }}>Tanggal</th>
+                  <th style={{ width: '220px' }}>Mahasiswa & Asal Kampus</th>
+                  <th>Judul & Jenis Penelitian</th>
+                  <th style={{ width: '190px' }}>Target & Keterangan</th>
+                  <th style={{ width: '120px', textAlign: 'center' }}>Dokumentasi</th>
+                  <th style={{ width: '175px', textAlign: 'center' }}>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((item, idx) => (
+                  <tr key={item.id}>
+                    <td style={{ textAlign: 'center', color: '#64748b', fontSize: '0.85rem' }}>{idx + 1}</td>
+                    <td style={{ fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontWeight: 600, color: '#1e293b' }}>
+                        {formatDate(item.tanggal)}
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        {(item.namaMahasiswa || []).map((nm, i) => (
+                          <div key={i} style={{ fontSize: '0.88rem', fontWeight: 600, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <i className="fas fa-user-graduate" style={{ fontSize: '0.75rem', color: '#3b82f6' }}></i>
+                            <span>{nm}</span>
+                          </div>
+                        ))}
+                        {item.universitas && (
+                          <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <i className="fas fa-university" style={{ color: '#94a3b8', fontSize: '0.75rem' }}></i>
+                            <span>{item.universitas}</span>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.9rem', lineHeight: 1.4 }}>
+                        {item.judul}
+                      </div>
+                      {item.jenisPenelitian && (
+                        <span style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: '4px', 
+                          padding: '2px 8px', 
+                          background: '#eff6ff', 
+                          color: '#2563eb', 
+                          borderRadius: '4px', 
+                          fontSize: '0.75rem', 
+                          fontWeight: 600, 
+                          marginTop: '6px' 
+                        }}>
+                          <i className="fas fa-tag" style={{ fontSize: '0.68rem' }}></i>
+                          {item.jenisPenelitian}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {item.target && (
+                        <div style={{ fontSize: '0.85rem', color: '#334155' }}>
+                          <span style={{ fontWeight: 600, color: '#475569' }}>Target:</span> {item.target}
+                        </div>
+                      )}
+                      {item.keterangan && (
+                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '3px' }}>
+                          <span style={{ fontWeight: 600, color: '#94a3b8' }}>Ket:</span> {item.keterangan}
+                        </div>
+                      )}
+                      {!item.target && !item.keterangan && (
+                        <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>-</span>
+                      )}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      {item.dokumentasi ? (
+                        <button 
+                          onClick={() => setSelectedDetail(item)}
+                          style={{ padding: '4px 8px', background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                          title="Lihat Galeri Foto"
+                        >
+                          <i className="fas fa-images"></i> {item.dokumentasi.split(' || ').filter(Boolean).length} Foto
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>-</span>
+                      )}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'flex', gap: '5px', justifyContent: 'center', alignItems: 'center' }}>
+                        <button 
+                          type="button"
+                          className="btn btn-sm" 
+                          style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', padding: '4px 7px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                          onClick={() => setSelectedDetail(item)} 
+                          title="Lihat Detail Lengkap"
+                        >
+                          <i className="fas fa-eye"></i> Detail
+                        </button>
+                        <button 
+                          type="button"
+                          className="btn btn-sm" 
+                          style={{ background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', padding: '4px 7px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem' }}
+                          onClick={() => { setUploadTarget(item); setUploadFiles([]); }}
+                          title="Upload Foto Dokumentasi"
+                        >
+                          <i className="fas fa-camera"></i>
+                        </button>
+                        <button 
+                          type="button"
+                          className="btn btn-sm" 
+                          style={{ background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', padding: '4px 7px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem' }}
+                          onClick={() => handleEdit(item)} 
+                          title="Edit Data"
+                        >
+                          <i className="fas fa-edit"></i>
+                        </button>
+                        <button 
+                          type="button"
+                          className="btn btn-sm" 
+                          style={{ background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', padding: '4px 7px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem' }}
+                          onClick={() => handleDelete(item.id)} 
+                          title="Hapus Data"
+                        >
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {/* Form Modal */}
+      {/* Form Modal (Tambah / Edit) */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ background: 'white', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: 'white', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '14px' }}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, color: '#1e293b' }}>
-                <i className="fas fa-user-graduate" style={{ marginRight: '8px', color: '#3b82f6' }}></i>
+                <i className={`fas ${editId ? 'fa-edit' : 'fa-user-graduate'}`} style={{ marginRight: '8px', color: '#10b981' }}></i>
                 {editId ? 'Edit Data Penelitian' : 'Tambah Data Penelitian'}
               </h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.25rem', color: '#94a3b8', cursor: 'pointer' }}>
@@ -349,9 +502,10 @@ export default function PenelitianMahasiswaTab() {
             </div>
 
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '8px' }}>Nama Mahasiswa</label>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '8px' }}>
+                  Nama Mahasiswa <span style={{ color: 'red' }}>*</span>
+                </label>
                 {form.namaMahasiswa.map((nama, i) => (
                   <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                     <input
@@ -374,6 +528,7 @@ export default function PenelitianMahasiswaTab() {
                           setForm({ ...form, namaMahasiswa: newArr });
                         }}
                         style={{ padding: '0 12px', background: '#fee2e2', color: '#ef4444', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                        title="Hapus Baris"
                       >
                         <i className="fas fa-minus"></i>
                       </button>
@@ -385,36 +540,44 @@ export default function PenelitianMahasiswaTab() {
                   onClick={() => setForm({ ...form, namaMahasiswa: [...form.namaMahasiswa, ''] })}
                   style={{ padding: '6px 12px', background: '#f0fdf4', color: '#16a34a', border: '1px dashed #86efac', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <i className="fas fa-plus"></i> Tambah Baris Nama
+                  <i className="fas fa-plus"></i> Tambah Mahasiswa
                 </button>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Tanggal</label>
-                <input
-                  type="date"
-                  required
-                  value={form.tanggal}
-                  onChange={e => setForm({ ...form, tanggal: e.target.value })}
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box', marginBottom: '16px' }}
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
+                    Tanggal Pelaksanaan <span style={{ color: 'red' }}>*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={form.tanggal}
+                    onChange={e => setForm({ ...form, tanggal: e.target.value })}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
+                    Asal Universitas / Kampus <span style={{ color: 'red' }}>*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: Universitas Brawijaya"
+                    value={form.universitas}
+                    onChange={e => setForm({ ...form, universitas: e.target.value })}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                  />
+                </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Asal Universitas / Institusi</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Contoh: Universitas Brawijaya"
-                  value={form.universitas}
-                  onChange={e => setForm({ ...form, universitas: e.target.value })}
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '16px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Jenis Penelitian</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
+                    Jenis Penelitian <span style={{ color: 'red' }}>*</span>
+                  </label>
                   <input
                     type="text"
                     required
@@ -424,12 +587,11 @@ export default function PenelitianMahasiswaTab() {
                     style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box' }}
                   />
                 </div>
-                <div style={{ flex: 1 }}>
+                <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Target Penelitian</label>
                   <input
                     type="text"
-                    required
-                    placeholder="Misal: Siswa Kelas 8A"
+                    placeholder="Misal: Siswa Kelas 8A / Guru PAI"
                     value={form.target}
                     onChange={e => setForm({ ...form, target: e.target.value })}
                     style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box' }}
@@ -438,7 +600,9 @@ export default function PenelitianMahasiswaTab() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Judul Penelitian</label>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>
+                  Judul Penelitian <span style={{ color: 'red' }}>*</span>
+                </label>
                 <textarea
                   required
                   rows={2}
@@ -453,17 +617,17 @@ export default function PenelitianMahasiswaTab() {
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Keterangan Tambahan</label>
                 <textarea
                   rows={2}
-                  placeholder="Opsional..."
+                  placeholder="Catatan tambahan (opsional)..."
                   value={form.keterangan}
                   onChange={e => setForm({ ...form, keterangan: e.target.value })}
                   style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.9rem', boxSizing: 'border-box', resize: 'vertical' }}
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
-                <button type="button" onClick={() => setShowModal(false)} className="btn btn-secondary">Batal</button>
-                <button type="submit" disabled={submitting} className="btn btn-primary" style={{ minWidth: '120px' }}>
-                  {submitting ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-save"></i> Simpan</>}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+                <button type="button" onClick={() => setShowModal(false)} className={styles.btnSecondary}>Batal</button>
+                <button type="submit" disabled={submitting} className={styles.btnPrimary} style={{ minWidth: '120px', justifyContent: 'center' }}>
+                  {submitting ? <><i className="fas fa-spinner fa-spin"></i> Menyimpan...</> : <><i className="fas fa-save"></i> Simpan</>}
                 </button>
               </div>
             </form>
@@ -473,11 +637,11 @@ export default function PenelitianMahasiswaTab() {
 
       {/* Upload Modal */}
       {uploadTarget && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ background: 'white', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '500px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: 'white', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '500px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
               <h2 style={{ fontSize: '1.2rem', fontWeight: 600, margin: 0, color: '#1e293b' }}>
-                <i className="fas fa-upload" style={{ marginRight: '8px', color: '#3b82f6' }}></i>
+                <i className="fas fa-upload" style={{ marginRight: '8px', color: '#10b981' }}></i>
                 Upload Dokumentasi
               </h2>
               <button onClick={() => setUploadTarget(null)} style={{ background: 'none', border: 'none', fontSize: '1.25rem', color: '#94a3b8', cursor: 'pointer' }}>
@@ -493,7 +657,7 @@ export default function PenelitianMahasiswaTab() {
               <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', border: '2px dashed #cbd5e1', borderRadius: '12px', cursor: 'pointer', background: '#f8fafc', marginBottom: '16px' }}>
                 <i className="fas fa-images" style={{ fontSize: '2rem', color: '#94a3b8', marginBottom: '12px' }}></i>
                 <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#475569' }}>Pilih File Foto</span>
-                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Bisa pilih lebih dari satu</span>
+                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Bisa pilih lebih dari satu foto</span>
                 <input 
                   type="file" 
                   accept="image/*" 
@@ -513,21 +677,21 @@ export default function PenelitianMahasiswaTab() {
               {uploadFiles.length > 0 && (
                 <div style={{ padding: '12px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', marginBottom: '16px' }}>
                   <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#16a34a', marginBottom: '8px' }}>
-                    ✅ {uploadFiles.length} foto siap diupload:
+                    ✅ {uploadFiles.length} foto siap diunggah:
                   </div>
                   <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.8rem', color: '#475569' }}>
                     {uploadFiles.map((f, i) => <li key={i}>{f.name}</li>)}
                   </ul>
-                  <button type="button" onClick={() => setUploadFiles([])} style={{ marginTop: '12px', padding: '4px 8px', color: '#ef4444', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}>
+                  <button type="button" onClick={() => setUploadFiles([])} style={{ marginTop: '10px', padding: '4px 8px', color: '#ef4444', background: '#fee2e2', border: '1px solid #fca5a5', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600 }}>
                     Hapus Semua
                   </button>
                 </div>
               )}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-                <button type="button" onClick={() => setUploadTarget(null)} className="btn btn-secondary">Batal</button>
-                <button type="submit" disabled={uploadingDoc || uploadFiles.length === 0} className="btn btn-primary" style={{ minWidth: '120px' }}>
-                  {uploadingDoc ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-cloud-upload-alt"></i> Upload</>}
+                <button type="button" onClick={() => setUploadTarget(null)} className={styles.btnSecondary}>Batal</button>
+                <button type="submit" disabled={uploadingDoc || uploadFiles.length === 0} className={styles.btnPrimary} style={{ minWidth: '120px', justifyContent: 'center' }}>
+                  {uploadingDoc ? <><i className="fas fa-spinner fa-spin"></i> Mengunggah...</> : <><i className="fas fa-cloud-upload-alt"></i> Upload</>}
                 </button>
               </div>
             </form>
@@ -535,31 +699,99 @@ export default function PenelitianMahasiswaTab() {
         </div>
       )}
 
-      {/* Gallery Modal */}
+      {/* Detail & Gallery Modal */}
       {selectedDetail && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-          <div style={{ background: 'white', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div style={{ background: 'white', borderRadius: '12px', padding: '28px', width: '100%', maxWidth: '750px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '16px' }}>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, color: '#1e293b' }}>
-                <i className="fas fa-images" style={{ marginRight: '8px', color: '#10b981' }}></i>
-                Galeri Dokumentasi
+                <i className="fas fa-user-graduate" style={{ marginRight: '8px', color: '#10b981' }}></i>
+                Detail Penelitian Mahasiswa
               </h2>
               <button onClick={() => setSelectedDetail(null)} style={{ background: 'none', border: 'none', fontSize: '1.25rem', color: '#94a3b8', cursor: 'pointer' }}>
                 <i className="fas fa-times"></i>
               </button>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
-              {selectedDetail.dokumentasi?.split(' || ').filter(Boolean).map((url, i) => (
-                <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                  <img
-                    src={getProxiedUrl(url)}
-                    alt={`Dokumentasi ${i + 1}`}
-                    style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                    onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.png'; }}
-                  />
-                </a>
-              ))}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+              <div>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase' }}>Nama Mahasiswa</p>
+                <div style={{ fontSize: '15px', color: '#0f172a', fontWeight: 700 }}>
+                  {(selectedDetail.namaMahasiswa || []).join(', ')}
+                </div>
+              </div>
+
+              <div>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase' }}>Asal Kampus</p>
+                <p style={{ fontSize: '15px', color: '#1e293b', margin: 0, fontWeight: 600 }}>{selectedDetail.universitas}</p>
+              </div>
+
+              <div style={{ gridColumn: '1 / -1' }}>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase' }}>Judul Penelitian</p>
+                <p style={{ fontSize: '15px', color: '#1e293b', margin: 0, fontWeight: 600, lineHeight: 1.4 }}>{selectedDetail.judul}</p>
+              </div>
+
+              <div>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase' }}>Jenis Penelitian</p>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '3px 8px', background: '#eff6ff', color: '#2563eb', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 600 }}>
+                  {selectedDetail.jenisPenelitian}
+                </span>
+              </div>
+
+              <div>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase' }}>Tanggal</p>
+                <p style={{ fontSize: '15px', color: '#1e293b', margin: 0 }}>{formatDate(selectedDetail.tanggal)}</p>
+              </div>
+
+              <div>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase' }}>Target</p>
+                <p style={{ fontSize: '14px', color: '#334155', margin: 0 }}>{selectedDetail.target || '-'}</p>
+              </div>
+
+              <div>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase' }}>Keterangan</p>
+                <p style={{ fontSize: '14px', color: '#334155', margin: 0 }}>{selectedDetail.keterangan || '-'}</p>
+              </div>
+
+              {selectedDetail.dokumentasi && (
+                <div style={{ gridColumn: '1 / -1', marginTop: '10px' }}>
+                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 10px', fontWeight: 600, textTransform: 'uppercase' }}>
+                    Dokumentasi Foto ({selectedDetail.dokumentasi.split(' || ').filter(Boolean).length} foto)
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '12px' }}>
+                    {selectedDetail.dokumentasi.split(' || ').filter(Boolean).map((url, i) => (
+                      <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                        <img
+                          src={getProxiedUrl(url)}
+                          alt={`Dokumentasi ${i + 1}`}
+                          style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #e2e8f0', transition: 'transform 0.2s' }}
+                          onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.png'; }}
+                        />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+              <button 
+                type="button"
+                onClick={() => {
+                  const target = selectedDetail;
+                  setSelectedDetail(null);
+                  setUploadTarget(target);
+                  setUploadFiles([]);
+                }}
+                className="btn btn-sm"
+                style={{ background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <i className="fas fa-camera"></i> Tambah Foto
+              </button>
+              <button onClick={() => setSelectedDetail(null)}
+                style={{ padding: '8px 20px', border: '1px solid #cbd5e1', borderRadius: '8px', background: 'white', cursor: 'pointer', color: '#475569', fontWeight: 600, fontSize: '13px' }}>
+                Tutup
+              </button>
             </div>
           </div>
         </div>

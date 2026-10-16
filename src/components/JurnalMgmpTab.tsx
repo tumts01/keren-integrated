@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from 'react';
 import Swal from 'sweetalert2';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import InlineLoading from '@/components/InlineLoading';
+import styles from '@/app/jurnal-kegiatan/JurnalKegiatan.module.css';
 
 interface JurnalMgmp {
   id: number;
@@ -62,7 +64,8 @@ export default function JurnalMgmpTab() {
   const [selectedDetail, setSelectedDetail] = useState<JurnalMgmp | null>(null);
 
   // Filter state
-  const [filterGuru, setFilterGuru] = useState('');
+  const [filterSearch, setFilterSearch] = useState('');
+  const [filterMapel, setFilterMapel] = useState('');
   const [filterBulan, setFilterBulan] = useState('');
 
   // Form state
@@ -248,6 +251,7 @@ export default function JurnalMgmpTab() {
       Swal.fire('Error', json.error, 'error');
     }
   };
+
   const loadImageForPDF = async (url: string): Promise<{ base64: string, width: number, height: number } | null> => {
     try {
       const res = await fetch(`/api/proxy-image?url=${encodeURIComponent(url)}&size=w1200`);
@@ -278,19 +282,17 @@ export default function JurnalMgmpTab() {
     
     const margin = 15;
     const maxWidth = 210 - (margin * 2);
-    const maxHeight = 297 - 40; // leaving top margin
+    const maxHeight = 297 - 40;
     
     let finalWidth = imgData.width;
     let finalHeight = imgData.height;
     
-    // Scale to fit width
     if (finalWidth > maxWidth) {
       const ratio = maxWidth / finalWidth;
       finalWidth = maxWidth;
       finalHeight = finalHeight * ratio;
     }
     
-    // Scale to fit height
     if (finalHeight > maxHeight) {
       const ratio = maxHeight / finalHeight;
       finalHeight = maxHeight;
@@ -298,7 +300,6 @@ export default function JurnalMgmpTab() {
     }
     
     const x = (210 - finalWidth) / 2;
-    // Format is optional, jsPDF usually infers it, but we can pass 'JPEG' or 'PNG'
     doc.addImage(imgData.base64, 'JPEG', x, 30, finalWidth, finalHeight);
   };
 
@@ -323,7 +324,6 @@ export default function JurnalMgmpTab() {
       doc.setFontSize(12);
       doc.setFont('helvetica', 'normal');
       
-      // Data Table using autotable for easy alignment
       const tableData = [
         ['Nama Guru', ':', jurnal.namaGuru],
         ['Bidang Studi', ':', jurnal.bidangStudi || '-'],
@@ -353,7 +353,6 @@ export default function JurnalMgmpTab() {
       doc.setFont('helvetica', 'normal');
       doc.text('Bukti fisik lampiran (Surat Tugas, Notulen, Daftar Hadir, dan Dokumentasi) terlampir pada halaman berikutnya.', 14, finalY + 6, { maxWidth: 180 });
 
-      // Embed Attachments
       if (jurnal.suratTugas) {
         await drawAttachment(doc, jurnal.suratTugas, 'Surat Tugas');
       }
@@ -376,104 +375,244 @@ export default function JurnalMgmpTab() {
       Swal.fire('Error', 'Gagal membuat PDF: ' + error.message, 'error');
     }
   };
-  // Filter logic
-  const filtered = data.filter(d => {
-    const matchGuru = !filterGuru || d.namaGuru.toLowerCase().includes(filterGuru.toLowerCase());
-    const matchBulan = !filterBulan || d.tanggal.startsWith(filterBulan);
-    return matchGuru && matchBulan;
-  });
 
   const formatDate = (str: string) => {
     if (!str) return '-';
     try {
-      return new Date(str).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      return new Date(str).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
     } catch { return str; }
   };
 
+  // Dynamic mapel list
+  const mapelList = Array.from(new Set(data.map(d => d.bidangStudi).filter(Boolean))).sort();
+
+  // Filter logic
+  const filtered = data.filter(d => {
+    const q = filterSearch.toLowerCase().trim();
+    const matchSearch = !q || 
+      (d.namaGuru || '').toLowerCase().includes(q) ||
+      (d.namaKegiatan || '').toLowerCase().includes(q) ||
+      (d.tempat || '').toLowerCase().includes(q) ||
+      (d.penyelenggara || '').toLowerCase().includes(q);
+
+    const matchMapel = !filterMapel || (d.bidangStudi || '').toLowerCase() === filterMapel.toLowerCase();
+    const matchBulan = !filterBulan || (d.tanggal || '').startsWith(filterBulan);
+    return matchSearch && matchMapel && matchBulan;
+  });
+
   return (
-    <div style={{ padding: '20px 0', fontFamily: 'sans-serif' }}>
-      {/* Filters & Actions */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-        <input
-          type="text"
-          placeholder="Cari nama guru..."
-          value={filterGuru}
-          onChange={e => setFilterGuru(e.target.value)}
-          style={{ padding: '8px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', minWidth: '200px' }}
-        />
-        <input
-          type="month"
-          value={filterBulan}
-          onChange={e => setFilterBulan(e.target.value)}
-          style={{ padding: '8px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px' }}
-        />
-        {(filterGuru || filterBulan) && (
-          <button onClick={() => { setFilterGuru(''); setFilterBulan(''); }} style={{ padding: '8px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', background: '#f8fafc', cursor: 'pointer', fontSize: '14px' }}>
-            <i className="fas fa-times" style={{ marginRight: '6px' }}></i> Reset Filter
-          </button>
-        )}
+    <div style={{ marginTop: '20px' }}>
+      {/* Header & Filter Bar */}
+      <div style={{ 
+        background: '#f8fafc', 
+        padding: '16px 20px', 
+        borderRadius: '12px', 
+        border: '1px solid #e2e8f0', 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        flexWrap: 'wrap', 
+        gap: '12px',
+        marginBottom: '20px' 
+      }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ position: 'relative' }}>
+            <i className="fas fa-search" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '0.85rem' }}></i>
+            <input
+              type="text"
+              placeholder="Cari guru, kegiatan, tempat..."
+              value={filterSearch}
+              onChange={e => setFilterSearch(e.target.value)}
+              style={{ padding: '8px 12px 8px 34px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.85rem', minWidth: '220px', background: 'white' }}
+            />
+          </div>
+
+          <select
+            value={filterMapel}
+            onChange={e => setFilterMapel(e.target.value)}
+            style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.85rem', background: 'white', color: '#334155' }}
+          >
+            <option value="">Semua Bidang Studi</option>
+            {mapelList.map((m, i) => (
+              <option key={i} value={m}>{m}</option>
+            ))}
+          </select>
+
+          <input
+            type="month"
+            value={filterBulan}
+            onChange={e => setFilterBulan(e.target.value)}
+            style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.85rem', background: 'white', color: '#334155' }}
+          />
+
+          {(filterSearch || filterMapel || filterBulan) && (
+            <button 
+              type="button" 
+              onClick={() => { setFilterSearch(''); setFilterMapel(''); setFilterBulan(''); }}
+              style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', background: 'white', cursor: 'pointer', fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <i className="fas fa-times"></i> Reset Filter
+            </button>
+          )}
         </div>
+
         <button
           onClick={() => { resetForm(); setShowModal(true); }}
-          style={{ padding: '10px 20px', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}
+          className={styles.btnPrimary}
         >
           <i className="fas fa-plus"></i> Tambah Jurnal MGMP
         </button>
       </div>
 
-      {/* Table */}
-      <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+      {/* Table Container */}
+      <div className={styles.tableContainer} style={{ border: '1px solid #e2e8f0', borderRadius: '12px' }}>
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}>
-            <i className="fas fa-spinner fa-spin" style={{ fontSize: '32px', marginBottom: '12px' }}></i>
-            <p>Memuat data...</p>
+          <div style={{ padding: '40px 0' }}>
+            <InlineLoading message="Memuat data Jurnal MGMP..." />
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}>
-            <i className="fas fa-file-alt" style={{ fontSize: '48px', marginBottom: '16px' }}></i>
-            <p>Belum ada data jurnal MGMP.</p>
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
+            <i className="fas fa-file-alt" style={{ fontSize: '48px', marginBottom: '16px', color: '#cbd5e1' }}></i>
+            <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 500, color: '#64748b' }}>
+              {data.length === 0 ? 'Belum ada data jurnal MGMP.' : 'Tidak ada data jurnal MGMP yang sesuai dengan filter.'}
+            </p>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className={styles.table} style={{ width: '100%', minWidth: '960px' }}>
               <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                  <th style={{ padding: '14px 16px', textAlign: 'left', color: '#475569', fontSize: '13px', fontWeight: 600 }}>No</th>
-                  <th style={{ padding: '14px 16px', textAlign: 'left', color: '#475569', fontSize: '13px', fontWeight: 600 }}>Tanggal</th>
-                  <th style={{ padding: '14px 16px', textAlign: 'left', color: '#475569', fontSize: '13px', fontWeight: 600 }}>Nama Guru</th>
-                  <th style={{ padding: '14px 16px', textAlign: 'left', color: '#475569', fontSize: '13px', fontWeight: 600 }}>Bidang Studi</th>
-                  <th style={{ padding: '14px 16px', textAlign: 'left', color: '#475569', fontSize: '13px', fontWeight: 600 }}>Nama Kegiatan</th>
-                  <th style={{ padding: '14px 16px', textAlign: 'left', color: '#475569', fontSize: '13px', fontWeight: 600 }}>Tempat</th>
-                  <th style={{ padding: '14px 16px', textAlign: 'left', color: '#475569', fontSize: '13px', fontWeight: 600 }}>Penyelenggara</th>
-                  <th style={{ padding: '14px 16px', textAlign: 'center', color: '#475569', fontSize: '13px', fontWeight: 600 }}>Aksi</th>
+                <tr>
+                  <th style={{ width: '45px', textAlign: 'center' }}>No</th>
+                  <th style={{ width: '115px' }}>Tanggal</th>
+                  <th style={{ width: '200px' }}>Guru & Mapel</th>
+                  <th>Kegiatan & Agenda</th>
+                  <th style={{ width: '190px' }}>Tempat & Penyelenggara</th>
+                  <th style={{ width: '130px' }}>Lampiran</th>
+                  <th style={{ width: '185px', textAlign: 'center' }}>Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((item, idx) => (
-                  <tr key={item.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'white')}
-                  >
-                    <td style={{ padding: '14px 16px', color: '#94a3b8', fontSize: '13px' }}>{idx + 1}</td>
-                    <td style={{ padding: '14px 16px', color: '#475569', fontSize: '13px', whiteSpace: 'nowrap' }}>{formatDate(item.tanggal)}</td>
-                    <td style={{ padding: '14px 16px', fontWeight: 600, color: '#1e293b', fontSize: '14px' }}>{item.namaGuru}</td>
-                    <td style={{ padding: '14px 16px', color: '#475569', fontSize: '13px' }}>{item.bidangStudi || '-'}</td>
-                    <td style={{ padding: '14px 16px', color: '#334155', fontSize: '13px' }}>{item.namaKegiatan}</td>
-                    <td style={{ padding: '14px 16px', color: '#475569', fontSize: '13px' }}>{item.tempat || '-'}</td>
-                    <td style={{ padding: '14px 16px', color: '#475569', fontSize: '13px' }}>{item.penyelenggara || '-'}</td>
-                    <td style={{ padding: '14px 16px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                        <button onClick={() => setSelectedDetail(item)} style={{ padding: '6px 12px', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
-                          <i className="fas fa-eye" style={{ marginRight: '4px' }}></i> Detail
+                  <tr key={item.id}>
+                    <td style={{ textAlign: 'center', color: '#64748b', fontSize: '0.85rem' }}>{idx + 1}</td>
+                    <td style={{ fontSize: '0.85rem', color: '#475569', whiteSpace: 'nowrap' }}>
+                      <div style={{ fontWeight: 600, color: '#1e293b' }}>
+                        {formatDate(item.tanggal)}
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.9rem' }}>
+                        {item.namaGuru}
+                      </div>
+                      {item.bidangStudi && (
+                        <span style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: '4px', 
+                          padding: '2px 8px', 
+                          background: '#f1f5f9', 
+                          color: '#475569', 
+                          borderRadius: '4px', 
+                          fontSize: '0.75rem', 
+                          fontWeight: 500,
+                          marginTop: '4px' 
+                        }}>
+                          <i className="fas fa-book" style={{ fontSize: '0.7rem', color: '#94a3b8' }}></i>
+                          {item.bidangStudi}
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.9rem', marginBottom: item.agenda ? '4px' : '0' }}>
+                        {item.namaKegiatan}
+                      </div>
+                      {item.agenda && (
+                        <div style={{ fontSize: '0.8rem', color: '#64748b', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={item.agenda}>
+                          <i className="fas fa-info-circle" style={{ marginRight: '4px', color: '#94a3b8' }}></i>
+                          {item.agenda}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      {item.tempat && (
+                        <div style={{ fontSize: '0.85rem', color: '#334155', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <i className="fas fa-map-marker-alt" style={{ color: '#ef4444', fontSize: '0.8rem', flexShrink: 0 }}></i>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.tempat}</span>
+                        </div>
+                      )}
+                      {item.penyelenggara && (
+                        <div style={{ fontSize: '0.8rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
+                          <i className="fas fa-building" style={{ color: '#94a3b8', fontSize: '0.75rem', flexShrink: 0 }}></i>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.penyelenggara}</span>
+                        </div>
+                      )}
+                      {!item.tempat && !item.penyelenggara && (
+                        <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>-</span>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {item.suratTugas && (
+                          <a href={item.suratTugas} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#4f46e5', background: '#eef2ff', padding: '2px 6px', borderRadius: '4px', textDecoration: 'none', width: 'fit-content' }}>
+                            <i className="fas fa-file-alt"></i> Tugas
+                          </a>
+                        )}
+                        {item.daftarHadir && (
+                          <a href={item.daftarHadir} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#059669', background: '#ecfdf5', padding: '2px 6px', borderRadius: '4px', textDecoration: 'none', width: 'fit-content' }}>
+                            <i className="fas fa-users"></i> Hadir
+                          </a>
+                        )}
+                        {item.notulen && (
+                          <a href={item.notulen} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#0284c7', background: '#f0f9ff', padding: '2px 6px', borderRadius: '4px', textDecoration: 'none', width: 'fit-content' }}>
+                            <i className="fas fa-file-word"></i> Notulen
+                          </a>
+                        )}
+                        {item.dokumentasi && (
+                          <button onClick={() => setSelectedDetail(item)} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#d97706', background: '#fffbeb', padding: '2px 6px', borderRadius: '4px', border: '1px solid #fef3c7', cursor: 'pointer', width: 'fit-content' }}>
+                            <i className="fas fa-images"></i> {item.dokumentasi.split(' || ').filter(Boolean).length} Foto
+                          </button>
+                        )}
+                        {!item.suratTugas && !item.daftarHadir && !item.notulen && !item.dokumentasi && (
+                          <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>-</span>
+                        )}
+                      </div>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'flex', gap: '5px', justifyContent: 'center', alignItems: 'center' }}>
+                        <button 
+                          type="button"
+                          className="btn btn-sm" 
+                          style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', padding: '4px 7px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                          onClick={() => setSelectedDetail(item)} 
+                          title="Lihat Detail"
+                        >
+                          <i className="fas fa-eye"></i> Detail
                         </button>
-                        <button onClick={() => handleDownloadPDF(item)} style={{ padding: '6px 12px', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
-                          <i className="fas fa-file-pdf" style={{ marginRight: '4px' }}></i> PDF
+                        <button 
+                          type="button"
+                          className="btn btn-sm" 
+                          style={{ background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', padding: '4px 7px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                          onClick={() => handleDownloadPDF(item)} 
+                          title="Cetak PDF Lengkap"
+                        >
+                          <i className="fas fa-file-pdf"></i> PDF
                         </button>
-                        <button onClick={() => handleEdit(item)} style={{ padding: '6px 12px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
+                        <button 
+                          type="button"
+                          className="btn btn-sm" 
+                          style={{ background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', padding: '4px 7px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem' }}
+                          onClick={() => handleEdit(item)} 
+                          title="Edit"
+                        >
                           <i className="fas fa-edit"></i>
                         </button>
-                        <button onClick={() => handleDelete(item.id)} style={{ padding: '6px 12px', background: '#ef4444', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}>
+                        <button 
+                          type="button"
+                          className="btn btn-sm" 
+                          style={{ background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', padding: '4px 7px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.75rem' }}
+                          onClick={() => handleDelete(item.id)} 
+                          title="Hapus"
+                        >
                           <i className="fas fa-trash"></i>
                         </button>
                       </div>
@@ -486,13 +625,13 @@ export default function JurnalMgmpTab() {
         )}
       </div>
 
-      {/* Add Modal */}
+      {/* Add / Edit Modal */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '24px' }}>
-          <div style={{ background: 'white', borderRadius: '12px', padding: '28px', width: '100%', maxWidth: '700px', margin: 'auto' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '24px' }}>
+          <div style={{ background: 'white', borderRadius: '12px', padding: '28px', width: '100%', maxWidth: '700px', margin: 'auto', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>
-                <i className={`fas ${editId ? 'fa-edit' : 'fa-plus-circle'}`} style={{ marginRight: '8px', color: '#0ea5e9' }}></i>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#1e293b', margin: 0 }}>
+                <i className={`fas ${editId ? 'fa-edit' : 'fa-plus-circle'}`} style={{ marginRight: '8px', color: '#10b981' }}></i>
                 {editId ? 'Edit Jurnal MGMP' : 'Tambah Jurnal MGMP'}
               </h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#94a3b8' }}>
@@ -690,14 +829,13 @@ export default function JurnalMgmpTab() {
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '16px' }}>
                 <button type="button" onClick={() => setShowModal(false)} disabled={submitting}
-                  style={{ padding: '10px 20px', border: '1px solid #cbd5e1', borderRadius: '8px', background: 'white', cursor: 'pointer', color: '#475569' }}>
+                  style={{ padding: '10px 20px', border: '1px solid #cbd5e1', borderRadius: '8px', background: 'white', cursor: 'pointer', color: '#475569', fontWeight: 600 }}>
                   Batal
                 </button>
-                <button type="submit" disabled={submitting}
-                  style={{ padding: '10px 24px', background: submitting ? '#94a3b8' : '#0ea5e9', color: 'white', border: 'none', borderRadius: '8px', cursor: submitting ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>
-                  {submitting ? <><i className="fas fa-spinner fa-spin" style={{ marginRight: '8px' }}></i>Menyimpan...</> : <><i className="fas fa-save" style={{ marginRight: '8px' }}></i>Simpan</>}
+                <button type="submit" disabled={submitting} className={styles.btnPrimary} style={{ minWidth: '120px', justifyContent: 'center' }}>
+                  {submitting ? <><i className="fas fa-spinner fa-spin"></i> Menyimpan...</> : <><i className="fas fa-save"></i> Simpan</>}
                 </button>
               </div>
             </form>
@@ -707,11 +845,11 @@ export default function JurnalMgmpTab() {
 
       {/* Detail Modal */}
       {selectedDetail && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '24px' }}>
-          <div style={{ background: 'white', borderRadius: '12px', padding: '28px', width: '100%', maxWidth: '720px', margin: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>
-                <i className="fas fa-file-alt" style={{ marginRight: '8px', color: '#0ea5e9' }}></i>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 100, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', overflowY: 'auto', padding: '24px' }}>
+          <div style={{ background: 'white', borderRadius: '12px', padding: '28px', width: '100%', maxWidth: '720px', margin: 'auto', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid #e2e8f0', paddingBottom: '16px' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#1e293b', margin: 0 }}>
+                <i className="fas fa-file-alt" style={{ marginRight: '8px', color: '#10b981' }}></i>
                 Detail Jurnal MGMP
               </h2>
               <button onClick={() => setSelectedDetail(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#94a3b8' }}>
@@ -720,69 +858,77 @@ export default function JurnalMgmpTab() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-              {[
-                { label: 'Nama Guru', value: selectedDetail.namaGuru },
-                { label: 'Bidang Studi', value: selectedDetail.bidangStudi || '-' },
-                { label: 'Nama Kegiatan', value: selectedDetail.namaKegiatan, full: true },
-                { label: 'Tanggal', value: formatDate(selectedDetail.tanggal) },
-                { label: 'Tempat', value: selectedDetail.tempat || '-' },
-                { label: 'Penyelenggara', value: selectedDetail.penyelenggara || '-', full: true },
-              ].map((f, i) => (
-                <div key={i} style={f.full ? { gridColumn: '1 / -1' } : {}}>
-                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{f.label}</p>
-                  <p style={{ fontSize: '15px', color: '#1e293b', margin: 0, fontWeight: f.label === 'Nama Guru' || f.label === 'Nama Kegiatan' ? 700 : 400 }}>{f.value}</p>
-                </div>
-              ))}
+              <div>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Nama Guru</p>
+                <p style={{ fontSize: '15px', color: '#1e293b', margin: 0, fontWeight: 700 }}>{selectedDetail.namaGuru}</p>
+              </div>
+
+              <div>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Bidang Studi</p>
+                <p style={{ fontSize: '15px', color: '#1e293b', margin: 0 }}>{selectedDetail.bidangStudi || '-'}</p>
+              </div>
+
+              <div style={{ gridColumn: '1 / -1' }}>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Nama Kegiatan</p>
+                <p style={{ fontSize: '15px', color: '#1e293b', margin: 0, fontWeight: 600 }}>{selectedDetail.namaKegiatan}</p>
+              </div>
+
+              <div>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tanggal</p>
+                <p style={{ fontSize: '15px', color: '#1e293b', margin: 0 }}>{formatDate(selectedDetail.tanggal)}</p>
+              </div>
+
+              <div>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tempat</p>
+                <p style={{ fontSize: '15px', color: '#1e293b', margin: 0 }}>{selectedDetail.tempat || '-'}</p>
+              </div>
+
+              <div style={{ gridColumn: '1 / -1' }}>
+                <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Penyelenggara</p>
+                <p style={{ fontSize: '15px', color: '#1e293b', margin: 0 }}>{selectedDetail.penyelenggara || '-'}</p>
+              </div>
 
               {selectedDetail.agenda && (
                 <div style={{ gridColumn: '1 / -1' }}>
                   <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 4px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Agenda</p>
-                  <p style={{ fontSize: '14px', color: '#334155', margin: 0, whiteSpace: 'pre-wrap', background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>{selectedDetail.agenda}</p>
+                  <p style={{ fontSize: '14px', color: '#334155', margin: 0, whiteSpace: 'pre-wrap', background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>{selectedDetail.agenda}</p>
                 </div>
               )}
 
-              {selectedDetail.daftarHadir && (
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Daftar Hadir</p>
-                  <a href={selectedDetail.daftarHadir} target="_blank" rel="noopener noreferrer"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#10b981', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '14px' }}>
-                    <i className="fas fa-external-link-alt"></i> Buka Daftar Hadir
-                  </a>
-                </div>
-              )}
-
-              {selectedDetail.notulen && (
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Notulen Kegiatan</p>
-                  <a href={selectedDetail.notulen} target="_blank" rel="noopener noreferrer"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#0ea5e9', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '14px' }}>
-                    <i className="fas fa-external-link-alt"></i> Buka Notulen
-                  </a>
-                </div>
-              )}
-
-              {selectedDetail.suratTugas && (
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 8px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Surat Tugas</p>
+              {/* Lampiran Dokumen Buttons */}
+              <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '8px' }}>
+                {selectedDetail.suratTugas && (
                   <a href={selectedDetail.suratTugas} target="_blank" rel="noopener noreferrer"
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#6366f1', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '14px' }}>
-                    <i className="fas fa-external-link-alt"></i> Buka Surat Tugas
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 14px', background: '#eef2ff', color: '#4f46e5', border: '1px solid #c7d2fe', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}>
+                    <i className="fas fa-file-alt"></i> Buka Surat Tugas
                   </a>
-                </div>
-              )}
+                )}
+                {selectedDetail.daftarHadir && (
+                  <a href={selectedDetail.daftarHadir} target="_blank" rel="noopener noreferrer"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 14px', background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}>
+                    <i className="fas fa-users"></i> Buka Daftar Hadir
+                  </a>
+                )}
+                {selectedDetail.notulen && (
+                  <a href={selectedDetail.notulen} target="_blank" rel="noopener noreferrer"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 14px', background: '#f0f9ff', color: '#0284c7', border: '1px solid #bae6fd', borderRadius: '8px', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}>
+                    <i className="fas fa-file-word"></i> Buka Notulen
+                  </a>
+                )}
+              </div>
 
               {selectedDetail.dokumentasi && (
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <div style={{ gridColumn: '1 / -1', marginTop: '8px' }}>
+                  <p style={{ fontSize: '12px', color: '#94a3b8', margin: '0 0 10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     Foto Dokumentasi ({selectedDetail.dokumentasi.split(' || ').filter(Boolean).length} foto)
                   </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '12px' }}>
                     {selectedDetail.dokumentasi.split(' || ').filter(Boolean).map((url, i) => (
                       <a key={i} href={url} target="_blank" rel="noopener noreferrer">
                         <img
                           src={getProxiedUrl(url)}
                           alt={`Dokumentasi ${i + 1}`}
-                          style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                          style={{ width: '100%', height: '110px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #e2e8f0', transition: 'transform 0.2s' }}
                           onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.png'; }}
                         />
                       </a>
@@ -792,9 +938,17 @@ export default function JurnalMgmpTab() {
               )}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+              <button 
+                type="button" 
+                onClick={() => handleDownloadPDF(selectedDetail)}
+                className="btn btn-sm"
+                style={{ background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <i className="fas fa-file-pdf"></i> Unduh PDF Laporan
+              </button>
               <button onClick={() => setSelectedDetail(null)}
-                style={{ padding: '10px 24px', border: '1px solid #cbd5e1', borderRadius: '8px', background: 'white', cursor: 'pointer', color: '#475569' }}>
+                style={{ padding: '8px 20px', border: '1px solid #cbd5e1', borderRadius: '8px', background: 'white', cursor: 'pointer', color: '#475569', fontWeight: 600, fontSize: '13px' }}>
                 Tutup
               </button>
             </div>
