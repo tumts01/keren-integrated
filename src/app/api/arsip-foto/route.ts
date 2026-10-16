@@ -27,8 +27,48 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const folderId = searchParams.get('folderId') || ARSIP_FOLDER_ID;
+    const querySearch = searchParams.get('q');
 
     const drive = getDriveAuth();
+
+    // If global search query provided
+    if (querySearch && querySearch.trim()) {
+      const sanitized = querySearch.trim().replace(/'/g, "\\'");
+      const [foldersRes, filesRes] = await Promise.all([
+        drive.files.list({
+          q: `mimeType='application/vnd.google-apps.folder' and name contains '${sanitized}' and trashed=false`,
+          fields: 'files(id, name)',
+          pageSize: 50,
+          orderBy: 'name',
+        }),
+        drive.files.list({
+          q: `mimeType contains 'image/' and name contains '${sanitized}' and trashed=false`,
+          fields: 'files(id, name, mimeType, thumbnailLink, createdTime)',
+          pageSize: 150,
+          orderBy: 'createdTime desc',
+        }),
+      ]);
+
+      return NextResponse.json({
+        success: true,
+        folderName: `Hasil Pencarian: "${querySearch.trim()}"`,
+        isSearch: true,
+        isRoot: false,
+        folders: (foldersRes.data.files || []).map(f => ({
+          id: f.id,
+          name: f.name,
+        })),
+        files: (filesRes.data.files || []).map(f => ({
+          id: f.id,
+          name: f.name,
+          mimeType: f.mimeType,
+          thumbnail: f.thumbnailLink,
+          createdTime: f.createdTime,
+        })),
+      }, {
+        headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+      });
+    }
 
     // Get subfolders
     const foldersRes = await drive.files.list({
