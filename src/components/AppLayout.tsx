@@ -235,7 +235,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
             
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b', marginBottom: '4px' }}>
-              Masuk ke KEREN
+              MTS ALMAARIF 01 SINGOSARI
             </h3>
             <p style={{ fontSize: '0.82rem', color: '#94a3b8', marginBottom: '20px' }}>
               Sistem Informasi Administrasi Digital
