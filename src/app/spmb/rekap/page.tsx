@@ -404,7 +404,8 @@ export default function RekapSpmb() {
       try {
         const user = JSON.parse(userStr);
         if (user) {
-          setIsAdmin(true);
+          const role = (user.role || '').toLowerCase();
+          setIsAdmin(role === 'admin' || role.includes('admin'));
         }
       } catch (e) {
         console.error(e);
@@ -1207,12 +1208,11 @@ export default function RekapSpmb() {
                       </div>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
-                        <button onClick={() => openViewer(`/spmb/cetak/${item.rowNumber}`, `Cetak Kartu - ${item.namaLengkap}`)} className={styles.btnPrint}>
-                          <i className="fas fa-print"></i> Cetak Kartu
-                        </button>
-                        {isAdmin && (
-                          <>
+                      {isAdmin ? (
+                        <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
+                          <button onClick={() => openViewer(`/spmb/cetak/${item.rowNumber}`, `Cetak Kartu - ${item.namaLengkap}`)} className={styles.btnPrint}>
+                            <i className="fas fa-print"></i> Cetak Kartu
+                          </button>
                           <button 
                             onClick={() => router.push(`/spmb/edit/${item.rowNumber}`)} 
                             style={{ padding: '6px 12px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '6px' }}
@@ -1225,9 +1225,12 @@ export default function RekapSpmb() {
                           >
                             <i className="fas fa-trash"></i> Hapus
                           </button>
-                          </>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.78rem', fontStyle: 'italic', padding: '6px', background: '#f8fafc', borderRadius: '6px', border: '1px dashed #cbd5e1' }}>
+                          <i className="fas fa-eye" style={{ marginRight: '4px' }}></i> Hanya Lihat
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

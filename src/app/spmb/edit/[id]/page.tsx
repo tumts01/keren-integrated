@@ -37,6 +37,13 @@ export default function SpmbEditPage() {
           return;
         }
 
+        const role = (user.role || '').toLowerCase();
+        if (role !== 'admin' && !role.includes('admin')) {
+          alert('Akses Ditolak: Halaman edit data pendaftar hanya dapat diakses oleh Administrator SPMB.');
+          router.push('/spmb/rekap');
+          return;
+        }
+
         // Fetch sekolah reference
         fetch('/api/spmb/sekolah')
           .then(res => res.json())
