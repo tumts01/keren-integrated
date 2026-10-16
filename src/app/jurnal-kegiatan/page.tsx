@@ -94,6 +94,7 @@ export default function JurnalKegiatanPage() {
   const [showEditJurnalModal, setShowEditJurnalModal] = useState(false);
   const [editingJurnal, setEditingJurnal] = useState<any>(null);
   const [savingEditJurnal, setSavingEditJurnal] = useState(false);
+  const [editJurnalFiles, setEditJurnalFiles] = useState<File[]>([]);
   const [editJurnalForm, setEditJurnalForm] = useState({
     rowNumber: 0,
     timestamp: '',
@@ -312,6 +313,7 @@ export default function JurnalKegiatanPage() {
 
   const handleEditJurnalStaf = (j: any) => {
     setEditingJurnal(j);
+    setEditJurnalFiles([]);
     setEditJurnalForm({
       rowNumber: j.rowNumber,
       timestamp: j.timestamp || '',
@@ -334,16 +336,48 @@ export default function JurnalKegiatanPage() {
     }
     setSavingEditJurnal(true);
     try {
+      let uploadedUrls: string[] = [];
+      if (editJurnalFiles.length > 0) {
+        const uploadPromises = editJurnalFiles.map(async (f) => {
+          const compressed = await compressImage(f);
+          const formFile = new FormData();
+          formFile.append('file', compressed);
+          const upRes = await fetch('/api/jurnal-staf/upload', { method: 'POST', body: formFile });
+          const upJson = await upRes.json();
+          if (upJson.success) {
+            return upJson.link;
+          } else {
+            throw new Error('Gagal mengupload file: ' + f.name);
+          }
+        });
+
+        try {
+          const links = await Promise.all(uploadPromises);
+          uploadedUrls = links.filter(Boolean) as string[];
+        } catch (err: any) {
+          Swal.fire({ icon: 'error', title: 'Gagal Upload', text: err.message });
+          setSavingEditJurnal(false);
+          return;
+        }
+      }
+
+      let finalFotoKegiatan = editJurnalForm.fotoKegiatan ? editJurnalForm.fotoKegiatan.trim() : '';
+      if (uploadedUrls.length > 0) {
+        const newUploadedStr = uploadedUrls.join(', ');
+        finalFotoKegiatan = finalFotoKegiatan ? `${finalFotoKegiatan}, ${newUploadedStr}` : newUploadedStr;
+      }
+
       const res = await fetch('/api/jurnal-staf', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editJurnalForm)
+        body: JSON.stringify({ ...editJurnalForm, fotoKegiatan: finalFotoKegiatan })
       });
       const json = await res.json();
       if (json.success) {
         Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Jurnal kegiatan berhasil diperbarui', timer: 1500, showConfirmButton: false });
         setShowEditJurnalModal(false);
         setEditingJurnal(null);
+        setEditJurnalFiles([]);
         // Refresh data
         const jsRes = await fetch('/api/jurnal-staf');
         const jsJson = await jsRes.json();
@@ -1464,11 +1498,68 @@ export default function JurnalKegiatanPage() {
                       onChange={e => setEditJurnalForm({...editJurnalForm, keterangan: e.target.value})}
                     ></textarea>
                   </div>
+                  <div style={{ gridColumn: '1 / -1', marginBottom: 0 }}>
+                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: 600, fontSize: '0.9rem', color: '#334155' }}>
+                      Upload Foto Kegiatan Baru (Opsional)
+                    </label>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <label style={{ 
+                        flex: 1, padding: '16px', border: '2px dashed #3b82f6', borderRadius: '8px', 
+                        textAlign: 'center', cursor: 'pointer', color: '#3b82f6', fontWeight: 600, background: '#eff6ff',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+                      }}>
+                        <i className="fas fa-camera" style={{ fontSize: '1.5rem', marginBottom: '8px' }}></i> 
+                        <span>Pilih File Foto Baru</span>
+                        <input type="file" accept="image/*" multiple
+                          style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', whiteSpace: 'nowrap', borderWidth: 0 }}
+                          onChange={e => {
+                            if (e.target.files) {
+                              setEditJurnalFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                            }
+                          }} />
+                      </label>
+                    </div>
+                    {editJurnalFiles.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '12px' }}>
+                        {editJurnalFiles.map((file, i) => (
+                          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.9rem', color: '#16a34a', fontWeight: 600 }}>
+                            <span>✅ {file.name}</span>
+                            <button type="button" onClick={() => setEditJurnalFiles(prev => prev.filter((_, idx) => idx !== i))} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px' }}>
+                              <i className="fas fa-times"></i>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
                   <div className={styles.formGroup} style={{ gridColumn: '1 / -1', marginBottom: 0 }}>
                     <label>Link Foto Kegiatan / Dokumentasi</label>
+                    {editJurnalForm.fotoKegiatan && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+                        {editJurnalForm.fotoKegiatan.split(', ').map((url: string, idx: number) => url.trim() && (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f1f5f9', padding: '4px 10px', borderRadius: '6px', fontSize: '0.85rem' }}>
+                            <a href={url.trim()} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}>
+                              <i className="fas fa-image"></i> Foto {idx + 1}
+                            </a>
+                            <button 
+                              type="button" 
+                              title="Hapus foto ini"
+                              onClick={() => {
+                                const links = editJurnalForm.fotoKegiatan.split(', ').map(s => s.trim()).filter((_, i) => i !== idx);
+                                setEditJurnalForm({ ...editJurnalForm, fotoKegiatan: links.join(', ') });
+                              }}
+                              style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '0 2px' }}
+                            >
+                              <i className="fas fa-times"></i>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     <input 
                       type="text" 
-                      placeholder="URL foto / link Google Drive"
+                      placeholder="URL foto / link Google Drive (pisahkan koma jika lebih dari 1)"
                       value={editJurnalForm.fotoKegiatan} 
                       onChange={e => setEditJurnalForm({...editJurnalForm, fotoKegiatan: e.target.value})} 
                     />
@@ -1476,7 +1567,7 @@ export default function JurnalKegiatanPage() {
                 </div>
               </div>
               <div className={styles.modalFooter}>
-                <button type="button" className={styles.btnSecondary} onClick={() => { setShowEditJurnalModal(false); setEditingJurnal(null); }} disabled={savingEditJurnal}>
+                <button type="button" className={styles.btnSecondary} onClick={() => { setShowEditJurnalModal(false); setEditingJurnal(null); setEditJurnalFiles([]); }} disabled={savingEditJurnal}>
                   Batal
                 </button>
                 <button type="submit" className={styles.btnPrimary} disabled={savingEditJurnal}>
