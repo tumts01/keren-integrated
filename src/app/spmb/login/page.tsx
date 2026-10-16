@@ -63,9 +63,10 @@ export default function SpmbLogin() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundImage: 'linear-gradient(135deg, rgba(6, 78, 59, 0.88), rgba(4, 120, 87, 0.8)), url(/bg-login.jpg)',
+      backgroundImage: 'linear-gradient(135deg, rgba(35, 114, 39, 0.75), rgba(14, 165, 233, 0.55)), url(/bg-login.jpg)',
       backgroundSize: 'cover',
       backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
       padding: '20px'
     }}>
       <div style={{

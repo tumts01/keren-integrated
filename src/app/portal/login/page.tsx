@@ -51,10 +51,11 @@ export default function PortalLogin() {
       display: 'flex', 
       alignItems: 'center', 
       justifyContent: 'center',
-      backgroundImage: 'url(/bg-login.jpg)',
+      backgroundImage: 'linear-gradient(135deg, rgba(35, 114, 39, 0.75), rgba(14, 165, 233, 0.55)), url(/bg-login.jpg)',
       backgroundSize: 'cover',
       backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat'
+      backgroundRepeat: 'no-repeat',
+      padding: '20px'
     }}>
       <div className="portal-container" style={{ 
         width: '100%', 
