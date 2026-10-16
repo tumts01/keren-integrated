@@ -260,16 +260,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <button type="submit" className={styles.loginBtn} disabled={loading}>
                 {loading ? <><i className="fas fa-spinner fa-spin"></i> Memproses...</> : <><i className="fas fa-sign-in-alt"></i> Masuk</>}
               </button>
-              
-              <div className={styles.divider}>atau</div>
-              
-              <button 
-                type="button" 
-                className={styles.forgotBtn} 
-                onClick={() => setShowLupaPassword(true)}
-              >
-                Klik disini untuk bantuan akses login
-              </button>
             </form>
 
             {/* Switch to Portal Siswa & Wali Murid & SPMB */}
