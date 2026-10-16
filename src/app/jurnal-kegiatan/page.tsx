@@ -76,8 +76,12 @@ export default function JurnalKegiatanPage() {
   const [lpjList, setLpjList] = useState<any[]>([]);
   const [gurus, setGurus] = useState<any[]>([]);
 
+  // State for Notulen Edit
+  const [editingNotulen, setEditingNotulen] = useState<any>(null);
+
   // States for LPJ Modal
   const [showLpjModal, setShowLpjModal] = useState(false);
+  const [editingLpj, setEditingLpj] = useState<any>(null);
   const [savingLpj, setSavingLpj] = useState(false);
   const [lpjForm, setLpjForm] = useState({
     tanggal: new Date().toISOString().split('T')[0],
@@ -85,6 +89,23 @@ export default function JurnalKegiatanPage() {
     pjKegiatan: '',
     fileLink: ''
   });
+
+  // States for Edit Jurnal Staf Modal
+  const [showEditJurnalModal, setShowEditJurnalModal] = useState(false);
+  const [editingJurnal, setEditingJurnal] = useState<any>(null);
+  const [savingEditJurnal, setSavingEditJurnal] = useState(false);
+  const [editJurnalForm, setEditJurnalForm] = useState({
+    rowNumber: 0,
+    timestamp: '',
+    namaStaf: '',
+    kegiatan: '',
+    tanggal: '',
+    mulaiDari: '',
+    sampaiDengan: '',
+    keterangan: '',
+    fotoKegiatan: ''
+  });
+
   const [printNotulenData, setPrintNotulenData] = useState<any>(null);
   const [isPrintingNotulen, setIsPrintingNotulen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -136,6 +157,57 @@ export default function JurnalKegiatanPage() {
     setLoading(false);
   };
 
+  const handleCreateLpj = () => {
+    setEditingLpj(null);
+    setLpjForm({
+      tanggal: new Date().toISOString().split('T')[0],
+      namaKegiatan: '',
+      pjKegiatan: '',
+      fileLink: ''
+    });
+    setShowLpjModal(true);
+  };
+
+  const handleEditLpj = (l: any) => {
+    setEditingLpj(l);
+    setLpjForm({
+      tanggal: l.tanggal || new Date().toISOString().split('T')[0],
+      namaKegiatan: l.namaKegiatan || '',
+      pjKegiatan: l.pjKegiatan || '',
+      fileLink: l.fileUpload || ''
+    });
+    setShowLpjModal(true);
+  };
+
+  const handleDeleteLpj = async (l: any) => {
+    const confirm = await Swal.fire({
+      title: 'Hapus LPJ Kegiatan?',
+      text: `Apakah Anda yakin ingin menghapus LPJ "${l.namaKegiatan}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Ya, Hapus!',
+      cancelButtonText: 'Batal'
+    });
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const res = await fetch(`/api/lpj-kegiatan?id=${encodeURIComponent(l.id)}`, {
+        method: 'DELETE'
+      });
+      const json = await res.json();
+      if (json.success) {
+        Swal.fire({ icon: 'success', title: 'Terhapus', text: 'LPJ Kegiatan berhasil dihapus', timer: 1500, showConfirmButton: false });
+        fetchData();
+      } else {
+        Swal.fire({ icon: 'error', title: 'Gagal', text: json.error || 'Gagal menghapus LPJ' });
+      }
+    } catch (err: any) {
+      Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+    }
+  };
+
   const handleLpjSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!lpjForm.fileLink) {
@@ -146,14 +218,15 @@ export default function JurnalKegiatanPage() {
     
     try {
       const res = await fetch('/api/lpj-kegiatan', {
-        method: 'POST',
+        method: editingLpj ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(lpjForm)
+        body: JSON.stringify(editingLpj ? { id: editingLpj.id, ...lpjForm } : lpjForm)
       });
       
       const json = await res.json();
       if (json.success) {
         setShowLpjModal(false);
+        setEditingLpj(null);
         setLpjForm({
           tanggal: new Date().toISOString().split('T')[0],
           namaKegiatan: '',
@@ -161,6 +234,13 @@ export default function JurnalKegiatanPage() {
           fileLink: ''
         });
         fetchData(); // refresh data
+        Swal.fire({
+          icon: 'success',
+          title: 'Berhasil',
+          text: editingLpj ? 'LPJ Kegiatan berhasil diperbarui' : 'LPJ Kegiatan berhasil disimpan',
+          timer: 1500,
+          showConfirmButton: false
+        });
       } else {
         Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menyimpan LPJ: ' + json.error });
       }
@@ -230,6 +310,85 @@ export default function JurnalKegiatanPage() {
     setSavingJurnalStaf(false);
   };
 
+  const handleEditJurnalStaf = (j: any) => {
+    setEditingJurnal(j);
+    setEditJurnalForm({
+      rowNumber: j.rowNumber,
+      timestamp: j.timestamp || '',
+      namaStaf: j.namaStaf || '',
+      kegiatan: j.kegiatan || '',
+      tanggal: j.tanggal || '',
+      mulaiDari: j.mulaiDari || '',
+      sampaiDengan: j.sampaiDengan || '',
+      keterangan: j.keterangan || '',
+      fotoKegiatan: j.fotoKegiatan || j.fileLink || ''
+    });
+    setShowEditJurnalModal(true);
+  };
+
+  const handleUpdateJurnalStaf = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editJurnalForm.namaStaf || !editJurnalForm.kegiatan) {
+      Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Nama dan Kegiatan wajib diisi' });
+      return;
+    }
+    setSavingEditJurnal(true);
+    try {
+      const res = await fetch('/api/jurnal-staf', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editJurnalForm)
+      });
+      const json = await res.json();
+      if (json.success) {
+        Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Jurnal kegiatan berhasil diperbarui', timer: 1500, showConfirmButton: false });
+        setShowEditJurnalModal(false);
+        setEditingJurnal(null);
+        // Refresh data
+        const jsRes = await fetch('/api/jurnal-staf');
+        const jsJson = await jsRes.json();
+        if (jsJson.success) setJurnalStafData(jsJson.data);
+      } else {
+        Swal.fire({ icon: 'error', title: 'Gagal', text: json.error || 'Gagal memperbarui jurnal' });
+      }
+    } catch (err: any) {
+      Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+    }
+    setSavingEditJurnal(false);
+  };
+
+  const handleDeleteJurnalStaf = async (j: any) => {
+    const confirm = await Swal.fire({
+      title: 'Hapus Jurnal Kegiatan?',
+      text: `Apakah Anda yakin ingin menghapus jurnal "${j.kegiatan}" oleh ${j.namaStaf}?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Ya, Hapus!',
+      cancelButtonText: 'Batal'
+    });
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const res = await fetch(`/api/jurnal-staf?rowNumber=${encodeURIComponent(j.rowNumber || '')}&timestamp=${encodeURIComponent(j.timestamp || '')}`, {
+        method: 'DELETE'
+      });
+      const json = await res.json();
+      if (json.success) {
+        Swal.fire({ icon: 'success', title: 'Terhapus', text: 'Jurnal kegiatan berhasil dihapus', timer: 1500, showConfirmButton: false });
+        // Refresh data
+        const jsRes = await fetch('/api/jurnal-staf');
+        const jsJson = await jsRes.json();
+        if (jsJson.success) setJurnalStafData(jsJson.data);
+      } else {
+        Swal.fire({ icon: 'error', title: 'Gagal', text: json.error || 'Gagal menghapus jurnal' });
+      }
+    } catch (err: any) {
+      Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+    }
+  };
+
 
 
   const fetchGuru = async () => {
@@ -262,12 +421,89 @@ export default function JurnalKegiatanPage() {
     }
   };
 
+  const handleCreateNotulen = () => {
+    setEditingNotulen(null);
+    setFormData({
+      tanggal: new Date().toISOString().split('T')[0],
+      waktu: '',
+      tempatRapat: '',
+      agendaRapat: '',
+      pimpinanRapat: '',
+      notulis: '',
+      hasilNotulen: '',
+      dokumentasi: ''
+    });
+    setSelectedPeserta([]);
+    setSelectAllPeserta(false);
+    setSearchPeserta('');
+    setDokumentasiFiles([]);
+    setStep(1);
+    setShowModal(true);
+  };
+
+  const handleEditNotulen = (n: any) => {
+    setEditingNotulen(n);
+    setFormData({
+      tanggal: n.tanggal || new Date().toISOString().split('T')[0],
+      waktu: n.waktu || '',
+      tempatRapat: n.tempatRapat || '',
+      agendaRapat: n.agendaRapat || '',
+      pimpinanRapat: n.pimpinanRapat || '',
+      notulis: n.notulis || '',
+      hasilNotulen: n.hasilNotulen || '',
+      dokumentasi: n.dokumentasi || ''
+    });
+    if (n.dihadiriOleh === 'Seluruh GTK') {
+      setSelectAllPeserta(true);
+      setSelectedPeserta(gurus.map((g: any) => g.nama));
+    } else {
+      setSelectAllPeserta(false);
+      setSelectedPeserta(n.dihadiriOleh ? n.dihadiriOleh.split(' || ').map((s: string) => s.trim()).filter(Boolean) : []);
+    }
+    setDokumentasiFiles([]);
+    setStep(1);
+    setShowModal(true);
+  };
+
+  const handleDeleteNotulen = async (n: any) => {
+    const confirm = await Swal.fire({
+      title: 'Hapus Notulen?',
+      text: `Apakah Anda yakin ingin menghapus notulen "${n.agendaRapat}"?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Ya, Hapus!',
+      cancelButtonText: 'Batal'
+    });
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const res = await fetch(`/api/notulen?id=${encodeURIComponent(n.id)}&db_id=${encodeURIComponent(n.db_id || '')}`, {
+        method: 'DELETE'
+      });
+      const json = await res.json();
+      if (json.success) {
+        Swal.fire({ icon: 'success', title: 'Terhapus', text: 'Notulen berhasil dihapus', timer: 1500, showConfirmButton: false });
+        fetchData();
+      } else {
+        Swal.fire({ icon: 'error', title: 'Gagal', text: json.error || 'Gagal menghapus notulen' });
+      }
+    } catch (err: any) {
+      Swal.fire({ icon: 'error', title: 'Error', text: err.message });
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     
     try {
       const payload = new FormData();
+      if (editingNotulen) {
+        payload.append('id', editingNotulen.id || '');
+        payload.append('db_id', (editingNotulen.db_id || '').toString());
+      }
       payload.append('tanggal', formData.tanggal);
       payload.append('waktu', formData.waktu);
       payload.append('tempatRapat', formData.tempatRapat);
@@ -285,12 +521,13 @@ export default function JurnalKegiatanPage() {
       payload.append('dokumentasiUrl', formData.dokumentasi);
 
       const res = await fetch('/api/notulen', {
-        method: 'POST',
+        method: editingNotulen ? 'PUT' : 'POST',
         body: payload
       });
       const json = await res.json();
       if (json.success) {
         setShowModal(false);
+        setEditingNotulen(null);
         setFormData({
           tanggal: new Date().toISOString().split('T')[0],
           waktu: '',
@@ -309,6 +546,13 @@ export default function JurnalKegiatanPage() {
         const fileInput = document.getElementById('dokumentasiFile') as HTMLInputElement;
         if (fileInput) fileInput.value = '';
         fetchData();
+        Swal.fire({
+          icon: 'success',
+          title: 'Berhasil',
+          text: editingNotulen ? 'Notulen berhasil diperbarui' : 'Notulen berhasil disimpan',
+          timer: 1500,
+          showConfirmButton: false
+        });
       } else {
         Swal.fire({ icon: 'error', title: 'Gagal', text: 'Gagal menyimpan notulen: ' + json.error });
       }
@@ -367,12 +611,12 @@ export default function JurnalKegiatanPage() {
           </div>
           
           {activeTab === 'notulen' && (
-            <button className={styles.btnPrimary} onClick={() => setShowModal(true)}>
+            <button className={styles.btnPrimary} onClick={handleCreateNotulen}>
               <i className="fas fa-plus"></i> Buat Notulen
             </button>
           )}
           {activeTab === 'lpj' && (
-            <button className={styles.btnPrimary} onClick={() => setShowLpjModal(true)}>
+            <button className={styles.btnPrimary} onClick={handleCreateLpj}>
               <i className="fas fa-upload"></i> Tambah LPJ
             </button>
           )}
@@ -390,7 +634,7 @@ export default function JurnalKegiatanPage() {
                 <th>Agenda</th>
                 <th>Pimpinan</th>
                 <th>Notulis</th>
-                <th style={{ textAlign: 'center' }}>Aksi</th>
+                <th style={{ textAlign: 'center', width: '220px' }}>Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -407,13 +651,33 @@ export default function JurnalKegiatanPage() {
                     <td><strong>{n.agendaRapat}</strong><br/><span style={{ fontSize: '0.8rem', color: '#64748b' }}>{n.tempatRapat}</span></td>
                     <td>{n.pimpinanRapat}</td>
                     <td>{n.notulis}</td>
-                    <td style={{ textAlign: 'center', display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                      <button className="btn btn-secondary btn-sm" onClick={() => { setUploadTarget(n); setShowUploadModal(true); }} title="Lampirkan Foto Tambahan">
-                        <i className="fas fa-camera"></i> Foto
-                      </button>
-                      <button className="btn btn-primary btn-sm" onClick={() => handlePrintNotulen(n)} title="Cetak Notulen">
-                        <i className="fas fa-print"></i> Cetak
-                      </button>
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <button className="btn btn-secondary btn-sm" onClick={() => { setUploadTarget(n); setShowUploadModal(true); }} title="Lampirkan Foto Tambahan">
+                          <i className="fas fa-camera"></i> Foto
+                        </button>
+                        <button className="btn btn-primary btn-sm" onClick={() => handlePrintNotulen(n)} title="Cetak Notulen">
+                          <i className="fas fa-print"></i> Cetak
+                        </button>
+                        <button 
+                          type="button"
+                          className="btn btn-sm" 
+                          style={{ background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', padding: '4px 8px' }}
+                          onClick={() => handleEditNotulen(n)} 
+                          title="Edit Notulen"
+                        >
+                          <i className="fas fa-edit"></i> Edit
+                        </button>
+                        <button 
+                          type="button"
+                          className="btn btn-sm" 
+                          style={{ background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', padding: '4px 8px' }}
+                          onClick={() => handleDeleteNotulen(n)} 
+                          title="Hapus Notulen"
+                        >
+                          <i className="fas fa-trash"></i> Hapus
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -428,12 +692,13 @@ export default function JurnalKegiatanPage() {
                 <th>Nama Kegiatan</th>
                 <th>PJ Kegiatan</th>
                 <th style={{ textAlign: 'center' }}>Arsip File</th>
+                <th style={{ textAlign: 'center', width: '150px' }}>Aksi</th>
               </tr>
             </thead>
             <tbody>
               {lpjList.length === 0 ? (
                 <tr>
-                  <td colSpan={4} style={{ textAlign: 'center', color: '#64748b', padding: '24px' }}>
+                  <td colSpan={5} style={{ textAlign: 'center', color: '#64748b', padding: '24px' }}>
                     Belum ada data LPJ Kegiatan.
                   </td>
                 </tr>
@@ -451,6 +716,28 @@ export default function JurnalKegiatanPage() {
                       ) : (
                         <span style={{ color: '#ef4444' }}>Tidak ada file</span>
                       )}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                        <button 
+                          type="button"
+                          className="btn btn-sm" 
+                          style={{ background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', padding: '4px 8px' }}
+                          onClick={() => handleEditLpj(l)} 
+                          title="Edit LPJ"
+                        >
+                          <i className="fas fa-edit"></i> Edit
+                        </button>
+                        <button 
+                          type="button"
+                          className="btn btn-sm" 
+                          style={{ background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', padding: '4px 8px' }}
+                          onClick={() => handleDeleteLpj(l)} 
+                          title="Hapus LPJ"
+                        >
+                          <i className="fas fa-trash"></i> Hapus
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -637,8 +924,8 @@ export default function JurnalKegiatanPage() {
                       const totalPages = Math.ceil(filteredAll.length / itemsPerPage) || 1;
                       const paginated = filteredAll.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-                      const renderRows = (items: any[], startIndex: number) => {
-                        if (items.length === 0) return <tr><td colSpan={6} style={{ textAlign: 'center', padding: '24px' }}>Belum ada data jurnal</td></tr>;
+                      const renderRows = (items: any[], startIndex: number, isPrint = false) => {
+                        if (items.length === 0) return <tr><td colSpan={isPrint ? 6 : 7} style={{ textAlign: 'center', padding: '24px' }}>Belum ada data jurnal</td></tr>;
                         return items.map((j, i) => (
                           <tr key={i}>
                             <td style={{ textAlign: 'center' }}>{startIndex + i + 1}</td>
@@ -675,6 +962,30 @@ export default function JurnalKegiatanPage() {
                                 </div>
                               ) : '-'}
                             </td>
+                            {!isPrint && (
+                              <td className={styles.noPrint} style={{ textAlign: 'center' }}>
+                                <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                                  <button 
+                                    type="button"
+                                    className="btn btn-sm" 
+                                    style={{ background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', padding: '4px 8px' }}
+                                    onClick={() => handleEditJurnalStaf(j)} 
+                                    title="Edit Jurnal"
+                                  >
+                                    <i className="fas fa-edit"></i>
+                                  </button>
+                                  <button 
+                                    type="button"
+                                    className="btn btn-sm" 
+                                    style={{ background: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', padding: '4px 8px' }}
+                                    onClick={() => handleDeleteJurnalStaf(j)} 
+                                    title="Hapus Jurnal"
+                                  >
+                                    <i className="fas fa-trash"></i>
+                                  </button>
+                                </div>
+                              </td>
+                            )}
                           </tr>
                         ));
                       };
@@ -713,6 +1024,20 @@ export default function JurnalKegiatanPage() {
                             <th style={{ textAlign: 'center' }}>Kegiatan</th>
                             <th style={{ width: '200px', textAlign: 'center' }}>Keterangan</th>
                             <th style={{ width: '80px', textAlign: 'center' }}>Dokumentasi</th>
+                            <th className={styles.noPrint} style={{ width: '100px', textAlign: 'center' }}>Aksi</th>
+                          </tr>
+                        </thead>
+                      );
+
+                      const tableHeaderPrint = (
+                        <thead>
+                          <tr>
+                            <th style={{ width: '40px', textAlign: 'center' }}>No</th>
+                            <th style={{ width: '130px', textAlign: 'center' }}>Waktu</th>
+                            <th style={{ width: '180px', textAlign: 'center' }}>Nama & Jabatan</th>
+                            <th style={{ textAlign: 'center' }}>Kegiatan</th>
+                            <th style={{ width: '200px', textAlign: 'center' }}>Keterangan</th>
+                            <th style={{ width: '80px', textAlign: 'center' }}>Dokumentasi</th>
                           </tr>
                         </thead>
                       );
@@ -723,7 +1048,7 @@ export default function JurnalKegiatanPage() {
                             <table className={`${styles.table} jurnal-staf-print-table`}>
                               {tableHeader}
                               <tbody>
-                                {renderRows(paginated, (currentPage - 1) * itemsPerPage)}
+                                {renderRows(paginated, (currentPage - 1) * itemsPerPage, false)}
                               </tbody>
                             </table>
                             {totalPages > 1 && (
@@ -748,9 +1073,9 @@ export default function JurnalKegiatanPage() {
                                   </div>
                                 )}
                                 <table className={`${styles.table} jurnal-staf-print-table`} style={{ width: '100%', marginBottom: '20px' }}>
-                                  {tableHeader}
+                                  {tableHeaderPrint}
                                   <tbody>
-                                    {renderRows(chunk, chunkIdx * itemsPerPage)}
+                                    {renderRows(chunk, chunkIdx * itemsPerPage, true)}
                                   </tbody>
                                 </table>
                                 {chunkIdx === printChunks.length - 1 && tandaTangan}
@@ -773,11 +1098,11 @@ export default function JurnalKegiatanPage() {
     </div>
 
       {showModal && (
-        <div className={styles.modalOverlay} onClick={() => setShowModal(false)}>
+        <div className={styles.modalOverlay} onClick={() => { setShowModal(false); setEditingNotulen(null); }}>
           <div className={styles.modalCard} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h2><i className="fas fa-edit"></i> Buat Notulen Baru</h2>
-              <button className={styles.closeBtn} onClick={() => setShowModal(false)}>
+              <h2><i className="fas fa-edit"></i> {editingNotulen ? 'Edit Notulen Rapat' : 'Buat Notulen Baru'}</h2>
+              <button className={styles.closeBtn} onClick={() => { setShowModal(false); setEditingNotulen(null); }}>
                 <i className="fas fa-times"></i>
               </button>
             </div>
@@ -921,7 +1246,7 @@ export default function JurnalKegiatanPage() {
               <div className={styles.modalFooter}>
                 {step === 1 ? (
                   <>
-                    <button type="button" className={styles.btnSecondary} onClick={() => { setShowModal(false); setStep(1); }} disabled={saving}>
+                    <button type="button" className={styles.btnSecondary} onClick={() => { setShowModal(false); setEditingNotulen(null); setStep(1); }} disabled={saving}>
                       Batal
                     </button>
                     <button type="button" className={styles.btnPrimary} onClick={() => setStep(2)}>
@@ -935,7 +1260,7 @@ export default function JurnalKegiatanPage() {
                     </button>
                     <button type="submit" className={styles.btnPrimary} disabled={saving}>
                       {saving ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>}
-                      Simpan Notulen
+                      {' '}{editingNotulen ? 'Simpan Perubahan' : 'Simpan Notulen'}
                     </button>
                   </>
                 )}
@@ -1022,13 +1347,13 @@ export default function JurnalKegiatanPage() {
           </div>
         </div>
       )}
-      {/* Modal Tambah LPJ */}
+      {/* Modal Tambah/Edit LPJ */}
       {showLpjModal && (
-        <div className={styles.modalOverlay} onClick={() => setShowLpjModal(false)}>
+        <div className={styles.modalOverlay} onClick={() => { setShowLpjModal(false); setEditingLpj(null); }}>
           <div className={styles.modalCard} onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
             <div className={styles.modalHeader}>
-              <h2><i className="fas fa-upload"></i> Tambah LPJ Kegiatan</h2>
-              <button className={styles.closeBtn} onClick={() => setShowLpjModal(false)}>
+              <h2><i className="fas fa-upload"></i> {editingLpj ? 'Edit LPJ Kegiatan' : 'Tambah LPJ Kegiatan'}</h2>
+              <button className={styles.closeBtn} onClick={() => { setShowLpjModal(false); setEditingLpj(null); }}>
                 <i className="fas fa-times"></i>
               </button>
             </div>
@@ -1057,9 +1382,105 @@ export default function JurnalKegiatanPage() {
                 </div>
               </div>
               <div className={styles.modalFooter}>
-                <button type="button" className={styles.btnSecondary} onClick={() => setShowLpjModal(false)} disabled={savingLpj}>Batal</button>
+                <button type="button" className={styles.btnSecondary} onClick={() => { setShowLpjModal(false); setEditingLpj(null); }} disabled={savingLpj}>Batal</button>
                 <button type="submit" className={styles.btnPrimary} disabled={savingLpj}>
-                  {savingLpj ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>} Simpan LPJ
+                  {savingLpj ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>} {' '}{editingLpj ? 'Simpan Perubahan' : 'Simpan LPJ'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Edit Jurnal Guru & Staf */}
+      {showEditJurnalModal && (
+        <div className={styles.modalOverlay} onClick={() => { setShowEditJurnalModal(false); setEditingJurnal(null); }}>
+          <div className={styles.modalCard} onClick={e => e.stopPropagation()} style={{ maxWidth: '650px' }}>
+            <div className={styles.modalHeader}>
+              <h2><i className="fas fa-edit"></i> Edit Jurnal Kegiatan</h2>
+              <button className={styles.closeBtn} onClick={() => { setShowEditJurnalModal(false); setEditingJurnal(null); }}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            
+            <form onSubmit={handleUpdateJurnalStaf}>
+              <div className={styles.modalBody}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                    <label>Nama Guru / Staf <span style={{ color: 'red' }}>*</span></label>
+                    <input 
+                      list="gurus-list-edit" 
+                      type="text" 
+                      required 
+                      placeholder="Ketik atau pilih nama"
+                      value={editJurnalForm.namaStaf} 
+                      onChange={e => setEditJurnalForm({...editJurnalForm, namaStaf: e.target.value})} 
+                    />
+                    <datalist id="gurus-list-edit">
+                      {gurus.map((g, i) => <option key={i} value={g.nama} />)}
+                    </datalist>
+                  </div>
+                  <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                    <label>Tanggal <span style={{ color: 'red' }}>*</span></label>
+                    <input 
+                      type="date" 
+                      required
+                      value={editJurnalForm.tanggal} 
+                      onChange={e => setEditJurnalForm({...editJurnalForm, tanggal: e.target.value})} 
+                    />
+                  </div>
+                  <div className={styles.formGroup} style={{ gridColumn: '1 / -1', marginBottom: 0 }}>
+                    <label>Kegiatan <span style={{ color: 'red' }}>*</span></label>
+                    <input 
+                      type="text" 
+                      required 
+                      placeholder="Contoh: Menginput absensi bulanan ke sistem"
+                      value={editJurnalForm.kegiatan} 
+                      onChange={e => setEditJurnalForm({...editJurnalForm, kegiatan: e.target.value})} 
+                    />
+                  </div>
+                  <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                    <label>Waktu Mulai Dari (Opsional)</label>
+                    <input 
+                      type="time"
+                      value={editJurnalForm.mulaiDari} 
+                      onChange={e => setEditJurnalForm({...editJurnalForm, mulaiDari: e.target.value})} 
+                    />
+                  </div>
+                  <div className={styles.formGroup} style={{ marginBottom: 0 }}>
+                    <label>Waktu Sampai Dengan (Opsional)</label>
+                    <input 
+                      type="time"
+                      value={editJurnalForm.sampaiDengan} 
+                      onChange={e => setEditJurnalForm({...editJurnalForm, sampaiDengan: e.target.value})} 
+                    />
+                  </div>
+                  <div className={styles.formGroup} style={{ gridColumn: '1 / -1', marginBottom: 0 }}>
+                    <label>Keterangan</label>
+                    <textarea 
+                      placeholder="Catatan tambahan (opsional)" 
+                      rows={3}
+                      value={editJurnalForm.keterangan} 
+                      onChange={e => setEditJurnalForm({...editJurnalForm, keterangan: e.target.value})}
+                    ></textarea>
+                  </div>
+                  <div className={styles.formGroup} style={{ gridColumn: '1 / -1', marginBottom: 0 }}>
+                    <label>Link Foto Kegiatan / Dokumentasi</label>
+                    <input 
+                      type="text" 
+                      placeholder="URL foto / link Google Drive"
+                      value={editJurnalForm.fotoKegiatan} 
+                      onChange={e => setEditJurnalForm({...editJurnalForm, fotoKegiatan: e.target.value})} 
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className={styles.modalFooter}>
+                <button type="button" className={styles.btnSecondary} onClick={() => { setShowEditJurnalModal(false); setEditingJurnal(null); }} disabled={savingEditJurnal}>
+                  Batal
+                </button>
+                <button type="submit" className={styles.btnPrimary} disabled={savingEditJurnal}>
+                  {savingEditJurnal ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>} Simpan Perubahan
                 </button>
               </div>
             </form>
