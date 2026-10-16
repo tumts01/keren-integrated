@@ -63,7 +63,7 @@ export default function SpmbLogin() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundImage: 'linear-gradient(135deg, rgba(35, 114, 39, 0.75), rgba(14, 165, 233, 0.55)), url(/bg-login.jpg)',
+      backgroundImage: 'linear-gradient(135deg, rgba(35, 114, 39, 0.75), rgba(14, 165, 233, 0.55)), url(/bg-login.JPG)',
       backgroundSize: 'cover',
       backgroundPosition: 'center',
       backgroundRepeat: 'no-repeat',
