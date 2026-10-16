@@ -17,19 +17,25 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "KEREN - MTs Almaarif 01",
   description: "Sistem Informasi Administrasi Digital MTs Almaarif 01 Singosari. Administrasi Lebih Mudah, Cepat, dan KEREN",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "KEREN",
   },
   icons: {
-    icon: '/icon-192x192.png',
-    apple: '/icon-192x192.png',
+    icon: [
+      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
   },
 };
 
 export const viewport = {
-  themeColor: "#0284c7",
+  themeColor: "#047857",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,

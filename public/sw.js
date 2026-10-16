@@ -1,11 +1,14 @@
 // KEREN PWA Service Worker
-const CACHE_NAME = 'keren-pwa-v1';
+const CACHE_NAME = 'keren-pwa-v2';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',
   '/logo.png',
   '/icon-192x192.png',
   '/icon-512x512.png',
+  '/icon-maskable-192x192.png',
+  '/icon-maskable-512x512.png',
+  '/apple-touch-icon.png',
 ];
 
 self.addEventListener('install', (event) => {
