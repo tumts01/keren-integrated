@@ -39,18 +39,24 @@ export async function GET(request: Request) {
 
     if (error) throw error;
 
-    const list = (rows || []).map((r: any) => ({
-      id: r.id,
-      tanggal: r.tanggal,
-      kelas: r.kelas,
-      nisn: r.metadata?.['NISN'] || '',
-      nama: r.metadata?.['NAMA SISWA'] || '',
-      kehadiran: r.metadata?.['KEHADIRAN'] || 'H',
-      jamMasuk: r.metadata?.['JAM_MASUK'] || r.metadata?.['JAM MASUK'] || '',
-      jamPulang: r.metadata?.['JAM_PULANG'] || r.metadata?.['JAM PULANG'] || '',
-      statusMasuk: r.metadata?.['STATUS_MASUK'] || 'Tepat Waktu',
-      sumber: r.metadata?.['SUMBER'] || 'GATE'
-    }));
+    // Hanya ambil siswa yang tercatat tap di gerbang (memiliki jam masuk atau sumber GATE)
+    const list = (rows || [])
+      .filter((r: any) => {
+        const meta = r.metadata || {};
+        return Boolean(meta['JAM_MASUK'] || meta['JAM MASUK'] || meta['SUMBER'] === 'GATE');
+      })
+      .map((r: any) => ({
+        id: r.id,
+        tanggal: r.tanggal,
+        kelas: r.kelas,
+        nisn: r.metadata?.['NISN'] || '',
+        nama: r.metadata?.['NAMA SISWA'] || '',
+        kehadiran: r.metadata?.['KEHADIRAN'] || 'H',
+        jamMasuk: r.metadata?.['JAM_MASUK'] || r.metadata?.['JAM MASUK'] || '',
+        jamPulang: r.metadata?.['JAM_PULANG'] || r.metadata?.['JAM PULANG'] || '',
+        statusMasuk: r.metadata?.['STATUS_MASUK'] || 'Tepat Waktu',
+        sumber: r.metadata?.['SUMBER'] || 'GATE'
+      }));
 
     // Hitung counter
     let totalHadir = list.length;
