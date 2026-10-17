@@ -70,6 +70,10 @@ export default function PortalJurnal() {
     }
   };
 
+  // Pagination
+  const ITEMS_PER_PAGE = 20;
+  const [currentPage, setCurrentPage] = useState(1);
+
   // Filtered Data
   const filteredData = useMemo(() => {
     return data.filter(item => {
@@ -87,6 +91,40 @@ export default function PortalJurnal() {
     });
   }, [data, selectedMapel, selectedBulan, selectedTanggal, searchQuery]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedMapel, selectedBulan, selectedTanggal, searchQuery]);
+
+  const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE) || 1;
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, filteredData.length);
+  const paginatedData = useMemo(() => {
+    return filteredData.slice(startIndex, endIndex);
+  }, [filteredData, startIndex, endIndex]);
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (safeCurrentPage <= 3) {
+        pages.push(1, 2, 3, '...', totalPages);
+      } else if (safeCurrentPage >= totalPages - 2) {
+        pages.push(1, '...', totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', safeCurrentPage, '...', totalPages);
+      }
+    }
+    return pages;
+  };
+
   const isFiltered = Boolean(selectedMapel || selectedBulan || selectedTanggal || searchQuery.trim());
 
   const resetFilters = () => {
@@ -94,6 +132,7 @@ export default function PortalJurnal() {
     setSelectedBulan('');
     setSelectedTanggal('');
     setSearchQuery('');
+    setCurrentPage(1);
   };
 
   return (
@@ -247,7 +286,13 @@ export default function PortalJurnal() {
 
           {/* Result Counter */}
           <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px dashed #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#64748b' }}>
-            <span>Menampilkan <b>{filteredData.length}</b> dari {data.length} jurnal</span>
+            <span>
+              {filteredData.length > 0 ? (
+                <>Menampilkan <b>{startIndex + 1} - {endIndex}</b> dari <b>{filteredData.length}</b> jurnal</>
+              ) : (
+                <>Total <b>0</b> jurnal</>
+              )}
+            </span>
             {isFiltered && <span style={{ color: '#0284c7', fontWeight: 600 }}>Filter aktif</span>}
           </div>
         </div>
@@ -277,7 +322,7 @@ export default function PortalJurnal() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {filteredData.map((item, idx) => (
+            {paginatedData.map((item, idx) => (
               <div 
                 key={item.id || idx} 
                 className="portal-card" 
@@ -336,6 +381,101 @@ export default function PortalJurnal() {
                 </div>
               </div>
             ))}
+
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div style={{
+                marginTop: '10px',
+                marginBottom: '10px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '10px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  flexWrap: 'wrap'
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(safeCurrentPage - 1)}
+                    disabled={safeCurrentPage === 1}
+                    style={{
+                      padding: '7px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      background: safeCurrentPage === 1 ? '#f8fafc' : '#ffffff',
+                      color: safeCurrentPage === 1 ? '#94a3b8' : '#334155',
+                      cursor: safeCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <i className="fas fa-chevron-left" style={{ fontSize: '10px' }}></i> Prev
+                  </button>
+
+                  {getPageNumbers().map((p, pIdx) => (
+                    typeof p === 'number' ? (
+                      <button
+                        key={pIdx}
+                        type="button"
+                        onClick={() => handlePageChange(p)}
+                        style={{
+                          minWidth: '34px',
+                          height: '34px',
+                          padding: '0 6px',
+                          borderRadius: '8px',
+                          border: safeCurrentPage === p ? 'none' : '1px solid #cbd5e1',
+                          background: safeCurrentPage === p ? '#0284c7' : '#ffffff',
+                          color: safeCurrentPage === p ? '#ffffff' : '#334155',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: safeCurrentPage === p ? 700 : 500,
+                          boxShadow: safeCurrentPage === p ? '0 2px 6px rgba(2, 132, 199, 0.3)' : 'none'
+                        }}
+                      >
+                        {p}
+                      </button>
+                    ) : (
+                      <span key={pIdx} style={{ padding: '0 4px', color: '#94a3b8', fontSize: '12px' }}>
+                        {p}
+                      </span>
+                    )
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(safeCurrentPage + 1)}
+                    disabled={safeCurrentPage === totalPages}
+                    style={{
+                      padding: '7px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      background: safeCurrentPage === totalPages ? '#f8fafc' : '#ffffff',
+                      color: safeCurrentPage === totalPages ? '#94a3b8' : '#334155',
+                      cursor: safeCurrentPage === totalPages ? 'not-allowed' : 'pointer',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    Next <i className="fas fa-chevron-right" style={{ fontSize: '10px' }}></i>
+                  </button>
+                </div>
+
+                <div style={{ fontSize: '11px', color: '#64748b' }}>
+                  Halaman <b>{safeCurrentPage}</b> dari <b>{totalPages}</b> (20 jurnal per halaman)
+                </div>
+              </div>
+            )}
           </div>
         )}
 
