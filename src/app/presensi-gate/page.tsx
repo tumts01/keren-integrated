@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
+import styles from './gate.module.css';
 
 interface TapResult {
   actionType: 'MASUK' | 'PULANG' | 'SUDAH_MASUK' | 'ERROR';
@@ -144,8 +145,10 @@ export default function PresensiGatePage() {
   const handleScanSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const code = scanInput.trim();
-    if (!code || isProcessing) return;
+    if (!code) return;
 
+    // Instant clear input field so subsequent rapid scans/multi-readers are never blocked
+    setScanInput('');
     setIsProcessing(true);
     setScanErrorMsg('');
 
@@ -314,123 +317,53 @@ export default function PresensiGatePage() {
   }, [mappingList, searchMapping]);
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(145deg, #0f172a 0%, #1e293b 100%)',
-      color: '#f8fafc',
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
+    <div className={styles.gateWrapper}>
       {/* Top Navbar */}
-      <header style={{
-        padding: '14px 24px',
-        background: 'rgba(15, 23, 42, 0.85)',
-        backdropFilter: 'blur(10px)',
-        borderBottom: '1px solid #334155',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexWrap: 'wrap',
-        gap: '12px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+      <header className={styles.gateHeader}>
+        <div className={styles.headerLeft}>
           <button
             onClick={() => router.push('/')}
-            style={{
-              background: '#334155',
-              border: 'none',
-              color: 'white',
-              width: '38px',
-              height: '38px',
-              borderRadius: '10px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '15px'
-            }}
+            className={styles.btnBack}
             title="Kembali ke Dashboard Utama"
           >
             <i className="fas fa-arrow-left"></i>
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{
-              width: '38px',
-              height: '38px',
-              borderRadius: '10px',
-              background: '#0284c7',
-              color: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '18px',
-              boxShadow: '0 2px 8px rgba(2, 132, 199, 0.4)'
-            }}>
+          <div className={styles.brandInfo}>
+            <div className={styles.brandIcon}>
               <i className="fas fa-id-card-alt"></i>
             </div>
             <div>
-              <h1 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, letterSpacing: '-0.3px', color: '#ffffff' }}>
+              <h1 className={styles.brandTitle}>
                 Presensi Gerbang MTs Almaarif 01
               </h1>
-              <span style={{ fontSize: '11px', color: '#94a3b8' }}>Check-Clock Presensi Siswa (Tap RFID / Barcode Scanner)</span>
+              <span className={styles.brandSubtitle}>Check-Clock Siswa (Tap RFID / Barcode Scanner)</span>
             </div>
           </div>
         </div>
 
         {/* Center Clock */}
-        <div style={{
-          textAlign: 'center',
-          background: 'rgba(30, 41, 59, 0.7)',
-          padding: '6px 18px',
-          borderRadius: '12px',
-          border: '1px solid #334155'
-        }}>
-          <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#38bdf8', letterSpacing: '1px', fontFamily: 'monospace' }}>
+        <div className={styles.clockBox}>
+          <div className={styles.clockTime}>
             {currentTime || '00:00:00 WIB'}
           </div>
-          <div style={{ fontSize: '11px', color: '#cbd5e1' }}>
+          <div className={styles.clockDate}>
             {currentDate}
           </div>
         </div>
 
         {/* Right Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div className={styles.headerControls}>
           {/* Tab Selector */}
-          <div style={{ display: 'flex', background: '#334155', padding: '3px', borderRadius: '10px', gap: '3px' }}>
+          <div className={styles.tabPills}>
             <button
               onClick={() => setActiveTab('kiosk')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '8px',
-                border: 'none',
-                background: activeTab === 'kiosk' ? '#0284c7' : 'transparent',
-                color: activeTab === 'kiosk' ? 'white' : '#94a3b8',
-                fontWeight: 700,
-                fontSize: '12px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
+              className={`${styles.tabBtn} ${activeTab === 'kiosk' ? styles.tabBtnActive : ''}`}
             >
               <i className="fas fa-desktop"></i> Kiosk Gerbang
             </button>
             <button
               onClick={() => setActiveTab('mapping')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '8px',
-                border: 'none',
-                background: activeTab === 'mapping' ? '#0284c7' : 'transparent',
-                color: activeTab === 'mapping' ? 'white' : '#94a3b8',
-                fontWeight: 700,
-                fontSize: '12px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
+              className={`${styles.tabBtn} ${activeTab === 'mapping' ? styles.tabBtnActive : ''}`}
             >
               <i className="fas fa-user-tag"></i> Pasang Kartu RFID
             </button>
@@ -439,18 +372,8 @@ export default function PresensiGatePage() {
           {/* Sound Toggle */}
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
-            style={{
-              padding: '8px 12px',
-              borderRadius: '8px',
-              background: soundEnabled ? '#059669' : '#475569',
-              border: 'none',
-              color: 'white',
-              cursor: 'pointer',
-              fontSize: '13px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
+            className={styles.iconBtn}
+            style={{ background: soundEnabled ? '#059669' : '#475569' }}
             title={soundEnabled ? 'Suara Aktif' : 'Suara Muted'}
           >
             <i className={`fas ${soundEnabled ? 'fa-volume-up' : 'fa-volume-mute'}`}></i>
@@ -459,15 +382,8 @@ export default function PresensiGatePage() {
           {/* Fullscreen Button */}
           <button
             onClick={toggleFullscreen}
-            style={{
-              padding: '8px 12px',
-              borderRadius: '8px',
-              background: '#334155',
-              border: 'none',
-              color: 'white',
-              cursor: 'pointer',
-              fontSize: '13px'
-            }}
+            className={styles.iconBtn}
+            style={{ background: '#334155' }}
             title="Layar Penuh (Fullscreen)"
           >
             <i className="fas fa-expand"></i>
@@ -476,29 +392,21 @@ export default function PresensiGatePage() {
       </header>
 
       {/* Main Container */}
-      <div style={{ flex: 1, padding: '24px', maxWidth: '1400px', width: '100%', margin: '0 auto', boxSizing: 'border-box' }}>
+      <div className={styles.mainContainer}>
         
         {/* ========================================================================= */}
         {/* TAB 1: KIOSK PRESENSI GERBANG */}
         {/* ========================================================================= */}
         {activeTab === 'kiosk' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1.15fr 0.85fr', gap: '24px' }}>
+          <div className={styles.kioskLayout}>
             
             {/* Left Column: Scanner Station & Tap Result */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className={styles.columnLeft}>
               
               {/* Scan Station Box */}
-              <div style={{
-                background: 'rgba(30, 41, 59, 0.65)',
-                border: '1.5px solid #334155',
-                borderRadius: '20px',
-                padding: '24px',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-                position: 'relative',
-                overflow: 'hidden'
-              }}>
+              <div className={styles.scanCard}>
                 {/* Header Scanner & Mode Selector */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+                <div className={styles.scanHeader}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <span style={{
                       display: 'inline-block',
@@ -515,7 +423,7 @@ export default function PresensiGatePage() {
                   </div>
 
                   {/* Mode Selector */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <div className={styles.modeSelectWrapper}>
                     <span style={{ fontSize: '12px', color: '#94a3b8' }}>Mode:</span>
                     <select
                       value={scanMode}
@@ -540,8 +448,8 @@ export default function PresensiGatePage() {
                 </div>
 
                 {/* Animated Scanner Radar & Hidden Input Form */}
-                <form onSubmit={handleScanSubmit} style={{ position: 'relative', textAlign: 'center', padding: '16px 0' }}>
-                  {/* Invisible / Auto-focused Input */}
+                <form onSubmit={handleScanSubmit} style={{ position: 'relative', textAlign: 'center', padding: '10px 0' }}>
+                  {/* Auto-focused Input */}
                   <input
                     ref={inputRef}
                     type="text"
@@ -549,20 +457,7 @@ export default function PresensiGatePage() {
                     onChange={(e) => setScanInput(e.target.value)}
                     placeholder="Tempelkan kartu RFID atau scan barcode..."
                     autoFocus
-                    style={{
-                      width: '100%',
-                      padding: '16px 20px',
-                      borderRadius: '14px',
-                      background: 'rgba(15, 23, 42, 0.8)',
-                      border: '2px solid #0284c7',
-                      color: '#ffffff',
-                      fontSize: '1.1rem',
-                      fontWeight: 700,
-                      textAlign: 'center',
-                      outline: 'none',
-                      boxShadow: '0 0 20px rgba(2, 132, 199, 0.25)',
-                      boxSizing: 'border-box'
-                    }}
+                    className={styles.scanInput}
                   />
                   <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '10px' }}>
                     <i className="fas fa-info-circle" style={{ marginRight: '6px', color: '#38bdf8' }}></i>
@@ -615,37 +510,21 @@ export default function PresensiGatePage() {
 
               {/* Live Tap Result Card (Hero Card) */}
               {lastScan && lastScan.data && (
-                <div style={{
-                  background: lastScan.actionType === 'PULANG' 
-                    ? 'linear-gradient(135deg, #1e3a8a 0%, #1e1b4b 100%)' 
-                    : lastScan.data.statusMasuk === 'Terlambat'
-                    ? 'linear-gradient(135deg, #78350f 0%, #451a03 100%)'
-                    : 'linear-gradient(135deg, #064e3b 0%, #022c22 100%)',
-                  borderRadius: '20px',
-                  border: `2px solid ${
-                    lastScan.actionType === 'PULANG' ? '#3b82f6' : lastScan.data.statusMasuk === 'Terlambat' ? '#f59e0b' : '#10b981'
-                  }`,
-                  padding: '24px',
-                  boxShadow: '0 12px 30px rgba(0,0,0,0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '24px',
-                  animation: 'fadeIn 0.3s ease-out'
-                }}>
+                <div 
+                  className={styles.heroCard}
+                  style={{
+                    background: lastScan.actionType === 'PULANG' 
+                      ? 'linear-gradient(135deg, #1e3a8a 0%, #1e1b4b 100%)' 
+                      : lastScan.data.statusMasuk === 'Terlambat'
+                      ? 'linear-gradient(135deg, #78350f 0%, #451a03 100%)'
+                      : 'linear-gradient(135deg, #064e3b 0%, #022c22 100%)',
+                    border: `2px solid ${
+                      lastScan.actionType === 'PULANG' ? '#3b82f6' : lastScan.data.statusMasuk === 'Terlambat' ? '#f59e0b' : '#10b981'
+                    }`
+                  }}
+                >
                   {/* Student Photo */}
-                  <div style={{
-                    width: '100px',
-                    height: '130px',
-                    borderRadius: '14px',
-                    background: '#0f172a',
-                    border: '3px solid white',
-                    boxShadow: '0 4px 14px rgba(0,0,0,0.3)',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
+                  <div className={styles.heroPhoto}>
                     {lastScan.data.foto ? (
                       <img
                         src={lastScan.data.foto}
@@ -656,13 +535,13 @@ export default function PresensiGatePage() {
                         }}
                       />
                     ) : (
-                      <i className="fas fa-user-graduate" style={{ fontSize: '40px', color: '#64748b' }}></i>
+                      <i className="fas fa-user-graduate" style={{ fontSize: '32px', color: '#64748b' }}></i>
                     )}
                   </div>
 
                   {/* Student Details */}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                  <div className={styles.heroDetails}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
                       <span style={{
                         padding: '3px 10px',
                         borderRadius: '20px',
@@ -679,17 +558,17 @@ export default function PresensiGatePage() {
                       </span>
                     </div>
 
-                    <h2 style={{ margin: '0 0 6px 0', fontSize: '1.5rem', fontWeight: 900, color: '#ffffff' }}>
+                    <h2 className={styles.heroName}>
                       {lastScan.data.nama}
                     </h2>
 
-                    <div style={{ fontSize: '12px', color: '#cbd5e1', marginBottom: '12px' }}>
+                    <div style={{ fontSize: '12px', color: '#cbd5e1', marginBottom: '10px' }}>
                       NISN: <b>{lastScan.data.nisn}</b>
                     </div>
 
                     {/* Time Logged Grid */}
-                    <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
-                      <div style={{ background: 'rgba(0,0,0,0.3)', padding: '6px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <div className={styles.heroTimeGrid}>
+                      <div className={styles.timeBadge}>
                         <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Jam Masuk</div>
                         <div style={{ fontSize: '15px', fontWeight: 800, color: '#38bdf8' }}>
                           {lastScan.data.jamMasuk ? `${lastScan.data.jamMasuk} WIB` : '-'}
@@ -697,7 +576,7 @@ export default function PresensiGatePage() {
                       </div>
 
                       {lastScan.data.jamPulang && (
-                        <div style={{ background: 'rgba(0,0,0,0.3)', padding: '6px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        <div className={styles.timeBadge}>
                           <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Jam Pulang</div>
                           <div style={{ fontSize: '15px', fontWeight: 800, color: '#a78bfa' }}>
                             {lastScan.data.jamPulang} WIB
@@ -712,40 +591,30 @@ export default function PresensiGatePage() {
             </div>
 
             {/* Right Column: Live Feed & Summary Counter */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className={styles.columnRight}>
               
               {/* Counter Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
-                <div style={{ background: 'rgba(30, 41, 59, 0.7)', border: '1px solid #334155', borderRadius: '14px', padding: '12px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 700 }}>TOTAL HADIR</div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#38bdf8' }}>{stats.totalHadir}</div>
+              <div className={styles.counterGrid}>
+                <div className={styles.counterBox}>
+                  <div className={styles.counterLabel}>TOTAL HADIR</div>
+                  <div className={styles.counterNum} style={{ color: '#38bdf8' }}>{stats.totalHadir}</div>
                 </div>
-                <div style={{ background: 'rgba(30, 41, 59, 0.7)', border: '1px solid #334155', borderRadius: '14px', padding: '12px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 700 }}>TEPAT WAKTU</div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#34d399' }}>{stats.tepatWaktu}</div>
+                <div className={styles.counterBox}>
+                  <div className={styles.counterLabel}>TEPAT WAKTU</div>
+                  <div className={styles.counterNum} style={{ color: '#34d399' }}>{stats.tepatWaktu}</div>
                 </div>
-                <div style={{ background: 'rgba(30, 41, 59, 0.7)', border: '1px solid #334155', borderRadius: '14px', padding: '12px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 700 }}>TERLAMBAT</div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#fbbf24' }}>{stats.terlambat}</div>
+                <div className={styles.counterBox}>
+                  <div className={styles.counterLabel}>TERLAMBAT</div>
+                  <div className={styles.counterNum} style={{ color: '#fbbf24' }}>{stats.terlambat}</div>
                 </div>
-                <div style={{ background: 'rgba(30, 41, 59, 0.7)', border: '1px solid #334155', borderRadius: '14px', padding: '12px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 700 }}>SUDAH PULANG</div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#a78bfa' }}>{stats.sudahPulang}</div>
+                <div className={styles.counterBox}>
+                  <div className={styles.counterLabel}>SUDAH PULANG</div>
+                  <div className={styles.counterNum} style={{ color: '#a78bfa' }}>{stats.sudahPulang}</div>
                 </div>
               </div>
 
               {/* Live Feed Table */}
-              <div style={{
-                background: 'rgba(30, 41, 59, 0.65)',
-                border: '1.5px solid #334155',
-                borderRadius: '20px',
-                padding: '20px',
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-                minHeight: '400px'
-              }}>
+              <div className={styles.feedCard}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 800, color: '#f8fafc' }}>
                     <i className="fas fa-history" style={{ color: '#0284c7' }}></i>
@@ -759,7 +628,7 @@ export default function PresensiGatePage() {
                   </button>
                 </div>
 
-                <div style={{ overflowY: 'auto', flex: 1, maxHeight: '480px' }}>
+                <div className={styles.feedScroll}>
                   {historyList.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
                       <i className="fas fa-id-badge" style={{ fontSize: '2.5rem', marginBottom: '12px' }}></i>
@@ -825,14 +694,8 @@ export default function PresensiGatePage() {
         {/* TAB 2: DAFTARKAN / MAPPING KARTU RFID SISWA */}
         {/* ========================================================================= */}
         {activeTab === 'mapping' && (
-          <div style={{
-            background: 'rgba(30, 41, 59, 0.75)',
-            border: '1.5px solid #334155',
-            borderRadius: '20px',
-            padding: '24px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.25)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
+          <div className={styles.mappingCard}>
+            <div className={styles.mappingHeader}>
               <div>
                 <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#ffffff' }}>
                   <i className="fas fa-link" style={{ color: '#0284c7', marginRight: '8px' }}></i>
@@ -844,7 +707,7 @@ export default function PresensiGatePage() {
               </div>
 
               {/* Class Selector & Search */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <div className={styles.mappingFilters}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span style={{ fontSize: '12px', color: '#cbd5e1' }}>Pilih Kelas:</span>
                   <select

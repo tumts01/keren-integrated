@@ -1,0 +1,518 @@
+.gateWrapper {
+  min-height: 100vh;
+  background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
+  color: #f8fafc;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header Navbar */
+.gateHeader {
+  padding: 14px 24px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid #334155;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btnBack {
+  background: #334155;
+  border: none;
+  color: white;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.btnBack:hover {
+  background: #475569;
+}
+
+.brandInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brandIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #0284c7;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4);
+  flex-shrink: 0;
+}
+
+.brandTitle {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.brandSubtitle {
+  font-size: 11px;
+  color: #94a3b8;
+  display: block;
+}
+
+/* Center Clock */
+.clockBox {
+  text-align: center;
+  background: rgba(30, 41, 59, 0.7);
+  padding: 6px 18px;
+  border-radius: 12px;
+  border: 1px solid #334155;
+}
+
+.clockTime {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #38bdf8;
+  letter-spacing: 1px;
+  font-family: monospace;
+}
+
+.clockDate {
+  font-size: 11px;
+  color: #cbd5e1;
+}
+
+/* Header Controls */
+.headerControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tabPills {
+  display: flex;
+  background: #334155;
+  padding: 3px;
+  border-radius: 10px;
+  gap: 3px;
+}
+
+.tabBtn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.tabBtnActive {
+  background: #0284c7 !important;
+  color: white !important;
+}
+
+.iconBtn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 0.2s;
+}
+
+/* Main Container */
+.mainContainer {
+  flex: 1;
+  padding: 24px;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+/* Kiosk Layout */
+.kioskLayout {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 24px;
+}
+
+.columnLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.columnRight {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Scan Station Card */
+.scanCard {
+  background: rgba(30, 41, 59, 0.65);
+  border: 1.5px solid #334155;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.scanHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.scanInput {
+  width: 100%;
+  padding: 16px 20px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 2px solid #0284c7;
+  color: #ffffff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: center;
+  outline: none;
+  box-shadow: 0 0 20px rgba(2, 132, 199, 0.25);
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.scanInput:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 25px rgba(56, 189, 248, 0.35);
+}
+
+/* Hero Tap Result Card */
+.heroCard {
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.heroPhoto {
+  width: 100px;
+  height: 130px;
+  border-radius: 14px;
+  background: #0f172a;
+  border: 3px solid white;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.heroDetails {
+  flex: 1;
+  min-width: 0;
+}
+
+.heroName {
+  margin: 0 0 6px 0;
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #ffffff;
+  word-break: break-word;
+}
+
+.heroTimeGrid {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.timeBadge {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  min-width: 100px;
+}
+
+/* Counters Grid */
+.counterGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.counterBox {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid #334155;
+  border-radius: 14px;
+  padding: 12px;
+  text-align: center;
+}
+
+.counterLabel {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 700;
+}
+
+.counterNum {
+  font-size: 1.6rem;
+  font-weight: 900;
+  margin-top: 2px;
+}
+
+/* Live Feed Card */
+.feedCard {
+  background: rgba(30, 41, 59, 0.65);
+  border: 1.5px solid #334155;
+  border-radius: 20px;
+  padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  min-height: 380px;
+}
+
+.feedScroll {
+  overflow-y: auto;
+  flex: 1;
+  max-height: 480px;
+}
+
+/* Mapping Card */
+.mappingCard {
+  background: rgba(30, 41, 59, 0.75);
+  border: 1.5px solid #334155;
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
+
+.mappingHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.mappingFilters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ========================================================================= */
+/* MOBILE RESPONSIVE MEDIA QUERIES (<= 900px & <= 640px)                     */
+/* ========================================================================= */
+@media (max-width: 900px) {
+  .gateHeader {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .headerLeft {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .brandTitle {
+    font-size: 1rem;
+  }
+
+  .brandSubtitle {
+    font-size: 10px;
+  }
+
+  .clockBox {
+    width: 100%;
+    padding: 8px 12px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .clockTime {
+    font-size: 1.15rem;
+  }
+
+  .headerControls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .tabPills {
+    flex: 1;
+  }
+
+  .tabBtn {
+    flex: 1;
+    justify-content: center;
+    padding: 8px 8px;
+    font-size: 11.5px;
+  }
+
+  .mainContainer {
+    padding: 12px;
+  }
+
+  .kioskLayout {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .scanCard {
+    padding: 16px;
+    border-radius: 16px;
+  }
+
+  .scanHeader {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .modeSelectWrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .modeSelectWrapper select {
+    flex: 1;
+    margin-left: 8px;
+    padding: 8px 10px;
+  }
+
+  .scanInput {
+    padding: 14px 16px;
+    font-size: 16px !important; /* Prevents auto-zoom on mobile */
+  }
+
+  .heroCard {
+    padding: 16px;
+    border-radius: 16px;
+    gap: 14px;
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .heroPhoto {
+    width: 75px;
+    height: 98px;
+    border-radius: 10px;
+    border-width: 2px;
+  }
+
+  .heroName {
+    font-size: 1.15rem;
+    margin-bottom: 4px;
+  }
+
+  .heroTimeGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .timeBadge {
+    min-width: 0;
+    padding: 6px 10px;
+  }
+
+  .counterGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .counterBox {
+    padding: 10px 8px;
+  }
+
+  .counterLabel {
+    font-size: 10px;
+  }
+
+  .counterNum {
+    font-size: 1.35rem;
+  }
+
+  .feedCard {
+    padding: 14px;
+    border-radius: 16px;
+    min-height: auto;
+  }
+
+  .feedScroll {
+    max-height: 320px;
+  }
+
+  .mappingCard {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .mappingHeader {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .mappingFilters {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .mappingFilters > div,
+  .mappingFilters input {
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+}
