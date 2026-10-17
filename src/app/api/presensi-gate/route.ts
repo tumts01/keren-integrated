@@ -141,16 +141,186 @@ export async function POST(req: Request) {
       }
     }
 
+    let matchedGuru: any = null;
     if (!matchedStudent) {
+      // 1b. Cari guru di data_guru
+      const { data: guruRows } = await supabase.from('data_guru').select('*');
+      for (const g of (guruRows || [])) {
+        const meta = g.metadata || {};
+        const gRfid = String(meta['RFID_UID'] || meta['NO_RFID'] || '').trim();
+        const gNip = String(g.nomor_induk || meta['NIP'] || '').trim();
+        const gPegId = String(meta['PEG ID'] || meta['PegID'] || '').trim();
+
+        if (
+          (gRfid && gRfid.toLowerCase() === rawCleanCode.toLowerCase()) ||
+          (gNip && gNip === rawCleanCode) ||
+          (gPegId && gPegId === rawCleanCode)
+        ) {
+          matchedGuru = {
+            id: g.id,
+            nama: g.nama,
+            nip: gNip,
+            kelas: 'GURU / GTK',
+            foto: '',
+            role: 'GURU',
+            rfidUid: gRfid
+          };
+          break;
+        }
+      }
+    }
+
+    if (!matchedStudent && !matchedGuru) {
       return NextResponse.json({ 
         success: false, 
         notFound: true,
-        error: `Kartu / Kode "${code}" belum terdaftar pada siswa manapun.` 
+        error: `Kartu / Kode "${code}" belum terdaftar pada siswa maupun guru.` 
       }, { status: 404 });
     }
 
     // 2. Waktu sekarang (WIB)
-    const { tanggal, jam } = getWibDateTime();
+    const { tanggal, jam, wibDate } = getWibDateTime();
+    const jamShort = jam.substring(0, 5).replace(':', '.'); // '06.42'
+    const tanggalIndo = `${String(wibDate.getDate()).padStart(2, '0')}/${String(wibDate.getMonth() + 1).padStart(2, '0')}/${wibDate.getFullYear()}`;
+
+    // ==========================================
+    // PROSES PRESENSI KHUSUS GURU / GTK
+    // ==========================================
+    if (matchedGuru) {
+      // Cek di absen_gtk
+      const { data: gtkRows } = await supabase
+        .from('absen_gtk')
+        .select('*')
+        .eq('nama', matchedGuru.nama)
+        .eq('tanggal', tanggalIndo);
+
+      const existingGtk = (gtkRows || [])[0] || null;
+      const gtkMeta = existingGtk?.metadata || {};
+      const existingJamMasuk = gtkMeta['jam_masuk'] || '';
+      const existingJamPulang = gtkMeta['jam_pulang'] || '';
+
+      // JIKA BELUM CHECK-IN HARI INI
+      if (!existingJamMasuk) {
+        if (!existingGtk) {
+          await supabase.from('absen_gtk').insert([{
+            nama: matchedGuru.nama,
+            tanggal: tanggalIndo,
+            metadata: {
+              Nama: matchedGuru.nama,
+              tanggal: tanggalIndo,
+              jam_masuk: jamShort,
+              jam_pulang: '',
+              status: 'Hadir',
+              sumber: 'GATE'
+            }
+          }]);
+        } else {
+          await supabase.from('absen_gtk').update({
+            metadata: {
+              ...gtkMeta,
+              jam_masuk: jamShort,
+              status: 'Hadir',
+              sumber: 'GATE'
+            }
+          }).eq('id', existingGtk.id);
+        }
+
+        // Catat juga ke feed gerbang
+        await supabase.from('data_presensi_siswa').insert([{
+          tanggal,
+          kelas: 'GTK',
+          metadata: {
+            'NISN': matchedGuru.nip || '-',
+            'NAMA SISWA': matchedGuru.nama,
+            'KELAS': 'GURU / GTK',
+            'KEHADIRAN': 'H',
+            'STATUS': 'HADIR',
+            'JAM_MASUK': jam,
+            'STATUS_MASUK': 'Tepat Waktu',
+            'SUMBER': 'GATE',
+            'ROLE': 'GURU',
+            'TIMESTAMP': new Date().toLocaleString('id-ID')
+          }
+        }]);
+
+        return NextResponse.json({
+          success: true,
+          actionType: 'MASUK',
+          isGuru: true,
+          message: `Check-in Guru Berhasil: ${matchedGuru.nama}`,
+          data: {
+            ...matchedGuru,
+            jamMasuk: jam,
+            jamPulang: null,
+            statusMasuk: 'Tepat Waktu',
+            tanggal
+          }
+        });
+      }
+
+      // JIKA SUDAH CHECK-IN: CEK COOLDOWN
+      if (existingJamMasuk && !existingJamPulang) {
+        const [hMasuk, mMasuk] = existingJamMasuk.split('.').map(Number);
+        const [hNow, mNow] = jamShort.split('.').map(Number);
+        const diffMenit = ((hNow * 60) + mNow) - ((hMasuk * 60) + mMasuk);
+
+        if (diffMenit < 3 && mode === 'auto') {
+          return NextResponse.json({
+            success: true,
+            actionType: 'SUDAH_MASUK',
+            isGuru: true,
+            message: `Bapak/Ibu ${matchedGuru.nama} sudah tercatat masuk pada pukul ${existingJamMasuk} WIB`,
+            data: {
+              ...matchedGuru,
+              jamMasuk: existingJamMasuk,
+              jamPulang: null,
+              statusMasuk: 'Tepat Waktu',
+              tanggal
+            }
+          });
+        }
+      }
+
+      // CHECK-OUT PULANG GURU
+      await supabase.from('absen_gtk').update({
+        metadata: {
+          ...gtkMeta,
+          jam_pulang: jamShort
+        }
+      }).eq('id', existingGtk.id);
+
+      // Update feed gerbang
+      const { data: gateFeedRows } = await supabase
+        .from('data_presensi_siswa')
+        .select('id, metadata')
+        .eq('tanggal', tanggal)
+        .eq('kelas', 'GTK');
+
+      const matchedGateFeed = (gateFeedRows || []).find((r: any) => r.metadata?.['NAMA SISWA'] === matchedGuru.nama);
+      if (matchedGateFeed) {
+        await supabase.from('data_presensi_siswa').update({
+          metadata: {
+            ...matchedGateFeed.metadata,
+            'JAM_PULANG': jam,
+            'STATUS_PULANG': 'Pulang'
+          }
+        }).eq('id', matchedGateFeed.id);
+      }
+
+      return NextResponse.json({
+        success: true,
+        actionType: 'PULANG',
+        isGuru: true,
+        message: `Check-out Pulang Guru Berhasil: ${matchedGuru.nama}`,
+        data: {
+          ...matchedGuru,
+          jamMasuk: existingJamMasuk,
+          jamPulang: jam,
+          statusMasuk: 'Tepat Waktu',
+          tanggal
+        }
+      });
+    }
 
     // 3. Cek apakah siswa sudah punya catatan di tanggal hari ini
     const { data: existingRows } = await supabase

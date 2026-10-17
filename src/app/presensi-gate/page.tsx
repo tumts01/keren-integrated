@@ -167,16 +167,26 @@ export default function PresensiGatePage() {
 
         // Audio Voice Announcement
         const st = json.data;
-        if (json.actionType === 'MASUK') {
-          if (st.statusMasuk === 'Terlambat') {
-            speakGreeting(`${st.nama}, Terlambat! Jam masuk tercatat.`);
-          } else {
-            speakGreeting(`${st.nama}, Kelas ${st.kelas}, Hadir!`);
+        if (json.isGuru || st.role === 'GURU' || st.kelas === 'GURU / GTK') {
+          if (json.actionType === 'MASUK') {
+            speakGreeting(`Selamat datang, ${st.nama}. Presensi guru berhasil.`);
+          } else if (json.actionType === 'PULANG') {
+            speakGreeting(`Hati-hati di jalan, ${st.nama}. Check-out guru berhasil.`);
+          } else if (json.actionType === 'SUDAH_MASUK') {
+            speakGreeting(`${st.nama}, sudah tercatat masuk hari ini.`);
           }
-        } else if (json.actionType === 'PULANG') {
-          speakGreeting(`Hati-hati di jalan, ${st.nama}. Check out pulang berhasil.`);
-        } else if (json.actionType === 'SUDAH_MASUK') {
-          speakGreeting(`${st.nama}, sudah tercatat masuk hari ini.`);
+        } else {
+          if (json.actionType === 'MASUK') {
+            if (st.statusMasuk === 'Terlambat') {
+              speakGreeting(`${st.nama}, Terlambat! Jam masuk tercatat.`);
+            } else {
+              speakGreeting(`${st.nama}, Kelas ${st.kelas}, Hadir!`);
+            }
+          } else if (json.actionType === 'PULANG') {
+            speakGreeting(`Hati-hati di jalan, ${st.nama}. Check out pulang berhasil.`);
+          } else if (json.actionType === 'SUDAH_MASUK') {
+            speakGreeting(`${st.nama}, sudah tercatat masuk hari ini.`);
+          }
         }
 
         // Refresh feed & stats
@@ -248,7 +258,8 @@ export default function PresensiGatePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           studentId: pairingStudent.id,
-          rfidUid: pairingUid.trim()
+          rfidUid: pairingUid.trim(),
+          role: pairingStudent.role || (selectedKelas === 'GURU' ? 'GURU' : 'SISWA')
         })
       });
       const json = await res.json();
@@ -290,7 +301,10 @@ export default function PresensiGatePage() {
         const res = await fetch('/api/presensi-gate/mapping', {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ studentId: student.id })
+          body: JSON.stringify({ 
+            studentId: student.id,
+            role: student.role || (selectedKelas === 'GURU' ? 'GURU' : 'SISWA')
+          })
         });
         const json = await res.json();
         if (json.success) {
@@ -310,9 +324,10 @@ export default function PresensiGatePage() {
     if (!searchMapping.trim()) return mappingList;
     const q = searchMapping.toLowerCase();
     return mappingList.filter(s => 
-      s.nama.toLowerCase().includes(q) || 
-      s.nisn.toLowerCase().includes(q) ||
-      s.rfidUid.toLowerCase().includes(q)
+      (s.nama || '').toLowerCase().includes(q) || 
+      (s.nisn || '').toLowerCase().includes(q) ||
+      (s.nis || '').toLowerCase().includes(q) ||
+      (s.rfidUid || '').toLowerCase().includes(q)
     );
   }, [mappingList, searchMapping]);
 
@@ -699,17 +714,19 @@ export default function PresensiGatePage() {
               <div>
                 <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#ffffff' }}>
                   <i className="fas fa-link" style={{ color: '#0284c7', marginRight: '8px' }}></i>
-                  Pemasangan / Registrasi Kartu RFID Siswa
+                  {selectedKelas === 'GURU' ? 'Pemasangan / Registrasi Kartu RFID Guru & GTK' : 'Pemasangan / Registrasi Kartu RFID Siswa'}
                 </h2>
                 <p style={{ margin: '3px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>
-                  Hubungkan nomor chip kartu RFID atau stiker RFID ke masing-masing siswa per kelas.
+                  {selectedKelas === 'GURU'
+                    ? 'Hubungkan nomor chip kartu RFID atau stiker RFID ke masing-masing Guru & Karyawan (GTK).'
+                    : 'Hubungkan nomor chip kartu RFID atau stiker RFID ke masing-masing siswa per kelas.'}
                 </p>
               </div>
 
               {/* Class Selector & Search */}
               <div className={styles.mappingFilters}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '12px', color: '#cbd5e1' }}>Pilih Kelas:</span>
+                  <span style={{ fontSize: '12px', color: '#cbd5e1' }}>Pilih Kategori:</span>
                   <select
                     value={selectedKelas}
                     onChange={(e) => setSelectedKelas(e.target.value)}
@@ -725,15 +742,18 @@ export default function PresensiGatePage() {
                       cursor: 'pointer'
                     }}
                   >
-                    {ALL_KELAS.map(k => (
-                      <option key={k} value={k}>Kelas {k}</option>
-                    ))}
+                    <option value="GURU" style={{ fontWeight: 800, color: '#38bdf8' }}>👨‍🏫 Guru & Karyawan (GTK)</option>
+                    <optgroup label="Siswa per Kelas">
+                      {ALL_KELAS.map(k => (
+                        <option key={k} value={k}>Kelas {k}</option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
 
                 <input
                   type="text"
-                  placeholder="Cari nama / NISN..."
+                  placeholder={selectedKelas === 'GURU' ? "Cari nama / NIP / PegID..." : "Cari nama / NISN..."}
                   value={searchMapping}
                   onChange={(e) => setSearchMapping(e.target.value)}
                   style={{
@@ -750,16 +770,16 @@ export default function PresensiGatePage() {
               </div>
             </div>
 
-            {/* Students Table */}
+            {/* Students / GTK Table */}
             {loadingMapping ? (
               <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}>
                 <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#0284c7', marginBottom: '12px' }}></i>
-                <div>Memuat data siswa kelas {selectedKelas}...</div>
+                <div>Memuat data {selectedKelas === 'GURU' ? 'Guru & Karyawan (GTK)' : `siswa kelas ${selectedKelas}`}...</div>
               </div>
             ) : filteredMappingList.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}>
                 <i className="fas fa-users-slash" style={{ fontSize: '2.5rem', marginBottom: '12px' }}></i>
-                <div>Tidak ada siswa ditemukan di kelas ini.</div>
+                <div>Tidak ada data {selectedKelas === 'GURU' ? 'guru / GTK' : 'siswa'} ditemukan.</div>
               </div>
             ) : (
               <div style={{ overflowX: 'auto' }}>
@@ -767,8 +787,8 @@ export default function PresensiGatePage() {
                   <thead>
                     <tr style={{ background: '#1e293b', borderBottom: '2px solid #334155', color: '#94a3b8', textAlign: 'left' }}>
                       <th style={{ padding: '12px 14px', width: '50px' }}>No</th>
-                      <th style={{ padding: '12px 14px' }}>Nama Lengkap Siswa</th>
-                      <th style={{ padding: '12px 14px' }}>NISN / NIS</th>
+                      <th style={{ padding: '12px 14px' }}>{selectedKelas === 'GURU' ? 'Nama Guru / GTK' : 'Nama Lengkap Siswa'}</th>
+                      <th style={{ padding: '12px 14px' }}>{selectedKelas === 'GURU' ? 'NIP / PegID' : 'NISN / NIS'}</th>
                       <th style={{ padding: '12px 14px' }}>Status Kartu RFID</th>
                       <th style={{ padding: '12px 14px', textAlign: 'right' }}>Aksi Pemasangan</th>
                     </tr>
@@ -781,8 +801,8 @@ export default function PresensiGatePage() {
                           {st.nama}
                         </td>
                         <td style={{ padding: '12px 14px', color: '#cbd5e1' }}>
-                          <div>NISN: {st.nisn || '-'}</div>
-                          {st.nis && <div style={{ fontSize: '11px', color: '#64748b' }}>NIS: {st.nis}</div>}
+                          <div>{selectedKelas === 'GURU' ? 'NIP' : 'NISN'}: {st.nisn || '-'}</div>
+                          {st.nis && <div style={{ fontSize: '11px', color: '#64748b' }}>{selectedKelas === 'GURU' ? 'PegID' : 'NIS'}: {st.nis}</div>}
                         </td>
                         <td style={{ padding: '12px 14px' }}>
                           {st.rfidUid ? (
@@ -916,7 +936,7 @@ export default function PresensiGatePage() {
               Tempelkan Kartu RFID
             </h3>
             <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#94a3b8' }}>
-              Memasangkan kartu ke siswa: <b style={{ color: '#38bdf8' }}>{pairingStudent.nama}</b> ({selectedKelas})
+              Memasangkan kartu ke {selectedKelas === 'GURU' ? 'Guru / GTK' : 'siswa'}: <b style={{ color: '#38bdf8' }}>{pairingStudent.nama}</b> ({selectedKelas === 'GURU' ? 'GTK' : `Kelas ${selectedKelas}`})
             </p>
 
             <form onSubmit={handleSavePairing}>
