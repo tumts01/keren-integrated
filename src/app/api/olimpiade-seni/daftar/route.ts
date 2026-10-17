@@ -152,8 +152,14 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, error: 'Tidak ada data peserta yang valid di dalam file Excel' }, { status: 400 });
       }
 
-      // Deteksi apakah ada peserta yang memilih Lomba Seni di dalam Excel
-      let hasLombaSeni = false;
+      // Kalkulasi Biaya Pendaftaran Kolektif
+      let countSinger = 0;
+      const banjariGrupSet = new Set<string>();
+      let banjariTanpaGrup = 0;
+      const smsTimSet = new Set<string>();
+      let smsTanpaTim = 0;
+      let countOlimpiade = 0;
+
       for (const row of dataExcel) {
         let lomba = '';
         for (const key of Object.keys(row)) {
@@ -162,18 +168,36 @@ export async function POST(req: Request) {
             break;
           }
         }
-        const { isSeni } = getLombaInfo(lomba);
-        if (isSeni) {
-          hasLombaSeni = true;
-          break;
+        let regu = '';
+        for (const key of Object.keys(row)) {
+          if (key.toLowerCase().includes('regu') || key.toLowerCase().includes('grup')) {
+            regu = String(row[key] || '').trim();
+            break;
+          }
+        }
+        const l = lomba.toLowerCase().trim();
+        if (l.includes('singer') || l.includes('solo')) {
+          countSinger++;
+        } else if (l.includes('banjari')) {
+          if (regu) banjariGrupSet.add(regu.toLowerCase());
+          else banjariTanpaGrup++;
+        } else if (l.includes('sandi') || l.includes('morse') || l.includes('sms')) {
+          if (regu) smsTimSet.add(regu.toLowerCase());
+          else smsTanpaTim++;
+        } else {
+          countOlimpiade++;
         }
       }
 
-      // Bukti pembayaran HANYA wajib jika terdapat peserta Lomba Seni
-      if (hasLombaSeni && !buktiUrl) {
+      const totalGrupBanjari = banjariGrupSet.size + (banjariTanpaGrup > 0 ? 1 : 0);
+      const totalTimSms = smsTimSet.size + (smsTanpaTim > 0 ? 1 : 0);
+      const totalBiayaKolektif = (countSinger * 50000) + (totalGrupBanjari * 100000) + (totalTimSms * 50000);
+
+      // Bukti pembayaran HANYA wajib jika total biaya > 0 (ada peserta Lomba Seni)
+      if (totalBiayaKolektif > 0 && !buktiUrl) {
         return NextResponse.json({ 
           success: false, 
-          error: 'Bukti pembayaran wajib dilampirkan karena terdapat pendaftar Lomba Seni di dalam file Excel' 
+          error: `Bukti pembayaran wajib dilampirkan karena terdapat pendaftar Lomba Seni dengan total biaya ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(totalBiayaKolektif)}` 
         }, { status: 400 });
       }
 
@@ -261,6 +285,15 @@ export async function POST(req: Request) {
           BUKTI_SS_URL: buktiSsUrl,
           DETAIL_LOMBA: formData.get('detailLomba') || '',
           REKAP_PESERTA: rekapPeserta,
+          TOTAL_BIAYA: totalBiayaKolektif,
+          STATUS_PEMBAYARAN: totalBiayaKolektif === 0 ? 'Valid' : 'Menunggu',
+          RINCIAN_BIAYA: {
+            totalBiaya: totalBiayaKolektif,
+            countOlimpiade,
+            countSinger,
+            totalGrupBanjari,
+            totalTimSms
+          },
           WAKTU_DAFTAR: new Date().toISOString()
         }
       });
@@ -288,7 +321,19 @@ export async function POST(req: Request) {
       const lombaDipilih = formData.get('lombaDipilih') as string || '';
       const { isAkademik, isSeni } = getLombaInfo(lombaDipilih);
 
-      if ((kategori === 'Lomba Seni' || isSeni) && !buktiUrl) {
+      let totalBiayaIndividu = 0;
+      const l = lombaDipilih.toLowerCase();
+      if (l.includes('singer') || l.includes('solo')) {
+        totalBiayaIndividu = 50000;
+      } else if (l.includes('banjari')) {
+        totalBiayaIndividu = 100000;
+      } else if (l.includes('sandi') || l.includes('morse') || l.includes('sms')) {
+        totalBiayaIndividu = 50000;
+      } else {
+        totalBiayaIndividu = 0;
+      }
+
+      if (totalBiayaIndividu > 0 && !buktiUrl) {
         return NextResponse.json({ 
           success: false, 
           error: 'Bukti pembayaran wajib dilampirkan untuk pendaftaran Lomba Seni' 
@@ -315,6 +360,8 @@ export async function POST(req: Request) {
         'NO_WA': formData.get('noWa') || '',
         'BUKTI_SS_URL': buktiSsUrl,
         'NOMOR_PESERTA': nomorPeserta,
+        'TOTAL_BIAYA': totalBiayaIndividu,
+        'STATUS_PEMBAYARAN': totalBiayaIndividu === 0 ? 'Valid' : 'Menunggu',
         'WAKTU_DAFTAR': new Date().toISOString()
       };
 

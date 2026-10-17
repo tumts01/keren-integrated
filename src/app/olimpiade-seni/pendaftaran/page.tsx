@@ -4,6 +4,186 @@ import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 
+// Rangkuman Biaya Pendaftaran Olimpiade dan Lomba Seni 2026:
+// - Olimpiade (Matematika, IPAS, PAI, Bahasa Arab, Bahasa Inggris):
+//   Babak Penyisihan: Gratis (tidak dikenai biaya).
+//   Babak Final: Rp50.000 per peserta (khusus bagi peserta yang lolos ke final).
+// - Lomba Singer: Rp50.000 per peserta.
+// - Lomba Seni Al-Banjari: Rp100.000 per grup.
+// - Lomba Pramuka SMS (Sandi, Morse, Semaphore): Rp50.000 per tim.
+
+export const formatRupiah = (val: number) => {
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
+};
+
+export function getBiayaIndividu(lomba: string) {
+  const l = (lomba || '').toLowerCase();
+  if (l.includes('singer') || l.includes('solo')) {
+    return { tarif: 50000, satuan: 'peserta', keterangan: 'Biaya Pendaftaran: Rp50.000 / peserta', isGratis: false, subtotal: 50000 };
+  }
+  if (l.includes('banjari')) {
+    return { tarif: 100000, satuan: 'grup', keterangan: 'Biaya Pendaftaran: Rp100.000 / grup', isGratis: false, subtotal: 100000 };
+  }
+  if (l.includes('sandi') || l.includes('morse') || l.includes('sms')) {
+    return { tarif: 50000, satuan: 'tim', keterangan: 'Biaya Pendaftaran: Rp50.000 / tim', isGratis: false, subtotal: 50000 };
+  }
+  // Olimpiade Akademik
+  return { 
+    tarif: 0, 
+    satuan: 'peserta', 
+    keterangan: 'Babak Penyisihan: Gratis (tidak dikenai biaya). Babak Final: Rp50.000 per peserta (khusus bagi peserta yang lolos ke final).', 
+    isGratis: true,
+    subtotal: 0
+  };
+}
+
+export function hitungBiayaKolektif(excelRows: any[]) {
+  let countSinger = 0;
+  const banjariGrupSet = new Set<string>();
+  let banjariTanpaGrup = 0;
+  const smsTimSet = new Set<string>();
+  let smsTanpaTim = 0;
+  let countOlimpiade = 0;
+  const olimpiadeMap: Record<string, number> = {};
+
+  excelRows.forEach((row) => {
+    let namaLomba = row['LOMBA YANG DIPILIH'];
+    if (!namaLomba) {
+      for (const k of Object.keys(row)) {
+        if (k.toLowerCase().includes('lomba')) {
+          namaLomba = row[k];
+          break;
+        }
+      }
+    }
+    const l = String(namaLomba || '').toLowerCase().trim();
+
+    let regu = row['NAMA REGU/GRUP (KHUSUS LOMBA BEREGU)'];
+    if (!regu) {
+      for (const k of Object.keys(row)) {
+        if (k.toLowerCase().includes('regu') || k.toLowerCase().includes('grup')) {
+          regu = row[k];
+          break;
+        }
+      }
+    }
+    const reguStr = String(regu || '').trim();
+
+    if (l.includes('singer') || l.includes('solo')) {
+      countSinger++;
+    } else if (l.includes('banjari')) {
+      if (reguStr) {
+        banjariGrupSet.add(reguStr.toLowerCase());
+      } else {
+        banjariTanpaGrup++;
+      }
+    } else if (l.includes('sandi') || l.includes('morse') || l.includes('sms')) {
+      if (reguStr) {
+        smsTimSet.add(reguStr.toLowerCase());
+      } else {
+        smsTanpaTim++;
+      }
+    } else {
+      countOlimpiade++;
+      let mapel = 'Matematika';
+      if (l.includes('ipa') || l.includes('ipas')) mapel = 'IPAS';
+      else if (l.includes('pai') || l.includes('agama')) mapel = 'PAI';
+      else if (l.includes('inggris') || l.includes('english')) mapel = 'Inggris';
+      else if (l.includes('arab')) mapel = 'Arab';
+      olimpiadeMap[mapel] = (olimpiadeMap[mapel] || 0) + 1;
+    }
+  });
+
+  const totalGrupBanjari = banjariGrupSet.size + (banjariTanpaGrup > 0 ? 1 : 0);
+  const totalTimSms = smsTimSet.size + (smsTanpaTim > 0 ? 1 : 0);
+
+  const rincian: {
+    lomba: string;
+    detail: string;
+    jumlah: number;
+    satuan: string;
+    tarif: number;
+    subtotal: number;
+    keterangan: string;
+    isGratis: boolean;
+  }[] = [];
+
+  if (countOlimpiade > 0) {
+    const detailMapel = Object.entries(olimpiadeMap).map(([m, c]) => `${c} ${m}`).join(', ');
+    rincian.push({
+      lomba: 'Olimpiade Akademik',
+      detail: detailMapel || `${countOlimpiade} peserta`,
+      jumlah: countOlimpiade,
+      satuan: 'peserta',
+      tarif: 0,
+      subtotal: 0,
+      keterangan: 'Babak Penyisihan: Gratis (Final: Rp50.000 jika lolos)',
+      isGratis: true
+    });
+  }
+
+  if (countSinger > 0) {
+    rincian.push({
+      lomba: 'Singer (solo)',
+      detail: `${countSinger} peserta`,
+      jumlah: countSinger,
+      satuan: 'peserta',
+      tarif: 50000,
+      subtotal: countSinger * 50000,
+      keterangan: 'Rp50.000 / peserta',
+      isGratis: false
+    });
+  }
+
+  if (totalGrupBanjari > 0) {
+    const grupNames = Array.from(banjariGrupSet);
+    const detailBanjari = [
+      ...grupNames,
+      ...(banjariTanpaGrup > 0 ? [`${banjariTanpaGrup} peserta`] : [])
+    ].join(', ');
+    rincian.push({
+      lomba: 'Lomba Seni Al-Banjari',
+      detail: `${totalGrupBanjari} grup (${detailBanjari})`,
+      jumlah: totalGrupBanjari,
+      satuan: 'grup',
+      tarif: 100000,
+      subtotal: totalGrupBanjari * 100000,
+      keterangan: 'Rp100.000 / grup',
+      isGratis: false
+    });
+  }
+
+  if (totalTimSms > 0) {
+    const timNames = Array.from(smsTimSet);
+    const detailSms = [
+      ...timNames,
+      ...(smsTanpaTim > 0 ? [`${smsTanpaTim} peserta`] : [])
+    ].join(', ');
+    rincian.push({
+      lomba: 'Lomba Pramuka SMS (Sandi, Morse, Semaphore)',
+      detail: `${totalTimSms} tim (${detailSms})`,
+      jumlah: totalTimSms,
+      satuan: 'tim',
+      tarif: 50000,
+      subtotal: totalTimSms * 50000,
+      keterangan: 'Rp50.000 / tim',
+      isGratis: false
+    });
+  }
+
+  const totalBiaya = rincian.reduce((acc, curr) => acc + curr.subtotal, 0);
+
+  return {
+    totalBiaya,
+    countOlimpiade,
+    countSinger,
+    totalGrupBanjari,
+    totalTimSms,
+    totalPeserta: excelRows.length,
+    rincian
+  };
+}
+
 export default function PendaftaranOlimpiadeSeni() {
   const router = useRouter();
   const [jenisPendaftaran, setJenisPendaftaran] = useState<'individu' | 'kolektif' | null>(null);
@@ -48,6 +228,7 @@ export default function PendaftaranOlimpiadeSeni() {
   const [kolektifKategori, setKolektifKategori] = useState<'Olimpiade Akademik' | 'Lomba Seni'>('Olimpiade Akademik');
   const [kolektifLombaDipilih, setKolektifLombaDipilih] = useState('Matematika');
   const [kolektifLombaList, setKolektifLombaList] = useState<string[]>([]);
+  const [biayaKolektif, setBiayaKolektif] = useState<ReturnType<typeof hitungBiayaKolektif> | null>(null);
 
   const lombaOptions = {
     'Olimpiade Akademik': ['Matematika', 'IPAS', 'PAI', 'Inggris', 'Arab'],
@@ -80,8 +261,9 @@ export default function PendaftaranOlimpiadeSeni() {
 
   const handleSubmitIndividu = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (form.kategori === 'Lomba Seni' && !buktiIndividu) {
-      Swal.fire('Peringatan', 'Bukti pembayaran wajib diunggah!', 'warning');
+    const biayaInfo = getBiayaIndividu(form.lombaDipilih);
+    if (!biayaInfo.isGratis && !buktiIndividu) {
+      Swal.fire('Peringatan', `Bukti pembayaran wajib diunggah untuk pendaftaran ${form.lombaDipilih} (${formatRupiah(biayaInfo.subtotal)})!`, 'warning');
       return;
     }
     if (!buktiSsIndividu) {
@@ -101,6 +283,8 @@ export default function PendaftaranOlimpiadeSeni() {
     try {
       const formData = new FormData();
       formData.append('jenisPendaftaran', 'individu');
+      formData.append('totalBiaya', String(biayaInfo.subtotal));
+      formData.append('rincianBiaya', JSON.stringify(biayaInfo));
       if (buktiIndividu) {
         formData.append('buktiPembayaran', buktiIndividu);
       }
@@ -235,6 +419,7 @@ export default function PendaftaranOlimpiadeSeni() {
           if (fileInputRef.current) fileInputRef.current.value = '';
           setUploadedFile(null);
           setKolektifLombaList([]);
+          setBiayaKolektif(null);
           return;
         }
 
@@ -274,6 +459,7 @@ export default function PendaftaranOlimpiadeSeni() {
           if (fileInputRef.current) fileInputRef.current.value = '';
           setUploadedFile(null);
           setKolektifLombaList([]);
+          setBiayaKolektif(null);
           return;
         }
 
@@ -288,12 +474,15 @@ export default function PendaftaranOlimpiadeSeni() {
           });
         }
 
+        const kalkulasi = hitungBiayaKolektif(excelData);
+        setBiayaKolektif(kalkulasi);
         setKolektifLombaList(Array.from(uniqueLombas));
         setUploadedFile(file);
       } catch (err) {
         Swal.fire('Gagal', 'Gagal membaca file Excel. Pastikan formatnya benar.', 'error');
         if (fileInputRef.current) fileInputRef.current.value = '';
         setUploadedFile(null);
+        setBiayaKolektif(null);
       }
     }
   };
@@ -307,9 +496,10 @@ export default function PendaftaranOlimpiadeSeni() {
       Swal.fire('Peringatan', 'Silakan pilih file Excel terlebih dahulu!', 'warning');
       return;
     }
+    const totalBiaya = biayaKolektif ? biayaKolektif.totalBiaya : 0;
     const isSeniSelected = kolektifLombaList.some(l => lombaOptions['Lomba Seni'].includes(l));
-    if (isSeniSelected && !buktiKolektif) {
-      Swal.fire('Peringatan', 'Bukti pembayaran wajib diunggah karena terdapat pendaftar Lomba Seni!', 'warning');
+    if (totalBiaya > 0 && !buktiKolektif) {
+      Swal.fire('Peringatan', `Bukti pembayaran wajib diunggah karena total biaya pendaftaran Lomba Seni adalah ${formatRupiah(totalBiaya)}!`, 'warning');
       return;
     }
     if (!buktiSsKolektif) {
@@ -332,6 +522,10 @@ export default function PendaftaranOlimpiadeSeni() {
       formData.append('jenisPendaftaran', 'kolektif');
       formData.append('kategori', isSeniSelected ? 'Lomba Seni' : 'Olimpiade Akademik');
       formData.append('hasLombaSeni', isSeniSelected ? 'true' : 'false');
+      formData.append('totalBiaya', String(totalBiaya));
+      if (biayaKolektif) {
+        formData.append('rincianBiaya', JSON.stringify(biayaKolektif));
+      }
       formData.append('fileExcel', uploadedFile);
       if (buktiKolektif) {
         formData.append('buktiPembayaran', buktiKolektif);
@@ -570,26 +764,81 @@ export default function PendaftaranOlimpiadeSeni() {
                       style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none' }}
                       placeholder="Contoh: Grup Shalawat Al-Ikhlas"
                     />
-                    <small style={{ color: '#94a3b8', display: 'block', marginTop: '4px' }}>*Hanya diisi jika mendaftar lomba berkelompok (seperti Banjari)</small>
+                    <small style={{ color: '#94a3b8', display: 'block', marginTop: '4px' }}>*Hanya diisi jika mendaftar lomba berkelompok (seperti Banjari / SMS)</small>
                   </div>
                 )}
 
-                {form.kategori === 'Lomba Seni' && (
-                  <div style={{ gridColumn: '1 / -1', background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
-                    <label style={{ display: 'block', fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
-                      <i className="fas fa-receipt" style={{ marginRight: '8px', color: '#3b82f6' }}></i>
-                      Upload Bukti Pembayaran <span style={{ color: 'red' }}>*</span>
-                    </label>
-                    <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0 0 12px 0' }}>Format gambar (.jpg, .png, .jpeg). Wajib diisi untuk Lomba Seni.</p>
-                    <input 
-                      type="file" 
-                      accept="image/*"
-                      required={form.kategori === 'Lomba Seni'}
-                      onChange={e => setBuktiIndividu(e.target.files ? e.target.files[0] : null)}
-                      style={{ width: '100%', padding: '8px', background: 'white', borderRadius: '8px', border: '1px solid #cbd5e1' }}
-                    />
-                  </div>
-                )}
+                {/* Kartu Rincian & Kalkulasi Biaya Individu */}
+                {(() => {
+                  const info = getBiayaIndividu(form.lombaDipilih);
+                  return (
+                    <div style={{
+                      gridColumn: '1 / -1',
+                      background: info.isGratis ? '#f0fdf4' : '#eff6ff',
+                      border: `1.5px solid ${info.isGratis ? '#86efac' : '#93c5fd'}`,
+                      borderRadius: '12px',
+                      padding: '16px 20px',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '14px'
+                    }}>
+                      <div style={{
+                        width: '42px',
+                        height: '42px',
+                        borderRadius: '10px',
+                        background: info.isGratis ? '#dcfce7' : '#dbeafe',
+                        color: info.isGratis ? '#16a34a' : '#0284c7',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '1.25rem',
+                        flexShrink: 0
+                      }}>
+                        <i className={info.isGratis ? "fas fa-gift" : "fas fa-receipt"}></i>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                          <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0f172a' }}>
+                            Biaya Pendaftaran: {form.lombaDipilih}
+                          </span>
+                          <span style={{
+                            fontSize: '1.15rem',
+                            fontWeight: 800,
+                            color: info.isGratis ? '#16a34a' : '#0284c7'
+                          }}>
+                            {info.isGratis ? 'GRATIS (Rp 0)' : formatRupiah(info.tarif)}
+                            {!info.isGratis && <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#64748b' }}> / {info.satuan}</span>}
+                          </span>
+                        </div>
+                        <p style={{ margin: '6px 0 0 0', fontSize: '0.84rem', color: info.isGratis ? '#166534' : '#334155', lineHeight: 1.5 }}>
+                          {info.keterangan}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {form.kategori === 'Lomba Seni' && (() => {
+                  const info = getBiayaIndividu(form.lombaDipilih);
+                  return (
+                    <div style={{ gridColumn: '1 / -1', background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                      <label style={{ display: 'block', fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
+                        <i className="fas fa-receipt" style={{ marginRight: '8px', color: '#3b82f6' }}></i>
+                        Upload Bukti Pembayaran ({formatRupiah(info.subtotal)}) <span style={{ color: 'red' }}>*</span>
+                      </label>
+                      <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0 0 12px 0' }}>
+                        Biaya pendaftaran sebesar <strong>{formatRupiah(info.subtotal)}</strong>. Format gambar (.jpg, .png, .jpeg). Wajib diisi untuk Lomba Seni.
+                      </p>
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        required={form.kategori === 'Lomba Seni'}
+                        onChange={e => setBuktiIndividu(e.target.files ? e.target.files[0] : null)}
+                        style={{ width: '100%', padding: '8px', background: 'white', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                      />
+                    </div>
+                  );
+                })()}
                   
                 <div style={{ gridColumn: '1 / -1', background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
                   <label style={{ display: 'block', fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>
@@ -713,7 +962,7 @@ export default function PendaftaranOlimpiadeSeni() {
                     <i className="fas fa-check-circle"></i> {uploadedFile.name}
                   </div>
                   <button 
-                    onClick={() => setUploadedFile(null)}
+                    onClick={() => { setUploadedFile(null); setBiayaKolektif(null); setKolektifLombaList([]); }}
                     style={{ padding: '8px 16px', borderRadius: '8px', background: '#f1f5f9', color: '#475569', border: 'none', cursor: 'pointer', fontSize: '0.9rem' }}
                   >
                     Batal Pilih Excel
@@ -722,22 +971,112 @@ export default function PendaftaranOlimpiadeSeni() {
               )}
             </div>
 
+            {/* Box Rincian & Kalkulasi Biaya Kolektif */}
+            {biayaKolektif && (
+              <div style={{
+                background: 'white',
+                border: '2px solid #0284c7',
+                borderRadius: '16px',
+                padding: '24px',
+                marginBottom: '32px',
+                boxShadow: '0 4px 15px rgba(2, 132, 199, 0.08)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
+                      <i className="fas fa-calculator"></i>
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>Kalkulasi Biaya Pendaftaran</h3>
+                      <p style={{ margin: '2px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+                        Rincian biaya otomatis berdasarkan data cabang lomba peserta di file Excel
+                      </p>
+                    </div>
+                  </div>
+                  <div style={{
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    background: biayaKolektif.totalBiaya === 0 ? '#dcfce7' : '#fef3c7',
+                    color: biayaKolektif.totalBiaya === 0 ? '#166534' : '#b45309',
+                    fontWeight: 700,
+                    fontSize: '0.85rem'
+                  }}>
+                    {biayaKolektif.totalBiaya === 0 ? '✓ Pendaftaran Gratis' : 'Memerlukan Pembayaran'}
+                  </div>
+                </div>
+
+                <div style={{ overflowX: 'auto', marginBottom: '16px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569', textAlign: 'left' }}>
+                        <th style={{ padding: '10px 14px' }}>Cabang Lomba</th>
+                        <th style={{ padding: '10px 14px' }}>Jumlah Peserta / Tim</th>
+                        <th style={{ padding: '10px 14px' }}>Tarif</th>
+                        <th style={{ padding: '10px 14px' }}>Subtotal</th>
+                        <th style={{ padding: '10px 14px' }}>Keterangan</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {biayaKolektif.rincian.map((item, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '12px 14px', fontWeight: 700, color: '#0f172a' }}>{item.lomba}</td>
+                          <td style={{ padding: '12px 14px', color: '#334155' }}>
+                            <span style={{ fontWeight: 600 }}>{item.jumlah} {item.satuan}</span>
+                            <div style={{ fontSize: '0.78rem', color: '#64748b' }}>({item.detail})</div>
+                          </td>
+                          <td style={{ padding: '12px 14px', color: '#475569' }}>
+                            {item.isGratis ? 'Gratis' : `${formatRupiah(item.tarif)} / ${item.satuan}`}
+                          </td>
+                          <td style={{ padding: '12px 14px', fontWeight: 700, color: item.isGratis ? '#16a34a' : '#0f172a' }}>
+                            {item.isGratis ? 'Rp 0' : formatRupiah(item.subtotal)}
+                          </td>
+                          <td style={{ padding: '12px 14px', fontSize: '0.82rem', color: '#64748b' }}>{item.keterangan}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr style={{ background: '#f8fafc', borderTop: '2px solid #cbd5e1' }}>
+                        <td colSpan={3} style={{ padding: '14px', fontWeight: 800, fontSize: '1rem', color: '#0f172a' }}>
+                          TOTAL BIAYA PENDAFTARAN
+                        </td>
+                        <td colSpan={2} style={{ padding: '14px', fontWeight: 900, fontSize: '1.25rem', color: biayaKolektif.totalBiaya === 0 ? '#16a34a' : '#0284c7' }}>
+                          {biayaKolektif.totalBiaya === 0 ? 'GRATIS (Rp 0)' : formatRupiah(biayaKolektif.totalBiaya)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
+                {biayaKolektif.totalBiaya > 0 ? (
+                  <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: '10px', padding: '12px 16px', color: '#92400e', fontSize: '0.85rem' }}>
+                    <i className="fas fa-info-circle" style={{ marginRight: '6px' }}></i>
+                    Harap melakukan transfer pembayaran sebesar <strong>{formatRupiah(biayaKolektif.totalBiaya)}</strong> ke rekening panitia dan unggah bukti transfer pada Poin 3 di bawah ini.
+                  </div>
+                ) : (
+                  <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '10px', padding: '12px 16px', color: '#166534', fontSize: '0.85rem' }}>
+                    <i className="fas fa-check-circle" style={{ marginRight: '6px' }}></i>
+                    Semua peserta yang didaftarkan mengikuti cabang <strong>Olimpiade Akademik Babak Penyisihan</strong>, sehingga <strong>tidak dikenakan biaya (GRATIS)</strong>. Anda tidak perlu mengunggah bukti pembayaran.
+                  </div>
+                )}
+              </div>
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
               {/* Bukti Pembayaran Kolektif */}
               <div style={{ 
-                background: uploadedFile && !kolektifLombaList.some(l => lombaOptions['Lomba Seni'].includes(l)) ? '#f0fdf4' : '#f8fafc', 
-                border: uploadedFile && !kolektifLombaList.some(l => lombaOptions['Lomba Seni'].includes(l)) ? '1px solid #86efac' : '1px dashed #cbd5e1', 
+                background: biayaKolektif && biayaKolektif.totalBiaya === 0 ? '#f0fdf4' : biayaKolektif && biayaKolektif.totalBiaya > 0 ? '#fffbeb' : '#f8fafc', 
+                border: biayaKolektif && biayaKolektif.totalBiaya === 0 ? '1px solid #86efac' : biayaKolektif && biayaKolektif.totalBiaya > 0 ? '1px solid #fcd34d' : '1px dashed #cbd5e1', 
                 borderRadius: '12px', 
                 padding: '24px', 
                 textAlign: 'center' 
               }}>
                 <i className="fas fa-receipt" style={{ 
                   fontSize: '3rem', 
-                  color: uploadedFile && !kolektifLombaList.some(l => lombaOptions['Lomba Seni'].includes(l)) ? '#16a34a' : '#f59e0b', 
+                  color: biayaKolektif && biayaKolektif.totalBiaya === 0 ? '#16a34a' : biayaKolektif && biayaKolektif.totalBiaya > 0 ? '#d97706' : '#94a3b8', 
                   marginBottom: '16px' 
                 }}></i>
                 <h3 style={{ margin: '0 0 8px 0', color: '#0f172a' }}>3. Unggah Bukti Pembayaran</h3>
-                {uploadedFile && !kolektifLombaList.some(l => lombaOptions['Lomba Seni'].includes(l)) ? (
+                {biayaKolektif && biayaKolektif.totalBiaya === 0 ? (
                   <div style={{ marginBottom: '12px' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', background: '#dcfce7', color: '#166534', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700, marginBottom: '8px' }}>
                       <i className="fas fa-check-circle"></i> GRATIS (Olimpiade Akademik)
@@ -746,13 +1085,13 @@ export default function PendaftaranOlimpiadeSeni() {
                       Pendaftaran Olimpiade tidak dipungut biaya. Anda tidak perlu mengunggah bukti pembayaran.
                     </p>
                   </div>
-                ) : kolektifLombaList.some(l => lombaOptions['Lomba Seni'].includes(l)) ? (
+                ) : biayaKolektif && biayaKolektif.totalBiaya > 0 ? (
                   <div style={{ marginBottom: '12px' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', background: '#fee2e2', color: '#b91c1c', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700, marginBottom: '8px' }}>
-                      <i className="fas fa-exclamation-triangle"></i> Wajib Diunggah
+                      <i className="fas fa-exclamation-triangle"></i> Wajib Diunggah: {formatRupiah(biayaKolektif.totalBiaya)}
                     </div>
                     <p style={{ color: '#b91c1c', fontSize: '0.85rem', margin: 0, fontWeight: 600 }}>
-                      Terdeteksi peserta Lomba Seni. Silakan unggah bukti transfer pembayaran.
+                      Terdeteksi peserta Lomba Seni. Silakan unggah bukti transfer pembayaran sebesar <b>{formatRupiah(biayaKolektif.totalBiaya)}</b>.
                     </p>
                   </div>
                 ) : (
@@ -785,8 +1124,8 @@ export default function PendaftaranOlimpiadeSeni() {
             <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end', gap: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '24px' }}>
               <button 
                 onClick={handleSubmitKolektif}
-                disabled={loading || !uploadedFile || (kolektifLombaList.some(l => lombaOptions['Lomba Seni'].includes(l)) && !buktiKolektif)}
-                style={{ padding: '12px 32px', borderRadius: '10px', background: '#0f172a', color: 'white', border: 'none', fontWeight: 700, cursor: (loading || !uploadedFile || (kolektifLombaList.some(l => lombaOptions['Lomba Seni'].includes(l)) && !buktiKolektif)) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'center', fontSize: '1.1rem' }}
+                disabled={loading || !uploadedFile || ((biayaKolektif ? biayaKolektif.totalBiaya > 0 : kolektifLombaList.some(l => lombaOptions['Lomba Seni'].includes(l))) && !buktiKolektif)}
+                style={{ padding: '12px 32px', borderRadius: '10px', background: '#0f172a', color: 'white', border: 'none', fontWeight: 700, cursor: (loading || !uploadedFile || ((biayaKolektif ? biayaKolektif.totalBiaya > 0 : kolektifLombaList.some(l => lombaOptions['Lomba Seni'].includes(l))) && !buktiKolektif)) ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'center', fontSize: '1.1rem' }}
               >
                 {loading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-upload"></i>}
                 Proses Pendaftaran Kolektif

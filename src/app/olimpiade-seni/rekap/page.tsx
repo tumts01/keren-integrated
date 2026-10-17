@@ -23,6 +23,10 @@ const OFFICIAL_LOMBA = [
   'Sandi Morse Semaphore (SMS)'
 ];
 
+const formatRupiah = (val: number) => {
+  return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
+};
+
 export default function RekapOlimpiadeSeni() {
   const router = useRouter();
   const [data, setData] = useState<OlimpiadeData[]>([]);
@@ -729,6 +733,7 @@ export default function RekapOlimpiadeSeni() {
                       <th style={{ padding: '14px 16px' }}>Identitas Pendaftar</th>
                       {isAdmin && <th style={{ padding: '14px 16px', textAlign: 'center' }}>Cetak Kartu</th>}
                       <th style={{ padding: '14px 16px' }}>Detail Lomba</th>
+                      <th style={{ padding: '14px 16px' }}>Total Biaya</th>
                       {isAdmin && <th style={{ padding: '14px 16px' }}>Lampiran</th>}
                       <th style={{ padding: '14px 16px' }}>Validasi Pembayaran</th>
                       {isAdmin && <th style={{ padding: '14px 16px', textAlign: 'right' }}>Aksi</th>}
@@ -863,6 +868,45 @@ export default function RekapOlimpiadeSeni() {
                                 )}
                               </div>
                             )}
+                          </td>
+                          <td style={{ padding: '16px', whiteSpace: 'nowrap' }}>
+                            {(() => {
+                              let total = row.metadata?.TOTAL_BIAYA;
+                              if (total === undefined || total === null) {
+                                if (isIndividu) {
+                                  const l = (row.metadata?.LOMBA_DIPILIH || row.metadata?.['LOMBA YANG DIPILIH'] || '').toLowerCase();
+                                  if (l.includes('singer') || l.includes('solo')) total = 50000;
+                                  else if (l.includes('banjari')) total = 100000;
+                                  else if (l.includes('sandi') || l.includes('morse') || l.includes('sms')) total = 50000;
+                                  else total = 0;
+                                } else {
+                                  const rekap = row.metadata?.REKAP_PESERTA || {};
+                                  let b = 0;
+                                  Object.entries(rekap).forEach(([lombaKey, count]) => {
+                                    const lk = lombaKey.toLowerCase();
+                                    const cnt = Number(count) || 0;
+                                    if (lk.includes('singer') || lk.includes('solo')) b += cnt * 50000;
+                                    else if (lk.includes('banjari')) b += 100000;
+                                    else if (lk.includes('sandi') || lk.includes('morse') || lk.includes('sms')) b += 50000;
+                                  });
+                                  total = b;
+                                }
+                              }
+                              
+                              const numTotal = Number(total) || 0;
+                              if (numTotal === 0) {
+                                return (
+                                  <span style={{ background: '#f0fdf4', color: '#16a34a', border: '1px solid #86efac', padding: '4px 10px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 800 }}>
+                                    GRATIS
+                                  </span>
+                                );
+                              }
+                              return (
+                                <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.9rem' }}>
+                                  {formatRupiah(numTotal)}
+                                </span>
+                              );
+                            })()}
                           </td>
                           {isAdmin && (
                             <td style={{ padding: '16px' }}>
@@ -1488,6 +1532,66 @@ export default function RekapOlimpiadeSeni() {
                 <i className="fas fa-times"></i>
               </button>
             </div>
+
+            {/* Summary card in modal kelola kolektif */}
+            {(() => {
+              let total = kelolaKolektif.metadata?.TOTAL_BIAYA;
+              if (total === undefined || total === null) {
+                const rekap = kelolaKolektif.metadata?.REKAP_PESERTA || {};
+                let b = 0;
+                Object.entries(rekap).forEach(([lombaKey, count]) => {
+                  const lk = lombaKey.toLowerCase();
+                  const cnt = Number(count) || 0;
+                  if (lk.includes('singer') || lk.includes('solo')) b += cnt * 50000;
+                  else if (lk.includes('banjari')) b += 100000;
+                  else if (lk.includes('sandi') || lk.includes('morse') || lk.includes('sms')) b += 50000;
+                });
+                total = b;
+              }
+              const numTotal = Number(total) || 0;
+              const statusBayar = kelolaKolektif.metadata?.STATUS_PEMBAYARAN || (numTotal === 0 ? 'Valid' : 'Menunggu');
+
+              return (
+                <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                  <div style={{ display: 'flex', gap: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div>
+                      <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Total Peserta</span>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>{collectiveStudents.length} Siswa</span>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Total Biaya Pendaftaran</span>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 800, color: numTotal > 0 ? '#0284c7' : '#16a34a' }}>
+                        {numTotal > 0 ? formatRupiah(numTotal) : 'GRATIS (Rp 0)'}
+                      </span>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Status Pembayaran</span>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        background: statusBayar === 'Valid' ? '#dcfce7' : '#fef3c7',
+                        color: statusBayar === 'Valid' ? '#166534' : '#b45309'
+                      }}>
+                        {statusBayar === 'Valid' ? 'LUNAS / VALID' : 'MENUNGGU VERIFIKASI'}
+                      </span>
+                    </div>
+                  </div>
+                  {kelolaKolektif.bukti_pembayaran_url && (
+                    <a
+                      href={kelolaKolektif.bukti_pembayaran_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ padding: '6px 14px', borderRadius: '8px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', fontSize: '0.82rem', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <i className="fas fa-receipt"></i> Lihat Bukti Transfer
+                    </a>
+                  )}
+                </div>
+              );
+            })()}
 
             <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
               {collectiveStudents.length === 0 ? (
