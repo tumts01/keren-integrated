@@ -35,26 +35,45 @@ export async function POST(req: Request) {
     if (payload.kecamatan) fullAlamat += `, Kec. ${payload.kecamatan}`;
     if (payload.kabupaten) fullAlamat += `, ${payload.kabupaten}`;
 
-    // Auto-generate Nomor Pendaftaran
+    // Auto-generate Nomor Pendaftaran kombinasi huruf dan angka acak (misal: MTS01-2026-EM5JJ)
     const currentYear = new Date().getFullYear();
-    const { data: latestRows } = await supabase
-      .from('data_spmb')
-      .select('id, metadata')
-      .order('id', { ascending: false })
-      .limit(1);
+    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const generateCode = (length = 5) => {
+      let code = '';
+      while (true) {
+        code = '';
+        for (let i = 0; i < length; i++) {
+          code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        // Pastikan kombinasi huruf dan angka (minimal 1 angka dan minimal 1 huruf)
+        if (/[0-9]/.test(code) && /[A-Z]/.test(code)) break;
+      }
+      return code;
+    };
 
-    let nextSeq = 1;
-    if (latestRows && latestRows.length > 0) {
-      const lastNomor = latestRows[0].metadata?.['Nomor Pendaftaran'] || '';
-      const match = lastNomor.match(/(?:MTS01|SPMB)-\d{4}-(\d+)/);
-      if (match && match[1]) {
-        nextSeq = parseInt(match[1], 10) + 1;
-      } else {
-        const { count } = await supabase.from('data_spmb').select('*', { count: 'exact', head: true });
-        nextSeq = (count || 0) + 1;
+    // Ambil semua nomor pendaftaran yang sudah ada untuk memastikan kode selalu unik
+    const { data: existingRows } = await supabase
+      .from('data_spmb')
+      .select('metadata');
+
+    const existingNomorSet = new Set(
+      (existingRows || [])
+        .map((r: any) => String(r.metadata?.['Nomor Pendaftaran'] || '').toUpperCase().trim())
+        .filter(Boolean)
+    );
+
+    let nomorPendaftaran = '';
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const randomCode = generateCode(5);
+      const candidate = `MTS01-${currentYear}-${randomCode}`;
+      if (!existingNomorSet.has(candidate)) {
+        nomorPendaftaran = candidate;
+        break;
       }
     }
-    const nomorPendaftaran = `MTS01-${currentYear}-${String(nextSeq).padStart(4, '0')}`;
+    if (!nomorPendaftaran) {
+      nomorPendaftaran = `MTS01-${currentYear}-${generateCode(6)}`;
+    }
     
     const { data: insertedData, error } = await supabase.from('data_spmb').insert({
       nama: payload.namaLengkap || '',

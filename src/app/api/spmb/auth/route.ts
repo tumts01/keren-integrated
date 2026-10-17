@@ -60,11 +60,24 @@ export async function POST(req: Request) {
       );
     }
 
-    // Strict exact match on full Nomor Pendaftaran (e.g. MTS01-2026-0001)
+    // Match Nomor Pendaftaran (misal: MTS01-2026-EM5JJ, atau kode belakang EM5JJ, atau tanpa strip)
     const found = rows.find((r: any) => {
       const meta = r.metadata || {};
       const noReg = String(meta['Nomor Pendaftaran'] || (`MTS01-2026-${String(r.id).padStart(4, '0')}`)).toUpperCase().trim();
-      return noReg === cleanInput;
+      
+      // 1. Exact match (misal MTS01-2026-EM5JJ)
+      if (noReg === cleanInput) return true;
+
+      // 2. Cocokkan tanpa tanda strip/spasi (misal MTS012026EM5JJ)
+      if (noReg.replace(/[^A-Z0-9]/g, '') === cleanInput.replace(/[^A-Z0-9]/g, '')) return true;
+
+      // 3. Jika pengguna hanya mengetikkan kode unik 5 karakter di belakang (misal EM5JJ)
+      if (cleanInput.length >= 4 && noReg.endsWith('-' + cleanInput)) return true;
+
+      // 4. Fallback match dengan NISN jika pengguna keliru memasukkan NISN
+      if (cleanInput.length >= 8 && String(r.nisn || meta['NISN'] || '').trim() === cleanInput) return true;
+
+      return false;
     });
 
     if (!found) {
@@ -117,7 +130,9 @@ export async function GET(req: Request) {
       const cleanNomor = nomor.toUpperCase().trim();
       target = rows.find((r: any) => {
         const noReg = String(r.metadata?.['Nomor Pendaftaran'] || '').toUpperCase().trim();
-        return noReg === cleanNomor;
+        return noReg === cleanNomor ||
+               noReg.replace(/[^A-Z0-9]/g, '') === cleanNomor.replace(/[^A-Z0-9]/g, '') ||
+               (cleanNomor.length >= 4 && noReg.endsWith('-' + cleanNomor));
       });
     }
 
