@@ -111,7 +111,7 @@ export default function CetakKartuPage() {
                   {data.NAMA_REGU && <DetailRow label="Grup/Regu" value={data.NAMA_REGU} />}
                 </div>
 
-                {isAkademik && (
+                {isAkademik ? (
                   <div style={{ position: 'relative', zIndex: 1, marginTop: 'auto', border: '1px solid #94a3b8', borderRadius: '4px', padding: '6px', background: 'rgba(255, 255, 255, 0.8)' }}>
                     <div style={{ textAlign: 'center', fontSize: '8pt', fontWeight: 'bold', color: '#0f172a', marginBottom: '4px' }}>
                       AKUN LOGIN CBT
@@ -127,6 +127,44 @@ export default function CetakKartuPage() {
                       </div>
                     </div>
                   </div>
+                ) : (
+                  (() => {
+                    const statusBayar = data.STATUS_PEMBAYARAN || 'Menunggu';
+                    if (statusBayar === 'Valid') {
+                      return (
+                        <div style={{ position: 'relative', zIndex: 1, marginTop: 'auto', border: '1.5px solid #16a34a', borderRadius: '6px', padding: '6px', background: '#f0fdf4', textAlign: 'center' }}>
+                          <div style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#166534' }}>
+                            ✓ STATUS: LUNAS / TERVERIFIKASI
+                          </div>
+                          <div style={{ fontSize: '6.5pt', color: '#15803d', marginTop: '2px' }}>
+                            Pembayaran sah dan telah divalidasi oleh Panitia
+                          </div>
+                        </div>
+                      );
+                    }
+                    if (statusBayar === 'Ditolak') {
+                      return (
+                        <div style={{ position: 'relative', zIndex: 1, marginTop: 'auto', border: '1.5px solid #ef4444', borderRadius: '6px', padding: '6px', background: '#fef2f2', textAlign: 'center' }}>
+                          <div style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#b91c1c' }}>
+                            ✕ STATUS: PEMBAYARAN DITOLAK
+                          </div>
+                          <div style={{ fontSize: '6.5pt', color: '#991b1b', marginTop: '2px' }}>
+                            Bukti transfer tidak valid. Hubungi panitia untuk konfirmasi.
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div style={{ position: 'relative', zIndex: 1, marginTop: 'auto', border: '1.5px dashed #d97706', borderRadius: '6px', padding: '6px', background: '#fffbeb', textAlign: 'center' }}>
+                        <div style={{ fontSize: '8pt', fontWeight: 'bold', color: '#b45309' }}>
+                          ⏳ MENUNGGU VERIFIKASI ADMIN
+                        </div>
+                        <div style={{ fontSize: '6pt', color: '#92400e', marginTop: '2px' }}>
+                          *Kartu sah digunakan setelah pembayaran divalidasi panitia
+                        </div>
+                      </div>
+                    );
+                  })()
                 )}
               </div>
               

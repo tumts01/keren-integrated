@@ -93,6 +93,73 @@ export async function PUT(req: Request) {
         .eq('id', id);
 
       if (updateErr) throw updateErr;
+
+      // Sinkronkan ke semua peserta kolektif jika ini master kolektif
+      if (existing.jenis_pendaftaran === 'kolektif' && existing.metadata?.ASAL_SEKOLAH) {
+        const sekolah = existing.metadata.ASAL_SEKOLAH;
+        const { data: pesertasi } = await supabase
+          .from('data_olimpiade_seni')
+          .select('id, metadata')
+          .eq('jenis_pendaftaran', 'peserta_kolektif');
+
+        const targets = (pesertasi || []).filter(p => 
+          String(p.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase() === String(sekolah || '').trim().toLowerCase()
+        );
+
+        for (const t of targets) {
+          await supabase
+            .from('data_olimpiade_seni')
+            .update({
+              metadata: {
+                ...t.metadata,
+                STATUS_PEMBAYARAN: 'Valid'
+              }
+            })
+            .eq('id', t.id);
+        }
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
+    if (action === 'tolak') {
+      const newMeta = {
+        ...existing.metadata,
+        STATUS_PEMBAYARAN: 'Ditolak'
+      };
+
+      const { error: updateErr } = await supabase
+        .from('data_olimpiade_seni')
+        .update({ metadata: newMeta })
+        .eq('id', id);
+
+      if (updateErr) throw updateErr;
+
+      // Sinkronkan ke semua peserta kolektif jika ini master kolektif
+      if (existing.jenis_pendaftaran === 'kolektif' && existing.metadata?.ASAL_SEKOLAH) {
+        const sekolah = existing.metadata.ASAL_SEKOLAH;
+        const { data: pesertasi } = await supabase
+          .from('data_olimpiade_seni')
+          .select('id, metadata')
+          .eq('jenis_pendaftaran', 'peserta_kolektif');
+
+        const targets = (pesertasi || []).filter(p => 
+          String(p.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase() === String(sekolah || '').trim().toLowerCase()
+        );
+
+        for (const t of targets) {
+          await supabase
+            .from('data_olimpiade_seni')
+            .update({
+              metadata: {
+                ...t.metadata,
+                STATUS_PEMBAYARAN: 'Ditolak'
+              }
+            })
+            .eq('id', t.id);
+        }
+      }
+
       return NextResponse.json({ success: true });
     }
 

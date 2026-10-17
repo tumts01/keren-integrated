@@ -237,6 +237,7 @@ export async function POST(req: Request) {
           ...row,
           'ASAL_SEKOLAH': namaSekolahKolektif,
           'NOMOR_PESERTA': nomorPeserta,
+          'STATUS_PEMBAYARAN': totalBiayaKolektif === 0 ? 'Valid' : 'Menunggu',
           'WAKTU_DAFTAR': new Date().toISOString()
         };
 

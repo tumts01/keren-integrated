@@ -386,9 +386,20 @@ export default function PendaftaranOlimpiadeSeni() {
       const data = await res.json();
       if (data.success) {
         localStorage.setItem('cetak_kartu_data', JSON.stringify(data.pesertaData));
-        Swal.fire('Berhasil!', 'Pendaftaran Individu Berhasil!', 'success').then(() => {
-          router.push('/olimpiade-seni/kartu');
-        });
+        const isSeni = form.kategori === 'Lomba Seni' || !biayaInfo.isGratis;
+        if (isSeni) {
+          Swal.fire({
+            title: 'Pendaftaran Terkirim!',
+            html: `Data pendaftaran dan bukti transfer berhasil diunggah.<br/><br/><div style="text-align: left; background: #fffbeb; border: 1px solid #fde68a; padding: 12px; border-radius: 8px; font-size: 0.85rem; color: #92400e;"><b>ℹ️ Catatan Verifikasi:</b><br/>Status pendaftaran Anda saat ini <b>Menunggu Verifikasi Admin</b>. Panitia akan memvalidasi bukti pembayaran dengan mutasi rekening bank resmi. Kartu peserta sah setelah divalidasi panitia.</div>`,
+            icon: 'success'
+          }).then(() => {
+            router.push('/olimpiade-seni/kartu');
+          });
+        } else {
+          Swal.fire('Berhasil!', 'Pendaftaran Olimpiade Akademik Berhasil!', 'success').then(() => {
+            router.push('/olimpiade-seni/kartu');
+          });
+        }
       } else {
         Swal.fire('Gagal', 'Gagal mendaftar: ' + data.error, 'error');
       }
@@ -661,16 +672,25 @@ export default function PendaftaranOlimpiadeSeni() {
           localStorage.setItem('cetak_kartu_data', JSON.stringify(data.pesertaKolektif));
         }
         
+        const hasPayment = totalBiaya > 0;
+        const noteHtml = hasPayment
+          ? `<br/><br/><div style="text-align: left; background: #fffbeb; border: 1px solid #fde68a; padding: 12px; border-radius: 8px; font-size: 0.85rem; color: #92400e;"><b>ℹ️ Catatan Verifikasi:</b><br/>Status pendaftaran Lomba Seni saat ini <b>Menunggu Verifikasi Admin</b>. Panitia akan mencocokkan bukti transfer dengan mutasi bank resmi MTs Almaarif 01 Singosari sebelum mengesahkan kartu peserta.</div>`
+          : '';
+
         if (data.excelDownloadUrl) {
           Swal.fire({
-            title: 'Berhasil!',
-            html: `Pendaftaran Kolektif Berhasil!<br/><br/><a href="${data.excelDownloadUrl}" target="_blank" style="display:inline-block;padding:10px 20px;background:#10b981;color:white;text-decoration:none;border-radius:8px;font-weight:bold;margin-bottom:10px;">Unduh Excel Akun CBT</a><br/><small>Silakan klik OK untuk lanjut mencetak Kartu Peserta.</small>`,
+            title: 'Pendaftaran Kolektif Berhasil!',
+            html: `Data peserta berhasil disimpan.<br/><br/><a href="${data.excelDownloadUrl}" target="_blank" style="display:inline-block;padding:10px 20px;background:#10b981;color:white;text-decoration:none;border-radius:8px;font-weight:bold;margin-bottom:10px;">Unduh Excel Akun CBT</a>${noteHtml}<br/><small style="color: #64748b; margin-top: 8px; display: block;">Silakan klik OK untuk lanjut mencetak Kartu Peserta.</small>`,
             icon: 'success'
           }).then(() => {
             router.push('/olimpiade-seni/kartu');
           });
         } else {
-          Swal.fire('Berhasil!', 'Pendaftaran Kolektif Berhasil!', 'success').then(() => {
+          Swal.fire({
+            title: 'Pendaftaran Kolektif Berhasil!',
+            html: `Data peserta berhasil disimpan.${noteHtml}<br/><small style="color: #64748b; margin-top: 8px; display: block;">Silakan klik OK untuk lanjut mencetak Kartu Peserta.</small>`,
+            icon: 'success'
+          }).then(() => {
             router.push('/olimpiade-seni/kartu');
           });
         }

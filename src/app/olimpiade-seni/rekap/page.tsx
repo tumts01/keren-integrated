@@ -34,7 +34,7 @@ export default function RekapOlimpiadeSeni() {
   const [viewMode, setViewMode] = useState<'ringkasan' | 'peserta'>('ringkasan');
   const [filterJenis, setFilterJenis] = useState<'semua' | 'individu' | 'kolektif'>('semua');
   const [filterCabang, setFilterCabang] = useState('semua');
-  const [filterStatus, setFilterStatus] = useState<'semua' | 'valid' | 'menunggu'>('semua');
+  const [filterStatus, setFilterStatus] = useState<'semua' | 'valid' | 'menunggu' | 'ditolak'>('semua');
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(15);
@@ -185,7 +185,7 @@ export default function RekapOlimpiadeSeni() {
         Swal.fire({
           icon: 'success',
           title: 'Berhasil!',
-          text: 'Pembayaran telah divalidasi',
+          text: 'Pembayaran telah divalidasi dan ditandai LUNAS',
           timer: 1500,
           showConfirmButton: false
         });
@@ -195,6 +195,47 @@ export default function RekapOlimpiadeSeni() {
       }
     } catch (err: any) {
       Swal.fire('Error', 'Gagal memvalidasi: ' + err.message, 'error');
+    }
+  };
+
+  const handleTolak = async (id: number, nama?: string) => {
+    const confirm = await Swal.fire({
+      title: 'Tolak Pembayaran?',
+      text: nama 
+        ? `Yakin ingin menolak bukti pembayaran untuk "${nama}"? Status pembayaran akan ditandai Ditolak.` 
+        : 'Yakin ingin menolak bukti pembayaran ini? Status pembayaran akan ditandai Ditolak.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Ya, Tolak!',
+      cancelButtonText: 'Batal'
+    });
+
+    if (confirm.isConfirmed) {
+      try {
+        const res = await fetch('/api/olimpiade-seni/rekap', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, action: 'tolak' })
+        });
+        const json = await res.json();
+        
+        if (json.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Ditolak!',
+            text: 'Pembayaran berhasil ditandai Ditolak.',
+            timer: 1500,
+            showConfirmButton: false
+          });
+          fetchData();
+        } else {
+          Swal.fire('Error', json.error, 'error');
+        }
+      } catch (err: any) {
+        Swal.fire('Error', 'Gagal menolak pembayaran: ' + err.message, 'error');
+      }
     }
   };
 
@@ -235,8 +276,10 @@ export default function RekapOlimpiadeSeni() {
       // Status Pembayaran Filter
       if (filterStatus !== 'semua') {
         const isLunas = meta.STATUS_PEMBAYARAN === 'Valid';
+        const isDitolak = meta.STATUS_PEMBAYARAN === 'Ditolak';
         if (filterStatus === 'valid' && !isLunas) return false;
-        if (filterStatus === 'menunggu' && isLunas) return false;
+        if (filterStatus === 'ditolak' && !isDitolak) return false;
+        if (filterStatus === 'menunggu' && (isLunas || isDitolak)) return false;
       }
 
       // Cabang Lomba Filter
@@ -288,8 +331,10 @@ export default function RekapOlimpiadeSeni() {
       // Status Pembayaran Filter
       if (filterStatus !== 'semua') {
         const isLunas = meta.STATUS_PEMBAYARAN === 'Valid';
+        const isDitolak = meta.STATUS_PEMBAYARAN === 'Ditolak';
         if (filterStatus === 'valid' && !isLunas) return false;
-        if (filterStatus === 'menunggu' && isLunas) return false;
+        if (filterStatus === 'ditolak' && !isDitolak) return false;
+        if (filterStatus === 'menunggu' && (isLunas || isDitolak)) return false;
       }
 
       // Cabang Lomba Filter
@@ -668,7 +713,8 @@ export default function RekapOlimpiadeSeni() {
             >
               <option value="semua">Semua Status Bayar</option>
               <option value="valid">Lunas / Valid</option>
-              <option value="menunggu">Menunggu</option>
+              <option value="menunggu">Menunggu Verifikasi</option>
+              <option value="ditolak">Ditolak</option>
             </select>
 
             {/* Reset Button */}
@@ -949,6 +995,10 @@ export default function RekapOlimpiadeSeni() {
                               <span style={{ background: '#dcfce7', color: '#16a34a', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700 }}>
                                 <i className="fas fa-check-circle" style={{ marginRight: '4px' }}></i> LUNAS
                               </span>
+                            ) : row.metadata?.STATUS_PEMBAYARAN === 'Ditolak' ? (
+                              <span style={{ background: '#fee2e2', color: '#dc2626', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700 }}>
+                                <i className="fas fa-times-circle" style={{ marginRight: '4px' }}></i> DITOLAK
+                              </span>
                             ) : (
                               <span style={{ background: '#fef3c7', color: '#d97706', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700 }}>
                                 <i className="fas fa-clock" style={{ marginRight: '4px' }}></i> MENUNGGU
@@ -970,10 +1020,19 @@ export default function RekapOlimpiadeSeni() {
                                 {row.metadata?.STATUS_PEMBAYARAN !== 'Valid' && (
                                   <button 
                                     onClick={() => handleValidasi(row.id)}
-                                    style={{ padding: '6px 10px', borderRadius: '6px', background: '#3b82f6', color: 'white', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', fontWeight: 600 }}
-                                    title="Validasi Pembayaran"
+                                    style={{ padding: '6px 10px', borderRadius: '6px', background: '#10b981', color: 'white', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', fontWeight: 600 }}
+                                    title="Validasi Pembayaran (Dana Masuk)"
                                   >
                                     <i className="fas fa-check"></i> Validasi
+                                  </button>
+                                )}
+                                {row.metadata?.STATUS_PEMBAYARAN !== 'Ditolak' && (
+                                  <button 
+                                    onClick={() => handleTolak(row.id, isIndividu ? row.metadata?.NAMA : row.metadata?.ASAL_SEKOLAH)}
+                                    style={{ padding: '6px 10px', borderRadius: '6px', background: '#f87171', color: 'white', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', fontWeight: 600 }}
+                                    title="Tolak Bukti Pembayaran (Palsu / Tidak Masuk)"
+                                  >
+                                    <i className="fas fa-times"></i> Tolak
                                   </button>
                                 )}
                                 <button 
@@ -1103,6 +1162,10 @@ export default function RekapOlimpiadeSeni() {
                             {meta.STATUS_PEMBAYARAN === 'Valid' ? (
                               <span style={{ background: '#dcfce7', color: '#16a34a', padding: '3px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700 }}>
                                 LUNAS
+                              </span>
+                            ) : meta.STATUS_PEMBAYARAN === 'Ditolak' ? (
+                              <span style={{ background: '#fee2e2', color: '#dc2626', padding: '3px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700 }}>
+                                DITOLAK
                               </span>
                             ) : (
                               <span style={{ background: '#fef3c7', color: '#d97706', padding: '3px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700 }}>
@@ -1436,6 +1499,7 @@ export default function RekapOlimpiadeSeni() {
                   >
                     <option value="Valid">Valid / Lunas</option>
                     <option value="Menunggu">Menunggu Verifikasi</option>
+                    <option value="Ditolak">Ditolak</option>
                   </select>
                 </div>
               </div>
@@ -1572,10 +1636,10 @@ export default function RekapOlimpiadeSeni() {
                         borderRadius: '12px',
                         fontSize: '0.78rem',
                         fontWeight: 700,
-                        background: statusBayar === 'Valid' ? '#dcfce7' : '#fef3c7',
-                        color: statusBayar === 'Valid' ? '#166534' : '#b45309'
+                        background: statusBayar === 'Valid' ? '#dcfce7' : statusBayar === 'Ditolak' ? '#fee2e2' : '#fef3c7',
+                        color: statusBayar === 'Valid' ? '#166534' : statusBayar === 'Ditolak' ? '#991b1b' : '#b45309'
                       }}>
-                        {statusBayar === 'Valid' ? 'LUNAS / VALID' : 'MENUNGGU VERIFIKASI'}
+                        {statusBayar === 'Valid' ? 'LUNAS / VALID' : statusBayar === 'Ditolak' ? 'DITOLAK' : 'MENUNGGU VERIFIKASI'}
                       </span>
                     </div>
                     {numTotal > 0 && (
