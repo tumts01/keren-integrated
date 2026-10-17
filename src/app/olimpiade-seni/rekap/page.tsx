@@ -1578,6 +1578,14 @@ export default function RekapOlimpiadeSeni() {
                         {statusBayar === 'Valid' ? 'LUNAS / VALID' : 'MENUNGGU VERIFIKASI'}
                       </span>
                     </div>
+                    {numTotal > 0 && (
+                      <div>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Rekening Tujuan</span>
+                        <span style={{ fontSize: '0.92rem', fontWeight: 700, color: '#0f172a' }}>
+                          BCA 3686518888
+                        </span>
+                      </div>
+                    )}
                   </div>
                   {kelolaKolektif.bukti_pembayaran_url && (
                     <a

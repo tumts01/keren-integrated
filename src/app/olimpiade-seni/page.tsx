@@ -155,6 +155,75 @@ export default function OlimpiadeSeniPage() {
           </button>
         </div>
 
+        {/* Info Rekening Pembayaran */}
+        <div style={{
+          marginTop: '28px',
+          background: '#f8fafc',
+          border: '1.5px solid #bfdbfe',
+          borderRadius: '14px',
+          padding: '16px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '12px',
+          textAlign: 'left',
+          position: 'relative',
+          zIndex: 10
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '10px',
+              background: '#005baa',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 900,
+              fontSize: '0.95rem',
+              letterSpacing: '0.5px',
+              flexShrink: 0
+            }}>
+              BCA
+            </div>
+            <div>
+              <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
+                Rekening Transfer Pembayaran (Khusus Lomba Seni)
+              </div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', letterSpacing: '0.5px' }}>
+                3686518888
+              </div>
+              <div style={{ fontSize: '0.84rem', color: '#334155', fontWeight: 600 }}>
+                a.n. MTs Almaarif 01 Singosari
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              navigator.clipboard.writeText('3686518888');
+              alert('Nomor rekening BCA 3686518888 berhasil disalin ke clipboard!');
+            }}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '8px',
+              background: '#eff6ff',
+              color: '#0284c7',
+              border: '1px solid #bfdbfe',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <i className="fas fa-copy"></i> Salin No. Rekening
+          </button>
+        </div>
+
         {/* Tombol Unduh Dokumen */}
         <div style={{ 
           display: 'flex', 

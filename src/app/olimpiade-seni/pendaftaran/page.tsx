@@ -12,6 +12,12 @@ import Swal from 'sweetalert2';
 // - Lomba Seni Al-Banjari: Rp100.000 per grup.
 // - Lomba Pramuka SMS (Sandi, Morse, Semaphore): Rp50.000 per tim.
 
+export const INFO_BANK = {
+  bank: 'BCA',
+  noRek: '3686518888',
+  atasNama: 'MTs Almaarif 01 Singosari'
+};
+
 export const formatRupiah = (val: number) => {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(val);
 };
@@ -259,6 +265,82 @@ export default function PendaftaranOlimpiadeSeni() {
     setKolektifLombaList(kolektifLombaList.filter(item => item !== lomba));
   };
 
+  const renderBankCard = () => (
+    <div style={{
+      background: '#ffffff',
+      border: '1.5px solid #bfdbfe',
+      borderRadius: '10px',
+      padding: '12px 16px',
+      margin: '12px 0 16px 0',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+      gap: '12px',
+      textAlign: 'left',
+      boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{
+          width: '44px',
+          height: '44px',
+          borderRadius: '8px',
+          background: '#005baa',
+          color: 'white',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontWeight: 900,
+          fontSize: '0.95rem',
+          letterSpacing: '0.5px',
+          flexShrink: 0
+        }}>
+          BCA
+        </div>
+        <div>
+          <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
+            Rekening Transfer Resmi
+          </div>
+          <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', letterSpacing: '0.5px', lineHeight: 1.2 }}>
+            {INFO_BANK.noRek}
+          </div>
+          <div style={{ fontSize: '0.84rem', color: '#334155', fontWeight: 600 }}>
+            a.n. {INFO_BANK.atasNama}
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          navigator.clipboard.writeText(INFO_BANK.noRek);
+          Swal.fire({
+            icon: 'success',
+            title: 'Tersalin!',
+            text: `Nomor rekening ${INFO_BANK.bank} ${INFO_BANK.noRek} berhasil disalin ke clipboard.`,
+            timer: 1500,
+            showConfirmButton: false
+          });
+        }}
+        style={{
+          padding: '8px 14px',
+          borderRadius: '6px',
+          background: '#eff6ff',
+          color: '#0284c7',
+          border: '1px solid #bfdbfe',
+          fontSize: '0.82rem',
+          fontWeight: 700,
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          transition: 'all 0.2s'
+        }}
+      >
+        <i className="fas fa-copy"></i> Salin No. Rekening
+      </button>
+    </div>
+  );
+
   const handleSubmitIndividu = async (e: React.FormEvent) => {
     e.preventDefault();
     const biayaInfo = getBiayaIndividu(form.lombaDipilih);
@@ -381,6 +463,7 @@ export default function PendaftaranOlimpiadeSeni() {
       ['   - Sandi Morse Semaphore (SMS)'],
       ['3. Kolom "NAMA REGU/GRUP" hanya diisi untuk cabang beregu (Al Banjari atau SMS). Untuk lomba mapel/solo dikosongkan.'],
       ['4. Akun CBT (Username & Password) untuk lomba akademik akan di-generate otomatis oleh sistem setelah upload.'],
+      ['5. Rekening transfer pendaftaran Lomba Seni: BCA 3686518888 a.n. MTs Almaarif 01 Singosari.'],
       [''],
       ['CONTOH PENGISIAN YANG BENAR (Lihat di bawah ini, JANGAN isi di sheet ini):'],
       ['NO', 'NAMA LENGKAP SISWA', 'NISN', 'NAMA SD/MI', 'NPSN SD/MI', 'KELAS', 'LOMBA YANG DIPILIH', 'NAMA REGU/GRUP'],
@@ -827,8 +910,9 @@ export default function PendaftaranOlimpiadeSeni() {
                         Upload Bukti Pembayaran ({formatRupiah(info.subtotal)}) <span style={{ color: 'red' }}>*</span>
                       </label>
                       <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0 0 12px 0' }}>
-                        Biaya pendaftaran sebesar <strong>{formatRupiah(info.subtotal)}</strong>. Format gambar (.jpg, .png, .jpeg). Wajib diisi untuk Lomba Seni.
+                        Biaya pendaftaran sebesar <strong>{formatRupiah(info.subtotal)}</strong>. Silakan transfer ke rekening resmi berikut lalu unggah bukti transfer di bawah ini:
                       </p>
+                      {renderBankCard()}
                       <input 
                         type="file" 
                         accept="image/*"
@@ -904,7 +988,7 @@ export default function PendaftaranOlimpiadeSeni() {
                   <li>Isi <strong>Asal Sekolah / Instansi</strong> pada kolom di atas.</li>
                   <li>Unduh template Excel resmi (Poin 1), lalu isi data peserta secara lengkap.</li>
                   <li>Unggah file Excel (Poin 2). Sistem akan mendeteksi pilihan lomba secara otomatis.</li>
-                  <li>Jika terdapat peserta <strong>Lomba Seni</strong>, wajib mengunggah Bukti Pembayaran (Poin 3). Jika <strong>hanya Olimpiade Akademik</strong>, pendaftaran <strong>GRATIS</strong> (tidak perlu bukti transfer).</li>
+                  <li>Jika terdapat peserta <strong>Lomba Seni</strong>, lakukan pembayaran ke rekening <strong>BCA 3686518888 a.n. MTs Almaarif 01 Singosari</strong> dan wajib mengunggah Bukti Pembayaran (Poin 3). Jika <strong>hanya Olimpiade Akademik</strong>, pendaftaran <strong>GRATIS</strong> (tidak perlu bukti transfer).</li>
                   <li>Klik <strong>Proses Pendaftaran Kolektif</strong> dan tunggu hingga selesai.</li>
                   <li style={{ color: '#ef4444', fontWeight: 600 }}>PENTING: Jangan lupa untuk langsung mengunduh file Excel Akun CBT (berisi Username & Password peserta) yang muncul setelah pendaftaran berhasil!</li>
                 </ol>
@@ -1048,9 +1132,12 @@ export default function PendaftaranOlimpiadeSeni() {
                 </div>
 
                 {biayaKolektif.totalBiaya > 0 ? (
-                  <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: '10px', padding: '12px 16px', color: '#92400e', fontSize: '0.85rem' }}>
-                    <i className="fas fa-info-circle" style={{ marginRight: '6px' }}></i>
-                    Harap melakukan transfer pembayaran sebesar <strong>{formatRupiah(biayaKolektif.totalBiaya)}</strong> ke rekening panitia dan unggah bukti transfer pada Poin 3 di bawah ini.
+                  <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: '10px', padding: '16px', color: '#92400e', fontSize: '0.85rem' }}>
+                    <div style={{ marginBottom: '8px', fontWeight: 600 }}>
+                      <i className="fas fa-info-circle" style={{ marginRight: '6px' }}></i>
+                      Harap melakukan transfer pembayaran sebesar <strong>{formatRupiah(biayaKolektif.totalBiaya)}</strong> ke rekening panitia di bawah ini, lalu unggah bukti transfer pada Poin 3:
+                    </div>
+                    {renderBankCard()}
                   </div>
                 ) : (
                   <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '10px', padding: '12px 16px', color: '#166534', fontSize: '0.85rem' }}>
@@ -1090,12 +1177,18 @@ export default function PendaftaranOlimpiadeSeni() {
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', background: '#fee2e2', color: '#b91c1c', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700, marginBottom: '8px' }}>
                       <i className="fas fa-exclamation-triangle"></i> Wajib Diunggah: {formatRupiah(biayaKolektif.totalBiaya)}
                     </div>
-                    <p style={{ color: '#b91c1c', fontSize: '0.85rem', margin: 0, fontWeight: 600 }}>
-                      Terdeteksi peserta Lomba Seni. Silakan unggah bukti transfer pembayaran sebesar <b>{formatRupiah(biayaKolektif.totalBiaya)}</b>.
+                    <p style={{ color: '#b91c1c', fontSize: '0.85rem', margin: '0 0 10px 0', fontWeight: 600 }}>
+                      Terdeteksi peserta Lomba Seni. Silakan unggah bukti transfer pembayaran sebesar <b>{formatRupiah(biayaKolektif.totalBiaya)}</b> ke rekening resmi:
                     </p>
+                    {renderBankCard()}
                   </div>
                 ) : (
-                  <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '16px' }}>Format (.jpg, .png). Wajib jika ada Lomba Seni (Olimpiade Gratis).</p>
+                  <div style={{ marginBottom: '12px' }}>
+                    <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '8px' }}>Format (.jpg, .png). Wajib jika ada Lomba Seni (Olimpiade Gratis).</p>
+                    <div style={{ fontSize: '0.82rem', color: '#475569', background: '#f1f5f9', padding: '8px 12px', borderRadius: '8px', textAlign: 'center' }}>
+                      Rekening Transfer: <strong>BCA 3686518888</strong> a.n. <strong>MTs Almaarif 01 Singosari</strong>
+                    </div>
+                  </div>
                 )}
                 
                 <input 
