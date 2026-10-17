@@ -30,6 +30,17 @@ export default function PortalDashboard() {
   // Modal Dokumen SPTJM (Surat Pernyataan)
   const [showSptjmModal, setShowSptjmModal] = useState(false);
 
+  // Info Wali Kelas
+  const [waliKelas, setWaliKelas] = useState<{
+    rombel: string;
+    nama: string;
+    nip?: string;
+    noWa?: string;
+    cleanWa?: string;
+    foto?: string;
+    email?: string;
+  } | null>(null);
+
   useEffect(() => {
     const sessionStr = localStorage.getItem('portal_session');
     if (!sessionStr) {
@@ -114,6 +125,19 @@ export default function PortalDashboard() {
         .catch(() => {});
     }
   }, [student]);
+
+  useEffect(() => {
+    if (student?.kelas) {
+      fetch(`/api/portal/wali-kelas?kelas=${encodeURIComponent(student.kelas)}`)
+        .then(r => r.json())
+        .then(res => {
+          if (res.success && res.data) {
+            setWaliKelas(res.data);
+          }
+        })
+        .catch(err => console.error('Fetch wali kelas error:', err));
+    }
+  }, [student?.kelas]);
 
   // Handle Setuju / Verifikasi Data
   const handleSetujuData = async () => {
@@ -495,7 +519,14 @@ export default function PortalDashboard() {
                 </div>
                 <div>
                   <span style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '2px' }}>Rombel / Kelas</span>
-                  <div style={{ fontSize: '14px', color: '#334155', background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>{student.kelas || '-'}</div>
+                  <div style={{ fontSize: '14px', color: '#334155', background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontWeight: 700, color: '#0f172a' }}>{student.kelas || '-'}</div>
+                    {waliKelas?.nama && waliKelas.nama !== 'Belum ditentukan' && (
+                      <div style={{ fontSize: '11px', color: '#0284c7', fontWeight: 600, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={waliKelas.nama}>
+                        Wali: {waliKelas.nama.split(',')[0]}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -548,6 +579,167 @@ export default function PortalDashboard() {
             </div>
           </div>
         </div>
+
+        {/* ========================================================================= */}
+        {/* FITUR KHUSUS: KARTU INFORMASI WALI KELAS */}
+        {/* ========================================================================= */}
+        {waliKelas && waliKelas.nama && waliKelas.nama !== 'Belum ditentukan' && (
+          <div style={{
+            background: 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)',
+            borderRadius: '16px',
+            border: '1.5px solid #86efac',
+            padding: '18px 20px',
+            marginBottom: '20px',
+            boxShadow: '0 4px 14px rgba(16, 185, 129, 0.08)',
+            position: 'relative'
+          }}>
+            {/* Header Badge */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{
+                  width: '34px', height: '34px', borderRadius: '10px',
+                  background: '#dcfce7', color: '#16a34a',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px'
+                }}>
+                  <i className="fas fa-chalkboard-teacher"></i>
+                </span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '14.5px', fontWeight: 800, color: '#0f172a' }}>
+                    Wali Kelas Ananda
+                  </h3>
+                  <span style={{ fontSize: '11px', color: '#166534', fontWeight: 600 }}>MTs Almaarif 01 Singosari</span>
+                </div>
+              </div>
+              <span style={{
+                background: '#16a34a', color: 'white',
+                fontSize: '11px', fontWeight: 800,
+                padding: '4px 12px', borderRadius: '20px',
+                letterSpacing: '0.3px',
+                boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)'
+              }}>
+                Kelas {waliKelas.rombel || student.kelas}
+              </span>
+            </div>
+
+            {/* Profile Info */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: '#e2e8f0',
+                border: '2.5px solid #10b981',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                {waliKelas.foto ? (
+                  <img
+                    src={waliKelas.foto}
+                    alt={waliKelas.nama}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  <i className="fas fa-user-tie" style={{ fontSize: '28px', color: '#64748b' }}></i>
+                )}
+              </div>
+
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', lineHeight: 1.3, marginBottom: '2px' }}>
+                  {waliKelas.nama}
+                </div>
+                <div style={{ fontSize: '11.5px', color: '#475569', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                  <span>Guru & Wali Kelas {waliKelas.rombel || student.kelas}</span>
+                  {waliKelas.nip && (
+                    <span style={{ color: '#94a3b8' }}>• NIP. {waliKelas.nip}</span>
+                  )}
+                </div>
+                {waliKelas.noWa && (
+                  <div style={{ fontSize: '12px', color: '#16a34a', fontWeight: 700, marginTop: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <i className="fab fa-whatsapp"></i> {waliKelas.noWa}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            {waliKelas.cleanWa ? (
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <a
+                  href={`https://wa.me/${waliKelas.cleanWa}?text=${encodeURIComponent(
+                    `Assalamu'alaikum Warahmatullahi Wabarakatuh, Bapak/Ibu ${waliKelas.nama}.\n\nSaya orang tua/wali murid dari:\n- Nama: ${student.nama || '-'}\n- Kelas: ${student.kelas || '-'}\n\nMohon izin berkenan untuk berkonsultasi mengenai perkembangan belajar ananda. Terima kasih.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    background: '#22c55e',
+                    color: 'white',
+                    fontWeight: 700,
+                    fontSize: '12.5px',
+                    textDecoration: 'none',
+                    boxShadow: '0 2px 6px rgba(34, 197, 94, 0.25)',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <i className="fab fa-whatsapp" style={{ fontSize: '16px' }}></i>
+                  Hubungi via WhatsApp
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (navigator.clipboard) {
+                      navigator.clipboard.writeText(waliKelas.noWa || waliKelas.cleanWa || '');
+                      Swal.fire({
+                        icon: 'success',
+                        title: 'Nomor Tersalin',
+                        text: `Nomor WhatsApp ${waliKelas.nama} berhasil disalin.`,
+                        timer: 1500,
+                        showConfirmButton: false
+                      });
+                    }
+                  }}
+                  title="Salin Nomor WhatsApp"
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    background: 'white',
+                    border: '1.5px solid #cbd5e1',
+                    color: '#475569',
+                    fontWeight: 700,
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <i className="fas fa-copy"></i>
+                  Salin
+                </button>
+              </div>
+            ) : (
+              <div style={{ background: '#f8fafc', padding: '8px 12px', borderRadius: '8px', fontSize: '11px', color: '#64748b', fontStyle: 'italic', textAlign: 'center' }}>
+                <i className="fas fa-info-circle" style={{ marginRight: '4px' }}></i>
+                Nomor WhatsApp wali kelas belum didaftarkan di sistem madrasah.
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ========================================================================= */}
         {/* FITUR KHUSUS: VERIFIKASI KEBENARAN DATA ACUAN IJAZAH OLEH ORANG TUA */}
