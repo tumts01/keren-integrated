@@ -19,6 +19,7 @@ function getLombaInfo(lombaStr: string) {
   else if (l.includes('singer') || l.includes('solo')) { isSeni = true; lombaPrefix = 'SGR'; }
   else if (l.includes('banjari')) { isSeni = true; lombaPrefix = 'BAN'; }
   else if (l.includes('sandi') || l.includes('morse') || l.includes('sms')) { isSeni = true; lombaPrefix = 'SMS'; }
+  else if (l.includes('seni')) { isSeni = true; lombaPrefix = 'SEN'; }
 
   let catPrefix = isAkademik ? 'OLM' : isSeni ? 'SEN' : 'UNK';
   return { catPrefix, lombaPrefix, isAkademik, isSeni };
@@ -115,15 +116,11 @@ export async function POST(req: Request) {
       return `${prefix}-${paddedNum}`;
     }
 
-    if (buktiFile) {
+    if (buktiFile && typeof buktiFile.arrayBuffer === 'function' && buktiFile.size > 0) {
       const arrayBuffer = await buktiFile.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       const res = await uploadFileToDrive(buffer, buktiFile.name, buktiFile.type, folderId);
       buktiUrl = res.webViewLink || '';
-    } else {
-      if (kategori !== 'Olimpiade Akademik') {
-        return NextResponse.json({ success: false, error: 'Bukti pembayaran wajib dilampirkan' }, { status: 400 });
-      }
     }
 
     // Bukti SS Share Poster
@@ -153,6 +150,31 @@ export async function POST(req: Request) {
 
       if (dataExcel.length === 0) {
         return NextResponse.json({ success: false, error: 'Tidak ada data peserta yang valid di dalam file Excel' }, { status: 400 });
+      }
+
+      // Deteksi apakah ada peserta yang memilih Lomba Seni di dalam Excel
+      let hasLombaSeni = false;
+      for (const row of dataExcel) {
+        let lomba = '';
+        for (const key of Object.keys(row)) {
+          if (key.toLowerCase().includes('lomba')) {
+            lomba = String(row[key] || '');
+            break;
+          }
+        }
+        const { isSeni } = getLombaInfo(lomba);
+        if (isSeni) {
+          hasLombaSeni = true;
+          break;
+        }
+      }
+
+      // Bukti pembayaran HANYA wajib jika terdapat peserta Lomba Seni
+      if (hasLombaSeni && !buktiUrl) {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'Bukti pembayaran wajib dilampirkan karena terdapat pendaftar Lomba Seni di dalam file Excel' 
+        }, { status: 400 });
       }
 
       const namaSekolahKolektif = formData.get('namaSekolah') as string || '';
@@ -264,7 +286,15 @@ export async function POST(req: Request) {
       
     } else if (jenisPendaftaran === 'individu') {
       const lombaDipilih = formData.get('lombaDipilih') as string || '';
-      const { isAkademik } = getLombaInfo(lombaDipilih);
+      const { isAkademik, isSeni } = getLombaInfo(lombaDipilih);
+
+      if ((kategori === 'Lomba Seni' || isSeni) && !buktiUrl) {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'Bukti pembayaran wajib dilampirkan untuk pendaftaran Lomba Seni' 
+        }, { status: 400 });
+      }
+
       const nomorPeserta = generateNextNomor(lombaDipilih);
 
       let usernameCbt = '';

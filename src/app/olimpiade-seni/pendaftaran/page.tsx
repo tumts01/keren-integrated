@@ -255,10 +255,11 @@ export default function PendaftaranOlimpiadeSeni() {
 
           if (namaLomba && typeof namaLomba === 'string') {
             const trimmed = namaLomba.trim();
-            if (!validLomba.includes(trimmed)) {
+            const matched = validLomba.find(v => v.toLowerCase() === trimmed.toLowerCase());
+            if (!matched) {
               errorMsgs.push(`Baris ke-${index + 2}: "${trimmed}"`);
             } else {
-              uniqueLombas.add(trimmed);
+              uniqueLombas.add(matched);
             }
           }
         });
@@ -299,7 +300,7 @@ export default function PendaftaranOlimpiadeSeni() {
 
   const handleSubmitKolektif = async () => {
     if (!formKolektif.asalSekolah || kolektifLombaList.length === 0) {
-      Swal.fire('Peringatan', 'Silakan isi Asal Sekolah dan tambahkan minimal 1 Jenis Lomba!', 'warning');
+      Swal.fire('Peringatan', 'Silakan isi Asal Sekolah dan unggah file Excel data peserta!', 'warning');
       return;
     }
     if (!uploadedFile) {
@@ -308,7 +309,7 @@ export default function PendaftaranOlimpiadeSeni() {
     }
     const isSeniSelected = kolektifLombaList.some(l => lombaOptions['Lomba Seni'].includes(l));
     if (isSeniSelected && !buktiKolektif) {
-      Swal.fire('Peringatan', 'Bukti pembayaran wajib diunggah karena ada pendaftar Lomba Seni!', 'warning');
+      Swal.fire('Peringatan', 'Bukti pembayaran wajib diunggah karena terdapat pendaftar Lomba Seni!', 'warning');
       return;
     }
     if (!buktiSsKolektif) {
@@ -329,6 +330,8 @@ export default function PendaftaranOlimpiadeSeni() {
     try {
       const formData = new FormData();
       formData.append('jenisPendaftaran', 'kolektif');
+      formData.append('kategori', isSeniSelected ? 'Lomba Seni' : 'Olimpiade Akademik');
+      formData.append('hasLombaSeni', isSeniSelected ? 'true' : 'false');
       formData.append('fileExcel', uploadedFile);
       if (buktiKolektif) {
         formData.append('buktiPembayaran', buktiKolektif);
@@ -652,7 +655,7 @@ export default function PendaftaranOlimpiadeSeni() {
                   <li>Isi <strong>Asal Sekolah / Instansi</strong> pada kolom di atas.</li>
                   <li>Unduh template Excel resmi (Poin 1), lalu isi data peserta secara lengkap.</li>
                   <li>Unggah file Excel (Poin 2). Sistem akan mendeteksi pilihan lomba secara otomatis.</li>
-                  <li>Jika terdapat peserta <strong>Lomba Seni</strong>, wajib mengunggah Bukti Pembayaran (Poin 3).</li>
+                  <li>Jika terdapat peserta <strong>Lomba Seni</strong>, wajib mengunggah Bukti Pembayaran (Poin 3). Jika <strong>hanya Olimpiade Akademik</strong>, pendaftaran <strong>GRATIS</strong> (tidak perlu bukti transfer).</li>
                   <li>Klik <strong>Proses Pendaftaran Kolektif</strong> dan tunggu hingga selesai.</li>
                   <li style={{ color: '#ef4444', fontWeight: 600 }}>PENTING: Jangan lupa untuk langsung mengunduh file Excel Akun CBT (berisi Username & Password peserta) yang muncul setelah pendaftaran berhasil!</li>
                 </ol>
@@ -720,16 +723,45 @@ export default function PendaftaranOlimpiadeSeni() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-              {/* Bukti Pembayaran Kolektif (Selalu Tampil) */}
-              <div style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
-                <i className="fas fa-receipt" style={{ fontSize: '3rem', color: '#f59e0b', marginBottom: '16px' }}></i>
+              {/* Bukti Pembayaran Kolektif */}
+              <div style={{ 
+                background: uploadedFile && !kolektifLombaList.some(l => lombaOptions['Lomba Seni'].includes(l)) ? '#f0fdf4' : '#f8fafc', 
+                border: uploadedFile && !kolektifLombaList.some(l => lombaOptions['Lomba Seni'].includes(l)) ? '1px solid #86efac' : '1px dashed #cbd5e1', 
+                borderRadius: '12px', 
+                padding: '24px', 
+                textAlign: 'center' 
+              }}>
+                <i className="fas fa-receipt" style={{ 
+                  fontSize: '3rem', 
+                  color: uploadedFile && !kolektifLombaList.some(l => lombaOptions['Lomba Seni'].includes(l)) ? '#16a34a' : '#f59e0b', 
+                  marginBottom: '16px' 
+                }}></i>
                 <h3 style={{ margin: '0 0 8px 0', color: '#0f172a' }}>3. Unggah Bukti Pembayaran</h3>
-                <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '16px' }}>Format (.jpg, .png). Wajib jika ada Lomba Seni.</p>
+                {uploadedFile && !kolektifLombaList.some(l => lombaOptions['Lomba Seni'].includes(l)) ? (
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', background: '#dcfce7', color: '#166534', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700, marginBottom: '8px' }}>
+                      <i className="fas fa-check-circle"></i> GRATIS (Olimpiade Akademik)
+                    </div>
+                    <p style={{ color: '#15803d', fontSize: '0.85rem', margin: 0 }}>
+                      Pendaftaran Olimpiade tidak dipungut biaya. Anda tidak perlu mengunggah bukti pembayaran.
+                    </p>
+                  </div>
+                ) : kolektifLombaList.some(l => lombaOptions['Lomba Seni'].includes(l)) ? (
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', background: '#fee2e2', color: '#b91c1c', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 700, marginBottom: '8px' }}>
+                      <i className="fas fa-exclamation-triangle"></i> Wajib Diunggah
+                    </div>
+                    <p style={{ color: '#b91c1c', fontSize: '0.85rem', margin: 0, fontWeight: 600 }}>
+                      Terdeteksi peserta Lomba Seni. Silakan unggah bukti transfer pembayaran.
+                    </p>
+                  </div>
+                ) : (
+                  <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '16px' }}>Format (.jpg, .png). Wajib jika ada Lomba Seni (Olimpiade Gratis).</p>
+                )}
                 
                 <input 
                   type="file" 
-                  accept="image/*"
-                  required={kolektifLombaList.some(l => lombaOptions['Lomba Seni'].includes(l))}
+                  accept="image/*" 
                   onChange={e => setBuktiKolektif(e.target.files ? e.target.files[0] : null)}
                   style={{ width: '100%', maxWidth: '300px', padding: '8px', background: 'white', borderRadius: '8px', border: '1px solid #cbd5e1', margin: '0 auto' }}
                 />
@@ -743,8 +775,7 @@ export default function PendaftaranOlimpiadeSeni() {
                 
                 <input 
                   type="file" 
-                  accept="image/*"
-                  required 
+                  accept="image/*" 
                   onChange={e => setBuktiSsKolektif(e.target.files ? e.target.files[0] : null)}
                   style={{ width: '100%', maxWidth: '300px', padding: '8px', background: 'white', borderRadius: '8px', border: '1px solid #cbd5e1', margin: '0 auto' }}
                 />
