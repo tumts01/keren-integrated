@@ -94,6 +94,7 @@ export default function Sidebar() {
         },
         { name: 'Data Kelas', path: '/kelas', icon: 'fa-chalkboard' },
         { name: 'Presensi & Jurnal', path: '/presensi', icon: 'fa-calendar-check' },
+        { name: 'Presensi Gerbang', path: '/presensi-gate', icon: 'fa-id-card' },
         { 
           name: 'Dispo Siswa', 
           path: '/dispo-parent', 

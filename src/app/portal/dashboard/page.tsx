@@ -41,6 +41,31 @@ export default function PortalDashboard() {
     email?: string;
   } | null>(null);
 
+  // Status Kehadiran Hari Ini (Check-Clock Gate)
+  const [todayPresensi, setTodayPresensi] = useState<{
+    hasRecord: boolean;
+    status: string;
+    statusLabel: string;
+    jamMasuk: string | null;
+    jamPulang: string | null;
+    statusMasuk: string | null;
+  } | null>(null);
+  const [loadingPresensiToday, setLoadingPresensiToday] = useState(true);
+  const [todayFormatted, setTodayFormatted] = useState('');
+
+  useEffect(() => {
+    try {
+      setTodayFormatted(new Intl.DateTimeFormat('id-ID', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      }).format(new Date()));
+    } catch {
+      setTodayFormatted('');
+    }
+  }, []);
+
   useEffect(() => {
     const sessionStr = localStorage.getItem('portal_session');
     if (!sessionStr) {
@@ -138,6 +163,37 @@ export default function PortalDashboard() {
         .catch(err => console.error('Fetch wali kelas error:', err));
     }
   }, [student?.kelas]);
+
+  const fetchPresensiToday = (showToast = false) => {
+    if (student?.nis || student?.nisn) {
+      const qNisn = student.nisn || '';
+      const qNis = student.nis || '';
+      setLoadingPresensiToday(true);
+      fetch(`/api/portal/presensi/today?nisn=${encodeURIComponent(qNisn)}&nis=${encodeURIComponent(qNis)}`)
+        .then(r => r.json())
+        .then(res => {
+          if (res.success && res.data) {
+            setTodayPresensi(res.data);
+            if (showToast) {
+              Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: 'Status presensi diperbarui',
+                showConfirmButton: false,
+                timer: 1500
+              });
+            }
+          }
+        })
+        .catch(err => console.error('Fetch today presensi error:', err))
+        .finally(() => setLoadingPresensiToday(false));
+    }
+  };
+
+  useEffect(() => {
+    fetchPresensiToday();
+  }, [student?.nis, student?.nisn]);
 
   // Handle Setuju / Verifikasi Data
   const handleSetujuData = async () => {
@@ -476,6 +532,171 @@ export default function PortalDashboard() {
 
       <div className="portal-content" style={{ marginTop: '-20px' }}>
         
+        {/* ========================================================================= */}
+        {/* KARTU STATUS KEHADIRAN HARI INI (CHECK-CLOCK GATE PRESENSI) */}
+        {/* ========================================================================= */}
+        <div style={{
+          position: 'relative',
+          zIndex: 11,
+          marginBottom: '16px',
+          borderRadius: '16px',
+          background: 'white',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 4px 14px rgba(0,0,0,0.04)',
+          overflow: 'hidden'
+        }}>
+          {/* Card Top Banner / Header */}
+          <div style={{
+            padding: '12px 16px',
+            background: todayPresensi?.hasRecord 
+              ? (todayPresensi.jamPulang ? 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)' : 'linear-gradient(135deg, #059669 0%, #047857 100%)')
+              : 'linear-gradient(135deg, #475569 0%, #334155 100%)',
+            color: 'white',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <i className="fas fa-id-card-alt" style={{ fontSize: '15px' }}></i>
+              <span style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.2px' }}>Kehadiran Siswa Hari Ini</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {todayFormatted && (
+                <span style={{ fontSize: '11px', opacity: 0.9, fontWeight: 500, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <i className="far fa-calendar-alt"></i>
+                  {todayFormatted}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => fetchPresensiToday(true)}
+                title="Segarkan status presensi"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  border: 'none',
+                  color: 'white',
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '11px'
+                }}
+              >
+                <i className={`fas fa-sync-alt ${loadingPresensiToday ? 'fa-spin' : ''}`}></i>
+              </button>
+            </div>
+          </div>
+
+          <div style={{ padding: '16px' }}>
+            {loadingPresensiToday ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '14px 0', gap: '8px', color: '#64748b', fontSize: '12.5px' }}>
+                <i className="fas fa-circle-notch fa-spin" style={{ color: '#0284c7' }}></i>
+                <span>Memeriksa catatan kehadiran di gerbang...</span>
+              </div>
+            ) : !todayPresensi || !todayPresensi.hasRecord ? (
+              // BELUM ADA CATATAN / BELUM TAP
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                <div style={{
+                  width: '42px', height: '42px', borderRadius: '12px',
+                  background: '#fef3c7', color: '#d97706',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '18px', flexShrink: 0
+                }}>
+                  <i className="fas fa-hourglass-half"></i>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 800, color: '#92400e' }}>
+                      Belum Ada Catatan Kehadiran
+                    </span>
+                    <span style={{
+                      fontSize: '10px', fontWeight: 700, background: '#fef3c7', color: '#b45309',
+                      padding: '2px 8px', borderRadius: '6px', border: '1px solid #fde68a'
+                    }}>
+                      Menunggu Kedatangan
+                    </span>
+                  </div>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '11.5px', color: '#64748b', lineHeight: 1.4 }}>
+                    Ananda belum melakukan tap kartu RFID / scan presensi di gerbang madrasah hari ini.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              // SUDAH ADA CATATAN KEHADIRAN (HADIR / PULANG / IZIN)
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{
+                      width: '36px', height: '36px', borderRadius: '10px',
+                      background: todayPresensi.jamPulang ? '#e0f2fe' : '#dcfce7',
+                      color: todayPresensi.jamPulang ? '#0284c7' : '#16a34a',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '16px'
+                    }}>
+                      <i className={`fas ${todayPresensi.jamPulang ? 'fa-home' : 'fa-check-circle'}`}></i>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0f172a' }}>
+                        {todayPresensi.jamPulang ? 'Selesai KBM (Sudah Pulang)' : 'Hadir di Madrasah (Sedang KBM)'}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748b' }}>
+                        Tercatat via Sistem RFID Check-Clock Gate
+                      </div>
+                    </div>
+                  </div>
+
+                  {todayPresensi.statusMasuk && (
+                    <span style={{
+                      fontSize: '11px', fontWeight: 700,
+                      padding: '3px 9px', borderRadius: '8px',
+                      background: todayPresensi.statusMasuk === 'Tepat Waktu' ? '#dcfce7' : '#fee2e2',
+                      color: todayPresensi.statusMasuk === 'Tepat Waktu' ? '#15803d' : '#b91c1c',
+                      border: `1px solid ${todayPresensi.statusMasuk === 'Tepat Waktu' ? '#86efac' : '#fca5a5'}`
+                    }}>
+                      <i className={`fas ${todayPresensi.statusMasuk === 'Tepat Waktu' ? 'fa-clock' : 'fa-exclamation-triangle'}`} style={{ marginRight: '4px' }}></i>
+                      {todayPresensi.statusMasuk}
+                    </span>
+                  )}
+                </div>
+
+                {/* Grid Waktu Masuk & Pulang */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div style={{
+                    background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px',
+                    padding: '9px 12px', display: 'flex', flexDirection: 'column'
+                  }}>
+                    <span style={{ fontSize: '10.5px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                      <i className="fas fa-sign-in-alt" style={{ color: '#16a34a', marginRight: '5px' }}></i>
+                      Jam Masuk
+                    </span>
+                    <span style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', marginTop: '3px', fontFamily: 'monospace' }}>
+                      {todayPresensi.jamMasuk ? `${todayPresensi.jamMasuk} WIB` : '-'}
+                    </span>
+                  </div>
+
+                  <div style={{
+                    background: todayPresensi.jamPulang ? '#f0f9ff' : '#f8fafc',
+                    border: todayPresensi.jamPulang ? '1px solid #bae6fd' : '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    padding: '9px 12px', display: 'flex', flexDirection: 'column'
+                  }}>
+                    <span style={{ fontSize: '10.5px', fontWeight: 600, color: todayPresensi.jamPulang ? '#0284c7' : '#64748b', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                      <i className="fas fa-sign-out-alt" style={{ color: todayPresensi.jamPulang ? '#0284c7' : '#94a3b8', marginRight: '5px' }}></i>
+                      Jam Pulang
+                    </span>
+                    <span style={{ fontSize: '15px', fontWeight: 800, color: todayPresensi.jamPulang ? '#0369a1' : '#94a3b8', marginTop: '3px', fontFamily: 'monospace' }}>
+                      {todayPresensi.jamPulang ? `${todayPresensi.jamPulang} WIB` : 'Sedang KBM'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Student Card Info - Detail Siswa Layout */}
         <div className="portal-card" style={{ position: 'relative', zIndex: 10, padding: '20px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
