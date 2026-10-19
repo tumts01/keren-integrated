@@ -16,7 +16,7 @@ export default function SpmbPortalDashboard() {
 
   const fetchPengumuman = async (jalur: string) => {
     try {
-      const res = await fetch(`/api/spmb/pengumuman?jalur=${encodeURIComponent(jalur || '')}`);
+      const res = await fetch(`/api/spmb/pengumuman?jalur=${encodeURIComponent(jalur || '')}&t=${Date.now()}`);
       const resJson = await res.json();
       if (resJson.success) {
         setPengumumanList(resJson.data || []);
@@ -535,7 +535,7 @@ export default function SpmbPortalDashboard() {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {pengumumanList.map(item => {
+              {pengumumanList.slice(0, 2).map(item => {
                 const isGeneral = (item.targetJalur || '').toLowerCase() === 'semua jalur' || (item.targetJalur || '').toLowerCase() === 'semua';
                 return (
                   <div
