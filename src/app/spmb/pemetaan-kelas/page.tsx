@@ -1349,90 +1349,327 @@ export default function PemetaanKelasPage() {
 
           {/* Input Table */}
           <div className={styles.card}>
-            <div className={styles.tableContainer}>
-              <table className={styles.table} style={{ minWidth: '2500px' }}>
+            <div
+              className={styles.tableContainer}
+              style={{
+                maxHeight: '72vh',
+                overflow: 'auto',
+                position: 'relative',
+              }}
+            >
+              <table
+                className={styles.table}
+                style={{
+                  minWidth: '1650px',
+                  borderCollapse: 'separate',
+                  borderSpacing: 0,
+                }}
+              >
                 <thead>
                   <tr>
-                    <th style={{ width: '40px', textAlign: 'center' }}>No</th>
                     <th
                       style={{
                         position: 'sticky',
-                        left: 0,
-                        zIndex: 10,
+                        top: 0,
+                        zIndex: 15,
+                        width: '38px',
+                        minWidth: '38px',
+                        textAlign: 'center',
+                        padding: '10px 4px',
+                        fontSize: '11px',
                         background: '#f8fafc',
-                        minWidth: '230px',
-                        boxShadow: '2px 0 5px rgba(0,0,0,0.04)',
+                        boxShadow: 'inset 0 -2px 0 #cbd5e1',
+                      }}
+                    >
+                      No
+                    </th>
+                    <th
+                      style={{
+                        position: 'sticky',
+                        top: 0,
+                        left: 0,
+                        zIndex: 25,
+                        background: '#f8fafc',
+                        minWidth: '205px',
+                        maxWidth: '215px',
+                        whiteSpace: 'normal',
+                        lineHeight: 1.25,
+                        verticalAlign: 'middle',
+                        padding: '10px 10px',
+                        fontSize: '11.5px',
+                        boxShadow: '2px 0 5px rgba(0,0,0,0.06), inset 0 -2px 0 #cbd5e1',
                       }}
                     >
                       Nama Calon Siswa & Asal Sekolah
                     </th>
-                    <th style={{ width: '90px', textAlign: 'center' }}>Jenjang Asal</th>
-                    <th style={{ minWidth: '175px', background: '#f0fdf4', color: '#047857' }}>
-                      Pilihan Kelas 1
+                    <th
+                      style={{
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 15,
+                        width: '68px',
+                        minWidth: '68px',
+                        maxWidth: '72px',
+                        textAlign: 'center',
+                        whiteSpace: 'normal',
+                        lineHeight: 1.2,
+                        verticalAlign: 'middle',
+                        padding: '8px 4px',
+                        fontSize: '11px',
+                        background: '#f8fafc',
+                        boxShadow: 'inset 0 -2px 0 #cbd5e1',
+                      }}
+                    >
+                      Jenjang Asal
                     </th>
-                    <th style={{ minWidth: '175px', background: '#f0fdf4', color: '#047857' }}>
-                      Pilihan Kelas 2
-                    </th>
-                    <th style={{ minWidth: '175px', background: '#f0fdf4', color: '#047857' }}>
-                      Pilihan Kelas 3
-                    </th>
-                    <th style={{ minWidth: '175px', background: '#f0fdf4', color: '#047857' }}>
-                      Pilihan Kelas 4
-                    </th>
-                    <th style={{ minWidth: '175px', background: '#f0fdf4', color: '#047857' }}>
-                      Pilihan Kelas 5
-                    </th>
-                    <th style={{ minWidth: '140px', background: '#eff6ff', color: '#1d4ed8' }}>
+                    {[1, 2, 3, 4, 5].map((num) => (
+                      <th
+                        key={num}
+                        style={{
+                          position: 'sticky',
+                          top: 0,
+                          zIndex: 15,
+                          minWidth: '138px',
+                          width: '138px',
+                          background: '#f0fdf4',
+                          color: '#047857',
+                          whiteSpace: 'normal',
+                          lineHeight: 1.2,
+                          verticalAlign: 'middle',
+                          textAlign: 'center',
+                          padding: '8px 6px',
+                          fontSize: '11px',
+                          boxShadow: 'inset 0 -2px 0 #a7f3d0',
+                        }}
+                      >
+                        Pilihan Kelas {num}
+                      </th>
+                    ))}
+                    <th
+                      style={{
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 15,
+                        width: '84px',
+                        minWidth: '84px',
+                        maxWidth: '88px',
+                        background: '#eff6ff',
+                        color: '#1d4ed8',
+                        whiteSpace: 'normal',
+                        wordBreak: 'break-word',
+                        lineHeight: 1.2,
+                        verticalAlign: 'middle',
+                        textAlign: 'center',
+                        padding: '8px 5px',
+                        fontSize: '10.5px',
+                        boxShadow: 'inset 0 -2px 0 #bfdbfe',
+                      }}
+                    >
                       Pendidikan Agama Islam
-                      <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'none' }}>
+                      <div style={{ fontSize: '9.5px', fontWeight: 600, textTransform: 'none', marginTop: '2px' }}>
                         (Khusus Siswa SD)
                       </div>
                     </th>
-                    <th style={{ minWidth: '130px', background: '#fefce8', color: '#a16207' }}>
+                    <th
+                      style={{
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 15,
+                        width: '82px',
+                        minWidth: '82px',
+                        maxWidth: '86px',
+                        background: '#fefce8',
+                        color: '#a16207',
+                        whiteSpace: 'normal',
+                        wordBreak: 'break-word',
+                        lineHeight: 1.2,
+                        verticalAlign: 'middle',
+                        textAlign: 'center',
+                        padding: '8px 5px',
+                        fontSize: '10.5px',
+                        boxShadow: 'inset 0 -2px 0 #fde68a',
+                      }}
+                    >
                       Al-Qur&apos;an Hadits
-                      <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'none' }}>
+                      <div style={{ fontSize: '9.5px', fontWeight: 600, textTransform: 'none', marginTop: '2px' }}>
                         (Khusus Siswa MI)
                       </div>
                     </th>
-                    <th style={{ minWidth: '130px', background: '#fefce8', color: '#a16207' }}>
+                    <th
+                      style={{
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 15,
+                        width: '82px',
+                        minWidth: '82px',
+                        maxWidth: '86px',
+                        background: '#fefce8',
+                        color: '#a16207',
+                        whiteSpace: 'normal',
+                        wordBreak: 'break-word',
+                        lineHeight: 1.2,
+                        verticalAlign: 'middle',
+                        textAlign: 'center',
+                        padding: '8px 5px',
+                        fontSize: '10.5px',
+                        boxShadow: 'inset 0 -2px 0 #fde68a',
+                      }}
+                    >
                       Akidah Akhlak
-                      <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'none' }}>
+                      <div style={{ fontSize: '9.5px', fontWeight: 600, textTransform: 'none', marginTop: '2px' }}>
                         (Khusus Siswa MI)
                       </div>
                     </th>
-                    <th style={{ minWidth: '130px', background: '#fefce8', color: '#a16207' }}>
+                    <th
+                      style={{
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 15,
+                        width: '78px',
+                        minWidth: '78px',
+                        maxWidth: '82px',
+                        background: '#fefce8',
+                        color: '#a16207',
+                        whiteSpace: 'normal',
+                        wordBreak: 'break-word',
+                        lineHeight: 1.2,
+                        verticalAlign: 'middle',
+                        textAlign: 'center',
+                        padding: '8px 5px',
+                        fontSize: '10.5px',
+                        boxShadow: 'inset 0 -2px 0 #fde68a',
+                      }}
+                    >
                       Fikih
-                      <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'none' }}>
+                      <div style={{ fontSize: '9.5px', fontWeight: 600, textTransform: 'none', marginTop: '2px' }}>
                         (Khusus Siswa MI)
                       </div>
                     </th>
-                    <th style={{ minWidth: '150px', background: '#fefce8', color: '#a16207' }}>
+                    <th
+                      style={{
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 15,
+                        width: '88px',
+                        minWidth: '88px',
+                        maxWidth: '92px',
+                        background: '#fefce8',
+                        color: '#a16207',
+                        whiteSpace: 'normal',
+                        wordBreak: 'break-word',
+                        lineHeight: 1.2,
+                        verticalAlign: 'middle',
+                        textAlign: 'center',
+                        padding: '8px 5px',
+                        fontSize: '10.5px',
+                        boxShadow: 'inset 0 -2px 0 #fde68a',
+                      }}
+                    >
                       Sejarah Kebudayaan Islam
-                      <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'none' }}>
+                      <div style={{ fontSize: '9.5px', fontWeight: 600, textTransform: 'none', marginTop: '2px' }}>
                         (Khusus Siswa MI)
                       </div>
                     </th>
-                    <th style={{ minWidth: '125px', background: '#ecfdf5', color: '#047857' }}>
+                    <th
+                      style={{
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 15,
+                        width: '82px',
+                        minWidth: '82px',
+                        maxWidth: '86px',
+                        background: '#ecfdf5',
+                        color: '#047857',
+                        whiteSpace: 'normal',
+                        wordBreak: 'break-word',
+                        lineHeight: 1.2,
+                        verticalAlign: 'middle',
+                        textAlign: 'center',
+                        padding: '8px 5px',
+                        fontSize: '10.5px',
+                        boxShadow: 'inset 0 -2px 0 #a7f3d0',
+                      }}
+                    >
                       Nilai Agama Akhir
-                      <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'none' }}>
+                      <div style={{ fontSize: '9.5px', fontWeight: 600, textTransform: 'none', marginTop: '2px' }}>
                         (SD / Rata-rata MI)
                       </div>
                     </th>
-                    <th style={{ minWidth: '130px' }}>Bahasa Indonesia</th>
-                    <th style={{ minWidth: '120px' }}>Matematika</th>
-                    <th style={{ minWidth: '170px' }}>Ilmu Pengetahuan Alam dan Sosial</th>
-                    <th style={{ minWidth: '155px' }}>Seni Budaya dan Keterampilan</th>
-                    <th style={{ minWidth: '125px' }}>Bahasa Inggris</th>
-                    <th style={{ minWidth: '185px' }}>
-                      Pendidikan Jasmani, Olahraga, dan Kesehatan
-                    </th>
-                    <th style={{ minWidth: '140px', background: '#fdf2f8', color: '#be185d' }}>
+                    {[
+                      'Bahasa Indonesia',
+                      'Matematika',
+                      'Ilmu Pengetahuan Alam dan Sosial',
+                      'Seni Budaya dan Keterampilan',
+                      'Bahasa Inggris',
+                      'Pendidikan Jasmani, Olahraga, dan Kesehatan',
+                    ].map((mapelLabel) => (
+                      <th
+                        key={mapelLabel}
+                        style={{
+                          position: 'sticky',
+                          top: 0,
+                          zIndex: 15,
+                          width: '84px',
+                          minWidth: '84px',
+                          maxWidth: '90px',
+                          background: '#f8fafc',
+                          whiteSpace: 'normal',
+                          wordBreak: 'break-word',
+                          lineHeight: 1.2,
+                          verticalAlign: 'middle',
+                          textAlign: 'center',
+                          padding: '8px 5px',
+                          fontSize: '10.5px',
+                          boxShadow: 'inset 0 -2px 0 #cbd5e1',
+                        }}
+                      >
+                        {mapelLabel}
+                      </th>
+                    ))}
+                    <th
+                      style={{
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 15,
+                        width: '82px',
+                        minWidth: '82px',
+                        maxWidth: '88px',
+                        background: '#fdf2f8',
+                        color: '#be185d',
+                        whiteSpace: 'normal',
+                        wordBreak: 'break-word',
+                        lineHeight: 1.2,
+                        verticalAlign: 'middle',
+                        textAlign: 'center',
+                        padding: '8px 5px',
+                        fontSize: '10.5px',
+                        boxShadow: 'inset 0 -2px 0 #fbcfe8',
+                      }}
+                    >
                       Poin Prestasi
-                      <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'none' }}>
+                      <div style={{ fontSize: '9.5px', fontWeight: 600, textTransform: 'none', marginTop: '2px' }}>
                         (Total Skor Angka)
                       </div>
                     </th>
-                    <th style={{ minWidth: '155px', textAlign: 'center' }}>Hasil Kelas & Aksi</th>
+                    <th
+                      style={{
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 15,
+                        minWidth: '140px',
+                        width: '140px',
+                        textAlign: 'center',
+                        whiteSpace: 'normal',
+                        lineHeight: 1.2,
+                        verticalAlign: 'middle',
+                        padding: '8px 6px',
+                        fontSize: '11px',
+                        background: '#f8fafc',
+                        boxShadow: 'inset 0 -2px 0 #cbd5e1',
+                      }}
+                    >
+                      Hasil Kelas & Aksi
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1446,7 +1683,7 @@ export default function PemetaanKelasPage() {
                           background: isDirty ? '#fffbeb' : undefined,
                         }}
                       >
-                        <td style={{ textAlign: 'center', fontWeight: 700, color: '#64748b' }}>
+                        <td style={{ textAlign: 'center', fontWeight: 700, color: '#64748b', padding: '8px 4px' }}>
                           {idx + 1}
                         </td>
 
@@ -1458,6 +1695,9 @@ export default function PemetaanKelasPage() {
                             zIndex: 5,
                             background: isDirty ? '#fffbeb' : 'white',
                             boxShadow: '2px 0 5px rgba(0,0,0,0.04)',
+                            padding: '8px 10px',
+                            minWidth: '205px',
+                            maxWidth: '215px',
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1487,16 +1727,16 @@ export default function PemetaanKelasPage() {
                               {s.genderNorm === 'L' ? 'Laki-laki' : 'Perempuan'}
                             </span>
                           </div>
-                          <div style={{ fontWeight: 700, color: '#0f172a', marginTop: '3px' }}>
+                          <div style={{ fontWeight: 700, color: '#0f172a', marginTop: '3px', fontSize: '12.5px' }}>
                             {s.namaLengkap}
                           </div>
-                          <div style={{ fontSize: '11.5px', color: '#64748b' }}>
+                          <div style={{ fontSize: '11px', color: '#64748b' }}>
                             {s.asalSekolah || '-'}
                           </div>
                         </td>
 
                         {/* Jenjang SD / MI */}
-                        <td style={{ textAlign: 'center' }}>
+                        <td style={{ textAlign: 'center', padding: '8px 4px' }}>
                           <select
                             value={s.pemetaan.jenjangAsal}
                             onChange={(e) =>
@@ -1507,10 +1747,10 @@ export default function PemetaanKelasPage() {
                               )
                             }
                             style={{
-                              padding: '5px 8px',
+                              padding: '5px 6px',
                               borderRadius: '6px',
                               fontWeight: 800,
-                              fontSize: '12px',
+                              fontSize: '11.5px',
                               border: '1.5px solid',
                               borderColor: isMI ? '#fde047' : '#93c5fd',
                               background: isMI ? '#fef9c3' : '#dbeafe',
@@ -1526,7 +1766,7 @@ export default function PemetaanKelasPage() {
                         {/* Pilihan 1 - 5 */}
                         {(['pilihan1', 'pilihan2', 'pilihan3', 'pilihan4', 'pilihan5'] as const).map(
                           (pilKey, pIdx) => (
-                            <td key={pilKey}>
+                            <td key={pilKey} style={{ padding: '8px 5px' }}>
                               <select
                                 value={s.pemetaan[pilKey] || ''}
                                 onChange={(e) =>
@@ -1534,10 +1774,10 @@ export default function PemetaanKelasPage() {
                                 }
                                 style={{
                                   width: '100%',
-                                  padding: '6px 8px',
+                                  padding: '5px 6px',
                                   borderRadius: '6px',
                                   border: '1.5px solid #cbd5e1',
-                                  fontSize: '12px',
+                                  fontSize: '11.5px',
                                   fontWeight: s.pemetaan[pilKey] ? 700 : 400,
                                   color: s.pemetaan[pilKey] ? '#0f172a' : '#94a3b8',
                                   background: s.pemetaan[pilKey] ? '#f8fafc' : 'white',
@@ -1555,21 +1795,21 @@ export default function PemetaanKelasPage() {
                         )}
 
                         {/* Pendidikan Agama Islam (Khusus SD) */}
-                        <td style={{ background: isMI ? '#f8fafc' : '#eff6ff' }}>
+                        <td style={{ background: isMI ? '#f8fafc' : '#eff6ff', textAlign: 'center', padding: '8px 4px' }}>
                           <input
                             type="number"
                             min={0}
                             max={100}
                             disabled={isMI}
-                            placeholder={isMI ? 'Siswa MI' : '0-100'}
+                            placeholder={isMI ? 'MI' : '0-100'}
                             value={isMI ? '' : s.pemetaan.nilai.pai}
                             onChange={(e) => handleUpdateNilaiField(s.id, 'pai', e.target.value)}
                             style={{
-                              width: '85px',
-                              padding: '6px 8px',
+                              width: '66px',
+                              padding: '5px 4px',
                               borderRadius: '6px',
                               border: '1.5px solid #cbd5e1',
-                              fontSize: '13px',
+                              fontSize: '12.5px',
                               fontWeight: 700,
                               textAlign: 'center',
                               background: isMI ? '#e2e8f0' : 'white',
@@ -1582,24 +1822,24 @@ export default function PemetaanKelasPage() {
                         {(['qh', 'aa', 'fq', 'ski'] as const).map((mKey) => (
                           <td
                             key={mKey}
-                            style={{ background: !isMI ? '#f8fafc' : '#fefce8' }}
+                            style={{ background: !isMI ? '#f8fafc' : '#fefce8', textAlign: 'center', padding: '8px 4px' }}
                           >
                             <input
                               type="number"
                               min={0}
                               max={100}
                               disabled={!isMI}
-                              placeholder={!isMI ? 'Siswa SD' : '0-100'}
+                              placeholder={!isMI ? 'SD' : '0-100'}
                               value={!isMI ? '' : s.pemetaan.nilai[mKey]}
                               onChange={(e) =>
                                 handleUpdateNilaiField(s.id, mKey, e.target.value)
                               }
                               style={{
-                                width: '85px',
-                                padding: '6px 8px',
+                                width: '66px',
+                                padding: '5px 4px',
                                 borderRadius: '6px',
                                 border: '1.5px solid #cbd5e1',
-                                fontSize: '13px',
+                                fontSize: '12.5px',
                                 fontWeight: 700,
                                 textAlign: 'center',
                                 background: !isMI ? '#e2e8f0' : 'white',
@@ -1616,7 +1856,8 @@ export default function PemetaanKelasPage() {
                             background: '#ecfdf5',
                             fontWeight: 800,
                             color: '#047857',
-                            fontSize: '13.5px',
+                            fontSize: '13px',
+                            padding: '8px 4px',
                           }}
                         >
                           {s.nilaiAgama}
@@ -1624,7 +1865,7 @@ export default function PemetaanKelasPage() {
 
                         {/* Mapel Umum: Bahasa Indonesia, Matematika, Ilmu Pengetahuan Alam dan Sosial, Seni Budaya dan Keterampilan, Bahasa Inggris, Pendidikan Jasmani, Olahraga, dan Kesehatan */}
                         {(['ind', 'mat', 'ipas', 'sbk', 'bing', 'pjok'] as const).map((mKey) => (
-                          <td key={mKey}>
+                          <td key={mKey} style={{ textAlign: 'center', padding: '8px 4px' }}>
                             <input
                               type="number"
                               min={0}
@@ -1635,11 +1876,11 @@ export default function PemetaanKelasPage() {
                                 handleUpdateNilaiField(s.id, mKey, e.target.value)
                               }
                               style={{
-                                width: '85px',
-                                padding: '6px 8px',
+                                width: '66px',
+                                padding: '5px 4px',
                                 borderRadius: '6px',
                                 border: '1.5px solid #cbd5e1',
-                                fontSize: '13px',
+                                fontSize: '12.5px',
                                 fontWeight: 700,
                                 textAlign: 'center',
                               }}
@@ -1648,7 +1889,7 @@ export default function PemetaanKelasPage() {
                         ))}
 
                         {/* Poin Prestasi */}
-                        <td style={{ background: '#fdf2f8' }}>
+                        <td style={{ background: '#fdf2f8', textAlign: 'center', padding: '8px 4px' }}>
                           <input
                             type="number"
                             min={0}
@@ -1657,11 +1898,11 @@ export default function PemetaanKelasPage() {
                             onChange={(e) => handleUpdatePrestasi(s.id, e.target.value)}
                             title="Skor per prestasi: 5=Internasional, 4=Nasional, 3=Provinsi, 2=Kabupaten/Kota, 1=Kecamatan (bisa dijumlahkan jika > 1 prestasi)"
                             style={{
-                              width: '75px',
-                              padding: '6px 8px',
+                              width: '62px',
+                              padding: '5px 4px',
                               borderRadius: '6px',
                               border: '1.5px solid #f472b6',
-                              fontSize: '13px',
+                              fontSize: '12.5px',
                               fontWeight: 800,
                               textAlign: 'center',
                               color: '#be185d',
@@ -1670,12 +1911,13 @@ export default function PemetaanKelasPage() {
                           {s.prestasiKeterangan && (
                             <div
                               style={{
-                                fontSize: '10.5px',
+                                fontSize: '10px',
                                 color: '#9d174d',
                                 marginTop: '3px',
-                                maxWidth: '130px',
+                                maxWidth: '78px',
+                                marginInline: 'auto',
                                 whiteSpace: 'normal',
-                                lineHeight: 1.2,
+                                lineHeight: 1.15,
                               }}
                               title={s.prestasiKeterangan}
                             >
@@ -1685,18 +1927,20 @@ export default function PemetaanKelasPage() {
                         </td>
 
                         {/* Hasil Kelas & Aksi */}
-                        <td style={{ textAlign: 'center' }}>
+                        <td style={{ textAlign: 'center', padding: '8px 6px' }}>
                           {s.assignedClass && (
                             <div
                               style={{
-                                fontSize: '11px',
+                                fontSize: '10.5px',
                                 fontWeight: 800,
-                                padding: '3px 8px',
+                                padding: '3px 6px',
                                 borderRadius: '6px',
                                 background: KELAS_META[s.assignedClass].bg,
                                 color: KELAS_META[s.assignedClass].color,
                                 border: `1px solid ${KELAS_META[s.assignedClass].border}`,
-                                marginBottom: '6px',
+                                marginBottom: '5px',
+                                whiteSpace: 'normal',
+                                lineHeight: 1.2,
                               }}
                             >
                               {s.assignedClass}
@@ -1707,12 +1951,12 @@ export default function PemetaanKelasPage() {
                               type="button"
                               onClick={() => setEditingStudentId(s.id)}
                               style={{
-                                padding: '5px 10px',
+                                padding: '4px 8px',
                                 borderRadius: '6px',
                                 border: '1px solid #cbd5e1',
                                 background: 'white',
                                 color: '#334155',
-                                fontSize: '11.5px',
+                                fontSize: '11px',
                                 fontWeight: 700,
                                 cursor: 'pointer',
                               }}
@@ -1725,12 +1969,12 @@ export default function PemetaanKelasPage() {
                               onClick={() => handleSaveSingle(s, true)}
                               disabled={saving}
                               style={{
-                                padding: '5px 10px',
+                                padding: '4px 8px',
                                 borderRadius: '6px',
                                 border: 'none',
                                 background: isDirty ? '#d97706' : '#059669',
                                 color: 'white',
-                                fontSize: '11.5px',
+                                fontSize: '11px',
                                 fontWeight: 700,
                                 cursor: 'pointer',
                               }}
@@ -1993,24 +2237,67 @@ export default function PemetaanKelasPage() {
 
           {/* Hasil Pemetaan Table */}
           <div className={styles.card}>
-            <div className={styles.tableContainer}>
-              <table className={styles.table} style={{ minWidth: '1450px' }}>
+            <div
+              className={styles.tableContainer}
+              style={{
+                maxHeight: '72vh',
+                overflow: 'auto',
+                position: 'relative',
+              }}
+            >
+              <table
+                className={styles.table}
+                style={{
+                  minWidth: '1300px',
+                  borderCollapse: 'separate',
+                  borderSpacing: 0,
+                }}
+              >
                 <thead>
                   <tr>
-                    <th style={{ width: '50px', textAlign: 'center' }}>No</th>
-                    <th>Nama Calon Siswa</th>
-                    <th>L/P</th>
-                    <th>Asal Sekolah (SD/MI)</th>
-                    <th>Kelas Hasil Pemetaan</th>
-                    <th>Diterima dari Pilihan</th>
-                    <th style={{ textAlign: 'center' }}>Nilai Kategori Kelas</th>
-                    <th style={{ textAlign: 'center' }}>Poin Prestasi</th>
-                    <th style={{ textAlign: 'center', background: '#ecfdf5', color: '#047857' }}>
-                      Total Skor Kelas
-                    </th>
-                    <th>Daftar Urutan Pilihan (1 - 5)</th>
-                    <th>Rincian Skor di 5 Kelas Program Khusus</th>
-                    <th>Ubah Kelas Manual</th>
+                    {[
+                      { label: 'No', width: '42px', align: 'center' as const },
+                      { label: 'Nama Calon Siswa', width: '190px', align: 'left' as const },
+                      { label: 'L/P', width: '80px', align: 'center' as const },
+                      { label: 'Asal Sekolah (SD/MI)', width: '150px', align: 'left' as const },
+                      { label: 'Kelas Hasil Pemetaan', width: '165px', align: 'left' as const },
+                      { label: 'Diterima dari Pilihan', width: '110px', align: 'center' as const },
+                      { label: 'Nilai Kategori Kelas', width: '90px', align: 'center' as const },
+                      { label: 'Poin Prestasi', width: '80px', align: 'center' as const },
+                      {
+                        label: 'Total Skor Kelas',
+                        width: '90px',
+                        align: 'center' as const,
+                        bg: '#ecfdf5',
+                        color: '#047857',
+                      },
+                      { label: 'Daftar Urutan Pilihan (1 - 5)', width: '190px', align: 'left' as const },
+                      { label: 'Rincian Skor di 5 Kelas Program Khusus', width: '230px', align: 'left' as const },
+                      { label: 'Ubah Kelas Manual', width: '150px', align: 'center' as const },
+                    ].map((col) => (
+                      <th
+                        key={col.label}
+                        style={{
+                          position: 'sticky',
+                          top: 0,
+                          zIndex: 15,
+                          width: col.width,
+                          minWidth: col.width,
+                          textAlign: col.align,
+                          background: col.bg || '#f8fafc',
+                          color: col.color || '#475569',
+                          whiteSpace: 'normal',
+                          wordBreak: 'break-word',
+                          lineHeight: 1.25,
+                          verticalAlign: 'middle',
+                          padding: '10px 8px',
+                          fontSize: '11px',
+                          boxShadow: 'inset 0 -2px 0 #cbd5e1',
+                        }}
+                      >
+                        {col.label}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
