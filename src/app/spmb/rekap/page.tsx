@@ -256,6 +256,83 @@ export default function RekapSpmb() {
     }
   };
 
+  const handleSetKelulusanSelected = async () => {
+    if (selectedIds.length === 0) return;
+
+    const { value: formValues } = await Swal.fire({
+      title: `Eksekusi Kelulusan (${selectedIds.length} Siswa)`,
+      html: `
+        <div style="text-align: left; font-size: 13px; color: #475569; margin-bottom: 14px;">
+          Pilih status kelulusan yang akan diterapkan serentak untuk <b>${selectedIds.length} siswa terpilih</b>:
+        </div>
+        <div style="text-align: left; margin-bottom: 12px;">
+          <label style="display: block; font-size: 12px; font-weight: 700; margin-bottom: 5px; color: #1e293b;">
+            Pilih Status Kelulusan:
+          </label>
+          <select id="swal-status-selected" class="swal2-input" style="width: 100%; margin: 0; padding: 10px 12px; font-size: 13.5px; border-radius: 8px; box-sizing: border-box; border: 1.5px solid #cbd5e1;">
+            <option value="diterima">🟢 Diterima (Lulus)</option>
+            <option value="cadangan">🟡 Cadangan</option>
+            <option value="tidak_diterima">🔴 Tidak Diterima</option>
+            <option value="proses">⚪ Reset ke Dalam Proses</option>
+          </select>
+        </div>
+        <div style="text-align: left;">
+          <label style="display: block; font-size: 12px; font-weight: 700; margin-bottom: 5px; color: #1e293b;">
+            Catatan Kelulusan (Opsional):
+          </label>
+          <input id="swal-catatan-selected" class="swal2-input" placeholder="Contoh: Selamat ananda dinyatakan lulus seleksi utama" style="width: 100%; margin: 0; padding: 10px 12px; font-size: 13px; border-radius: 8px; box-sizing: border-box; border: 1.5px solid #cbd5e1;" />
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Terapkan Status',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#059669',
+      cancelButtonColor: '#94a3b8',
+      preConfirm: () => {
+        const statusKelulusan = (document.getElementById('swal-status-selected') as HTMLSelectElement)?.value;
+        const catatan = (document.getElementById('swal-catatan-selected') as HTMLInputElement)?.value;
+        return { statusKelulusan, catatan: (catatan || '').trim() };
+      }
+    });
+
+    if (formValues) {
+      try {
+        Swal.fire({ title: 'Menerapkan Status Kelulusan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        const res = await fetch('/api/spmb/kelulusan-massal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ids: selectedIds,
+            statusKelulusan: formValues.statusKelulusan,
+            catatan: formValues.catatan
+          })
+        });
+        const resJson = await res.json();
+        if (resJson.success) {
+          const statusLabel = 
+            formValues.statusKelulusan === 'diterima' ? 'Diterima' :
+            formValues.statusKelulusan === 'cadangan' ? 'Cadangan' :
+            formValues.statusKelulusan === 'tidak_diterima' ? 'Tidak Diterima' : 'Dalam Proses';
+
+          Swal.fire({
+            icon: 'success',
+            title: 'Berhasil!',
+            text: `Status kelulusan berhasil diperbarui menjadi "${statusLabel}" untuk ${resJson.updatedCount} siswa terpilih.`,
+            timer: 2000,
+            showConfirmButton: false
+          });
+          setData(prev => prev.map(item => selectedIds.includes(item.rowNumber) ? { ...item, statusKelulusan: formValues.statusKelulusan } : item));
+          setSelectedIds([]);
+          fetchData();
+        } else {
+          Swal.fire('Gagal', resJson.error || 'Gagal mengubah status kelulusan', 'error');
+        }
+      } catch (e: any) {
+        Swal.fire('Error', 'Gagal menghubungi server', 'error');
+      }
+    }
+  };
+
   const handleDelete = async (id: string, nama: string) => {
     const result = await Swal.fire({
       title: 'Hapus Data?',
@@ -398,6 +475,131 @@ export default function RekapSpmb() {
     }
   };
 
+  const handleKelulusanMassal = async () => {
+    const jalurs = Array.from(new Set(data.map(d => d.jalurPendaftaran).filter(Boolean)));
+    const jalurOptions = ['Semua Jalur', ...jalurs];
+
+    let targetOptionsHtml = '';
+    if (selectedIds.length > 0) {
+      targetOptionsHtml += `<option value="selected">📌 ${selectedIds.length} Siswa yang Tercentang</option>`;
+    }
+    targetOptionsHtml += `<option value="filtered">🔍 Semua Siswa Terfilter Saat Ini (${filteredData.length} Siswa)</option>`;
+    jalurOptions.forEach(j => {
+      const count = j === 'Semua Jalur' ? data.length : data.filter(d => (d.jalurPendaftaran || '').toLowerCase() === j.toLowerCase()).length;
+      targetOptionsHtml += `<option value="jalur_${j}">🏷️ Jalur: ${j} (${count} Siswa)</option>`;
+    });
+
+    const { value: formValues } = await Swal.fire({
+      title: 'Eksekusi Kelulusan Massal',
+      html: `
+        <div style="text-align: left; font-size: 13px; color: #475569; margin-bottom: 14px;">
+          Tentukan status kelulusan pendaftar SPMB secara massal dan serentak:
+        </div>
+
+        <div style="text-align: left; margin-bottom: 12px;">
+          <label style="display: block; font-size: 12px; font-weight: 700; margin-bottom: 5px; color: #1e293b;">
+            1. Target Siswa:
+          </label>
+          <select id="swal-target-mode" class="swal2-input" style="width: 100%; margin: 0; padding: 9px 12px; font-size: 13px; border-radius: 8px; box-sizing: border-box; border: 1.5px solid #cbd5e1;">
+            ${targetOptionsHtml}
+          </select>
+        </div>
+
+        <div style="text-align: left; margin-bottom: 12px;">
+          <label style="display: block; font-size: 12px; font-weight: 700; margin-bottom: 5px; color: #1e293b;">
+            2. Ubah Status Kelulusan Menjadi:
+          </label>
+          <select id="swal-target-status" class="swal2-input" style="width: 100%; margin: 0; padding: 9px 12px; font-size: 13px; border-radius: 8px; box-sizing: border-box; border: 1.5px solid #cbd5e1;">
+            <option value="diterima">🟢 Diterima (Lulus)</option>
+            <option value="cadangan">🟡 Cadangan</option>
+            <option value="tidak_diterima">🔴 Tidak Diterima</option>
+            <option value="proses">⚪ Reset ke Dalam Proses</option>
+          </select>
+        </div>
+
+        <div style="text-align: left; margin-bottom: 12px;">
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #334155; cursor: pointer;">
+            <input type="checkbox" id="swal-only-proses" checked style="width: 16px; height: 16px; accent-color: #059669; cursor: pointer;" />
+            <span>Hanya ubah siswa yang statusnya masih <b>Dalam Proses</b></span>
+          </label>
+          <div style="font-size: 11px; color: #64748b; margin-left: 24px; margin-top: 2px;">
+            (Mencegah siswa yang sudah Diterima / Ditolak sebelumnya tertimpa secara tidak sengaja)
+          </div>
+        </div>
+
+        <div style="text-align: left;">
+          <label style="display: block; font-size: 12px; font-weight: 700; margin-bottom: 5px; color: #1e293b;">
+            3. Catatan Kelulusan (Opsional):
+          </label>
+          <input id="swal-target-catatan" class="swal2-input" placeholder="Contoh: Selamat ananda dinyatakan lulus seleksi utama" style="width: 100%; margin: 0; padding: 9px 12px; font-size: 13px; border-radius: 8px; box-sizing: border-box; border: 1.5px solid #cbd5e1;" />
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Eksekusi Sekarang',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#059669',
+      cancelButtonColor: '#94a3b8',
+      preConfirm: () => {
+        const targetMode = (document.getElementById('swal-target-mode') as HTMLSelectElement)?.value;
+        const statusKelulusan = (document.getElementById('swal-target-status') as HTMLSelectElement)?.value;
+        const onlyProses = (document.getElementById('swal-only-proses') as HTMLInputElement)?.checked;
+        const catatan = (document.getElementById('swal-target-catatan') as HTMLInputElement)?.value;
+        return { targetMode, statusKelulusan, onlyProses, catatan: (catatan || '').trim() };
+      }
+    });
+
+    if (formValues) {
+      let payload: any = {
+        statusKelulusan: formValues.statusKelulusan,
+        onlyProses: formValues.onlyProses,
+        catatan: formValues.catatan
+      };
+
+      if (formValues.targetMode === 'selected') {
+        payload.ids = selectedIds;
+      } else if (formValues.targetMode === 'filtered') {
+        payload.ids = filteredData.map(d => d.rowNumber);
+      } else if (formValues.targetMode.startsWith('jalur_')) {
+        const jName = formValues.targetMode.replace('jalur_', '');
+        payload.targetJalur = jName;
+      }
+
+      try {
+        Swal.fire({
+          title: 'Mengeksekusi Kelulusan...',
+          allowOutsideClick: false,
+          didOpen: () => Swal.showLoading()
+        });
+
+        const res = await fetch('/api/spmb/kelulusan-massal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const resJson = await res.json();
+        if (resJson.success) {
+          const statusLabel = 
+            formValues.statusKelulusan === 'diterima' ? 'Diterima' :
+            formValues.statusKelulusan === 'cadangan' ? 'Cadangan' :
+            formValues.statusKelulusan === 'tidak_diterima' ? 'Tidak Diterima' : 'Dalam Proses';
+
+          Swal.fire({
+            icon: 'success',
+            title: 'Berhasil Dieksekusi!',
+            text: `Status kelulusan berhasil diperbarui menjadi "${statusLabel}" untuk ${resJson.updatedCount} siswa.`
+          });
+          setSelectedIds([]);
+          fetchData();
+        } else {
+          Swal.fire('Gagal', resJson.error || 'Gagal mengeksekusi kelulusan', 'error');
+        }
+      } catch (err: any) {
+        Swal.fire('Error', 'Gagal menghubungi server', 'error');
+      }
+    }
+  };
+
   useEffect(() => {
     const userStr = localStorage.getItem('keren_user_data');
     if (userStr) {
@@ -462,6 +664,27 @@ export default function RekapSpmb() {
 
         {isAdmin && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={handleKelulusanMassal}
+              style={{
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: 'white',
+                border: 'none',
+                padding: '9px 18px',
+                borderRadius: '10px',
+                fontSize: '0.88rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 2px 4px rgba(5, 150, 105, 0.25)'
+              }}
+            >
+              <i className="fas fa-user-graduate"></i> Kelulusan Massal
+            </button>
+
             <button
               type="button"
               onClick={handleAturJadwalMassal}
@@ -825,7 +1048,7 @@ export default function RekapSpmb() {
                 {selectedIds.length} Siswa Terpilih
               </div>
               <div style={{ fontSize: '11.5px', color: '#94a3b8' }}>
-                Terapkan jadwal tes atau kosongkan jadwal secara serentak
+                Terapkan status kelulusan, jadwal tes, atau kosongkan jadwal secara serentak
               </div>
             </div>
             {selectedIds.length < filteredData.length && (
@@ -850,6 +1073,27 @@ export default function RekapSpmb() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={handleSetKelulusanSelected}
+              style={{
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: 'white',
+                border: 'none',
+                padding: '9px 16px',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 2px 6px rgba(16, 185, 129, 0.3)'
+              }}
+            >
+              <i className="fas fa-user-graduate"></i> Set Kelulusan ({selectedIds.length} Siswa)
+            </button>
+
             <button
               type="button"
               onClick={handleSetJadwalSelected}
