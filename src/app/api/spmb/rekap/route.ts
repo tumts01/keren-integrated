@@ -38,14 +38,27 @@ export async function GET() {
       };
     }).filter((item: any) => item.namaLengkap !== ''); // filter out empty rows
 
-    // Urutkan berdasarkan nomor pendaftaran (ascending)
+    // Urutkan default: pendaftar terbaru ke terlama (descending)
+    const parseTimestamp = (item: any): number => {
+      const str = item.timestamp || '';
+      if (str) {
+        const parts = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})[,\s]+(\d{1,2})[.:](\d{1,2})[.:](\d{1,2})/);
+        if (parts) {
+          const [, d, m, y, h, min, s] = parts;
+          const t = new Date(Number(y), Number(m) - 1, Number(d), Number(h), Number(min), Number(s)).getTime();
+          if (!isNaN(t)) return t;
+        }
+        const parsed = Date.parse(str);
+        if (!isNaN(parsed)) return parsed;
+      }
+      const numId = Number(item.rowNumber || item.id || 0);
+      return !isNaN(numId) ? numId : 0;
+    };
+
     data.sort((a: any, b: any) => {
-      const valA = (a.nomorPendaftaran || '').trim();
-      const valB = (b.nomorPendaftaran || '').trim();
-      if (!valA && !valB) return 0;
-      if (!valA) return 1;
-      if (!valB) return -1;
-      return valA.localeCompare(valB, undefined, { numeric: true, sensitivity: 'base' });
+      const timeDiff = parseTimestamp(b) - parseTimestamp(a);
+      if (timeDiff !== 0) return timeDiff;
+      return Number(b.rowNumber || 0) - Number(a.rowNumber || 0);
     });
 
     return NextResponse.json({ success: true, data }, {

@@ -30,13 +30,30 @@ export default function RekapSpmb() {
   const [filterVerifikasiRapor, setFilterVerifikasiRapor] = useState('semua');
   const [filterKelulusan, setFilterKelulusan] = useState('semua');
   const [filterJadwal, setFilterJadwal] = useState('semua');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortOrder, setSortOrder] = useState<'terbaru' | 'terlama' | 'asc' | 'desc'>('terbaru');
+
+  // Helper parsing timestamp SPMB
+  const parseTimestamp = (item: any): number => {
+    const str = item.timestamp || '';
+    if (str) {
+      const parts = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})[,\s]+(\d{1,2})[.:](\d{1,2})[.:](\d{1,2})/);
+      if (parts) {
+        const [, d, m, y, h, min, s] = parts;
+        const t = new Date(Number(y), Number(m) - 1, Number(d), Number(h), Number(min), Number(s)).getTime();
+        if (!isNaN(t)) return t;
+      }
+      const parsed = Date.parse(str);
+      if (!isNaN(parsed)) return parsed;
+    }
+    const numId = Number(item.rowNumber || item.id || 0);
+    return !isNaN(numId) ? numId : 0;
+  };
 
   // Pagination States (default 20 pendaftar per halaman)
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
 
-  // Filtered and Sorted data calculation (diurutkan berdasarkan No. Registrasi)
+  // Filtered and Sorted data calculation (default: Pendaftar Terbaru ke Terlama)
   const filteredData = data
     .filter(item => {
       // Search Term match
@@ -93,6 +110,17 @@ export default function RekapSpmb() {
       return true;
     })
     .sort((a, b) => {
+      if (sortOrder === 'terbaru') {
+        const timeDiff = parseTimestamp(b) - parseTimestamp(a);
+        if (timeDiff !== 0) return timeDiff;
+        return Number(b.rowNumber || 0) - Number(a.rowNumber || 0);
+      }
+      if (sortOrder === 'terlama') {
+        const timeDiff = parseTimestamp(a) - parseTimestamp(b);
+        if (timeDiff !== 0) return timeDiff;
+        return Number(a.rowNumber || 0) - Number(b.rowNumber || 0);
+      }
+
       const valA = (a.nomorPendaftaran || '').trim();
       const valB = (b.nomorPendaftaran || '').trim();
       if (!valA && !valB) return 0;
@@ -145,7 +173,7 @@ export default function RekapSpmb() {
     setFilterVerifikasiRapor('semua');
     setFilterKelulusan('semua');
     setFilterJadwal('semua');
-    setSortOrder('asc');
+    setSortOrder('terbaru');
     setCurrentPage(1);
   };
 
@@ -165,7 +193,7 @@ export default function RekapSpmb() {
     return pages;
   };
 
-  const isFiltered = searchTerm.trim() !== '' || filterJalur !== 'semua' || filterVerifikasiKk !== 'semua' || filterVerifikasiRapor !== 'semua' || filterKelulusan !== 'semua' || filterJadwal !== 'semua' || sortOrder !== 'asc';
+  const isFiltered = searchTerm.trim() !== '' || filterJalur !== 'semua' || filterVerifikasiKk !== 'semua' || filterVerifikasiRapor !== 'semua' || filterKelulusan !== 'semua' || filterJadwal !== 'semua' || sortOrder !== 'terbaru';
 
   const allJalurOptions = Array.from(new Set(data.map(d => d.jalurPendaftaran).filter(Boolean)));
   if (!allJalurOptions.includes('Reguler')) allJalurOptions.push('Reguler');
@@ -1111,30 +1139,32 @@ export default function RekapSpmb() {
             </select>
           </div>
 
-          {/* Urutan No. Registrasi */}
+          {/* Urutan Pendaftar */}
           <div>
             <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
-              Urutan No. Registrasi
+              Urutan Pendaftar
             </label>
             <select
               value={sortOrder}
-              onChange={e => setSortOrder(e.target.value as 'asc' | 'desc')}
+              onChange={e => setSortOrder(e.target.value as any)}
               style={{
                 width: '100%',
                 padding: '8px 12px',
                 borderRadius: '8px',
                 border: '1.5px solid #cbd5e1',
                 fontSize: '13px',
-                background: sortOrder !== 'asc' ? '#eff6ff' : 'white',
-                fontWeight: sortOrder !== 'asc' ? 700 : 500,
-                color: sortOrder !== 'asc' ? '#1d4ed8' : '#334155',
+                background: sortOrder !== 'terbaru' ? '#eff6ff' : 'white',
+                fontWeight: sortOrder !== 'terbaru' ? 700 : 500,
+                color: sortOrder !== 'terbaru' ? '#1d4ed8' : '#334155',
                 outline: 'none',
                 cursor: 'pointer',
                 boxSizing: 'border-box'
               }}
             >
-              <option value="asc">No. Reg: Kecil &rarr; Besar (1-9)</option>
-              <option value="desc">No. Reg: Besar &rarr; Kecil (9-1)</option>
+              <option value="terbaru">⏰ Pendaftar: Terbaru &rarr; Terlama</option>
+              <option value="terlama">⏰ Pendaftar: Terlama &rarr; Terbaru</option>
+              <option value="asc">🔢 No. Reg: Kecil &rarr; Besar (A-Z)</option>
+              <option value="desc">🔢 No. Reg: Besar &rarr; Kecil (Z-A)</option>
             </select>
           </div>
         </div>
@@ -1345,7 +1375,32 @@ export default function RekapSpmb() {
                       />
                     </th>
                   )}
-                  <th>Waktu Daftar</th>
+                  <th
+                    onClick={() => setSortOrder(prev => prev === 'terbaru' ? 'terlama' : 'terbaru')}
+                    style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
+                    title="Klik untuk mengubah urutan waktu pendaftaran (terbaru/terlama)"
+                  >
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <span>Waktu Daftar</span>
+                      {(sortOrder === 'terbaru' || sortOrder === 'terlama') && (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: '#ecfdf5',
+                          color: '#047857',
+                          border: '1px solid #a7f3d0',
+                          borderRadius: '4px',
+                          padding: '1px 6px',
+                          fontSize: '11px',
+                          fontWeight: 700
+                        }}>
+                          <i className={`fas fa-sort-amount-${sortOrder === 'terlama' ? 'up' : 'down'}`} style={{ marginRight: '4px' }}></i>
+                          {sortOrder === 'terlama' ? 'Terlama' : 'Terbaru'}
+                        </span>
+                      )}
+                    </div>
+                  </th>
                   <th
                     onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
                     style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
@@ -1353,21 +1408,23 @@ export default function RekapSpmb() {
                   >
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                       <span>No. Reg & Nama</span>
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: '#ecfdf5',
-                        color: '#047857',
-                        border: '1px solid #a7f3d0',
-                        borderRadius: '4px',
-                        padding: '1px 6px',
-                        fontSize: '11px',
-                        fontWeight: 700
-                      }}>
-                        <i className={`fas fa-sort-numeric-${sortOrder === 'asc' ? 'down' : 'up-alt'}`} style={{ marginRight: '4px' }}></i>
-                        {sortOrder === 'asc' ? '1-9' : '9-1'}
-                      </span>
+                      {(sortOrder === 'asc' || sortOrder === 'desc') && (
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          background: '#eff6ff',
+                          color: '#1d4ed8',
+                          border: '1px solid #bfdbfe',
+                          borderRadius: '4px',
+                          padding: '1px 6px',
+                          fontSize: '11px',
+                          fontWeight: 700
+                        }}>
+                          <i className={`fas fa-sort-numeric-${sortOrder === 'asc' ? 'down' : 'up-alt'}`} style={{ marginRight: '4px' }}></i>
+                          {sortOrder === 'asc' ? '1-9' : '9-1'}
+                        </span>
+                      )}
                     </div>
                   </th>
                   <th>Jalur</th>
