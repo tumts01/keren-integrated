@@ -150,6 +150,11 @@ export default function PemetaanKelasPage() {
   // Main Tabs: 'input' | 'hasil'
   const [activeTab, setActiveTab] = useState<'input' | 'hasil'>('input');
 
+  // Pagination (Maksimal 15 baris per tabel)
+  const PAGE_SIZE = 15;
+  const [pageInput, setPageInput] = useState(1);
+  const [pageHasil, setPageHasil] = useState(1);
+
   // Filters on Input Tab
   const [searchTerm, setSearchTerm] = useState('');
   const [filterJenjang, setFilterJenjang] = useState<'semua' | 'SD' | 'MI'>('semua');
@@ -159,6 +164,15 @@ export default function PemetaanKelasPage() {
   const [selectedKelasTab, setSelectedKelasTab] = useState<'semua' | KelasPK>('semua');
   const [onlyMapFilledStudents, setOnlyMapFilledStudents] = useState<boolean>(false);
   const [searchHasil, setSearchHasil] = useState('');
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPageInput(1);
+  }, [searchTerm, filterJenjang, filterStatusInput]);
+
+  useEffect(() => {
+    setPageHasil(1);
+  }, [selectedKelasTab, searchHasil, onlyMapFilledStudents]);
 
   // Modal Detail Input per Siswa
   const [editingStudentId, setEditingStudentId] = useState<number | null>(null);
@@ -200,6 +214,23 @@ export default function PemetaanKelasPage() {
           ...s.pemetaan,
           [field]: value,
         };
+
+        const choiceFields: Array<'pilihan1' | 'pilihan2' | 'pilihan3' | 'pilihan4' | 'pilihan5'> = [
+          'pilihan1',
+          'pilihan2',
+          'pilihan3',
+          'pilihan4',
+          'pilihan5',
+        ];
+
+        // Jika mengisi salah satu pilihan kelas, hapus pilihan kelas yang sama di pilihan lainnya agar tidak kembar
+        if (choiceFields.includes(field as any) && value) {
+          choiceFields.forEach((cf) => {
+            if (cf !== field && updatedPemetaan[cf] === value) {
+              updatedPemetaan[cf] = '';
+            }
+          });
+        }
 
         // Auto-fill 5th choice if choices 1-4 are filled and unique
         if (
@@ -683,6 +714,19 @@ export default function PemetaanKelasPage() {
         return b.skorKelas[k] - a.skorKelas[k];
       });
   }, [computedStudents, selectedKelasTab, searchHasil]);
+
+  // Pagination calculations (Maks. 15 baris per tabel)
+  const totalPagesInput = Math.max(1, Math.ceil(filteredInputStudents.length / PAGE_SIZE));
+  const paginatedInputStudents = useMemo(() => {
+    const start = (pageInput - 1) * PAGE_SIZE;
+    return filteredInputStudents.slice(start, start + PAGE_SIZE);
+  }, [filteredInputStudents, pageInput]);
+
+  const totalPagesHasil = Math.max(1, Math.ceil(filteredHasilStudents.length / PAGE_SIZE));
+  const paginatedHasilStudents = useMemo(() => {
+    const start = (pageHasil - 1) * PAGE_SIZE;
+    return filteredHasilStudents.slice(start, start + PAGE_SIZE);
+  }, [filteredHasilStudents, pageHasil]);
 
   // Download Excel Template for Input
   const handleDownloadTemplate = () => {
@@ -1673,9 +1717,10 @@ export default function PemetaanKelasPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredInputStudents.map((s, idx) => {
+                  {paginatedInputStudents.map((s, idx) => {
                     const isMI = s.pemetaan.jenjangAsal === 'MI';
                     const isDirty = dirtyIds.has(s.id);
+                    const rowNumber = (pageInput - 1) * PAGE_SIZE + idx + 1;
                     return (
                       <tr
                         key={s.id}
@@ -1684,7 +1729,7 @@ export default function PemetaanKelasPage() {
                         }}
                       >
                         <td style={{ textAlign: 'center', fontWeight: 700, color: '#64748b', padding: '8px 4px' }}>
-                          {idx + 1}
+                          {rowNumber}
                         </td>
 
                         {/* Sticky Name Cell */}
@@ -1700,23 +1745,13 @@ export default function PemetaanKelasPage() {
                             maxWidth: '215px',
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '13px', lineHeight: 1.3 }}>
+                            {s.namaLengkap}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px', flexWrap: 'wrap' }}>
                             <span
                               style={{
-                                fontSize: '11px',
-                                fontWeight: 800,
-                                background: '#ecfdf5',
-                                color: '#047857',
-                                padding: '1px 6px',
-                                borderRadius: '4px',
-                                border: '1px solid #a7f3d0',
-                              }}
-                            >
-                              {s.nomorPendaftaran}
-                            </span>
-                            <span
-                              style={{
-                                fontSize: '11px',
+                                fontSize: '10.5px',
                                 fontWeight: 700,
                                 padding: '1px 6px',
                                 borderRadius: '4px',
@@ -1726,12 +1761,9 @@ export default function PemetaanKelasPage() {
                             >
                               {s.genderNorm === 'L' ? 'Laki-laki' : 'Perempuan'}
                             </span>
-                          </div>
-                          <div style={{ fontWeight: 700, color: '#0f172a', marginTop: '3px', fontSize: '12.5px' }}>
-                            {s.namaLengkap}
-                          </div>
-                          <div style={{ fontSize: '11px', color: '#64748b' }}>
-                            {s.asalSekolah || '-'}
+                            <span style={{ fontSize: '11px', color: '#64748b' }}>
+                              {s.asalSekolah || '-'}
+                            </span>
                           </div>
                         </td>
 
@@ -1763,35 +1795,46 @@ export default function PemetaanKelasPage() {
                           </select>
                         </td>
 
-                        {/* Pilihan 1 - 5 */}
+                        {/* Pilihan 1 - 5 (Pilihan yang sudah dipilih di nomor lain otomatis hilang dari opsi) */}
                         {(['pilihan1', 'pilihan2', 'pilihan3', 'pilihan4', 'pilihan5'] as const).map(
-                          (pilKey, pIdx) => (
-                            <td key={pilKey} style={{ padding: '8px 5px' }}>
-                              <select
-                                value={s.pemetaan[pilKey] || ''}
-                                onChange={(e) =>
-                                  handleUpdatePemetaanField(s.id, pilKey, e.target.value)
-                                }
-                                style={{
-                                  width: '100%',
-                                  padding: '5px 6px',
-                                  borderRadius: '6px',
-                                  border: '1.5px solid #cbd5e1',
-                                  fontSize: '11.5px',
-                                  fontWeight: s.pemetaan[pilKey] ? 700 : 400,
-                                  color: s.pemetaan[pilKey] ? '#0f172a' : '#94a3b8',
-                                  background: s.pemetaan[pilKey] ? '#f8fafc' : 'white',
-                                }}
-                              >
-                                <option value="">-- Pilihan {pIdx + 1} --</option>
-                                {KELAS_PROGRAM_KHUSUS.map((k) => (
-                                  <option key={k} value={k}>
-                                    {k}
-                                  </option>
-                                ))}
-                              </select>
-                            </td>
-                          )
+                          (pilKey, pIdx) => {
+                            const otherChosen = new Set(
+                              (['pilihan1', 'pilihan2', 'pilihan3', 'pilihan4', 'pilihan5'] as const)
+                                .filter((k) => k !== pilKey)
+                                .map((k) => s.pemetaan[k])
+                                .filter(Boolean)
+                            );
+                            const availableOptions = KELAS_PROGRAM_KHUSUS.filter(
+                              (k) => !otherChosen.has(k) || k === s.pemetaan[pilKey]
+                            );
+                            return (
+                              <td key={pilKey} style={{ padding: '8px 5px' }}>
+                                <select
+                                  value={s.pemetaan[pilKey] || ''}
+                                  onChange={(e) =>
+                                    handleUpdatePemetaanField(s.id, pilKey, e.target.value)
+                                  }
+                                  style={{
+                                    width: '100%',
+                                    padding: '5px 6px',
+                                    borderRadius: '6px',
+                                    border: '1.5px solid #cbd5e1',
+                                    fontSize: '11.5px',
+                                    fontWeight: s.pemetaan[pilKey] ? 700 : 400,
+                                    color: s.pemetaan[pilKey] ? '#0f172a' : '#94a3b8',
+                                    background: s.pemetaan[pilKey] ? '#f8fafc' : 'white',
+                                  }}
+                                >
+                                  <option value="">-- Pilihan {pIdx + 1} --</option>
+                                  {availableOptions.map((k) => (
+                                    <option key={k} value={k}>
+                                      {k}
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                            );
+                          }
                         )}
 
                         {/* Pendidikan Agama Islam (Khusus SD) */}
@@ -1989,6 +2032,119 @@ export default function PemetaanKelasPage() {
                   })}
                 </tbody>
               </table>
+            </div>
+
+            {/* Pagination Controls for Input Table (Maks. 15 baris per halaman) */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '12px 18px',
+                borderTop: '1px solid #e2e8f0',
+                background: '#f8fafc',
+                flexWrap: 'wrap',
+                gap: '10px',
+              }}
+            >
+              <div style={{ fontSize: '12.5px', color: '#64748b', fontWeight: 600 }}>
+                Menampilkan{' '}
+                <b>
+                  {filteredInputStudents.length === 0
+                    ? 0
+                    : (pageInput - 1) * PAGE_SIZE + 1}
+                </b>
+                -
+                <b>
+                  {Math.min(pageInput * PAGE_SIZE, filteredInputStudents.length)}
+                </b>{' '}
+                dari <b>{filteredInputStudents.length}</b> calon siswa (Maksimal 15 per halaman)
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setPageInput(1)}
+                  disabled={pageInput === 1}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: pageInput === 1 ? '#f1f5f9' : 'white',
+                    color: pageInput === 1 ? '#94a3b8' : '#334155',
+                    cursor: pageInput === 1 ? 'not-allowed' : 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                  }}
+                  title="Halaman Pertama"
+                >
+                  <i className="fas fa-angle-double-left"></i>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPageInput((p) => Math.max(1, p - 1))}
+                  disabled={pageInput === 1}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: pageInput === 1 ? '#f1f5f9' : 'white',
+                    color: pageInput === 1 ? '#94a3b8' : '#334155',
+                    cursor: pageInput === 1 ? 'not-allowed' : 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                  }}
+                >
+                  <i className="fas fa-chevron-left" style={{ marginRight: '4px' }}></i> Prev
+                </button>
+
+                <span
+                  style={{
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    color: '#0f172a',
+                    padding: '0 8px',
+                  }}
+                >
+                  Hal. {pageInput} dari {totalPagesInput}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setPageInput((p) => Math.min(totalPagesInput, p + 1))}
+                  disabled={pageInput >= totalPagesInput}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: pageInput >= totalPagesInput ? '#f1f5f9' : 'white',
+                    color: pageInput >= totalPagesInput ? '#94a3b8' : '#334155',
+                    cursor: pageInput >= totalPagesInput ? 'not-allowed' : 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                  }}
+                >
+                  Next <i className="fas fa-chevron-right" style={{ marginLeft: '4px' }}></i>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPageInput(totalPagesInput)}
+                  disabled={pageInput >= totalPagesInput}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: pageInput >= totalPagesInput ? '#f1f5f9' : 'white',
+                    color: pageInput >= totalPagesInput ? '#94a3b8' : '#334155',
+                    cursor: pageInput >= totalPagesInput ? 'not-allowed' : 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                  }}
+                  title="Halaman Terakhir"
+                >
+                  <i className="fas fa-angle-double-right"></i>
+                </button>
+              </div>
             </div>
           </div>
         </>
@@ -2301,13 +2457,14 @@ export default function PemetaanKelasPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredHasilStudents.map((s, idx) => {
+                  {paginatedHasilStudents.map((s, idx) => {
                     const k = s.assignedClass as KelasPK;
                     const meta = KELAS_META[k];
+                    const rowNumber = (pageHasil - 1) * PAGE_SIZE + idx + 1;
                     return (
                       <tr key={s.id}>
                         <td style={{ textAlign: 'center', fontWeight: 700, color: '#64748b' }}>
-                          {idx + 1}
+                          {rowNumber}
                         </td>
                         <td>
                           <div style={{ fontWeight: 700, color: '#0f172a' }}>{s.namaLengkap}</div>
@@ -2512,6 +2669,119 @@ export default function PemetaanKelasPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls for Hasil Table (Maks. 15 baris per halaman) */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '12px 18px',
+                borderTop: '1px solid #e2e8f0',
+                background: '#f8fafc',
+                flexWrap: 'wrap',
+                gap: '10px',
+              }}
+            >
+              <div style={{ fontSize: '12.5px', color: '#64748b', fontWeight: 600 }}>
+                Menampilkan{' '}
+                <b>
+                  {filteredHasilStudents.length === 0
+                    ? 0
+                    : (pageHasil - 1) * PAGE_SIZE + 1}
+                </b>
+                -
+                <b>
+                  {Math.min(pageHasil * PAGE_SIZE, filteredHasilStudents.length)}
+                </b>{' '}
+                dari <b>{filteredHasilStudents.length}</b> calon siswa (Maksimal 15 per halaman)
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setPageHasil(1)}
+                  disabled={pageHasil === 1}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: pageHasil === 1 ? '#f1f5f9' : 'white',
+                    color: pageHasil === 1 ? '#94a3b8' : '#334155',
+                    cursor: pageHasil === 1 ? 'not-allowed' : 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                  }}
+                  title="Halaman Pertama"
+                >
+                  <i className="fas fa-angle-double-left"></i>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPageHasil((p) => Math.max(1, p - 1))}
+                  disabled={pageHasil === 1}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: pageHasil === 1 ? '#f1f5f9' : 'white',
+                    color: pageHasil === 1 ? '#94a3b8' : '#334155',
+                    cursor: pageHasil === 1 ? 'not-allowed' : 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                  }}
+                >
+                  <i className="fas fa-chevron-left" style={{ marginRight: '4px' }}></i> Prev
+                </button>
+
+                <span
+                  style={{
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    color: '#0f172a',
+                    padding: '0 8px',
+                  }}
+                >
+                  Hal. {pageHasil} dari {totalPagesHasil}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setPageHasil((p) => Math.min(totalPagesHasil, p + 1))}
+                  disabled={pageHasil >= totalPagesHasil}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: pageHasil >= totalPagesHasil ? '#f1f5f9' : 'white',
+                    color: pageHasil >= totalPagesHasil ? '#94a3b8' : '#334155',
+                    cursor: pageHasil >= totalPagesHasil ? 'not-allowed' : 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                  }}
+                >
+                  Next <i className="fas fa-chevron-right" style={{ marginLeft: '4px' }}></i>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPageHasil(totalPagesHasil)}
+                  disabled={pageHasil >= totalPagesHasil}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: pageHasil >= totalPagesHasil ? '#f1f5f9' : 'white',
+                    color: pageHasil >= totalPagesHasil ? '#94a3b8' : '#334155',
+                    cursor: pageHasil >= totalPagesHasil ? 'not-allowed' : 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                  }}
+                  title="Halaman Terakhir"
+                >
+                  <i className="fas fa-angle-double-right"></i>
+                </button>
+              </div>
+            </div>
           </div>
         </>
       )}
@@ -2620,42 +2890,53 @@ export default function PemetaanKelasPage() {
                 }}
               >
                 {(['pilihan1', 'pilihan2', 'pilihan3', 'pilihan4', 'pilihan5'] as const).map(
-                  (pilKey, idx) => (
-                    <div key={pilKey}>
-                      <label
-                        style={{
-                          display: 'block',
-                          fontSize: '12px',
-                          fontWeight: 700,
-                          color: '#334155',
-                          marginBottom: '4px',
-                        }}
-                      >
-                        Pilihan Ke-{idx + 1}
-                      </label>
-                      <select
-                        value={editingStudent.pemetaan[pilKey] || ''}
-                        onChange={(e) =>
-                          handleUpdatePemetaanField(editingStudent.id, pilKey, e.target.value)
-                        }
-                        style={{
-                          width: '100%',
-                          padding: '8px 10px',
-                          borderRadius: '8px',
-                          border: '1.5px solid #cbd5e1',
-                          fontSize: '13px',
-                          fontWeight: 600,
-                        }}
-                      >
-                        <option value="">-- Pilih Kelas --</option>
-                        {KELAS_PROGRAM_KHUSUS.map((k) => (
-                          <option key={k} value={k}>
-                            {k}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )
+                  (pilKey, idx) => {
+                    const otherChosen = new Set(
+                      (['pilihan1', 'pilihan2', 'pilihan3', 'pilihan4', 'pilihan5'] as const)
+                        .filter((k) => k !== pilKey)
+                        .map((k) => editingStudent.pemetaan[k])
+                        .filter(Boolean)
+                    );
+                    const availableOptions = KELAS_PROGRAM_KHUSUS.filter(
+                      (k) => !otherChosen.has(k) || k === editingStudent.pemetaan[pilKey]
+                    );
+                    return (
+                      <div key={pilKey}>
+                        <label
+                          style={{
+                            display: 'block',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            color: '#334155',
+                            marginBottom: '4px',
+                          }}
+                        >
+                          Pilihan Ke-{idx + 1}
+                        </label>
+                        <select
+                          value={editingStudent.pemetaan[pilKey] || ''}
+                          onChange={(e) =>
+                            handleUpdatePemetaanField(editingStudent.id, pilKey, e.target.value)
+                          }
+                          style={{
+                            width: '100%',
+                            padding: '8px 10px',
+                            borderRadius: '8px',
+                            border: '1.5px solid #cbd5e1',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <option value="">-- Pilih Kelas --</option>
+                          {availableOptions.map((k) => (
+                            <option key={k} value={k}>
+                              {k}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  }
                 )}
               </div>
 
