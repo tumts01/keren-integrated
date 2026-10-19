@@ -104,11 +104,12 @@ export default function SpmbPortalDashboard() {
   const statusVerifikasi = data.statusVerifikasi || 'menunggu';
   const statusKelulusan = data.statusKelulusan || 'proses';
 
-  const getWaUrl = () => {
+  const getWaUrl = (phone: string, namaPanitia: string) => {
+    const cleanPhone = phone.replace(/\D/g, '').replace(/^0/, '62');
     const text = encodeURIComponent(
-      `Assalamu'alaikum Panitia SPMB MTs Almaarif 01 Singosari.\n\nSaya wali dari calon santri:\nNama: ${data.namaLengkap}\nNo. Pendaftaran: ${data.nomorPendaftaran}\nJalur: ${data.jalurPendaftaran}\n\nIngin menanyakan perihal seleksi SPMB. Terima kasih.`
+      `Assalamu'alaikum ${namaPanitia} (Panitia SPMB MTs Almaarif 01 Singosari).\n\nSaya wali dari calon santri:\nNama: ${data.namaLengkap}\nNo. Pendaftaran: ${data.nomorPendaftaran}\nJalur: ${data.jalurPendaftaran}\n\nIngin menanyakan perihal seleksi SPMB. Terima kasih.`
     );
-    return `https://wa.me/6289510384057?text=${text}`;
+    return `https://wa.me/${cleanPhone}?text=${text}`;
   };
 
   return (
@@ -629,9 +630,9 @@ export default function SpmbPortalDashboard() {
             </div>
           </Link>
 
-          {/* Card Bantuan Panitia WA */}
+          {/* Card Bantuan Panitia WA: Bu Izza */}
           <a
-            href={getWaUrl()}
+            href={getWaUrl('087859171158', 'Bu Izza')}
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -664,10 +665,53 @@ export default function SpmbPortalDashboard() {
             </div>
             <div>
               <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#166534', marginBottom: '2px' }}>
-                Hubungi Panitia SPMB
+                WA Panitia: Bu Izza
               </div>
               <div style={{ fontSize: '12px', color: '#64748b' }}>
-                +62 895-1038-4057 (WhatsApp Panitia)
+                0878-5917-1158 (Chat WhatsApp)
+              </div>
+            </div>
+          </a>
+
+          {/* Card Bantuan Panitia WA: Pak Nizar */}
+          <a
+            href={getWaUrl('087770034515', 'Pak Nizar')}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              padding: '20px',
+              border: '1.5px solid #bbf7d0',
+              textDecoration: 'none',
+              color: 'inherit',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.03)',
+              transition: 'all 0.2s'
+            }}
+          >
+            <div style={{
+              width: '50px',
+              height: '50px',
+              borderRadius: '12px',
+              background: '#22c55e',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.5rem',
+              flexShrink: 0
+            }}>
+              <i className="fab fa-whatsapp"></i>
+            </div>
+            <div>
+              <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#166534', marginBottom: '2px' }}>
+                WA Panitia: Pak Nizar
+              </div>
+              <div style={{ fontSize: '12px', color: '#64748b' }}>
+                0877-7003-4515 (Chat WhatsApp)
               </div>
             </div>
           </a>
