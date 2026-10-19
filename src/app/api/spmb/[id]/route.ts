@@ -84,6 +84,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       ...existing.metadata,
       ...(body.statusVerifikasi !== undefined ? { status_verifikasi: body.statusVerifikasi } : {}),
       ...(body.catatanVerifikasi !== undefined ? { catatan_verifikasi: body.catatanVerifikasi } : {}),
+      ...(body.statusVerifikasiRapor !== undefined ? { status_verifikasi_rapor: body.statusVerifikasiRapor } : {}),
+      ...(body.catatanVerifikasiRapor !== undefined ? { catatan_verifikasi_rapor: body.catatanVerifikasiRapor } : {}),
       ...(body.statusKelulusan !== undefined ? { status_kelulusan: body.statusKelulusan } : {}),
       ...(body.jadwalTes !== undefined ? { jadwal_tes: body.jadwalTes } : {})
     };

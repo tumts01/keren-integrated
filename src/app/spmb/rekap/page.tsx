@@ -26,7 +26,8 @@ export default function RekapSpmb() {
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
   const [filterJalur, setFilterJalur] = useState('semua');
-  const [filterVerifikasi, setFilterVerifikasi] = useState('semua');
+  const [filterVerifikasiKk, setFilterVerifikasiKk] = useState('semua');
+  const [filterVerifikasiRapor, setFilterVerifikasiRapor] = useState('semua');
   const [filterKelulusan, setFilterKelulusan] = useState('semua');
   const [filterJadwal, setFilterJadwal] = useState('semua');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -58,10 +59,18 @@ export default function RekapSpmb() {
         }
       }
 
-      // Filter Verifikasi
-      if (filterVerifikasi !== 'semua') {
-        const verif = (item.statusVerifikasi || 'menunggu').toLowerCase();
-        if (verif !== filterVerifikasi.toLowerCase()) {
+      // Filter Verifikasi KK
+      if (filterVerifikasiKk !== 'semua') {
+        const verifKk = (item.statusVerifikasi || 'menunggu').toLowerCase();
+        if (verifKk !== filterVerifikasiKk.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // Filter Verifikasi Rapor
+      if (filterVerifikasiRapor !== 'semua') {
+        const verifRapor = (item.statusVerifikasiRapor || 'menunggu').toLowerCase();
+        if (verifRapor !== filterVerifikasiRapor.toLowerCase()) {
           return false;
         }
       }
@@ -99,7 +108,7 @@ export default function RekapSpmb() {
   // Reset to page 1 when any filter or sort changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterJalur, filterVerifikasi, filterKelulusan, filterJadwal, sortOrder]);
+  }, [searchTerm, filterJalur, filterVerifikasiKk, filterVerifikasiRapor, filterKelulusan, filterJadwal, sortOrder]);
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
@@ -132,7 +141,8 @@ export default function RekapSpmb() {
   const handleResetFilter = () => {
     setSearchTerm('');
     setFilterJalur('semua');
-    setFilterVerifikasi('semua');
+    setFilterVerifikasiKk('semua');
+    setFilterVerifikasiRapor('semua');
     setFilterKelulusan('semua');
     setFilterJadwal('semua');
     setSortOrder('asc');
@@ -155,7 +165,7 @@ export default function RekapSpmb() {
     return pages;
   };
 
-  const isFiltered = searchTerm.trim() !== '' || filterJalur !== 'semua' || filterVerifikasi !== 'semua' || filterKelulusan !== 'semua' || filterJadwal !== 'semua' || sortOrder !== 'asc';
+  const isFiltered = searchTerm.trim() !== '' || filterJalur !== 'semua' || filterVerifikasiKk !== 'semua' || filterVerifikasiRapor !== 'semua' || filterKelulusan !== 'semua' || filterJadwal !== 'semua' || sortOrder !== 'asc';
 
   const allJalurOptions = Array.from(new Set(data.map(d => d.jalurPendaftaran).filter(Boolean)));
   if (!allJalurOptions.includes('Reguler')) allJalurOptions.push('Reguler');
@@ -378,14 +388,14 @@ export default function RekapSpmb() {
     }
   };
 
-  const handleUpdateVerifikasi = async (id: string, nama: string, newStatus: string) => {
+  const handleUpdateVerifikasiKk = async (id: string, nama: string, newStatus: string) => {
     let catatan = '';
     if (newStatus === 'perbaikan') {
       const { value: text, isConfirmed } = await Swal.fire({
-        title: 'Catatan Perbaikan Berkas',
-        text: `Tuliskan catatan perbaikan berkas untuk ${nama}:`,
+        title: 'Catatan Perbaikan Dokumen KK / Akta',
+        text: `Tuliskan catatan perbaikan dokumen identitas / KK untuk ${nama}:`,
         input: 'textarea',
-        inputPlaceholder: 'Contoh: Rapor semester 2 belum dikumpulkan / foto tidak terbaca',
+        inputPlaceholder: 'Contoh: Foto KK buram/tidak terbaca, mohon kirim ulang KK yang jelas',
         showCancelButton: true,
         confirmButtonColor: '#059669',
         cancelButtonColor: '#94a3b8',
@@ -393,7 +403,7 @@ export default function RekapSpmb() {
         cancelButtonText: 'Batal'
       });
       if (!isConfirmed) return;
-      catatan = text || 'Berkas belum lengkap. Silakan serahkan fisik atau kirim ulang via WhatsApp Panitia.';
+      catatan = text || 'Dokumen KK/Akta belum jelas/lengkap. Silakan unggah ulang atau kirim via WA Panitia.';
     }
 
     try {
@@ -409,7 +419,45 @@ export default function RekapSpmb() {
       if (resJson.success) {
         setData(prev => prev.map(item => item.rowNumber === id ? { ...item, statusVerifikasi: newStatus, catatanVerifikasi: catatan } : item));
       } else {
-        Swal.fire('Gagal', resJson.error || 'Gagal mengubah status', 'error');
+        Swal.fire('Gagal', resJson.error || 'Gagal mengubah status verifikasi KK', 'error');
+      }
+    } catch (err) {
+      Swal.fire('Error', 'Gagal menghubungi server', 'error');
+    }
+  };
+
+  const handleUpdateVerifikasiRapor = async (id: string, nama: string, newStatus: string) => {
+    let catatan = '';
+    if (newStatus === 'perbaikan') {
+      const { value: text, isConfirmed } = await Swal.fire({
+        title: 'Catatan Perbaikan Berkas Rapor',
+        text: `Tuliskan catatan perbaikan berkas rapor untuk ${nama}:`,
+        input: 'textarea',
+        inputPlaceholder: 'Contoh: FC Rapor semester 2 belum dikumpulkan / nilai tidak terbaca',
+        showCancelButton: true,
+        confirmButtonColor: '#059669',
+        cancelButtonColor: '#94a3b8',
+        confirmButtonText: 'Simpan',
+        cancelButtonText: 'Batal'
+      });
+      if (!isConfirmed) return;
+      catatan = text || 'Berkas rapor kelas 5 belum lengkap. Silakan serahkan fisik ke madrasah atau kirim file via WA Panitia.';
+    }
+
+    try {
+      const res = await fetch(`/api/spmb/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          statusVerifikasiRapor: newStatus,
+          catatanVerifikasiRapor: catatan
+        })
+      });
+      const resJson = await res.json();
+      if (resJson.success) {
+        setData(prev => prev.map(item => item.rowNumber === id ? { ...item, statusVerifikasiRapor: newStatus, catatanVerifikasiRapor: catatan } : item));
+      } else {
+        Swal.fire('Gagal', resJson.error || 'Gagal mengubah status verifikasi rapor', 'error');
       }
     } catch (err) {
       Swal.fire('Error', 'Gagal menghubungi server', 'error');
@@ -697,15 +745,18 @@ export default function RekapSpmb() {
                 <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 600 }}>
                   Total: {data.length}
                 </span>
-                <span style={{ fontSize: '0.78rem', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
-                  Valid: {data.filter(d => (d.statusVerifikasi || '').toLowerCase() === 'valid').length}
+                <span style={{ fontSize: '0.78rem', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }} title="Verifikasi Dokumen Identitas / KK">
+                  KK Valid: {data.filter(d => (d.statusVerifikasi || '').toLowerCase() === 'valid').length}
                 </span>
-                <span style={{ fontSize: '0.78rem', background: '#fef3c7', color: '#b45309', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
-                  Belum: {data.filter(d => (d.statusVerifikasi || '').toLowerCase() !== 'valid' && (d.statusVerifikasi || '').toLowerCase() !== 'perbaikan').length}
+                <span style={{ fontSize: '0.78rem', background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }} title="Verifikasi Berkas FC Rapor">
+                  Rapor Valid: {data.filter(d => (d.statusVerifikasiRapor || '').toLowerCase() === 'valid').length}
                 </span>
-                {data.some(d => (d.statusVerifikasi || '').toLowerCase() === 'perbaikan') && (
+                <span style={{ fontSize: '0.78rem', background: '#fef3c7', color: '#b45309', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }} title="Berkas Rapor Belum Lengkap / Belum Dikumpulkan">
+                  Rapor Belum: {data.filter(d => (d.statusVerifikasiRapor || '').toLowerCase() !== 'valid' && (d.statusVerifikasiRapor || '').toLowerCase() !== 'perbaikan').length}
+                </span>
+                {data.some(d => (d.statusVerifikasiRapor || '').toLowerCase() === 'perbaikan') && (
                   <span style={{ fontSize: '0.78rem', background: '#fee2e2', color: '#b91c1c', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
-                    Perbaikan: {data.filter(d => (d.statusVerifikasi || '').toLowerCase() === 'perbaikan').length}
+                    Rapor Perbaikan: {data.filter(d => (d.statusVerifikasiRapor || '').toLowerCase() === 'perbaikan').length}
                   </span>
                 )}
               </div>
@@ -944,32 +995,61 @@ export default function RekapSpmb() {
             </select>
           </div>
 
-          {/* Filter Verifikasi */}
+          {/* Filter Verifikasi KK */}
           <div>
             <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
-              Verifikasi Berkas
+              Verifikasi KK / Identitas
             </label>
             <select
-              value={filterVerifikasi}
-              onChange={e => setFilterVerifikasi(e.target.value)}
+              value={filterVerifikasiKk}
+              onChange={e => setFilterVerifikasiKk(e.target.value)}
               style={{
                 width: '100%',
                 padding: '8px 12px',
                 borderRadius: '8px',
                 border: '1.5px solid #cbd5e1',
                 fontSize: '13px',
-                background: filterVerifikasi !== 'semua' ? '#ecfdf5' : 'white',
-                fontWeight: filterVerifikasi !== 'semua' ? 700 : 500,
-                color: filterVerifikasi !== 'semua' ? '#047857' : '#334155',
+                background: filterVerifikasiKk !== 'semua' ? '#ecfdf5' : 'white',
+                fontWeight: filterVerifikasiKk !== 'semua' ? 700 : 500,
+                color: filterVerifikasiKk !== 'semua' ? '#047857' : '#334155',
                 outline: 'none',
                 cursor: 'pointer',
                 boxSizing: 'border-box'
               }}
             >
-              <option value="semua">Semua Verifikasi</option>
-              <option value="menunggu">Belum / Menunggu Berkas</option>
-              <option value="valid">Valid / Lengkap</option>
-              <option value="perbaikan">Perlu Perbaikan</option>
+              <option value="semua">Semua KK</option>
+              <option value="menunggu">⏳ Menunggu Verifikasi</option>
+              <option value="valid">✅ KK Valid</option>
+              <option value="perbaikan">⚠️ Perbaikan KK</option>
+            </select>
+          </div>
+
+          {/* Filter Verifikasi Rapor */}
+          <div>
+            <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+              Verifikasi FC Rapor
+            </label>
+            <select
+              value={filterVerifikasiRapor}
+              onChange={e => setFilterVerifikasiRapor(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1.5px solid #cbd5e1',
+                fontSize: '13px',
+                background: filterVerifikasiRapor !== 'semua' ? '#ecfdf5' : 'white',
+                fontWeight: filterVerifikasiRapor !== 'semua' ? 700 : 500,
+                color: filterVerifikasiRapor !== 'semua' ? '#047857' : '#334155',
+                outline: 'none',
+                cursor: 'pointer',
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="semua">Semua Rapor</option>
+              <option value="menunggu">⏳ Belum Dikumpulkan</option>
+              <option value="valid">✅ Rapor Valid</option>
+              <option value="perbaikan">⚠️ Perbaikan Rapor</option>
             </select>
           </div>
 
@@ -1291,7 +1371,8 @@ export default function RekapSpmb() {
                     </div>
                   </th>
                   <th>Jalur</th>
-                  <th>Verifikasi Berkas (FC Rapor)</th>
+                  <th>Verifikasi KK</th>
+                  <th>Verifikasi Rapor</th>
                   <th>Jadwal Tes / Observasi</th>
                   <th>Status Kelulusan</th>
                   <th>Asal Sekolah</th>
@@ -1344,11 +1425,12 @@ export default function RekapSpmb() {
                         {item.jalurPendaftaran}
                       </span>
                     </td>
+                    {/* Verifikasi KK / Identitas */}
                     <td>
                       {isAdmin ? (
                         <select
                           value={item.statusVerifikasi || 'menunggu'}
-                          onChange={(e) => handleUpdateVerifikasi(item.rowNumber, item.namaLengkap, e.target.value)}
+                          onChange={(e) => handleUpdateVerifikasiKk(item.rowNumber, item.namaLengkap, e.target.value)}
                           style={{
                             padding: '6px 8px',
                             borderRadius: '6px',
@@ -1361,11 +1443,11 @@ export default function RekapSpmb() {
                             cursor: 'pointer',
                             outline: 'none'
                           }}
-                          title="Klik untuk mengubah status verifikasi berkas FC Rapor"
+                          title="Klik untuk mengubah status verifikasi identitas / KK"
                         >
-                          <option value="menunggu">⏳ Belum Diverifikasi</option>
-                          <option value="valid">✅ Valid / Lengkap</option>
-                          <option value="perbaikan">⚠️ Perlu Perbaikan</option>
+                          <option value="menunggu">⏳ Menunggu</option>
+                          <option value="valid">✅ Valid</option>
+                          <option value="perbaikan">⚠️ Perbaikan</option>
                         </select>
                       ) : (
                         <span style={{
@@ -1376,12 +1458,55 @@ export default function RekapSpmb() {
                           background: item.statusVerifikasi === 'valid' ? '#dcfce7' : item.statusVerifikasi === 'perbaikan' ? '#fee2e2' : '#fef3c7',
                           color: item.statusVerifikasi === 'valid' ? '#15803d' : item.statusVerifikasi === 'perbaikan' ? '#b91c1c' : '#b45309'
                         }}>
-                          {item.statusVerifikasi === 'valid' ? 'Valid' : item.statusVerifikasi === 'perbaikan' ? 'Perbaikan' : 'Belum'}
+                          {item.statusVerifikasi === 'valid' ? 'Valid' : item.statusVerifikasi === 'perbaikan' ? 'Perbaikan' : 'Menunggu'}
                         </span>
                       )}
                       {item.catatanVerifikasi && (
                         <div style={{ fontSize: '11px', color: '#b91c1c', marginTop: '4px', fontWeight: 600 }}>
                           Catatan: {item.catatanVerifikasi}
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Verifikasi FC Rapor */}
+                    <td>
+                      {isAdmin ? (
+                        <select
+                          value={item.statusVerifikasiRapor || 'menunggu'}
+                          onChange={(e) => handleUpdateVerifikasiRapor(item.rowNumber, item.namaLengkap, e.target.value)}
+                          style={{
+                            padding: '6px 8px',
+                            borderRadius: '6px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            border: '1.5px solid',
+                            borderColor: item.statusVerifikasiRapor === 'valid' ? '#86efac' : item.statusVerifikasiRapor === 'perbaikan' ? '#fca5a5' : '#fde68a',
+                            background: item.statusVerifikasiRapor === 'valid' ? '#f0fdf4' : item.statusVerifikasiRapor === 'perbaikan' ? '#fef2f2' : '#fffbeb',
+                            color: item.statusVerifikasiRapor === 'valid' ? '#15803d' : item.statusVerifikasiRapor === 'perbaikan' ? '#b91c1c' : '#b45309',
+                            cursor: 'pointer',
+                            outline: 'none'
+                          }}
+                          title="Klik untuk mengubah status verifikasi berkas FC Rapor Kelas 5"
+                        >
+                          <option value="menunggu">⏳ Belum</option>
+                          <option value="valid">✅ Valid</option>
+                          <option value="perbaikan">⚠️ Perbaikan</option>
+                        </select>
+                      ) : (
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          background: item.statusVerifikasiRapor === 'valid' ? '#dcfce7' : item.statusVerifikasiRapor === 'perbaikan' ? '#fee2e2' : '#fef3c7',
+                          color: item.statusVerifikasiRapor === 'valid' ? '#15803d' : item.statusVerifikasiRapor === 'perbaikan' ? '#b91c1c' : '#b45309'
+                        }}>
+                          {item.statusVerifikasiRapor === 'valid' ? 'Valid' : item.statusVerifikasiRapor === 'perbaikan' ? 'Perbaikan' : 'Belum'}
+                        </span>
+                      )}
+                      {item.catatanVerifikasiRapor && (
+                        <div style={{ fontSize: '11px', color: '#b91c1c', marginTop: '4px', fontWeight: 600 }}>
+                          Catatan: {item.catatanVerifikasiRapor}
                         </div>
                       )}
                     </td>

@@ -101,7 +101,8 @@ export default function SpmbPortalDashboard() {
 
   if (!data) return null;
 
-  const statusVerifikasi = data.statusVerifikasi || 'menunggu';
+  const statusVerifikasiKk = data.statusVerifikasi || 'menunggu';
+  const statusVerifikasiRapor = data.statusVerifikasiRapor || 'menunggu';
   const statusKelulusan = data.statusKelulusan || 'proses';
 
   const getWaUrl = (phone: string, namaPanitia: string, customTopic?: string) => {
@@ -328,8 +329,8 @@ export default function SpmbPortalDashboard() {
 
         {/* Card Pengumpulan Berkas Rapor */}
         <div style={{
-          background: statusVerifikasi === 'valid' ? '#f0fdf4' : statusVerifikasi === 'perbaikan' ? '#fff5f5' : '#fffbeb',
-          border: `1.5px solid ${statusVerifikasi === 'valid' ? '#86efac' : statusVerifikasi === 'perbaikan' ? '#fecaca' : '#fde68a'}`,
+          background: statusVerifikasiRapor === 'valid' ? '#f0fdf4' : statusVerifikasiRapor === 'perbaikan' ? '#fff5f5' : '#fffbeb',
+          border: `1.5px solid ${statusVerifikasiRapor === 'valid' ? '#86efac' : statusVerifikasiRapor === 'perbaikan' ? '#fecaca' : '#fde68a'}`,
           borderRadius: '16px',
           padding: '22px 24px',
           marginBottom: '24px',
@@ -341,37 +342,37 @@ export default function SpmbPortalDashboard() {
                 width: '44px',
                 height: '44px',
                 borderRadius: '12px',
-                background: statusVerifikasi === 'valid' ? '#dcfce7' : statusVerifikasi === 'perbaikan' ? '#fee2e2' : '#fef3c7',
-                color: statusVerifikasi === 'valid' ? '#15803d' : statusVerifikasi === 'perbaikan' ? '#ef4444' : '#d97706',
+                background: statusVerifikasiRapor === 'valid' ? '#dcfce7' : statusVerifikasiRapor === 'perbaikan' ? '#fee2e2' : '#fef3c7',
+                color: statusVerifikasiRapor === 'valid' ? '#15803d' : statusVerifikasiRapor === 'perbaikan' ? '#ef4444' : '#d97706',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '1.3rem',
                 flexShrink: 0
               }}>
-                <i className={statusVerifikasi === 'valid' ? 'fas fa-clipboard-check' : 'fas fa-file-invoice'}></i>
+                <i className={statusVerifikasiRapor === 'valid' ? 'fas fa-clipboard-check' : 'fas fa-file-invoice'}></i>
               </div>
               <div style={{ flex: 1 }}>
-                <h3 style={{ margin: '0 0 6px 0', fontSize: '15.5px', fontWeight: 800, color: statusVerifikasi === 'valid' ? '#166534' : statusVerifikasi === 'perbaikan' ? '#991b1b' : '#92400e' }}>
-                  {statusVerifikasi === 'valid' 
+                <h3 style={{ margin: '0 0 6px 0', fontSize: '15.5px', fontWeight: 800, color: statusVerifikasiRapor === 'valid' ? '#166534' : statusVerifikasiRapor === 'perbaikan' ? '#991b1b' : '#92400e' }}>
+                  {statusVerifikasiRapor === 'valid' 
                     ? '✅ Berkas Rapor Telah Diverifikasi (VALID)' 
-                    : statusVerifikasi === 'perbaikan' 
+                    : statusVerifikasiRapor === 'perbaikan' 
                     ? '⚠️ Perbaikan Berkas Rapor' 
                     : '📋 Pengumpulan Berkas Rapor Kelas 5 (Semester 1 & 2)'}
                 </h3>
 
-                {statusVerifikasi === 'valid' ? (
+                {statusVerifikasiRapor === 'valid' ? (
                   <p style={{ margin: 0, fontSize: '13.5px', color: '#166534', lineHeight: 1.5 }}>
                     Alhamdulillah, berkas fotokopi / file <strong>Rapor Kelas 5 (Semester 1 &amp; 2)</strong> ananda <strong>{data.namaLengkap}</strong> telah diterima dan dinyatakan <strong>VALID &amp; LENGKAP</strong> oleh Panitia SPMB.
                   </p>
-                ) : statusVerifikasi === 'perbaikan' ? (
+                ) : statusVerifikasiRapor === 'perbaikan' ? (
                   <div>
                     <p style={{ margin: '0 0 8px 0', fontSize: '13.5px', color: '#991b1b', lineHeight: 1.5 }}>
-                      Terdapat catatan dari panitia mengenai berkas Anda:
+                      Terdapat catatan dari panitia mengenai berkas rapor Anda:
                     </p>
                     <div style={{ background: '#fee2e2', border: '1px solid #fecaca', borderRadius: '8px', padding: '10px 14px', marginBottom: '12px', fontSize: '13px', color: '#7f1d1d', fontWeight: 600 }}>
                       <i className="fas fa-exclamation-triangle" style={{ marginRight: '6px' }}></i>
-                      {data.catatanVerifikasi || 'Foto/file rapor kurang jelas atau berkas semester 1/2 belum lengkap. Silakan kirim ulang.'}
+                      {data.catatanVerifikasiRapor || 'Foto/file rapor kurang jelas atau berkas semester 1/2 belum lengkap. Silakan kirim ulang.'}
                     </div>
                     <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                       <a
@@ -483,11 +484,11 @@ export default function SpmbPortalDashboard() {
                 borderRadius: '12px',
                 fontSize: '12px',
                 fontWeight: 800,
-                background: statusVerifikasi === 'valid' ? '#dcfce7' : statusVerifikasi === 'perbaikan' ? '#fee2e2' : '#fef3c7',
-                color: statusVerifikasi === 'valid' ? '#15803d' : statusVerifikasi === 'perbaikan' ? '#b91c1c' : '#b45309',
-                border: `1px solid ${statusVerifikasi === 'valid' ? '#86efac' : statusVerifikasi === 'perbaikan' ? '#fca5a5' : '#fde68a'}`
+                background: statusVerifikasiRapor === 'valid' ? '#dcfce7' : statusVerifikasiRapor === 'perbaikan' ? '#fee2e2' : '#fef3c7',
+                color: statusVerifikasiRapor === 'valid' ? '#15803d' : statusVerifikasiRapor === 'perbaikan' ? '#b91c1c' : '#b45309',
+                border: `1px solid ${statusVerifikasiRapor === 'valid' ? '#86efac' : statusVerifikasiRapor === 'perbaikan' ? '#fca5a5' : '#fde68a'}`
               }}>
-                Status: {statusVerifikasi === 'valid' ? 'Valid' : statusVerifikasi === 'perbaikan' ? 'Perlu Perbaikan' : 'Belum Diverifikasi'}
+                Status: {statusVerifikasiRapor === 'valid' ? 'Valid' : statusVerifikasiRapor === 'perbaikan' ? 'Perlu Perbaikan' : 'Belum Dikumpulkan'}
               </span>
             </div>
           </div>
@@ -534,7 +535,7 @@ export default function SpmbPortalDashboard() {
               <div style={{ flex: 1, paddingTop: '4px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 700, color: '#0f172a' }}>
-                    Pendaftaran Online
+                    1. Pendaftaran Online
                   </h4>
                   <span style={{ background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
                     Selesai
@@ -546,14 +547,14 @@ export default function SpmbPortalDashboard() {
               </div>
             </div>
 
-            {/* Step 2 */}
+            {/* Step 2: Verifikasi KK / Identitas */}
             <div style={{ display: 'flex', gap: '16px' }}>
               <div style={{
                 width: '36px',
                 height: '36px',
                 borderRadius: '50%',
-                background: statusVerifikasi === 'valid' ? '#dcfce7' : statusVerifikasi === 'perbaikan' ? '#fee2e2' : '#fef3c7',
-                color: statusVerifikasi === 'valid' ? '#16a34a' : statusVerifikasi === 'perbaikan' ? '#ef4444' : '#d97706',
+                background: statusVerifikasiKk === 'valid' ? '#dcfce7' : statusVerifikasiKk === 'perbaikan' ? '#fee2e2' : '#fef3c7',
+                color: statusVerifikasiKk === 'valid' ? '#16a34a' : statusVerifikasiKk === 'perbaikan' ? '#ef4444' : '#d97706',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -561,9 +562,9 @@ export default function SpmbPortalDashboard() {
                 fontSize: '15px',
                 flexShrink: 0
               }}>
-                {statusVerifikasi === 'valid' ? (
+                {statusVerifikasiKk === 'valid' ? (
                   <i className="fas fa-check"></i>
-                ) : statusVerifikasi === 'perbaikan' ? (
+                ) : statusVerifikasiKk === 'perbaikan' ? (
                   <i className="fas fa-exclamation"></i>
                 ) : (
                   <i className="fas fa-clock"></i>
@@ -572,37 +573,93 @@ export default function SpmbPortalDashboard() {
               <div style={{ flex: 1, paddingTop: '4px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 700, color: '#0f172a' }}>
-                    Verifikasi Berkas Rapor &amp; Dokumen
+                    2. Verifikasi Dokumen KK &amp; Identitas
                   </h4>
-                  {statusVerifikasi === 'valid' && (
+                  {statusVerifikasiKk === 'valid' && (
                     <span style={{ background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
-                      Berkas Valid &amp; Lengkap
+                      KK Valid
                     </span>
                   )}
-                  {statusVerifikasi === 'perbaikan' && (
+                  {statusVerifikasiKk === 'perbaikan' && (
                     <span style={{ background: '#fee2e2', color: '#b91c1c', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
-                      Perlu Perbaikan
+                      Perlu Perbaikan KK
                     </span>
                   )}
-                  {statusVerifikasi === 'menunggu' && (
+                  {statusVerifikasiKk === 'menunggu' && (
                     <span style={{ background: '#fef3c7', color: '#b45309', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
-                      Belum Diverifikasi
+                      Sedang Diverifikasi Panitia
                     </span>
                   )}
                 </div>
                 <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b', lineHeight: 1.5 }}>
-                  {statusVerifikasi === 'valid' && 'Berkas FC Rapor Kelas 5 Semester 1 & 2 serta data pendaftaran Anda telah disetujui (VALID) oleh panitia.'}
-                  {statusVerifikasi === 'perbaikan' && (
+                  {statusVerifikasiKk === 'valid' && 'Dokumen Kartu Keluarga dan data identitas pendaftaran Anda telah disetujui (VALID) oleh panitia.'}
+                  {statusVerifikasiKk === 'perbaikan' && (
                     <span style={{ color: '#b91c1c', fontWeight: 600 }}>
-                      Catatan Panitia: {data.catatanVerifikasi || 'Terdapat berkas yang kurang jelas / perlu dikirim ulang. Hubungi panitia SPMB.'}
+                      Catatan Panitia: {data.catatanVerifikasi || 'Dokumen KK kurang jelas / perlu diupload ulang. Hubungi panitia SPMB.'}
                     </span>
                   )}
-                  {statusVerifikasi === 'menunggu' && 'Calon siswa wajib mengumpulkan berkas Fotokopi Rapor Kelas 5 (Semester 1 & 2) secara fisik ke madrasah atau kirim via WA Panitia. Panitia akan memverifikasi berkas yang masuk.'}
+                  {statusVerifikasiKk === 'menunggu' && 'Panitia SPMB sedang memvalidasi keabsahan dokumen Kartu Keluarga yang Anda unggah.'}
                 </p>
               </div>
             </div>
 
-            {/* Step 3 */}
+            {/* Step 3: Verifikasi Berkas Rapor */}
+            <div style={{ display: 'flex', gap: '16px' }}>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                background: statusVerifikasiRapor === 'valid' ? '#dcfce7' : statusVerifikasiRapor === 'perbaikan' ? '#fee2e2' : '#fef3c7',
+                color: statusVerifikasiRapor === 'valid' ? '#16a34a' : statusVerifikasiRapor === 'perbaikan' ? '#ef4444' : '#d97706',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 800,
+                fontSize: '15px',
+                flexShrink: 0
+              }}>
+                {statusVerifikasiRapor === 'valid' ? (
+                  <i className="fas fa-check"></i>
+                ) : statusVerifikasiRapor === 'perbaikan' ? (
+                  <i className="fas fa-exclamation"></i>
+                ) : (
+                  <i className="fas fa-file-alt"></i>
+                )}
+              </div>
+              <div style={{ flex: 1, paddingTop: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 700, color: '#0f172a' }}>
+                    3. Verifikasi Berkas Rapor Kelas 5 (Sem 1 &amp; 2)
+                  </h4>
+                  {statusVerifikasiRapor === 'valid' && (
+                    <span style={{ background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
+                      Rapor Valid
+                    </span>
+                  )}
+                  {statusVerifikasiRapor === 'perbaikan' && (
+                    <span style={{ background: '#fee2e2', color: '#b91c1c', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
+                      Perlu Perbaikan Rapor
+                    </span>
+                  )}
+                  {statusVerifikasiRapor === 'menunggu' && (
+                    <span style={{ background: '#fef3c7', color: '#b45309', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
+                      Belum Dikumpulkan
+                    </span>
+                  )}
+                </div>
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b', lineHeight: 1.5 }}>
+                  {statusVerifikasiRapor === 'valid' && 'Berkas FC Rapor Kelas 5 Semester 1 & 2 telah diterima dan dinyatakan VALID oleh panitia.'}
+                  {statusVerifikasiRapor === 'perbaikan' && (
+                    <span style={{ color: '#b91c1c', fontWeight: 600 }}>
+                      Catatan Panitia: {data.catatanVerifikasiRapor || 'Berkas rapor kurang jelas / perlu dikirim ulang. Hubungi panitia SPMB.'}
+                    </span>
+                  )}
+                  {statusVerifikasiRapor === 'menunggu' && 'Calon siswa wajib mengumpulkan berkas Fotokopi Rapor Kelas 5 (Semester 1 & 2) secara fisik ke madrasah atau kirim via WhatsApp Panitia.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Step 4: Observasi */}
             <div style={{ display: 'flex', gap: '16px' }}>
               <div style={{
                 width: '36px',
@@ -621,7 +678,7 @@ export default function SpmbPortalDashboard() {
               </div>
               <div style={{ flex: 1, paddingTop: '4px' }}>
                 <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 700, color: '#0f172a' }}>
-                  Tes / Observasi Calon Santri
+                  4. Tes / Observasi Calon Santri
                 </h4>
                 <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b' }}>
                   {data.jadwalTes ? (
@@ -633,7 +690,7 @@ export default function SpmbPortalDashboard() {
               </div>
             </div>
 
-            {/* Step 4 */}
+            {/* Step 5: Pengumuman Kelulusan */}
             <div style={{ display: 'flex', gap: '16px' }}>
               <div style={{
                 width: '36px',
@@ -652,7 +709,7 @@ export default function SpmbPortalDashboard() {
               </div>
               <div style={{ flex: 1, paddingTop: '4px' }}>
                 <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 700, color: '#0f172a' }}>
-                  Pengumuman Kelulusan
+                  5. Pengumuman Kelulusan
                 </h4>
                 <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b' }}>
                   {statusKelulusan === 'diterima' && (

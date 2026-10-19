@@ -28,6 +28,8 @@ function mapStudentData(r: any) {
     linkKk: meta['File KK'] || '',
     statusVerifikasi: meta['status_verifikasi'] || 'menunggu',
     catatanVerifikasi: meta['catatan_verifikasi'] || '',
+    statusVerifikasiRapor: meta['status_verifikasi_rapor'] || 'menunggu',
+    catatanVerifikasiRapor: meta['catatan_verifikasi_rapor'] || '',
     statusKelulusan: meta['status_kelulusan'] || 'proses',
     jadwalTes: meta['jadwal_tes'] || '',
     timestamp: meta['Timestamp'] || ''

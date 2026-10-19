@@ -31,6 +31,8 @@ export async function GET() {
         linkAkta: row.get('File Akta') || '',
         statusVerifikasi: row.get('status_verifikasi') || 'menunggu',
         catatanVerifikasi: row.get('catatan_verifikasi') || '',
+        statusVerifikasiRapor: row.get('status_verifikasi_rapor') || 'menunggu',
+        catatanVerifikasiRapor: row.get('catatan_verifikasi_rapor') || '',
         statusKelulusan: row.get('status_kelulusan') || 'proses',
         jadwalTes: row.get('jadwal_tes') || ''
       };
