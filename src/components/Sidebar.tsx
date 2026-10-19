@@ -137,7 +137,8 @@ export default function Sidebar() {
           icon: 'fa-user-graduate',
           subItems: [
             { name: 'Pendaftaran', path: '/spmb' },
-            { name: 'Rekap', path: '/spmb/rekap' }
+            { name: 'Rekap', path: '/spmb/rekap' },
+            { name: 'Pemetaan Kelas', path: '/spmb/pemetaan-kelas' }
           ]
         },
         ...(isAdmin ? [
