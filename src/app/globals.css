@@ -118,6 +118,10 @@ a {
   html {
     font-size: 14px; /* Shrink all rem-based sizes by ~12.5% to fit better on mobile */
   }
+
+  .main-content {
+    padding-bottom: 64px; /* Reserve space for fixed Mobile Bottom Navigation Bar */
+  }
   
   .page-content {
     padding: 12px 10px;

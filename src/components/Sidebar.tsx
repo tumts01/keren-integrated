@@ -26,7 +26,8 @@ export default function Sidebar() {
   const pathname = usePathname();
   const [isPinnedCollapsed, setIsPinnedCollapsed] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
-  const isDesktop = typeof window !== 'undefined' ? window.innerWidth > 768 : true;
+  const [isMobile, setIsMobile] = useState(false);
+  const isDesktop = !isMobile;
   const isCollapsed = isPinnedCollapsed && !(isHovered && isDesktop);
   const [userRole, setUserRole] = useState<string>('');
   const [userName, setUserName] = useState<string>('');
@@ -146,9 +147,8 @@ export default function Sidebar() {
         { name: 'Arsip Foto', path: '/arsip-foto', icon: 'fa-images' },
         { name: 'Sajian Data', path: '/sajian-data', icon: 'fa-chart-pie' },
         { name: 'Jurnal Kegiatan', path: '/jurnal-kegiatan', icon: 'fa-book-open' },
-
         { name: 'Survey Madrasah', path: '/survey-madrasah', icon: 'fa-poll-h' },
-          { name: 'Penilaian Diri', path: '/penilaian-diri', icon: 'fa-clipboard-check' },
+        { name: 'Penilaian Diri', path: '/penilaian-diri', icon: 'fa-clipboard-check' },
       ]
     },
     {
@@ -186,6 +186,11 @@ export default function Sidebar() {
 
   useEffect(() => {
     setIsClient(true);
+    const checkViewport = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    checkViewport();
+    window.addEventListener('resize', checkViewport);
     
     // Load state from localStorage on mount
     const savedCategories = localStorage.getItem('sidebar_open_categories');
@@ -220,6 +225,8 @@ export default function Sidebar() {
         setIsPinnedCollapsed(savedCollapse === 'true');
       }
     }
+
+    return () => window.removeEventListener('resize', checkViewport);
   }, []);
 
   useEffect(() => {
@@ -309,22 +316,31 @@ export default function Sidebar() {
 
       <aside 
         className={`${styles.sidebar} ${isCollapsed ? styles.collapsed : ''}`}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        onMouseEnter={() => { if (!isMobile) setIsHovered(true); }}
+        onMouseLeave={() => { if (!isMobile) setIsHovered(false); }}
       >
         <button 
           className={styles.toggleBtnTop} 
           onClick={handleToggleSidebar}
-          title={isPinnedCollapsed ? "Kunci Sidebar Terbuka" : "Sembunyikan Sidebar"}
+          title={
+            isMobile
+              ? (isPinnedCollapsed ? "Buka Menu" : "Tutup Menu")
+              : (isPinnedCollapsed ? "Kunci Sidebar Terbuka" : "Sembunyikan Sidebar")
+          }
+          aria-label="Toggle Menu"
         >
-          <i className={`fas ${isPinnedCollapsed ? 'fa-thumbtack' : 'fa-chevron-left'}`}></i>
+          <i className={`fas ${
+            isMobile
+              ? (isPinnedCollapsed ? 'fa-bars' : 'fa-times')
+              : (isPinnedCollapsed ? 'fa-thumbtack' : 'fa-chevron-left')
+          }`}></i>
         </button>
 
         <div className={styles.brand}>
           <img src="/logo.png" alt="Logo" className={styles.brandLogo} />
           {!isCollapsed && (
-            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', whiteSpace: 'normal', paddingRight: '4px', flex: 1 }}>
-              <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'var(--gold)', lineHeight: '1.2', letterSpacing: '0.3px', marginBottom: '2px' }}>Sistem Informasi Administrasi Digital</span>
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', whiteSpace: 'normal', paddingRight: isMobile ? '36px' : '4px', flex: 1 }}>
+              <span style={{ fontSize: '0.65rem', fontWeight: 600, color: '#FBBF24', lineHeight: '1.2', letterSpacing: '0.3px', marginBottom: '2px' }}>Sistem Informasi Administrasi Digital</span>
               <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'white', lineHeight: '1.2' }}>MTs Almaarif 01 Singosari</span>
             </div>
           )}
@@ -336,26 +352,30 @@ export default function Sidebar() {
           return (
             <div key={idx} className={styles.categoryGroup}>
               {!isCollapsed ? (
-                <div className={styles.categoryTitle}>
+                <div 
+                  className={styles.categoryTitle}
+                  onClick={() => toggleCategory(cat.title)}
+                  title={isOpen ? `Lipat kategori ${cat.title}` : `Buka kategori ${cat.title}`}
+                >
                   <span>{cat.title}</span>
+                  <i className={`fas fa-chevron-down ${styles.categoryChevron} ${isOpen ? styles.categoryChevronOpen : ''}`}></i>
                 </div>
               ) : (
                 <div className={styles.categorySeparator}></div>
               )}
               
-              {/* Only show items if sidebar is collapsed OR category is open */}
-              <div className={`${styles.categoryItems} ${styles.open}`}>
+              {/* Show items if sidebar is collapsed (icon mode on desktop) OR category is open */}
+              <div className={`${styles.categoryItems} ${(isCollapsed || isOpen) ? styles.open : ''}`}>
                 {cat.items.map((item) => {
                   const hasSub = !!item.subItems;
                   const isSubOpen = openSubmenus.includes(item.name);
-                    // Item is active if pathname matches its path exactly, or if no subitems. If it has subitems, we rely on subitems to show active state, but maybe highlight parent too
-                    const isParentActive = pathname === item.path || (hasSub && item.subItems!.some(sub => pathname === sub.path || (sub.subItems && sub.subItems.some(ss => pathname === ss.path))));
+                  const isParentActive = pathname === item.path || (hasSub && item.subItems!.some(sub => pathname === sub.path || (sub.subItems && sub.subItems.some(ss => pathname === ss.path))));
                   
                   return (
                     <div key={item.path} className={styles.menuItemWrapper}>
                       <Link 
                         href={hasSub ? '#' : item.path}
-                        className={`${styles.menuItem} ${isParentActive && !hasSub ? styles.active : ''} ${hasSub ? styles.hasSubmenu : ''}`}
+                        className={`${styles.menuItem} ${isParentActive && !hasSub ? styles.active : ''} ${isParentActive && hasSub ? styles.parentActive : ''} ${hasSub ? styles.hasSubmenu : ''}`}
                         title={isCollapsed ? item.name : ''}
                         onClick={(e) => {
                           if (hasSub) {
@@ -365,7 +385,7 @@ export default function Sidebar() {
                           }
                         }}
                       >
-                        <div style={{display:'flex', alignItems:'center', gap: '12px'}}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
                           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                             <i className={`fas ${item.icon} ${styles.menuIcon}`}></i>
                             {item.name === 'Pengumuman' && hasNewPengumuman && (
@@ -379,7 +399,7 @@ export default function Sidebar() {
                           {!isCollapsed && <span className={styles.menuText}>{item.name}</span>}
                         </div>
                         {!isCollapsed && hasSub && (
-                          <i className={`fas fa-chevron-${isSubOpen ? 'up' : 'down'}`} style={{ fontSize: '0.7rem', opacity: 0.7 }}></i>
+                          <i className={`fas fa-chevron-${isSubOpen ? 'up' : 'down'}`} style={{ fontSize: '0.68rem', opacity: 0.75, marginLeft: '8px', flexShrink: 0 }}></i>
                         )}
                       </Link>
                       
@@ -413,20 +433,20 @@ export default function Sidebar() {
                                       }
                                     }}
                                     style={{
-                                      fontSize: '0.85rem',
+                                      fontSize: '0.84rem',
                                       padding: '8px 12px',
                                       borderRadius: '8px',
-                                      color: isSubActive ? 'var(--primary)' : 'rgba(255, 255, 255, 0.7)',
-                                      backgroundColor: isSubActive ? '#f0fdf4' : 'transparent',
+                                      color: isSubActive ? '#065F46' : 'rgba(255, 255, 255, 0.75)',
+                                      backgroundColor: isSubActive ? '#ECFDF5' : 'transparent',
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'space-between',
                                       textDecoration: 'none',
-                                      fontWeight: isSubActive ? 600 : 500
+                                      fontWeight: isSubActive ? 700 : 500
                                     }}
                                   >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      <i className={`fas ${isSubActive ? 'fa-dot-circle' : 'fa-circle'}`} style={{fontSize: '0.4rem'}}></i>
+                                      <i className={`fas ${isSubActive ? 'fa-dot-circle' : 'fa-circle'}`} style={{ fontSize: '0.4rem', color: isSubActive ? '#059669' : 'currentColor' }}></i>
                                       {sub.name}
                                     </div>
                                     {hasSubSub && (
@@ -459,16 +479,17 @@ export default function Sidebar() {
                                               fontSize: '0.8rem',
                                               padding: '6px 12px',
                                               borderRadius: '6px',
-                                              color: isSsActive ? 'var(--primary)' : 'rgba(255, 255, 255, 0.7)',
-                                              backgroundColor: isSsActive ? '#f0fdf4' : 'transparent',
+                                              color: isSsActive ? '#065F46' : 'rgba(255, 255, 255, 0.75)',
+                                              backgroundColor: isSsActive ? '#ECFDF5' : 'transparent',
                                               display: 'flex',
                                               alignItems: 'center',
                                               gap: '8px',
                                               textDecoration: 'none',
-                                              fontWeight: isSsActive ? 600 : 500
+                                              fontWeight: isSsActive ? 700 : 500,
+                                              marginRight: '12px'
                                             }}
                                           >
-                                            <i className={`fas ${isSsActive ? 'fa-dot-circle' : 'fa-circle'}`} style={{fontSize: '0.3rem'}}></i>
+                                            <i className={`fas ${isSsActive ? 'fa-dot-circle' : 'fa-circle'}`} style={{ fontSize: '0.3rem', color: isSsActive ? '#059669' : 'currentColor' }}></i>
                                             {ss.name}
                                           </Link>
                                         );
@@ -506,6 +527,51 @@ export default function Sidebar() {
       </div>
 
     </aside>
+
+    {/* Mobile Bottom Navigation Bar */}
+    <nav className={styles.mobileBottomNav} aria-label="Navigasi Cepat Mobile">
+      <Link
+        href="/"
+        className={`${styles.bottomNavItem} ${pathname === '/' && isPinnedCollapsed ? styles.bottomNavItemActive : ''}`}
+        onClick={() => setIsPinnedCollapsed(true)}
+      >
+        <i className="fas fa-home"></i>
+        <span>Beranda</span>
+      </Link>
+      <Link
+        href="/presensi"
+        className={`${styles.bottomNavItem} ${pathname === '/presensi' && isPinnedCollapsed ? styles.bottomNavItemActive : ''}`}
+        onClick={() => setIsPinnedCollapsed(true)}
+      >
+        <i className="fas fa-calendar-check"></i>
+        <span>Presensi</span>
+      </Link>
+      <Link
+        href="/absensi-gtk"
+        className={`${styles.bottomNavItem} ${pathname === '/absensi-gtk' && isPinnedCollapsed ? styles.bottomNavItemActive : ''}`}
+        onClick={() => setIsPinnedCollapsed(true)}
+      >
+        <i className="fas fa-user-check"></i>
+        <span>Absensi GTK</span>
+      </Link>
+      <Link
+        href="/pengumuman"
+        className={`${styles.bottomNavItem} ${pathname === '/pengumuman' && isPinnedCollapsed ? styles.bottomNavItemActive : ''}`}
+        onClick={() => setIsPinnedCollapsed(true)}
+      >
+        <i className="fas fa-bullhorn"></i>
+        {hasNewPengumuman && <span className={styles.bottomNavBadge}></span>}
+        <span>Info</span>
+      </Link>
+      <button
+        type="button"
+        className={`${styles.bottomNavItem} ${!isPinnedCollapsed ? styles.bottomNavItemActive : ''}`}
+        onClick={() => setIsPinnedCollapsed(prev => !prev)}
+      >
+        <i className={`fas ${!isPinnedCollapsed ? 'fa-times' : 'fa-th-large'}`}></i>
+        <span>Menu Lain</span>
+      </button>
+    </nav>
     </>
   );
 }

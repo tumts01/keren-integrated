@@ -67,36 +67,51 @@
 }
 
 .categoryTitle {
-  padding: 0 20px 6px 20px;
+  padding: 6px 16px 6px 14px;
+  margin-right: 12px;
+  border-radius: 8px;
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 1px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.4);
-  margin-top: 8px;
-  
+  color: rgba(255, 255, 255, 0.55);
+  margin-top: 6px;
+  cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  transition: color 0.2s;
+  transition: all 0.2s;
   user-select: none;
 }
 
 .categoryTitle:hover {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.categoryChevron {
+  font-size: 0.65rem;
+  transition: transform 0.25s ease;
+  opacity: 0.75;
+}
+
+.categoryChevronOpen {
+  transform: rotate(180deg);
 }
 
 .categoryItems {
   max-height: 0;
   overflow: hidden;
-  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+  opacity: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
 .categoryItems.open {
-  max-height: 1000px; /* arbitrary large value to allow transition */
+  max-height: 1200px;
+  opacity: 1;
 }
 
 .categorySeparator {
@@ -112,11 +127,12 @@
 .menuItem {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 14px;
   padding: 10px 20px;
   font-size: 0.85rem;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.82);
   transition: all 0.2s;
   border-radius: 30px 0 0 30px; /* Rounded left, flat right */
   white-space: nowrap;
@@ -125,6 +141,13 @@
 .menuItem:hover:not(.active) {
   background-color: rgba(255, 255, 255, 0.1);
   color: white;
+}
+
+.parentActive {
+  background-color: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: inset 3px 0 0 #FBBF24;
 }
 
 .active {
@@ -177,9 +200,19 @@
   flex: 1;
 }
 
+.subMenuItem {
+  transition: all 0.2s ease;
+  margin-right: 12px;
+}
+
+.subMenuItem:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
 .toggleBtnTop {
   background: var(--bg-sidebar);
-  border: 1px solid rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.18);
   color: white;
   width: 32px;
   height: 32px;
@@ -187,7 +220,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   transition: all 0.2s;
   flex-shrink: 0;
   position: absolute;
@@ -206,11 +239,17 @@
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.5);
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(2px);
   z-index: 999;
   opacity: 0;
   transition: opacity 0.3s;
   pointer-events: none;
+}
+
+/* Bottom Navigation Bar (Hidden on Desktop, Shown on Mobile) */
+.mobileBottomNav {
+  display: none;
 }
 
 @media (max-width: 768px) {
@@ -221,30 +260,44 @@
   }
   
   .sidebar {
-    position: absolute;
-    height: 100%;
+    position: fixed;
+    height: 100dvh;
     left: 0;
     top: 0;
-    box-shadow: 5px 0 15px rgba(0,0,0,0.2);
+    box-shadow: 8px 0 25px rgba(0,0,0,0.25);
     transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 1000;
+    z-index: 1002;
   }
+
   .collapsed {
     left: -260px;
     width: 260px; /* Keep full width, just move it off-screen */
   }
+
+  .sidebar:not(.collapsed) .toggleBtnTop {
+    top: 20px;
+    right: 14px;
+    width: 36px;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 10px;
+    font-size: 1rem;
+  }
+
   .collapsed .toggleBtnTop {
     position: fixed;
-    top: 14px;
-    left: 16px;
-    width: 46px;
-    height: 46px;
-    background: linear-gradient(135deg, var(--gold) 0%, #ff8c00 100%);
+    top: 10px;
+    left: 14px;
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg, #059669 0%, #065F46 100%);
     color: white;
-    box-shadow: 0 4px 12px rgba(255, 170, 0, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.8);
+    border: none;
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.35), 0 0 0 2px rgba(255, 255, 255, 0.9);
     z-index: 1001;
     border-radius: 12px;
-    font-size: 1.25rem;
+    font-size: 1.15rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -253,6 +306,84 @@
   
   .collapsed .toggleBtnTop:active {
     transform: scale(0.92);
-    box-shadow: 0 2px 6px rgba(255, 170, 0, 0.4), 0 0 0 2px rgba(255, 255, 255, 0.8);
+    box-shadow: 0 2px 6px rgba(5, 150, 105, 0.35), 0 0 0 2px rgba(255, 255, 255, 0.9);
+  }
+
+  .mobileBottomNav {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
+    z-index: 998;
+    padding: 0 6px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .bottomNavItem {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 100%;
+    color: #64748b;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-decoration: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s ease, transform 0.15s ease;
+    padding: 4px 2px;
+  }
+
+  .bottomNavItem i {
+    font-size: 1.15rem;
+    transition: transform 0.2s ease;
+  }
+
+  .bottomNavItemActive {
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  .bottomNavItemActive::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 32px;
+    height: 3px;
+    border-radius: 0 0 4px 4px;
+    background: var(--primary);
+  }
+
+  .bottomNavItemActive i {
+    transform: translateY(-1px);
+  }
+
+  .bottomNavBadge {
+    position: absolute;
+    top: 8px;
+    right: calc(50% - 14px);
+    width: 8px;
+    height: 8px;
+    background-color: #ef4444;
+    border-radius: 50%;
+    border: 1.5px solid #ffffff;
+  }
+}
+
+@media print {
+  .mobileBottomNav {
+    display: none !important;
   }
 }
