@@ -673,9 +673,9 @@ export default function SpmbPortalDashboard() {
             </div>
           </a>
 
-          {/* Card Bantuan Panitia WA: Pak Nizar */}
+          {/* Card Bantuan Panitia WA: Pak Alfian */}
           <a
-            href={getWaUrl('087770034515', 'Pak Nizar')}
+            href={getWaUrl('085659735348', 'Pak Alfian')}
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -708,10 +708,10 @@ export default function SpmbPortalDashboard() {
             </div>
             <div>
               <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#166534', marginBottom: '2px' }}>
-                WA Panitia: Pak Nizar
+                WA Panitia: Pak Alfian
               </div>
               <div style={{ fontSize: '12px', color: '#64748b' }}>
-                0877-7003-4515 (Chat WhatsApp)
+                0856-5973-5348 (Chat WhatsApp)
               </div>
             </div>
           </a>
