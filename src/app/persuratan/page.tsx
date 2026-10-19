@@ -185,11 +185,11 @@ export default function PersuratanPage() {
     return () => clearTimeout(delay);
   }, [searchGuruTerm, guruList]);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [resPersuratan, resGuru] = await Promise.all([
-        fetch('/api/persuratan'),
+        fetch('/api/persuratan', { cache: 'no-store' }),
         fetch('/api/guru')
       ]);
       const result = await resPersuratan.json();
@@ -217,9 +217,9 @@ export default function PersuratanPage() {
         setGuruList(guruResult.data);
       }
     } catch (err) {
-      setError('Gagal memuat data persuratan.');
+      if (!silent) setError('Gagal memuat data persuratan.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -312,11 +312,13 @@ export default function PersuratanPage() {
       if (result.success) {
         setShowGenerateModal(false);
         setSuccessNoSurat(result.noSurat);
-        // Optimistic update — tambah baris baru ke state lokal tanpa re-fetch
+        // Optimistic update — tambah baris baru ke state lokal
+        const realRowId = result.id || result.rowNumber || result.newRowNumber || (dataKeluar.length > 0 ? dataKeluar[0].rowNumber + 1 : 1);
+        const extractedNo = result.no || (result.noSurat ? result.noSurat.split('/')[0].replace(/^0+/, '') : '');
         const newEntry: SuratKeluar = {
-          id: Date.now(),
-          rowNumber: result.rowNumber || (dataKeluar.length > 0 ? dataKeluar[0].rowNumber + 1 : 1),
-          no: result.no || '',
+          id: realRowId,
+          rowNumber: realRowId,
+          no: String(extractedNo || ''),
           tanggal: formTanggal,
           namaSurat: formNamaSurat,
           yangDitugaskan: formSasaran === 'Siswa' ? 'Siswa' : formDitugaskan.join('; '),
@@ -326,7 +328,9 @@ export default function PersuratanPage() {
           fileScan: '',
           batasWaktu: formBatasWaktu,
         };
-        setDataKeluar(prev => [newEntry, ...prev]);
+        setDataKeluar(prev => [newEntry, ...prev.filter(item => item.noSurat !== result.noSurat)]);
+        setCurrentPage(1);
+        setSearchTerm('');
         // Reset form
         setFormNamaSurat('');
         setFormSasaran('Guru');
@@ -1935,7 +1939,7 @@ export default function PersuratanPage() {
                   <i className="fas fa-copy"></i> Salin
                 </button>
                 <button
-                  onClick={() => { setSuccessNoSurat(null); fetchData(); }}
+                  onClick={() => { setSuccessNoSurat(null); fetchData(true); }}
                   style={{
                     flex: 2, padding: '12px 16px', borderRadius: '10px',
                     border: 'none', background: 'linear-gradient(135deg, #1e6b3a, #2d8f4e)',

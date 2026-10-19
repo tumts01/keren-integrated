@@ -6,10 +6,10 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const promises = [
-      supabase.from('data_surat_keluar').select('*').order('id', { ascending: true }),
-      supabase.from('data_surat_masuk').select('*').order('id', { ascending: false }),
+      supabase.from('data_surat_keluar').select('*').order('id', { ascending: false }).limit(5000),
+      supabase.from('data_surat_masuk').select('*').order('id', { ascending: false }).limit(5000),
       supabase.from('data_kode_surat').select('*').order('id', { ascending: true }),
-      supabase.from('data_riwayat_cetak_surat').select('*').order('id', { ascending: false })
+      supabase.from('data_riwayat_cetak_surat').select('*').order('id', { ascending: false }).limit(1000)
     ];
 
     const [keluarRes, masukRes, kodeRes, riwayatRes] = await Promise.all(promises);
@@ -83,7 +83,7 @@ export async function GET() {
       instansiList,
       riwayatCetak,
     }, {
-      headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+      headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' }
     });
 
   } catch (error: any) {
@@ -123,7 +123,11 @@ export async function POST(request: Request) {
       const year = dateObj.getFullYear();
 
       // Cari nomor surat terakhir (NO max) untuk tahun yang sama
-      const { data: allSurat } = await supabase.from('data_surat_keluar').select('metadata');
+      const { data: allSurat } = await supabase
+        .from('data_surat_keluar')
+        .select('metadata')
+        .order('id', { ascending: false })
+        .limit(5000);
       let maxNo = 0;
       allSurat?.forEach(s => {
         const rowNoSurat = (s.metadata?.['NO. SURAT'] || '').trim();
@@ -161,7 +165,14 @@ export async function POST(request: Request) {
 
       if (insertErr) throw insertErr;
 
-      return NextResponse.json({ success: true, newRowNumber: inserted.id, noSurat: newNoSurat });
+      return NextResponse.json({
+        success: true,
+        id: inserted.id,
+        rowNumber: inserted.id,
+        newRowNumber: inserted.id,
+        no: String(nextNo),
+        noSurat: newNoSurat
+      });
     }
 
     if (action === 'edit') {
