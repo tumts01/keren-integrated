@@ -267,12 +267,20 @@ export default function SpmbPage() {
           html: `
             <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.6; margin-top: 10px;">
               <p style="margin: 0 0 12px 0;">Alhamdulillah, data pendaftaran ananda <b>${studentName}</b> telah berhasil tersimpan di sistem.</p>
-              <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 14px; text-align: center; margin-bottom: 14px;">
+              <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 12px; padding: 14px; text-align: center; margin-bottom: 12px;">
                 <div style="font-size: 12px; color: #166534; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Nomor Pendaftaran Anda:</div>
                 <div style="font-size: 22px; font-weight: 800; color: #15803d; letter-spacing: 1px; margin-top: 4px;">${noReg || 'MTS01-2026-XXXXX'}</div>
               </div>
-              <p style="margin: 0; font-size: 12.5px; color: #64748b;">
-                <b>Catatan Penting:</b> Simpan Nomor Pendaftaran ini. Anda dapat menggunakannya kapan saja untuk masuk ke <b>Portal Calon Siswa</b> guna memantau verifikasi berkas dan pengumuman kelulusan.
+              <div style="background: #eff6ff; border: 1.5px solid #bfdbfe; border-radius: 10px; padding: 12px; margin-bottom: 12px;">
+                <div style="font-size: 12.5px; font-weight: 700; color: #1e40af; margin-bottom: 4px;">
+                  📋 Berkas yang Harus Dikumpulkan:
+                </div>
+                <div style="font-size: 12px; color: #1e3a8a; line-height: 1.5;">
+                  Calon siswa wajib mengumpulkan berkas <b>Fotokopi Rapor Kelas 5 (Semester 1 & 2)</b>. Berkas boleh diserahkan fisik langsung ke madrasah atau dikirim file/foto ke WhatsApp Panitia SPMB untuk diverifikasi.
+                </div>
+              </div>
+              <p style="margin: 0; font-size: 12px; color: #64748b;">
+                <b>Catatan:</b> Simpan Nomor Pendaftaran ini untuk memantau status verifikasi berkas dan pengumuman di <b>Portal Calon Siswa</b>.
               </p>
             </div>
           `,
@@ -716,6 +724,23 @@ export default function SpmbPage() {
               )}
             </div>
 
+          </div>
+
+          <div style={{
+            background: '#f0fdf4',
+            border: '1.5px solid #86efac',
+            borderRadius: '12px',
+            padding: '14px 18px',
+            marginBottom: '20px',
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'flex-start'
+          }}>
+            <i className="fas fa-info-circle" style={{ color: '#16a34a', fontSize: '1.25rem', marginTop: '2px', flexShrink: 0 }}></i>
+            <div style={{ fontSize: '13px', color: '#166534', lineHeight: '1.5' }}>
+              <strong>Pengumpulan Berkas Rapor Setelah Mendaftar:</strong><br/>
+              Setelah pendaftaran online, calon siswa wajib mengumpulkan berkas <strong>Fotokopi Rapor Kelas 5 (Semester 1 &amp; 2)</strong>. Berkas boleh diserahkan secara fisik langsung ke madrasah atau dikirim dalam bentuk file/foto via WhatsApp ke Panitia SPMB.
+            </div>
           </div>
 
           <button

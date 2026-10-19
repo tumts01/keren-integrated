@@ -183,6 +183,30 @@ export default function CetakSpmb() {
               </tbody>
             </table>
 
+            {/* Catatan Berkas yang Harus Dikumpulkan */}
+            <div style={{
+              background: '#f8fafc',
+              border: '1px solid #cbd5e1',
+              borderRadius: '8px',
+              padding: '10px 14px',
+              margin: '14px 0',
+              fontSize: '11px',
+              color: '#334155',
+              lineHeight: 1.5,
+              textAlign: 'left'
+            }}>
+              <strong style={{ color: '#0f172a' }}>Petunjuk &amp; Pengumpulan Berkas:</strong>
+              <div style={{ marginTop: '3px' }}>
+                1. Calon santri wajib mengumpulkan berkas <strong>Fotokopi Rapor Kelas 5 (Semester 1 &amp; 2)</strong>.
+              </div>
+              <div>
+                2. Berkas boleh diserahkan secara fisik ke Sekretariat Panitia di madrasah atau dikirim dalam bentuk file/foto via WhatsApp Panitia SPMB.
+              </div>
+              <div>
+                3. Simpan kartu bukti ini dan pantau hasil verifikasi berkas melalui <strong>Portal Calon Siswa</strong>.
+              </div>
+            </div>
+
             <div className={styles.footer}>
               <div className={styles.footerLogos}>
                 <img src="/keren.png" alt="Sistem KEREN" />

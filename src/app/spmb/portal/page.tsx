@@ -104,10 +104,11 @@ export default function SpmbPortalDashboard() {
   const statusVerifikasi = data.statusVerifikasi || 'menunggu';
   const statusKelulusan = data.statusKelulusan || 'proses';
 
-  const getWaUrl = (phone: string, namaPanitia: string) => {
+  const getWaUrl = (phone: string, namaPanitia: string, customTopic?: string) => {
     const cleanPhone = phone.replace(/\D/g, '').replace(/^0/, '62');
+    const topicText = customTopic || 'Ingin menanyakan perihal seleksi SPMB.';
     const text = encodeURIComponent(
-      `Assalamu'alaikum ${namaPanitia} (Panitia SPMB MTs Almaarif 01 Singosari).\n\nSaya wali dari calon santri:\nNama: ${data.namaLengkap}\nNo. Pendaftaran: ${data.nomorPendaftaran}\nJalur: ${data.jalurPendaftaran}\n\nIngin menanyakan perihal seleksi SPMB. Terima kasih.`
+      `Assalamu'alaikum ${namaPanitia} (Panitia SPMB MTs Almaarif 01 Singosari).\n\nSaya wali dari calon santri:\nNama: ${data.namaLengkap}\nNo. Pendaftaran: ${data.nomorPendaftaran}\nJalur: ${data.jalurPendaftaran}\n\n${topicText}\n\nTerima kasih.`
     );
     return `https://wa.me/${cleanPhone}?text=${text}`;
   };
@@ -325,6 +326,173 @@ export default function SpmbPortalDashboard() {
           </div>
         )}
 
+        {/* Card Pengumpulan Berkas Rapor */}
+        <div style={{
+          background: statusVerifikasi === 'valid' ? '#f0fdf4' : statusVerifikasi === 'perbaikan' ? '#fff5f5' : '#fffbeb',
+          border: `1.5px solid ${statusVerifikasi === 'valid' ? '#86efac' : statusVerifikasi === 'perbaikan' ? '#fecaca' : '#fde68a'}`,
+          borderRadius: '16px',
+          padding: '22px 24px',
+          marginBottom: '24px',
+          boxShadow: '0 4px 6px -1px rgba(0,0,0,0.03)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+            <div style={{ display: 'flex', gap: '14px', flex: 1, minWidth: '280px' }}>
+              <div style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '12px',
+                background: statusVerifikasi === 'valid' ? '#dcfce7' : statusVerifikasi === 'perbaikan' ? '#fee2e2' : '#fef3c7',
+                color: statusVerifikasi === 'valid' ? '#15803d' : statusVerifikasi === 'perbaikan' ? '#ef4444' : '#d97706',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.3rem',
+                flexShrink: 0
+              }}>
+                <i className={statusVerifikasi === 'valid' ? 'fas fa-clipboard-check' : 'fas fa-file-invoice'}></i>
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: '0 0 6px 0', fontSize: '15.5px', fontWeight: 800, color: statusVerifikasi === 'valid' ? '#166534' : statusVerifikasi === 'perbaikan' ? '#991b1b' : '#92400e' }}>
+                  {statusVerifikasi === 'valid' 
+                    ? '✅ Berkas Rapor Telah Diverifikasi (VALID)' 
+                    : statusVerifikasi === 'perbaikan' 
+                    ? '⚠️ Perbaikan Berkas Rapor' 
+                    : '📋 Pengumpulan Berkas Rapor Kelas 5 (Semester 1 & 2)'}
+                </h3>
+
+                {statusVerifikasi === 'valid' ? (
+                  <p style={{ margin: 0, fontSize: '13.5px', color: '#166534', lineHeight: 1.5 }}>
+                    Alhamdulillah, berkas fotokopi / file <strong>Rapor Kelas 5 (Semester 1 &amp; 2)</strong> ananda <strong>{data.namaLengkap}</strong> telah diterima dan dinyatakan <strong>VALID &amp; LENGKAP</strong> oleh Panitia SPMB.
+                  </p>
+                ) : statusVerifikasi === 'perbaikan' ? (
+                  <div>
+                    <p style={{ margin: '0 0 8px 0', fontSize: '13.5px', color: '#991b1b', lineHeight: 1.5 }}>
+                      Terdapat catatan dari panitia mengenai berkas Anda:
+                    </p>
+                    <div style={{ background: '#fee2e2', border: '1px solid #fecaca', borderRadius: '8px', padding: '10px 14px', marginBottom: '12px', fontSize: '13px', color: '#7f1d1d', fontWeight: 600 }}>
+                      <i className="fas fa-exclamation-triangle" style={{ marginRight: '6px' }}></i>
+                      {data.catatanVerifikasi || 'Foto/file rapor kurang jelas atau berkas semester 1/2 belum lengkap. Silakan kirim ulang.'}
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      <a
+                        href={getWaUrl('085659735348', 'Pak Alfian', 'Berikut saya kirimkan perbaikan berkas/dokumen FC Rapor Kelas 5 Semester 1 & 2 ananda.')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          background: '#15803d',
+                          color: 'white',
+                          padding: '8px 14px',
+                          borderRadius: '8px',
+                          fontSize: '12.5px',
+                          fontWeight: 700,
+                          textDecoration: 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <i className="fab fa-whatsapp"></i> Kirim Ulang ke Pak Alfian
+                      </a>
+                      <a
+                        href={getWaUrl('087859171158', 'Bu Izza', 'Berikut saya kirimkan perbaikan berkas/dokumen FC Rapor Kelas 5 Semester 1 & 2 ananda.')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          background: '#047857',
+                          color: 'white',
+                          padding: '8px 14px',
+                          borderRadius: '8px',
+                          fontSize: '12.5px',
+                          fontWeight: 700,
+                          textDecoration: 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <i className="fab fa-whatsapp"></i> Kirim Ulang ke Bu Izza
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <p style={{ margin: '0 0 10px 0', fontSize: '13.5px', color: '#78350f', lineHeight: 1.5 }}>
+                      Setelah mendaftar online, calon siswa wajib mengumpulkan berkas <strong>Fotokopi Rapor Kelas 5 (Semester 1 &amp; 2)</strong>. Pengumpulan dapat dilakukan dengan 2 pilihan:
+                    </p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', color: '#78350f' }}>
+                        <i className="fas fa-school" style={{ color: '#d97706', marginTop: '3px' }}></i>
+                        <div><strong>1. Secara Fisik:</strong> Diserahkan langsung ke Sekretariat Panitia SPMB di MTs Almaarif 01 Singosari.</div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', color: '#78350f' }}>
+                        <i className="fab fa-whatsapp" style={{ color: '#16a34a', marginTop: '3px' }}></i>
+                        <div><strong>2. Secara Online / File:</strong> Foto atau PDF rapor dapat dikirimkan langsung ke nomor WhatsApp Panitia SPMB.</div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      <a
+                        href={getWaUrl('085659735348', 'Pak Alfian', 'Berikut saya kirimkan berkas/dokumen FC Rapor Kelas 5 Semester 1 & 2 untuk verifikasi pendaftaran ananda.')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          background: '#15803d',
+                          color: 'white',
+                          padding: '9px 16px',
+                          borderRadius: '8px',
+                          fontSize: '12.5px',
+                          fontWeight: 700,
+                          textDecoration: 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          boxShadow: '0 2px 4px rgba(21, 128, 61, 0.2)'
+                        }}
+                      >
+                        <i className="fab fa-whatsapp"></i> Kirim Rapor ke Pak Alfian
+                      </a>
+                      <a
+                        href={getWaUrl('087859171158', 'Bu Izza', 'Berikut saya kirimkan berkas/dokumen FC Rapor Kelas 5 Semester 1 & 2 untuk verifikasi pendaftaran ananda.')}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          background: '#047857',
+                          color: 'white',
+                          padding: '9px 16px',
+                          borderRadius: '8px',
+                          fontSize: '12.5px',
+                          fontWeight: 700,
+                          textDecoration: 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          boxShadow: '0 2px 4px rgba(4, 120, 87, 0.2)'
+                        }}
+                      >
+                        <i className="fab fa-whatsapp"></i> Kirim Rapor ke Bu Izza
+                      </a>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ flexShrink: 0 }}>
+              <span style={{
+                display: 'inline-block',
+                padding: '4px 12px',
+                borderRadius: '12px',
+                fontSize: '12px',
+                fontWeight: 800,
+                background: statusVerifikasi === 'valid' ? '#dcfce7' : statusVerifikasi === 'perbaikan' ? '#fee2e2' : '#fef3c7',
+                color: statusVerifikasi === 'valid' ? '#15803d' : statusVerifikasi === 'perbaikan' ? '#b91c1c' : '#b45309',
+                border: `1px solid ${statusVerifikasi === 'valid' ? '#86efac' : statusVerifikasi === 'perbaikan' ? '#fca5a5' : '#fde68a'}`
+              }}>
+                Status: {statusVerifikasi === 'valid' ? 'Valid' : statusVerifikasi === 'perbaikan' ? 'Perlu Perbaikan' : 'Belum Diverifikasi'}
+              </span>
+            </div>
+          </div>
+        </div>
+
         {/* Timeline Tahapan Seleksi Card */}
         <div style={{
           background: 'white',
@@ -404,11 +572,11 @@ export default function SpmbPortalDashboard() {
               <div style={{ flex: 1, paddingTop: '4px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 700, color: '#0f172a' }}>
-                    Verifikasi Berkas & Dokumen
+                    Verifikasi Berkas Rapor &amp; Dokumen
                   </h4>
                   {statusVerifikasi === 'valid' && (
                     <span style={{ background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
-                      Berkas Valid & Lengkap
+                      Berkas Valid &amp; Lengkap
                     </span>
                   )}
                   {statusVerifikasi === 'perbaikan' && (
@@ -418,18 +586,18 @@ export default function SpmbPortalDashboard() {
                   )}
                   {statusVerifikasi === 'menunggu' && (
                     <span style={{ background: '#fef3c7', color: '#b45309', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
-                      Sedang Diverifikasi Panitia
+                      Belum Diverifikasi
                     </span>
                   )}
                 </div>
-                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b' }}>
-                  {statusVerifikasi === 'valid' && 'Dokumen Kartu Keluarga dan data pendaftaran Anda telah disetujui panitia.'}
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b', lineHeight: 1.5 }}>
+                  {statusVerifikasi === 'valid' && 'Berkas FC Rapor Kelas 5 Semester 1 & 2 serta data pendaftaran Anda telah disetujui (VALID) oleh panitia.'}
                   {statusVerifikasi === 'perbaikan' && (
                     <span style={{ color: '#b91c1c', fontWeight: 600 }}>
-                      Catatan Panitia: {data.catatanVerifikasi || 'Terdapat dokumen yang kurang jelas / perlu diupload ulang. Hubungi panitia SPMB.'}
+                      Catatan Panitia: {data.catatanVerifikasi || 'Terdapat berkas yang kurang jelas / perlu dikirim ulang. Hubungi panitia SPMB.'}
                     </span>
                   )}
-                  {statusVerifikasi === 'menunggu' && 'Panitia SPMB sedang memvalidasi keabsahan dokumen berkas Anda.'}
+                  {statusVerifikasi === 'menunggu' && 'Calon siswa wajib mengumpulkan berkas Fotokopi Rapor Kelas 5 (Semester 1 & 2) secara fisik ke madrasah atau kirim via WA Panitia. Panitia akan memverifikasi berkas yang masuk.'}
                 </p>
               </div>
             </div>

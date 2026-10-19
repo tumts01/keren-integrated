@@ -378,6 +378,44 @@ export default function RekapSpmb() {
     }
   };
 
+  const handleUpdateVerifikasi = async (id: string, nama: string, newStatus: string) => {
+    let catatan = '';
+    if (newStatus === 'perbaikan') {
+      const { value: text, isConfirmed } = await Swal.fire({
+        title: 'Catatan Perbaikan Berkas',
+        text: `Tuliskan catatan perbaikan berkas untuk ${nama}:`,
+        input: 'textarea',
+        inputPlaceholder: 'Contoh: Rapor semester 2 belum dikumpulkan / foto tidak terbaca',
+        showCancelButton: true,
+        confirmButtonColor: '#059669',
+        cancelButtonColor: '#94a3b8',
+        confirmButtonText: 'Simpan',
+        cancelButtonText: 'Batal'
+      });
+      if (!isConfirmed) return;
+      catatan = text || 'Berkas belum lengkap. Silakan serahkan fisik atau kirim ulang via WhatsApp Panitia.';
+    }
+
+    try {
+      const res = await fetch(`/api/spmb/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          statusVerifikasi: newStatus,
+          catatanVerifikasi: catatan
+        })
+      });
+      const resJson = await res.json();
+      if (resJson.success) {
+        setData(prev => prev.map(item => item.rowNumber === id ? { ...item, statusVerifikasi: newStatus, catatanVerifikasi: catatan } : item));
+      } else {
+        Swal.fire('Gagal', resJson.error || 'Gagal mengubah status', 'error');
+      }
+    } catch (err) {
+      Swal.fire('Error', 'Gagal menghubungi server', 'error');
+    }
+  };
+
   const handleEditJadwalTes = async (id: string, nama: string, currentJadwal: string) => {
     const result = await Swal.fire({
       title: 'Atur Jadwal Tes / Observasi',
@@ -655,9 +693,22 @@ export default function RekapSpmb() {
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span>Rekap Pendaftar SPMB</span>
             {!loading && !error && data && (
-              <span style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: '500', marginTop: '2px' }}>
-                Total: {data.length} Pendaftar
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+                <span style={{ fontSize: '0.85rem', color: '#475569', fontWeight: 600 }}>
+                  Total: {data.length}
+                </span>
+                <span style={{ fontSize: '0.78rem', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                  Valid: {data.filter(d => (d.statusVerifikasi || '').toLowerCase() === 'valid').length}
+                </span>
+                <span style={{ fontSize: '0.78rem', background: '#fef3c7', color: '#b45309', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                  Belum: {data.filter(d => (d.statusVerifikasi || '').toLowerCase() !== 'valid' && (d.statusVerifikasi || '').toLowerCase() !== 'perbaikan').length}
+                </span>
+                {data.some(d => (d.statusVerifikasi || '').toLowerCase() === 'perbaikan') && (
+                  <span style={{ fontSize: '0.78rem', background: '#fee2e2', color: '#b91c1c', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                    Perbaikan: {data.filter(d => (d.statusVerifikasi || '').toLowerCase() === 'perbaikan').length}
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -916,7 +967,7 @@ export default function RekapSpmb() {
               }}
             >
               <option value="semua">Semua Verifikasi</option>
-              <option value="menunggu">Menunggu</option>
+              <option value="menunggu">Belum / Menunggu Berkas</option>
               <option value="valid">Valid / Lengkap</option>
               <option value="perbaikan">Perlu Perbaikan</option>
             </select>
@@ -1240,7 +1291,7 @@ export default function RekapSpmb() {
                     </div>
                   </th>
                   <th>Jalur</th>
-                  <th>Verifikasi Berkas</th>
+                  <th>Verifikasi Berkas (FC Rapor)</th>
                   <th>Jadwal Tes / Observasi</th>
                   <th>Status Kelulusan</th>
                   <th>Asal Sekolah</th>
@@ -1297,23 +1348,24 @@ export default function RekapSpmb() {
                       {isAdmin ? (
                         <select
                           value={item.statusVerifikasi || 'menunggu'}
-                          onChange={(e) => handleUpdateStatus(item.rowNumber, 'statusVerifikasi', e.target.value)}
+                          onChange={(e) => handleUpdateVerifikasi(item.rowNumber, item.namaLengkap, e.target.value)}
                           style={{
-                            padding: '5px 8px',
+                            padding: '6px 8px',
                             borderRadius: '6px',
                             fontSize: '0.78rem',
                             fontWeight: 700,
-                            border: '1px solid',
+                            border: '1.5px solid',
                             borderColor: item.statusVerifikasi === 'valid' ? '#86efac' : item.statusVerifikasi === 'perbaikan' ? '#fca5a5' : '#fde68a',
                             background: item.statusVerifikasi === 'valid' ? '#f0fdf4' : item.statusVerifikasi === 'perbaikan' ? '#fef2f2' : '#fffbeb',
                             color: item.statusVerifikasi === 'valid' ? '#15803d' : item.statusVerifikasi === 'perbaikan' ? '#b91c1c' : '#b45309',
                             cursor: 'pointer',
                             outline: 'none'
                           }}
+                          title="Klik untuk mengubah status verifikasi berkas FC Rapor"
                         >
-                          <option value="menunggu">Menunggu</option>
-                          <option value="valid">Valid / Lengkap</option>
-                          <option value="perbaikan">Perlu Perbaikan</option>
+                          <option value="menunggu">⏳ Belum Diverifikasi</option>
+                          <option value="valid">✅ Valid / Lengkap</option>
+                          <option value="perbaikan">⚠️ Perlu Perbaikan</option>
                         </select>
                       ) : (
                         <span style={{
@@ -1324,8 +1376,13 @@ export default function RekapSpmb() {
                           background: item.statusVerifikasi === 'valid' ? '#dcfce7' : item.statusVerifikasi === 'perbaikan' ? '#fee2e2' : '#fef3c7',
                           color: item.statusVerifikasi === 'valid' ? '#15803d' : item.statusVerifikasi === 'perbaikan' ? '#b91c1c' : '#b45309'
                         }}>
-                          {item.statusVerifikasi === 'valid' ? 'Valid' : item.statusVerifikasi === 'perbaikan' ? 'Perbaikan' : 'Menunggu'}
+                          {item.statusVerifikasi === 'valid' ? 'Valid' : item.statusVerifikasi === 'perbaikan' ? 'Perbaikan' : 'Belum'}
                         </span>
+                      )}
+                      {item.catatanVerifikasi && (
+                        <div style={{ fontSize: '11px', color: '#b91c1c', marginTop: '4px', fontWeight: 600 }}>
+                          Catatan: {item.catatanVerifikasi}
+                        </div>
                       )}
                     </td>
                     <td>
