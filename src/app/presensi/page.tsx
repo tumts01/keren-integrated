@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
 import styles from './presensi.module.css';
@@ -219,6 +219,9 @@ export default function PresensiPage() {
   const [rpFilterTo, setRpFilterTo] = useState(() => {
     return new Date().toISOString().split('T')[0];
   });
+  const [showModalRekapTugas, setShowModalRekapTugas] = useState(false);
+  const [searchRekapTugas, setSearchRekapTugas] = useState('');
+  const [onlyActiveRekapTugas, setOnlyActiveRekapTugas] = useState(true);
 
   // Load classes and mapel
   useEffect(() => {
@@ -559,6 +562,148 @@ export default function PresensiPage() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Rekap Piket');
     XLSX.writeFile(wb, `Rekap_Piket_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.xlsx`);
+  };
+
+  const calculateRekapTugasPiketDispo = (sourceData: any[]) => {
+    const sortedGuruList = [...guruList].sort((a, b) => b.length - a.length);
+    const dutyMap = new Map<string, { piketDates: Set<string>, dispoDates: Set<string> }>();
+
+    for (const g of guruList) {
+      dutyMap.set(g, { piketDates: new Set<string>(), dispoDates: new Set<string>() });
+    }
+
+    for (const r of sourceData) {
+      const tanggal = r.tanggal || '';
+      if (!tanggal) continue;
+      const pStr = (r.petugasPiket || '').trim();
+      const dStr = (r.guruDispo || '').trim();
+
+      if (pStr) {
+        let matched = false;
+        for (const g of sortedGuruList) {
+          if (pStr.toLowerCase().includes(g.toLowerCase())) {
+            matched = true;
+            if (!dutyMap.has(g)) dutyMap.set(g, { piketDates: new Set(), dispoDates: new Set() });
+            dutyMap.get(g)!.piketDates.add(tanggal);
+          }
+        }
+        if (!matched) {
+          pStr.split(',').forEach((part: string) => {
+            const trimmed = part.trim();
+            if (trimmed) {
+              if (!dutyMap.has(trimmed)) dutyMap.set(trimmed, { piketDates: new Set(), dispoDates: new Set() });
+              dutyMap.get(trimmed)!.piketDates.add(tanggal);
+            }
+          });
+        }
+      }
+
+      if (dStr) {
+        let matched = false;
+        for (const g of sortedGuruList) {
+          if (dStr.toLowerCase().includes(g.toLowerCase())) {
+            matched = true;
+            if (!dutyMap.has(g)) dutyMap.set(g, { piketDates: new Set(), dispoDates: new Set() });
+            dutyMap.get(g)!.dispoDates.add(tanggal);
+          }
+        }
+        if (!matched) {
+          dStr.split(',').forEach((part: string) => {
+            const trimmed = part.trim();
+            if (trimmed) {
+              if (!dutyMap.has(trimmed)) dutyMap.set(trimmed, { piketDates: new Set(), dispoDates: new Set() });
+              dutyMap.get(trimmed)!.dispoDates.add(tanggal);
+            }
+          });
+        }
+      }
+    }
+
+    const list: {
+      nama: string;
+      piket: number;
+      dispo: number;
+      total: number;
+      tglPiket: string[];
+      tglDispo: string[];
+    }[] = [];
+
+    for (const [nama, record] of dutyMap.entries()) {
+      const piket = record.piketDates.size;
+      const dispo = record.dispoDates.size;
+      const total = piket + dispo;
+      const tglPiket = Array.from(record.piketDates).sort();
+      const tglDispo = Array.from(record.dispoDates).sort();
+      list.push({ nama, piket, dispo, total, tglPiket, tglDispo });
+    }
+
+    return list.sort((a, b) => {
+      if (b.total !== a.total) return b.total - a.total;
+      return a.nama.localeCompare(b.nama);
+    });
+  };
+
+  const exportRekapTugasExcel = (sourceData: any[]) => {
+    const list = calculateRekapTugasPiketDispo(sourceData);
+    const activeOnly = list.filter(item => item.total > 0);
+    const dataToExport = activeOnly.length > 0 ? activeOnly : list;
+
+    const fromLabel = rpFilterFrom ? rpFilterFrom.split('-').reverse().join('-') : 'Awal';
+    const toLabel = rpFilterTo ? rpFilterTo.split('-').reverse().join('-') : 'Akhir';
+
+    const title = 'REKAPITULASI JUMLAH TUGAS PIKET & DISPO GURU';
+    const subTitle = 'MTs Almaarif 01 Singosari';
+    const periode = `Rentang Tanggal: ${fromLabel} s/d ${toLabel}`;
+    const generatedAt = `Diunduh pada: ${new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}`;
+
+    const header = [
+      'No',
+      'Nama Guru',
+      'Jumlah Piket',
+      'Jumlah Dispo',
+      'Total Bertugas',
+      'Rincian Tanggal Piket',
+      'Rincian Tanggal Dispo'
+    ];
+
+    const rows: any[][] = [
+      [title],
+      [subTitle],
+      [periode],
+      [generatedAt],
+      [], // baris kosong
+      header
+    ];
+
+    dataToExport.forEach((item, idx) => {
+      rows.push([
+        idx + 1,
+        item.nama,
+        `${item.piket}x`,
+        `${item.dispo}x`,
+        `${item.total}x`,
+        item.tglPiket.map(t => t.split('-').reverse().join('/')).join(', ') || '-',
+        item.tglDispo.map(t => t.split('-').reverse().join('/')).join(', ') || '-'
+      ]);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [
+      { wch: 6 },
+      { wch: 38 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 45 },
+      { wch: 45 }
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Piket & Dispo');
+
+    const cleanFrom = rpFilterFrom ? rpFilterFrom.replace(/\//g, '-') : 'Awal';
+    const cleanTo = rpFilterTo ? rpFilterTo.replace(/\//g, '-') : 'Akhir';
+    XLSX.writeFile(wb, `Rekap_Tugas_Piket_Dispo_${cleanFrom}_sd_${cleanTo}.xlsx`);
   };
 
   // ── Rekap Piket Edit & Delete Helper ─────────────────────────────────────
@@ -1200,6 +1345,29 @@ export default function PresensiPage() {
     if (rpFilterTo && r.tanggal > rpFilterTo) return false;
     return true;
   });
+
+  const rekapTugasList = useMemo(() => {
+    return calculateRekapTugasPiketDispo(rpFiltered);
+  }, [rpFiltered, guruList]);
+
+  const displayedRekapTugas = useMemo(() => {
+    let res = rekapTugasList;
+    if (onlyActiveRekapTugas) {
+      res = res.filter(x => x.total > 0);
+    }
+    if (searchRekapTugas.trim()) {
+      const q = searchRekapTugas.toLowerCase().trim();
+      res = res.filter(x => x.nama.toLowerCase().includes(q));
+    }
+    return res;
+  }, [rekapTugasList, onlyActiveRekapTugas, searchRekapTugas]);
+
+  const statsRekapTugas = useMemo(() => {
+    const totalGuruAktif = rekapTugasList.filter(x => x.total > 0).length;
+    const totalPiket = rekapTugasList.reduce((acc, curr) => acc + curr.piket, 0);
+    const totalDispo = rekapTugasList.reduce((acc, curr) => acc + curr.dispo, 0);
+    return { totalGuruAktif, totalPiket, totalDispo };
+  }, [rekapTugasList]);
 
   // ── Rekap Siswa: semua komputasi di LUAR JSX ─────────────────────────────
   const rsFiltered = rekapSiswaData.filter(r => {
@@ -2431,10 +2599,24 @@ export default function PresensiPage() {
                 <input type="date" value={rpFilterTo} onChange={(e) => setRpFilterTo(e.target.value)} className={styles.inputField} style={{ marginBottom: 0, padding: '6px 12px', width: 'auto' }} />
                 
                 <button 
+                  onClick={() => setShowModalRekapTugas(true)}
+                  style={{ background: '#059669', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+                  title="Lihat rekapitulasi beban tugas piket dan dispo per guru"
+                >
+                  <i className="fas fa-chart-pie"></i> Rekap Piket &amp; Dispo
+                </button>
+                <button 
+                  onClick={() => exportRekapTugasExcel(rpFiltered)}
+                  style={{ background: '#d97706', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+                  title="Download langsung file Excel rekap jumlah tugas piket dan dispo"
+                >
+                  <i className="fas fa-download"></i> Download Rekap
+                </button>
+                <button 
                   onClick={() => exportPiketExcel(rpFiltered)}
                   style={{ background: '#16a34a', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
                 >
-                  <i className="fas fa-file-excel"></i> Export Excel
+                  <i className="fas fa-file-excel"></i> Export Log Jurnal
                 </button>
                 <button 
                   onClick={fetchRekapPiket}
@@ -2850,6 +3032,193 @@ export default function PresensiPage() {
                   {isSavingEdit ? 'Menyimpan...' : 'Simpan Perubahan'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showModalRekapTugas && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: '#ffffff', borderRadius: '16px', width: '100%', maxWidth: '1050px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
+            {/* Modal Header */}
+            <div style={{ padding: '18px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: 10, fontWeight: 700 }}>
+                  <i className="fas fa-chart-pie" style={{ color: '#059669' }}></i>
+                  Rekapitulasi Tugas Piket &amp; Dispo Guru
+                </h3>
+                <div style={{ marginTop: 4, fontSize: '0.875rem', color: '#64748b' }}>
+                  Rentang Tanggal: <strong style={{ color: '#0f172a' }}>{rpFilterFrom ? rpFilterFrom.split('-').reverse().join('/') : 'Awal'}</strong> s/d <strong style={{ color: '#0f172a' }}>{rpFilterTo ? rpFilterTo.split('-').reverse().join('/') : 'Akhir'}</strong>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowModalRekapTugas(false)} 
+                style={{ background: '#e2e8f0', border: 'none', width: 36, height: 36, borderRadius: '50%', cursor: 'pointer', color: '#475569', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                title="Tutup Modal"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            {/* Modal Subheader / Controls & Summary */}
+            <div style={{ padding: '16px 24px', background: '#ffffff', borderBottom: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Stats Bar */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>Guru Bertugas</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1e293b', marginTop: 2 }}>
+                    {statsRekapTugas.totalGuruAktif} <span style={{ fontSize: '0.85rem', fontWeight: 500, color: '#64748b' }}>/ {guruList.length} guru</span>
+                  </div>
+                </div>
+                <div style={{ background: '#ecfdf5', padding: '12px 16px', borderRadius: 10, border: '1px solid #a7f3d0' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#047857', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>Total Piket</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#065f46', marginTop: 2 }}>
+                    {statsRekapTugas.totalPiket} <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>penugasan</span>
+                  </div>
+                </div>
+                <div style={{ background: '#fffbeb', padding: '12px 16px', borderRadius: 10, border: '1px solid #fde68a' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#b45309', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>Total Dispo</div>
+                  <div style={{ fontSize: '1.4rem', fontWeight: 700, color: '#92400e', marginTop: 2 }}>
+                    {statsRekapTugas.totalDispo} <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>penugasan</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Toolbar Filters & Export Button */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', flex: 1 }}>
+                  <div style={{ position: 'relative', minWidth: '220px', maxWidth: '340px', flex: 1 }}>
+                    <i className="fas fa-search" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}></i>
+                    <input 
+                      type="text" 
+                      placeholder="Cari nama guru..." 
+                      value={searchRekapTugas} 
+                      onChange={(e) => setSearchRekapTugas(e.target.value)} 
+                      style={{ width: '100%', padding: '8px 12px 8px 34px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: '0.875rem' }} 
+                    />
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', color: '#475569', cursor: 'pointer', userSelect: 'none' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={onlyActiveRekapTugas} 
+                      onChange={(e) => setOnlyActiveRekapTugas(e.target.checked)} 
+                      style={{ cursor: 'pointer', accentColor: '#059669', width: 16, height: 16 }} 
+                    />
+                    <span>Hanya yang pernah bertugas (Total &gt; 0)</span>
+                  </label>
+                </div>
+
+                <button 
+                  onClick={() => exportRekapTugasExcel(rpFiltered)}
+                  style={{ background: '#059669', color: 'white', border: 'none', padding: '9px 18px', borderRadius: 8, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', boxShadow: '0 2px 4px rgba(5, 150, 105, 0.2)' }}
+                >
+                  <i className="fas fa-file-excel" style={{ fontSize: '1rem' }}></i> Download Rekap (.xlsx)
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body / Table */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 24px', maxHeight: '52vh' }}>
+              {displayedRekapTugas.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '48px 16px', color: '#94a3b8' }}>
+                  <i className="fas fa-search" style={{ fontSize: '2.5rem', display: 'block', marginBottom: 12, color: '#cbd5e1' }}></i>
+                  <div style={{ fontSize: '1rem', fontWeight: 600, color: '#64748b' }}>Tidak ada data yang cocok</div>
+                  <div style={{ fontSize: '0.85rem', marginTop: 4 }}>Coba ubah kata kunci pencarian atau hilangkan centang "Hanya yang pernah bertugas"</div>
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', marginTop: 12 }}>
+                  <thead>
+                    <tr style={{ background: '#1e3a5f', color: 'white', position: 'sticky', top: 0, zIndex: 10 }}>
+                      <th style={{ padding: '10px 12px', textAlign: 'center', width: '50px', fontWeight: 700 }}>No</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700 }}>Nama Guru</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'center', width: '110px', fontWeight: 700 }}>Jumlah Piket</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'center', width: '110px', fontWeight: 700 }}>Jumlah Dispo</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'center', width: '110px', fontWeight: 700 }}>Total Tugas</th>
+                      <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700 }}>Rincian Tanggal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayedRekapTugas.map((item, idx) => (
+                      <tr 
+                        key={item.nama} 
+                        style={{ borderBottom: '1px solid #e2e8f0', background: idx % 2 === 0 ? '#ffffff' : '#f8fafc' }}
+                      >
+                        <td style={{ padding: '10px 12px', textAlign: 'center', color: '#64748b' }}>{idx + 1}</td>
+                        <td style={{ padding: '10px 12px', fontWeight: 600, color: '#1e293b' }}>{item.nama}</td>
+                        <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                          <span style={{ 
+                            display: 'inline-block', 
+                            padding: '3px 10px', 
+                            borderRadius: 12, 
+                            fontWeight: 700, 
+                            fontSize: '0.825rem',
+                            background: item.piket > 0 ? '#dcfce7' : '#f1f5f9', 
+                            color: item.piket > 0 ? '#15803d' : '#94a3b8' 
+                          }}>
+                            {item.piket}x
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                          <span style={{ 
+                            display: 'inline-block', 
+                            padding: '3px 10px', 
+                            borderRadius: 12, 
+                            fontWeight: 700, 
+                            fontSize: '0.825rem',
+                            background: item.dispo > 0 ? '#fef3c7' : '#f1f5f9', 
+                            color: item.dispo > 0 ? '#b45309' : '#94a3b8' 
+                          }}>
+                            {item.dispo}x
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                          <span style={{ 
+                            display: 'inline-block', 
+                            padding: '3px 10px', 
+                            borderRadius: 12, 
+                            fontWeight: 700, 
+                            fontSize: '0.825rem',
+                            background: item.total > 0 ? '#e0e7ff' : '#f1f5f9', 
+                            color: item.total > 0 ? '#3730a3' : '#94a3b8' 
+                          }}>
+                            {item.total}x
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 12px', fontSize: '0.8rem', color: '#475569', lineHeight: 1.5 }}>
+                          {item.tglPiket.length > 0 && (
+                            <div>
+                              <strong style={{ color: '#15803d' }}>Piket ({item.tglPiket.length}):</strong>{' '}
+                              {item.tglPiket.map(t => t.split('-').reverse().join('/')).join(', ')}
+                            </div>
+                          )}
+                          {item.tglDispo.length > 0 && (
+                            <div style={{ marginTop: item.tglPiket.length > 0 ? 3 : 0 }}>
+                              <strong style={{ color: '#b45309' }}>Dispo ({item.tglDispo.length}):</strong>{' '}
+                              {item.tglDispo.map(t => t.split('-').reverse().join('/')).join(', ')}
+                            </div>
+                          )}
+                          {item.total === 0 && (
+                            <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+                Menampilkan <strong>{displayedRekapTugas.length}</strong> guru
+              </span>
+              <button 
+                onClick={() => setShowModalRekapTugas(false)}
+                style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid #cbd5e1', background: '#ffffff', color: '#475569', cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem' }}
+              >
+                Tutup
+              </button>
             </div>
           </div>
         </div>
