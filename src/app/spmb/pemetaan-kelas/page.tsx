@@ -266,9 +266,9 @@ export default function PemetaanKelasPage() {
   const handleUpdatePrestasi = (studentId: number, rawVal: string) => {
     let parsedVal: number | '' = '';
     if (rawVal.trim() !== '') {
-      const num = Math.round(Number(rawVal));
+      const num = Number(rawVal.replace(',', '.'));
       if (!isNaN(num)) {
-        parsedVal = Math.min(5, Math.max(0, num));
+        parsedVal = Math.max(0, num);
       }
     }
     handleUpdatePemetaanField(studentId, 'poinPrestasi', parsedVal);
@@ -711,7 +711,7 @@ export default function PemetaanKelasPage() {
       'Seni Budaya dan Keterampilan': s.pemetaan.nilai.sbk ?? '',
       'Bahasa Inggris': s.pemetaan.nilai.bing ?? '',
       'Pendidikan Jasmani, Olahraga, dan Kesehatan': s.pemetaan.nilai.pjok ?? '',
-      'Poin Prestasi (0-5)': s.pemetaan.poinPrestasi ?? '',
+      'Poin Prestasi': s.pemetaan.poinPrestasi ?? '',
     }));
 
     const panduanRows = [
@@ -722,7 +722,7 @@ export default function PemetaanKelasPage() {
       { Kategori: '4. Sains Riset', Keterangan: 'Kategori Nilai: Rata-rata (Matematika + Ilmu Pengetahuan Alam dan Sosial) + Poin Prestasi' },
       { Kategori: '5. Keterampilan Kreatif Produktif', Keterangan: 'Kategori Nilai: Seni Budaya dan Keterampilan + Poin Prestasi' },
       { Kategori: '', Keterangan: '' },
-      { Kategori: 'ATURAN POIN PRESTASI (Cukup Isi Angka 0 - 5)', Keterangan: '' },
+      { Kategori: 'ATURAN POIN PRESTASI (Cukup Isi Total Skor Angka, Bisa Akumulasi > 5)', Keterangan: '' },
       { Kategori: '5', Keterangan: 'Tingkat Internasional' },
       { Kategori: '4', Keterangan: 'Tingkat Nasional' },
       { Kategori: '3', Keterangan: 'Tingkat Provinsi' },
@@ -770,8 +770,8 @@ export default function PemetaanKelasPage() {
 
       const parseCellPrestasi = (val: any): number | '' => {
         if (val === '' || val === null || val === undefined) return '';
-        const n = Math.round(Number(String(val).replace(',', '.')));
-        return isNaN(n) ? '' : Math.min(5, Math.max(0, n));
+        const n = Number(String(val).replace(',', '.'));
+        return isNaN(n) ? '' : Math.max(0, n);
       };
 
       const updates: Array<{ id: number; pemetaan: PemetaanItem }> = [];
@@ -810,6 +810,11 @@ export default function PemetaanKelasPage() {
           if (rem) p5 = rem;
         }
 
+        const rawPrestasi =
+          row['Poin Prestasi'] !== undefined && row['Poin Prestasi'] !== ''
+            ? row['Poin Prestasi']
+            : row['Poin Prestasi (0-5)'];
+
         const newPemetaan: PemetaanItem = {
           ...targetStudent.pemetaan,
           jenjangAsal,
@@ -831,7 +836,7 @@ export default function PemetaanKelasPage() {
             bing: parseCellScore(row['Bahasa Inggris']),
             pjok: parseCellScore(row['Pendidikan Jasmani, Olahraga, dan Kesehatan']),
           },
-          poinPrestasi: parseCellPrestasi(row['Poin Prestasi (0-5)']),
+          poinPrestasi: parseCellPrestasi(rawPrestasi),
         };
 
         updates.push({ id: targetStudent.id, pemetaan: newPemetaan });
@@ -1424,7 +1429,7 @@ export default function PemetaanKelasPage() {
                     <th style={{ minWidth: '140px', background: '#fdf2f8', color: '#be185d' }}>
                       Poin Prestasi
                       <div style={{ fontSize: '10px', fontWeight: 600, textTransform: 'none' }}>
-                        (Skor Angka 0 - 5)
+                        (Total Skor Angka)
                       </div>
                     </th>
                     <th style={{ minWidth: '155px', textAlign: 'center' }}>Hasil Kelas & Aksi</th>
@@ -1642,16 +1647,15 @@ export default function PemetaanKelasPage() {
                           </td>
                         ))}
 
-                        {/* Poin Prestasi (0-5) */}
+                        {/* Poin Prestasi */}
                         <td style={{ background: '#fdf2f8' }}>
                           <input
                             type="number"
                             min={0}
-                            max={5}
-                            placeholder="0-5"
+                            placeholder="0"
                             value={s.pemetaan.poinPrestasi}
                             onChange={(e) => handleUpdatePrestasi(s.id, e.target.value)}
-                            title="5=Internasional, 4=Nasional, 3=Provinsi, 2=Kabupaten/Kota, 1=Kecamatan, 0=Tidak Ada"
+                            title="Skor per prestasi: 5=Internasional, 4=Nasional, 3=Provinsi, 2=Kabupaten/Kota, 1=Kecamatan (bisa dijumlahkan jika > 1 prestasi)"
                             style={{
                               width: '75px',
                               padding: '6px 8px',
@@ -2567,13 +2571,12 @@ export default function PemetaanKelasPage() {
                       marginBottom: '4px',
                     }}
                   >
-                    Poin Prestasi (Isi Angka 0 - 5)
+                    Poin Prestasi (Total Skor Angka)
                   </label>
                   <input
                     type="number"
                     min={0}
-                    max={5}
-                    placeholder="5=Inter, 4=Nas, 3=Prov, 2=Kab, 1=Kec"
+                    placeholder="Contoh: 0, 3, 7..."
                     value={editingStudent.pemetaan.poinPrestasi}
                     onChange={(e) => handleUpdatePrestasi(editingStudent.id, e.target.value)}
                     style={{
@@ -2588,7 +2591,7 @@ export default function PemetaanKelasPage() {
                     }}
                   />
                   <div style={{ fontSize: '10.5px', color: '#9d174d', marginTop: '4px' }}>
-                    5: Internasional | 4: Nasional | 3: Provinsi | 2: Kab/Kota | 1: Kecamatan
+                    Skor: 5=Internasional | 4=Nasional | 3=Provinsi | 2=Kab/Kota | 1=Kecamatan (Bisa akumulasi &gt; 5)
                   </div>
                 </div>
               </div>
