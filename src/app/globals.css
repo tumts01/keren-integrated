@@ -242,3 +242,8 @@ button:disabled, input:disabled, a.disabled {
 input[type="text"], input[type="password"], input[type="number"], input[type="email"], input[type="search"], textarea, .searchInput {
   cursor: url('/kursor-ngetik.png'), text !important;
 }
+
+/* Ensure SweetAlert2 is always on top of any modal, overlay or dialog */
+.swal2-container {
+  z-index: 9999999 !important;
+}

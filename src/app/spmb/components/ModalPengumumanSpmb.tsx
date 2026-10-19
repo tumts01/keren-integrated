@@ -27,7 +27,7 @@ export default function ModalPengumumanSpmb({ isOpen, onClose, jalurList = [] }:
   const fetchPengumuman = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/spmb/pengumuman');
+      const res = await fetch(`/api/spmb/pengumuman?t=${Date.now()}`);
       const resJson = await res.json();
       if (resJson.success) {
         setList(resJson.all || []);
@@ -91,16 +91,32 @@ export default function ModalPengumumanSpmb({ isOpen, onClose, jalurList = [] }:
 
     if (confirm.isConfirmed) {
       try {
-        const res = await fetch(`/api/spmb/pengumuman?id=${id}`, { method: 'DELETE' });
+        Swal.fire({
+          title: 'Menghapus Pengumuman...',
+          allowOutsideClick: false,
+          didOpen: () => Swal.showLoading()
+        });
+
+        const res = await fetch(`/api/spmb/pengumuman?id=${encodeURIComponent(id)}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id })
+        });
         const resJson = await res.json();
         if (resJson.success) {
-          setList(prev => prev.filter(item => item.id !== id));
-          Swal.fire('Terhapus', 'Pengumuman telah dihapus', 'success');
+          setList(prev => prev.filter(item => String(item.id).trim() !== String(id).trim()));
+          Swal.fire({
+            icon: 'success',
+            title: 'Terhapus!',
+            text: 'Pengumuman telah berhasil dihapus.',
+            timer: 1500,
+            showConfirmButton: false
+          });
         } else {
           Swal.fire('Gagal', resJson.error || 'Gagal menghapus pengumuman', 'error');
         }
-      } catch (e) {
-        Swal.fire('Error', 'Gagal menghubungi server', 'error');
+      } catch (e: any) {
+        Swal.fire('Error', 'Gagal menghubungi server: ' + (e?.message || ''), 'error');
       }
     }
   };
@@ -361,7 +377,12 @@ export default function ModalPengumumanSpmb({ isOpen, onClose, jalurList = [] }:
                       </div>
 
                       <button
-                        onClick={() => handleDelete(item.id, item.judul)}
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleDelete(item.id, item.judul);
+                        }}
                         title="Hapus Pengumuman"
                         style={{
                           background: '#fee2e2',
@@ -374,7 +395,8 @@ export default function ModalPengumumanSpmb({ isOpen, onClose, jalurList = [] }:
                           alignItems: 'center',
                           justifyContent: 'center',
                           cursor: 'pointer',
-                          fontSize: '13px'
+                          fontSize: '13px',
+                          transition: 'all 0.2s'
                         }}
                       >
                         <i className="fas fa-trash-alt"></i>

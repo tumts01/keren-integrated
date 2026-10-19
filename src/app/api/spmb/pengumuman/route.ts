@@ -124,16 +124,26 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const id = searchParams.get('id');
+    let id = searchParams.get('id');
 
     if (!id) {
-      return NextResponse.json({ success: false, error: 'Parameter id diperlukan' }, { status: 400 });
+      try {
+        const body = await req.json();
+        id = body?.id;
+      } catch (e) {
+        // Body might be empty or invalid, ignore
+      }
+    }
+
+    const cleanId = (id || '').trim();
+    if (!cleanId) {
+      return NextResponse.json({ success: false, error: 'Parameter id pengumuman diperlukan' }, { status: 400 });
     }
 
     const record = await getOrCreatePengumumanRecord();
     const currentList: any[] = Array.isArray(record.metadata?.list) ? record.metadata.list : [];
 
-    const updatedList = currentList.filter((item: any) => item.id !== id);
+    const updatedList = currentList.filter((item: any) => String(item.id || '').trim() !== cleanId);
 
     const { error: updateError } = await supabase
       .from('profil_lembaga')
@@ -148,7 +158,12 @@ export async function DELETE(req: Request) {
 
     if (updateError) throw updateError;
 
-    return NextResponse.json({ success: true, message: 'Pengumuman berhasil dihapus' });
+    return NextResponse.json({
+      success: true,
+      message: 'Pengumuman berhasil dihapus',
+      deletedId: cleanId,
+      remainingCount: updatedList.length
+    });
   } catch (err: any) {
     console.error('Delete Pengumuman SPMB Error:', err);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
