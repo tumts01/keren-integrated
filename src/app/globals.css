@@ -1,31 +1,31 @@
 @import '@fortawesome/fontawesome-free/css/all.min.css';
 
 :root {
-  /* Color Palette - Custom Theme (Green/Orange) */
-  --bg-main: #FFD786; /* Light peach/yellow from palette */
-  --bg-sidebar: linear-gradient(135deg, #519A66 0%, #237227 100%); /* Medium to Dark Green */
+  /* Color Palette - Modern Emerald & Soft Slate Theme */
+  --bg-main: #F1F5F9; /* Soft Slate / Cool Light Gray - comfortable on eyes */
+  --bg-sidebar: linear-gradient(135deg, #065F46 0%, #064E3B 100%); /* Deep Emerald Green */
   --bg-card: #ffffff;
   
   --text-main: #1e293b;
   --text-muted: #64748b;
-  --text-sidebar: #FFD786; /* Light yellow from palette */
+  --text-sidebar: #ECFDF5; /* Soft Mint White for crisp contrast on deep emerald */
   
-  --primary: #237227; /* Dark green from palette */
-  --primary-hover: #519A66; /* Medium green from palette */
-  --gold: #FFAA00; /* Vibrant Orange from palette */
-  --gold-hover: #e59900;
+  --primary: #059669; /* Modern Emerald 600 */
+  --primary-hover: #047857; /* Emerald 700 */
+  --gold: #F59E0B; /* Warm Amber Gold */
+  --gold-hover: #D97706; /* Amber 600 */
   --success: #10b981;
   --danger: #ef4444;
   --warning: #f59e0b;
   
   --border-color: #e2e8f0;
-  --shadow-sm: 0 4px 6px -1px rgba(99, 102, 241, 0.1);
-  --shadow-md: 0 10px 15px -3px rgba(99, 102, 241, 0.15), 0 4px 6px -2px rgba(99, 102, 241, 0.05);
-  --shadow-lg: 0 20px 25px -5px rgba(99, 102, 241, 0.2), 0 10px 10px -5px rgba(99, 102, 241, 0.04);
+  --shadow-sm: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 20px 25px -5px rgba(15, 23, 42, 0.12), 0 10px 10px -5px rgba(15, 23, 42, 0.04);
   
   --radius-sm: 0.5rem;
   --radius-md: 1rem;
-  --radius-lg: 1.5rem; /* Very rounded corners for playful look */
+  --radius-lg: 1.5rem;
 }
 
 * {

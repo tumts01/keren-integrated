@@ -129,9 +129,9 @@
 
 .active {
   background-color: var(--bg-main);
-  color: var(--primary);
+  color: #065F46;
   font-weight: 700;
-  box-shadow: -5px 0px 10px rgba(0,0,0,0.02);
+  box-shadow: -5px 0px 10px rgba(0,0,0,0.04);
 }
 
 /* Pseudo-elements for the curved "menyatu" folder tab effect */
@@ -166,7 +166,7 @@
   font-size: 1rem;
   text-align: center;
   flex-shrink: 0;
-  color: var(--gold);
+  color: #FBBF24;
 }
 
 .active .menuIcon {
@@ -179,7 +179,7 @@
 
 .toggleBtnTop {
   background: var(--bg-sidebar);
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.15);
   color: white;
   width: 32px;
   height: 32px;
@@ -198,7 +198,7 @@
 
 .toggleBtnTop:hover {
   background: var(--gold);
-  color: var(--primary);
+  color: #ffffff;
   transform: scale(1.1);
 }
 

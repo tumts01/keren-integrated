@@ -208,7 +208,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 )}
                 <button 
                   className={styles.popupBtnConfirm} 
-                  style={{ background: popup.type === 'error' ? '#ef4444' : popup.type === 'success' ? '#16a34a' : '#237227' }}
+                  style={{ background: popup.type === 'error' ? '#ef4444' : popup.type === 'success' ? '#16a34a' : '#059669' }}
                   onClick={() => {
                     if (popup.onConfirm) popup.onConfirm();
                     setPopup(null);
@@ -363,7 +363,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               )}
               <button 
                 className={styles.popupBtnConfirm} 
-                style={{ background: popup.type === 'error' ? '#ef4444' : popup.type === 'success' ? '#16a34a' : '#237227' }}
+                style={{ background: popup.type === 'error' ? '#ef4444' : popup.type === 'success' ? '#16a34a' : '#059669' }}
                 onClick={() => {
                   if (popup.onConfirm) popup.onConfirm();
                   setPopup(null);
