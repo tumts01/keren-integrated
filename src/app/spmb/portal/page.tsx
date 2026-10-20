@@ -730,7 +730,7 @@ export default function SpmbPortalDashboard() {
           }}>
             <i className="fas fa-info-circle" style={{ fontSize: '18px', color: '#16a34a', marginTop: '2px', flexShrink: 0 }}></i>
             <div>
-              <strong>Bisa Dicicil / Titip Seadanya Terlebih Dahulu:</strong> Pembayaran daftar ulang <b>tidak harus menunggu pengumuman kelulusan</b>. Orang tua/wali calon santri dapat menitipkan biaya administrasi terlebih dahulu seadanya (misal DP/cicilan bertahap Rp 500.000, Rp 1.000.000, Rp 1.500.000, dst.) atau langsung melunasinya, baik melalui transfer Bank BCA maupun tunai langsung di madrasah.
+              Pembayaran daftar ulang <b>tidak harus menunggu pengumuman kelulusan</b>. Orang tua/wali calon santri dapat menitipkan biaya administrasi terlebih dahulu seadanya (misal DP/cicilan bertahap Rp 500.000, Rp 1.000.000, Rp 1.500.000, dst.) atau langsung melunasinya, baik melalui transfer Bank BCA maupun tunai langsung di madrasah.
             </div>
           </div>
 
@@ -1194,72 +1194,6 @@ export default function SpmbPortalDashboard() {
                     <strong style={{ color: '#ef4444' }}>Belum memenuhi kuota seleksi tahun ini.</strong>
                   )}
                   {statusKelulusan === 'proses' && 'Hasil seleksi akan diumumkan secara serentak di portal ini.'}
-                </p>
-              </div>
-            </div>
-
-            {/* Step 6: Daftar Ulang & Administrasi Madrasah */}
-            <div style={{ display: 'flex', gap: '16px' }}>
-              <div style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
-                background: statusDaftarUlang === 'lunas' ? '#dcfce7' : statusDaftarUlang === 'cicilan' ? '#fef3c7' : statusDaftarUlang === 'menunggu_verifikasi' ? '#e0f2fe' : '#f1f5f9',
-                color: statusDaftarUlang === 'lunas' ? '#16a34a' : statusDaftarUlang === 'cicilan' ? '#d97706' : statusDaftarUlang === 'menunggu_verifikasi' ? '#0284c7' : '#94a3b8',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 800,
-                fontSize: '15px',
-                flexShrink: 0
-              }}>
-                <i className={statusDaftarUlang === 'lunas' ? 'fas fa-check-double' : statusDaftarUlang === 'cicilan' ? 'fas fa-clock' : statusDaftarUlang === 'menunggu_verifikasi' ? 'fas fa-hourglass-half' : 'fas fa-wallet'}></i>
-              </div>
-              <div style={{ flex: 1, paddingTop: '4px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 700, color: '#0f172a' }}>
-                    6. Daftar Ulang &amp; Administrasi Madrasah
-                  </h4>
-                  {statusDaftarUlang === 'lunas' && (
-                    <span style={{ background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
-                      ✅ Lunas
-                    </span>
-                  )}
-                  {statusDaftarUlang === 'cicilan' && (
-                    <span style={{ background: '#fef3c7', color: '#b45309', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
-                      ⏳ Cicilan (Kurang Rp {sisaTagihan.toLocaleString('id-ID')})
-                    </span>
-                  )}
-                  {statusDaftarUlang === 'menunggu_verifikasi' && (
-                    <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
-                      📄 Menunggu Verifikasi Panitia
-                    </span>
-                  )}
-                  {statusDaftarUlang === 'belum_bayar' && (
-                    <span style={{ background: '#f1f5f9', color: '#64748b', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
-                      Belum Daftar Ulang
-                    </span>
-                  )}
-                </div>
-                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b', lineHeight: 1.5 }}>
-                  {statusDaftarUlang === 'lunas' && (
-                    <span style={{ color: '#166534', fontWeight: 600 }}>
-                      Alhamdulillah, administrasi daftar ulang Anda telah LUNAS tervalidasi sebesar Rp {nominalDibayar.toLocaleString('id-ID')}.
-                    </span>
-                  )}
-                  {statusDaftarUlang === 'cicilan' && (
-                    <span style={{ color: '#b45309', fontWeight: 600 }}>
-                      Telah dibayar cicilan/titipan: Rp {nominalDibayar.toLocaleString('id-ID')} &bull; Sisa kekurangan: Rp {sisaTagihan.toLocaleString('id-ID')}. Sisa dapat dicicil/dititipkan kembali kapan saja.
-                    </span>
-                  )}
-                  {statusDaftarUlang === 'menunggu_verifikasi' && (
-                    <span style={{ color: '#0284c7', fontWeight: 600 }}>
-                      Bukti transfer telah diunggah. Silakan hubungi Ibu Ida (0857-0833-2179) untuk validasi nominal pembayaran.
-                    </span>
-                  )}
-                  {statusDaftarUlang === 'belum_bayar' && (
-                    'Biaya daftar ulang sejumlah Rp 4.500.000 dapat dibayarkan kapan saja tanpa harus menunggu pengumuman kelulusan (bisa dicicil / titip seadanya atau langsung dilunasi) melalui transfer Bank BCA 3680380359 a.n MTS Almaarif 01 singosari atau tunai langsung ke bendahara madrasah.'
-                  )}
                 </p>
               </div>
             </div>
