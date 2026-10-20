@@ -233,13 +233,36 @@ export async function POST(req: Request) {
         }
         updatedExcelData.push(newRow);
 
+        const studentName = 
+          row['NAMA LENGKAP SISWA'] ||
+          row['NAMA SISWA'] ||
+          row['Nama Lengkap'] ||
+          row['Nama Siswa'] ||
+          row['NAMA'] ||
+          row['Nama'] ||
+          '';
+
+        const reguName = 
+          row['NAMA REGU/GRUP (KHUSUS LOMBA BEREGU)'] ||
+          row['NAMA REGU/GRUP (LOMBA MAPEL TIDAK PERLU MENGISI)'] ||
+          row['NAMA REGU'] ||
+          row['NAMA GRUP'] ||
+          row['Nama Regu'] ||
+          '';
+
         const participantMetadata: any = {
           ...row,
+          'NAMA': studentName || row['NAMA'],
+          'NAMA LENGKAP SISWA': studentName || row['NAMA LENGKAP SISWA'],
           'ASAL_SEKOLAH': namaSekolahKolektif,
           'NOMOR_PESERTA': nomorPeserta,
           'STATUS_PEMBAYARAN': totalBiayaKolektif === 0 ? 'Valid' : 'Menunggu',
           'WAKTU_DAFTAR': new Date().toISOString()
         };
+
+        if (reguName) {
+          participantMetadata['NAMA_REGU'] = reguName;
+        }
 
         if (usernameCbt) participantMetadata['USERNAME_CBT'] = usernameCbt;
         if (passwordCbt) participantMetadata['PASSWORD_CBT'] = passwordCbt;

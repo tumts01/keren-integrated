@@ -49,7 +49,20 @@ export default function CetakKartuPage() {
       <div className="print-container" style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'center' }}>
         {pesertaList.map((data, index) => {
           const isAkademik = data.USERNAME_CBT && data.PASSWORD_CBT;
-          const lombaRaw = data.LOMBA_DIPILIH || data['LOMBA YANG DIPILIH'] || '-';
+          const lombaRaw = data.LOMBA_DIPILIH || data['LOMBA YANG DIPILIH'] || data.LOMBA || data.lomba || '-';
+          
+          const schoolName = String(data.ASAL_SEKOLAH || data['NAMA SD/MI'] || data['Asal Sekolah'] || '').trim();
+          const studentName = 
+            data['NAMA LENGKAP SISWA'] ||
+            data['NAMA SISWA'] ||
+            data.nama_peserta ||
+            data.nama_siswa ||
+            data.Nama ||
+            (data.NAMA && data.NAMA.trim().toLowerCase() !== schoolName.toLowerCase() ? data.NAMA : '') ||
+            data.NAMA ||
+            '-';
+
+          const regu = data.NAMA_REGU || data['NAMA REGU/GRUP (KHUSUS LOMBA BEREGU)'] || data['NAMA REGU/GRUP (LOMBA MAPEL TIDAK PERLU MENGISI)'] || '';
           
           return (
             <div key={index} className="kartu-peserta" style={{ 
@@ -105,10 +118,10 @@ export default function CetakKartuPage() {
                 </div>
 
                 <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '8px' }}>
-                  <DetailRow label="Nama" value={data.NAMA || data.Nama || '-'} />
-                  <DetailRow label="Asal Sekolah" value={data.ASAL_SEKOLAH || data['Asal Sekolah'] || '-'} />
+                  <DetailRow label="Nama" value={studentName} />
+                  <DetailRow label="Asal Sekolah" value={schoolName || '-'} />
                   <DetailRow label="Cabang Lomba" value={lombaRaw} />
-                  {data.NAMA_REGU && <DetailRow label="Grup/Regu" value={data.NAMA_REGU} />}
+                  {regu && <DetailRow label="Grup/Regu" value={regu} />}
                 </div>
 
                 {isAkademik ? (
