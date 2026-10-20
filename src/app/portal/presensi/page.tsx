@@ -23,10 +23,18 @@ export default function PortalPresensi() {
   const [studentInfo, setStudentInfo] = useState<any>(null);
 
   // Filters
-  const [selectedStatus, setSelectedStatus] = useState<string>('SEMUA'); // 'SEMUA' | 'KETIDAKHADIRAN' | 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPHA'
+  const [selectedStatus, setSelectedStatus] = useState<string>('SEMUA'); // 'SEMUA' | 'SAKIT' | 'IZIN' | 'ALPHA'
   const [selectedBulan, setSelectedBulan] = useState<string>(''); // YYYY-MM
   const [selectedTanggal, setSelectedTanggal] = useState<string>(''); // YYYY-MM-DD
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Pagination (maksimal 5 data per halaman)
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 5;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedStatus, selectedBulan, selectedTanggal, searchQuery]);
 
   useEffect(() => {
     const sessionStr = localStorage.getItem('portal_session');
@@ -79,13 +87,14 @@ export default function PortalPresensi() {
     }
   };
 
-  // Filtered List
+  // Filtered List (Hanya Menampilkan Ketidakhadiran: SAKIT, IZIN, ALPHA)
   const filteredData = useMemo(() => {
     return data.filter(item => {
+      // Abaikan HADIR (karena presensi hanya merekap SIA)
+      if (item.status === 'HADIR') return false;
+
       // Filter Status
-      if (selectedStatus === 'KETIDAKHADIRAN') {
-        if (item.status === 'HADIR') return false;
-      } else if (selectedStatus !== 'SEMUA') {
+      if (selectedStatus !== 'SEMUA') {
         if (item.status !== selectedStatus) return false;
       }
 
@@ -114,6 +123,15 @@ export default function PortalPresensi() {
     });
   }, [data, selectedStatus, selectedBulan, selectedTanggal, searchQuery]);
 
+  // Pagination calculations (Maksimal 5 data per halaman)
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, filteredData.length);
+  const paginatedData = useMemo(() => {
+    return filteredData.slice(startIndex, endIndex);
+  }, [filteredData, startIndex, endIndex]);
+
   const isFiltered = Boolean(
     selectedStatus !== 'SEMUA' || 
     selectedBulan || 
@@ -126,10 +144,11 @@ export default function PortalPresensi() {
     setSelectedBulan('');
     setSelectedTanggal('');
     setSearchQuery('');
+    setCurrentPage(1);
   };
 
   // Helper toggle card click
-  const toggleStatusCard = (status: 'HADIR' | 'SAKIT' | 'IZIN' | 'ALPHA') => {
+  const toggleStatusCard = (status: 'SAKIT' | 'IZIN' | 'ALPHA') => {
     if (selectedStatus === status) {
       setSelectedStatus('SEMUA');
     } else {
@@ -200,28 +219,9 @@ export default function PortalPresensi() {
 
       <div className="portal-content" style={{ marginTop: '16px' }}>
         
-        {/* Rekap Cards Grid (Interactive Filters) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', marginBottom: '16px' }}>
+        {/* Rekap Cards Grid (Ketidakhadiran: SAKIT, IZIN, ALPHA) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '16px' }}>
           
-          {/* HADIR CARD */}
-          <div 
-            onClick={() => toggleStatusCard('HADIR')}
-            style={{ 
-              background: '#ecfdf5', 
-              borderRadius: '12px', 
-              padding: '12px 6px', 
-              textAlign: 'center', 
-              cursor: 'pointer',
-              border: selectedStatus === 'HADIR' ? '2px solid #059669' : '1px solid #d1fae5',
-              boxShadow: selectedStatus === 'HADIR' ? '0 2px 8px rgba(5, 150, 105, 0.25)' : 'none',
-              transform: selectedStatus === 'HADIR' ? 'scale(1.02)' : 'none',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <div style={{ fontSize: '20px', fontWeight: 800, color: '#059669' }}>{rekap.hadir}</div>
-            <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#047857', marginTop: '2px' }}>HADIR</div>
-          </div>
-
           {/* SAKIT CARD */}
           <div 
             onClick={() => toggleStatusCard('SAKIT')}
@@ -238,7 +238,7 @@ export default function PortalPresensi() {
             }}
           >
             <div style={{ fontSize: '20px', fontWeight: 800, color: '#d97706' }}>{rekap.sakit}</div>
-            <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#b45309', marginTop: '2px' }}>SAKIT</div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#b45309', marginTop: '2px' }}>SAKIT</div>
           </div>
 
           {/* IZIN CARD */}
@@ -257,7 +257,7 @@ export default function PortalPresensi() {
             }}
           >
             <div style={{ fontSize: '20px', fontWeight: 800, color: '#2563eb' }}>{rekap.izin}</div>
-            <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#1d4ed8', marginTop: '2px' }}>IZIN</div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#1d4ed8', marginTop: '2px' }}>IZIN</div>
           </div>
 
           {/* ALPHA CARD */}
@@ -276,7 +276,7 @@ export default function PortalPresensi() {
             }}
           >
             <div style={{ fontSize: '20px', fontWeight: 800, color: '#dc2626' }}>{rekap.alpha}</div>
-            <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#b91c1c', marginTop: '2px' }}>ALPHA</div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#b91c1c', marginTop: '2px' }}>ALPHA</div>
           </div>
 
         </div>
@@ -340,9 +340,7 @@ export default function PortalPresensi() {
                     outline: 'none'
                   }}
                 >
-                  <option value="SEMUA">Semua Status ({data.length})</option>
-                  <option value="HADIR">Hadir ({rekap.hadir})</option>
-                  <option value="KETIDAKHADIRAN">Ketidakhadiran Saja ({rekap.sakit + rekap.izin + rekap.alpha})</option>
+                  <option value="SEMUA">Semua Status ({rekap.sakit + rekap.izin + rekap.alpha})</option>
                   <option value="SAKIT">Sakit ({rekap.sakit})</option>
                   <option value="IZIN">Izin ({rekap.izin})</option>
                   <option value="ALPHA">Alpha ({rekap.alpha})</option>
@@ -411,7 +409,11 @@ export default function PortalPresensi() {
 
           {/* Result Counter */}
           <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px dashed #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#64748b' }}>
-            <span>Menampilkan <b>{filteredData.length}</b> dari {data.length} presensi</span>
+            <span>
+              {filteredData.length > 0 
+                ? `Menampilkan ${startIndex + 1} - ${endIndex} dari ${filteredData.length} ketidakhadiran`
+                : `Menampilkan 0 ketidakhadiran`}
+            </span>
             {isFiltered && <span style={{ color: '#0284c7', fontWeight: 600 }}>Filter aktif</span>}
           </div>
         </div>
@@ -419,18 +421,19 @@ export default function PortalPresensi() {
         {/* Section Header Title */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0, color: '#1e293b' }}>
-            {selectedStatus === 'KETIDAKHADIRAN' 
-              ? 'Riwayat Ketidakhadiran' 
-              : selectedStatus === 'HADIR'
-              ? 'Riwayat Hadir'
-              : selectedStatus === 'SAKIT'
+            {selectedStatus === 'SAKIT'
               ? 'Riwayat Sakit'
               : selectedStatus === 'IZIN'
               ? 'Riwayat Izin'
               : selectedStatus === 'ALPHA'
               ? 'Riwayat Alpha'
-              : 'Riwayat Presensi'}
+              : 'Riwayat Ketidakhadiran (SIA)'}
           </h3>
+          {totalPages > 1 && (
+            <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 500 }}>
+              Hal {safeCurrentPage} / {totalPages}
+            </span>
+          )}
         </div>
         
         {loading ? (
@@ -440,7 +443,7 @@ export default function PortalPresensi() {
           </div>
         ) : filteredData.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 20px', background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-            {selectedStatus === 'KETIDAKHADIRAN' && rekap.sakit === 0 && rekap.izin === 0 && rekap.alpha === 0 ? (
+            {rekap.sakit === 0 && rekap.izin === 0 && rekap.alpha === 0 && !isFiltered ? (
               <div style={{ color: '#059669' }}>
                 <i className="fas fa-check-circle" style={{ fontSize: '36px', marginBottom: '12px', color: '#10b981' }}></i>
                 <h4 style={{ margin: '0 0 6px 0', fontSize: '15px', color: '#047857' }}>Alhamdulillah, Kehadiran 100%!</h4>
@@ -451,7 +454,7 @@ export default function PortalPresensi() {
                 <i className="fas fa-calendar-times" style={{ fontSize: '32px', marginBottom: '12px', color: '#cbd5e1' }}></i>
                 <h4 style={{ margin: '0 0 6px 0', color: '#475569', fontSize: '15px' }}>Tidak Ada Data</h4>
                 <p style={{ margin: '0 0 14px 0', fontSize: '12px' }}>
-                  {isFiltered ? 'Tidak ada catatan kehadiran yang cocok dengan filter yang dipilih.' : 'Belum ada data presensi yang dicatat.'}
+                  {isFiltered ? 'Tidak ada catatan kehadiran yang cocok dengan filter yang dipilih.' : 'Belum ada catatan ketidakhadiran.'}
                 </p>
                 {isFiltered && (
                   <button
@@ -466,81 +469,144 @@ export default function PortalPresensi() {
             )}
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {filteredData.map((item, idx) => {
-              const st = getStatusStyle(item.status);
+          <>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {paginatedData.map((item, idx) => {
+                const st = getStatusStyle(item.status);
 
-              return (
-                <div 
-                  key={item.id || idx} 
-                  className="portal-card" 
-                  style={{ 
-                    padding: '14px 16px', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '14px', 
-                    marginBottom: 0,
-                    borderRadius: '12px',
-                    borderLeft: `4px solid ${st.color}`,
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+                return (
+                  <div 
+                    key={item.id || idx} 
+                    className="portal-card" 
+                    style={{ 
+                      padding: '14px 16px', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '14px', 
+                      marginBottom: 0,
+                      borderRadius: '12px',
+                      borderLeft: `4px solid ${st.color}`,
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+                    }}
+                  >
+                    {/* Status Circle Avatar */}
+                    <div style={{ 
+                      width: '38px', 
+                      height: '38px', 
+                      borderRadius: '50%', 
+                      background: st.bg, 
+                      color: st.color, 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      fontWeight: 800,
+                      fontSize: '14px',
+                      flexShrink: 0,
+                      border: `1.5px solid ${st.border}`
+                    }}>
+                      {item.status.charAt(0)}
+                    </div>
+
+                    {/* Info Column */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '2px' }}>
+                        <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: 700, color: '#1e293b' }}>
+                          {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
+                        </h4>
+                        {item.jamKe && (
+                          <span style={{ fontSize: '10px', background: '#f1f5f9', color: '#475569', padding: '1px 5px', borderRadius: '4px', fontWeight: 600 }}>
+                            Jam {item.jamKe}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span>{item.mapel || 'Presensi Umum'}</span>
+                        {item.guru && (
+                          <span style={{ fontSize: '11px', color: '#94a3b8' }}>• {item.guru}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Status Pill Badge */}
+                    <div style={{ 
+                      fontSize: '11px', 
+                      fontWeight: 800, 
+                      color: st.color,
+                      background: st.bg,
+                      padding: '4px 10px',
+                      borderRadius: '12px',
+                      border: `1px solid ${st.border}`,
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {item.keterangan}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Pagination Controls (Maksimal 5 item per halaman) */}
+            {totalPages > 1 && (
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between', 
+                marginTop: '16px', 
+                padding: '10px 14px', 
+                background: '#fff', 
+                borderRadius: '12px', 
+                border: '1px solid #e2e8f0',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+              }}>
+                <button
+                  type="button"
+                  disabled={safeCurrentPage <= 1}
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: safeCurrentPage <= 1 ? '#f8fafc' : '#fff',
+                    color: safeCurrentPage <= 1 ? '#94a3b8' : '#1e293b',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: safeCurrentPage <= 1 ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
                   }}
                 >
-                  {/* Status Circle Avatar */}
-                  <div style={{ 
-                    width: '38px', 
-                    height: '38px', 
-                    borderRadius: '50%', 
-                    background: st.bg, 
-                    color: st.color, 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    fontWeight: 800,
-                    fontSize: '14px',
-                    flexShrink: 0,
-                    border: `1.5px solid ${st.border}`
-                  }}>
-                    {item.status.charAt(0)}
-                  </div>
+                  <i className="fas fa-chevron-left" style={{ fontSize: '10px' }}></i> Prev
+                </button>
 
-                  {/* Info Column */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '2px' }}>
-                      <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: 700, color: '#1e293b' }}>
-                        {item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
-                      </h4>
-                      {item.jamKe && (
-                        <span style={{ fontSize: '10px', background: '#f1f5f9', color: '#475569', padding: '1px 5px', borderRadius: '4px', fontWeight: 600 }}>
-                          Jam {item.jamKe}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                      <span>{item.mapel || 'Presensi Umum'}</span>
-                      {item.guru && (
-                        <span style={{ fontSize: '11px', color: '#94a3b8' }}>• {item.guru}</span>
-                      )}
-                    </div>
-                  </div>
+                <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600 }}>
+                  Halaman <b style={{ color: '#0284c7' }}>{safeCurrentPage}</b> dari <b>{totalPages}</b>
+                </span>
 
-                  {/* Status Pill Badge */}
-                  <div style={{ 
-                    fontSize: '11px', 
-                    fontWeight: 800, 
-                    color: st.color,
-                    background: st.bg,
-                    padding: '4px 10px',
-                    borderRadius: '12px',
-                    border: `1px solid ${st.border}`,
-                    whiteSpace: 'nowrap'
-                  }}>
-                    {item.keterangan}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                <button
+                  type="button"
+                  disabled={safeCurrentPage >= totalPages}
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: safeCurrentPage >= totalPages ? '#f8fafc' : '#fff',
+                    color: safeCurrentPage >= totalPages ? '#94a3b8' : '#1e293b',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: safeCurrentPage >= totalPages ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  Next <i className="fas fa-chevron-right" style={{ fontSize: '10px' }}></i>
+                </button>
+              </div>
+            )}
+          </>
         )}
 
       </div>
