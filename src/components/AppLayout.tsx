@@ -27,8 +27,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const appPref = localStorage.getItem('keren_app_preference');
 
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
-      try { localStorage.setItem('keren_app_preference', 'guru'); } catch {}
+      try {
+        const parsed = JSON.parse(storedUser);
+        setUser(parsed);
+        try { localStorage.setItem('keren_app_preference', 'guru'); } catch {}
+
+        // Sinkronisasi data user & foto profil jika belum ada di session
+        if (!parsed.foto && (parsed.username || parsed.nama)) {
+          fetch(`/api/user/sync?username=${encodeURIComponent(parsed.username || '')}&nama=${encodeURIComponent(parsed.nama || '')}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.success && data.user) {
+                const merged = { ...parsed, ...data.user };
+                localStorage.setItem('keren_user_data', JSON.stringify(merged));
+                setUser(merged);
+              }
+            })
+            .catch(() => {});
+        }
+      } catch (e) {
+        try { setUser(JSON.parse(storedUser)); } catch {}
+      }
     } else if (spmbSession && pathname === '/') {
       router.replace('/spmb/portal');
       return;

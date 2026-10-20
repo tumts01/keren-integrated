@@ -8,7 +8,7 @@ interface HeaderProps {
   user: {
     nama: string;
     username: string;
-    foto: string;
+    foto?: string;
     role: string;
   };
   onLogout: () => void;
@@ -65,19 +65,52 @@ export default function Header({ user, onLogout }: HeaderProps) {
   // Use first letter of Name (or Username) if no photo
   const initial = user?.nama ? user.nama.charAt(0).toUpperCase() : (user?.username ? user.username.charAt(0).toUpperCase() : 'U');
   
+  const [internalFoto, setInternalFoto] = useState<string>(user?.foto || '');
+  const [useAltUrl, setUseAltUrl] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    if (user?.foto) {
+      setInternalFoto(user.foto);
+      setImageError(false);
+      setUseAltUrl(false);
+    } else if (user?.username || user?.nama) {
+      // Auto-fetch profile photo jika di session/localStorage belum tersimpan
+      fetch(`/api/user/sync?username=${encodeURIComponent(user.username || '')}&nama=${encodeURIComponent(user.nama || '')}`)
+        .then(res => res.json())
+        .then(resData => {
+          if (resData.success && resData.user?.foto) {
+            setInternalFoto(resData.user.foto);
+            setImageError(false);
+            setUseAltUrl(false);
+            try {
+              const raw = localStorage.getItem('keren_user_data');
+              if (raw) {
+                const parsed = JSON.parse(raw);
+                parsed.foto = resData.user.foto;
+                localStorage.setItem('keren_user_data', JSON.stringify(parsed));
+              }
+            } catch {}
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user?.foto, user?.username, user?.nama]);
+
   // Helper to convert Google Drive /view links to raw image links
-  const getImageUrl = (url: string) => {
+  const getImageUrl = (url: string, useAlt: boolean = false) => {
     if (!url) return '';
-    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
     if (url.includes('drive.google.com') && match && match[1]) {
-      // Gunakan endpoint thumbnail Drive yang lebih stabil dari pada lh3
+      if (useAlt) {
+        return `https://lh3.googleusercontent.com/d/${match[1]}=w200-h200`;
+      }
       return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w200-h200`;
     }
     return url;
   };
 
-  const [imageError, setImageError] = useState(false);
-  const fotoUrl = user?.foto && !imageError ? getImageUrl(user.foto) : '';
+  const fotoUrl = internalFoto && !imageError ? getImageUrl(internalFoto, useAltUrl) : '';
   
   return (
     <header className={styles.header}>
@@ -123,7 +156,14 @@ export default function Header({ user, onLogout }: HeaderProps) {
               alt="Profile" 
               className={styles.avatar} 
               style={{ objectFit: 'cover' }} 
-              onError={() => setImageError(true)}
+              referrerPolicy="no-referrer"
+              onError={() => {
+                if (!useAltUrl) {
+                  setUseAltUrl(true);
+                } else {
+                  setImageError(true);
+                }
+              }}
             />
           ) : (
             <div className={styles.avatar}>{initial}</div>

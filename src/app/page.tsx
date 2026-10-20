@@ -444,7 +444,7 @@ export default function Home() {
       <div className={styles.profileHero}>
         <div className={styles.photoFrame}>
           {profile.foto ? (
-            <img src={profile.foto} alt="Profile" className={styles.photo} />
+            <img src={profile.foto} alt="Profile" className={styles.photo} referrerPolicy="no-referrer" />
           ) : (
             <i className="fas fa-user-tie" style={{ fontSize: '4rem', color: '#cbd5e1' }}></i>
           )}
