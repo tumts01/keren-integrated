@@ -129,6 +129,29 @@ export default function RekapOlimpiadeSeni() {
             metadata: meta && typeof meta === 'object' ? meta : {}
           };
         });
+
+        // Sinkronkan status pembayaran master kolektif ke peserta kolektif
+        const masterStatusMap = new Map<string, string>();
+        cleaned.forEach((item: any) => {
+          if (item.jenis_pendaftaran === 'kolektif') {
+            const s = String(item.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase();
+            if (s) {
+              masterStatusMap.set(s, item.metadata?.STATUS_PEMBAYARAN || 'Menunggu');
+            }
+          }
+        });
+
+        cleaned.forEach((item: any) => {
+          if (item.jenis_pendaftaran === 'peserta_kolektif') {
+            const s1 = String(item.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase();
+            const s2 = String(item.metadata?.['NAMA SD/MI'] || '').trim().toLowerCase();
+            const mStatus = masterStatusMap.get(s1) || masterStatusMap.get(s2);
+            if (mStatus === 'Valid') {
+              item.metadata.STATUS_PEMBAYARAN = 'Valid';
+            }
+          }
+        });
+
         setData(cleaned);
       } else {
         Swal.fire('Error', json.error || 'Gagal memuat data', 'error');
@@ -426,10 +449,14 @@ export default function RekapOlimpiadeSeni() {
       localStorage.setItem('cetak_kartu_data', JSON.stringify(row.metadata));
       window.open('/olimpiade-seni/kartu', '_blank');
     } else if (row.jenis_pendaftaran === 'kolektif') {
+      const masterStatus = row.metadata?.STATUS_PEMBAYARAN || 'Menunggu';
       const peserta = data.filter(d => 
         d.jenis_pendaftaran === 'peserta_kolektif' &&
         String(d.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase() === String(row.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase()
-      ).map(d => d.metadata);
+      ).map(d => ({
+        ...d.metadata,
+        STATUS_PEMBAYARAN: masterStatus === 'Valid' ? 'Valid' : (d.metadata?.STATUS_PEMBAYARAN || masterStatus)
+      }));
 
       if (peserta.length > 0) {
         localStorage.setItem('cetak_kartu_data', JSON.stringify(peserta));
@@ -441,7 +468,19 @@ export default function RekapOlimpiadeSeni() {
   };
 
   const handleCetakKartuSingle = (meta: any) => {
-    localStorage.setItem('cetak_kartu_data', JSON.stringify(meta));
+    let finalMeta = { ...meta };
+    // Jika peserta kolektif, warisi status Valid dari master kolektif jika master sudah lunas
+    if (finalMeta.STATUS_PEMBAYARAN !== 'Valid' && (finalMeta.ASAL_SEKOLAH || finalMeta['NAMA SD/MI'])) {
+      const schoolKey = String(finalMeta.ASAL_SEKOLAH || finalMeta['NAMA SD/MI'] || '').trim().toLowerCase();
+      const master = data.find(d => 
+        d.jenis_pendaftaran === 'kolektif' && 
+        String(d.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase() === schoolKey
+      );
+      if (master && master.metadata?.STATUS_PEMBAYARAN === 'Valid') {
+        finalMeta.STATUS_PEMBAYARAN = 'Valid';
+      }
+    }
+    localStorage.setItem('cetak_kartu_data', JSON.stringify(finalMeta));
     window.open('/olimpiade-seni/kartu', '_blank');
   };
 
@@ -917,8 +956,18 @@ export default function RekapOlimpiadeSeni() {
                           </td>
                           <td style={{ padding: '16px', whiteSpace: 'nowrap' }}>
                             {(() => {
+                              const rekap = row.metadata?.REKAP_PESERTA || {};
+                              let b = 0;
+                              Object.entries(rekap).forEach(([lombaKey, count]) => {
+                                const lk = lombaKey.toLowerCase();
+                                const cnt = Number(count) || 0;
+                                if (lk.includes('singer') || lk.includes('solo')) b += cnt * 50000;
+                                else if (lk.includes('banjari')) b += cnt * 100000;
+                                else if (lk.includes('sandi') || lk.includes('morse') || lk.includes('sms')) b += cnt * 50000;
+                              });
+
                               let total = row.metadata?.TOTAL_BIAYA;
-                              if (total === undefined || total === null) {
+                              if (total === undefined || total === null || (b > 0 && Number(total) < b)) {
                                 if (isIndividu) {
                                   const l = (row.metadata?.LOMBA_DIPILIH || row.metadata?.['LOMBA YANG DIPILIH'] || '').toLowerCase();
                                   if (l.includes('singer') || l.includes('solo')) total = 50000;
@@ -926,15 +975,6 @@ export default function RekapOlimpiadeSeni() {
                                   else if (l.includes('sandi') || l.includes('morse') || l.includes('sms')) total = 50000;
                                   else total = 0;
                                 } else {
-                                  const rekap = row.metadata?.REKAP_PESERTA || {};
-                                  let b = 0;
-                                  Object.entries(rekap).forEach(([lombaKey, count]) => {
-                                    const lk = lombaKey.toLowerCase();
-                                    const cnt = Number(count) || 0;
-                                    if (lk.includes('singer') || lk.includes('solo')) b += cnt * 50000;
-                                    else if (lk.includes('banjari')) b += 100000;
-                                    else if (lk.includes('sandi') || lk.includes('morse') || lk.includes('sms')) b += 50000;
-                                  });
                                   total = b;
                                 }
                               }
@@ -1599,17 +1639,18 @@ export default function RekapOlimpiadeSeni() {
 
             {/* Summary card in modal kelola kolektif */}
             {(() => {
+              const rekap = kelolaKolektif.metadata?.REKAP_PESERTA || {};
+              let b = 0;
+              Object.entries(rekap).forEach(([lombaKey, count]) => {
+                const lk = lombaKey.toLowerCase();
+                const cnt = Number(count) || 0;
+                if (lk.includes('singer') || lk.includes('solo')) b += cnt * 50000;
+                else if (lk.includes('banjari')) b += cnt * 100000;
+                else if (lk.includes('sandi') || lk.includes('morse') || lk.includes('sms')) b += cnt * 50000;
+              });
+
               let total = kelolaKolektif.metadata?.TOTAL_BIAYA;
-              if (total === undefined || total === null) {
-                const rekap = kelolaKolektif.metadata?.REKAP_PESERTA || {};
-                let b = 0;
-                Object.entries(rekap).forEach(([lombaKey, count]) => {
-                  const lk = lombaKey.toLowerCase();
-                  const cnt = Number(count) || 0;
-                  if (lk.includes('singer') || lk.includes('solo')) b += cnt * 50000;
-                  else if (lk.includes('banjari')) b += 100000;
-                  else if (lk.includes('sandi') || lk.includes('morse') || lk.includes('sms')) b += 50000;
-                });
+              if (total === undefined || total === null || (b > 0 && Number(total) < b)) {
                 total = b;
               }
               const numTotal = Number(total) || 0;

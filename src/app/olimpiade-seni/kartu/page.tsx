@@ -129,8 +129,11 @@ export default function CetakKartuPage() {
                   </div>
                 ) : (
                   (() => {
-                    const statusBayar = data.STATUS_PEMBAYARAN || 'Menunggu';
-                    if (statusBayar === 'Valid') {
+                    const rawStatus = String(data.STATUS_PEMBAYARAN || data.statusPembayaran || 'Menunggu').trim().toLowerCase();
+                    const isValid = rawStatus === 'valid' || rawStatus === 'lunas';
+                    const isDitolak = rawStatus === 'ditolak';
+
+                    if (isValid) {
                       return (
                         <div style={{ position: 'relative', zIndex: 1, marginTop: 'auto', border: '1.5px solid #16a34a', borderRadius: '6px', padding: '6px', background: '#f0fdf4', textAlign: 'center' }}>
                           <div style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#166534' }}>
@@ -142,7 +145,7 @@ export default function CetakKartuPage() {
                         </div>
                       );
                     }
-                    if (statusBayar === 'Ditolak') {
+                    if (isDitolak) {
                       return (
                         <div style={{ position: 'relative', zIndex: 1, marginTop: 'auto', border: '1.5px solid #ef4444', borderRadius: '6px', padding: '6px', background: '#fef2f2', textAlign: 'center' }}>
                           <div style={{ fontSize: '8.5pt', fontWeight: 'bold', color: '#b91c1c' }}>

@@ -14,7 +14,34 @@ export async function GET() {
       throw error;
     }
 
-    return NextResponse.json({ success: true, data }, {
+    // Sinkronkan status validasi master kolektif ke peserta kolektif
+    const masterStatusMap = new Map<string, string>();
+    (data || []).forEach(row => {
+      if (row.jenis_pendaftaran === 'kolektif') {
+        const s = String(row.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase();
+        if (s) masterStatusMap.set(s, row.metadata?.STATUS_PEMBAYARAN || 'Menunggu');
+      }
+    });
+
+    const normalizedData = (data || []).map(row => {
+      if (row.jenis_pendaftaran === 'peserta_kolektif') {
+        const s1 = String(row.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase();
+        const s2 = String(row.metadata?.['NAMA SD/MI'] || '').trim().toLowerCase();
+        const masterStatus = masterStatusMap.get(s1) || masterStatusMap.get(s2);
+        if (masterStatus === 'Valid' && row.metadata?.STATUS_PEMBAYARAN !== 'Valid') {
+          return {
+            ...row,
+            metadata: {
+              ...(row.metadata || {}),
+              STATUS_PEMBAYARAN: 'Valid'
+            }
+          };
+        }
+      }
+      return row;
+    });
+
+    return NextResponse.json({ success: true, data: normalizedData }, {
       headers: { 'Cache-Control': 'public, s-maxage=0, stale-while-revalidate=0' }
     });
   } catch (error: any) {
@@ -102,9 +129,12 @@ export async function PUT(req: Request) {
           .select('id, metadata')
           .eq('jenis_pendaftaran', 'peserta_kolektif');
 
-        const targets = (pesertasi || []).filter(p => 
-          String(p.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase() === String(sekolah || '').trim().toLowerCase()
-        );
+        const targets = (pesertasi || []).filter(p => {
+          const s1 = String(p.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase();
+          const s2 = String(p.metadata?.['NAMA SD/MI'] || '').trim().toLowerCase();
+          const target = String(sekolah || '').trim().toLowerCase();
+          return s1 === target || s2 === target;
+        });
 
         for (const t of targets) {
           await supabase
@@ -143,9 +173,12 @@ export async function PUT(req: Request) {
           .select('id, metadata')
           .eq('jenis_pendaftaran', 'peserta_kolektif');
 
-        const targets = (pesertasi || []).filter(p => 
-          String(p.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase() === String(sekolah || '').trim().toLowerCase()
-        );
+        const targets = (pesertasi || []).filter(p => {
+          const s1 = String(p.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase();
+          const s2 = String(p.metadata?.['NAMA SD/MI'] || '').trim().toLowerCase();
+          const target = String(sekolah || '').trim().toLowerCase();
+          return s1 === target || s2 === target;
+        });
 
         for (const t of targets) {
           await supabase
