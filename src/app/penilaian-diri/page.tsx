@@ -63,16 +63,18 @@ export default function PenilaianDiriPage() {
     if (str) {
       try {
         const u = JSON.parse(str);
-        setUserRole(u.role || '');
+        const role = (u.role || '').toLowerCase();
+        setUserRole(role);
         setUserNisn(u.nisn || u.username || '');
         setUserName(u.nama || u.username || '');
         setUserRombel(u.rombel || '');
-        setIsAdmin((u.role || '').toLowerCase().includes('admin'));
+        setIsAdmin(role.includes('admin') || role.includes('super'));
       } catch(e){}
     } else if (portalStr) {
       try {
         const u = JSON.parse(portalStr);
         setUserRole('siswa');
+        setIsAdmin(false);
         setUserNisn(u.nisn || '');
         setUserName(u.nama || '');
         setUserRombel(u.rombel || '');
@@ -167,9 +169,13 @@ export default function PenilaianDiriPage() {
 
   useEffect(() => {
     if (activeTab === 'rekap') {
-      loadRekap();
+      if (isAdmin) {
+        loadRekap();
+      } else {
+        setActiveTab('form');
+      }
     }
-  }, [activeTab, periode]);
+  }, [activeTab, periode, isAdmin]);
 
   const handleSave = async () => {
     if (alreadySubmitted) {
@@ -305,7 +311,7 @@ export default function PenilaianDiriPage() {
             <button className={`${styles.tab} ${activeTab === 'form' ? styles.activeTab : ''}`} onClick={() => setActiveTab('form')}>
               <i className="fas fa-clipboard-list"></i> Formulir Penilaian
             </button>
-            {!isSiswa && (
+            {isAdmin && (
               <button className={`${styles.tab} ${activeTab === 'rekap' ? styles.activeTab : ''}`} onClick={() => setActiveTab('rekap')}>
                 <i className="fas fa-chart-bar"></i> Rekapitulasi Poin
               </button>
@@ -614,7 +620,7 @@ export default function PenilaianDiriPage() {
         </div>
       )}
 
-      {activeTab === 'rekap' && !isSiswa && (
+      {activeTab === 'rekap' && isAdmin && (
         <div className={styles.card} style={{ maxWidth: '100%', width: '95%', margin: '20px auto', padding: '30px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
             <h2 style={{ margin: 0 }}><i className="fas fa-trophy"></i> Rekapitulasi Poin Karakter ({periode})</h2>
