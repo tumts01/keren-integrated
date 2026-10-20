@@ -2176,12 +2176,29 @@ export default function PresensiPage() {
             </div>
 
             {/* Sub-tabs */}
-            <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '2px solid #e2e8f0' }}>
-              {([{ key: 'semua', label: '📋 Semua Presensi' }, { key: 'alpha', label: `⚠️ Rekap S/I/A (${rsSiaList.length} siswa)` }] as const).map(t => (
+            <div style={{ display: 'flex', gap: 4, marginBottom: 12, borderBottom: '2px solid #e2e8f0' }}>
+              {([{ key: 'semua', label: '📋 Rincian Presensi S/I/A' }, { key: 'alpha', label: `⚠️ Rekap S/I/A (${rsSiaList.length} siswa)` }] as const).map(t => (
                 <button key={t.key} onClick={() => setRsSubTab(t.key as 'semua' | 'alpha')}
                   style={{ padding: '8px 16px', border: 'none', background: rsSubTab === t.key ? '#237227' : 'transparent', color: rsSubTab === t.key ? 'white' : '#64748b', borderRadius: '6px 6px 0 0', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s' }}
                 >{t.label}</button>
               ))}
+            </div>
+
+            {/* Info Mode Pelaporan Efisien */}
+            <div style={{
+              background: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              borderRadius: 8,
+              padding: '8px 14px',
+              marginBottom: 14,
+              fontSize: '0.82rem',
+              color: '#166534',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              <i className="fas fa-info-circle" style={{ color: '#15803d' }}></i>
+              <span><strong>Pelaporan Efisien:</strong> Rekap presensi berfokus mencatat ketidakhadiran (Sakit, Izin, Alpha). Siswa tanpa catatan di jam pelajaran tersebut terhitung Hadir penuh.</span>
             </div>
 
             {/* Filters */}

@@ -34,9 +34,14 @@ export async function GET(request: Request) {
     const filterTanggal = searchParams.get('tanggal');
     const from = searchParams.get('from');
     const to = searchParams.get('to');
+    const includeHadir = searchParams.get('includeHadir') === 'true';
 
     // Count rows first to know how many chunks we need
+    // Secara default hanya memuat data S/I/A untuk efisiensi maksimal (Hadir dihitung by exception)
     let qCount = supabase.from('data_presensi_siswa').select('*', { count: 'exact', head: true });
+    if (!includeHadir) {
+      qCount = qCount.in('metadata->>KEHADIRAN', ['S', 'I', 'A', 's', 'i', 'a']);
+    }
     if (filterTanggal) qCount = qCount.eq('tanggal', filterTanggal);
     else {
       if (from) qCount = qCount.gte('tanggal', from);
@@ -52,6 +57,9 @@ export async function GET(request: Request) {
     // Fetch in parallel
     const results = await Promise.all(chunks.map(async p => {
       let q = supabase.from('data_presensi_siswa').select('*').range(p * 1000, (p + 1) * 1000 - 1);
+      if (!includeHadir) {
+        q = q.in('metadata->>KEHADIRAN', ['S', 'I', 'A', 's', 'i', 'a']);
+      }
       if (filterTanggal) q = q.eq('tanggal', filterTanggal);
       else {
         if (from) q = q.gte('tanggal', from);
@@ -126,10 +134,17 @@ export async function POST(request: Request) {
       const { data: foundRow } = await supabase.from('data_presensi_siswa').select('*').contains('metadata', { 'ID': id }).single();
       if (!foundRow) return NextResponse.json({ success: false, error: 'Data tidak ditemukan' }, { status: 404 });
       
-      const { error } = await supabase.from('data_presensi_siswa').update({
-        metadata: { ...foundRow.metadata, 'KEHADIRAN': status, 'JAM KE': jamKe || foundRow.metadata?.['JAM KE'] }
-      }).eq('id', foundRow.id);
-      if (error) throw error;
+      const cleanStatus = String(status || '').trim().toUpperCase();
+      if (cleanStatus === 'H' || cleanStatus === 'HADIR') {
+        // Jika diubah menjadi Hadir, hapus catatan ketidakhadiran (prinsip reporting by exception)
+        const { error } = await supabase.from('data_presensi_siswa').delete().eq('id', foundRow.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('data_presensi_siswa').update({
+          metadata: { ...foundRow.metadata, 'KEHADIRAN': cleanStatus, 'JAM KE': jamKe || foundRow.metadata?.['JAM KE'] }
+        }).eq('id', foundRow.id);
+        if (error) throw error;
+      }
 
       revalidateTag('presensi', {});
       return NextResponse.json({ success: true });
@@ -327,24 +342,50 @@ export async function POST(request: Request) {
 
     const nowTimestamp = timestamp || new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
 
-    const payload = listSiswa.map((s: any) => {
+    // ── HANYA REKAP SISWA S/I/A (Sakit, Izin, Alpha) UNTUK EFISIENSI DATABASE ──
+    const siaStudents = listSiswa.filter((s: any) => {
+      const st = String(s.status || '').trim().toUpperCase();
+      return st === 'S' || st === 'I' || st === 'A';
+    });
+
+    let payload: any[] = [];
+    if (siaStudents.length > 0) {
+      payload = siaStudents.map((s: any) => {
+        const uniqueId = crypto.randomUUID();
+        const studentKelas = s.kelas || kelas;
+        const metadata = {
+          'ID': uniqueId,
+          'TIMESTAMP': nowTimestamp,
+          'TANGGAL': tanggal,
+          'TAHUN AJARAN': tahunAjaran || '2026/2027',
+          'KELAS': studentKelas,
+          'JAM KE': jamKe,
+          'MAPEL': mapel,
+          'GURU PENGINPUT': guru,
+          'NAMA SISWA': s.nama,
+          'NISN': s.nisn ? `'${s.nisn}` : '',
+          'KEHADIRAN': String(s.status || '').trim().toUpperCase()
+        };
+        return { tanggal, kelas: studentKelas, metadata };
+      });
+    } else {
+      // Jika semua siswa Hadir di kelas: catat 1 baris sesi nihil agar anti-dobel & rekap jam mengajar tetap valid
       const uniqueId = crypto.randomUUID();
-      const studentKelas = s.kelas || kelas;
       const metadata = {
         'ID': uniqueId,
         'TIMESTAMP': nowTimestamp,
         'TANGGAL': tanggal,
         'TAHUN AJARAN': tahunAjaran || '2026/2027',
-        'KELAS': studentKelas,
+        'KELAS': kelas,
         'JAM KE': jamKe,
         'MAPEL': mapel,
         'GURU PENGINPUT': guru,
-        'NAMA SISWA': s.nama,
-        'NISN': s.nisn ? `'${s.nisn}` : '',
-        'KEHADIRAN': s.status
+        'NAMA SISWA': 'SEMUA SISWA HADIR (NIHIL)',
+        'NISN': '',
+        'KEHADIRAN': 'NIHIL'
       };
-      return { tanggal, kelas: studentKelas, metadata };
-    });
+      payload = [{ tanggal, kelas, metadata }];
+    }
 
     const { error } = await supabase.from('data_presensi_siswa').insert(payload);
     if (error) throw error;
@@ -353,6 +394,10 @@ export async function POST(request: Request) {
     revalidateTag('presensi', {});
     return NextResponse.json({ 
       success: true,
+      totalSaved: siaStudents.length,
+      infoMsg: siaStudents.length > 0 
+        ? `${siaStudents.length} siswa tercatat S/I/A.` 
+        : 'Semua siswa Hadir (pencatatan nihil selesai).',
       ...(skippedPiket > 0 ? { skippedPiket, info: `${skippedPiket} siswa sudah tercatat oleh Guru Piket dan dilewati secara otomatis.` } : {})
     });
 
