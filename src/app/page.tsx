@@ -120,7 +120,7 @@ export default function Home() {
 
           // Check pantauan siswa Alpha hari ini (Wali Kelas)
           try {
-            const resAlpha = await fetch(`/api/presensi/wali-kelas-alpha?kelas=${encodeURIComponent(myKelas.rombel)}&wali=${encodeURIComponent(foundProfile.nama)}`);
+            const resAlpha = await fetch(`/api/presensi/wali-kelas-alpha?kelas=${encodeURIComponent(myKelas.rombel)}&wali=${encodeURIComponent(foundProfile.nama)}&_t=${Date.now()}`, { cache: 'no-store' });
             const alphaData = await resAlpha.json();
             if (alphaData.success && alphaData.totalAlpha > 0) {
               setAlphaInfo(alphaData);

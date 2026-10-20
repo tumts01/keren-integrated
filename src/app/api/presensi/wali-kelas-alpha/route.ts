@@ -4,13 +4,21 @@ import { supabase } from '@/lib/supabase';
 export const dynamic = 'force-dynamic';
 
 function getTodayWib() {
-  const now = new Date();
-  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-  const wib = new Date(utc + (7 * 3600000));
-  const yyyy = wib.getFullYear();
-  const mm = String(wib.getMonth() + 1).padStart(2, '0');
-  const dd = String(wib.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date());
+}
+
+function formatTanggalIndo(tanggalStr: string) {
+  if (!tanggalStr) return '';
+  const [yyyy, mm, dd] = tanggalStr.split('-').map(Number);
+  if (!yyyy || !mm || !dd) return tanggalStr;
+  const d = new Date(Date.UTC(yyyy, mm - 1, dd, 12, 0, 0));
+  return new Intl.DateTimeFormat('id-ID', {
+    timeZone: 'Asia/Jakarta',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  }).format(d);
 }
 
 function formatWaLink(phone: string, text: string) {
@@ -131,11 +139,8 @@ export async function GET(request: Request) {
       }
     }
 
-    // Format human-readable date for WhatsApp greeting
-    const d = new Date(tanggal + 'T00:00:00+07:00');
-    const tanggalFormatted = !isNaN(d.getTime())
-      ? new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(d)
-      : tanggal;
+    // Format human-readable date for WhatsApp greeting (WIB)
+    const tanggalFormatted = formatTanggalIndo(tanggal);
 
     const signatureWali = namaWaliParam ? `Saya ${namaWaliParam} selaku Wali Kelas ${cleanKelas}` : `Saya Wali Kelas ${cleanKelas}`;
 
