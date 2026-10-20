@@ -12,6 +12,8 @@ export default function Home() {
   const [tagihanList, setTagihanList] = useState<any[]>([]);
   const [raporInfo, setRaporInfo] = useState<{kelas: string, missing: number, total: number} | null>(null);
   const [susulanInfo, setSusulanInfo] = useState<{kelas: string, total: number, belumSelesai: number, rincian: any[]} | null>(null);
+  const [alphaInfo, setAlphaInfo] = useState<any>(null);
+  const [showAlphaModal, setShowAlphaModal] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('keren_user_data');
@@ -115,12 +117,34 @@ export default function Home() {
               });
             }
           }
+
+          // Check pantauan siswa Alpha hari ini (Wali Kelas)
+          try {
+            const resAlpha = await fetch(`/api/presensi/wali-kelas-alpha?kelas=${encodeURIComponent(myKelas.rombel)}&wali=${encodeURIComponent(foundProfile.nama)}`);
+            const alphaData = await resAlpha.json();
+            if (alphaData.success && alphaData.totalAlpha > 0) {
+              setAlphaInfo(alphaData);
+              const sessionKey = `alpha_dismissed_${alphaData.tanggal}_${myKelas.rombel}_${alphaData.totalAlpha}`;
+              if (!sessionStorage.getItem(sessionKey)) {
+                setShowAlphaModal(true);
+              }
+            }
+          } catch (errAlpha) {
+            console.error('Error fetching alpha data:', errAlpha);
+          }
         }
       }
     } catch (err) {
       console.error('Error fetching data:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDismissModal = () => {
+    setShowAlphaModal(false);
+    if (alphaInfo) {
+      sessionStorage.setItem(`alpha_dismissed_${alphaInfo.tanggal}_${alphaInfo.kelas}_${alphaInfo.totalAlpha}`, '1');
     }
   };
 
@@ -141,6 +165,272 @@ export default function Home() {
 
   return (
     <div className={styles.container}>
+      {/* Modal Pop-up Pemberitahuan Siswa Alpha Hari Ini (Wali Kelas) */}
+      {showAlphaModal && alphaInfo && alphaInfo.totalAlpha > 0 && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.72)',
+          backdropFilter: 'blur(5px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '16px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '18px',
+            maxWidth: '580px',
+            width: '100%',
+            maxHeight: '88vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.35)',
+            overflow: 'hidden'
+          }}>
+            {/* Header Modal */}
+            <div style={{
+              background: 'linear-gradient(135deg, #e11d48 0%, #be123c 100%)',
+              color: 'white',
+              padding: '18px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.22)',
+                  borderRadius: '50%',
+                  width: '44px',
+                  height: '44px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.4rem',
+                  flexShrink: 0
+                }}>
+                  <i className="fas fa-bell"></i>
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>Pemberitahuan Wali Kelas {alphaInfo.kelas}</h3>
+                  <div style={{ fontSize: '0.82rem', opacity: 0.92, marginTop: '2px' }}>
+                    {alphaInfo.totalAlpha} Siswa Tercatat Alpha (Tidak Masuk) Hari Ini &bull; {alphaInfo.tanggalFormatted}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={handleDismissModal}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.18)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: 'white',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: '1.2rem'
+                }}
+                title="Tutup Notifikasi"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Content Body Modal */}
+            <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
+              <div style={{
+                background: '#fff1f2',
+                border: '1px solid #fecdd3',
+                borderRadius: '10px',
+                padding: '12px 14px',
+                marginBottom: '16px',
+                fontSize: '0.88rem',
+                color: '#9f1239',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px',
+                lineHeight: '1.5'
+              }}>
+                <i className="fas fa-heart" style={{ fontSize: '1.2rem', color: '#e11d48', marginTop: '2px', flexShrink: 0 }}></i>
+                <div>
+                  <strong>Bentuk Kepedulian Wali Kelas:</strong> Ananda di bawah ini belum hadir di madrasah tanpa keterangan. Mari hubungi wali murid untuk menanyakan keadaan ananda dan memastikan kondisinya baik-baik saja.
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {alphaInfo.students.map((s: any, idx: number) => (
+                  <div key={idx} style={{
+                    border: '1px solid #fecdd3',
+                    background: '#ffffff',
+                    borderRadius: '12px',
+                    padding: '14px',
+                    boxShadow: '0 2px 4px rgba(225, 29, 72, 0.04)'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '6px' }}>
+                      <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.98rem' }}>
+                        {idx + 1}. {s.nama}
+                      </div>
+                      <span style={{
+                        fontSize: '0.72rem',
+                        padding: '2px 8px',
+                        borderRadius: '12px',
+                        background: s.domisili.toLowerCase().includes('rumah') ? '#dcfce7' : '#e0e7ff',
+                        color: s.domisili.toLowerCase().includes('rumah') ? '#166534' : '#3730a3',
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap'
+                      }}>
+                        <i className={`fas ${s.domisili.toLowerCase().includes('rumah') ? 'fa-home' : 'fa-mosque'}`} style={{ marginRight: '4px' }}></i>
+                        {s.domisili}
+                      </span>
+                    </div>
+
+                    <div style={{ fontSize: '0.83rem', color: '#64748b', marginBottom: '10px', lineHeight: '1.4' }}>
+                      <i className="fas fa-book-open" style={{ marginRight: '6px', color: '#e11d48' }}></i>
+                      Pelajaran: <strong>{s.mapelList.map((m: any) => `${m.mapel} (Jam ${m.jamKe})`).filter((v: string, i: number, a: string[]) => a.indexOf(v) === i).join(', ')}</strong>
+                      {s.gurus && s.gurus.length > 0 && (
+                        <span style={{ display: 'block', fontSize: '0.78rem', color: '#94a3b8', marginTop: '2px' }}>
+                          <i className="fas fa-user-edit" style={{ marginRight: '4px' }}></i> Dicatat oleh: {s.gurus.join(', ')}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* WhatsApp Action Buttons */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', paddingTop: '8px', borderTop: '1px dashed #fecdd3' }}>
+                      {s.ortu.waLinkIbu && (
+                        <a 
+                          href={s.ortu.waLinkIbu} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            background: '#22c55e',
+                            color: 'white',
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            textDecoration: 'none',
+                            boxShadow: '0 2px 4px rgba(34, 197, 94, 0.2)'
+                          }}
+                          title={`Hubungi Ibu (${s.ortu.ibu || s.ortu.noHpIbu})`}
+                        >
+                          <i className="fab fa-whatsapp"></i> WA Ibu {s.ortu.ibu ? `(${s.ortu.ibu})` : ''}
+                        </a>
+                      )}
+
+                      {s.ortu.waLinkAyah && (
+                        <a 
+                          href={s.ortu.waLinkAyah} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            background: '#15803d',
+                            color: 'white',
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            textDecoration: 'none',
+                            boxShadow: '0 2px 4px rgba(21, 128, 61, 0.2)'
+                          }}
+                          title={`Hubungi Ayah (${s.ortu.ayah || s.ortu.noHpAyah})`}
+                        >
+                          <i className="fab fa-whatsapp"></i> WA Ayah {s.ortu.ayah ? `(${s.ortu.ayah})` : ''}
+                        </a>
+                      )}
+
+                      {s.ortu.waLinkWali && !s.ortu.waLinkIbu && !s.ortu.waLinkAyah && (
+                        <a 
+                          href={s.ortu.waLinkWali} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            background: '#0284c7',
+                            color: 'white',
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            textDecoration: 'none'
+                          }}
+                        >
+                          <i className="fab fa-whatsapp"></i> WA Wali {s.ortu.wali ? `(${s.ortu.wali})` : ''}
+                        </a>
+                      )}
+
+                      {!s.ortu.waLinkIbu && !s.ortu.waLinkAyah && !s.ortu.waLinkWali && (
+                        <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <i className="fas fa-phone-slash"></i> Nomor telepon orang tua belum tercatat di data induk
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Footer Modal */}
+            <div style={{
+              padding: '14px 20px',
+              background: '#f8fafc',
+              borderTop: '1px solid #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px'
+            }}>
+              <a 
+                href="/presensi" 
+                style={{
+                  color: '#0284c7',
+                  fontSize: '0.88rem',
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <i className="fas fa-external-link-alt"></i> Buka Menu Presensi Siswa
+              </a>
+
+              <button
+                onClick={handleDismissModal}
+                style={{
+                  background: '#e11d48',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  padding: '9px 20px',
+                  fontSize: '0.9rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 6px rgba(225, 29, 72, 0.3)'
+                }}
+              >
+                Mengerti & Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Kartu Sambutan */}
       <div className={styles.welcomeCard}>
         <div className={styles.welcomeContent}>
@@ -177,6 +467,219 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Box Siswa Alpha Hari Ini (Wali Kelas) */}
+      {alphaInfo && alphaInfo.totalAlpha > 0 && (
+        <div style={{
+          background: 'linear-gradient(to right, #fff1f2, #ffe4e6)',
+          border: '1.5px solid #fecdd3',
+          borderRadius: '14px',
+          padding: '22px',
+          marginBottom: '24px',
+          position: 'relative',
+          overflow: 'hidden',
+          boxShadow: '0 4px 12px rgba(225, 29, 72, 0.08)'
+        }}>
+          <div style={{ position: 'absolute', top: '-15px', right: '-15px', opacity: 0.08, pointerEvents: 'none' }}>
+            <i className="fas fa-heart-pulse" style={{ fontSize: '9rem', color: '#e11d48' }}></i>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '18px', position: 'relative', zIndex: 1 }}>
+            <div style={{
+              background: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)',
+              color: 'white',
+              width: '52px',
+              height: '52px',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.6rem',
+              flexShrink: 0,
+              boxShadow: '0 4px 10px rgba(225, 29, 72, 0.3)'
+            }}>
+              <i className="fas fa-bell"></i>
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '6px' }}>
+                <h3 style={{ margin: 0, color: '#9f1239', fontSize: '1.25rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>Pantauan Kehadiran Hari Ini &mdash; Kelas {alphaInfo.kelas}</span>
+                  <span style={{ background: '#be123c', color: 'white', fontSize: '0.78rem', padding: '3px 10px', borderRadius: '12px', fontWeight: 700 }}>
+                    {alphaInfo.totalAlpha} Siswa Alpha
+                  </span>
+                </h3>
+                <span style={{ fontSize: '0.85rem', color: '#881337', fontWeight: 600 }}>
+                  <i className="far fa-calendar-alt" style={{ marginRight: '4px' }}></i>
+                  {alphaInfo.tanggalFormatted}
+                </span>
+              </div>
+
+              <p style={{ margin: '0 0 14px 0', color: '#881337', fontSize: '0.95rem', lineHeight: '1.5' }}>
+                Ada <strong>{alphaInfo.totalAlpha} siswa</strong> di kelas Anda yang tercatat <strong>Alpha (tidak masuk tanpa keterangan)</strong> hari ini.
+                Sebagai bentuk kepedulian, silakan konfirmasi ke orang tua/wali murid di bawah ini:
+              </p>
+
+              {/* Grid Siswa Alpha */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                {alphaInfo.students.map((s: any, idx: number) => (
+                  <div key={idx} style={{
+                    background: 'white',
+                    border: '1px solid #fecdd3',
+                    borderRadius: '10px',
+                    padding: '12px 14px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.03)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    gap: '8px'
+                  }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', marginBottom: '4px' }}>
+                        <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '0.95rem' }}>
+                          {idx + 1}. {s.nama}
+                        </span>
+                        <span style={{
+                          fontSize: '0.7rem',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          background: s.domisili.toLowerCase().includes('rumah') ? '#ecfdf5' : '#eff6ff',
+                          color: s.domisili.toLowerCase().includes('rumah') ? '#047857' : '#1d4ed8',
+                          fontWeight: 600
+                        }}>
+                          {s.domisili}
+                        </span>
+                      </div>
+
+                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '6px' }}>
+                        <i className="fas fa-clock" style={{ marginRight: '4px', color: '#e11d48' }}></i>
+                        Jam {s.jamKeRingkasan} &bull; {s.mapelList.map((m: any) => m.mapel).filter((v: string, i: number, a: string[]) => a.indexOf(v) === i).join(', ')}
+                      </div>
+                    </div>
+
+                    {/* WhatsApp action buttons */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', paddingTop: '6px', borderTop: '1px dashed #f1f5f9' }}>
+                      {s.ortu.waLinkIbu && (
+                        <a 
+                          href={s.ortu.waLinkIbu} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: '#22c55e',
+                            color: 'white',
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            textDecoration: 'none'
+                          }}
+                          title={`Kirim WA ke Ibu (${s.ortu.ibu || s.ortu.noHpIbu})`}
+                        >
+                          <i className="fab fa-whatsapp"></i> WA Ibu {s.ortu.ibu ? `(${s.ortu.ibu})` : ''}
+                        </a>
+                      )}
+
+                      {s.ortu.waLinkAyah && (
+                        <a 
+                          href={s.ortu.waLinkAyah} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: '#15803d',
+                            color: 'white',
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            textDecoration: 'none'
+                          }}
+                          title={`Kirim WA ke Ayah (${s.ortu.ayah || s.ortu.noHpAyah})`}
+                        >
+                          <i className="fab fa-whatsapp"></i> WA Ayah {s.ortu.ayah ? `(${s.ortu.ayah})` : ''}
+                        </a>
+                      )}
+
+                      {s.ortu.waLinkWali && !s.ortu.waLinkIbu && !s.ortu.waLinkAyah && (
+                        <a 
+                          href={s.ortu.waLinkWali} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: '#0284c7',
+                            color: 'white',
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            textDecoration: 'none'
+                          }}
+                        >
+                          <i className="fab fa-whatsapp"></i> WA Wali {s.ortu.wali ? `(${s.ortu.wali})` : ''}
+                        </a>
+                      )}
+
+                      {!s.ortu.waLinkIbu && !s.ortu.waLinkAyah && !s.ortu.waLinkWali && (
+                        <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                          No HP belum tersedia di buku induk
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <a 
+                  href="/presensi" 
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: '#e11d48',
+                    color: 'white',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    textDecoration: 'none',
+                    fontWeight: 700,
+                    fontSize: '0.88rem'
+                  }}
+                >
+                  <i className="fas fa-clipboard-check"></i> Buka Menu Presensi Siswa
+                </a>
+
+                <button
+                  onClick={() => setShowAlphaModal(true)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'white',
+                    color: '#be123c',
+                    border: '1px solid #fca5a5',
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <i className="fas fa-expand"></i> Buka Pop-up Notifikasi
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Box Tagihan Arsip */}
       {tagihanList.length > 0 && (
