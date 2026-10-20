@@ -87,7 +87,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       ...(body.statusVerifikasiRapor !== undefined ? { status_verifikasi_rapor: body.statusVerifikasiRapor } : {}),
       ...(body.catatanVerifikasiRapor !== undefined ? { catatan_verifikasi_rapor: body.catatanVerifikasiRapor } : {}),
       ...(body.statusKelulusan !== undefined ? { status_kelulusan: body.statusKelulusan } : {}),
-      ...(body.jadwalTes !== undefined ? { jadwal_tes: body.jadwalTes } : {})
+      ...(body.jadwalTes !== undefined ? { jadwal_tes: body.jadwalTes } : {}),
+      ...(body.biayaDaftarUlang !== undefined ? { biaya_daftar_ulang: Number(body.biayaDaftarUlang) } : {}),
+      ...(body.potonganDaftarUlang !== undefined ? { potongan_daftar_ulang: Number(body.potonganDaftarUlang) } : {}),
+      ...(body.nominalDibayarDaftarUlang !== undefined ? { nominal_dibayar_daftar_ulang: Number(body.nominalDibayarDaftarUlang) } : {}),
+      ...(body.statusDaftarUlang !== undefined ? { status_daftar_ulang: body.statusDaftarUlang } : {}),
+      ...(body.buktiDaftarUlang !== undefined ? { bukti_daftar_ulang: body.buktiDaftarUlang } : {}),
+      ...(body.catatanDaftarUlang !== undefined ? { catatan_daftar_ulang: body.catatanDaftarUlang } : {}),
+      ...(body.metodeBayarDaftarUlang !== undefined ? { metode_bayar_daftar_ulang: body.metodeBayarDaftarUlang } : {}),
+      ...(body.tglBayarDaftarUlang !== undefined ? { tgl_bayar_daftar_ulang: body.tglBayarDaftarUlang } : {})
     };
 
     const { error: updateError } = await supabase

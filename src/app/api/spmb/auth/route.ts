@@ -32,6 +32,14 @@ function mapStudentData(r: any) {
     catatanVerifikasiRapor: meta['catatan_verifikasi_rapor'] || '',
     statusKelulusan: meta['status_kelulusan'] || 'proses',
     jadwalTes: meta['jadwal_tes'] || '',
+    biayaDaftarUlang: meta['biaya_daftar_ulang'] !== undefined && meta['biaya_daftar_ulang'] !== '' ? Number(meta['biaya_daftar_ulang']) : 4500000,
+    potonganDaftarUlang: Number(meta['potongan_daftar_ulang'] || 0),
+    nominalDibayarDaftarUlang: Number(meta['nominal_dibayar_daftar_ulang'] || 0),
+    statusDaftarUlang: meta['status_daftar_ulang'] || 'belum_bayar',
+    buktiDaftarUlang: meta['bukti_daftar_ulang'] || '',
+    catatanDaftarUlang: meta['catatan_daftar_ulang'] || '',
+    metodeBayarDaftarUlang: meta['metode_bayar_daftar_ulang'] || '',
+    tglBayarDaftarUlang: meta['tgl_bayar_daftar_ulang'] || '',
     timestamp: meta['Timestamp'] || ''
   };
 }

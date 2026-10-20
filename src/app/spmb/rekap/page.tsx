@@ -6,6 +6,7 @@ import Swal from 'sweetalert2';
 import styles from './Rekap.module.css';
 import ModalAturJalur from '../components/ModalAturJalur';
 import ModalPengumumanSpmb from '../components/ModalPengumumanSpmb';
+import ModalDaftarUlang from '../components/ModalDaftarUlang';
 
 export default function RekapSpmb() {
   const router = useRouter();
@@ -21,6 +22,8 @@ export default function RekapSpmb() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showPengumumanModal, setShowPengumumanModal] = useState(false);
+  const [showDaftarUlangModal, setShowDaftarUlangModal] = useState(false);
+  const [selectedForDaftarUlang, setSelectedForDaftarUlang] = useState<any | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   // Filter States
@@ -30,6 +33,7 @@ export default function RekapSpmb() {
   const [filterVerifikasiRapor, setFilterVerifikasiRapor] = useState('semua');
   const [filterKelulusan, setFilterKelulusan] = useState('semua');
   const [filterJadwal, setFilterJadwal] = useState('semua');
+  const [filterDaftarUlang, setFilterDaftarUlang] = useState('semua');
   const [sortOrder, setSortOrder] = useState<'terbaru' | 'terlama' | 'asc' | 'desc'>('terbaru');
 
   // Helper parsing timestamp SPMB
@@ -107,6 +111,23 @@ export default function RekapSpmb() {
         if (item.jadwalTes && item.jadwalTes.trim()) return false;
       }
 
+      // Filter Daftar Ulang
+      if (filterDaftarUlang !== 'semua') {
+        const biaya = item.biayaDaftarUlang !== undefined && item.biayaDaftarUlang !== '' ? Number(item.biayaDaftarUlang) : 4500000;
+        const pot = Number(item.potonganDaftarUlang || 0);
+        const tagihan = Math.max(0, biaya - pot);
+        const dibayar = Number(item.nominalDibayarDaftarUlang || 0);
+        let st = item.statusDaftarUlang || 'belum_bayar';
+        if (dibayar >= tagihan && tagihan > 0) st = 'lunas';
+        else if (dibayar > 0) st = 'cicilan';
+        else if (item.buktiDaftarUlang && dibayar === 0) st = 'menunggu_verifikasi';
+
+        if (filterDaftarUlang === 'lunas' && st !== 'lunas') return false;
+        if (filterDaftarUlang === 'cicilan' && st !== 'cicilan') return false;
+        if (filterDaftarUlang === 'menunggu_verifikasi' && st !== 'menunggu_verifikasi') return false;
+        if (filterDaftarUlang === 'belum_bayar' && st !== 'belum_bayar') return false;
+      }
+
       return true;
     })
     .sort((a, b) => {
@@ -136,7 +157,7 @@ export default function RekapSpmb() {
   // Reset to page 1 when any filter or sort changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterJalur, filterVerifikasiKk, filterVerifikasiRapor, filterKelulusan, filterJadwal, sortOrder]);
+  }, [searchTerm, filterJalur, filterVerifikasiKk, filterVerifikasiRapor, filterKelulusan, filterJadwal, filterDaftarUlang, sortOrder]);
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
@@ -173,6 +194,7 @@ export default function RekapSpmb() {
     setFilterVerifikasiRapor('semua');
     setFilterKelulusan('semua');
     setFilterJadwal('semua');
+    setFilterDaftarUlang('semua');
     setSortOrder('terbaru');
     setCurrentPage(1);
   };
@@ -193,7 +215,7 @@ export default function RekapSpmb() {
     return pages;
   };
 
-  const isFiltered = searchTerm.trim() !== '' || filterJalur !== 'semua' || filterVerifikasiKk !== 'semua' || filterVerifikasiRapor !== 'semua' || filterKelulusan !== 'semua' || filterJadwal !== 'semua' || sortOrder !== 'terbaru';
+  const isFiltered = searchTerm.trim() !== '' || filterJalur !== 'semua' || filterVerifikasiKk !== 'semua' || filterVerifikasiRapor !== 'semua' || filterKelulusan !== 'semua' || filterJadwal !== 'semua' || filterDaftarUlang !== 'semua' || sortOrder !== 'terbaru';
 
   const allJalurOptions = Array.from(new Set(data.map(d => d.jalurPendaftaran).filter(Boolean)));
   if (!allJalurOptions.includes('Reguler')) allJalurOptions.push('Reguler');
@@ -1139,6 +1161,36 @@ export default function RekapSpmb() {
             </select>
           </div>
 
+          {/* Filter Status Daftar Ulang */}
+          <div>
+            <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+              Status Daftar Ulang
+            </label>
+            <select
+              value={filterDaftarUlang}
+              onChange={e => setFilterDaftarUlang(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1.5px solid #cbd5e1',
+                fontSize: '13px',
+                background: filterDaftarUlang !== 'semua' ? '#ecfdf5' : 'white',
+                fontWeight: filterDaftarUlang !== 'semua' ? 700 : 500,
+                color: filterDaftarUlang !== 'semua' ? '#047857' : '#334155',
+                outline: 'none',
+                cursor: 'pointer',
+                boxSizing: 'border-box'
+              }}
+            >
+              <option value="semua">Semua Daftar Ulang</option>
+              <option value="lunas">✅ Lunas</option>
+              <option value="cicilan">⏳ Cicilan</option>
+              <option value="menunggu_verifikasi">📄 Menunggu Verifikasi</option>
+              <option value="belum_bayar">⚪ Belum Bayar</option>
+            </select>
+          </div>
+
           {/* Urutan Pendaftar */}
           <div>
             <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
@@ -1432,6 +1484,7 @@ export default function RekapSpmb() {
                   <th>Verifikasi Rapor</th>
                   <th>Jadwal Tes / Observasi</th>
                   <th>Status Kelulusan</th>
+                  <th>Daftar Ulang</th>
                   <th>Asal Sekolah</th>
                   <th>No. WA Ayah</th>
                   <th>No. WA Ibu</th>
@@ -1661,6 +1714,160 @@ export default function RekapSpmb() {
                         </span>
                       )}
                     </td>
+                    {/* Status Daftar Ulang & Keuangan */}
+                    <td>
+                      {(() => {
+                        const biaya = item.biayaDaftarUlang !== undefined && item.biayaDaftarUlang !== '' ? Number(item.biayaDaftarUlang) : 4500000;
+                        const pot = Number(item.potonganDaftarUlang || 0);
+                        const tagihan = Math.max(0, biaya - pot);
+                        const dibayar = Number(item.nominalDibayarDaftarUlang || 0);
+                        const sisa = Math.max(0, tagihan - dibayar);
+                        let st = item.statusDaftarUlang || 'belum_bayar';
+                        if (dibayar >= tagihan && tagihan > 0) st = 'lunas';
+                        else if (dibayar > 0) st = 'cicilan';
+                        else if (item.buktiDaftarUlang && dibayar === 0) st = 'menunggu_verifikasi';
+
+                        return (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: '135px' }}>
+                            {st === 'lunas' && (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                fontSize: '0.78rem',
+                                fontWeight: 800,
+                                background: '#dcfce7',
+                                color: '#15803d',
+                                border: '1px solid #86efac',
+                                width: 'fit-content'
+                              }}>
+                                <i className="fas fa-check-circle"></i> LUNAS
+                              </span>
+                            )}
+                            {st === 'cicilan' && (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                fontSize: '0.78rem',
+                                fontWeight: 800,
+                                background: '#fef3c7',
+                                color: '#b45309',
+                                border: '1px solid #fde68a',
+                                width: 'fit-content'
+                              }}>
+                                <i className="fas fa-clock"></i> CICILAN
+                              </span>
+                            )}
+                            {st === 'menunggu_verifikasi' && (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                fontSize: '0.78rem',
+                                fontWeight: 800,
+                                background: '#e0f2fe',
+                                color: '#0369a1',
+                                border: '1px solid #bae6fd',
+                                width: 'fit-content'
+                              }}>
+                                <i className="fas fa-file-invoice-dollar"></i> Cek Bukti TF
+                              </span>
+                            )}
+                            {st === 'belum_bayar' && (
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                fontSize: '0.78rem',
+                                fontWeight: 600,
+                                background: '#f1f5f9',
+                                color: '#64748b',
+                                border: '1px solid #cbd5e1',
+                                width: 'fit-content'
+                              }}>
+                                Belum Bayar
+                              </span>
+                            )}
+
+                            {dibayar > 0 && (
+                              <div style={{ fontSize: '11px', color: '#15803d', fontWeight: 700 }}>
+                                Masuk: Rp {dibayar.toLocaleString('id-ID')}
+                              </div>
+                            )}
+                            {st === 'cicilan' && sisa > 0 && (
+                              <div style={{ fontSize: '11px', color: '#b91c1c', fontWeight: 700 }}>
+                                Kurang: Rp {sisa.toLocaleString('id-ID')}
+                              </div>
+                            )}
+                            {pot > 0 && (
+                              <div style={{ fontSize: '10.5px', color: '#047857', fontStyle: 'italic' }}>
+                                Potongan: Rp {pot.toLocaleString('id-ID')}
+                              </div>
+                            )}
+
+                            <div style={{ display: 'flex', gap: '4px', marginTop: '3px', flexWrap: 'wrap' }}>
+                              {item.buktiDaftarUlang && (
+                                <button
+                                  type="button"
+                                  onClick={() => openViewer(item.buktiDaftarUlang, `Bukti Daftar Ulang - ${item.namaLengkap}`)}
+                                  style={{
+                                    background: '#eff6ff',
+                                    color: '#1d4ed8',
+                                    border: '1px solid #bfdbfe',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px'
+                                  }}
+                                  title="Lihat Bukti Transfer"
+                                >
+                                  <i className="fas fa-receipt"></i> Bukti
+                                </button>
+                              )}
+
+                              {isAdmin && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedForDaftarUlang(item);
+                                    setShowDaftarUlangModal(true);
+                                  }}
+                                  style={{
+                                    background: '#ecfdf5',
+                                    color: '#047857',
+                                    border: '1px solid #a7f3d0',
+                                    padding: '2px 8px',
+                                    borderRadius: '4px',
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                  title="Validasi / Kelola Daftar Ulang"
+                                >
+                                  <i className="fas fa-coins"></i> Validasi
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td>{item.asalSekolah}</td>
                     <td>
                       {item.nomorWaAyah ? (
@@ -1878,6 +2085,22 @@ export default function RekapSpmb() {
         isOpen={showPengumumanModal}
         onClose={() => setShowPengumumanModal(false)}
       />
+
+      {/* Modal Validasi & Kelola Daftar Ulang */}
+      {showDaftarUlangModal && selectedForDaftarUlang && (
+        <ModalDaftarUlang
+          isOpen={showDaftarUlangModal}
+          onClose={() => {
+            setShowDaftarUlangModal(false);
+            setSelectedForDaftarUlang(null);
+          }}
+          student={selectedForDaftarUlang}
+          onSuccess={(updatedStudent: any) => {
+            setData(prev => prev.map(d => d.rowNumber === updatedStudent.rowNumber ? { ...d, ...updatedStudent } : d));
+          }}
+          onOpenViewer={openViewer}
+        />
+      )}
 
     </div>
   );

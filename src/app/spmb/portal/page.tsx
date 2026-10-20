@@ -11,6 +11,8 @@ export default function SpmbPortalDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [copiedRekening, setCopiedRekening] = useState(false);
+  const [uploadingBukti, setUploadingBukti] = useState(false);
   const [showBiodata, setShowBiodata] = useState(false);
   const [pengumumanList, setPengumumanList] = useState<any[]>([]);
 
@@ -95,6 +97,105 @@ export default function SpmbPortalDashboard() {
     }
   };
 
+  const copyRekeningBCA = () => {
+    navigator.clipboard.writeText('3680380359');
+    setCopiedRekening(true);
+    setTimeout(() => setCopiedRekening(false), 2500);
+  };
+
+  const handleUploadBuktiDaftarUlang = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !data) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      Swal.fire('File Terlalu Besar', 'Maksimal ukuran file adalah 10MB.', 'warning');
+      return;
+    }
+
+    try {
+      setUploadingBukti(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'bukti_daftar_ulang');
+
+      const res = await fetch('/api/spmb/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const resJson = await res.json();
+      if (resJson.success && resJson.link) {
+        const link = resJson.link;
+
+        const bs = data.biayaDaftarUlang !== undefined && data.biayaDaftarUlang !== '' ? Number(data.biayaDaftarUlang) : 4500000;
+        const pot = Number(data.potonganDaftarUlang || 0);
+        const tagihan = Math.max(0, bs - pot);
+        const dibayar = Number(data.nominalDibayarDaftarUlang || 0);
+
+        let newStatus = 'menunggu_verifikasi';
+        if (dibayar >= tagihan && tagihan > 0) newStatus = 'lunas';
+        else if (dibayar > 0) newStatus = 'cicilan';
+
+        const patchRes = await fetch(`/api/spmb/${data.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            buktiDaftarUlang: link,
+            statusDaftarUlang: newStatus,
+            metodeBayarDaftarUlang: 'transfer'
+          })
+        });
+
+        const patchJson = await patchRes.json();
+        if (patchJson.success) {
+          const updated = {
+            ...data,
+            buktiDaftarUlang: link,
+            statusDaftarUlang: newStatus,
+            metodeBayarDaftarUlang: 'transfer'
+          };
+          setData(updated);
+          localStorage.setItem('spmb_session', JSON.stringify(updated));
+
+          Swal.fire({
+            icon: 'success',
+            title: 'Bukti Berhasil Diunggah!',
+            html: `
+              <p style="font-size: 13.5px; color: #475569; margin-bottom: 12px;">
+                Bukti pembayaran telah berhasil disimpan. Silakan klik tombol <b>WhatsApp Ibu Ida</b> untuk konfirmasi dan validasi nominal pembayaran.
+              </p>
+            `,
+            confirmButtonText: 'OK',
+            confirmButtonColor: '#059669'
+          });
+        } else {
+          Swal.fire('Gagal Menyimpan', patchJson.error || 'Terjadi kesalahan saat menyimpan bukti', 'error');
+        }
+      } else {
+        Swal.fire('Gagal Mengunggah', resJson.error || 'Gagal mengunggah berkas ke server', 'error');
+      }
+    } catch (err: any) {
+      Swal.fire('Error', 'Gagal memproses unggahan bukti: ' + err.message, 'error');
+    } finally {
+      setUploadingBukti(false);
+    }
+  };
+
+  const getWaIbuIdaUrl = () => {
+    if (!data) return '';
+    const cleanPhone = '6285708332179';
+    const text = encodeURIComponent(
+      `Assalamu'alaikum Ibu Ida (Panitia Pembayaran SPMB MTs Almaarif 01 Singosari).\n\n` +
+      `Saya wali dari calon santri:\n` +
+      `*Nama:* ${data.namaLengkap}\n` +
+      `*No. Pendaftaran:* ${data.nomorPendaftaran}\n` +
+      `*Jalur:* ${data.jalurPendaftaran || 'Reguler'}\n\n` +
+      `Saya telah melakukan pembayaran daftar ulang via transfer Bank BCA dan mengunggah bukti pembayaran di Portal Calon Siswa SPMB.\n\n` +
+      `Mohon bantuannya untuk memeriksa dan memvalidasi nominal pembayaran kami. Terima kasih.`
+    );
+    return `https://wa.me/${cleanPhone}?text=${text}`;
+  };
+
   if (loading) {
     return <LoadingScreen message="Memuat Portal Calon Siswa SPMB..." />;
   }
@@ -104,6 +205,21 @@ export default function SpmbPortalDashboard() {
   const statusVerifikasiKk = data.statusVerifikasi || 'menunggu';
   const statusVerifikasiRapor = data.statusVerifikasiRapor || 'menunggu';
   const statusKelulusan = data.statusKelulusan || 'proses';
+
+  const biayaStandar = data.biayaDaftarUlang !== undefined && data.biayaDaftarUlang !== '' ? Number(data.biayaDaftarUlang) : 4500000;
+  const potongan = Number(data.potonganDaftarUlang || 0);
+  const totalTagihan = Math.max(0, biayaStandar - potongan);
+  const nominalDibayar = Number(data.nominalDibayarDaftarUlang || 0);
+  const sisaTagihan = Math.max(0, totalTagihan - nominalDibayar);
+
+  let statusDaftarUlang = data.statusDaftarUlang || 'belum_bayar';
+  if (nominalDibayar >= totalTagihan && totalTagihan > 0) {
+    statusDaftarUlang = 'lunas';
+  } else if (nominalDibayar > 0) {
+    statusDaftarUlang = 'cicilan';
+  } else if (data.buktiDaftarUlang && nominalDibayar === 0) {
+    statusDaftarUlang = 'menunggu_verifikasi';
+  }
 
   const getWaUrl = (phone: string, namaPanitia: string, customTopic?: string) => {
     const cleanPhone = phone.replace(/\D/g, '').replace(/^0/, '62');
@@ -494,6 +610,347 @@ export default function SpmbPortalDashboard() {
           </div>
         </div>
 
+        {/* Card Informasi & Pembayaran Daftar Ulang */}
+        {(statusKelulusan === 'diterima' || nominalDibayar > 0 || data.buktiDaftarUlang) && (
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            padding: '24px',
+            border: `2px solid ${statusDaftarUlang === 'lunas' ? '#86efac' : statusDaftarUlang === 'cicilan' ? '#fde68a' : '#cbd5e1'}`,
+            marginBottom: '24px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)'
+          }}>
+            {/* Header Card */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '10px',
+                  background: statusDaftarUlang === 'lunas' ? '#dcfce7' : statusDaftarUlang === 'cicilan' ? '#fef3c7' : '#eff6ff',
+                  color: statusDaftarUlang === 'lunas' ? '#15803d' : statusDaftarUlang === 'cicilan' ? '#b45309' : '#0284c7',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.25rem'
+                }}>
+                  <i className="fas fa-money-check-alt"></i>
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
+                    Informasi &amp; Administrasi Daftar Ulang
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
+                    Pembayaran administrasi calon santri baru MTs Almaarif 01 Singosari
+                  </p>
+                </div>
+              </div>
+
+              {/* Status Badge */}
+              <div>
+                {statusDaftarUlang === 'lunas' && (
+                  <span style={{
+                    background: '#dcfce7',
+                    color: '#15803d',
+                    border: '1.5px solid #86efac',
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    fontSize: '12.5px',
+                    fontWeight: 800,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <i className="fas fa-check-circle"></i> STATUS: LUNAS
+                  </span>
+                )}
+                {statusDaftarUlang === 'cicilan' && (
+                  <span style={{
+                    background: '#fef3c7',
+                    color: '#b45309',
+                    border: '1.5px solid #fde68a',
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    fontSize: '12.5px',
+                    fontWeight: 800,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <i className="fas fa-clock"></i> CICILAN (Kurang Rp {sisaTagihan.toLocaleString('id-ID')})
+                  </span>
+                )}
+                {statusDaftarUlang === 'menunggu_verifikasi' && (
+                  <span style={{
+                    background: '#e0f2fe',
+                    color: '#0369a1',
+                    border: '1.5px solid #bae6fd',
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    fontSize: '12.5px',
+                    fontWeight: 800,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <i className="fas fa-hourglass-half"></i> Menunggu Verifikasi Panitia
+                  </span>
+                )}
+                {statusDaftarUlang === 'belum_bayar' && (
+                  <span style={{
+                    background: '#f1f5f9',
+                    color: '#475569',
+                    border: '1.5px solid #cbd5e1',
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    Belum Melakukan Pembayaran
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Financial Summary Grid */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+              gap: '12px',
+              marginBottom: '18px'
+            }}>
+              <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Biaya Standar:</div>
+                <div style={{ fontSize: '15px', fontWeight: 800, color: '#334155', marginTop: '2px' }}>
+                  Rp {biayaStandar.toLocaleString('id-ID')}
+                </div>
+              </div>
+
+              {potongan > 0 && (
+                <div style={{ background: '#ecfdf5', padding: '12px 14px', borderRadius: '10px', border: '1px solid #a7f3d0' }}>
+                  <div style={{ fontSize: '11px', color: '#047857', fontWeight: 600 }}>Potongan / Beasiswa:</div>
+                  <div style={{ fontSize: '15px', fontWeight: 800, color: '#047857', marginTop: '2px' }}>
+                    - Rp {potongan.toLocaleString('id-ID')}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ background: '#f0fdf4', padding: '12px 14px', borderRadius: '10px', border: '1px solid #86efac' }}>
+                <div style={{ fontSize: '11px', color: '#166534', fontWeight: 600 }}>Total Tagihan:</div>
+                <div style={{ fontSize: '15px', fontWeight: 900, color: '#166534', marginTop: '2px' }}>
+                  Rp {totalTagihan.toLocaleString('id-ID')}
+                </div>
+              </div>
+
+              <div style={{ background: '#eff6ff', padding: '12px 14px', borderRadius: '10px', border: '1px solid #bfdbfe' }}>
+                <div style={{ fontSize: '11px', color: '#1e40af', fontWeight: 600 }}>Telah Divalidasi:</div>
+                <div style={{ fontSize: '15px', fontWeight: 900, color: '#1d4ed8', marginTop: '2px' }}>
+                  Rp {nominalDibayar.toLocaleString('id-ID')}
+                </div>
+              </div>
+
+              <div style={{
+                background: sisaTagihan === 0 ? '#dcfce7' : '#fffbeb',
+                padding: '12px 14px',
+                borderRadius: '10px',
+                border: `1.5px solid ${sisaTagihan === 0 ? '#86efac' : '#fde68a'}`
+              }}>
+                <div style={{ fontSize: '11px', color: sisaTagihan === 0 ? '#15803d' : '#92400e', fontWeight: 600 }}>
+                  {sisaTagihan === 0 ? 'Kewajiban Tagihan:' : 'Sisa Tagihan (Kurang):'}
+                </div>
+                <div style={{ fontSize: '15px', fontWeight: 900, color: sisaTagihan === 0 ? '#15803d' : '#b45309', marginTop: '2px' }}>
+                  {sisaTagihan === 0 ? 'Rp 0 (LUNAS ✅)' : `Rp ${sisaTagihan.toLocaleString('id-ID')}`}
+                </div>
+              </div>
+            </div>
+
+            {/* Rekening & Panduan Pembayaran Section */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+              gap: '14px',
+              marginBottom: '20px'
+            }}>
+              {/* Opsi 1: Bank BCA */}
+              <div style={{
+                background: '#f8fafc',
+                border: '1.5px solid #cbd5e1',
+                borderRadius: '12px',
+                padding: '16px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <i className="fas fa-university" style={{ color: '#0284c7' }}></i>
+                  <strong style={{ fontSize: '13.5px', color: '#0f172a' }}>Pilihan 1: Transfer Bank BCA</strong>
+                </div>
+                <div style={{ fontSize: '12.5px', color: '#475569', lineHeight: 1.6 }}>
+                  <div>Bank: <b>Bank BCA</b></div>
+                  <div>Atas Nama: <b>MTS Almaarif 01 singosari</b></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+                    <span>No. Rekening: <b style={{ fontSize: '15px', color: '#0f172a', letterSpacing: '0.5px' }}>3680380359</b></span>
+                    <button
+                      type="button"
+                      onClick={copyRekeningBCA}
+                      style={{
+                        background: copiedRekening ? '#10b981' : '#e0f2fe',
+                        border: '1px solid',
+                        borderColor: copiedRekening ? '#059669' : '#bae6fd',
+                        color: copiedRekening ? 'white' : '#0369a1',
+                        padding: '3px 8px',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                    >
+                      <i className={`fas ${copiedRekening ? 'fa-check' : 'fa-copy'}`}></i>
+                      {copiedRekening ? 'Tersalin!' : 'Salin'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Opsi 2: Tunai di Madrasah */}
+              <div style={{
+                background: '#f8fafc',
+                border: '1.5px solid #cbd5e1',
+                borderRadius: '12px',
+                padding: '16px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <i className="fas fa-school" style={{ color: '#047857' }}></i>
+                  <strong style={{ fontSize: '13.5px', color: '#0f172a' }}>Pilihan 2: Tunai / Langsung</strong>
+                </div>
+                <div style={{ fontSize: '12.5px', color: '#475569', lineHeight: 1.6 }}>
+                  <div>Lokasi: <b>Sekretariat / Bendahara SPMB MTs Almaarif 01 Singosari</b></div>
+                  <div>Waktu: Hari kerja madrasah (Pukul 07.30 - 13.00 WIB)</div>
+                  <div style={{ marginTop: '4px', color: '#047857', fontWeight: 600 }}>
+                    <i className="fas fa-info-circle"></i> Dapat dibayar secara <b>Lunas</b> atau <b>Cicilan</b> langsung ke panitia madrasah.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Catatan Panitia jika ada */}
+            {data.catatanDaftarUlang && (
+              <div style={{
+                background: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                borderRadius: '10px',
+                padding: '12px 16px',
+                marginBottom: '16px',
+                fontSize: '13px',
+                color: '#1e40af'
+              }}>
+                <i className="fas fa-sticky-note" style={{ marginRight: '6px' }}></i>
+                <b>Catatan Panitia:</b> {data.catatanDaftarUlang}
+              </div>
+            )}
+
+            {/* Upload Bukti Pembayaran & Tombol WhatsApp Panitia */}
+            <div style={{
+              background: '#f8fafc',
+              border: '1px dashed #cbd5e1',
+              borderRadius: '12px',
+              padding: '16px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '14px'
+            }}>
+              <div>
+                <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0f172a' }}>
+                  <i className="fas fa-receipt" style={{ color: '#047857', marginRight: '6px' }}></i>
+                  {data.buktiDaftarUlang ? 'Bukti Pembayaran Terunggah' : 'Unggah Bukti Transfer (BCA)'}
+                </div>
+                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b' }}>
+                  {data.buktiDaftarUlang 
+                    ? 'Bukti telah tersimpan di sistem. Hubungi Ibu Ida via WhatsApp untuk konfirmasi dan pencatatan nominal valid.'
+                    : 'Setelah transfer BCA, unggah bukti pembayaran di sini lalu kirim konfirmasi WhatsApp ke Ibu Ida.'}
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                {data.buktiDaftarUlang && (
+                  <a
+                    href={data.buktiDaftarUlang}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      background: '#047857',
+                      color: 'white',
+                      padding: '9px 14px',
+                      borderRadius: '8px',
+                      fontSize: '12.5px',
+                      fontWeight: 700,
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <i className="fas fa-external-link-alt"></i> Lihat Bukti
+                  </a>
+                )}
+
+                <label style={{
+                  background: uploadingBukti ? '#94a3b8' : '#334155',
+                  color: 'white',
+                  padding: '9px 14px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  cursor: uploadingBukti ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <i className={`fas ${uploadingBukti ? 'fa-spinner fa-spin' : 'fa-upload'}`}></i>
+                  <span>{uploadingBukti ? 'Mengunggah...' : data.buktiDaftarUlang ? 'Ganti Bukti' : 'Unggah Bukti Transfer'}</span>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    disabled={uploadingBukti}
+                    onChange={handleUploadBuktiDaftarUlang}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+
+                {/* Tombol WhatsApp ke Ibu Ida */}
+                <a
+                  href={getWaIbuIdaUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    background: '#22c55e',
+                    color: 'white',
+                    padding: '9px 16px',
+                    borderRadius: '8px',
+                    fontSize: '12.5px',
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 2px 6px rgba(34, 197, 94, 0.3)'
+                  }}
+                  title="Kirim konfirmasi pembayaran ke Ibu Ida via WhatsApp"
+                >
+                  <i className="fab fa-whatsapp" style={{ fontSize: '15px' }}></i>
+                  <span>WA Panitia Pembayaran (Ibu Ida)</span>
+                </a>
+              </div>
+            </div>
+
+          </div>
+        )}
+
         {/* Timeline Tahapan Seleksi Card */}
         <div style={{
           background: 'white',
@@ -723,6 +1180,74 @@ export default function SpmbPortalDashboard() {
               </div>
             </div>
 
+            {/* Step 6: Daftar Ulang & Administrasi Madrasah */}
+            <div style={{ display: 'flex', gap: '16px' }}>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                background: statusDaftarUlang === 'lunas' ? '#dcfce7' : statusDaftarUlang === 'cicilan' ? '#fef3c7' : statusDaftarUlang === 'menunggu_verifikasi' ? '#e0f2fe' : '#f1f5f9',
+                color: statusDaftarUlang === 'lunas' ? '#16a34a' : statusDaftarUlang === 'cicilan' ? '#d97706' : statusDaftarUlang === 'menunggu_verifikasi' ? '#0284c7' : '#94a3b8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 800,
+                fontSize: '15px',
+                flexShrink: 0
+              }}>
+                <i className={statusDaftarUlang === 'lunas' ? 'fas fa-check-double' : statusDaftarUlang === 'cicilan' ? 'fas fa-clock' : statusDaftarUlang === 'menunggu_verifikasi' ? 'fas fa-hourglass-half' : 'fas fa-wallet'}></i>
+              </div>
+              <div style={{ flex: 1, paddingTop: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <h4 style={{ margin: 0, fontSize: '14.5px', fontWeight: 700, color: '#0f172a' }}>
+                    6. Daftar Ulang &amp; Administrasi Madrasah
+                  </h4>
+                  {statusDaftarUlang === 'lunas' && (
+                    <span style={{ background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
+                      ✅ Lunas
+                    </span>
+                  )}
+                  {statusDaftarUlang === 'cicilan' && (
+                    <span style={{ background: '#fef3c7', color: '#b45309', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
+                      ⏳ Cicilan (Kurang Rp {sisaTagihan.toLocaleString('id-ID')})
+                    </span>
+                  )}
+                  {statusDaftarUlang === 'menunggu_verifikasi' && (
+                    <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
+                      📄 Menunggu Verifikasi Panitia
+                    </span>
+                  )}
+                  {statusDaftarUlang === 'belum_bayar' && (
+                    <span style={{ background: '#f1f5f9', color: '#64748b', padding: '2px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: 700 }}>
+                      Belum Daftar Ulang
+                    </span>
+                  )}
+                </div>
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b', lineHeight: 1.5 }}>
+                  {statusDaftarUlang === 'lunas' && (
+                    <span style={{ color: '#166534', fontWeight: 600 }}>
+                      Alhamdulillah, administrasi daftar ulang Anda telah LUNAS tervalidasi sebesar Rp {nominalDibayar.toLocaleString('id-ID')}.
+                    </span>
+                  )}
+                  {statusDaftarUlang === 'cicilan' && (
+                    <span style={{ color: '#b45309', fontWeight: 600 }}>
+                      Telah dibayar cicilan: Rp {nominalDibayar.toLocaleString('id-ID')} &bull; Sisa kekurangan: Rp {sisaTagihan.toLocaleString('id-ID')}.
+                    </span>
+                  )}
+                  {statusDaftarUlang === 'menunggu_verifikasi' && (
+                    <span style={{ color: '#0284c7', fontWeight: 600 }}>
+                      Bukti transfer telah diunggah. Silakan hubungi Ibu Ida (0857-0833-2179) untuk validasi nominal pembayaran.
+                    </span>
+                  )}
+                  {statusDaftarUlang === 'belum_bayar' && (
+                    statusKelulusan === 'diterima'
+                      ? 'Biaya daftar ulang sebesar Rp 4.500.000 (bisa lunas atau dicicil) dapat dibayar via transfer Bank BCA 3680380359 a.n MTS Almaarif 01 singosari atau tunai langsung ke madrasah.'
+                      : 'Biaya daftar ulang sejumlah Rp 4.500.000 (dapat dibayar lunas atau dicicil via Bank BCA 3680380359 atau langsung ke madrasah). Tahapan ini aktif setelah kelulusan.'
+                  )}
+                </p>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -937,6 +1462,49 @@ export default function SpmbPortalDashboard() {
               </div>
               <div style={{ fontSize: '12px', color: '#64748b' }}>
                 0856-5973-5348 (Chat WhatsApp)
+              </div>
+            </div>
+          </a>
+
+          {/* Card Bantuan Panitia Pembayaran WA: Ibu Ida */}
+          <a
+            href={getWaIbuIdaUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              padding: '20px',
+              border: '1.5px solid #bbf7d0',
+              textDecoration: 'none',
+              color: 'inherit',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.03)',
+              transition: 'all 0.2s'
+            }}
+          >
+            <div style={{
+              width: '50px',
+              height: '50px',
+              borderRadius: '12px',
+              background: '#059669',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.5rem',
+              flexShrink: 0
+            }}>
+              <i className="fab fa-whatsapp"></i>
+            </div>
+            <div>
+              <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#065f46', marginBottom: '2px' }}>
+                Panitia Pembayaran: Ibu Ida
+              </div>
+              <div style={{ fontSize: '12px', color: '#64748b' }}>
+                0857-0833-2179 (Konfirmasi Daftar Ulang)
               </div>
             </div>
           </a>

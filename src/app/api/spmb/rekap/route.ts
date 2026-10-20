@@ -34,7 +34,15 @@ export async function GET() {
         statusVerifikasiRapor: row.get('status_verifikasi_rapor') || 'menunggu',
         catatanVerifikasiRapor: row.get('catatan_verifikasi_rapor') || '',
         statusKelulusan: row.get('status_kelulusan') || 'proses',
-        jadwalTes: row.get('jadwal_tes') || ''
+        jadwalTes: row.get('jadwal_tes') || '',
+        biayaDaftarUlang: r.metadata?.['biaya_daftar_ulang'] !== undefined && r.metadata?.['biaya_daftar_ulang'] !== '' ? Number(r.metadata['biaya_daftar_ulang']) : 4500000,
+        potonganDaftarUlang: Number(r.metadata?.['potongan_daftar_ulang'] || 0),
+        nominalDibayarDaftarUlang: Number(r.metadata?.['nominal_dibayar_daftar_ulang'] || 0),
+        statusDaftarUlang: r.metadata?.['status_daftar_ulang'] || 'belum_bayar',
+        buktiDaftarUlang: r.metadata?.['bukti_daftar_ulang'] || '',
+        catatanDaftarUlang: r.metadata?.['catatan_daftar_ulang'] || '',
+        metodeBayarDaftarUlang: r.metadata?.['metode_bayar_daftar_ulang'] || '',
+        tglBayarDaftarUlang: r.metadata?.['tgl_bayar_daftar_ulang'] || ''
       };
     }).filter((item: any) => item.namaLengkap !== ''); // filter out empty rows
 
