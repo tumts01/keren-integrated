@@ -1432,7 +1432,7 @@ export default function RekapSpmb() {
                     style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}
                     title="Klik untuk mengubah urutan waktu pendaftaran (terbaru/terlama)"
                   >
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'flex-start' }}>
                       <span>Waktu Daftar</span>
                       {(sortOrder === 'terbaru' || sortOrder === 'terlama') && (
                         <span style={{
@@ -1444,7 +1444,7 @@ export default function RekapSpmb() {
                           border: '1px solid #a7f3d0',
                           borderRadius: '4px',
                           padding: '1px 6px',
-                          fontSize: '11px',
+                          fontSize: '10.5px',
                           fontWeight: 700
                         }}>
                           <i className={`fas fa-sort-amount-${sortOrder === 'terlama' ? 'up' : 'down'}`} style={{ marginRight: '4px' }}></i>
