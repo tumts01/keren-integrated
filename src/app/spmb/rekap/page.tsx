@@ -1185,7 +1185,7 @@ export default function RekapSpmb() {
             >
               <option value="semua">Semua Daftar Ulang</option>
               <option value="lunas">✅ Lunas</option>
-              <option value="cicilan">⏳ Cicilan</option>
+              <option value="cicilan">⏳ Cicilan / Titipan</option>
               <option value="menunggu_verifikasi">📄 Menunggu Verifikasi</option>
               <option value="belum_bayar">⚪ Belum Bayar</option>
             </select>
@@ -1760,7 +1760,7 @@ export default function RekapSpmb() {
                                 border: '1px solid #fde68a',
                                 width: 'fit-content'
                               }}>
-                                <i className="fas fa-clock"></i> CICILAN
+                                <i className="fas fa-clock"></i> CICILAN / TITIPAN
                               </span>
                             )}
                             {st === 'menunggu_verifikasi' && (

@@ -168,7 +168,7 @@ export default function ModalDaftarUlang({
     const cleanPhone = rawPhone.replace(/\D/g, '').replace(/^0/, '62');
     const statusMsg = calculatedStatus === 'lunas'
       ? `Telah LUNAS sepenuhnya (Rp ${formatRupiah(nominalDibayar)}).`
-      : `Telah tercatat CICILAN sebesar Rp ${formatRupiah(nominalDibayar)} (Sisa tagihan: Rp ${formatRupiah(sisaTagihan)}).`;
+      : `Telah tercatat TITIPAN / CICILAN sebesar Rp ${formatRupiah(nominalDibayar)} (Sisa tagihan: Rp ${formatRupiah(sisaTagihan)}).`;
 
     const text = encodeURIComponent(
       `Assalamu'alaikum Warahmatullahi Wabarakatuh.\n\n` +
@@ -418,6 +418,38 @@ export default function ModalDaftarUlang({
                 </button>
                 <button
                   type="button"
+                  onClick={() => setNominalDibayar(500000)}
+                  style={{
+                    background: '#fef3c7',
+                    border: '1px solid #fde68a',
+                    color: '#b45309',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Titip 500 Rb
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNominalDibayar(1000000)}
+                  style={{
+                    background: '#fef3c7',
+                    border: '1px solid #fde68a',
+                    color: '#b45309',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Titip 1 Jt
+                </button>
+                <button
+                  type="button"
                   onClick={() => setNominalDibayar(1500000)}
                   style={{
                     background: '#fef3c7',
@@ -431,6 +463,22 @@ export default function ModalDaftarUlang({
                   }}
                 >
                   Cicilan 1,5 Jt
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNominalDibayar(2000000)}
+                  style={{
+                    background: '#fef3c7',
+                    border: '1px solid #fde68a',
+                    color: '#b45309',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Cicilan 2 Jt
                 </button>
                 <button
                   type="button"
@@ -505,7 +553,7 @@ export default function ModalDaftarUlang({
                 )}
                 {calculatedStatus === 'cicilan' && (
                   <span style={{ background: '#d97706', color: 'white', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 800 }}>
-                    ⏳ CICILAN
+                    ⏳ CICILAN / TITIPAN
                   </span>
                 )}
                 {calculatedStatus === 'menunggu_verifikasi' && (

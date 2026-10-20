@@ -611,109 +611,128 @@ export default function SpmbPortalDashboard() {
         </div>
 
         {/* Card Informasi & Pembayaran Daftar Ulang */}
-        {(statusKelulusan === 'diterima' || nominalDibayar > 0 || data.buktiDaftarUlang) && (
-          <div style={{
-            background: 'white',
-            borderRadius: '16px',
-            padding: '24px',
-            border: `2px solid ${statusDaftarUlang === 'lunas' ? '#86efac' : statusDaftarUlang === 'cicilan' ? '#fde68a' : '#cbd5e1'}`,
-            marginBottom: '24px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)'
-          }}>
-            {/* Header Card */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '18px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '10px',
-                  background: statusDaftarUlang === 'lunas' ? '#dcfce7' : statusDaftarUlang === 'cicilan' ? '#fef3c7' : '#eff6ff',
-                  color: statusDaftarUlang === 'lunas' ? '#15803d' : statusDaftarUlang === 'cicilan' ? '#b45309' : '#0284c7',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '1.25rem'
-                }}>
-                  <i className="fas fa-money-check-alt"></i>
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
-                    Informasi &amp; Administrasi Daftar Ulang
-                  </h3>
-                  <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
-                    Pembayaran administrasi calon santri baru MTs Almaarif 01 Singosari
-                  </p>
-                </div>
+        <div style={{
+          background: 'white',
+          borderRadius: '16px',
+          padding: '24px',
+          border: `2px solid ${statusDaftarUlang === 'lunas' ? '#86efac' : statusDaftarUlang === 'cicilan' ? '#fde68a' : '#cbd5e1'}`,
+          marginBottom: '24px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)'
+        }}>
+          {/* Header Card */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '10px',
+                background: statusDaftarUlang === 'lunas' ? '#dcfce7' : statusDaftarUlang === 'cicilan' ? '#fef3c7' : '#eff6ff',
+                color: statusDaftarUlang === 'lunas' ? '#15803d' : statusDaftarUlang === 'cicilan' ? '#b45309' : '#0284c7',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.25rem'
+              }}>
+                <i className="fas fa-money-check-alt"></i>
               </div>
-
-              {/* Status Badge */}
               <div>
-                {statusDaftarUlang === 'lunas' && (
-                  <span style={{
-                    background: '#dcfce7',
-                    color: '#15803d',
-                    border: '1.5px solid #86efac',
-                    padding: '6px 14px',
-                    borderRadius: '20px',
-                    fontSize: '12.5px',
-                    fontWeight: 800,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}>
-                    <i className="fas fa-check-circle"></i> STATUS: LUNAS
-                  </span>
-                )}
-                {statusDaftarUlang === 'cicilan' && (
-                  <span style={{
-                    background: '#fef3c7',
-                    color: '#b45309',
-                    border: '1.5px solid #fde68a',
-                    padding: '6px 14px',
-                    borderRadius: '20px',
-                    fontSize: '12.5px',
-                    fontWeight: 800,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}>
-                    <i className="fas fa-clock"></i> CICILAN (Kurang Rp {sisaTagihan.toLocaleString('id-ID')})
-                  </span>
-                )}
-                {statusDaftarUlang === 'menunggu_verifikasi' && (
-                  <span style={{
-                    background: '#e0f2fe',
-                    color: '#0369a1',
-                    border: '1.5px solid #bae6fd',
-                    padding: '6px 14px',
-                    borderRadius: '20px',
-                    fontSize: '12.5px',
-                    fontWeight: 800,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}>
-                    <i className="fas fa-hourglass-half"></i> Menunggu Verifikasi Panitia
-                  </span>
-                )}
-                {statusDaftarUlang === 'belum_bayar' && (
-                  <span style={{
-                    background: '#f1f5f9',
-                    color: '#475569',
-                    border: '1.5px solid #cbd5e1',
-                    padding: '6px 14px',
-                    borderRadius: '20px',
-                    fontSize: '12.5px',
-                    fontWeight: 700,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px'
-                  }}>
-                    Belum Melakukan Pembayaran
-                  </span>
-                )}
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
+                  Informasi &amp; Administrasi Daftar Ulang
+                </h3>
+                <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>
+                  Pembayaran administrasi calon santri baru MTs Almaarif 01 Singosari
+                </p>
               </div>
             </div>
+
+            {/* Status Badge */}
+            <div>
+              {statusDaftarUlang === 'lunas' && (
+                <span style={{
+                  background: '#dcfce7',
+                  color: '#15803d',
+                  border: '1.5px solid #86efac',
+                  padding: '6px 14px',
+                  borderRadius: '20px',
+                  fontSize: '12.5px',
+                  fontWeight: 800,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <i className="fas fa-check-circle"></i> STATUS: LUNAS
+                </span>
+              )}
+              {statusDaftarUlang === 'cicilan' && (
+                <span style={{
+                  background: '#fef3c7',
+                  color: '#b45309',
+                  border: '1.5px solid #fde68a',
+                  padding: '6px 14px',
+                  borderRadius: '20px',
+                  fontSize: '12.5px',
+                  fontWeight: 800,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <i className="fas fa-clock"></i> CICILAN / TITIPAN (Kurang Rp {sisaTagihan.toLocaleString('id-ID')})
+                </span>
+              )}
+              {statusDaftarUlang === 'menunggu_verifikasi' && (
+                <span style={{
+                  background: '#e0f2fe',
+                  color: '#0369a1',
+                  border: '1.5px solid #bae6fd',
+                  padding: '6px 14px',
+                  borderRadius: '20px',
+                  fontSize: '12.5px',
+                  fontWeight: 800,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <i className="fas fa-hourglass-half"></i> Menunggu Verifikasi Panitia
+                </span>
+              )}
+              {statusDaftarUlang === 'belum_bayar' && (
+                <span style={{
+                  background: '#f1f5f9',
+                  color: '#475569',
+                  border: '1.5px solid #cbd5e1',
+                  padding: '6px 14px',
+                  borderRadius: '20px',
+                  fontSize: '12.5px',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  Belum Melakukan Pembayaran
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Banner Informasi: Titipan seadanya / tidak harus menunggu kelulusan */}
+          <div style={{
+            background: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            marginBottom: '18px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px',
+            fontSize: '13px',
+            color: '#166534',
+            lineHeight: 1.5
+          }}>
+            <i className="fas fa-info-circle" style={{ fontSize: '18px', color: '#16a34a', marginTop: '2px', flexShrink: 0 }}></i>
+            <div>
+              <strong>Bisa Dicicil / Titip Seadanya Terlebih Dahulu:</strong> Pembayaran daftar ulang <b>tidak harus menunggu pengumuman kelulusan</b>. Orang tua/wali calon santri dapat menitipkan biaya administrasi terlebih dahulu seadanya (misal DP/cicilan bertahap Rp 500.000, Rp 1.000.000, Rp 1.500.000, dst.) atau langsung melunasinya, baik melalui transfer Bank BCA maupun tunai langsung di madrasah.
+            </div>
+          </div>
 
             {/* Financial Summary Grid */}
             <div style={{
@@ -949,7 +968,6 @@ export default function SpmbPortalDashboard() {
             </div>
 
           </div>
-        )}
 
         {/* Timeline Tahapan Seleksi Card */}
         <div style={{
@@ -1231,7 +1249,7 @@ export default function SpmbPortalDashboard() {
                   )}
                   {statusDaftarUlang === 'cicilan' && (
                     <span style={{ color: '#b45309', fontWeight: 600 }}>
-                      Telah dibayar cicilan: Rp {nominalDibayar.toLocaleString('id-ID')} &bull; Sisa kekurangan: Rp {sisaTagihan.toLocaleString('id-ID')}.
+                      Telah dibayar cicilan/titipan: Rp {nominalDibayar.toLocaleString('id-ID')} &bull; Sisa kekurangan: Rp {sisaTagihan.toLocaleString('id-ID')}. Sisa dapat dicicil/dititipkan kembali kapan saja.
                     </span>
                   )}
                   {statusDaftarUlang === 'menunggu_verifikasi' && (
@@ -1240,9 +1258,7 @@ export default function SpmbPortalDashboard() {
                     </span>
                   )}
                   {statusDaftarUlang === 'belum_bayar' && (
-                    statusKelulusan === 'diterima'
-                      ? 'Biaya daftar ulang sebesar Rp 4.500.000 (bisa lunas atau dicicil) dapat dibayar via transfer Bank BCA 3680380359 a.n MTS Almaarif 01 singosari atau tunai langsung ke madrasah.'
-                      : 'Biaya daftar ulang sejumlah Rp 4.500.000 (dapat dibayar lunas atau dicicil via Bank BCA 3680380359 atau langsung ke madrasah). Tahapan ini aktif setelah kelulusan.'
+                    'Biaya daftar ulang sejumlah Rp 4.500.000 dapat dibayarkan kapan saja tanpa harus menunggu pengumuman kelulusan (bisa dicicil / titip seadanya atau langsung dilunasi) melalui transfer Bank BCA 3680380359 a.n MTS Almaarif 01 singosari atau tunai langsung ke bendahara madrasah.'
                   )}
                 </p>
               </div>
