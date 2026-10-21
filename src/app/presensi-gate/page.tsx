@@ -132,13 +132,27 @@ export default function PresensiGatePage() {
 
         // Sinkronkan riwayat tap hari ini ke memori lokal untuk deteksi masuk/pulang 0ms
         const taps: Record<string, { jamMasuk: string; jamPulang: string | null; statusMasuk: string }> = {};
+        // 1. Masukkan data presensi GTK dari menu Absensi GTK (HP/Web) agar jika pagi absen di menu Absensi GTK,
+        //    sore tap di gerbang langsung terdeteksi sebagai PULANG
+        if (json.gtkTaps && typeof json.gtkTaps === 'object') {
+          for (const [gtkKey, val] of Object.entries(json.gtkTaps as Record<string, any>)) {
+            if (gtkKey && val?.jamMasuk) {
+              taps[gtkKey] = {
+                jamMasuk: val.jamMasuk,
+                jamPulang: val.jamPulang || null,
+                statusMasuk: val.statusMasuk || 'Tepat Waktu'
+              };
+            }
+          }
+        }
+        // 2. Masukkan/gabungkan data dari feed gerbang
         for (const item of list) {
           const key = (item.nama || '').trim().toLowerCase();
           if (key) {
             taps[key] = {
-              jamMasuk: item.jamMasuk || '',
-              jamPulang: item.jamPulang || null,
-              statusMasuk: item.statusMasuk || 'Tepat Waktu'
+              jamMasuk: item.jamMasuk || taps[key]?.jamMasuk || '',
+              jamPulang: item.jamPulang || taps[key]?.jamPulang || null,
+              statusMasuk: item.statusMasuk || taps[key]?.statusMasuk || 'Tepat Waktu'
             };
           }
         }
@@ -321,9 +335,27 @@ export default function PresensiGatePage() {
           const hadPulangBefore = Boolean(prevTap.jamPulang);
           recentTapsRef.current[personKey] = { jamMasuk, jamPulang, statusMasuk };
 
-          setHistoryList(prev => prev.map(x => 
-            (x.nama || '').toLowerCase() === personKey ? { ...x, jamPulang: jam } : x
-          ));
+          setHistoryList(prev => {
+            const existsInFeed = prev.some(x => (x.nama || '').toLowerCase() === personKey);
+            if (existsInFeed) {
+              return prev.map(x =>
+                (x.nama || '').toLowerCase() === personKey ? { ...x, jamPulang: jam } : x
+              );
+            }
+            const newPulangFeedItem: PresensiItem = {
+              id: Date.now(),
+              tanggal,
+              kelas: isGuru ? 'GTK' : matched.kelas,
+              nisn: matched.nisn || '-',
+              nama: matched.nama,
+              kehadiran: 'H',
+              jamMasuk,
+              jamPulang: jam,
+              statusMasuk,
+              sumber: 'GATE'
+            };
+            return [newPulangFeedItem, ...prev];
+          });
           if (!hadPulangBefore) {
             setStats(prev => ({ ...prev, sudahPulang: prev.sudahPulang + 1 }));
           }
@@ -352,7 +384,18 @@ export default function PresensiGatePage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ code, mode: scanMode, preMatched: matched })
-        }).catch(err => console.error('Background sync gate error:', err));
+        })
+          .then(r => r.json())
+          .then(srvJson => {
+            // Jika status di server berbeda dengan prediksi memori lokal (misal baru saja absen di HP <10 detik lalu),
+            // otomatis sesuaikan tampilan & suara dengan status sebenarnya dari server
+            if (srvJson?.success && srvJson.actionType && srvJson.actionType !== actionType) {
+              setLastScan(srvJson);
+              announceScanResult(srvJson.actionType, srvJson.data, srvJson.isGuru);
+              fetchGateData();
+            }
+          })
+          .catch(err => console.error('Background sync gate error:', err));
       }
 
       return;

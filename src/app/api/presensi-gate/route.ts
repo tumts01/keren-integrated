@@ -131,21 +131,33 @@ export async function GET(request: Request) {
     }
 
     const filterTanggal = searchParams.get('tanggal') || tanggal;
+    const [yyyyPart, mmPart, ddPart] = filterTanggal.split('-');
+    const filterTanggalIndo = ddPart && mmPart && yyyyPart ? `${ddPart}/${mmPart}/${yyyyPart}` : '';
 
-    // Ambil semua presensi siswa hari ini dari data_presensi_siswa
-    const { data: rows, error } = await supabase
-      .from('data_presensi_siswa')
-      .select('*')
-      .eq('tanggal', filterTanggal)
-      .order('id', { ascending: false });
+    // Ambil semua presensi siswa/gate hari ini DAN absen_gtk hari ini secara paralel
+    const [presensiRes, gtkAbsenRes] = await Promise.all([
+      supabase
+        .from('data_presensi_siswa')
+        .select('*')
+        .eq('tanggal', filterTanggal)
+        .order('id', { ascending: false }),
+      filterTanggalIndo
+        ? supabase
+            .from('absen_gtk')
+            .select('id, nama, tanggal, metadata')
+            .eq('tanggal', filterTanggalIndo)
+        : Promise.resolve({ data: [], error: null })
+    ]);
 
-    if (error) throw error;
+    if (presensiRes.error) throw presensiRes.error;
+    const rows = presensiRes.data || [];
+    const gtkRows = gtkAbsenRes.data || [];
 
-    // Hanya ambil siswa yang tercatat tap di gerbang (memiliki jam masuk atau sumber GATE)
-    const list = (rows || [])
+    // Hanya ambil siswa/guru yang tercatat tap di gerbang (memiliki jam masuk, jam pulang, atau sumber GATE)
+    const list = rows
       .filter((r: any) => {
         const meta = r.metadata || {};
-        return Boolean(meta['JAM_MASUK'] || meta['JAM MASUK'] || meta['SUMBER'] === 'GATE');
+        return Boolean(meta['JAM_MASUK'] || meta['JAM MASUK'] || meta['JAM_PULANG'] || meta['SUMBER'] === 'GATE');
       })
       .map((r: any) => ({
         id: r.id,
@@ -159,6 +171,21 @@ export async function GET(request: Request) {
         statusMasuk: r.metadata?.['STATUS_MASUK'] || 'Tepat Waktu',
         sumber: r.metadata?.['SUMBER'] || 'GATE'
       }));
+
+    // Peta status presensi GTK hari ini (termasuk yang absen pagi lewat Menu Absensi GTK)
+    const gtkTaps: Record<string, { jamMasuk: string; jamPulang: string | null; statusMasuk: string }> = {};
+    for (const g of gtkRows) {
+      const gNama = String(g.nama || g.metadata?.['Nama'] || '').trim();
+      const gMasuk = String(g.metadata?.['jam_masuk'] || '').trim();
+      const gPulang = String(g.metadata?.['jam_pulang'] || '').trim();
+      if (gNama && gMasuk) {
+        gtkTaps[gNama.toLowerCase()] = {
+          jamMasuk: gMasuk,
+          jamPulang: gPulang || null,
+          statusMasuk: 'Tepat Waktu'
+        };
+      }
+    }
 
     // Hitung counter
     let totalHadir = list.length;
@@ -175,7 +202,8 @@ export async function GET(request: Request) {
         terlambat,
         sudahPulang
       },
-      data: list
+      data: list,
+      gtkTaps
     });
 
   } catch (error: any) {
@@ -360,7 +388,7 @@ export async function POST(req: Request) {
 
       // JIKA SUDAH CHECK-IN: CEK COOLDOWN
       if (existingJamMasuk && !existingJamPulang) {
-        const [hMasuk, mMasuk] = existingJamMasuk.split('.').map(Number);
+        const [hMasuk, mMasuk] = existingJamMasuk.replace(':', '.').split('.').map(Number);
         const [hNow, mNow] = jamShort.split('.').map(Number);
         const diffMenit = ((hNow * 60) + mNow) - ((hMasuk * 60) + mMasuk);
 
@@ -405,6 +433,26 @@ export async function POST(req: Request) {
             'STATUS_PULANG': 'Pulang'
           }
         }).eq('id', matchedGateFeed.id);
+      } else {
+        // Jika pagi absen datang lewat menu Absensi GTK lalu sore tap pulang di Gerbang,
+        // tambahkan juga ke feed gerbang agar riwayatnya sinkron
+        const gateMeta = {
+          'NISN': matchedGuru.nisn || '-',
+          'NAMA SISWA': matchedGuru.nama,
+          'KELAS': 'GTK',
+          'KEHADIRAN': 'H',
+          'TANGGAL': tanggal,
+          'JAM_MASUK': existingJamMasuk,
+          'JAM_PULANG': jam,
+          'STATUS_MASUK': 'Tepat Waktu',
+          'STATUS_PULANG': 'Pulang',
+          'SUMBER': 'GATE'
+        };
+        await supabase.from('data_presensi_siswa').insert({
+          tanggal,
+          kelas: 'GTK',
+          metadata: gateMeta
+        });
       }
 
       return NextResponse.json({
