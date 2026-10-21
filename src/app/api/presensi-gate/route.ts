@@ -23,11 +23,113 @@ function getWibDateTime() {
   return { tanggal, jam, wibDate: wib };
 }
 
-// GET: Ambil ringkasan dan riwayat tap gate hari ini
+// Helper format objek siswa dari row data_induk
+function formatStudentFromRow(s: any, overrideRfid?: string) {
+  const meta = s.metadata || {};
+  let rombel = String(meta['ROMBEL KELAS 9'] || '').trim();
+  if (!rombel) rombel = String(meta['ROMBEL KELAS 8'] || '').trim();
+  if (!rombel) rombel = String(meta['ROMBEL KELAS 7'] || '').trim();
+  if (!rombel) rombel = String(meta['ROMBEL'] || '').trim();
+
+  let foto = meta['LINK FOTO TERBARU'] || meta['LINK URL FOTO 1'] || '';
+  if (foto.includes('drive.google.com')) {
+    const match = foto.match(/\/d\/([a-zA-Z0-9_-]+)/) || foto.match(/id=([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      foto = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w400-h400`;
+    }
+  }
+
+  return {
+    id: s.id,
+    nama: meta['NAMA'] || s.nama || '',
+    nisn: String(meta['NISN'] || '').trim(),
+    nis: String(meta['ID SISWA'] || s.id_siswa || '').trim(),
+    kelas: rombel || 'Kelas ?',
+    foto,
+    role: 'SISWA',
+    rfidUid: overrideRfid ?? String(meta['RFID_UID'] || meta['NO_RFID'] || '').trim()
+  };
+}
+
+// GET: Ambil ringkasan dan riwayat tap gate hari ini (atau kamus kartu untuk in-memory cache Kiosk)
 export async function GET(request: Request) {
   try {
     const { tanggal } = getWibDateTime();
     const { searchParams } = new URL(request.url);
+    const directoryMode = searchParams.get('directory'); // 'rfid' | 'full'
+
+    // Mode Khusus Preload Kamus Kartu di Browser Kiosk (0ms Instant Tap)
+    if (directoryMode === 'rfid' || directoryMode === 'full') {
+      const [rfidRes, guruRes, usersRes] = await Promise.all([
+        supabase
+          .from('data_induk')
+          .select('id, id_siswa, nama, metadata')
+          .not('metadata->>RFID_UID', 'is', null),
+        supabase
+          .from('data_guru')
+          .select('id, nama, nomor_induk, metadata'),
+        supabase
+          .from('data_users')
+          .select('nama, metadata')
+      ]);
+
+      const userPhotos: Record<string, string> = {};
+      (usersRes.data || []).forEach((u: any) => {
+        const uNama = (u.nama || '').trim().toLowerCase();
+        let uFoto = u.metadata?.['Foto'] || u.metadata?.['foto'] || '';
+        if (uNama && uFoto) {
+          if (uFoto.includes('drive.google.com')) {
+            const m = uFoto.match(/\/d\/([a-zA-Z0-9_-]+)/) || uFoto.match(/id=([a-zA-Z0-9_-]+)/);
+            if (m && m[1]) uFoto = `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400-h400`;
+          }
+          userPhotos[uNama] = uFoto;
+        }
+      });
+
+      const items: any[] = [];
+      const seenStudentIds = new Set<number>();
+
+      // Masukkan semua siswa yang sudah punya RFID (sangat cepat)
+      (rfidRes.data || []).forEach((s: any) => {
+        seenStudentIds.add(s.id);
+        items.push(formatStudentFromRow(s));
+      });
+
+      // Jika full directory diminta, masukkan juga siswa aktif lainnya (untuk scan barcode NISN/NIS)
+      if (directoryMode === 'full') {
+        const allStudents = await getAllCachedDataInduk();
+        for (const s of allStudents) {
+          if (seenStudentIds.has(s.id)) continue;
+          const item = formatStudentFromRow(s);
+          if (item.nama && (item.nisn || item.nis || item.rfidUid)) {
+            items.push(item);
+          }
+        }
+      }
+
+      // Masukkan semua Guru / GTK
+      (guruRes.data || []).forEach((g: any) => {
+        const meta = g.metadata || {};
+        const gRfid = String(meta['RFID_UID'] || meta['NO_RFID'] || '').trim();
+        const gNip = String(g.nomor_induk || meta['NIP'] || '').trim();
+        const gPegId = String(meta['PEG ID'] || meta['PegID'] || '').trim();
+        const gNama = (g.nama || '').trim();
+        items.push({
+          id: g.id,
+          nama: gNama,
+          nisn: gNip || gPegId || '-',
+          nis: gPegId,
+          nip: gNip,
+          kelas: 'GURU / GTK',
+          foto: userPhotos[gNama.toLowerCase()] || '',
+          role: 'GURU',
+          rfidUid: gRfid
+        });
+      });
+
+      return NextResponse.json({ success: true, directory: items });
+    }
+
     const filterTanggal = searchParams.get('tanggal') || tanggal;
 
     // Ambil semua presensi siswa hari ini dari data_presensi_siswa
@@ -86,7 +188,7 @@ export async function GET(request: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { code, mode = 'auto' } = body; // code = RFID UID, NISN, atau ID SISWA
+    const { code, mode = 'auto', preMatched } = body; // code = RFID UID, NISN, atau ID SISWA
 
     if (!code || !String(code).trim()) {
       return NextResponse.json({ success: false, error: 'Kode scan / RFID tidak boleh kosong' }, { status: 400 });
@@ -95,92 +197,34 @@ export async function POST(req: Request) {
     const cleanCode = String(code).trim().replace(/^0+/, '');
     const rawCleanCode = String(code).trim();
 
-    // 1. Cari siswa di data_induk
-    const allStudents = await getAllCachedDataInduk();
-    
     let matchedStudent: any = null;
+    let matchedGuru: any = null;
 
-    for (const s of allStudents) {
-      const meta = s.metadata || {};
-      const sNisn = String(meta['NISN'] || '').trim().replace(/^0+/, '');
-      const sIdSiswa = String(meta['ID SISWA'] || s.id_siswa || '').trim().replace(/^0+/, '');
-      const sRfid = String(meta['RFID_UID'] || meta['NO_RFID'] || '').trim();
-
-      // Cocokkan dengan RFID UID, NISN, atau ID Siswa
-      if (
-        (sRfid && sRfid.toLowerCase() === rawCleanCode.toLowerCase()) ||
-        (sNisn && sNisn === cleanCode) ||
-        (sIdSiswa && sIdSiswa === cleanCode) ||
-        (rawCleanCode === String(meta['NISN'] || '').trim())
-      ) {
-        // Tentukan kelas aktif
-        let rombel = (meta['ROMBEL KELAS 9'] || '').trim();
-        if (!rombel) rombel = (meta['ROMBEL KELAS 8'] || '').trim();
-        if (!rombel) rombel = (meta['ROMBEL KELAS 7'] || '').trim();
-        if (!rombel) rombel = (meta['ROMBEL'] || '').trim();
-
-        // Helper thumb foto
-        let foto = meta['LINK FOTO TERBARU'] || meta['LINK URL FOTO 1'] || '';
-        if (foto.includes('drive.google.com')) {
-          const match = foto.match(/\/d\/([a-zA-Z0-9_-]+)/) || foto.match(/id=([a-zA-Z0-9_-]+)/);
-          if (match && match[1]) {
-            foto = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w400-h400`;
-          }
-        }
-
-        matchedStudent = {
-          id: s.id,
-          nama: meta['NAMA'] || s.nama || '',
-          nisn: meta['NISN'] || '',
-          nis: meta['ID SISWA'] || s.id_siswa || '',
-          kelas: rombel || 'Kelas ?',
-          foto,
-          rfidUid: sRfid
-        };
-        break;
+    // 0. FAST PATH (0ms): Jika Kiosk sudah mencocokkan identitas dari memori lokal browser
+    if (preMatched && preMatched.nama) {
+      if (preMatched.role === 'GURU' || preMatched.kelas === 'GURU / GTK') {
+        matchedGuru = preMatched;
+      } else {
+        matchedStudent = preMatched;
       }
     }
 
-    // Fallback: Jika belum cocok dari allStudents (misal baru didaftarkan dan cache belum update), query langsung ke DB Supabase
-    if (!matchedStudent) {
+    // 1. TARGETED DB QUERY (~60ms): Cari langsung 1 baris di Supabase data_induk tanpa load ribuan baris
+    if (!matchedStudent && !matchedGuru) {
       const { data: directRows } = await supabase
         .from('data_induk')
-        .select('*')
-        .or(`metadata->>RFID_UID.eq.${rawCleanCode},metadata->>NO_RFID.eq.${rawCleanCode},metadata->>NISN.eq.${rawCleanCode},id_siswa.eq.${cleanCode}`)
+        .select('id, id_siswa, nama, metadata')
+        .or(`metadata->>RFID_UID.eq.${rawCleanCode},metadata->>NO_RFID.eq.${rawCleanCode},metadata->>NISN.eq.${rawCleanCode},id_siswa.eq.${cleanCode},id_siswa.eq.${rawCleanCode}`)
         .limit(1);
 
       if (directRows && directRows.length > 0) {
-        const s = directRows[0];
-        const meta = s.metadata || {};
-        let rombel = (meta['ROMBEL KELAS 9'] || '').trim();
-        if (!rombel) rombel = (meta['ROMBEL KELAS 8'] || '').trim();
-        if (!rombel) rombel = (meta['ROMBEL KELAS 7'] || '').trim();
-        if (!rombel) rombel = (meta['ROMBEL'] || '').trim();
-
-        let foto = meta['LINK FOTO TERBARU'] || meta['LINK URL FOTO 1'] || '';
-        if (foto.includes('drive.google.com')) {
-          const match = foto.match(/\/d\/([a-zA-Z0-9_-]+)/) || foto.match(/id=([a-zA-Z0-9_-]+)/);
-          if (match && match[1]) {
-            foto = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w400-h400`;
-          }
-        }
-
-        matchedStudent = {
-          id: s.id,
-          nama: meta['NAMA'] || s.nama || '',
-          nisn: meta['NISN'] || '',
-          nis: meta['ID SISWA'] || s.id_siswa || '',
-          kelas: rombel || 'Kelas ?',
-          foto,
-          rfidUid: meta['RFID_UID'] || meta['NO_RFID'] || rawCleanCode
-        };
+        matchedStudent = formatStudentFromRow(directRows[0], rawCleanCode);
       }
     }
 
-    let matchedGuru: any = null;
-    if (!matchedStudent) {
-      // 1b. Cari guru di data_guru
-      const { data: guruRows } = await supabase.from('data_guru').select('*');
+    // 1b. Cari di data_guru jika belum ketemu di siswa
+    if (!matchedStudent && !matchedGuru) {
+      const { data: guruRows } = await supabase.from('data_guru').select('id, nama, nomor_induk, metadata');
       for (const g of (guruRows || [])) {
         const meta = g.metadata || {};
         const gRfid = String(meta['RFID_UID'] || meta['NO_RFID'] || '').trim();
@@ -201,6 +245,26 @@ export async function POST(req: Request) {
             role: 'GURU',
             rfidUid: gRfid
           };
+          break;
+        }
+      }
+    }
+
+    // 1c. Fallback terakhir ke cache penuh hanya jika format NISN memiliki leading zero berbeda
+    if (!matchedStudent && !matchedGuru) {
+      const allStudents = await getAllCachedDataInduk();
+      for (const s of allStudents) {
+        const meta = s.metadata || {};
+        const sNisn = String(meta['NISN'] || '').trim().replace(/^0+/, '');
+        const sIdSiswa = String(meta['ID SISWA'] || s.id_siswa || '').trim().replace(/^0+/, '');
+        const sRfid = String(meta['RFID_UID'] || meta['NO_RFID'] || '').trim();
+
+        if (
+          (sRfid && sRfid.toLowerCase() === rawCleanCode.toLowerCase()) ||
+          (sNisn && sNisn === cleanCode) ||
+          (sIdSiswa && sIdSiswa === cleanCode)
+        ) {
+          matchedStudent = formatStudentFromRow(s, sRfid);
           break;
         }
       }
@@ -358,17 +422,16 @@ export async function POST(req: Request) {
       });
     }
 
-    // 3. Cek apakah siswa sudah punya catatan di tanggal hari ini
+    // 3. Cek apakah siswa sudah punya catatan di tanggal hari ini (exact match agar cepat)
+    const targetNisn = String(matchedStudent.nisn || '').trim();
     const { data: existingRows } = await supabase
       .from('data_presensi_siswa')
-      .select('*')
+      .select('id, metadata')
       .eq('tanggal', tanggal)
-      .ilike('metadata->>NISN', `%${matchedStudent.nisn}%`);
+      .eq('metadata->>NISN', targetNisn)
+      .limit(1);
 
-    const existing = (existingRows || []).find((r: any) => {
-      const rNisn = String(r.metadata?.['NISN'] || '').trim();
-      return rNisn === String(matchedStudent.nisn).trim();
-    });
+    const existing = existingRows?.[0] || null;
 
     // Batas jam masuk (default 06:45:00 WIB)
     const BATAS_JAM_MASUK = '06:45:00';
@@ -389,15 +452,13 @@ export async function POST(req: Request) {
         'TIMESTAMP': new Date().toLocaleString('id-ID')
       };
 
-      const { data: inserted, error: insertErr } = await supabase
+      const { error: insertErr } = await supabase
         .from('data_presensi_siswa')
         .insert([{
           tanggal,
           kelas: matchedStudent.kelas,
           metadata: newMeta
-        }])
-        .select()
-        .single();
+        }]);
 
       if (insertErr) throw insertErr;
 

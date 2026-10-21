@@ -65,6 +65,32 @@ export default function PresensiGatePage() {
   });
   const [historyList, setHistoryList] = useState<PresensiItem[]>([]);
 
+  // In-Memory Directory Cache untuk 0ms Instant Tap Lookup di Kiosk
+  const directoryMapRef = useRef<Map<string, any>>(new Map());
+  const recentTapsRef = useRef<Record<string, { jamMasuk: string; jamPulang: string | null; statusMasuk: string }>>({});
+
+  const indexDirectoryItems = (items: any[]) => {
+    const map = directoryMapRef.current;
+    for (const item of items) {
+      if (!item) continue;
+      if (item.rfidUid) {
+        map.set(String(item.rfidUid).trim().toLowerCase(), item);
+      }
+      if (item.nisn && item.nisn !== '-') {
+        const n = String(item.nisn).trim().toLowerCase();
+        map.set(n, item);
+        const nClean = n.replace(/^0+/, '');
+        if (nClean) map.set(nClean, item);
+      }
+      if (item.nis) {
+        const s = String(item.nis).trim().toLowerCase();
+        map.set(s, item);
+        const sClean = s.replace(/^0+/, '');
+        if (sClean) map.set(sClean, item);
+      }
+    }
+  };
+
   // Mapping Tab State
   const [selectedKelas, setSelectedKelas] = useState('7A');
   const [mappingList, setMappingList] = useState<any[]>([]);
@@ -100,16 +126,53 @@ export default function PresensiGatePage() {
       const res = await fetch('/api/presensi-gate');
       const json = await res.json();
       if (json.success) {
+        const list: PresensiItem[] = json.data || [];
         setStats(json.stats || { totalHadir: 0, tepatWaktu: 0, terlambat: 0, sudahPulang: 0 });
-        setHistoryList(json.data || []);
+        setHistoryList(list);
+
+        // Sinkronkan riwayat tap hari ini ke memori lokal untuk deteksi masuk/pulang 0ms
+        const taps: Record<string, { jamMasuk: string; jamPulang: string | null; statusMasuk: string }> = {};
+        for (const item of list) {
+          const key = (item.nama || '').trim().toLowerCase();
+          if (key) {
+            taps[key] = {
+              jamMasuk: item.jamMasuk || '',
+              jamPulang: item.jamPulang || null,
+              statusMasuk: item.statusMasuk || 'Tepat Waktu'
+            };
+          }
+        }
+        recentTapsRef.current = taps;
       }
     } catch (err) {
       console.error('Fetch gate data error:', err);
     }
   };
 
+  // Preload kamus kartu RFID & Siswa ke RAM browser agar saat tap kartu 0ms (tanpa loading)
+  const preloadDirectory = async () => {
+    try {
+      // Tahap 1: Muat semua kartu RFID aktif + Guru (<100ms)
+      const resFast = await fetch('/api/presensi-gate?directory=rfid');
+      const jsonFast = await resFast.json();
+      if (jsonFast.success && Array.isArray(jsonFast.directory)) {
+        indexDirectoryItems(jsonFast.directory);
+      }
+
+      // Tahap 2: Muat seluruh kamus barcode NISN/NIS di background
+      const resFull = await fetch('/api/presensi-gate?directory=full');
+      const jsonFull = await resFull.json();
+      if (jsonFull.success && Array.isArray(jsonFull.directory)) {
+        indexDirectoryItems(jsonFull.directory);
+      }
+    } catch (e) {
+      console.error('Preload directory error:', e);
+    }
+  };
+
   useEffect(() => {
     fetchGateData();
+    preloadDirectory();
     const timer = setInterval(fetchGateData, 10000); // refresh feed every 10s
     return () => clearInterval(timer);
   }, []);
@@ -141,6 +204,31 @@ export default function PresensiGatePage() {
     }
   };
 
+  // Helper pengucapan suara berdasarkan hasil tap
+  const announceScanResult = (actionType: string, st: any, isGuru?: boolean) => {
+    if (isGuru || st.role === 'GURU' || st.kelas === 'GURU / GTK') {
+      if (actionType === 'MASUK') {
+        speakGreeting(`Selamat datang, ${st.nama}. Presensi guru berhasil.`);
+      } else if (actionType === 'PULANG') {
+        speakGreeting(`Hati-hati di jalan, ${st.nama}. Check-out guru berhasil.`);
+      } else if (actionType === 'SUDAH_MASUK') {
+        speakGreeting(`${st.nama}, sudah tercatat masuk hari ini.`);
+      }
+    } else {
+      if (actionType === 'MASUK') {
+        if (st.statusMasuk === 'Terlambat') {
+          speakGreeting(`${st.nama}, Terlambat! Jam masuk tercatat.`);
+        } else {
+          speakGreeting(`${st.nama}, Kelas ${st.kelas}, Hadir!`);
+        }
+      } else if (actionType === 'PULANG') {
+        speakGreeting(`Hati-hati di jalan, ${st.nama}. Check out pulang berhasil.`);
+      } else if (actionType === 'SUDAH_MASUK') {
+        speakGreeting(`${st.nama}, sudah tercatat masuk hari ini.`);
+      }
+    }
+  };
+
   // Handle Scan Submit (from barcode scanner or RFID reader)
   const handleScanSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -149,9 +237,131 @@ export default function PresensiGatePage() {
 
     // Instant clear input field so subsequent rapid scans/multi-readers are never blocked
     setScanInput('');
-    setIsProcessing(true);
     setScanErrorMsg('');
+    if (inputRef.current) inputRef.current.focus();
 
+    const rawKey = code.toLowerCase();
+    const cleanKey = code.replace(/^0+/, '').toLowerCase();
+    const matched = directoryMapRef.current.get(rawKey) || (cleanKey ? directoryMapRef.current.get(cleanKey) : null);
+
+    // =========================================================================
+    // JALUR KILAT 0ms (INSTANT IN-MEMORY MATCH - TANPA TUNGGU LOADING SERVER)
+    // =========================================================================
+    if (matched) {
+      const now = new Date();
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const wib = new Date(utc + (7 * 3600000));
+      const yyyy = wib.getFullYear();
+      const mm = String(wib.getMonth() + 1).padStart(2, '0');
+      const dd = String(wib.getDate()).padStart(2, '0');
+      const tanggal = `${yyyy}-${mm}-${dd}`;
+      const hh = String(wib.getHours()).padStart(2, '0');
+      const min = String(wib.getMinutes()).padStart(2, '0');
+      const ss = String(wib.getSeconds()).padStart(2, '0');
+      const jam = `${hh}:${min}:${ss}`;
+
+      const personKey = (matched.nama || '').trim().toLowerCase();
+      const prevTap = recentTapsRef.current[personKey];
+      const isGuru = matched.role === 'GURU' || matched.kelas === 'GURU / GTK';
+
+      let actionType: 'MASUK' | 'PULANG' | 'SUDAH_MASUK' = 'MASUK';
+      let jamMasuk = jam;
+      let jamPulang: string | null = null;
+      let statusMasuk = isGuru ? 'Tepat Waktu' : (jam > '06:45:00' ? 'Terlambat' : 'Tepat Waktu');
+      let message = '';
+
+      if (!prevTap || !prevTap.jamMasuk) {
+        actionType = 'MASUK';
+        jamMasuk = jam;
+        jamPulang = null;
+        message = isGuru
+          ? `Check-in Guru Berhasil: ${matched.nama}`
+          : (statusMasuk === 'Terlambat' ? 'Check-in Berhasil (Terlambat)' : 'Check-in Berhasil (Tepat Waktu)');
+
+        recentTapsRef.current[personKey] = { jamMasuk, jamPulang: null, statusMasuk };
+
+        // Update Live Feed & Stats secara instan (Optimistic UI)
+        const newFeedItem: PresensiItem = {
+          id: Date.now(),
+          tanggal,
+          kelas: isGuru ? 'GTK' : matched.kelas,
+          nisn: matched.nisn || '-',
+          nama: matched.nama,
+          kehadiran: 'H',
+          jamMasuk,
+          jamPulang: '',
+          statusMasuk,
+          sumber: 'GATE'
+        };
+        setHistoryList(prev => [newFeedItem, ...prev.filter(x => (x.nama || '').toLowerCase() !== personKey)]);
+        setStats(prev => ({
+          ...prev,
+          totalHadir: prev.totalHadir + 1,
+          tepatWaktu: statusMasuk === 'Tepat Waktu' ? prev.tepatWaktu + 1 : prev.tepatWaktu,
+          terlambat: statusMasuk === 'Terlambat' ? prev.terlambat + 1 : prev.terlambat
+        }));
+      } else {
+        jamMasuk = prevTap.jamMasuk;
+        statusMasuk = prevTap.statusMasuk || 'Tepat Waktu';
+
+        // Cek selisih menit sejak jam masuk untuk cegah double-tap tidak sengaja (< 3 menit)
+        const parts = jamMasuk.replace('.', ':').split(':').map(Number);
+        const totalDetikMasuk = ((parts[0] || 0) * 3600) + ((parts[1] || 0) * 60) + (parts[2] || 0);
+        const totalDetikNow = (Number(hh) * 3600) + (Number(min) * 60) + Number(ss);
+        const selisihMenit = (totalDetikNow - totalDetikMasuk) / 60;
+
+        if (!prevTap.jamPulang && selisihMenit < 3 && scanMode === 'auto') {
+          actionType = 'SUDAH_MASUK';
+          jamPulang = null;
+          message = `${isGuru ? 'Bapak/Ibu' : 'Siswa'} ${matched.nama} sudah tercatat masuk pada pukul ${jamMasuk} WIB`;
+        } else {
+          actionType = 'PULANG';
+          jamPulang = jam;
+          message = isGuru ? `Check-out Pulang Guru Berhasil: ${matched.nama}` : 'Check-out Pulang Berhasil';
+          const hadPulangBefore = Boolean(prevTap.jamPulang);
+          recentTapsRef.current[personKey] = { jamMasuk, jamPulang, statusMasuk };
+
+          setHistoryList(prev => prev.map(x => 
+            (x.nama || '').toLowerCase() === personKey ? { ...x, jamPulang: jam } : x
+          ));
+          if (!hadPulangBefore) {
+            setStats(prev => ({ ...prev, sudahPulang: prev.sudahPulang + 1 }));
+          }
+        }
+      }
+
+      const instantScanResult: TapResult = {
+        actionType,
+        message,
+        data: {
+          ...matched,
+          jamMasuk,
+          jamPulang,
+          statusMasuk,
+          tanggal
+        }
+      };
+
+      // Tampilkan Kartu Profil & Bunyikan Suara DETIK ITU JUGA (0ms)
+      setLastScan(instantScanResult);
+      announceScanResult(actionType, instantScanResult.data, isGuru);
+
+      // Simpan ke database Supabase di background tanpa menahan antrean tap berikutnya
+      if (actionType !== 'SUDAH_MASUK') {
+        fetch('/api/presensi-gate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, mode: scanMode, preMatched: matched })
+        }).catch(err => console.error('Background sync gate error:', err));
+      }
+
+      return;
+    }
+
+    // =========================================================================
+    // FALLBACK SERVER (~150ms): Jika kartu baru didaftarkan & belum ada di RAM
+    // =========================================================================
+    setIsProcessing(true);
     try {
       const res = await fetch('/api/presensi-gate', {
         method: 'POST',
@@ -164,32 +374,11 @@ export default function PresensiGatePage() {
       if (json.success) {
         setLastScan(json);
         setScanErrorMsg('');
-
-        // Audio Voice Announcement
-        const st = json.data;
-        if (json.isGuru || st.role === 'GURU' || st.kelas === 'GURU / GTK') {
-          if (json.actionType === 'MASUK') {
-            speakGreeting(`Selamat datang, ${st.nama}. Presensi guru berhasil.`);
-          } else if (json.actionType === 'PULANG') {
-            speakGreeting(`Hati-hati di jalan, ${st.nama}. Check-out guru berhasil.`);
-          } else if (json.actionType === 'SUDAH_MASUK') {
-            speakGreeting(`${st.nama}, sudah tercatat masuk hari ini.`);
-          }
-        } else {
-          if (json.actionType === 'MASUK') {
-            if (st.statusMasuk === 'Terlambat') {
-              speakGreeting(`${st.nama}, Terlambat! Jam masuk tercatat.`);
-            } else {
-              speakGreeting(`${st.nama}, Kelas ${st.kelas}, Hadir!`);
-            }
-          } else if (json.actionType === 'PULANG') {
-            speakGreeting(`Hati-hati di jalan, ${st.nama}. Check out pulang berhasil.`);
-          } else if (json.actionType === 'SUDAH_MASUK') {
-            speakGreeting(`${st.nama}, sudah tercatat masuk hari ini.`);
-          }
+        // Simpan ke kamus lokal agar tap berikutnya 0ms
+        if (json.data) {
+          indexDirectoryItems([{ ...json.data, rfidUid: json.data.rfidUid || code }]);
         }
-
-        // Refresh feed & stats
+        announceScanResult(json.actionType, json.data, json.isGuru);
         fetchGateData();
       } else {
         setLastScan(null);
@@ -267,6 +456,8 @@ export default function PresensiGatePage() {
       if (json.success) {
         const savedUid = pairingUid.trim();
         const targetId = pairingStudent.id;
+        // Tambahkan langsung ke kamus memori lokal Kiosk agar siap di-tap detik itu juga
+        indexDirectoryItems([{ ...pairingStudent, rfidUid: savedUid }]);
         Swal.fire({
           icon: 'success',
           title: 'Kartu Berhasil Ditautkan!',
@@ -318,6 +509,9 @@ export default function PresensiGatePage() {
         const json = await res.json();
         if (json.success) {
           const targetId = student.id;
+          if (student.rfidUid) {
+            directoryMapRef.current.delete(String(student.rfidUid).trim().toLowerCase());
+          }
           Swal.fire('Terhapus', 'Tautan kartu berhasil dicabut.', 'success');
           setMappingList(prev => prev.map(item => {
             if (item.id === targetId) {
@@ -561,6 +755,7 @@ export default function PresensiGatePage() {
                         src={lastScan.data.foto}
                         alt={lastScan.data.nama}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        referrerPolicy="no-referrer"
                         onError={(e) => {
                           (e.target as HTMLImageElement).style.display = 'none';
                         }}
