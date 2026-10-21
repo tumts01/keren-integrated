@@ -97,6 +97,24 @@ export default function Header({ user, onLogout }: HeaderProps) {
     }
   }, [user?.foto, user?.username, user?.nama]);
 
+  useEffect(() => {
+    const handleUserUpdated = () => {
+      try {
+        const raw = localStorage.getItem('keren_user_data');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.foto) {
+            setInternalFoto(parsed.foto);
+            setImageError(false);
+            setUseAltUrl(false);
+          }
+        }
+      } catch {}
+    };
+    window.addEventListener('keren_user_updated', handleUserUpdated);
+    return () => window.removeEventListener('keren_user_updated', handleUserUpdated);
+  }, []);
+
   // Helper to convert Google Drive /view links to raw image links
   const getImageUrl = (url: string, useAlt: boolean = false) => {
     if (!url) return '';

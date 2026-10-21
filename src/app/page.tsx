@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import styles from "./page.module.css";
 import Link from 'next/link';
 import LoadingScreen from '@/components/LoadingScreen';
@@ -8,6 +8,8 @@ export default function Home() {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [tagihanList, setTagihanList] = useState<any[]>([]);
   const [raporInfo, setRaporInfo] = useState<{kelas: string, missing: number, total: number} | null>(null);
@@ -145,6 +147,121 @@ export default function Home() {
     setShowAlphaModal(false);
     if (alphaInfo) {
       sessionStorage.setItem(`alpha_dismissed_${alphaInfo.tanggal}_${alphaInfo.kelas}_${alphaInfo.totalAlpha}`, '1');
+    }
+  };
+
+  // Kompresi foto di sisi browser agar ukuran file ringan & cepat diunggah dari HP/Laptop
+  const compressImage = (file: File, maxSize = 800): Promise<File> => {
+    return new Promise((resolve) => {
+      if (!file.type.startsWith('image/')) {
+        resolve(file);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          if (width > maxSize || height > maxSize) {
+            if (width > height) {
+              height = Math.round((height * maxSize) / width);
+              width = maxSize;
+            } else {
+              width = Math.round((width * maxSize) / height);
+              height = maxSize;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(file);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const compressedFile = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+                  type: 'image/jpeg',
+                  lastModified: Date.now()
+                });
+                resolve(compressedFile);
+              } else {
+                resolve(file);
+              }
+            },
+            'image/jpeg',
+            0.88
+          );
+        };
+        img.onerror = () => resolve(file);
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => resolve(file);
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawFile = e.target.files?.[0];
+    if (!rawFile) return;
+
+    if (!rawFile.type.startsWith('image/')) {
+      const Swal = (await import('sweetalert2')).default;
+      Swal.fire('Format Tidak Didukung', 'Silakan pilih file gambar (JPG, PNG, WEBP).', 'warning');
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      const compressedFile = await compressImage(rawFile, 800);
+      const formData = new FormData();
+      formData.append('file', compressedFile);
+      formData.append('username', user?.username || '');
+      formData.append('nama', profile?.nama || user?.nama || '');
+
+      const res = await fetch('/api/user/photo', {
+        method: 'POST',
+        body: formData
+      });
+      const json = await res.json();
+
+      const Swal = (await import('sweetalert2')).default;
+      if (json.success) {
+        // Update tampilan foto di Dashboard secara instan
+        setProfile((prev: any) => (prev ? { ...prev, foto: json.foto } : prev));
+        setUser((prev: any) => (prev ? { ...prev, foto: json.rawFoto || json.foto } : prev));
+
+        // Update localStorage & beritahu Header agar avatar pojok kanan atas langsung berubah
+        try {
+          const rawStored = localStorage.getItem('keren_user_data');
+          if (rawStored) {
+            const parsed = JSON.parse(rawStored);
+            parsed.foto = json.rawFoto || json.foto;
+            localStorage.setItem('keren_user_data', JSON.stringify(parsed));
+            window.dispatchEvent(new Event('keren_user_updated'));
+          }
+        } catch {}
+
+        Swal.fire({
+          icon: 'success',
+          title: 'Berhasil!',
+          text: 'Foto profil Anda telah diperbarui.',
+          timer: 1800,
+          showConfirmButton: false
+        });
+      } else {
+        Swal.fire('Gagal Mengubah Foto', json.error || 'Terjadi kesalahan saat mengunggah foto', 'error');
+      }
+    } catch (err: any) {
+      const Swal = (await import('sweetalert2')).default;
+      Swal.fire('Error', err.message || 'Gagal menghubungi server', 'error');
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -442,12 +559,63 @@ export default function Home() {
 
       {/* Hero Profil (Menindih Kartu Sambutan sedikit) */}
       <div className={styles.profileHero}>
-        <div className={styles.photoFrame}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handlePhotoChange}
+          style={{ display: 'none' }}
+        />
+        <div
+          className={styles.photoFrame}
+          onClick={() => !uploadingPhoto && fileInputRef.current?.click()}
+          title="Klik untuk mengubah foto profil"
+          style={{ position: 'relative', cursor: uploadingPhoto ? 'wait' : 'pointer' }}
+        >
           {profile.foto ? (
             <img src={profile.foto} alt="Profile" className={styles.photo} referrerPolicy="no-referrer" />
           ) : (
             <i className="fas fa-user-tie" style={{ fontSize: '4rem', color: '#cbd5e1' }}></i>
           )}
+
+          {/* Overlay Tombol Ubah Foto */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!uploadingPhoto) fileInputRef.current?.click();
+            }}
+            disabled={uploadingPhoto}
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              background: uploadingPhoto ? 'rgba(2, 132, 199, 0.88)' : 'rgba(15, 23, 42, 0.72)',
+              backdropFilter: 'blur(4px)',
+              color: 'white',
+              border: 'none',
+              padding: '8px 6px',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              cursor: uploadingPhoto ? 'wait' : 'pointer',
+              transition: 'background 0.2s'
+            }}
+          >
+            {uploadingPhoto ? (
+              <>
+                <i className="fas fa-spinner fa-spin"></i> Mengunggah...
+              </>
+            ) : (
+              <>
+                <i className="fas fa-camera"></i> Ubah Foto
+              </>
+            )}
+          </button>
         </div>
         
         <div className={styles.heroInfo}>

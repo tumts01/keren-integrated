@@ -71,7 +71,7 @@ export async function GET() {
     });
 
     return NextResponse.json({ success: true, data }, {
-      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' }
+      headers: { 'Cache-Control': 'no-store, max-age=0' }
     });
   } catch (error: any) {
     console.error('Fetch Guru Error:', error);
