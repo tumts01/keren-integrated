@@ -11,6 +11,20 @@ export default function Home() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // State Pop-up Editor / Crop Foto Profil Presisi
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [cropImgSrc, setCropImgSrc] = useState<string | null>(null);
+  const [cropImgDim, setCropImgDim] = useState<{ w: number; h: number }>({ w: 1, h: 1 });
+  const [cropZoom, setCropZoom] = useState<number>(1);
+  const [cropPos, setCropPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDraggingCrop, setIsDraggingCrop] = useState(false);
+  const dragStartRef = useRef<{ x: number; y: number; startX: number; startY: number }>({
+    x: 0,
+    y: 0,
+    startX: 0,
+    startY: 0
+  });
+
   const [tagihanList, setTagihanList] = useState<any[]>([]);
   const [raporInfo, setRaporInfo] = useState<{kelas: string, missing: number, total: number} | null>(null);
   const [susulanInfo, setSusulanInfo] = useState<{kelas: string, total: number, belumSelesai: number, rincian: any[]} | null>(null);
@@ -150,61 +164,28 @@ export default function Home() {
     }
   };
 
-  // Kompresi foto di sisi browser agar ukuran file ringan & cepat diunggah dari HP/Laptop
-  const compressImage = (file: File, maxSize = 800): Promise<File> => {
-    return new Promise((resolve) => {
-      if (!file.type.startsWith('image/')) {
-        resolve(file);
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          let width = img.width;
-          let height = img.height;
-          if (width > maxSize || height > maxSize) {
-            if (width > height) {
-              height = Math.round((height * maxSize) / width);
-              width = maxSize;
-            } else {
-              width = Math.round((width * maxSize) / height);
-              height = maxSize;
-            }
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            resolve(file);
-            return;
-          }
-          ctx.drawImage(img, 0, 0, width, height);
-          canvas.toBlob(
-            (blob) => {
-              if (blob) {
-                const compressedFile = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
-                  type: 'image/jpeg',
-                  lastModified: Date.now()
-                });
-                resolve(compressedFile);
-              } else {
-                resolve(file);
-              }
-            },
-            'image/jpeg',
-            0.88
-          );
-        };
-        img.onerror = () => resolve(file);
-        img.src = e.target?.result as string;
-      };
-      reader.onerror = () => resolve(file);
-      reader.readAsDataURL(file);
-    });
+  // Konstanta Bingkai Editor Crop Foto (Rasio 160:210 = 240:315, identik dengan bingkai foto Dashboard)
+  const CROP_FRAME_W = 240;
+  const CROP_FRAME_H = 315;
+
+  const clampCropOffset = (
+    x: number,
+    y: number,
+    zoom: number,
+    dim: { w: number; h: number }
+  ) => {
+    const baseScale = Math.max(CROP_FRAME_W / (dim.w || 1), CROP_FRAME_H / (dim.h || 1));
+    const dispW = dim.w * baseScale * zoom;
+    const dispH = dim.h * baseScale * zoom;
+    const maxPanX = Math.max(0, (dispW - CROP_FRAME_W) / 2);
+    const maxPanY = Math.max(0, (dispH - CROP_FRAME_H) / 2);
+    return {
+      x: Math.min(maxPanX, Math.max(-maxPanX, x)),
+      y: Math.min(maxPanY, Math.max(-maxPanY, y))
+    };
   };
 
+  // Saat user memilih file foto, buka Pop-up Editor untuk atur posisi & zoom secara presisi
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawFile = e.target.files?.[0];
     if (!rawFile) return;
@@ -215,11 +196,140 @@ export default function Home() {
       return;
     }
 
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        setCropImgSrc(dataUrl);
+        setCropImgDim({ w: img.width || 1, h: img.height || 1 });
+        setCropZoom(1);
+        setCropPos({ x: 0, y: 0 });
+        setCropModalOpen(true);
+      };
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(rawFile);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Putar foto 90 derajat di dalam Pop-up Editor
+  const handleRotateCropImage = () => {
+    if (!cropImgSrc) return;
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.height;
+      canvas.height = img.width;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(Math.PI / 2);
+      ctx.drawImage(img, -img.width / 2, -img.height / 2);
+      const rotatedUrl = canvas.toDataURL('image/jpeg', 0.92);
+      setCropImgSrc(rotatedUrl);
+      setCropImgDim({ w: canvas.width, h: canvas.height });
+      setCropZoom(1);
+      setCropPos({ x: 0, y: 0 });
+    };
+    img.src = cropImgSrc;
+  };
+
+  const handleCropZoomChange = (newZoom: number) => {
+    const clampedZoom = Math.min(3, Math.max(1, newZoom));
+    setCropZoom(clampedZoom);
+    setCropPos((prev) => clampCropOffset(prev.x, prev.y, clampedZoom, cropImgDim));
+  };
+
+  const startCropDrag = (clientX: number, clientY: number) => {
+    setIsDraggingCrop(true);
+    dragStartRef.current = {
+      x: clientX,
+      y: clientY,
+      startX: cropPos.x,
+      startY: cropPos.y
+    };
+  };
+
+  const moveCropDrag = (clientX: number, clientY: number) => {
+    if (!isDraggingCrop) return;
+    const dx = clientX - dragStartRef.current.x;
+    const dy = clientY - dragStartRef.current.y;
+    setCropPos(
+      clampCropOffset(
+        dragStartRef.current.startX + dx,
+        dragStartRef.current.startY + dy,
+        cropZoom,
+        cropImgDim
+      )
+    );
+  };
+
+  const endCropDrag = () => {
+    setIsDraggingCrop(false);
+  };
+
+  // Potong sesuai bingkai presisi & unggah ke server
+  const handleSaveCroppedPhoto = async () => {
+    if (!cropImgSrc) return;
     setUploadingPhoto(true);
+
     try {
-      const compressedFile = await compressImage(rawFile, 800);
+      const croppedFile = await new Promise<File>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const OUT_W = 480;
+          const OUT_H = 630;
+          const scaleRatio = OUT_W / CROP_FRAME_W; // 2x resolusi tajam
+
+          const baseScale = Math.max(CROP_FRAME_W / img.width, CROP_FRAME_H / img.height);
+          const dispW = img.width * baseScale * cropZoom;
+          const dispH = img.height * baseScale * cropZoom;
+          const left = (CROP_FRAME_W - dispW) / 2 + cropPos.x;
+          const top = (CROP_FRAME_H - dispH) / 2 + cropPos.y;
+
+          const canvas = document.createElement('canvas');
+          canvas.width = OUT_W;
+          canvas.height = OUT_H;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Gagal memproses kanvas gambar'));
+            return;
+          }
+
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, OUT_W, OUT_H);
+          ctx.drawImage(
+            img,
+            left * scaleRatio,
+            top * scaleRatio,
+            dispW * scaleRatio,
+            dispH * scaleRatio
+          );
+
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                resolve(
+                  new File([blob], `profile_${Date.now()}.jpg`, {
+                    type: 'image/jpeg',
+                    lastModified: Date.now()
+                  })
+                );
+              } else {
+                reject(new Error('Gagal menghasilkan gambar hasil crop'));
+              }
+            },
+            'image/jpeg',
+            0.9
+          );
+        };
+        img.onerror = () => reject(new Error('Gagal memuat gambar'));
+        img.src = cropImgSrc;
+      });
+
       const formData = new FormData();
-      formData.append('file', compressedFile);
+      formData.append('file', croppedFile);
       formData.append('username', user?.username || '');
       formData.append('nama', profile?.nama || user?.nama || '');
 
@@ -231,6 +341,8 @@ export default function Home() {
 
       const Swal = (await import('sweetalert2')).default;
       if (json.success) {
+        setCropModalOpen(false);
+        setCropImgSrc(null);
         // Update tampilan foto di Dashboard secara instan
         setProfile((prev: any) => (prev ? { ...prev, foto: json.foto } : prev));
         setUser((prev: any) => (prev ? { ...prev, foto: json.rawFoto || json.foto } : prev));
@@ -249,7 +361,7 @@ export default function Home() {
         Swal.fire({
           icon: 'success',
           title: 'Berhasil!',
-          text: 'Foto profil Anda telah diperbarui.',
+          text: 'Foto profil Anda telah diperbarui dengan presisi.',
           timer: 1800,
           showConfirmButton: false
         });
@@ -261,7 +373,6 @@ export default function Home() {
       Swal.fire('Error', err.message || 'Gagal menghubungi server', 'error');
     } finally {
       setUploadingPhoto(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -280,8 +391,381 @@ export default function Home() {
     );
   }
 
+  const cropBaseScale = Math.max(
+    CROP_FRAME_W / (cropImgDim.w || 1),
+    CROP_FRAME_H / (cropImgDim.h || 1)
+  );
+  const cropDispW = cropImgDim.w * cropBaseScale * cropZoom;
+  const cropDispH = cropImgDim.h * cropBaseScale * cropZoom;
+  const cropLeft = (CROP_FRAME_W - cropDispW) / 2 + cropPos.x;
+  const cropTop = (CROP_FRAME_H - cropDispH) / 2 + cropPos.y;
+
   return (
     <div className={styles.container}>
+      {/* Modal Pop-up Editor / Crop Foto Profil Presisi */}
+      {cropModalOpen && cropImgSrc && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.78)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '16px'
+          }}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: '20px',
+              maxWidth: '420px',
+              width: '100%',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            {/* Header Modal Crop */}
+            <div
+              style={{
+                background: 'linear-gradient(135deg, #065f46 0%, #059669 100%)',
+                color: 'white',
+                padding: '16px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 800, fontSize: '1.02rem' }}>
+                <i className="fas fa-crop-alt"></i> Atur Presisi Foto Profil
+              </div>
+              <button
+                type="button"
+                disabled={uploadingPhoto}
+                onClick={() => {
+                  setCropModalOpen(false);
+                  setCropImgSrc(null);
+                }}
+                style={{
+                  background: 'rgba(255,255,255,0.2)',
+                  border: 'none',
+                  color: 'white',
+                  width: '30px',
+                  height: '30px',
+                  borderRadius: '50%',
+                  cursor: 'pointer',
+                  fontSize: '0.9rem'
+                }}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            {/* Body Modal Crop */}
+            <div style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px' }}>
+              <div
+                style={{
+                  fontSize: '0.8rem',
+                  color: '#475569',
+                  textAlign: 'center',
+                  background: '#f8fafc',
+                  padding: '8px 12px',
+                  borderRadius: '10px',
+                  border: '1px solid #e2e8f0',
+                  width: '100%'
+                }}
+              >
+                <i className="fas fa-hand-paper" style={{ color: '#059669', marginRight: '6px' }}></i>
+                Geser foto dengan jari/mouse & atur zoom agar wajah pas di tengah.
+              </div>
+
+              {/* Area Bingkai Crop Interaktif (240 x 315) */}
+              <div
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  startCropDrag(e.clientX, e.clientY);
+                }}
+                onMouseMove={(e) => moveCropDrag(e.clientX, e.clientY)}
+                onMouseUp={endCropDrag}
+                onMouseLeave={endCropDrag}
+                onTouchStart={(e) => {
+                  if (e.touches.length === 1) {
+                    startCropDrag(e.touches[0].clientX, e.touches[0].clientY);
+                  }
+                }}
+                onTouchMove={(e) => {
+                  if (e.touches.length === 1) {
+                    moveCropDrag(e.touches[0].clientX, e.touches[0].clientY);
+                  }
+                }}
+                onTouchEnd={endCropDrag}
+                onWheel={(e) => {
+                  e.preventDefault();
+                  const delta = e.deltaY < 0 ? 0.08 : -0.08;
+                  handleCropZoomChange(cropZoom + delta);
+                }}
+                style={{
+                  width: `${CROP_FRAME_W}px`,
+                  height: `${CROP_FRAME_H}px`,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  borderRadius: '16px',
+                  background: '#0f172a',
+                  border: '3px solid #059669',
+                  boxShadow: '0 10px 25px rgba(0,0,0,0.18)',
+                  cursor: isDraggingCrop ? 'grabbing' : 'grab',
+                  touchAction: 'none',
+                  userSelect: 'none'
+                }}
+              >
+                <img
+                  src={cropImgSrc}
+                  alt="Preview Crop"
+                  draggable={false}
+                  style={{
+                    position: 'absolute',
+                    width: `${cropDispW}px`,
+                    height: `${cropDispH}px`,
+                    left: `${cropLeft}px`,
+                    top: `${cropTop}px`,
+                    maxWidth: 'none',
+                    pointerEvents: 'none',
+                    userSelect: 'none'
+                  }}
+                />
+
+                {/* Garis Bantu Grid & Panduan Tengah Presisi */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    pointerEvents: 'none',
+                    border: '1px solid rgba(255,255,255,0.35)'
+                  }}
+                >
+                  {/* Garis Vertikal Tengah */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      bottom: 0,
+                      left: '50%',
+                      borderLeft: '1px dashed rgba(255,255,255,0.45)'
+                    }}
+                  />
+                  {/* Garis Horizontal 1/3 Atas (Posisi Mata/Wajah) */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      right: 0,
+                      top: '38%',
+                      borderTop: '1px dashed rgba(255,255,255,0.45)'
+                    }}
+                  />
+                  {/* Lingkaran Panduan Wajah */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      width: '150px',
+                      height: '185px',
+                      left: '50%',
+                      top: '44%',
+                      transform: 'translate(-50%, -50%)',
+                      borderRadius: '50%',
+                      border: '1.5px dashed rgba(255,255,255,0.65)',
+                      boxShadow: '0 0 0 999px rgba(15, 23, 42, 0.22)'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Kontrol Slider Zoom */}
+              <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '0 4px' }}>
+                <button
+                  type="button"
+                  onClick={() => handleCropZoomChange(cropZoom - 0.1)}
+                  style={{
+                    background: '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    width: '32px',
+                    height: '32px',
+                    cursor: 'pointer',
+                    color: '#334155',
+                    fontWeight: 700
+                  }}
+                  title="Perkecil"
+                >
+                  <i className="fas fa-search-minus"></i>
+                </button>
+                <input
+                  type="range"
+                  min={1}
+                  max={3}
+                  step={0.02}
+                  value={cropZoom}
+                  onChange={(e) => handleCropZoomChange(parseFloat(e.target.value))}
+                  style={{ flex: 1, accentColor: '#059669', cursor: 'pointer' }}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleCropZoomChange(cropZoom + 0.1)}
+                  style={{
+                    background: '#f1f5f9',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '8px',
+                    width: '32px',
+                    height: '32px',
+                    cursor: 'pointer',
+                    color: '#334155',
+                    fontWeight: 700
+                  }}
+                  title="Perbesar"
+                >
+                  <i className="fas fa-search-plus"></i>
+                </button>
+                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#059669', minWidth: '42px', textAlign: 'right' }}>
+                  {Math.round(cropZoom * 100)}%
+                </span>
+              </div>
+
+              {/* Tombol Alat Bantu: Putar 90°, Reset Tengah, Ganti File */}
+              <div style={{ display: 'flex', gap: '8px', width: '100%', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={handleRotateCropImage}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    color: '#334155',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <i className="fas fa-redo"></i> Putar 90°
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCropZoom(1);
+                    setCropPos({ x: 0, y: 0 });
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    color: '#334155',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <i className="fas fa-compress-arrows-alt"></i> Reset Tengah
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    color: '#0284c7',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <i className="fas fa-folder-open"></i> Pilih Foto Lain
+                </button>
+              </div>
+            </div>
+
+            {/* Footer Modal Crop */}
+            <div
+              style={{
+                padding: '14px 20px',
+                background: '#f8fafc',
+                borderTop: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '10px'
+              }}
+            >
+              <button
+                type="button"
+                disabled={uploadingPhoto}
+                onClick={() => {
+                  setCropModalOpen(false);
+                  setCropImgSrc(null);
+                }}
+                style={{
+                  padding: '9px 16px',
+                  borderRadius: '10px',
+                  border: '1px solid #cbd5e1',
+                  background: 'white',
+                  color: '#475569',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  cursor: 'pointer'
+                }}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={uploadingPhoto}
+                onClick={handleSaveCroppedPhoto}
+                style={{
+                  padding: '9px 20px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                  color: 'white',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  cursor: uploadingPhoto ? 'wait' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 10px rgba(5, 150, 105, 0.25)'
+                }}
+              >
+                {uploadingPhoto ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin"></i> Menyimpan...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-check-circle"></i> Simpan & Pasang Foto
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Modal Pop-up Pemberitahuan Siswa Alpha Hari Ini (Wali Kelas) */}
       {showAlphaModal && alphaInfo && alphaInfo.totalAlpha > 0 && (
         <div style={{
