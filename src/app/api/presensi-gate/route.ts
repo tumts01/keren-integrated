@@ -141,6 +141,42 @@ export async function POST(req: Request) {
       }
     }
 
+    // Fallback: Jika belum cocok dari allStudents (misal baru didaftarkan dan cache belum update), query langsung ke DB Supabase
+    if (!matchedStudent) {
+      const { data: directRows } = await supabase
+        .from('data_induk')
+        .select('*')
+        .or(`metadata->>RFID_UID.eq.${rawCleanCode},metadata->>NO_RFID.eq.${rawCleanCode},metadata->>NISN.eq.${rawCleanCode},id_siswa.eq.${cleanCode}`)
+        .limit(1);
+
+      if (directRows && directRows.length > 0) {
+        const s = directRows[0];
+        const meta = s.metadata || {};
+        let rombel = (meta['ROMBEL KELAS 9'] || '').trim();
+        if (!rombel) rombel = (meta['ROMBEL KELAS 8'] || '').trim();
+        if (!rombel) rombel = (meta['ROMBEL KELAS 7'] || '').trim();
+        if (!rombel) rombel = (meta['ROMBEL'] || '').trim();
+
+        let foto = meta['LINK FOTO TERBARU'] || meta['LINK URL FOTO 1'] || '';
+        if (foto.includes('drive.google.com')) {
+          const match = foto.match(/\/d\/([a-zA-Z0-9_-]+)/) || foto.match(/id=([a-zA-Z0-9_-]+)/);
+          if (match && match[1]) {
+            foto = `https://drive.google.com/thumbnail?id=${match[1]}&sz=w400-h400`;
+          }
+        }
+
+        matchedStudent = {
+          id: s.id,
+          nama: meta['NAMA'] || s.nama || '',
+          nisn: meta['NISN'] || '',
+          nis: meta['ID SISWA'] || s.id_siswa || '',
+          kelas: rombel || 'Kelas ?',
+          foto,
+          rfidUid: meta['RFID_UID'] || meta['NO_RFID'] || rawCleanCode
+        };
+      }
+    }
+
     let matchedGuru: any = null;
     if (!matchedStudent) {
       // 1b. Cari guru di data_guru

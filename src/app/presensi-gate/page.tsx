@@ -265,6 +265,8 @@ export default function PresensiGatePage() {
       const json = await res.json();
 
       if (json.success) {
+        const savedUid = pairingUid.trim();
+        const targetId = pairingStudent.id;
         Swal.fire({
           icon: 'success',
           title: 'Kartu Berhasil Ditautkan!',
@@ -274,6 +276,13 @@ export default function PresensiGatePage() {
         });
         setPairingStudent(null);
         setPairingUid('');
+        // Update state lokal langsung agar tabel langsung berubah tanpa menunggu refresh
+        setMappingList(prev => prev.map(item => {
+          if (item.id === targetId) {
+            return { ...item, rfidUid: savedUid };
+          }
+          return item;
+        }));
         fetchMapping(selectedKelas);
       } else {
         Swal.fire('Gagal Menautkan Kartu', json.error, 'error');
@@ -308,7 +317,14 @@ export default function PresensiGatePage() {
         });
         const json = await res.json();
         if (json.success) {
+          const targetId = student.id;
           Swal.fire('Terhapus', 'Tautan kartu berhasil dicabut.', 'success');
+          setMappingList(prev => prev.map(item => {
+            if (item.id === targetId) {
+              return { ...item, rfidUid: '' };
+            }
+            return item;
+          }));
           fetchMapping(selectedKelas);
         } else {
           Swal.fire('Gagal', json.error, 'error');

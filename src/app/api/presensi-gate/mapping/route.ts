@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { getAllCachedDataInduk } from '@/lib/data-induk';
+import { revalidateTag } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +34,20 @@ export async function GET(request: Request) {
     }
 
     // 2. JIKA PILIH KELAS SISWA
-    const allStudents = await getAllCachedDataInduk();
+    // Ambil data siswa dari cache dan data RFID aktif langsung dari DB Supabase untuk menghindari stale cache
+    const [allStudents, rfidResult] = await Promise.all([
+      getAllCachedDataInduk(),
+      supabase
+        .from('data_induk')
+        .select('id, metadata')
+        .not('metadata->>RFID_UID', 'is', null)
+    ]);
+
+    const rfidMap: Record<number, string> = {};
+    (rfidResult.data || []).forEach((r: any) => {
+      const uid = r.metadata?.['RFID_UID'] || r.metadata?.['NO_RFID'];
+      if (uid) rfidMap[r.id] = String(uid).trim();
+    });
     
     let filtered = allStudents;
     if (cleanK) {
@@ -63,7 +77,7 @@ export async function GET(request: Request) {
         nis: meta['ID SISWA'] || s.id_siswa || '',
         kelas: rombel,
         role: 'SISWA',
-        rfidUid: meta['RFID_UID'] || meta['NO_RFID'] || ''
+        rfidUid: rfidMap[s.id] || meta['RFID_UID'] || meta['NO_RFID'] || ''
       };
     });
 
@@ -181,6 +195,10 @@ export async function POST(req: Request) {
 
     if (updateErr) throw updateErr;
 
+    try {
+      revalidateTag('data_induk', {} as any);
+    } catch (e) {}
+
     return NextResponse.json({
       success: true,
       message: `Kartu RFID (${cleanUid}) berhasil ditautkan ke ${targetRow.metadata?.['NAMA'] || 'siswa'}.`,
@@ -239,6 +257,10 @@ export async function DELETE(req: Request) {
       .eq('id', studentId);
 
     if (error) throw error;
+
+    try {
+      revalidateTag('data_induk', {} as any);
+    } catch (e) {}
 
     return NextResponse.json({ success: true, message: 'Tautan kartu RFID berhasil dihapus' });
   } catch (error: any) {
