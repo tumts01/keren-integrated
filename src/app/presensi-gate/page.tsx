@@ -215,43 +215,101 @@ export default function PresensiGatePage() {
     }
   }, [activeTab, pairingStudent]);
 
-  // Text-To-Speech Audio Voice Output
+  // Text-To-Speech Audio Voice Output (Suara Perempuan Natural Google + Preload 0ms)
+  const audioCacheRef = useRef<Map<string, string>>(new Map());
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+  const femaleVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // 1. Preload kalimat singkat dengan suara perempuan Google yang jernih ke RAM browser
+    const PHRASES = [
+      'Selamat datang, presensi berhasil',
+      'Terlambat, presensi masuk tercatat',
+      'Presensi pulang berhasil, hati-hati di jalan',
+      'Sudah tercatat masuk hari ini',
+      'Kartu belum terdaftar',
+      'Presensi dibatalkan, tercatat alpha di kelas'
+    ];
+    PHRASES.forEach((phrase) => {
+      fetch(`/api/presensi-gate/tts?q=${encodeURIComponent(phrase)}`)
+        .then(r => (r.ok ? r.blob() : null))
+        .then(blob => {
+          if (blob) {
+            audioCacheRef.current.set(phrase, URL.createObjectURL(blob));
+          }
+        })
+        .catch(() => {});
+    });
+
+    // 2. Kunci pilhan suara perempuan pada Web Speech API (hindari suara laki-laki 'Microsoft Andika')
+    if ('speechSynthesis' in window) {
+      const pickFemaleIndonesianVoice = () => {
+        const voices = window.speechSynthesis.getVoices() || [];
+        const idVoices = voices.filter(v => v.lang.toLowerCase().startsWith('id'));
+        const bestFemale =
+          idVoices.find(v => /gadis|google|female|perempuan|wanita|damayanti/i.test(v.name)) ||
+          idVoices.find(v => !/andika|ardi|male|pria/i.test(v.name)) ||
+          idVoices[0] ||
+          null;
+        if (bestFemale) femaleVoiceRef.current = bestFemale;
+      };
+      pickFemaleIndonesianVoice();
+      window.speechSynthesis.onvoiceschanged = pickFemaleIndonesianVoice;
+    }
+  }, []);
+
   const speakGreeting = (text: string) => {
-    if (!soundEnabled || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    if (!soundEnabled || typeof window === 'undefined') return;
+
+    // Hentikan audio sebelumnya agar tap beruntun langsung responsif
+    if (currentAudioRef.current) {
+      try {
+        currentAudioRef.current.pause();
+        currentAudioRef.current.currentTime = 0;
+      } catch {}
+    }
+    if ('speechSynthesis' in window) {
+      try { window.speechSynthesis.cancel(); } catch {}
+    }
+
+    // Prioritas 1: Putar Audio Suara Perempuan Google yang sudah di-cache di RAM (0ms, konsisten jernih)
+    const cachedUrl = audioCacheRef.current.get(text) || `/api/presensi-gate/tts?q=${encodeURIComponent(text)}`;
     try {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'id-ID';
-      utterance.rate = 1.05;
-      utterance.pitch = 1.0;
-      window.speechSynthesis.speak(utterance);
+      const audio = new Audio(cachedUrl);
+      audio.playbackRate = 1.08;
+      currentAudioRef.current = audio;
+      audio.play().catch(() => {
+        // Fallback ke Web Speech API dengan mengunci voice perempuan jika offline
+        if ('speechSynthesis' in window) {
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = 'id-ID';
+          if (femaleVoiceRef.current) utterance.voice = femaleVoiceRef.current;
+          utterance.rate = 1.05;
+          utterance.pitch = 1.1;
+          window.speechSynthesis.speak(utterance);
+        }
+      });
     } catch (e) {
       console.error('Speech error:', e);
     }
   };
 
-  // Helper pengucapan suara berdasarkan hasil tap
-  const announceScanResult = (actionType: string, st: any, isGuru?: boolean) => {
-    if (isGuru || st.role === 'GURU' || st.kelas === 'GURU / GTK') {
-      if (actionType === 'MASUK') {
-        speakGreeting(`Selamat datang, ${st.nama}. Presensi guru berhasil.`);
-      } else if (actionType === 'PULANG') {
-        speakGreeting(`Hati-hati di jalan, ${st.nama}. Check-out guru berhasil.`);
-      } else if (actionType === 'SUDAH_MASUK') {
-        speakGreeting(`${st.nama}, sudah tercatat masuk hari ini.`);
+  // Helper pengucapan suara singkat tanpa menyebut nama (agar antrean tap cepat)
+  const announceScanResult = (actionType: string, st: any, _isGuru?: boolean) => {
+    if (actionType === 'MASUK') {
+      if (st?.statusMasuk === 'DIBATALKAN') {
+        speakGreeting('Presensi dibatalkan, tercatat alpha di kelas');
+      } else if (st?.statusMasuk === 'Terlambat') {
+        speakGreeting('Terlambat, presensi masuk tercatat');
+      } else {
+        speakGreeting('Selamat datang, presensi berhasil');
       }
-    } else {
-      if (actionType === 'MASUK') {
-        if (st.statusMasuk === 'Terlambat') {
-          speakGreeting(`${st.nama}, Terlambat! Jam masuk tercatat.`);
-        } else {
-          speakGreeting(`${st.nama}, Kelas ${st.kelas}, Hadir!`);
-        }
-      } else if (actionType === 'PULANG') {
-        speakGreeting(`Hati-hati di jalan, ${st.nama}. Check out pulang berhasil.`);
-      } else if (actionType === 'SUDAH_MASUK') {
-        speakGreeting(`${st.nama}, sudah tercatat masuk hari ini.`);
-      }
+    } else if (actionType === 'PULANG') {
+      speakGreeting('Presensi pulang berhasil, hati-hati di jalan');
+    } else if (actionType === 'SUDAH_MASUK') {
+      speakGreeting('Sudah tercatat masuk hari ini');
     }
   };
 
@@ -438,7 +496,7 @@ export default function PresensiGatePage() {
       } else {
         setLastScan(null);
         setScanErrorMsg(json.error || 'Kartu atau kode barcode tidak terdaftar');
-        speakGreeting('Kartu belum terdaftar!');
+        speakGreeting('Kartu belum terdaftar');
       }
     } catch (err: any) {
       setLastScan(null);
