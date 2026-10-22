@@ -322,3 +322,37 @@
   from { opacity: 0; transform: translateY(-20px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+.heroWrapper {
+  display: flex;
+  align-items: center;
+  justifyContent: center;
+  gap: 22px;
+  text-align: left;
+}
+
+.heroLogo {
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.25));
+  flex-shrink: 0;
+}
+
+.heroContent {
+  flex: 1;
+  min-width: 260px;
+}
+
+@media (max-width: 640px) {
+  .heroWrapper {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+  .heroLogo {
+    width: 75px;
+    height: 75px;
+  }
+}
+

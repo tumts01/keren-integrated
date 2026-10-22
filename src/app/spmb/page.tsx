@@ -349,51 +349,55 @@ export default function SpmbPage() {
 
       {/* Banner Utama (Hero Madrasah Header) */}
       <div className={styles.header}>
-        <img
-          src="/logo.png"
-          alt="Logo MTs Almaarif"
-          style={{ width: '85px', height: 'auto', marginBottom: '14px', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))' }}
-        />
-        
-        {/* Badge Kategori SPMB */}
-        <div style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '8px',
-          background: 'rgba(255, 255, 255, 0.18)',
-          backdropFilter: 'blur(6px)',
-          padding: '6px 18px',
-          borderRadius: '50px',
-          fontSize: '0.85rem',
-          fontWeight: 800,
-          letterSpacing: '0.6px',
-          textTransform: 'uppercase',
-          marginBottom: '10px',
-          border: '1px solid rgba(255, 255, 255, 0.3)'
-        }}>
-          <i className="fas fa-graduation-cap"></i> PENDAFTARAN SPMB ONLINE
+        <div className={styles.heroWrapper}>
+          <img
+            src="/logo.png"
+            alt="Logo MTs Almaarif"
+            className={styles.heroLogo}
+          />
+          
+          <div className={styles.heroContent}>
+            {/* Badge Kategori SPMB */}
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: 'rgba(255, 255, 255, 0.18)',
+              backdropFilter: 'blur(6px)',
+              padding: '5px 16px',
+              borderRadius: '50px',
+              fontSize: '0.82rem',
+              fontWeight: 800,
+              letterSpacing: '0.5px',
+              textTransform: 'uppercase',
+              marginBottom: '8px',
+              border: '1px solid rgba(255, 255, 255, 0.3)'
+            }}>
+              <i className="fas fa-graduation-cap"></i> PENDAFTARAN SPMB ONLINE
+            </div>
+
+            {/* Nama Madrasah Menonjol & Menyatu dengan Logo */}
+            <h1 style={{
+              fontSize: '2.1rem',
+              fontWeight: 900,
+              margin: '0 0 6px 0',
+              letterSpacing: '0.4px',
+              textTransform: 'uppercase',
+              textShadow: '0 2px 8px rgba(0,0,0,0.2)',
+              lineHeight: 1.2
+            }}>
+              MTs Almaarif 01 Singosari
+            </h1>
+
+            <p style={{ margin: 0, fontSize: '0.98rem', opacity: 0.95, lineHeight: 1.4, fontWeight: 500 }}>
+              Seleksi Penerimaan Murid Baru • <strong>Tahun Ajaran {spmbYear}</strong>
+            </p>
+          </div>
         </div>
-
-        {/* Nama Madrasah Lebih Menonjol & Gagah */}
-        <h1 style={{
-          fontSize: '2.1rem',
-          fontWeight: 900,
-          margin: '0 0 8px 0',
-          letterSpacing: '0.5px',
-          textTransform: 'uppercase',
-          textShadow: '0 2px 8px rgba(0,0,0,0.2)',
-          lineHeight: 1.2
-        }}>
-          MTs Almaarif 01 Singosari
-        </h1>
-
-        <p className={styles.subtitle} style={{ fontSize: '1rem', opacity: 0.95 }}>
-          Seleksi Penerimaan Murid Baru • <strong>Tahun Ajaran {spmbYear}</strong>
-        </p>
 
         {/* Admin Quick Control Button */}
         {isAdmin && (
-          <div style={{ marginTop: '14px' }}>
+          <div style={{ marginTop: '16px', textAlign: 'center' }}>
             <button
               type="button"
               onClick={() => setShowConfigModal(true)}
