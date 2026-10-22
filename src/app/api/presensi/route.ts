@@ -390,11 +390,121 @@ export async function POST(request: Request) {
     const { error } = await supabase.from('data_presensi_siswa').insert(payload);
     if (error) throw error;
 
+    // ── AUDIT SILANG OTOMATIS (PRESENSI GERBANG RFID vs JAM PERTAMA KELAS / PIKET) ──
+    const auditAnomalies: any[] = [];
+    const isJamPertamaOrPiket = submittedJams.includes('1') || mapel === 'PIKET';
+    if (siaStudents.length > 0 && isJamPertamaOrPiket) {
+      // Siswa yang diinput A pada jam pertama (atau A/S/I oleh Piket di jam pertama)
+      const targetAuditStudents = siaStudents.filter((s: any) => {
+        const st = String(s.status || '').trim().toUpperCase();
+        if (st === 'A') return true;
+        if (mapel === 'PIKET' && submittedJams.includes('1') && (st === 'S' || st === 'I')) return true;
+        return false;
+      });
+
+      if (targetAuditStudents.length > 0) {
+        const { data: dayRows } = await supabase
+          .from('data_presensi_siswa')
+          .select('id, kelas, metadata')
+          .eq('tanggal', tanggal);
+
+        const gateRows = (dayRows || []).filter((r: any) => {
+          const m = r.metadata || {};
+          return r.kelas !== 'GTK' && Boolean(m['JAM_MASUK'] || m['JAM MASUK'] || m['SUMBER'] === 'GATE');
+        });
+
+        const parseSec = (t: string): number | null => {
+          if (!t) return null;
+          const clean = String(t).trim().replace(/\./g, ':');
+          const parts = clean.split(':').map(Number);
+          if (parts.length < 2 || parts.some(isNaN)) return null;
+          return (parts[0] * 3600) + (parts[1] * 60) + (parts[2] || 0);
+        };
+
+        for (const stStudent of targetAuditStudents) {
+          const normTargetName = normalizeNama(stStudent.nama);
+          const cleanTargetNisn = cleanNisn(stStudent.nisn);
+
+          const matchedGate = gateRows.find((gr: any) => {
+            const gm = gr.metadata || {};
+            const gName = normalizeNama(gm['NAMA SISWA']);
+            const gNisn = cleanNisn(gm['NISN']);
+            return (normTargetName && gName === normTargetName) || (cleanTargetNisn && gNisn === cleanTargetNisn);
+          });
+
+          if (matchedGate && matchedGate.metadata?.['AUDIT_STATUS'] !== 'DIPULIHKAN') {
+            const gm = matchedGate.metadata || {};
+            const jamTap = String(gm['JAM_MASUK'] || gm['JAM MASUK'] || '').trim();
+            const targetSec = parseSec(jamTap);
+
+            // Pelacak Pembawa Kartu (Buddy-Tap Detector: cari siswa lain yang tap berurutan <= 25 detik)
+            const buddies: any[] = [];
+            if (targetSec !== null) {
+              for (const other of gateRows) {
+                if (other.id === matchedGate.id) continue;
+                const om = other.metadata || {};
+                const oNama = String(om['NAMA SISWA'] || '').trim();
+                if (!oNama || normalizeNama(oNama) === normTargetName) continue;
+                const oJam = String(om['JAM_MASUK'] || om['JAM MASUK'] || '').trim();
+                const oSec = parseSec(oJam);
+                if (oSec === null) continue;
+                const diff = Math.abs(oSec - targetSec);
+                if (diff <= 25) {
+                  buddies.push({
+                    nama: oNama,
+                    kelas: other.kelas || om['KELAS'] || '-',
+                    nisn: String(om['NISN'] || '').trim(),
+                    jamMasuk: oJam,
+                    selisihDetik: diff,
+                    arah: oSec <= targetSec ? 'sebelum' : 'sesudah'
+                  });
+                }
+              }
+              buddies.sort((a, b) => a.selisihDetik - b.selisihDetik);
+            }
+
+            const topBuddies = buddies.slice(0, 3);
+            const statusKelas = String(stStudent.status || 'A').trim().toUpperCase();
+            const originalStatusMasuk = gm['AUDIT_ORIGINAL_STATUS_MASUK'] || gm['STATUS_MASUK'] || 'Tepat Waktu';
+
+            const updatedGateMeta = {
+              ...gm,
+              'KEHADIRAN': 'BATAL_RFID',
+              'STATUS_MASUK': 'DIBATALKAN',
+              'AUDIT_ORIGINAL_STATUS_MASUK': originalStatusMasuk,
+              'AUDIT_STATUS': 'DIBATALKAN',
+              'AUDIT_SANKSI': 'Presensi RFID Dibatalkan & Terkena Sanksi (Indikasi Titip Kartu / Alpha Jam Ke-1)',
+              'AUDIT_GURU': guru,
+              'AUDIT_MAPEL': mapel,
+              'AUDIT_JAM_KE': String(jamKe),
+              'AUDIT_STATUS_KELAS': statusKelas,
+              'AUDIT_WAKTU': nowTimestamp,
+              'AUDIT_TERDUGA_PEMBAWA': topBuddies
+            };
+
+            await supabase
+              .from('data_presensi_siswa')
+              .update({ metadata: updatedGateMeta })
+              .eq('id', matchedGate.id);
+
+            auditAnomalies.push({
+              nama: stStudent.nama,
+              kelas: stStudent.kelas || kelas,
+              jamTap,
+              statusKelas,
+              terdugaPembawa: topBuddies
+            });
+          }
+        }
+      }
+    }
+
     const skippedPiket = (body as any)._skippedPiket || 0;
     revalidateTag('presensi', {});
     return NextResponse.json({ 
       success: true,
       totalSaved: siaStudents.length,
+      auditAnomalies,
       infoMsg: siaStudents.length > 0 
         ? `${siaStudents.length} siswa tercatat S/I/A.` 
         : 'Semua siswa Hadir (pencatatan nihil selesai).',

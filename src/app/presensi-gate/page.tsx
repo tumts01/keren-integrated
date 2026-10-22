@@ -36,8 +36,8 @@ interface PresensiItem {
 export default function PresensiGatePage() {
   const router = useRouter();
 
-  // Tab State: 'kiosk' | 'mapping'
-  const [activeTab, setActiveTab] = useState<'kiosk' | 'mapping'>('kiosk');
+  // Tab State: 'kiosk' | 'audit' | 'mapping'
+  const [activeTab, setActiveTab] = useState<'kiosk' | 'audit' | 'mapping'>('kiosk');
 
   // Time & Clock
   const [currentTime, setCurrentTime] = useState('');
@@ -61,9 +61,18 @@ export default function PresensiGatePage() {
     totalHadir: 0,
     tepatWaktu: 0,
     terlambat: 0,
-    sudahPulang: 0
+    sudahPulang: 0,
+    dibatalkan: 0
   });
   const [historyList, setHistoryList] = useState<PresensiItem[]>([]);
+  const [auditList, setAuditList] = useState<any[]>([]);
+  const [auditDate, setAuditDate] = useState(() => {
+    const now = new Date();
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const wib = new Date(utc + (7 * 3600000));
+    return `${wib.getFullYear()}-${String(wib.getMonth() + 1).padStart(2, '0')}-${String(wib.getDate()).padStart(2, '0')}`;
+  });
+  const [loadingAudit, setLoadingAudit] = useState(false);
 
   // In-Memory Directory Cache untuk 0ms Instant Tap Lookup di Kiosk
   const directoryMapRef = useRef<Map<string, any>>(new Map());
@@ -127,8 +136,11 @@ export default function PresensiGatePage() {
       const json = await res.json();
       if (json.success) {
         const list: PresensiItem[] = json.data || [];
-        setStats(json.stats || { totalHadir: 0, tepatWaktu: 0, terlambat: 0, sudahPulang: 0 });
+        setStats(json.stats || { totalHadir: 0, tepatWaktu: 0, terlambat: 0, sudahPulang: 0, dibatalkan: 0 });
         setHistoryList(list);
+        if (Array.isArray(json.auditList)) {
+          setAuditList(json.auditList);
+        }
 
         // Sinkronkan riwayat tap hari ini ke memori lokal untuk deteksi masuk/pulang 0ms
         const taps: Record<string, { jamMasuk: string; jamPulang: string | null; statusMasuk: string }> = {};
@@ -447,6 +459,133 @@ export default function PresensiGatePage() {
     }
   };
 
+  // Fetch Audit Data by Date
+  const fetchAuditByDate = async (tgl: string) => {
+    setLoadingAudit(true);
+    try {
+      const res = await fetch(`/api/presensi-gate?tanggal=${encodeURIComponent(tgl)}`);
+      const json = await res.json();
+      if (json.success && Array.isArray(json.auditList)) {
+        setAuditList(json.auditList);
+      }
+    } catch (e) {
+      console.error('Fetch audit error:', e);
+    } finally {
+      setLoadingAudit(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'audit') {
+      fetchAuditByDate(auditDate);
+    }
+  }, [activeTab, auditDate]);
+
+  // Pulihkan Presensi (jika ternyata bukan titip kartu, misal izin UKS / dipanggil guru)
+  const handleRestoreAudit = async (item: any) => {
+    const { value: alasan, isConfirmed } = await Swal.fire({
+      title: `Pulihkan Presensi ${item.nama}?`,
+      input: 'text',
+      inputLabel: 'Alasan Pemulihan (misal: Sedang di UKS / Dipanggil BK / Salah Input Guru)',
+      inputPlaceholder: 'Ketik alasan pemulihan...',
+      inputValue: 'Konfirmasi hadir (Sedang izin keluar kelas / salah klik)',
+      showCancelButton: true,
+      confirmButtonColor: '#10b981',
+      confirmButtonText: 'Ya, Pulihkan Hadir',
+      cancelButtonText: 'Batal'
+    });
+
+    if (!isConfirmed) return;
+
+    try {
+      const res = await fetch('/api/presensi-gate', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id, action: 'pulihkan', catatan: alasan })
+      });
+      const json = await res.json();
+      if (json.success) {
+        Swal.fire('Berhasil Dipulihkan', json.message, 'success');
+        fetchAuditByDate(auditDate);
+        fetchGateData();
+      } else {
+        Swal.fire('Gagal', json.error, 'error');
+      }
+    } catch (err: any) {
+      Swal.fire('Error', err.message, 'error');
+    }
+  };
+
+  // Kelola / Tetapkan Sanksi Pelanggaran RFID
+  const handleUpdateSanksi = async (item: any) => {
+    const buddyInfo = Array.isArray(item.terdugaPembawa) && item.terdugaPembawa.length > 0
+      ? item.terdugaPembawa.map((b: any) => `${b.nama} (${b.kelas}) - selisih ${b.selisihDetik} dtk`).join(', ')
+      : 'Tidak terlacak';
+
+    const { value: formValues, isConfirmed } = await Swal.fire({
+      title: `Penetapan Sanksi RFID`,
+      html: `
+        <div style="text-align:left;font-size:13px;">
+          <div style="background:#fef2f2;border:1px solid #fecaca;padding:10px;border-radius:8px;margin-bottom:12px;color:#991b1b;">
+            <b>Pelanggar:</b> ${item.nama} (Kelas ${item.kelas})<br/>
+            <b>Tap Gerbang:</b> ${item.jamMasuk} WIB vs <b>Kelas Jam-${item.auditJamKe}:</b> ${item.auditStatusKelas}<br/>
+            <b>Terduga Pembawa Kartu:</b> ${buddyInfo}
+          </div>
+          <label style="font-weight:700;display:block;margin-bottom:4px;color:#334155;">Jenis Sanksi:</label>
+          <select id="swal-sanksi" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #cbd5e1;margin-bottom:10px;font-size:13px;">
+            <option value="Presensi RFID Dibatalkan & Pembinaan Ketertiban/BK" ${item.auditSanksi?.includes('Pembinaan') ? 'selected' : ''}>Presensi RFID Dibatalkan & Pembinaan Ketertiban/BK</option>
+            <option value="Presensi RFID Dibatalkan & Kartu Disita Sementara" ${item.auditSanksi?.includes('Disita') ? 'selected' : ''}>Presensi RFID Dibatalkan & Kartu Disita Sementara</option>
+            <option value="Presensi RFID Dibatalkan & Sanksi Poin Pelanggaran Disiplin" ${item.auditSanksi?.includes('Poin') ? 'selected' : ''}>Presensi RFID Dibatalkan & Sanksi Poin Pelanggaran Disiplin</option>
+            <option value="Presensi RFID Dibatalkan & Panggilan Orang Tua / Wali" ${item.auditSanksi?.includes('Orang Tua') ? 'selected' : ''}>Presensi RFID Dibatalkan & Panggilan Orang Tua / Wali</option>
+          </select>
+          <label style="font-weight:700;display:block;margin-bottom:4px;color:#334155;">Catatan Tindak Lanjut / Petugas:</label>
+          <input id="swal-catatan" type="text" value="${item.auditCatatan || ''}" placeholder="Misal: Sudah dipanggil ke ruang BK..." style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #cbd5e1;margin-bottom:12px;font-size:13px;box-sizing:border-box;" />
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700;color:#b91c1c;">
+            <input id="swal-pembawa" type="checkbox" ${item.pembawaKenaSanksi ? 'checked' : ''} style="width:16px;height:16px;" />
+            Beri sanksi juga kepada Terduga Pembawa Kartu
+          </label>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      confirmButtonText: 'Simpan & Terapkan Sanksi',
+      cancelButtonText: 'Batal',
+      preConfirm: () => {
+        const sanksi = (document.getElementById('swal-sanksi') as HTMLSelectElement)?.value;
+        const catatan = (document.getElementById('swal-catatan') as HTMLInputElement)?.value;
+        const pembawaKenaSanksi = (document.getElementById('swal-pembawa') as HTMLInputElement)?.checked;
+        return { sanksi, catatan, pembawaKenaSanksi };
+      }
+    });
+
+    if (!isConfirmed || !formValues) return;
+
+    try {
+      const res = await fetch('/api/presensi-gate', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: item.id,
+          action: 'sanksi',
+          sanksi: formValues.sanksi,
+          catatan: formValues.catatan,
+          pembawaKenaSanksi: formValues.pembawaKenaSanksi
+        })
+      });
+      const json = await res.json();
+      if (json.success) {
+        Swal.fire('Tersimpan', json.message, 'success');
+        fetchAuditByDate(auditDate);
+        fetchGateData();
+      } else {
+        Swal.fire('Gagal', json.error, 'error');
+      }
+    } catch (err: any) {
+      Swal.fire('Error', err.message, 'error');
+    }
+  };
+
   // Fetch Mapping Students
   const fetchMapping = async (kelas: string) => {
     setLoadingMapping(true);
@@ -628,6 +767,27 @@ export default function PresensiGatePage() {
               className={`${styles.tabBtn} ${activeTab === 'kiosk' ? styles.tabBtnActive : ''}`}
             >
               <i className="fas fa-desktop"></i> Kiosk Gerbang
+            </button>
+            <button
+              onClick={() => setActiveTab('audit')}
+              className={`${styles.tabBtn} ${activeTab === 'audit' ? styles.tabBtnActive : ''}`}
+              style={{ position: 'relative' }}
+            >
+              <i className="fas fa-shield-alt" style={{ color: stats.dibatalkan > 0 ? '#f87171' : undefined }}></i> Audit & Sanksi
+              {stats.dibatalkan > 0 && (
+                <span style={{
+                  marginLeft: '6px',
+                  background: '#ef4444',
+                  color: '#ffffff',
+                  fontSize: '10px',
+                  fontWeight: 900,
+                  padding: '1px 6px',
+                  borderRadius: '999px',
+                  boxShadow: '0 0 8px rgba(239,68,68,0.8)'
+                }}>
+                  {stats.dibatalkan}
+                </span>
+              )}
             </button>
             <button
               onClick={() => setActiveTab('mapping')}
@@ -882,6 +1042,40 @@ export default function PresensiGatePage() {
                 </div>
               </div>
 
+              {/* Banner Peringatan Audit Anomali Titip Kartu */}
+              {stats.dibatalkan > 0 && (
+                <div
+                  onClick={() => setActiveTab('audit')}
+                  style={{
+                    background: 'linear-gradient(90deg, rgba(153,27,27,0.85) 0%, rgba(127,29,29,0.95) 100%)',
+                    border: '1.5px solid #ef4444',
+                    borderRadius: '12px',
+                    padding: '10px 14px',
+                    marginBottom: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 12px rgba(239,68,68,0.25)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <i className="fas fa-exclamation-triangle" style={{ color: '#fca5a5', fontSize: '18px' }}></i>
+                    <div>
+                      <div style={{ fontSize: '12.5px', fontWeight: 800, color: '#ffffff' }}>
+                        🚨 {stats.dibatalkan} Presensi RFID Dibatalkan Otomatis (Indikasi Titip Kartu / Alpha Jam-1)
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#fecaca' }}>
+                        Klik untuk melihat detail pelanggar & hasil pelacakan Terduga Pembawa Kartu.
+                      </div>
+                    </div>
+                  </div>
+                  <span style={{ background: '#ef4444', color: 'white', fontSize: '11px', fontWeight: 800, padding: '4px 10px', borderRadius: '6px', whiteSpace: 'nowrap' }}>
+                    Cek Audit <i className="fas fa-arrow-right"></i>
+                  </span>
+                </div>
+              )}
+
               {/* Live Feed Table */}
               <div className={styles.feedCard}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
@@ -905,50 +1099,65 @@ export default function PresensiGatePage() {
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {historyList.slice(0, 30).map((item) => (
-                        <div
-                          key={item.id}
-                          style={{
-                            background: '#1e293b',
-                            border: '1px solid #334155',
-                            borderRadius: '10px',
-                            padding: '10px 14px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '10px'
-                          }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span style={{ fontWeight: 800, fontSize: '13px', color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {item.nama}
-                              </span>
-                              <span style={{ background: '#334155', color: '#93c5fd', fontSize: '10px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px' }}>
-                                {item.kelas}
-                              </span>
+                      {historyList.slice(0, 30).map((item) => {
+                        const isCancelled = item.statusMasuk === 'DIBATALKAN';
+                        return (
+                          <div
+                            key={item.id}
+                            style={{
+                              background: isCancelled ? 'rgba(127, 29, 29, 0.35)' : '#1e293b',
+                              border: isCancelled ? '1.5px solid #ef4444' : '1px solid #334155',
+                              borderRadius: '10px',
+                              padding: '10px 14px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '10px'
+                            }}
+                          >
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{
+                                  fontWeight: 800,
+                                  fontSize: '13px',
+                                  color: isCancelled ? '#fca5a5' : '#ffffff',
+                                  textDecoration: isCancelled ? 'line-through' : 'none',
+                                  whiteSpace: 'nowrap',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis'
+                                }}>
+                                  {item.nama}
+                                </span>
+                                <span style={{ background: '#334155', color: '#93c5fd', fontSize: '10px', fontWeight: 800, padding: '1px 6px', borderRadius: '4px' }}>
+                                  {item.kelas}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: '11px', color: isCancelled ? '#f87171' : '#94a3b8', marginTop: '2px' }}>
+                                {isCancelled ? '🚫 DIBATALKAN (Alpha di Kelas Jam Ke-1 — Kena Sanksi)' : `NISN: ${item.nisn}`}
+                              </div>
                             </div>
-                            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
-                              NISN: {item.nisn}
-                            </div>
-                          </div>
 
-                          <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                            <div style={{ fontSize: '12.5px', fontWeight: 800, color: item.statusMasuk === 'Terlambat' ? '#fbbf24' : '#34d399' }}>
-                              {item.jamMasuk ? `${item.jamMasuk} WIB` : '-'}
+                            <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                              <div style={{ fontSize: '12.5px', fontWeight: 800, color: isCancelled ? '#f87171' : item.statusMasuk === 'Terlambat' ? '#fbbf24' : '#34d399' }}>
+                                {item.jamMasuk ? `${item.jamMasuk} WIB` : '-'}
+                              </div>
+                              {isCancelled ? (
+                                <div style={{ fontSize: '10px', color: '#ffffff', background: '#dc2626', padding: '1px 6px', borderRadius: '4px', fontWeight: 800, display: 'inline-block', marginTop: '2px' }}>
+                                  BATAL & SANKSI
+                                </div>
+                              ) : item.jamPulang ? (
+                                <div style={{ fontSize: '10.5px', color: '#a78bfa', fontWeight: 600 }}>
+                                  Pulang: {item.jamPulang}
+                                </div>
+                              ) : (
+                                <div style={{ fontSize: '10px', color: item.statusMasuk === 'Terlambat' ? '#fbbf24' : '#6ee7b7' }}>
+                                  {item.statusMasuk}
+                                </div>
+                              )}
                             </div>
-                            {item.jamPulang ? (
-                              <div style={{ fontSize: '10.5px', color: '#a78bfa', fontWeight: 600 }}>
-                                Pulang: {item.jamPulang}
-                              </div>
-                            ) : (
-                              <div style={{ fontSize: '10px', color: item.statusMasuk === 'Terlambat' ? '#fbbf24' : '#6ee7b7' }}>
-                                {item.statusMasuk}
-                              </div>
-                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -956,6 +1165,247 @@ export default function PresensiGatePage() {
 
             </div>
 
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB AUDIT & SANKSI PELANGGARAN RFID (DETEKSI TITIP KARTU) */}
+        {/* ========================================================================= */}
+        {activeTab === 'audit' && (
+          <div className={styles.mappingCard}>
+            <div className={styles.mappingHeader}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <i className="fas fa-shield-alt" style={{ color: '#ef4444' }}></i>
+                  Audit Silang RFID & Pelacak Titip Kartu (Gerbang vs Jam Pertama Kelas)
+                </h2>
+                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>
+                  Otomatis membatalkan presensi RFID siswa yang tercatat Tap di Gerbang namun diinput <b>Alpha (A)</b> oleh Guru pada Jam Ke-1 / Piket, sekaligus melacak <b>Terduga Pembawa Kartu</b> dari jeda detik tap berurutan.
+                </p>
+              </div>
+
+              <div className={styles.mappingFilters}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '12px', color: '#cbd5e1', fontWeight: 700 }}>Tanggal Audit:</span>
+                  <input
+                    type="date"
+                    value={auditDate}
+                    onChange={(e) => setAuditDate(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      background: '#1e293b',
+                      color: 'white',
+                      border: '1.5px solid #475569',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      outline: 'none'
+                    }}
+                  />
+                  <button
+                    onClick={() => fetchAuditByDate(auditDate)}
+                    style={{
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      background: '#0284c7',
+                      color: 'white',
+                      border: 'none',
+                      fontSize: '12.5px',
+                      fontWeight: 800,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <i className="fas fa-sync-alt"></i> Cek Audit
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Ringkasan Audit */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+              <div style={{ background: 'rgba(127,29,29,0.35)', border: '1px solid #ef4444', borderRadius: '12px', padding: '14px 16px' }}>
+                <div style={{ fontSize: '11px', color: '#fca5a5', fontWeight: 800, textTransform: 'uppercase' }}>Presensi RFID Dibatalkan & Sanksi</div>
+                <div style={{ fontSize: '26px', fontWeight: 900, color: '#f87171', marginTop: '4px' }}>
+                  {auditList.filter(a => a.auditStatus === 'DIBATALKAN').length} <span style={{ fontSize: '13px', fontWeight: 600 }}>Siswa</span>
+                </div>
+              </div>
+              <div style={{ background: 'rgba(120,53,15,0.35)', border: '1px solid #f59e0b', borderRadius: '12px', padding: '14px 16px' }}>
+                <div style={{ fontSize: '11px', color: '#fde68a', fontWeight: 800, textTransform: 'uppercase' }}>Terduga Pembawa Kartu Terlacak (≤10 dtk)</div>
+                <div style={{ fontSize: '26px', fontWeight: 900, color: '#fbbf24', marginTop: '4px' }}>
+                  {auditList.filter(a => a.auditStatus === 'DIBATALKAN' && Array.isArray(a.terdugaPembawa) && a.terdugaPembawa.some((b: any) => b.selisihDetik <= 10)).length} <span style={{ fontSize: '13px', fontWeight: 600 }}>Kasus</span>
+                </div>
+              </div>
+              <div style={{ background: 'rgba(6,78,59,0.35)', border: '1px solid #10b981', borderRadius: '12px', padding: '14px 16px' }}>
+                <div style={{ fontSize: '11px', color: '#a7f3d0', fontWeight: 800, textTransform: 'uppercase' }}>Presensi Dipulihkan (Valid / Izin UKS)</div>
+                <div style={{ fontSize: '26px', fontWeight: 900, color: '#34d399', marginTop: '4px' }}>
+                  {auditList.filter(a => a.auditStatus === 'DIPULIHKAN').length} <span style={{ fontSize: '13px', fontWeight: 600 }}>Siswa</span>
+                </div>
+              </div>
+            </div>
+
+            {loadingAudit ? (
+              <div style={{ textAlign: 'center', padding: '60px', color: '#94a3b8' }}>
+                <i className="fas fa-spinner fa-spin fa-2x" style={{ color: '#ef4444', marginBottom: '12px' }}></i>
+                <div>Memeriksa sinkronisasi Tap Gerbang vs Presensi Kelas Jam Ke-1...</div>
+              </div>
+            ) : auditList.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8', background: '#0f172a', borderRadius: '12px', border: '1px dashed #334155' }}>
+                <i className="fas fa-check-circle" style={{ fontSize: '2.8rem', color: '#10b981', marginBottom: '12px' }}></i>
+                <div style={{ fontSize: '15px', fontWeight: 800, color: '#f8fafc' }}>Bersih! Tidak Ada Anomali / Titip Kartu RFID pada Tanggal Ini</div>
+                <div style={{ fontSize: '12.5px', marginTop: '4px' }}>
+                  Semua siswa yang melakukan tap di gerbang sesuai dengan kehadiran di kelas pada jam pertama.
+                </div>
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                  <thead>
+                    <tr style={{ background: '#1e293b', borderBottom: '2px solid #334155', color: '#94a3b8', textAlign: 'left' }}>
+                      <th style={{ padding: '12px 14px', width: '45px' }}>No</th>
+                      <th style={{ padding: '12px 14px' }}>Siswa (Pemilik Kartu)</th>
+                      <th style={{ padding: '12px 14px' }}>Waktu Tap vs Bukti Kelas</th>
+                      <th style={{ padding: '12px 14px' }}>🕵️ Terduga Pembawa Kartu (Tap Berurutan)</th>
+                      <th style={{ padding: '12px 14px' }}>Status & Sanksi</th>
+                      <th style={{ padding: '12px 14px', textAlign: 'right' }}>Tindakan</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {auditList.map((item, idx) => {
+                      const isCancelled = item.auditStatus === 'DIBATALKAN';
+                      const buddies = Array.isArray(item.terdugaPembawa) ? item.terdugaPembawa : [];
+                      return (
+                        <tr key={item.id} style={{ borderBottom: '1px solid #1e293b', background: isCancelled ? 'rgba(127,29,29,0.15)' : 'transparent' }}>
+                          <td style={{ padding: '14px', color: '#64748b', fontWeight: 700 }}>{idx + 1}</td>
+                          <td style={{ padding: '14px' }}>
+                            <div style={{ fontWeight: 800, color: '#ffffff', fontSize: '14px' }}>{item.nama}</div>
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '4px' }}>
+                              <span style={{ background: '#334155', color: '#93c5fd', fontSize: '11px', fontWeight: 800, padding: '2px 8px', borderRadius: '4px' }}>
+                                Kelas {item.kelas}
+                              </span>
+                              <span style={{ fontSize: '11.5px', color: '#94a3b8' }}>NISN: {item.nisn || '-'}</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '14px' }}>
+                            <div style={{ color: '#38bdf8', fontWeight: 800, fontSize: '12.5px' }}>
+                              <i className="fas fa-id-card"></i> Tap Gerbang: {item.jamMasuk} WIB
+                            </div>
+                            <div style={{ color: '#f87171', fontWeight: 700, fontSize: '12px', marginTop: '4px' }}>
+                              <i className="fas fa-chalkboard-teacher"></i> Kelas Jam-{item.auditJamKe}: Status <b>{item.auditStatusKelas}</b> ({item.auditMapel})
+                            </div>
+                            <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '2px' }}>
+                              Diinput oleh: {item.auditGuru}
+                            </div>
+                          </td>
+                          <td style={{ padding: '14px' }}>
+                            {buddies.length === 0 ? (
+                              <span style={{ fontSize: '11.5px', color: '#64748b', fontStyle: 'italic' }}>
+                                Tidak ada tap siswa lain dalam jeda ±25 detik
+                              </span>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                {buddies.map((b: any, bIdx: number) => {
+                                  const isStrong = b.selisihDetik <= 6;
+                                  return (
+                                    <div
+                                      key={bIdx}
+                                      style={{
+                                        background: isStrong ? 'rgba(245, 158, 11, 0.18)' : '#1e293b',
+                                        border: isStrong ? '1px solid #f59e0b' : '1px solid #334155',
+                                        borderRadius: '8px',
+                                        padding: '6px 10px',
+                                        fontSize: '11.5px'
+                                      }}
+                                    >
+                                      <div style={{ fontWeight: 800, color: isStrong ? '#fde68a' : '#e2e8f0' }}>
+                                        {isStrong ? '🔥 ' : '👤 '}{b.nama} <span style={{ color: '#38bdf8' }}>({b.kelas})</span>
+                                      </div>
+                                      <div style={{ color: '#cbd5e1', fontSize: '11px', marginTop: '2px' }}>
+                                        Tap pukul <b>{b.jamMasuk}</b> — <b style={{ color: isStrong ? '#fbbf24' : '#94a3b8' }}>Selisih {b.selisihDetik} detik ({b.arah})</b>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ padding: '14px' }}>
+                            {isCancelled ? (
+                              <div>
+                                <span style={{ background: '#dc2626', color: 'white', fontSize: '10.5px', fontWeight: 800, padding: '3px 8px', borderRadius: '6px', display: 'inline-block' }}>
+                                  🚫 PRESENSI BATAL & SANKSI
+                                </span>
+                                <div style={{ fontSize: '11.5px', color: '#fca5a5', fontWeight: 700, marginTop: '5px' }}>
+                                  {item.auditSanksi}
+                                </div>
+                                {item.pembawaKenaSanksi && (
+                                  <div style={{ fontSize: '11px', color: '#fbbf24', fontWeight: 700, marginTop: '2px' }}>
+                                    ⚠️ Pembawa kartu juga dikenai sanksi
+                                  </div>
+                                )}
+                                {item.auditCatatan && (
+                                  <div style={{ fontSize: '11px', color: '#cbd5e1', marginTop: '3px', fontStyle: 'italic' }}>
+                                    Catatan: "{item.auditCatatan}"
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div>
+                                <span style={{ background: '#059669', color: 'white', fontSize: '10.5px', fontWeight: 800, padding: '3px 8px', borderRadius: '6px', display: 'inline-block' }}>
+                                  ✅ DIPULIHKAN (HADIR)
+                                </span>
+                                {item.auditCatatan && (
+                                  <div style={{ fontSize: '11px', color: '#a7f3d0', marginTop: '4px' }}>
+                                    Alasan: "{item.auditCatatan}"
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ padding: '14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                              <button
+                                onClick={() => handleUpdateSanksi(item)}
+                                style={{
+                                  padding: '6px 10px',
+                                  borderRadius: '6px',
+                                  background: '#dc2626',
+                                  color: 'white',
+                                  border: 'none',
+                                  fontSize: '11.5px',
+                                  fontWeight: 700,
+                                  cursor: 'pointer'
+                                }}
+                                title="Atur / Tetapkan Sanksi"
+                              >
+                                <i className="fas fa-gavel"></i> Sanksi
+                              </button>
+                              {isCancelled && (
+                                <button
+                                  onClick={() => handleRestoreAudit(item)}
+                                  style={{
+                                    padding: '6px 10px',
+                                    borderRadius: '6px',
+                                    background: '#334155',
+                                    color: '#cbd5e1',
+                                    border: '1px solid #475569',
+                                    fontSize: '11.5px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer'
+                                  }}
+                                  title="Pulihkan jika bukan titip kartu (misal izin UKS / BK)"
+                                >
+                                  <i className="fas fa-undo"></i> Pulihkan
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
