@@ -45,7 +45,7 @@ export async function GET(request: Request) {
       jamKe: cleanJamKe(r.metadata?.['JAM KE'] || ''),
       tahunAjaran: r.metadata?.['TAHUN AJARAN'] || '',
       kelas: r.metadata?.['KELAS'] || r.kelas || '',
-      mapel: r.metadata?.['MAPEL'] || '',
+      mapel: (r.metadata?.['MAPEL'] || '').replace(/\bllmu\b/g, 'Ilmu'),
       namaGuru: r.metadata?.['NAMA GURU'] || '',
       materi: r.metadata?.['MATERI'] || '',
     })).filter((r: any) => r.tanggal || r.materi);
@@ -68,11 +68,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { tanggal, jamKe, kelas, mapel, guru, materi, tahunAjaran } = body;
+    let { tanggal, jamKe, kelas, mapel, guru, materi, tahunAjaran } = body;
 
     if (!tanggal || !jamKe || !kelas || !mapel || !materi) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
     }
+
+    mapel = String(mapel).trim().replace(/\bllmu\b/g, 'Ilmu');
 
     const jamKeText = String(jamKe);
 

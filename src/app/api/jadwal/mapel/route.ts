@@ -2,13 +2,14 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
 const getMapelName = (r: any) => {
-  if (!r.metadata) return '';
+  if (!r.metadata) return (r.nama || '').toString().trim().replace(/\bllmu\b/g, 'Ilmu');
   const keys = Object.keys(r.metadata);
   const key = keys.find(k => {
     const lower = k.toLowerCase().replace(/[\s_]/g, '');
     return lower === 'namamapel' || lower === 'mapel' || lower === 'matapelajaran' || lower === 'pelajaran' || lower === 'namapelajaran';
   }) || 'MataPelajaran';
-  return (r.metadata[key] || '').toString().trim();
+  const val = (r.metadata[key] || r.nama || '').toString().trim();
+  return val.replace(/\bllmu\b/g, 'Ilmu');
 };
 
 export const dynamic = 'force-dynamic';

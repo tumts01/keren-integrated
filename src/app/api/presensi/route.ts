@@ -82,7 +82,7 @@ export async function GET(request: Request) {
         tahunAjaran: (r.metadata?.['TAHUN AJARAN'] || '').trim(),
         kelas: (r.metadata?.['KELAS'] || r.kelas || '').trim(),
         jamKe: cleanJamKe((r.metadata?.['JAM KE'] || '').trim()),
-        mapel: (r.metadata?.['MAPEL'] || '').trim(),
+        mapel: (r.metadata?.['MAPEL'] || '').trim().replace(/\bllmu\b/g, 'Ilmu'),
         guruPenginput: (r.metadata?.['GURU PENGINPUT'] || '').trim(),
         namaSiswa: (r.metadata?.['NAMA SISWA'] || '').trim(),
         nisn: rawNisn,
@@ -163,7 +163,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    const { tahunAjaran, mapel, kelas, jamKe, guru, timestamp, tanggal } = body;
+    let { tahunAjaran, mapel, kelas, jamKe, guru, timestamp, tanggal } = body;
+    mapel = String(mapel || '').trim().replace(/\bllmu\b/g, 'Ilmu');
 
     let listSiswa = body.listSiswa;
 
