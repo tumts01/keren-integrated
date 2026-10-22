@@ -360,6 +360,33 @@ export default function SpmbPage() {
           <strong>Tahun Ajaran {spmbYear}</strong>
         </p>
 
+        {/* Tombol Download Brosur SPMB */}
+        <div style={{ marginTop: '16px' }}>
+          <a
+            href="https://drive.google.com/file/d/16tGIlXUxRzfErVTR81XhuEfb9WpUvUl1/view?usp=sharing"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              background: '#ffffff',
+              color: '#15803d',
+              padding: '10px 22px',
+              borderRadius: '50px',
+              fontSize: '0.92rem',
+              fontWeight: 800,
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
+              transition: 'all 0.2s ease'
+            }}
+          >
+            <i className="fas fa-file-pdf" style={{ fontSize: '1.15rem', color: '#dc2626' }}></i>
+            <span>Download Brosur SPMB</span>
+            <i className="fas fa-external-link-alt" style={{ fontSize: '0.78rem', opacity: 0.8 }}></i>
+          </a>
+        </div>
+
         {/* Admin Quick Control Button */}
         {isAdmin && (
           <div style={{ marginTop: '16px' }}>
