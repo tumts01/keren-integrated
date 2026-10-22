@@ -714,26 +714,6 @@ export default function SpmbPortalDashboard() {
             </div>
           </div>
 
-          {/* Banner Informasi: Titipan seadanya / tidak harus menunggu kelulusan */}
-          <div style={{
-            background: '#f0fdf4',
-            border: '1px solid #bbf7d0',
-            borderRadius: '12px',
-            padding: '12px 16px',
-            marginBottom: '18px',
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '12px',
-            fontSize: '13px',
-            color: '#166534',
-            lineHeight: 1.5
-          }}>
-            <i className="fas fa-info-circle" style={{ fontSize: '18px', color: '#16a34a', marginTop: '2px', flexShrink: 0 }}></i>
-            <div>
-              Pembayaran daftar ulang <b>tidak harus menunggu pengumuman kelulusan</b>. Orang tua/wali calon santri dapat menitipkan biaya administrasi terlebih dahulu seadanya (misal DP/cicilan bertahap Rp 500.000, Rp 1.000.000, Rp 1.500.000, dst.) atau langsung melunasinya, baik melalui transfer Bank BCA maupun tunai langsung di madrasah.
-            </div>
-          </div>
-
             {/* Financial Summary Grid */}
             <div style={{
               display: 'grid',
