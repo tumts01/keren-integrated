@@ -13,18 +13,29 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: 'Username atau nama diperlukan' }, { status: 400 });
     }
 
-    // Cari di data_users
-    let query = supabase.from('data_users').select('*');
-    if (username && nama) {
-      query = query.or(`username.ilike.${username},metadata->>Username.ilike.${username},nama.ilike.${nama}`);
-    } else if (username) {
-      query = query.or(`username.ilike.${username},metadata->>Username.ilike.${username}`);
-    } else {
-      query = query.ilike('nama', nama);
+    // Cari di data_users (aman dari karakter koma/gelar nama)
+    let rows: any[] = [];
+    if (username) {
+      const cleanUser = username.replace(/[^a-zA-Z0-9_.-]/g, '');
+      const { data } = await supabase
+        .from('data_users')
+        .select('*')
+        .or(`username.ilike.${cleanUser},metadata->>Username.ilike.${cleanUser}`);
+      if (data && data.length > 0) rows = data;
     }
 
-    const { data: rows, error } = await query;
-    if (error) throw error;
+    if (rows.length === 0 && nama) {
+      const { data } = await supabase
+        .from('data_users')
+        .select('*')
+        .ilike('nama', `%${nama.trim()}%`);
+      if (data && data.length > 0) rows = data;
+    }
+
+    if (rows.length === 0) {
+      const { data } = await supabase.from('data_users').select('*');
+      if (data) rows = data;
+    }
 
     let userRow = (rows || []).find((r: any) => {
       const uCol = (r.username || '').toString().toLowerCase().trim();

@@ -19,18 +19,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Identitas user (username/nama) tidak ditemukan' }, { status: 400 });
     }
 
-    // 1. Cari user di tabel data_users
-    let query = supabase.from('data_users').select('*');
-    if (username && nama) {
-      query = query.or(`username.ilike.${username},metadata->>Username.ilike.${username},nama.ilike.${nama}`);
-    } else if (username) {
-      query = query.or(`username.ilike.${username},metadata->>Username.ilike.${username}`);
-    } else {
-      query = query.ilike('nama', nama);
+    // 1. Cari user di tabel data_users (aman dari karakter koma/gelar nama)
+    let rows: any[] = [];
+    if (username) {
+      const cleanUser = username.replace(/[^a-zA-Z0-9_.-]/g, '');
+      const { data } = await supabase
+        .from('data_users')
+        .select('*')
+        .or(`username.ilike.${cleanUser},metadata->>Username.ilike.${cleanUser}`);
+      if (data && data.length > 0) rows = data;
     }
 
-    const { data: rows, error: findErr } = await query;
-    if (findErr) throw findErr;
+    if (rows.length === 0 && nama) {
+      const { data } = await supabase
+        .from('data_users')
+        .select('*')
+        .ilike('nama', `%${nama.trim()}%`);
+      if (data && data.length > 0) rows = data;
+    }
+
+    if (rows.length === 0) {
+      const { data } = await supabase.from('data_users').select('*');
+      if (data) rows = data;
+    }
 
     const userRow = (rows || []).find((r: any) => {
       const uCol = String(r.username || '').toLowerCase().trim();
