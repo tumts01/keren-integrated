@@ -49,6 +49,14 @@ export default function PortalDashboard() {
     jamMasuk: string | null;
     jamPulang: string | null;
     statusMasuk: string | null;
+    auditInfo?: {
+      sanksi: string;
+      catatan?: string;
+      guru?: string;
+      mapel?: string;
+      jamKe?: string;
+      statusKelas?: string;
+    } | null;
   } | null>(null);
   const [loadingPresensiToday, setLoadingPresensiToday] = useState(true);
   const [todayFormatted, setTodayFormatted] = useState('');
@@ -549,7 +557,11 @@ export default function PortalDashboard() {
           <div style={{
             padding: '12px 16px',
             background: todayPresensi?.hasRecord 
-              ? (todayPresensi.jamPulang ? 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)' : 'linear-gradient(135deg, #059669 0%, #047857 100%)')
+              ? (todayPresensi.status === 'DIBATALKAN_RFID' || todayPresensi.status === 'ALPHA'
+                  ? 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)'
+                  : todayPresensi.jamPulang
+                  ? 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)'
+                  : 'linear-gradient(135deg, #059669 0%, #047857 100%)')
               : 'linear-gradient(135deg, #475569 0%, #334155 100%)',
             color: 'white',
             display: 'flex',
@@ -622,6 +634,60 @@ export default function PortalDashboard() {
                   <p style={{ margin: '4px 0 0 0', fontSize: '11.5px', color: '#64748b', lineHeight: 1.4 }}>
                     Ananda belum melakukan tap kartu RFID / scan presensi di gerbang madrasah hari ini.
                   </p>
+                </div>
+              </div>
+            ) : todayPresensi.status === 'DIBATALKAN_RFID' ? (
+              // PRESENSI RFID DIBATALKAN KARENA ALPHA DI JAM PERTAMA (INDIKASI TITIP KARTU / BOLOS)
+              <div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      width: '40px', height: '40px', borderRadius: '10px',
+                      background: '#fee2e2', color: '#dc2626',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '18px', flexShrink: 0
+                    }}>
+                      <i className="fas fa-ban"></i>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: 800, color: '#991b1b' }}>
+                        🚫 Presensi RFID Dibatalkan (Alpha di Kelas)
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#dc2626', fontWeight: 600 }}>
+                        Terdeteksi oleh Sistem Audit Silang Gerbang vs Kelas
+                      </div>
+                    </div>
+                  </div>
+
+                  <span style={{
+                    fontSize: '10.5px', fontWeight: 800,
+                    padding: '4px 10px', borderRadius: '8px',
+                    background: '#dc2626', color: 'white'
+                  }}>
+                    KENA SANKSI
+                  </span>
+                </div>
+
+                <div style={{
+                  background: '#fef2f2',
+                  border: '1.5px solid #fecaca',
+                  borderRadius: '10px',
+                  padding: '10px 12px',
+                  fontSize: '12px',
+                  color: '#7f1d1d',
+                  lineHeight: 1.5
+                }}>
+                  <div>
+                    Kartu RFID tercatat tap di gerbang pukul <b style={{ textDecoration: 'line-through' }}>{todayPresensi.jamMasuk || '-'} WIB</b>, namun pada <b>Jam Ke-{todayPresensi.auditInfo?.jamKe || '1'}</b> ({todayPresensi.auditInfo?.mapel || 'Kelas'}) Ananda tercatat <b>Alpha / Tidak Hadir di Kelas</b> oleh <b>{todayPresensi.auditInfo?.guru || 'Guru'}</b>.
+                  </div>
+                  <div style={{ marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed #fca5a5', fontWeight: 700, color: '#b91c1c' }}>
+                    ⚖️ Status Sanksi: {todayPresensi.auditInfo?.sanksi || 'Presensi RFID Dibatalkan & Terkena Sanksi Pelanggaran (Indikasi Titip Kartu / Membolos)'}
+                  </div>
+                  {todayPresensi.auditInfo?.catatan && (
+                    <div style={{ marginTop: '4px', fontSize: '11.5px', color: '#991b1b', fontStyle: 'italic' }}>
+                      Catatan Petugas: "{todayPresensi.auditInfo.catatan}"
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (

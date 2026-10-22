@@ -36,13 +36,30 @@ export async function GET(request: Request) {
 
     if (error) throw error;
 
-    const matched = (rows || []).find((r: any) => {
-      const rNisn = String(r.metadata?.['NISN'] || '').trim().replace(/^0+/, '');
-      const rNis = String(r.metadata?.['NIS'] || r.metadata?.['ID SISWA'] || '').trim().replace(/^0+/, '');
+    // Prioritaskan baris GATE (memiliki JAM_MASUK atau SUMBER === 'GATE')
+    const studentRows = (rows || []).filter((r: any) => {
+      const rNisn = String(r.metadata?.['NISN'] || '').replace(/^'/, '').trim().replace(/^0+/, '');
+      const rNis = String(r.metadata?.['NIS'] || r.metadata?.['ID SISWA'] || '').replace(/^'/, '').trim().replace(/^0+/, '');
       if (cleanInputNisn && rNisn === cleanInputNisn) return true;
       if (cleanInputNis && rNis === cleanInputNis) return true;
       return false;
     });
+
+    const matchedGate = studentRows.find((r: any) => {
+      const m = r.metadata || {};
+      return Boolean(m['JAM_MASUK'] || m['JAM MASUK'] || m['SUMBER'] === 'GATE');
+    });
+
+    const matchedClassJam1Alpha = studentRows.find((r: any) => {
+      const m = r.metadata || {};
+      if (m['JAM_MASUK'] || m['JAM MASUK'] || m['SUMBER'] === 'GATE') return false;
+      const keh = String(m['KEHADIRAN'] || '').trim().toUpperCase();
+      const mapel = String(m['MAPEL'] || '').trim().toUpperCase();
+      const jams = String(m['JAM KE'] || '').replace(/^'/, '').split(',').map((s: string) => s.trim());
+      return keh === 'A' && (jams.includes('1') || mapel === 'PIKET');
+    });
+
+    const matched = matchedGate || studentRows[0] || null;
 
     if (!matched) {
       return NextResponse.json({
@@ -62,21 +79,42 @@ export async function GET(request: Request) {
     const meta = matched.metadata || {};
     const jamMasuk = meta['JAM_MASUK'] || meta['JAM MASUK'] || null;
     const jamPulang = meta['JAM_PULANG'] || meta['JAM PULANG'] || null;
-    const statusMasuk = meta['STATUS_MASUK'] || 'Tepat Waktu';
-    const kehadiranRaw = (meta['KEHADIRAN'] || meta['STATUS'] || 'H').toUpperCase();
+    let statusMasuk = meta['STATUS_MASUK'] || 'Tepat Waktu';
+    const kehadiranRaw = String(meta['KEHADIRAN'] || meta['STATUS'] || 'H').toUpperCase();
+
+    // Cek apakah terkena Audit Pembatalan RFID (baik sudah tercatat di metadata maupun konflik langsung dengan Alpha Jam-1)
+    const isAuditCancelled =
+      meta['AUDIT_STATUS'] === 'DIBATALKAN' ||
+      statusMasuk === 'DIBATALKAN' ||
+      kehadiranRaw === 'BATAL_RFID' ||
+      (Boolean(matchedGate) && Boolean(matchedClassJam1Alpha) && meta['AUDIT_STATUS'] !== 'DIPULIHKAN');
 
     let status = 'HADIR';
     let statusLabel = 'Hadir';
+    let auditInfo: any = null;
 
-    if (kehadiranRaw.includes('S')) {
+    if (isAuditCancelled) {
+      status = 'DIBATALKAN_RFID';
+      statusLabel = 'Presensi RFID Dibatalkan (Kena Sanksi)';
+      statusMasuk = 'DIBATALKAN';
+      const cm = matchedClassJam1Alpha?.metadata || {};
+      auditInfo = {
+        sanksi: meta['AUDIT_SANKSI'] || 'Presensi RFID Dibatalkan & Terkena Sanksi (Indikasi Titip Kartu / Alpha Jam Ke-1)',
+        catatan: meta['AUDIT_CATATAN'] || '',
+        guru: meta['AUDIT_GURU'] || cm['GURU PENGINPUT'] || '-',
+        mapel: meta['AUDIT_MAPEL'] || cm['MAPEL'] || '-',
+        jamKe: meta['AUDIT_JAM_KE'] || String(cm['JAM KE'] || '1').replace(/^'/, ''),
+        statusKelas: meta['AUDIT_STATUS_KELAS'] || 'A'
+      };
+    } else if (kehadiranRaw === 'S' || kehadiranRaw.includes('SAKIT')) {
       status = 'SAKIT';
       statusLabel = 'Sakit';
-    } else if (kehadiranRaw.includes('I')) {
+    } else if (kehadiranRaw === 'I' || kehadiranRaw.includes('IZIN')) {
       status = 'IZIN';
       statusLabel = 'Izin';
-    } else if (kehadiranRaw.includes('A')) {
+    } else if (kehadiranRaw === 'A' || kehadiranRaw.includes('ALPHA')) {
       status = 'ALPHA';
-      statusLabel = 'Alpha';
+      statusLabel = 'Alpha (Tanpa Keterangan)';
     } else {
       status = 'HADIR';
       statusLabel = jamPulang ? 'Sudah Pulang' : 'Hadir di Madrasah';
@@ -91,7 +129,8 @@ export async function GET(request: Request) {
         statusLabel,
         jamMasuk,
         jamPulang,
-        statusMasuk
+        statusMasuk,
+        auditInfo
       }
     });
 
