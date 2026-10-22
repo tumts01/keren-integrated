@@ -347,65 +347,69 @@ export default function SpmbPage() {
         </div>
       )}
 
+      {/* Banner Utama (Hero Madrasah Header) */}
       <div className={styles.header}>
-        <img src="/logo.png" alt="Logo MTs Almaarif" style={{ width: '80px', height: 'auto', marginBottom: '16px' }} />
-        <div className={styles.title}>
-          <div className={styles.titleIcon}>
-            <i className="fas fa-user-graduate"></i>
-          </div>
-          Pendaftaran SPMB Online
+        <img
+          src="/logo.png"
+          alt="Logo MTs Almaarif"
+          style={{ width: '85px', height: 'auto', marginBottom: '14px', filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))' }}
+        />
+        
+        {/* Badge Kategori SPMB */}
+        <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '8px',
+          background: 'rgba(255, 255, 255, 0.18)',
+          backdropFilter: 'blur(6px)',
+          padding: '6px 18px',
+          borderRadius: '50px',
+          fontSize: '0.85rem',
+          fontWeight: 800,
+          letterSpacing: '0.6px',
+          textTransform: 'uppercase',
+          marginBottom: '10px',
+          border: '1px solid rgba(255, 255, 255, 0.3)'
+        }}>
+          <i className="fas fa-graduation-cap"></i> PENDAFTARAN SPMB ONLINE
         </div>
-        <p className={styles.subtitle}>
-          Seleksi Penerimaan Murid Baru MTs Almaarif 01 Singosari<br />
-          <strong>Tahun Ajaran {spmbYear}</strong>
-        </p>
 
-        {/* Tombol Download Brosur SPMB */}
-        <div style={{ marginTop: '16px' }}>
-          <a
-            href="https://drive.google.com/file/d/16tGIlXUxRzfErVTR81XhuEfb9WpUvUl1/view?usp=sharing"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              background: '#ffffff',
-              color: '#15803d',
-              padding: '10px 22px',
-              borderRadius: '50px',
-              fontSize: '0.92rem',
-              fontWeight: 800,
-              textDecoration: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.15)',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            <i className="fas fa-file-pdf" style={{ fontSize: '1.15rem', color: '#dc2626' }}></i>
-            <span>Download Brosur SPMB</span>
-            <i className="fas fa-external-link-alt" style={{ fontSize: '0.78rem', opacity: 0.8 }}></i>
-          </a>
-        </div>
+        {/* Nama Madrasah Lebih Menonjol & Gagah */}
+        <h1 style={{
+          fontSize: '2.1rem',
+          fontWeight: 900,
+          margin: '0 0 8px 0',
+          letterSpacing: '0.5px',
+          textTransform: 'uppercase',
+          textShadow: '0 2px 8px rgba(0,0,0,0.2)',
+          lineHeight: 1.2
+        }}>
+          MTs Almaarif 01 Singosari
+        </h1>
+
+        <p className={styles.subtitle} style={{ fontSize: '1rem', opacity: 0.95 }}>
+          Seleksi Penerimaan Murid Baru • <strong>Tahun Ajaran {spmbYear}</strong>
+        </p>
 
         {/* Admin Quick Control Button */}
         {isAdmin && (
-          <div style={{ marginTop: '16px' }}>
+          <div style={{ marginTop: '14px' }}>
             <button
               type="button"
               onClick={() => setShowConfigModal(true)}
               style={{
                 background: '#047857',
                 color: 'white',
-                border: 'none',
-                padding: '9px 20px',
+                border: '1px solid rgba(255,255,255,0.3)',
+                padding: '8px 18px',
                 borderRadius: '50px',
-                fontSize: '0.88rem',
+                fontSize: '0.82rem',
                 fontWeight: 700,
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
-                boxShadow: '0 4px 10px rgba(4, 120, 87, 0.25)',
+                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
                 transition: 'all 0.2s ease'
               }}
             >
@@ -413,53 +417,134 @@ export default function SpmbPage() {
             </button>
           </div>
         )}
+      </div>
 
-        {/* Banner Masuk ke Portal Calon Siswa bagi yang sudah mendaftar */}
-        <div style={{
-          marginTop: '16px',
-          background: '#ecfdf5',
-          border: '1.5px solid #a7f3d0',
-          borderRadius: '14px',
-          padding: '12px 20px',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '12px',
-          maxWidth: '520px',
-          textAlign: 'left',
-          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.1)'
-        }}>
-          <div style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '50%',
-            background: '#10b981',
-            color: 'white',
+      {/* Action Cards (Dipisahkan dari Banner Hijau) */}
+      <div style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '14px',
+        marginBottom: '4px'
+      }}>
+        {/* Tombol Download Brosur SPMB */}
+        <a
+          href="https://drive.google.com/file/d/16tGIlXUxRzfErVTR81XhuEfb9WpUvUl1/view?usp=sharing"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            flex: '1 1 280px',
+            background: 'white',
+            border: '1.5px solid #e2e8f0',
+            borderRadius: '16px',
+            padding: '14px 18px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '15px',
-            flexShrink: 0
+            justifyContent: 'space-between',
+            gap: '12px',
+            textDecoration: 'none',
+            boxShadow: '0 3px 10px rgba(0, 0, 0, 0.03)',
+            transition: 'all 0.2s ease',
+            cursor: 'pointer'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '12px',
+              background: '#fee2e2',
+              color: '#dc2626',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '20px',
+              flexShrink: 0
+            }}>
+              <i className="fas fa-file-pdf"></i>
+            </div>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0f172a' }}>
+                Brosur Informasi SPMB
+              </div>
+              <div style={{ fontSize: '11.5px', color: '#64748b' }}>
+                Unduh rincian & panduan masuk
+              </div>
+            </div>
+          </div>
+          <span style={{
+            background: '#dc2626',
+            color: 'white',
+            fontSize: '11.5px',
+            fontWeight: 800,
+            padding: '7px 12px',
+            borderRadius: '8px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            whiteSpace: 'nowrap'
           }}>
-            <i className="fas fa-id-card"></i>
+            <i className="fas fa-download"></i> Unduh
+          </span>
+        </a>
+
+        {/* Tombol Masuk ke Portal Calon Siswa */}
+        <Link
+          href="/spmb/login"
+          style={{
+            flex: '1 1 320px',
+            background: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)',
+            border: '1.5px solid #a7f3d0',
+            borderRadius: '16px',
+            padding: '14px 18px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '12px',
+            textDecoration: 'none',
+            boxShadow: '0 3px 10px rgba(16, 185, 129, 0.08)',
+            transition: 'all 0.2s ease',
+            cursor: 'pointer'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '12px',
+              background: '#10b981',
+              color: 'white',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              flexShrink: 0
+            }}>
+              <i className="fas fa-id-card"></i>
+            </div>
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#065f46' }}>
+                Sudah Pernah Mendaftar?
+              </div>
+              <div style={{ fontSize: '11.5px', color: '#047857' }}>
+                Pantau verifikasi berkas & kelulusan
+              </div>
+            </div>
           </div>
-          <div style={{ flex: 1, fontSize: '13px', color: '#064e3b', lineHeight: 1.4 }}>
-            <span>Sudah pernah mengisi formulir? </span>
-            <Link 
-              href="/spmb/login"
-              style={{
-                color: '#047857',
-                fontWeight: 800,
-                textDecoration: 'underline',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px'
-              }}
-            >
-              <span>Masuk ke Portal Calon Siswa</span> &rarr;
-            </Link>
-          </div>
-        </div>
+          <span style={{
+            background: '#047857',
+            color: 'white',
+            fontSize: '11.5px',
+            fontWeight: 800,
+            padding: '7px 14px',
+            borderRadius: '8px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            whiteSpace: 'nowrap'
+          }}>
+            Portal Siswa &rarr;
+          </span>
+        </Link>
       </div>
 
       <div className={styles.card} style={{ position: 'relative' }}>
