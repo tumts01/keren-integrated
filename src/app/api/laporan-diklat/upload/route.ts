@@ -15,7 +15,12 @@ export async function POST(request: Request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const result = await uploadFileToDrive(buffer, file.name, file.type, FOLDER_ID);
+    // Bersihkan nama file dari karakter khusus/spasi/koma agar aman di serverless & Google Drive
+    const cleanFileName = (file.name || 'berkas')
+      .replace(/[^a-zA-Z0-9._-]/g, '_')
+      .replace(/_+/g, '_');
+
+    const result = await uploadFileToDrive(buffer, cleanFileName, file.type || 'application/octet-stream', FOLDER_ID);
 
     return NextResponse.json({ 
       success: true, 

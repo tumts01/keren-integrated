@@ -23,7 +23,7 @@ export async function GET() {
       success: true,
       data: formatted
     }, {
-      headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+      headers: { 'Cache-Control': 'no-store, max-age=0' }
     });
   } catch (error: any) {
     console.error('Fetch Laporan Diklat Error:', error);

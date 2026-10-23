@@ -296,6 +296,6 @@ export async function exportDiklatToDocx(data: DiklatDocxData) {
   });
 
   const blob = await Packer.toBlob(doc);
-  const cleanFilename = `Laporan_Diklat_${data.namaGuru.replace(/[^a-zA-Z0-9]/g, '_')}_${data.namaKegiatan.slice(0, 20).replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
+  const cleanFilename = `Laporan_Diklat_${data.namaGuru.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_')}_${data.namaKegiatan.slice(0, 20).replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_')}.docx`;
   saveAs(blob, cleanFilename);
 }

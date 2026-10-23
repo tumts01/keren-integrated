@@ -33,7 +33,7 @@ interface Guru {
   jabatan: string;
 }
 
-const compressImage = async (file: File): Promise<Blob> => {
+const compressImage = async (file: File): Promise<File> => {
   if (!file.type.startsWith('image/')) return file;
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -57,7 +57,15 @@ const compressImage = async (file: File): Promise<Blob> => {
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
           canvas.toBlob(
-            (blob) => resolve(blob || file),
+            (blob) => {
+              if (blob) {
+                const ext = file.name.split('.').pop() || 'jpg';
+                const cleanName = file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_') + '.' + ext;
+                resolve(new File([blob], cleanName, { type: 'image/jpeg' }));
+              } else {
+                resolve(file);
+              }
+            },
             'image/jpeg',
             0.75
           );
@@ -65,8 +73,10 @@ const compressImage = async (file: File): Promise<Blob> => {
           resolve(file);
         }
       };
+      img.onerror = () => resolve(file);
       img.src = event.target?.result as string;
     };
+    reader.onerror = () => resolve(file);
     reader.readAsDataURL(file);
   });
 };
@@ -156,9 +166,18 @@ export default function LaporanDiklatTab() {
     }
   };
 
-  // Autocomplete guru change
+  // Autocomplete guru change (aman untuk guru yang memiliki gelar ganda / koma)
   const handleGuruChange = (nama: string) => {
-    const selected = gurus.find(g => g.nama === nama);
+    const clean = nama.trim().toLowerCase();
+    const selected = gurus.find(g => {
+      const gNama = g.nama.trim().toLowerCase();
+      return (
+        gNama === clean ||
+        gNama.replace(/,/g, '') === clean.replace(/,/g, '') ||
+        gNama.includes(clean) ||
+        clean.includes(gNama)
+      );
+    });
     setFormData(prev => ({
       ...prev,
       namaGuru: nama,
@@ -166,16 +185,50 @@ export default function LaporanDiklatTab() {
     }));
   };
 
-  // Upload single file helper
+  // Upload single file helper dengan kompresi otomatis & perlindungan batas ukuran
   const uploadFile = async (file: File): Promise<string> => {
+    let processFile = file;
+    // Kompresi jika file adalah gambar (surat tugas / sertifikat / foto)
+    if (file.type.startsWith('image/')) {
+      try {
+        processFile = await compressImage(file);
+      } catch (e) {
+        console.warn('Compress fallback to original:', e);
+      }
+    }
+
+    if (processFile.size > 4.5 * 1024 * 1024) {
+      throw new Error(`Ukuran berkas "${file.name}" (${(processFile.size / (1024 * 1024)).toFixed(1)} MB) melebihi batas upload maksimal 4 MB.`);
+    }
+
     const fd = new FormData();
-    fd.append('file', file);
-    const res = await fetch('/api/laporan-diklat/upload', {
-      method: 'POST',
-      body: fd
-    });
+    fd.append('file', processFile);
+
+    let res: Response;
+    try {
+      res = await fetch('/api/laporan-diklat/upload', {
+        method: 'POST',
+        body: fd
+      });
+    } catch (netErr: any) {
+      throw new Error(`Koneksi gagal saat mengunggah "${file.name}". Pastikan koneksi stabil.`);
+    }
+
+    if (!res.ok) {
+      if (res.status === 413) {
+        throw new Error(`Berkas "${file.name}" terlalu besar untuk diunggah (maksimal 4 MB).`);
+      }
+      const text = await res.text();
+      let errorMsg = `Gagal mengunggah berkas (${res.status})`;
+      try {
+        const j = JSON.parse(text);
+        if (j.error) errorMsg = j.error;
+      } catch {}
+      throw new Error(errorMsg);
+    }
+
     const json = await res.json();
-    if (!json.success) throw new Error(json.error || 'Gagal mengunggah file');
+    if (!json.success) throw new Error(json.error || 'Gagal mengunggah berkas');
     return json.url || '';
   };
 
@@ -237,13 +290,25 @@ export default function LaporanDiklatTab() {
     setShowFormModal(true);
   };
 
-  const handleNewFotos = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNewFotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files) return;
     const files = Array.from(e.target.files);
-    setNewFotoFiles(prev => [...prev, ...files]);
+    const compressedList: File[] = [];
+    const previewList: string[] = [];
 
-    const newPreviews = files.map(file => URL.createObjectURL(file));
-    setFotoPreviews(prev => [...prev, ...newPreviews]);
+    for (const f of files) {
+      if (f.type.startsWith('image/')) {
+        const comp = await compressImage(f);
+        compressedList.push(comp);
+        previewList.push(URL.createObjectURL(comp));
+      } else {
+        compressedList.push(f);
+        previewList.push(URL.createObjectURL(f));
+      }
+    }
+
+    setNewFotoFiles(prev => [...prev, ...compressedList]);
+    setFotoPreviews(prev => [...prev, ...previewList]);
   };
 
   const handleRemoveExistingFoto = (index: number) => {
@@ -291,9 +356,7 @@ export default function LaporanDiklatTab() {
       // Upload Foto Dokumentasi jika ada
       if (newFotoFiles.length > 0) {
         for (const file of newFotoFiles) {
-          const compressed = await compressImage(file);
-          const finalFile = new File([compressed], file.name, { type: 'image/jpeg' });
-          const url = await uploadFile(finalFile);
+          const url = await uploadFile(file);
           if (url) uploadedFotos.push(url);
         }
       }
@@ -320,14 +383,29 @@ export default function LaporanDiklatTab() {
         dokumentasi: uploadedFotos
       };
 
-      const res = await fetch('/api/laporan-diklat', {
-        method: editId ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      let res: Response;
+      try {
+        res = await fetch('/api/laporan-diklat', {
+          method: editId ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } catch (netErr: any) {
+        throw new Error('Gagal terhubung ke server saat menyimpan data laporan. Silakan periksa koneksi internet Anda.');
+      }
+
+      if (!res.ok) {
+        const text = await res.text();
+        let errMsg = `Server error (${res.status})`;
+        try {
+          const j = JSON.parse(text);
+          if (j.error) errMsg = j.error;
+        } catch {}
+        throw new Error(errMsg);
+      }
 
       const json = await res.json();
-      if (!json.success) throw new Error(json.error);
+      if (!json.success) throw new Error(json.error || 'Gagal menyimpan laporan diklat');
 
       Swal.fire({
         icon: 'success',
@@ -1049,7 +1127,16 @@ export default function LaporanDiklatTab() {
                         type="file"
                         ref={suratTugasInputRef}
                         accept=".pdf,image/*,.doc,.docx"
-                        onChange={e => setFileSuratTugasObj(e.target.files?.[0] || null)}
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file && file.size > 4.5 * 1024 * 1024 && !file.type.startsWith('image/')) {
+                            Swal.fire('Ukuran File Terlalu Besar', `File "${file.name}" berukuran ${(file.size / (1024 * 1024)).toFixed(1)} MB (maksimal 4 MB). Mohon gunakan file PDF yang telah dikompresi.`, 'warning');
+                            if (suratTugasInputRef.current) suratTugasInputRef.current.value = '';
+                            setFileSuratTugasObj(null);
+                            return;
+                          }
+                          setFileSuratTugasObj(file || null);
+                        }}
                         style={{ marginTop: '4px', fontSize: '0.8rem' }}
                       />
                       {formData.fileSuratTugas && !fileSuratTugasObj && (
@@ -1070,7 +1157,16 @@ export default function LaporanDiklatTab() {
                         type="file"
                         ref={sertifikatInputRef}
                         accept=".pdf,image/*,.doc,.docx"
-                        onChange={e => setFileSertifikatObj(e.target.files?.[0] || null)}
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file && file.size > 4.5 * 1024 * 1024 && !file.type.startsWith('image/')) {
+                            Swal.fire('Ukuran File Terlalu Besar', `File "${file.name}" berukuran ${(file.size / (1024 * 1024)).toFixed(1)} MB (maksimal 4 MB). Mohon gunakan file PDF yang telah dikompresi.`, 'warning');
+                            if (sertifikatInputRef.current) sertifikatInputRef.current.value = '';
+                            setFileSertifikatObj(null);
+                            return;
+                          }
+                          setFileSertifikatObj(file || null);
+                        }}
                         style={{ marginTop: '4px', fontSize: '0.8rem' }}
                       />
                       {formData.fileSertifikat && !fileSertifikatObj && (
