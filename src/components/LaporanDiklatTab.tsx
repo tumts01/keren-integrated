@@ -904,7 +904,7 @@ export default function LaporanDiklatTab() {
       {showFormModal && (
         <div className={styles.modalOverlay} onClick={() => !isSubmitting && setShowFormModal(false)}>
           <div className={styles.modalBox} onClick={e => e.stopPropagation()}>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <form onSubmit={handleSubmit} className={styles.modalForm}>
               <div className={styles.modalHeader}>
                 <div className={styles.modalTitle}>
                   <i className={`fas ${editId ? 'fa-edit' : 'fa-plus-circle'}`} style={{ color: '#059669' }}></i>
