@@ -35,6 +35,7 @@ export default function PersuratanPage() {
   const [topikList, setTopikList] = useState<string[]>([]);
   const [instansiList, setInstansiList] = useState<string[]>([]);
   const [guruList, setGuruList] = useState<{ id: string, nama: string }[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -248,6 +249,18 @@ export default function PersuratanPage() {
   };
 
   useEffect(() => {
+    const userStr = localStorage.getItem('keren_user_data');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user) {
+          const role = (user.role || '').toLowerCase();
+          setIsAdmin(role === 'admin' || role.includes('admin'));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
     fetchData();
     // Preload semua siswa aktif ke memori — search lokal tanpa refetch
     fetch('/api/siswa').then(r => r.json()).then(d => {
@@ -471,6 +484,7 @@ export default function PersuratanPage() {
   };
 
   const handleOpenEdit = (surat: any, type: 'keluar' | 'masuk') => {
+    if (!isAdmin) return;
     if (type === 'keluar') {
       const ditugaskanStr = surat.yangDitugaskan || '';
       const isSiswa = ditugaskanStr.toLowerCase() === 'siswa';
@@ -567,6 +581,7 @@ export default function PersuratanPage() {
   };
 
   const handleDeleteSurat = async (id: number, namaSurat: string, type: 'keluar' | 'masuk') => {
+    if (!isAdmin) return;
     const result = await Swal.fire({
       title: 'Hapus Surat?',
       html: `Yakin ingin menghapus surat: <br/><b>${namaSurat || 'Surat ini'}</b>?<br/><span style="font-size: 12px; color: #ef4444;">Data yang sudah dihapus tidak dapat dipulihkan.</span>`,
@@ -1013,8 +1028,8 @@ export default function PersuratanPage() {
         </div>
       )}
 
-      {/* Edit Surat Modal */}
-      {editingItem && (
+      {/* Edit Surat Modal (Khusus Admin) */}
+      {isAdmin && editingItem && (
         <div className={styles.modalOverlay} onClick={() => !isSavingEdit && setEditingItem(null)}>
           <div className={styles.modalCard} onClick={e => e.stopPropagation()} style={{ maxWidth: '650px' }}>
             <div className={styles.modalHeader}>
@@ -1884,7 +1899,7 @@ export default function PersuratanPage() {
                     <th>Topik</th>
                     <th>Pembuat Surat</th>
                     <th style={{ textAlign: 'center' }}>Status / Arsip</th>
-                    <th style={{ textAlign: 'center', width: '135px' }}>Aksi</th>
+                    {isAdmin && <th style={{ textAlign: 'center', width: '135px' }}>Aksi</th>}
                   </tr>
                 ) : activeTab === 'masuk' ? (
                   <tr>
@@ -1892,7 +1907,7 @@ export default function PersuratanPage() {
                     <th>Nama Surat</th>
                     <th>Pengirim / Asal Surat</th>
                     <th style={{ textAlign: 'center' }}>Status / Arsip</th>
-                    <th style={{ textAlign: 'center', width: '135px' }}>Aksi</th>
+                    {isAdmin && <th style={{ textAlign: 'center', width: '135px' }}>Aksi</th>}
                   </tr>
 
                 ) : (
@@ -1926,6 +1941,7 @@ export default function PersuratanPage() {
                             </button>
                           )}
                         </td>
+                        {isAdmin && (
                         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center' }}>
                             <button
@@ -1972,11 +1988,12 @@ export default function PersuratanPage() {
                             </button>
                           </div>
                         </td>
+                      )}
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={9} style={{ textAlign: 'center', padding: '40px' }}>
+                      <td colSpan={isAdmin ? 9 : 8} style={{ textAlign: 'center', padding: '40px' }}>
                         <i className="fas fa-check-circle" style={{ fontSize: '3rem', color: '#10b981', marginBottom: '16px', display: 'block' }}></i>
                         {activeTab === 'tagihan' ? 'Mantap! Semua surat sudah diarsipkan.' : 'Tidak ada surat keluar yang ditemukan.'}
                       </td>
@@ -2001,6 +2018,7 @@ export default function PersuratanPage() {
                             </button>
                           )}
                         </td>
+                        {isAdmin && (
                         <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center' }}>
                             <button
@@ -2047,11 +2065,12 @@ export default function PersuratanPage() {
                             </button>
                           </div>
                         </td>
+                      )}
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={5} style={{ textAlign: 'center', padding: '40px' }}>
+                      <td colSpan={isAdmin ? 5 : 4} style={{ textAlign: 'center', padding: '40px' }}>
                         <i className="fas fa-inbox" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
                         Tidak ada surat masuk yang ditemukan.
                       </td>
