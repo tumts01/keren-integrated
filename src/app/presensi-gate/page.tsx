@@ -45,6 +45,7 @@ export default function PresensiGatePage() {
 
   // Gate Scan Mode: 'auto' | 'masuk' | 'pulang'
   const [scanMode, setScanMode] = useState<'auto' | 'masuk' | 'pulang'>('auto');
+  const [voiceTheme, setVoiceTheme] = useState<'anime' | 'standard'>('anime');
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   // Input & Focus Management
@@ -223,7 +224,12 @@ export default function PresensiGatePage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // 1. Preload kalimat singkat dengan suara perempuan Google yang jernih ke RAM browser
+    try {
+      const savedVoice = localStorage.getItem('gate_voice_theme') as 'anime' | 'standard';
+      if (savedVoice) setVoiceTheme(savedVoice);
+    } catch {}
+
+    // 1. Preload kalimat singkat ke RAM browser (Mode Standar & Anime Bilingual)
     const PHRASES = [
       'Selamat datang, presensi berhasil',
       'Terlambat, presensi masuk tercatat',
@@ -231,7 +237,15 @@ export default function PresensiGatePage() {
       'Sudah tercatat masuk hari ini',
       'Sudah tercatat pulang hari ini',
       'Kartu belum terdaftar',
-      'Presensi dibatalkan, tercatat alpha di kelas'
+      'Presensi dibatalkan, tercatat alpha di kelas',
+      // Anime Bilingual (Pilihan 1)
+      'Ohayou gozaimasu! Selamat datang, presensi berhasil',
+      'Chikoku desu yo! Terlambat, presensi masuk tercatat',
+      'Otsukaresama deshita! Presensi pulang berhasil, hati-hati di jalan yaa',
+      'Mou shusseki shimashita yo! Sudah tercatat masuk hari ini',
+      'Sudah presensi pulang hari ini, otsukaresama deshita',
+      'Gomen ne! Kartu belum terdaftar',
+      'Gomen ne! Presensi dibatalkan, tercatat alpha di kelas'
     ];
     PHRASES.forEach((phrase) => {
       fetch(`/api/presensi-gate/tts?q=${encodeURIComponent(phrase)}`)
@@ -244,7 +258,7 @@ export default function PresensiGatePage() {
         .catch(() => {});
     });
 
-    // 2. Kunci pilhan suara perempuan pada Web Speech API (hindari suara laki-laki 'Microsoft Andika')
+    // 2. Kunci pilihan suara perempuan pada Web Speech API (hindari suara laki-laki 'Microsoft Andika')
     if ('speechSynthesis' in window) {
       const pickFemaleIndonesianVoice = () => {
         const voices = window.speechSynthesis.getVoices() || [];
@@ -260,6 +274,13 @@ export default function PresensiGatePage() {
       window.speechSynthesis.onvoiceschanged = pickFemaleIndonesianVoice;
     }
   }, []);
+
+  const handleVoiceThemeChange = (newTheme: 'anime' | 'standard') => {
+    setVoiceTheme(newTheme);
+    try {
+      localStorage.setItem('gate_voice_theme', newTheme);
+    } catch {}
+  };
 
   const speakGreeting = (text: string) => {
     if (!soundEnabled || typeof window === 'undefined') return;
@@ -279,7 +300,15 @@ export default function PresensiGatePage() {
     const cachedUrl = audioCacheRef.current.get(text) || `/api/presensi-gate/tts?q=${encodeURIComponent(text)}`;
     try {
       const audio = new Audio(cachedUrl);
-      audio.playbackRate = 1.08;
+      if (voiceTheme === 'anime') {
+        // Efek nada cewek anime: playbackRate 1.15x + non-preserving pitch jika didukung browser
+        (audio as any).preservesPitch = false;
+        (audio as any).mozPreservesPitch = false;
+        (audio as any).webkitPreservesPitch = false;
+        audio.playbackRate = 1.15;
+      } else {
+        audio.playbackRate = 1.08;
+      }
       currentAudioRef.current = audio;
       audio.play().catch(() => {
         // Fallback ke Web Speech API dengan mengunci voice perempuan jika offline
@@ -287,8 +316,8 @@ export default function PresensiGatePage() {
           const utterance = new SpeechSynthesisUtterance(text);
           utterance.lang = 'id-ID';
           if (femaleVoiceRef.current) utterance.voice = femaleVoiceRef.current;
-          utterance.rate = 1.05;
-          utterance.pitch = 1.1;
+          utterance.rate = voiceTheme === 'anime' ? 1.15 : 1.05;
+          utterance.pitch = voiceTheme === 'anime' ? 1.45 : 1.1; // Nada lebih imut ala anime
           window.speechSynthesis.speak(utterance);
         }
       });
@@ -299,20 +328,21 @@ export default function PresensiGatePage() {
 
   // Helper pengucapan suara singkat tanpa menyebut nama (agar antrean tap cepat)
   const announceScanResult = (actionType: string, st: any, _isGuru?: boolean) => {
+    const isAnime = voiceTheme === 'anime';
     if (actionType === 'MASUK') {
       if (st?.statusMasuk === 'DIBATALKAN') {
-        speakGreeting('Presensi dibatalkan, tercatat alpha di kelas');
+        speakGreeting(isAnime ? 'Gomen ne! Presensi dibatalkan, tercatat alpha di kelas' : 'Presensi dibatalkan, tercatat alpha di kelas');
       } else if (st?.statusMasuk === 'Terlambat') {
-        speakGreeting('Terlambat, presensi masuk tercatat');
+        speakGreeting(isAnime ? 'Chikoku desu yo! Terlambat, presensi masuk tercatat' : 'Terlambat, presensi masuk tercatat');
       } else {
-        speakGreeting('Selamat datang, presensi berhasil');
+        speakGreeting(isAnime ? 'Ohayou gozaimasu! Selamat datang, presensi berhasil' : 'Selamat datang, presensi berhasil');
       }
     } else if (actionType === 'PULANG') {
-      speakGreeting('Presensi pulang berhasil, hati-hati di jalan');
+      speakGreeting(isAnime ? 'Otsukaresama deshita! Presensi pulang berhasil, hati-hati di jalan yaa' : 'Presensi pulang berhasil, hati-hati di jalan');
     } else if (actionType === 'SUDAH_MASUK') {
-      speakGreeting('Sudah tercatat masuk hari ini');
+      speakGreeting(isAnime ? 'Mou shusseki shimashita yo! Sudah tercatat masuk hari ini' : 'Sudah tercatat masuk hari ini');
     } else if (actionType === 'SUDAH_PULANG') {
-      speakGreeting('Sudah tercatat pulang hari ini');
+      speakGreeting(isAnime ? 'Sudah presensi pulang hari ini, otsukaresama deshita' : 'Sudah tercatat pulang hari ini');
     }
   };
 
@@ -505,7 +535,7 @@ export default function PresensiGatePage() {
       } else {
         setLastScan(null);
         setScanErrorMsg(json.error || 'Kartu atau kode barcode tidak terdaftar');
-        speakGreeting('Kartu belum terdaftar');
+        speakGreeting(voiceTheme === 'anime' ? 'Gomen ne! Kartu belum terdaftar' : 'Kartu belum terdaftar');
       }
     } catch (err: any) {
       setLastScan(null);
@@ -917,28 +947,56 @@ export default function PresensiGatePage() {
                     </span>
                   </div>
 
-                  {/* Mode Selector */}
-                  <div className={styles.modeSelectWrapper}>
-                    <span style={{ fontSize: '12px', color: '#94a3b8' }}>Mode:</span>
-                    <select
-                      value={scanMode}
-                      onChange={(e) => setScanMode(e.target.value as any)}
-                      style={{
-                        padding: '6px 12px',
-                        borderRadius: '8px',
-                        background: '#1e293b',
-                        color: '#f8fafc',
-                        border: '1px solid #475569',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        outline: 'none',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <option value="auto">⚡ Otomatis (Masuk Pagi / Pulang Siang)</option>
-                      <option value="masuk">🟢 Khusus Masuk (Check-In)</option>
-                      <option value="pulang">🔵 Khusus Pulang (Check-Out)</option>
-                    </select>
+                  {/* Selectors: Karakter Suara & Mode */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    {/* Karakter Suara Selector */}
+                    <div className={styles.modeSelectWrapper}>
+                      <span style={{ fontSize: '12px', color: voiceTheme === 'anime' ? '#f472b6' : '#94a3b8' }}>
+                        <i className={`fas ${voiceTheme === 'anime' ? 'fa-wand-magic-sparkles' : 'fa-robot'}`}></i> Karakter:
+                      </span>
+                      <select
+                        value={voiceTheme}
+                        onChange={(e) => handleVoiceThemeChange(e.target.value as any)}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          background: voiceTheme === 'anime' ? '#831843' : '#1e293b',
+                          color: voiceTheme === 'anime' ? '#fbcfe8' : '#f8fafc',
+                          border: `1px solid ${voiceTheme === 'anime' ? '#f472b6' : '#475569'}`,
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          outline: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="anime">✨ Anime Cewek Jepang (Bilingual)</option>
+                        <option value="standard">🎙️ Standar (Mbak Google)</option>
+                      </select>
+                    </div>
+
+                    {/* Mode Selector */}
+                    <div className={styles.modeSelectWrapper}>
+                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>Mode:</span>
+                      <select
+                        value={scanMode}
+                        onChange={(e) => setScanMode(e.target.value as any)}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          background: '#1e293b',
+                          color: '#f8fafc',
+                          border: '1px solid #475569',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          outline: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="auto">⚡ Otomatis (Masuk Pagi / Pulang Siang)</option>
+                        <option value="masuk">🟢 Khusus Masuk (Check-In)</option>
+                        <option value="pulang">🔵 Khusus Pulang (Check-Out)</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
