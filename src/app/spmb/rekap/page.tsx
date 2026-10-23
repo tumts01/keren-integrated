@@ -1901,8 +1901,29 @@ export default function RekapSpmb() {
                       {isAdmin ? (
                         <div style={{ display: 'flex', gap: '8px', flexDirection: 'column' }}>
                           <button onClick={() => openViewer(`/spmb/cetak/${item.rowNumber}`, `Cetak Kartu - ${item.namaLengkap}`)} className={styles.btnPrint}>
-                            <i className="fas fa-print"></i> Cetak Kartu
+                            <i className="fas fa-id-card"></i> Cetak / Unduh Kartu
                           </button>
+                          <a
+                            href={`/spmb/cetak/${item.rowNumber}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              fontSize: '0.74rem',
+                              color: '#047857',
+                              textAlign: 'center',
+                              textDecoration: 'none',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                              fontWeight: 500,
+                              marginTop: '-4px',
+                              marginBottom: '2px'
+                            }}
+                            title="Buka langsung di tab baru"
+                          >
+                            <i className="fas fa-external-link-alt" style={{ fontSize: '10px' }}></i> Buka di Tab Baru
+                          </a>
                           <button 
                             onClick={() => router.push(`/spmb/edit/${item.rowNumber}`)} 
                             style={{ padding: '6px 12px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '6px' }}
@@ -1917,8 +1938,51 @@ export default function RekapSpmb() {
                           </button>
                         </div>
                       ) : (
-                        <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.78rem', fontStyle: 'italic', padding: '6px', background: '#f8fafc', borderRadius: '6px', border: '1px dashed #cbd5e1' }}>
-                          <i className="fas fa-eye" style={{ marginRight: '4px' }}></i> Hanya Lihat
+                        <div style={{ display: 'flex', gap: '6px', flexDirection: 'column', minWidth: '130px' }}>
+                          <button 
+                            onClick={() => openViewer(`/spmb/cetak/${item.rowNumber}`, `Kartu Pendaftaran - ${item.namaLengkap}`)} 
+                            className={styles.btnPrint}
+                            style={{
+                              padding: '8px 12px',
+                              fontSize: '0.82rem',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '6px',
+                              width: '100%',
+                              cursor: 'pointer',
+                              background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                              color: '#ffffff',
+                              fontWeight: 600,
+                              borderRadius: '8px',
+                              boxShadow: '0 2px 5px rgba(4, 120, 87, 0.25)',
+                              border: 'none',
+                              whiteSpace: 'nowrap'
+                            }}
+                            title={`Unduh / Cetak Kartu Pendaftaran ${item.namaLengkap}`}
+                          >
+                            <i className="fas fa-id-card"></i> Unduh Kartu
+                          </button>
+                          <a 
+                            href={`/spmb/cetak/${item.rowNumber}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              fontSize: '0.74rem',
+                              color: '#047857',
+                              textAlign: 'center',
+                              textDecoration: 'none',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                              fontWeight: 500,
+                              padding: '2px 4px'
+                            }}
+                            title="Buka langsung di tab baru untuk unduh PDF atau cetak"
+                          >
+                            <i className="fas fa-external-link-alt" style={{ fontSize: '10px' }}></i> Buka di Tab Baru
+                          </a>
                         </div>
                       )}
                     </td>
@@ -2059,9 +2123,34 @@ export default function RekapSpmb() {
           <div className={styles.modalContent} style={{ maxWidth: viewerUrl.includes('/cetak') ? '800px' : '1000px' }} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHeader}>
               <div className={styles.modalTitle}>{viewerTitle}</div>
-              <button className={styles.closeBtn} onClick={closeViewer}>
-                <i className="fas fa-times"></i>
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {viewerUrl.includes('/cetak') && (
+                  <a
+                    href={viewerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 12px',
+                      background: '#ecfdf5',
+                      color: '#047857',
+                      border: '1px solid #a7f3d0',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      textDecoration: 'none'
+                    }}
+                    title="Buka penuh di tab baru untuk cetak / unduh PDF langsung"
+                  >
+                    <i className="fas fa-external-link-alt"></i> Tab Baru
+                  </a>
+                )}
+                <button className={styles.closeBtn} onClick={closeViewer}>
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
             </div>
             <div className={styles.modalBody}>
               <iframe 
