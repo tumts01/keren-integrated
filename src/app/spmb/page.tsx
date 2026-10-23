@@ -48,7 +48,7 @@ export default function SpmbPage() {
               ...prev,
               jalurPendaftaran: activeList.some((j: JalurItem) => j.nama === prev.jalurPendaftaran)
                 ? prev.jalurPendaftaran
-                : activeList[0].nama
+                : ''
             }));
           }
         }
@@ -80,7 +80,7 @@ export default function SpmbPage() {
         ...prev,
         jalurPendaftaran: activeList.some(j => j.nama === prev.jalurPendaftaran)
           ? prev.jalurPendaftaran
-          : activeList[0].nama
+          : ''
       }));
     }
   };
@@ -103,7 +103,7 @@ export default function SpmbPage() {
 
   // Form States
   const [formData, setFormData] = useState({
-    jalurPendaftaran: 'Reguler',
+    jalurPendaftaran: '',
     namaLengkap: '',
     nisn: '',
     tempatLahir: '',
@@ -180,6 +180,11 @@ export default function SpmbPage() {
 
     if (activeJalurList.length === 0) {
       showToast('Tidak ada jalur pendaftaran yang aktif saat ini.', 'error');
+      return;
+    }
+
+    if (!formData.jalurPendaftaran) {
+      showToast('Silakan pilih Jalur Pendaftaran terlebih dahulu!', 'error');
       return;
     }
 
@@ -300,7 +305,7 @@ export default function SpmbPage() {
         
         // Reset Form
         setFormData({
-          jalurPendaftaran: activeJalurList[0]?.nama || 'Reguler',
+          jalurPendaftaran: '',
           namaLengkap: '',
           nisn: '',
           tempatLahir: '',
@@ -635,7 +640,7 @@ export default function SpmbPage() {
           )}
 
           <div className={styles.formGrid}>
-            <div className={styles.formGroup}>
+            <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
               <label className={styles.label}>Jalur Pendaftaran <span>*</span></label>
               <select
                 name="jalurPendaftaran"
@@ -645,6 +650,7 @@ export default function SpmbPage() {
                 required
                 disabled={!pendaftaranBuka || activeJalurList.length === 0}
               >
+                <option value="">-- Pilih Jalur Pendaftaran --</option>
                 {activeJalurList.length > 0 ? (
                   activeJalurList.map(j => (
                     <option key={j.id} value={j.nama}>{j.nama}</option>
@@ -653,6 +659,106 @@ export default function SpmbPage() {
                   <option value="" disabled>-- Tidak ada jalur pendaftaran yang aktif --</option>
                 )}
               </select>
+
+              {/* Keterangan Khusus Jalur Inden Terpadu */}
+              {(formData.jalurPendaftaran || '').toLowerCase().includes('terpadu') && (
+                <div style={{
+                  marginTop: '12px',
+                  padding: '14px 18px',
+                  background: '#f0fdf4',
+                  border: '1.5px solid #86efac',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  gap: '14px',
+                  alignItems: 'flex-start',
+                  boxShadow: '0 2px 8px rgba(22, 163, 74, 0.08)'
+                }}>
+                  <div style={{
+                    background: '#dcfce7',
+                    color: '#16a34a',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    fontSize: '18px'
+                  }}>
+                    <i className="fas fa-info-circle"></i>
+                  </div>
+                  <div style={{ flex: 1, fontSize: '0.88rem', color: '#14532d', lineHeight: '1.55' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#166534', marginBottom: '4px' }}>
+                      Ketentuan Khusus Jalur Inden Terpadu:
+                    </div>
+                    <p style={{ margin: '0 0 8px 0' }}>
+                      Pilihan <strong>Jalur Inden Terpadu</strong> khusus untuk pendaftar asal sekolah yang <strong>1 yayasan dengan MTs Almaarif 01 Singosari</strong>, yaitu:
+                    </p>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const s = sekolahRef.find(item => item.nama.toUpperCase().includes('MI ALMAARIF 02 SINGOSARI'));
+                          setFormData(prev => ({
+                            ...prev,
+                            asalSekolah: s ? s.nama : 'MI ALMAARIF 02 SINGOSARI',
+                            alamatSekolahAsal: s?.alamat || prev.alamatSekolahAsal,
+                            npsnSekolahAsal: s?.npsn || prev.npsnSekolahAsal
+                          }));
+                          showToast('Asal sekolah diatur ke MI Almaarif 02 Singosari', 'success');
+                        }}
+                        style={{
+                          background: '#ffffff',
+                          border: '1.5px solid #16a34a',
+                          color: '#166534',
+                          padding: '6px 14px',
+                          borderRadius: '20px',
+                          fontSize: '0.82rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+                        }}
+                        title="Klik untuk memilih MI Almaarif 02 Singosari"
+                      >
+                        <i className="fas fa-check-circle" style={{ color: '#16a34a' }}></i> MI Almaarif 02 Singosari
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const s = sekolahRef.find(item => item.nama.toUpperCase().includes('SDI ALMAARIF 02 SINGOSARI'));
+                          setFormData(prev => ({
+                            ...prev,
+                            asalSekolah: s ? s.nama : 'SDI ALMAARIF 02 SINGOSARI',
+                            alamatSekolahAsal: s?.alamat || prev.alamatSekolahAsal,
+                            npsnSekolahAsal: s?.npsn || prev.npsnSekolahAsal
+                          }));
+                          showToast('Asal sekolah diatur ke SDI Almaarif 02 Singosari', 'success');
+                        }}
+                        style={{
+                          background: '#ffffff',
+                          border: '1.5px solid #16a34a',
+                          color: '#166534',
+                          padding: '6px 14px',
+                          borderRadius: '20px',
+                          fontSize: '0.82rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+                        }}
+                        title="Klik untuk memilih SDI Almaarif 02 Singosari"
+                      >
+                        <i className="fas fa-check-circle" style={{ color: '#16a34a' }}></i> SDI Almaarif 02 Singosari
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -723,6 +829,11 @@ export default function SpmbPage() {
                   <option key={idx} value={s.nama}>{s.alamat ? `${s.nama} (${s.alamat})` : s.nama}</option>
                 ))}
               </datalist>
+              {(formData.jalurPendaftaran || '').toLowerCase().includes('terpadu') && (
+                <div style={{ fontSize: '0.8rem', color: '#15803d', fontWeight: 600, marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <i className="fas fa-info-circle"></i> Khusus Jalur Inden Terpadu: diperuntukkan bagi lulusan <strong>MI Almaarif 02 Singosari</strong> atau <strong>SDI Almaarif 02 Singosari</strong>.
+                </div>
+              )}
             </div>
             <div className={styles.formGroup}>
               <label className={styles.label}>NPSN Sekolah Asal</label>
