@@ -188,6 +188,11 @@ export default function SpmbPage() {
       return;
     }
 
+    if (formData.jalurPendaftaran.toLowerCase().includes('prestasi') && !formData.prestasi.trim()) {
+      showToast('Untuk Jalur Prestasi, mohon sebutkan prestasi yang pernah diraih pada kolom Prestasi!', 'error');
+      return;
+    }
+
     if (!fileKk) {
       showToast('File Kartu Keluarga wajib diunggah!', 'error');
       return;
@@ -340,6 +345,12 @@ export default function SpmbPage() {
       setLoading(false);
     }
   };
+
+  const jalurLower = (formData.jalurPendaftaran || '').toLowerCase();
+  const isTerpadu = jalurLower.includes('terpadu');
+  const isPrestasi = jalurLower.includes('prestasi');
+  const isAfirmasi = jalurLower.includes('afirmasi');
+  const isReguler = jalurLower.includes('reguler');
 
   return (
     <div className={styles.container}>
@@ -661,7 +672,7 @@ export default function SpmbPage() {
               </select>
 
               {/* Keterangan Khusus Jalur Inden Terpadu */}
-              {(formData.jalurPendaftaran || '').toLowerCase().includes('terpadu') && (
+              {isTerpadu && (
                 <div style={{
                   marginTop: '12px',
                   padding: '14px 18px',
@@ -685,7 +696,7 @@ export default function SpmbPage() {
                     flexShrink: 0,
                     fontSize: '18px'
                   }}>
-                    <i className="fas fa-info-circle"></i>
+                    <i className="fas fa-building"></i>
                   </div>
                   <div style={{ flex: 1, fontSize: '0.88rem', color: '#14532d', lineHeight: '1.55' }}>
                     <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#166534', marginBottom: '4px' }}>
@@ -759,6 +770,148 @@ export default function SpmbPage() {
                   </div>
                 </div>
               )}
+
+              {/* Keterangan Khusus Jalur Inden Prestasi */}
+              {isPrestasi && (
+                <div style={{
+                  marginTop: '12px',
+                  padding: '14px 18px',
+                  background: '#fffbeb',
+                  border: '1.5px solid #fcd34d',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  gap: '14px',
+                  alignItems: 'flex-start',
+                  boxShadow: '0 2px 8px rgba(217, 119, 6, 0.08)'
+                }}>
+                  <div style={{
+                    background: '#fef3c7',
+                    color: '#d97706',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    fontSize: '18px'
+                  }}>
+                    <i className="fas fa-trophy"></i>
+                  </div>
+                  <div style={{ flex: 1, fontSize: '0.88rem', color: '#78350f', lineHeight: '1.55' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#92400e', marginBottom: '4px' }}>
+                      Ketentuan Khusus Jalur Prestasi:
+                    </div>
+                    <p style={{ margin: '0 0 6px 0' }}>
+                      Pilihan <strong>Jalur Prestasi</strong> khusus diperuntukkan bagi calon peserta didik yang <strong>memiliki prestasi kejuaraan atau sertifikat perlombaan</strong>, antara lain:
+                    </p>
+                    <ul style={{ margin: '0 0 8px 18px', padding: 0 }}>
+                      <li><strong>Prestasi Akademik:</strong> Juara Olimpiade Sains / Matematika / IPA / IPS, KSM, Lomba Cerdas Cermat, Pidato Bahasa, dll.</li>
+                      <li><strong>Prestasi Non-Akademik:</strong> Juara Bidang Olahraga (O2SN, Pencak Silat, Renang, dll.), Bidang Seni (Al-Banjari, Singer, Kaligrafi, Tari), Kepramukaan, atau Tahfidz Al-Qur&apos;an / MTQ.</li>
+                    </ul>
+                    <div style={{
+                      background: '#fef3c7',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      borderLeft: '3px solid #d97706',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      color: '#b45309'
+                    }}>
+                      <i className="fas fa-award" style={{ marginRight: '6px' }}></i>
+                      Wajib mengisi rincian capaian kejuaraan pada kolom <strong>Prestasi yang Pernah Diraih</strong> di bagian bawah formulir ini.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Keterangan Khusus Jalur Inden Afirmasi */}
+              {isAfirmasi && (
+                <div style={{
+                  marginTop: '12px',
+                  padding: '14px 18px',
+                  background: '#eff6ff',
+                  border: '1.5px solid #93c5fd',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  gap: '14px',
+                  alignItems: 'flex-start',
+                  boxShadow: '0 2px 8px rgba(37, 99, 235, 0.08)'
+                }}>
+                  <div style={{
+                    background: '#dbeafe',
+                    color: '#2563eb',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    fontSize: '18px'
+                  }}>
+                    <i className="fas fa-map-marked-alt"></i>
+                  </div>
+                  <div style={{ flex: 1, fontSize: '0.88rem', color: '#1e3a8a', lineHeight: '1.55' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#1e40af', marginBottom: '4px' }}>
+                      Ketentuan Khusus Jalur Afirmasi:
+                    </div>
+                    <p style={{ margin: '0 0 6px 0' }}>
+                      Pilihan <strong>Jalur Afirmasi</strong> khusus diperuntukkan bagi calon peserta didik yang <strong>berada / berdomisili atau berasal dari sekolah di Luar Provinsi Jawa Timur</strong>.
+                    </p>
+                    <div style={{
+                      background: '#dbeafe',
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      borderLeft: '3px solid #2563eb',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      color: '#1d4ed8'
+                    }}>
+                      <i className="fas fa-info-circle" style={{ marginRight: '6px' }}></i>
+                      Pastikan data <strong>Asal Sekolah</strong> dan <strong>Alamat Lengkap Tempat Tinggal</strong> mencantumkan provinsi/kabupaten di luar Jawa Timur dengan jelas.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Keterangan Khusus Jalur Inden Reguler */}
+              {isReguler && (
+                <div style={{
+                  marginTop: '12px',
+                  padding: '14px 18px',
+                  background: '#f8fafc',
+                  border: '1.5px solid #cbd5e1',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  gap: '14px',
+                  alignItems: 'flex-start',
+                  boxShadow: '0 2px 8px rgba(100, 116, 139, 0.08)'
+                }}>
+                  <div style={{
+                    background: '#e2e8f0',
+                    color: '#475569',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    fontSize: '18px'
+                  }}>
+                    <i className="fas fa-users"></i>
+                  </div>
+                  <div style={{ flex: 1, fontSize: '0.88rem', color: '#334155', lineHeight: '1.55' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#1e293b', marginBottom: '4px' }}>
+                      Informasi Jalur Reguler:
+                    </div>
+                    <p style={{ margin: '0' }}>
+                      Pilihan <strong>Jalur Reguler</strong> terbuka untuk <strong>Umum</strong>, diperuntukkan bagi seluruh calon peserta didik lulusan SD/MI dari berbagai sekolah mana pun tanpa batasan domisili, sekolah yayasan, maupun piagam kejuaraan khusus.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -829,9 +982,14 @@ export default function SpmbPage() {
                   <option key={idx} value={s.nama}>{s.alamat ? `${s.nama} (${s.alamat})` : s.nama}</option>
                 ))}
               </datalist>
-              {(formData.jalurPendaftaran || '').toLowerCase().includes('terpadu') && (
+              {isTerpadu && (
                 <div style={{ fontSize: '0.8rem', color: '#15803d', fontWeight: 600, marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <i className="fas fa-info-circle"></i> Khusus Jalur Inden Terpadu: diperuntukkan bagi lulusan <strong>MI Almaarif 02 Singosari</strong> atau <strong>SDI Almaarif 02 Singosari</strong>.
+                </div>
+              )}
+              {isAfirmasi && (
+                <div style={{ fontSize: '0.8rem', color: '#1d4ed8', fontWeight: 600, marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <i className="fas fa-info-circle"></i> Khusus Jalur Afirmasi: diperuntukkan bagi calon peserta didik dari <strong>luar Jawa Timur</strong>.
                 </div>
               )}
             </div>
@@ -887,6 +1045,23 @@ export default function SpmbPage() {
           <div className={styles.sectionTitle}>
             <i className="fas fa-map-marker-alt"></i> Alamat Tempat Tinggal
           </div>
+          {isAfirmasi && (
+            <div style={{
+              background: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              padding: '10px 14px',
+              borderRadius: '8px',
+              marginBottom: '14px',
+              fontSize: '0.82rem',
+              color: '#1e40af',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <i className="fas fa-map-pin"></i>
+              <span><strong>Catatan Jalur Afirmasi:</strong> Mohon cantumkan alamat lengkap domisili di luar Provinsi Jawa Timur (sertakan nama Kabupaten/Kota dan Provinsi asal).</span>
+            </div>
+          )}
           <div className={styles.formGrid}>
             <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
               <label className={styles.label}>Alamat Lengkap (Jalan / RT / RW) <span>*</span></label>
@@ -910,12 +1085,27 @@ export default function SpmbPage() {
           </div>
 
           <div className={styles.sectionTitle}>
-            <i className="fas fa-trophy"></i> Prestasi (Opsional)
+            <i className="fas fa-trophy"></i> Prestasi {isPrestasi ? <span style={{ color: '#dc2626', fontSize: '0.9rem', fontWeight: 700 }}>(Wajib Diisi untuk Jalur Prestasi *)</span> : '(Opsional)'}
           </div>
           <div className={styles.formGrid}>
             <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
-              <label className={styles.label}>Prestasi yang Pernah Diraih</label>
-              <textarea name="prestasi" className={styles.textarea} rows={2} placeholder="Sebutkan prestasi akademik / non-akademik beserta tingkat kejuaraan jika ada" value={formData.prestasi} onChange={handleInputChange}></textarea>
+              <label className={styles.label}>
+                Prestasi yang Pernah Diraih {isPrestasi && <span style={{ color: '#dc2626' }}>*</span>}
+              </label>
+              <textarea 
+                name="prestasi" 
+                className={styles.textarea} 
+                rows={2} 
+                placeholder={isPrestasi ? "Wajib diisi: Sebutkan nama kejuaraan/prestasi, bidang (akademik/non-akademik/tahfidz), tingkat kejuaraan (Kecamatan/Kabupaten/Provinsi/Nasional), dan perolehan juara" : "Sebutkan prestasi akademik / non-akademik beserta tingkat kejuaraan jika ada"} 
+                value={formData.prestasi} 
+                onChange={handleInputChange}
+                required={isPrestasi}
+              ></textarea>
+              {isPrestasi && (
+                <div style={{ fontSize: '0.8rem', color: '#b45309', fontWeight: 600, marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <i className="fas fa-award"></i> Calon siswa Jalur Prestasi wajib memiliki dan mencantumkan prestasi kejuaraan / lomba / tahfidz yang pernah diraih.
+                </div>
+              )}
             </div>
           </div>
 
