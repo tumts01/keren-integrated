@@ -147,7 +147,15 @@ export default function Sidebar() {
         { name: 'Data Prestasi', path: '/prestasi', icon: 'fa-trophy' },
         { name: 'Arsip Foto', path: '/arsip-foto', icon: 'fa-images' },
         { name: 'Sajian Data', path: '/sajian-data', icon: 'fa-chart-pie' },
-        { name: 'Jurnal Kegiatan', path: '/jurnal-kegiatan', icon: 'fa-book-open' },
+        { 
+          name: 'Jurnal & LPJ Kegiatan', 
+          path: '/jurnal-kegiatan-parent', 
+          icon: 'fa-book-open',
+          subItems: [
+            { name: 'Jurnal Kegiatan', path: '/jurnal-kegiatan' },
+            { name: 'Laporan Diklat', path: '/laporan-diklat' }
+          ]
+        },
         { name: 'Survey Madrasah', path: '/survey-madrasah', icon: 'fa-poll-h' },
         { name: 'Penilaian Diri', path: '/penilaian-diri', icon: 'fa-clipboard-check' },
       ]

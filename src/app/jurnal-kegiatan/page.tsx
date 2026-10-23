@@ -4,6 +4,7 @@ import styles from './JurnalKegiatan.module.css';
 import Swal from 'sweetalert2';
 import JurnalMgmpTab from '@/components/JurnalMgmpTab';
 import PenelitianMahasiswaTab from '@/components/PenelitianMahasiswaTab';
+import LaporanDiklatTab from '@/components/LaporanDiklatTab';
 import InlineLoading from '@/components/InlineLoading';
 
 const compressImage = async (file: File): Promise<File> => {
@@ -60,7 +61,27 @@ const compressImage = async (file: File): Promise<File> => {
 };
 
 export default function JurnalKegiatanPage() {
-  const [activeTab, setActiveTab] = useState<'notulen' | 'lpj' | 'jurnal-staf' | 'jurnal-mgmp' | 'penelitian-mahasiswa'>('notulen');
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam === 'laporan-diklat' || tabParam === 'diklat') {
+        setActiveTab('laporan-diklat');
+      } else if (tabParam === 'notulen') {
+        setActiveTab('notulen');
+      } else if (tabParam === 'lpj') {
+        setActiveTab('lpj');
+      } else if (tabParam === 'jurnal-staf') {
+        setActiveTab('jurnal-staf');
+      } else if (tabParam === 'jurnal-mgmp') {
+        setActiveTab('jurnal-mgmp');
+      } else if (tabParam === 'penelitian-mahasiswa') {
+        setActiveTab('penelitian-mahasiswa');
+      }
+    }
+  }, []);
+
+  const [activeTab, setActiveTab] = useState<'notulen' | 'lpj' | 'jurnal-staf' | 'jurnal-mgmp' | 'penelitian-mahasiswa' | 'laporan-diklat'>('notulen');
   const [jurnalStafSubTab, setJurnalStafSubTab] = useState<'isi' | 'rekap'>('isi');
   const [currentPage, setCurrentPage] = useState(1);
   const [jurnalStafData, setJurnalStafData] = useState<any[]>([]);
@@ -642,6 +663,12 @@ export default function JurnalKegiatanPage() {
               >
                 <i className="fas fa-user-graduate"></i> Penelitian Mahasiswa
               </button>
+              <button 
+                className={`btn ${activeTab === 'laporan-diklat' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setActiveTab('laporan-diklat')}
+              >
+                <i className="fas fa-graduation-cap"></i> Laporan Diklat
+              </button>
           </div>
           
           {activeTab === 'notulen' && (
@@ -1128,6 +1155,8 @@ export default function JurnalKegiatanPage() {
           <JurnalMgmpTab />
         ) : activeTab === 'penelitian-mahasiswa' ? (
           <PenelitianMahasiswaTab />
+        ) : activeTab === 'laporan-diklat' ? (
+          <LaporanDiklatTab />
       ) : null}
     </div>
 
