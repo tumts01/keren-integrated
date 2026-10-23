@@ -4,11 +4,13 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const text = (searchParams.get('q') || '').trim().slice(0, 120);
+    const lang = (searchParams.get('lang') || 'id').trim();
     if (!text) {
       return new NextResponse('Missing q', { status: 400 });
     }
 
-    const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=id&client=tw-ob&q=${encodeURIComponent(text)}`;
+    const safeLang = lang === 'ja' ? 'ja' : 'id';
+    const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${safeLang}&client=tw-ob&q=${encodeURIComponent(text)}`;
     const res = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',

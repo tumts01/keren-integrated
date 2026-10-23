@@ -45,7 +45,8 @@ export default function PresensiGatePage() {
 
   // Gate Scan Mode: 'auto' | 'masuk' | 'pulang'
   const [scanMode, setScanMode] = useState<'auto' | 'masuk' | 'pulang'>('auto');
-  const [voiceTheme, setVoiceTheme] = useState<'anime' | 'standard'>('anime');
+  const [voiceTheme, setVoiceTheme] = useState<'anime' | 'anime_jp' | 'standard'>('anime');
+  const voiceThemeRef = useRef<'anime' | 'anime_jp' | 'standard'>('anime');
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   // Input & Focus Management
@@ -221,33 +222,66 @@ export default function PresensiGatePage() {
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const femaleVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
 
+  const ANIME_SOUNDS: Record<'anime' | 'anime_jp', Record<string, { file: string; fallbackJa: string }>> = {
+    anime: {
+      MASUK_TEPAT: { file: '/sounds/anime/bilingual_masuk.mp3', fallbackJa: 'おはようございます！スラマット・ダタン、プレセンシ・ブルハシル！' },
+      MASUK_TERLAMBAT: { file: '/sounds/anime/bilingual_terlambat.mp3', fallbackJa: 'もう、ちこくですよ！トゥルランバット、プレセンシ・マスック・トゥルチャタット！' },
+      MASUK_BATAL: { file: '/sounds/anime/bilingual_batal.mp3', fallbackJa: 'ごめんね！プレセンシ・ディバタルカン、トゥルチャタット・アルファ・ディ・クラス！' },
+      PULANG: { file: '/sounds/anime/bilingual_pulang.mp3', fallbackJa: 'おつかれさまでした！プレセンシ・プラン・ブルハシル、ハティハティ・ディ・ジャラン・ヤ！' },
+      SUDAH_MASUK: { file: '/sounds/anime/bilingual_sudah_masuk.mp3', fallbackJa: 'もうしゅっせきしましたよ！スダ・トゥルチャタット・マスック・ハリ・イニ！' },
+      SUDAH_PULANG: { file: '/sounds/anime/bilingual_sudah_pulang.mp3', fallbackJa: 'スダ・プレセンシ・プラン・ハリ・イニ、おつかれさまでした！' },
+      BELUM_TERDAFTAR: { file: '/sounds/anime/bilingual_belum_terdaftar.mp3', fallbackJa: 'ごめんね！カルトゥ・ブルム・トゥルダフタル！' }
+    },
+    anime_jp: {
+      MASUK_TEPAT: { file: '/sounds/anime/jp_masuk.mp3', fallbackJa: 'おはようございます！ようこそ、出席完了です！' },
+      MASUK_TERLAMBAT: { file: '/sounds/anime/jp_terlambat.mp3', fallbackJa: 'もう、遅刻ですよ！早く早く！' },
+      MASUK_BATAL: { file: '/sounds/anime/jp_batal.mp3', fallbackJa: 'えっと、クラスで欠席になっているから、無効ですよ！' },
+      PULANG: { file: '/sounds/anime/jp_pulang.mp3', fallbackJa: 'お疲れ様でした！気をつけて帰ってね、また明日！' },
+      SUDAH_MASUK: { file: '/sounds/anime/jp_sudah_masuk.mp3', fallbackJa: 'もう出席しましたよ！今日も頑張ってね！' },
+      SUDAH_PULANG: { file: '/sounds/anime/jp_sudah_pulang.mp3', fallbackJa: '今日はもう終わりですよ！お疲れ様でした！' },
+      BELUM_TERDAFTAR: { file: '/sounds/anime/jp_belum_terdaftar.mp3', fallbackJa: 'ごめんね！カードが登録されていませんよ！' }
+    }
+  };
+
+  const STANDARD_PHRASES: Record<string, string> = {
+    MASUK_TEPAT: 'Selamat datang, presensi berhasil',
+    MASUK_TERLAMBAT: 'Terlambat, presensi masuk tercatat',
+    MASUK_BATAL: 'Presensi dibatalkan, tercatat alpha di kelas',
+    PULANG: 'Presensi pulang berhasil, hati-hati di jalan',
+    SUDAH_MASUK: 'Sudah tercatat masuk hari ini',
+    SUDAH_PULANG: 'Sudah tercatat pulang hari ini',
+    BELUM_TERDAFTAR: 'Kartu belum terdaftar'
+  };
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     try {
-      const savedVoice = localStorage.getItem('gate_voice_theme') as 'anime' | 'standard';
-      if (savedVoice) setVoiceTheme(savedVoice);
+      const savedVoice = localStorage.getItem('gate_voice_theme') as 'anime' | 'anime_jp' | 'standard';
+      if (savedVoice && (savedVoice === 'anime' || savedVoice === 'anime_jp' || savedVoice === 'standard')) {
+        setVoiceTheme(savedVoice);
+        voiceThemeRef.current = savedVoice;
+      }
     } catch {}
 
-    // 1. Preload kalimat singkat ke RAM browser (Mode Standar & Anime Bilingual)
-    const PHRASES = [
-      'Selamat datang, presensi berhasil',
-      'Terlambat, presensi masuk tercatat',
-      'Presensi pulang berhasil, hati-hati di jalan',
-      'Sudah tercatat masuk hari ini',
-      'Sudah tercatat pulang hari ini',
-      'Kartu belum terdaftar',
-      'Presensi dibatalkan, tercatat alpha di kelas',
-      // Anime Bilingual (Pilihan 1)
-      'Ohayou gozaimasu! Selamat datang, presensi berhasil',
-      'Chikoku desu yo! Terlambat, presensi masuk tercatat',
-      'Otsukaresama deshita! Presensi pulang berhasil, hati-hati di jalan yaa',
-      'Mou shusseki shimashita yo! Sudah tercatat masuk hari ini',
-      'Sudah presensi pulang hari ini, otsukaresama deshita',
-      'Gomen ne! Kartu belum terdaftar',
-      'Gomen ne! Presensi dibatalkan, tercatat alpha di kelas'
+    // 1. Preload semua file MP3 VOICEVOX Anime Asli ke RAM browser (0ms Instant Play)
+    const allAnimeFiles = [
+      ...Object.values(ANIME_SOUNDS.anime).map(x => x.file),
+      ...Object.values(ANIME_SOUNDS.anime_jp).map(x => x.file)
     ];
-    PHRASES.forEach((phrase) => {
+    allAnimeFiles.forEach((fileUrl) => {
+      fetch(fileUrl)
+        .then(r => (r.ok ? r.blob() : null))
+        .then(blob => {
+          if (blob) {
+            audioCacheRef.current.set(fileUrl, URL.createObjectURL(blob));
+          }
+        })
+        .catch(() => {});
+    });
+
+    // 2. Preload kalimat Standar (Mbak Google Indonesia) ke RAM browser
+    Object.values(STANDARD_PHRASES).forEach((phrase) => {
       fetch(`/api/presensi-gate/tts?q=${encodeURIComponent(phrase)}`)
         .then(r => (r.ok ? r.blob() : null))
         .then(blob => {
@@ -258,7 +292,7 @@ export default function PresensiGatePage() {
         .catch(() => {});
     });
 
-    // 2. Kunci pilihan suara perempuan pada Web Speech API (hindari suara laki-laki 'Microsoft Andika')
+    // 3. Kunci pilihan suara perempuan pada Web Speech API (hindari suara laki-laki 'Microsoft Andika')
     if ('speechSynthesis' in window) {
       const pickFemaleIndonesianVoice = () => {
         const voices = window.speechSynthesis.getVoices() || [];
@@ -275,15 +309,9 @@ export default function PresensiGatePage() {
     }
   }, []);
 
-  const handleVoiceThemeChange = (newTheme: 'anime' | 'standard') => {
-    setVoiceTheme(newTheme);
-    try {
-      localStorage.setItem('gate_voice_theme', newTheme);
-    } catch {}
-  };
-
-  const speakGreeting = (text: string) => {
+  const playVoiceEvent = (eventKey: string, overrideTheme?: 'anime' | 'anime_jp' | 'standard') => {
     if (!soundEnabled || typeof window === 'undefined') return;
+    const activeTheme = overrideTheme || voiceThemeRef.current;
 
     // Hentikan audio sebelumnya agar tap beruntun langsung responsif
     if (currentAudioRef.current) {
@@ -296,28 +324,40 @@ export default function PresensiGatePage() {
       try { window.speechSynthesis.cancel(); } catch {}
     }
 
-    // Prioritas 1: Putar Audio Suara Perempuan Google yang sudah di-cache di RAM (0ms, konsisten jernih)
+    // JIKA MODE ANIME (VOICEVOX SEIYUU ASLI JEPANG)
+    if (activeTheme === 'anime' || activeTheme === 'anime_jp') {
+      const item = ANIME_SOUNDS[activeTheme][eventKey] || ANIME_SOUNDS[activeTheme].MASUK_TEPAT;
+      const srcUrl = audioCacheRef.current.get(item.file) || item.file;
+      try {
+        const audio = new Audio(srcUrl);
+        audio.playbackRate = 1.0; // Kecepatan alami Seiyuu VOICEVOX Jepang
+        currentAudioRef.current = audio;
+        audio.play().catch(() => {
+          // Fallback ke Google Japanese TTS jika file lokal gagal dimuat
+          const fbAudio = new Audio(`/api/presensi-gate/tts?lang=ja&q=${encodeURIComponent(item.fallbackJa)}`);
+          currentAudioRef.current = fbAudio;
+          fbAudio.play().catch(() => {});
+        });
+      } catch (e) {
+        console.error('Anime voice error:', e);
+      }
+      return;
+    }
+
+    // JIKA MODE STANDAR (MBAK GOOGLE INDONESIA)
+    const text = STANDARD_PHRASES[eventKey] || eventKey;
     const cachedUrl = audioCacheRef.current.get(text) || `/api/presensi-gate/tts?q=${encodeURIComponent(text)}`;
     try {
       const audio = new Audio(cachedUrl);
-      if (voiceTheme === 'anime') {
-        // Efek nada cewek anime: playbackRate 1.15x + non-preserving pitch jika didukung browser
-        (audio as any).preservesPitch = false;
-        (audio as any).mozPreservesPitch = false;
-        (audio as any).webkitPreservesPitch = false;
-        audio.playbackRate = 1.15;
-      } else {
-        audio.playbackRate = 1.08;
-      }
+      audio.playbackRate = 1.08;
       currentAudioRef.current = audio;
       audio.play().catch(() => {
-        // Fallback ke Web Speech API dengan mengunci voice perempuan jika offline
         if ('speechSynthesis' in window) {
           const utterance = new SpeechSynthesisUtterance(text);
           utterance.lang = 'id-ID';
           if (femaleVoiceRef.current) utterance.voice = femaleVoiceRef.current;
-          utterance.rate = voiceTheme === 'anime' ? 1.15 : 1.05;
-          utterance.pitch = voiceTheme === 'anime' ? 1.45 : 1.1; // Nada lebih imut ala anime
+          utterance.rate = 1.05;
+          utterance.pitch = 1.1;
           window.speechSynthesis.speak(utterance);
         }
       });
@@ -326,23 +366,32 @@ export default function PresensiGatePage() {
     }
   };
 
+  const handleVoiceThemeChange = (newTheme: 'anime' | 'anime_jp' | 'standard') => {
+    setVoiceTheme(newTheme);
+    voiceThemeRef.current = newTheme;
+    try {
+      localStorage.setItem('gate_voice_theme', newTheme);
+    } catch {}
+    // Langsung putar contoh suara saat karakter diganti
+    playVoiceEvent('MASUK_TEPAT', newTheme);
+  };
+
   // Helper pengucapan suara singkat tanpa menyebut nama (agar antrean tap cepat)
   const announceScanResult = (actionType: string, st: any, _isGuru?: boolean) => {
-    const isAnime = voiceTheme === 'anime';
     if (actionType === 'MASUK') {
       if (st?.statusMasuk === 'DIBATALKAN') {
-        speakGreeting(isAnime ? 'Gomen ne! Presensi dibatalkan, tercatat alpha di kelas' : 'Presensi dibatalkan, tercatat alpha di kelas');
+        playVoiceEvent('MASUK_BATAL');
       } else if (st?.statusMasuk === 'Terlambat') {
-        speakGreeting(isAnime ? 'Chikoku desu yo! Terlambat, presensi masuk tercatat' : 'Terlambat, presensi masuk tercatat');
+        playVoiceEvent('MASUK_TERLAMBAT');
       } else {
-        speakGreeting(isAnime ? 'Ohayou gozaimasu! Selamat datang, presensi berhasil' : 'Selamat datang, presensi berhasil');
+        playVoiceEvent('MASUK_TEPAT');
       }
     } else if (actionType === 'PULANG') {
-      speakGreeting(isAnime ? 'Otsukaresama deshita! Presensi pulang berhasil, hati-hati di jalan yaa' : 'Presensi pulang berhasil, hati-hati di jalan');
+      playVoiceEvent('PULANG');
     } else if (actionType === 'SUDAH_MASUK') {
-      speakGreeting(isAnime ? 'Mou shusseki shimashita yo! Sudah tercatat masuk hari ini' : 'Sudah tercatat masuk hari ini');
+      playVoiceEvent('SUDAH_MASUK');
     } else if (actionType === 'SUDAH_PULANG') {
-      speakGreeting(isAnime ? 'Sudah presensi pulang hari ini, otsukaresama deshita' : 'Sudah tercatat pulang hari ini');
+      playVoiceEvent('SUDAH_PULANG');
     }
   };
 
@@ -535,7 +584,7 @@ export default function PresensiGatePage() {
       } else {
         setLastScan(null);
         setScanErrorMsg(json.error || 'Kartu atau kode barcode tidak terdaftar');
-        speakGreeting(voiceTheme === 'anime' ? 'Gomen ne! Kartu belum terdaftar' : 'Kartu belum terdaftar');
+        playVoiceEvent('BELUM_TERDAFTAR');
       }
     } catch (err: any) {
       setLastScan(null);
@@ -951,8 +1000,8 @@ export default function PresensiGatePage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                     {/* Karakter Suara Selector */}
                     <div className={styles.modeSelectWrapper}>
-                      <span style={{ fontSize: '12px', color: voiceTheme === 'anime' ? '#f472b6' : '#94a3b8' }}>
-                        <i className={`fas ${voiceTheme === 'anime' ? 'fa-wand-magic-sparkles' : 'fa-robot'}`}></i> Karakter:
+                      <span style={{ fontSize: '12px', color: voiceTheme !== 'standard' ? '#f472b6' : '#94a3b8' }}>
+                        <i className={`fas ${voiceTheme !== 'standard' ? 'fa-wand-magic-sparkles' : 'fa-robot'}`}></i> Karakter:
                       </span>
                       <select
                         value={voiceTheme}
@@ -960,18 +1009,36 @@ export default function PresensiGatePage() {
                         style={{
                           padding: '6px 12px',
                           borderRadius: '8px',
-                          background: voiceTheme === 'anime' ? '#831843' : '#1e293b',
-                          color: voiceTheme === 'anime' ? '#fbcfe8' : '#f8fafc',
-                          border: `1px solid ${voiceTheme === 'anime' ? '#f472b6' : '#475569'}`,
+                          background: voiceTheme !== 'standard' ? '#831843' : '#1e293b',
+                          color: voiceTheme !== 'standard' ? '#fbcfe8' : '#f8fafc',
+                          border: `1px solid ${voiceTheme !== 'standard' ? '#f472b6' : '#475569'}`,
                           fontSize: '12px',
                           fontWeight: 700,
                           outline: 'none',
                           cursor: 'pointer'
                         }}
                       >
-                        <option value="anime">✨ Anime Cewek Jepang (Bilingual)</option>
+                        <option value="anime">🌸 Anime Jepang - Bilingual (Seiyuu)</option>
+                        <option value="anime_jp">🎌 Anime Jepang - Full Bahasa Jepang</option>
                         <option value="standard">🎙️ Standar (Mbak Google)</option>
                       </select>
+                      <button
+                        type="button"
+                        onClick={() => playVoiceEvent('MASUK_TEPAT')}
+                        style={{
+                          padding: '5px 10px',
+                          borderRadius: '8px',
+                          background: '#be185d',
+                          color: '#fff',
+                          border: '1px solid #f472b6',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                        title="Tes putar contoh suara karakter aktif"
+                      >
+                        <i className="fas fa-volume-high"></i> Tes
+                      </button>
                     </div>
 
                     {/* Mode Selector */}
