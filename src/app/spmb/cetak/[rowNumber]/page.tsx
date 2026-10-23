@@ -237,7 +237,7 @@ export default function CetakSpmb() {
                 2. Berkas boleh diserahkan secara fisik ke Sekretariat Panitia di madrasah atau dikirim dalam bentuk file/foto via WhatsApp Panitia SPMB.
               </div>
               <div>
-                3. Simpan kartu bukti ini dan pantau hasil verifikasi berkas melalui <strong>Portal Calon Siswa</strong>.
+                3. Simpan kartu bukti ini dan pantau hasil verifikasi berkas melalui <strong>Portal Calon Siswa</strong> di link login: <a href="https://keren.mtsalmaarif01-sgs.sch.id/spmb/login" target="_blank" rel="noopener noreferrer" style={{ color: '#047857', fontWeight: 'bold', textDecoration: 'underline' }}>https://keren.mtsalmaarif01-sgs.sch.id/spmb/login</a> (masuk menggunakan Nomor Pendaftaran).
               </div>
             </div>
 
