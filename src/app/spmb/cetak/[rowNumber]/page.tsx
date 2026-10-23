@@ -11,7 +11,7 @@ export default function CetakSpmb() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isGeneratingJpg, setIsGeneratingJpg] = useState(false);
 
   // Hitung Tahun Ajaran Otomatis
   const today = new Date();
@@ -57,25 +57,59 @@ export default function CetakSpmb() {
     window.print();
   };
 
-  const handleDownloadPdf = () => {
-    if (typeof window === 'undefined' || !(window as any).html2pdf) {
-      alert('Library pembuat PDF sedang dimuat. Silakan tunggu beberapa detik dan coba lagi.');
+  const handleDownloadJpg = async () => {
+    if (typeof window === 'undefined' || !(window as any).html2canvas) {
+      alert('Library pembuat gambar sedang dimuat. Silakan tunggu beberapa detik dan coba lagi.');
       return;
     }
     
-    setIsGeneratingPdf(true);
     const element = document.getElementById('print-area');
-    const opt = {
-      margin:       [0, 0, 0, 0], // Set to 0 to prevent cutoff, the CSS handles padding
-      filename:     `Kartu_SPMB_${data.namaLengkap.replace(/\s+/g, '_')}_${data.nisn}.pdf`,
-      image:        { type: 'jpeg', quality: 1.0 },
-      html2canvas:  { scale: 2, useCORS: true, windowWidth: 794 }, // 794px is roughly 210mm at 96dpi
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
+    if (!element) return;
 
-    (window as any).html2pdf().set(opt).from(element).save().then(() => {
-      setIsGeneratingPdf(false);
-    });
+    setIsGeneratingJpg(true);
+    try {
+      const canvas = await (window as any).html2canvas(element, {
+        scale: 2, // 2x resolusi tajam
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        windowWidth: 794 // Standar proporsi A4
+      });
+
+      const safeName = (data.namaLengkap || 'Pendaftar').trim().replace(/[/\\?%*:|"<>]/g, '').replace(/\s+/g, '_');
+      const filename = `Kartu_SPMB_${safeName}_${data.nisn || ''}.jpg`;
+
+      if (canvas.toBlob) {
+        canvas.toBlob((blob: Blob | null) => {
+          if (!blob) {
+            setIsGeneratingJpg(false);
+            alert('Gagal membuat file gambar kartu.');
+            return;
+          }
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.download = filename;
+          link.href = url;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+          setIsGeneratingJpg(false);
+        }, 'image/jpeg', 0.95);
+      } else {
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = imgData;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setIsGeneratingJpg(false);
+      }
+    } catch (err) {
+      console.error('Error generating JPG:', err);
+      alert('Terjadi kesalahan saat membuat file JPG. Silakan gunakan opsi Cetak Langsung.');
+      setIsGeneratingJpg(false);
+    }
   };
 
   const handleKembali = () => {
@@ -99,7 +133,7 @@ export default function CetakSpmb() {
 
   return (
     <>
-      <Script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" strategy="lazyOnload" />
+      <Script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" strategy="lazyOnload" />
       
       <div className={styles.printContainer}>
         
@@ -111,9 +145,9 @@ export default function CetakSpmb() {
           <button onClick={handlePrint} className={`${styles.btnToolbar} ${styles.btnPrint}`}>
             <i className="fas fa-print"></i> Cetak Langsung
           </button>
-          <button onClick={handleDownloadPdf} className={`${styles.btnToolbar} ${styles.btnPdf}`} disabled={isGeneratingPdf}>
-            {isGeneratingPdf ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-file-pdf"></i>}
-            {isGeneratingPdf ? 'Memproses PDF...' : 'Unduh PDF'}
+          <button onClick={handleDownloadJpg} className={`${styles.btnToolbar} ${styles.btnJpg}`} disabled={isGeneratingJpg}>
+            {isGeneratingJpg ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-file-image"></i>}
+            {isGeneratingJpg ? 'Memproses JPG...' : 'Unduh Gambar (JPG)'}
           </button>
         </div>
 

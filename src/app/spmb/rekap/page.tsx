@@ -2218,7 +2218,7 @@ export default function RekapSpmb() {
                               fontWeight: 500,
                               padding: '2px 4px'
                             }}
-                            title="Buka langsung di tab baru untuk unduh PDF atau cetak"
+                            title="Buka langsung di tab baru untuk unduh JPG atau cetak"
                           >
                             <i className="fas fa-external-link-alt" style={{ fontSize: '10px' }}></i> Buka di Tab Baru
                           </a>
@@ -2381,7 +2381,7 @@ export default function RekapSpmb() {
                       fontWeight: 600,
                       textDecoration: 'none'
                     }}
-                    title="Buka penuh di tab baru untuk cetak / unduh PDF langsung"
+                    title="Buka penuh di tab baru untuk cetak / unduh JPG langsung"
                   >
                     <i className="fas fa-external-link-alt"></i> Tab Baru
                   </a>

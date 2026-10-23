@@ -51,11 +51,13 @@
 }
 .btnPrint:hover { background: #1d4ed8; }
 
-.btnPdf {
-  background: #ef4444;
+.btnPdf,
+.btnJpg {
+  background: #059669;
   color: white;
 }
-.btnPdf:hover { background: #dc2626; }
+.btnPdf:hover,
+.btnJpg:hover { background: #047857; }
 
 .cardWrapper {
   width: 210mm;

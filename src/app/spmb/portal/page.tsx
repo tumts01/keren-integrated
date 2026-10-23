@@ -1388,7 +1388,7 @@ export default function SpmbPortalDashboard() {
                 Cetak Kartu Pendaftaran
               </div>
               <div style={{ fontSize: '12px', color: '#64748b' }}>
-                Cetak ulang atau unduh PDF kartu bukti pendaftaran Anda
+                Cetak ulang atau unduh gambar (JPG) kartu bukti pendaftaran Anda
               </div>
             </div>
           </Link>
