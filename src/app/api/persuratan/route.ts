@@ -101,7 +101,8 @@ export async function POST(request: Request) {
       const targetId = payload.id || payload.rowNumber;
       if (!targetId) return NextResponse.json({ success: false, error: 'ID tidak valid' }, { status: 400 });
       
-      const { error } = await supabase.from('data_surat_keluar').delete().eq('id', targetId);
+      const table = payload.type === 'masuk' ? 'data_surat_masuk' : 'data_surat_keluar';
+      const { error } = await supabase.from(table).delete().eq('id', targetId);
       if (error) throw error;
       
       return NextResponse.json({ success: true });
@@ -181,16 +182,44 @@ export async function POST(request: Request) {
 
       const reqData = data.payload || data;
 
+      if (payload.type === 'masuk') {
+        const { data: existing, error: getErr } = await supabase.from('data_surat_masuk').select('*').eq('id', targetId).single();
+        if (getErr || !existing) return NextResponse.json({ success: false, error: 'Surat masuk tidak ditemukan' }, { status: 404 });
+
+        const headerTanggal = Object.keys(existing.metadata || {}).find(h => h.includes('TANGGAL') || h.includes('TGL')) || 'TANGGAL';
+        const headerNamaSurat = Object.keys(existing.metadata || {}).find(h => h.includes('NAMA SURAT') || h.includes('PERIHAL')) || 'NAMA SURAT';
+        const headerPengirim = Object.keys(existing.metadata || {}).find(h => h.includes('INSTANSI') || h.includes('ASAL') || h.includes('PENGIRIM')) || 'NAMA INSTANSI';
+        const headerFile = Object.keys(existing.metadata || {}).find(h => h.includes('FILE') || h.includes('SCAN')) || 'FILE SURAT';
+
+        const newMeta = {
+          ...existing.metadata,
+          [headerTanggal]: reqData.tanggal !== undefined ? reqData.tanggal : existing.metadata?.[headerTanggal],
+          [headerNamaSurat]: reqData.namaSurat !== undefined ? reqData.namaSurat : existing.metadata?.[headerNamaSurat],
+          [headerPengirim]: reqData.pengirim !== undefined ? reqData.pengirim : existing.metadata?.[headerPengirim],
+          [headerFile]: reqData.fileScan !== undefined ? reqData.fileScan : existing.metadata?.[headerFile],
+        };
+
+        const { error: updateErr } = await supabase.from('data_surat_masuk').update({ metadata: newMeta }).eq('id', targetId);
+        if (updateErr) throw updateErr;
+
+        return NextResponse.json({ success: true });
+      }
+
+      // Surat Keluar
       const { data: existing, error: getErr } = await supabase.from('data_surat_keluar').select('*').eq('id', targetId).single();
       if (getErr || !existing) return NextResponse.json({ success: false, error: 'Surat tidak ditemukan' }, { status: 404 });
 
       const newMeta = {
         ...existing.metadata,
-        'NAMA SURAT': reqData.namaSurat,
-        'yang Ditugaskan': reqData.yangDitugaskan,
-        'TOPIK': reqData.topik,
-        'PJ': reqData.pj,
-        'BATAS WAKTU TUGAS': reqData.batasWaktu,
+        'TANGGAL': reqData.tanggal !== undefined ? reqData.tanggal : existing.metadata?.['TANGGAL'],
+        'NAMA SURAT': reqData.namaSurat !== undefined ? reqData.namaSurat : existing.metadata?.['NAMA SURAT'],
+        'yang Ditugaskan': reqData.yangDitugaskan !== undefined ? reqData.yangDitugaskan : existing.metadata?.['yang Ditugaskan'],
+        'TOPIK': reqData.topik !== undefined ? reqData.topik : existing.metadata?.['TOPIK'],
+        'PJ': reqData.pj !== undefined ? reqData.pj : existing.metadata?.['PJ'],
+        'BATAS WAKTU TUGAS': reqData.batasWaktu !== undefined ? reqData.batasWaktu : existing.metadata?.['BATAS WAKTU TUGAS'],
+        'NO. SURAT': reqData.noSurat !== undefined ? reqData.noSurat : existing.metadata?.['NO. SURAT'],
+        'NO': reqData.no !== undefined ? reqData.no : existing.metadata?.['NO'],
+        'FILE/SCAN SURAT': reqData.fileScan !== undefined ? reqData.fileScan : existing.metadata?.['FILE/SCAN SURAT'],
       };
 
       const { error: updateErr } = await supabase.from('data_surat_keluar').update({ metadata: newMeta }).eq('id', targetId);

@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import Swal from 'sweetalert2';
 import styles from './Persuratan.module.css';
 import * as XLSX from 'xlsx';
 import InlineLoading from '@/components/InlineLoading';
@@ -58,6 +59,29 @@ export default function PersuratanPage() {
   const [addMasukPengirim, setAddMasukPengirim] = useState('');
   const [addingMasuk, setAddingMasuk] = useState(false);
   const addMasukFileRef = useRef<HTMLInputElement>(null);
+
+  // Edit Surat States
+  const [editingItem, setEditingItem] = useState<{
+    type: 'keluar' | 'masuk';
+    id: number;
+    rowNumber: number;
+    no?: string;
+    noSurat?: string;
+    tanggal: string;
+    namaSurat: string;
+    yangDitugaskan?: string;
+    topik?: string;
+    pj?: string;
+    batasWaktu?: string;
+    fileScan?: string;
+    pengirim?: string;
+  } | null>(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editSearchTopik, setEditSearchTopik] = useState('');
+  const [editSearchPj, setEditSearchPj] = useState('');
+  const [editSearchGuru, setEditSearchGuru] = useState('');
+  const [editDitugaskanList, setEditDitugaskanList] = useState<string[]>([]);
+  const [editSasaran, setEditSasaran] = useState<'Guru' | 'Siswa'>('Guru');
 
   // Custom Toast State
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -443,6 +467,148 @@ export default function PersuratanPage() {
       showToast('Terjadi kesalahan sistem saat menyimpan surat.', 'error');
     } finally {
       setAddingMasuk(false);
+    }
+  };
+
+  const handleOpenEdit = (surat: any, type: 'keluar' | 'masuk') => {
+    if (type === 'keluar') {
+      const ditugaskanStr = surat.yangDitugaskan || '';
+      const isSiswa = ditugaskanStr.toLowerCase() === 'siswa';
+      setEditSasaran(isSiswa ? 'Siswa' : 'Guru');
+      setEditDitugaskanList(isSiswa || !ditugaskanStr ? [] : ditugaskanStr.split(';').map((s: string) => s.trim()).filter(Boolean));
+    }
+    setEditSearchTopik('');
+    setEditSearchPj('');
+    setEditSearchGuru('');
+    setEditingItem({
+      type,
+      id: surat.id,
+      rowNumber: surat.rowNumber,
+      no: surat.no || '',
+      noSurat: surat.noSurat || '',
+      tanggal: surat.tanggal || '',
+      namaSurat: surat.namaSurat || '',
+      yangDitugaskan: surat.yangDitugaskan || '',
+      topik: surat.topik || '',
+      pj: surat.pj || '',
+      batasWaktu: surat.batasWaktu || '',
+      fileScan: surat.fileScan || '',
+      pengirim: surat.pengirim || '',
+    });
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem) return;
+    setIsSavingEdit(true);
+
+    const finalDitugaskan = editingItem.type === 'keluar'
+      ? (editSasaran === 'Siswa' ? 'Siswa' : (editDitugaskanList.length > 0 ? editDitugaskanList.join('; ') : (editingItem.yangDitugaskan || '')))
+      : '';
+
+    try {
+      const res = await fetch('/api/persuratan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'edit',
+          id: editingItem.id,
+          type: editingItem.type,
+          payload: editingItem.type === 'keluar' ? {
+            tanggal: editingItem.tanggal,
+            noSurat: editingItem.noSurat,
+            namaSurat: editingItem.namaSurat,
+            yangDitugaskan: finalDitugaskan,
+            topik: editingItem.topik,
+            pj: editingItem.pj,
+            batasWaktu: editingItem.batasWaktu,
+            fileScan: editingItem.fileScan,
+          } : {
+            tanggal: editingItem.tanggal,
+            namaSurat: editingItem.namaSurat,
+            pengirim: editingItem.pengirim,
+            fileScan: editingItem.fileScan,
+          }
+        })
+      });
+      const result = await res.json();
+      if (result.success) {
+        showToast('Data surat berhasil diperbarui!', 'success');
+        if (editingItem.type === 'keluar') {
+          setDataKeluar(prev => prev.map(s => s.id === editingItem.id ? {
+            ...s,
+            tanggal: editingItem.tanggal,
+            noSurat: editingItem.noSurat || s.noSurat,
+            namaSurat: editingItem.namaSurat,
+            yangDitugaskan: finalDitugaskan,
+            topik: editingItem.topik || s.topik,
+            pj: editingItem.pj || s.pj,
+            batasWaktu: editingItem.batasWaktu || '',
+            fileScan: editingItem.fileScan || s.fileScan,
+          } : s));
+        } else {
+          setDataMasuk(prev => prev.map(s => s.id === editingItem.id ? {
+            ...s,
+            tanggal: editingItem.tanggal,
+            namaSurat: editingItem.namaSurat,
+            pengirim: editingItem.pengirim || s.pengirim,
+            fileScan: editingItem.fileScan || s.fileScan,
+          } : s));
+        }
+        setEditingItem(null);
+      } else {
+        showToast(`Gagal update: ${result.error}`, 'error');
+      }
+    } catch (err: any) {
+      showToast('Terjadi kesalahan saat menyimpan perubahan.', 'error');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleDeleteSurat = async (id: number, namaSurat: string, type: 'keluar' | 'masuk') => {
+    const result = await Swal.fire({
+      title: 'Hapus Surat?',
+      html: `Yakin ingin menghapus surat: <br/><b>${namaSurat || 'Surat ini'}</b>?<br/><span style="font-size: 12px; color: #ef4444;">Data yang sudah dihapus tidak dapat dipulihkan.</span>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: '<i class="fas fa-trash-alt"></i> Ya, Hapus!',
+      cancelButtonText: 'Batal'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch('/api/persuratan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'delete',
+            id,
+            type
+          })
+        });
+        const resJson = await res.json();
+        if (resJson.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Terhapus!',
+            text: 'Surat telah berhasil dihapus.',
+            timer: 1500,
+            showConfirmButton: false
+          });
+          if (type === 'keluar') {
+            setDataKeluar(prev => prev.filter(s => s.id !== id));
+          } else {
+            setDataMasuk(prev => prev.filter(s => s.id !== id));
+          }
+        } else {
+          Swal.fire('Gagal', resJson.error || 'Gagal menghapus surat', 'error');
+        }
+      } catch (err: any) {
+        Swal.fire('Error', 'Terjadi kesalahan sistem saat menghapus surat.', 'error');
+      }
     }
   };
 
@@ -839,6 +1005,278 @@ export default function PersuratanPage() {
                   </button>
                   <button type="submit" className="btn btn-primary" disabled={generating}>
                     {generating ? <><i className="fas fa-spinner fa-spin"></i> Memproses...</> : <><i className="fas fa-bolt"></i> Generate Nomor Surat</>}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Surat Modal */}
+      {editingItem && (
+        <div className={styles.modalOverlay} onClick={() => !isSavingEdit && setEditingItem(null)}>
+          <div className={styles.modalCard} onClick={e => e.stopPropagation()} style={{ maxWidth: '650px' }}>
+            <div className={styles.modalHeader}>
+              <h2>
+                <i className="fas fa-edit" style={{ color: '#fbbf24' }}></i>
+                <span>Edit {editingItem.type === 'keluar' ? 'Surat Keluar' : 'Surat Masuk'}</span>
+              </h2>
+              <button className={styles.closeBtn} onClick={() => !isSavingEdit && setEditingItem(null)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className={styles.modalBody} style={{ display: 'block', maxHeight: '78vh', overflowY: 'auto' }}>
+              <form onSubmit={handleSaveEdit}>
+                {editingItem.type === 'keluar' ? (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                      <div className={styles.infoGroup}>
+                        <label className={styles.infoLabel}>Nomor Surat</label>
+                        <input
+                          type="text"
+                          className={styles.searchInput}
+                          value={editingItem.noSurat || ''}
+                          onChange={e => setEditingItem({ ...editingItem, noSurat: e.target.value })}
+                          placeholder="Contoh: 532/YPA/MTs-01.H.4/X/2026"
+                          required
+                        />
+                      </div>
+                      <div className={styles.infoGroup}>
+                        <label className={styles.infoLabel}>Tanggal Surat</label>
+                        <input
+                          type="date"
+                          className={styles.searchInput}
+                          value={editingItem.tanggal}
+                          onChange={e => setEditingItem({ ...editingItem, tanggal: e.target.value })}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className={styles.infoGroup} style={{ marginBottom: '14px' }}>
+                      <label className={styles.infoLabel}>Nama Surat / Perihal</label>
+                      <input
+                        type="text"
+                        className={styles.searchInput}
+                        value={editingItem.namaSurat}
+                        onChange={e => setEditingItem({ ...editingItem, namaSurat: e.target.value })}
+                        placeholder="Contoh: Surat Edaran Kegiatan..."
+                        required
+                      />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                      <div className={styles.infoGroup} style={{ position: 'relative' }}>
+                        <label className={styles.infoLabel}>Topik (Kode Surat)</label>
+                        <input
+                          type="text"
+                          className={styles.searchInput}
+                          value={editingItem.topik || ''}
+                          onChange={e => {
+                            setEditingItem({ ...editingItem, topik: e.target.value });
+                            setEditSearchTopik(e.target.value);
+                          }}
+                          placeholder="Pilih atau ketik topik..."
+                          required
+                        />
+                        {editSearchTopik && topikList.filter(t => t.toLowerCase().includes(editSearchTopik.toLowerCase())).length > 0 && (
+                          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', maxHeight: '140px', overflowY: 'auto', zIndex: 20, boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                            {topikList.filter(t => t.toLowerCase().includes(editSearchTopik.toLowerCase())).map((t, i) => (
+                              <div
+                                key={i}
+                                style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontSize: '13px' }}
+                                onClick={() => {
+                                  setEditingItem({ ...editingItem, topik: t });
+                                  setEditSearchTopik('');
+                                }}
+                              >
+                                {t}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className={styles.infoGroup} style={{ position: 'relative' }}>
+                        <label className={styles.infoLabel}>Nama Pembuat Surat (PJ)</label>
+                        <input
+                          type="text"
+                          className={styles.searchInput}
+                          value={editingItem.pj || ''}
+                          onChange={e => {
+                            setEditingItem({ ...editingItem, pj: e.target.value });
+                            setEditSearchPj(e.target.value);
+                          }}
+                          placeholder="Pilih atau ketik nama guru..."
+                          required
+                        />
+                        {editSearchPj && guruList.filter(g => g.nama.toLowerCase().includes(editSearchPj.toLowerCase())).length > 0 && (
+                          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', maxHeight: '140px', overflowY: 'auto', zIndex: 20, boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                            {guruList.filter(g => g.nama.toLowerCase().includes(editSearchPj.toLowerCase())).map(g => (
+                              <div
+                                key={g.id}
+                                style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontSize: '13px' }}
+                                onClick={() => {
+                                  setEditingItem({ ...editingItem, pj: g.nama });
+                                  setEditSearchPj('');
+                                }}
+                              >
+                                {g.nama}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                      <div className={styles.infoGroup}>
+                        <label className={styles.infoLabel}>Sasaran Surat</label>
+                        <div style={{ display: 'flex', gap: '16px', fontSize: '0.88rem', marginTop: '6px' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                            <input
+                              type="radio"
+                              name="editSasaran"
+                              value="Guru"
+                              checked={editSasaran === 'Guru'}
+                              onChange={() => setEditSasaran('Guru')}
+                            />
+                            Guru / Staf
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                            <input
+                              type="radio"
+                              name="editSasaran"
+                              value="Siswa"
+                              checked={editSasaran === 'Siswa'}
+                              onChange={() => setEditSasaran('Siswa')}
+                            />
+                            Siswa / Eksternal
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className={styles.infoGroup}>
+                        <label className={styles.infoLabel}>Tanggal Akhir Tugas (Opsional)</label>
+                        <input
+                          type="date"
+                          className={styles.searchInput}
+                          value={editingItem.batasWaktu || ''}
+                          onChange={e => setEditingItem({ ...editingItem, batasWaktu: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
+                    {editSasaran === 'Guru' && (
+                      <div className={styles.infoGroup} style={{ marginBottom: '14px', position: 'relative' }}>
+                        <label className={styles.infoLabel}>Yang Ditugaskan</label>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: editDitugaskanList.length > 0 ? '8px' : '0', border: '1px solid #cbd5e1', borderRadius: '8px', minHeight: '40px', alignItems: 'center' }}>
+                          {editDitugaskanList.map((guru, idx) => (
+                            <span key={idx} style={{ background: 'var(--primary)', color: 'white', padding: '3px 8px', borderRadius: '14px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              {guru}
+                              <i className="fas fa-times" style={{ cursor: 'pointer' }} onClick={() => setEditDitugaskanList(prev => prev.filter(g => g !== guru))}></i>
+                            </span>
+                          ))}
+                          <input
+                            type="text"
+                            style={{ border: 'none', outline: 'none', flex: 1, minWidth: '150px', padding: editDitugaskanList.length > 0 ? '4px' : '8px 10px', fontSize: '13px' }}
+                            value={editSearchGuru}
+                            onChange={e => setEditSearchGuru(e.target.value)}
+                            placeholder={editDitugaskanList.length === 0 ? "Ketik nama guru atau 'Nama Terlampir'..." : ""}
+                          />
+                        </div>
+                        {editSearchGuru && (
+                          <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #cbd5e1', borderRadius: '8px', maxHeight: '140px', overflowY: 'auto', zIndex: 20, boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+                            {[...guruList, { id: 'terlampir', nama: 'Nama Terlampir' }].filter(g => g.nama.toLowerCase().includes(editSearchGuru.toLowerCase()) && !editDitugaskanList.includes(g.nama)).map(g => (
+                              <div
+                                key={g.id}
+                                style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontSize: '13px' }}
+                                onClick={() => {
+                                  if (g.id === 'terlampir') {
+                                    setEditDitugaskanList(['Nama Terlampir']);
+                                  } else {
+                                    setEditDitugaskanList(prev => [...prev.filter(p => p !== 'Nama Terlampir'), g.nama]);
+                                  }
+                                  setEditSearchGuru('');
+                                }}
+                              >
+                                {g.nama}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className={styles.infoGroup} style={{ marginBottom: '18px' }}>
+                      <label className={styles.infoLabel}>Link File Scan / PDF Surat (Opsional)</label>
+                      <input
+                        type="url"
+                        className={styles.searchInput}
+                        value={editingItem.fileScan || ''}
+                        onChange={e => setEditingItem({ ...editingItem, fileScan: e.target.value })}
+                        placeholder="https://drive.google.com/..."
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                      <div className={styles.infoGroup}>
+                        <label className={styles.infoLabel}>Tanggal Masuk</label>
+                        <input
+                          type="date"
+                          className={styles.searchInput}
+                          value={editingItem.tanggal}
+                          onChange={e => setEditingItem({ ...editingItem, tanggal: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className={styles.infoGroup}>
+                        <label className={styles.infoLabel}>Pengirim / Instansi Asal</label>
+                        <input
+                          type="text"
+                          className={styles.searchInput}
+                          value={editingItem.pengirim || ''}
+                          onChange={e => setEditingItem({ ...editingItem, pengirim: e.target.value })}
+                          placeholder="Nama instansi / pengirim..."
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className={styles.infoGroup} style={{ marginBottom: '14px' }}>
+                      <label className={styles.infoLabel}>Nama Surat / Perihal</label>
+                      <input
+                        type="text"
+                        className={styles.searchInput}
+                        value={editingItem.namaSurat}
+                        onChange={e => setEditingItem({ ...editingItem, namaSurat: e.target.value })}
+                        placeholder="Perihal surat masuk..."
+                        required
+                      />
+                    </div>
+
+                    <div className={styles.infoGroup} style={{ marginBottom: '18px' }}>
+                      <label className={styles.infoLabel}>Link File Scan / PDF Surat (Opsional)</label>
+                      <input
+                        type="url"
+                        className={styles.searchInput}
+                        value={editingItem.fileScan || ''}
+                        onChange={e => setEditingItem({ ...editingItem, fileScan: e.target.value })}
+                        placeholder="https://drive.google.com/..."
+                      />
+                    </div>
+                  </>
+                )}
+
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+                  <button type="button" className="btn" style={{ background: '#f1f5f9', color: '#475569' }} onClick={() => setEditingItem(null)} disabled={isSavingEdit}>
+                    Batal
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={isSavingEdit}>
+                    {isSavingEdit ? <><i className="fas fa-spinner fa-spin"></i> Menyimpan...</> : <><i className="fas fa-save"></i> Simpan Perubahan</>}
                   </button>
                 </div>
               </form>
@@ -1446,6 +1884,7 @@ export default function PersuratanPage() {
                     <th>Topik</th>
                     <th>Pembuat Surat</th>
                     <th style={{ textAlign: 'center' }}>Status / Arsip</th>
+                    <th style={{ textAlign: 'center', width: '135px' }}>Aksi</th>
                   </tr>
                 ) : activeTab === 'masuk' ? (
                   <tr>
@@ -1453,6 +1892,7 @@ export default function PersuratanPage() {
                     <th>Nama Surat</th>
                     <th>Pengirim / Asal Surat</th>
                     <th style={{ textAlign: 'center' }}>Status / Arsip</th>
+                    <th style={{ textAlign: 'center', width: '135px' }}>Aksi</th>
                   </tr>
 
                 ) : (
@@ -1486,11 +1926,57 @@ export default function PersuratanPage() {
                             </button>
                           )}
                         </td>
+                        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(surat, 'keluar')}
+                              className="btn"
+                              style={{
+                                background: '#fef3c7',
+                                color: '#b45309',
+                                border: '1px solid #fde68a',
+                                padding: '5px 10px',
+                                fontSize: '0.78rem',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                fontWeight: 600
+                              }}
+                              title="Edit Surat Keluar"
+                            >
+                              <i className="fas fa-edit"></i> Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSurat(surat.id, surat.namaSurat, 'keluar')}
+                              className="btn"
+                              style={{
+                                background: '#fee2e2',
+                                color: '#dc2626',
+                                border: '1px solid #fecaca',
+                                padding: '5px 10px',
+                                fontSize: '0.78rem',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                fontWeight: 600
+                              }}
+                              title="Hapus Surat Keluar"
+                            >
+                              <i className="fas fa-trash-alt"></i> Hapus
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={8} style={{ textAlign: 'center', padding: '40px' }}>
+                      <td colSpan={9} style={{ textAlign: 'center', padding: '40px' }}>
                         <i className="fas fa-check-circle" style={{ fontSize: '3rem', color: '#10b981', marginBottom: '16px', display: 'block' }}></i>
                         {activeTab === 'tagihan' ? 'Mantap! Semua surat sudah diarsipkan.' : 'Tidak ada surat keluar yang ditemukan.'}
                       </td>
@@ -1514,6 +2000,52 @@ export default function PersuratanPage() {
                               <i className="fas fa-exclamation-circle"></i> Upload Arsip
                             </button>
                           )}
+                        </td>
+                        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(surat, 'masuk')}
+                              className="btn"
+                              style={{
+                                background: '#fef3c7',
+                                color: '#b45309',
+                                border: '1px solid #fde68a',
+                                padding: '5px 10px',
+                                fontSize: '0.78rem',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                fontWeight: 600
+                              }}
+                              title="Edit Surat Masuk"
+                            >
+                              <i className="fas fa-edit"></i> Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSurat(surat.id, surat.namaSurat, 'masuk')}
+                              className="btn"
+                              style={{
+                                background: '#fee2e2',
+                                color: '#dc2626',
+                                border: '1px solid #fecaca',
+                                padding: '5px 10px',
+                                fontSize: '0.78rem',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                fontWeight: 600
+                              }}
+                              title="Hapus Surat Masuk"
+                            >
+                              <i className="fas fa-trash-alt"></i> Hapus
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
