@@ -461,7 +461,24 @@ export async function POST(req: Request) {
       const existingJamMasuk = gtkMeta['jam_masuk'] || '';
       const existingJamPulang = gtkMeta['jam_pulang'] || '';
 
-      // JIKA BELUM CHECK-IN HARI INI
+      // 1. JIKA SUDAH PERNAH CHECK-OUT PULANG (MAX 1X PULANG) -> KUNCI PERMANEN
+      if (existingJamPulang) {
+        return NextResponse.json({
+          success: true,
+          actionType: 'SUDAH_PULANG',
+          isGuru: true,
+          message: `Bapak/Ibu ${matchedGuru.nama} sudah tercatat pulang pada pukul ${existingJamPulang} WIB. Presensi hari ini sudah lengkap.`,
+          data: {
+            ...matchedGuru,
+            jamMasuk: existingJamMasuk,
+            jamPulang: existingJamPulang,
+            statusMasuk: 'Tepat Waktu',
+            tanggal
+          }
+        });
+      }
+
+      // 2. JIKA BELUM CHECK-IN HARI INI
       if (!existingJamMasuk) {
         if (!existingGtk) {
           await supabase.from('absen_gtk').insert([{
@@ -520,13 +537,13 @@ export async function POST(req: Request) {
         });
       }
 
-      // JIKA SUDAH CHECK-IN: CEK COOLDOWN
+      // JIKA SUDAH CHECK-IN: CEK COOLDOWN 1 JAM (60 MENIT) DARI JAM MASUK
       if (existingJamMasuk && !existingJamPulang) {
         const [hMasuk, mMasuk] = existingJamMasuk.replace(':', '.').split('.').map(Number);
         const [hNow, mNow] = jamShort.split('.').map(Number);
         const diffMenit = ((hNow * 60) + mNow) - ((hMasuk * 60) + mMasuk);
 
-        if (diffMenit < 3 && mode === 'auto') {
+        if ((diffMenit < 60 && mode === 'auto') || mode === 'masuk') {
           return NextResponse.json({
             success: true,
             actionType: 'SUDAH_MASUK',
@@ -689,7 +706,23 @@ export async function POST(req: Request) {
     const existingJamMasuk = currentMeta['JAM_MASUK'] || currentMeta['JAM MASUK'] || '';
     const existingJamPulang = currentMeta['JAM_PULANG'] || currentMeta['JAM PULANG'] || '';
 
-    // Jika tap lagi dalam waktu kurang dari 3 menit dari jam masuk, anggap accidental double tap
+    // 1. JIKA SUDAH PERNAH CHECK-OUT PULANG (MAX 1X PULANG) -> KUNCI PERMANEN
+    if (existingJamPulang) {
+      return NextResponse.json({
+        success: true,
+        actionType: 'SUDAH_PULANG',
+        message: `Siswa ${matchedStudent.nama} sudah tercatat pulang pada pukul ${existingJamPulang} WIB. Presensi hari ini sudah lengkap.`,
+        data: {
+          ...matchedStudent,
+          jamMasuk: existingJamMasuk,
+          jamPulang: existingJamPulang,
+          statusMasuk: currentMeta['STATUS_MASUK'] || 'Tepat Waktu',
+          tanggal
+        }
+      });
+    }
+
+    // 2. JIKA SUDAH MASUK: CEK COOLDOWN 1 JAM (60 MENIT) DARI JAM MASUK
     if (existingJamMasuk && !existingJamPulang) {
       // Hitung selisih waktu dalam detik
       const [hMasuk, mMasuk, sMasuk] = existingJamMasuk.split(':').map(Number);
@@ -698,8 +731,8 @@ export async function POST(req: Request) {
       const totalDetikNow = (hNow * 3600) + (mNow * 60) + (sNow || 0);
       const selisihMenit = (totalDetikNow - totalDetikMasuk) / 60;
 
-      // Jika selisih kurang dari 3 menit, jangan ganti ke jam pulang dulu (hindari tap berkali-kali waktu antre pagi)
-      if (selisihMenit < 3 && mode === 'auto') {
+      // Jika selisih kurang dari 60 menit (1 jam) pada mode auto, atau operator sedang memilih mode 'masuk'
+      if ((selisihMenit < 60 && mode === 'auto') || mode === 'masuk') {
         return NextResponse.json({
           success: true,
           actionType: 'SUDAH_MASUK',
@@ -715,7 +748,7 @@ export async function POST(req: Request) {
       }
     }
 
-    // JIKA MODE PULANG ATAU TAP KEDUA (JAM PULANG)
+    // 3. JIKA MODE PULANG ATAU TAP KEDUA (SETELAH >= 60 MENIT): CATAT PULANG (MAX 1X)
     const updatedMeta = {
       ...currentMeta,
       'JAM_PULANG': jam,

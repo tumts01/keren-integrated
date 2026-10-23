@@ -5,7 +5,7 @@ import Swal from 'sweetalert2';
 import styles from './gate.module.css';
 
 interface TapResult {
-  actionType: 'MASUK' | 'PULANG' | 'SUDAH_MASUK' | 'ERROR';
+  actionType: 'MASUK' | 'PULANG' | 'SUDAH_MASUK' | 'SUDAH_PULANG' | 'ERROR';
   message: string;
   data: {
     nama: string;
@@ -229,6 +229,7 @@ export default function PresensiGatePage() {
       'Terlambat, presensi masuk tercatat',
       'Presensi pulang berhasil, hati-hati di jalan',
       'Sudah tercatat masuk hari ini',
+      'Sudah tercatat pulang hari ini',
       'Kartu belum terdaftar',
       'Presensi dibatalkan, tercatat alpha di kelas'
     ];
@@ -310,6 +311,8 @@ export default function PresensiGatePage() {
       speakGreeting('Presensi pulang berhasil, hati-hati di jalan');
     } else if (actionType === 'SUDAH_MASUK') {
       speakGreeting('Sudah tercatat masuk hari ini');
+    } else if (actionType === 'SUDAH_PULANG') {
+      speakGreeting('Sudah tercatat pulang hari ini');
     }
   };
 
@@ -348,7 +351,7 @@ export default function PresensiGatePage() {
       const prevTap = recentTapsRef.current[personKey];
       const isGuru = matched.role === 'GURU' || matched.kelas === 'GURU / GTK';
 
-      let actionType: 'MASUK' | 'PULANG' | 'SUDAH_MASUK' = 'MASUK';
+      let actionType: 'MASUK' | 'PULANG' | 'SUDAH_MASUK' | 'SUDAH_PULANG' = 'MASUK';
       let jamMasuk = jam;
       let jamPulang: string | null = null;
       let statusMasuk = isGuru ? 'Tepat Waktu' : (jam > '06:45:00' ? 'Terlambat' : 'Tepat Waktu');
@@ -388,45 +391,51 @@ export default function PresensiGatePage() {
         jamMasuk = prevTap.jamMasuk;
         statusMasuk = prevTap.statusMasuk || 'Tepat Waktu';
 
-        // Cek selisih menit sejak jam masuk untuk cegah double-tap tidak sengaja (< 3 menit)
-        const parts = jamMasuk.replace('.', ':').split(':').map(Number);
-        const totalDetikMasuk = ((parts[0] || 0) * 3600) + ((parts[1] || 0) * 60) + (parts[2] || 0);
-        const totalDetikNow = (Number(hh) * 3600) + (Number(min) * 60) + Number(ss);
-        const selisihMenit = (totalDetikNow - totalDetikMasuk) / 60;
-
-        if (!prevTap.jamPulang && selisihMenit < 3 && scanMode === 'auto') {
-          actionType = 'SUDAH_MASUK';
-          jamPulang = null;
-          message = `${isGuru ? 'Bapak/Ibu' : 'Siswa'} ${matched.nama} sudah tercatat masuk pada pukul ${jamMasuk} WIB`;
+        // 1. JIKA SUDAH PERNAH CHECK-OUT PULANG (MAX 1X PULANG) -> KUNCI PERMANEN
+        if (prevTap.jamPulang) {
+          actionType = 'SUDAH_PULANG';
+          jamPulang = prevTap.jamPulang;
+          message = `${isGuru ? 'Bapak/Ibu' : 'Siswa'} ${matched.nama} sudah tercatat pulang pada pukul ${jamPulang} WIB. Presensi hari ini sudah lengkap.`;
         } else {
-          actionType = 'PULANG';
-          jamPulang = jam;
-          message = isGuru ? `Check-out Pulang Guru Berhasil: ${matched.nama}` : 'Check-out Pulang Berhasil';
-          const hadPulangBefore = Boolean(prevTap.jamPulang);
-          recentTapsRef.current[personKey] = { jamMasuk, jamPulang, statusMasuk };
+          // Cek selisih menit sejak jam masuk (cooldown 1 jam = 60 menit)
+          const parts = jamMasuk.replace('.', ':').split(':').map(Number);
+          const totalDetikMasuk = ((parts[0] || 0) * 3600) + ((parts[1] || 0) * 60) + (parts[2] || 0);
+          const totalDetikNow = (Number(hh) * 3600) + (Number(min) * 60) + Number(ss);
+          const selisihMenit = (totalDetikNow - totalDetikMasuk) / 60;
 
-          setHistoryList(prev => {
-            const existsInFeed = prev.some(x => (x.nama || '').toLowerCase() === personKey);
-            if (existsInFeed) {
-              return prev.map(x =>
-                (x.nama || '').toLowerCase() === personKey ? { ...x, jamPulang: jam } : x
-              );
-            }
-            const newPulangFeedItem: PresensiItem = {
-              id: Date.now(),
-              tanggal,
-              kelas: isGuru ? 'GTK' : matched.kelas,
-              nisn: matched.nisn || '-',
-              nama: matched.nama,
-              kehadiran: 'H',
-              jamMasuk,
-              jamPulang: jam,
-              statusMasuk,
-              sumber: 'GATE'
-            };
-            return [newPulangFeedItem, ...prev];
-          });
-          if (!hadPulangBefore) {
+          // Tolak jika belum lewat 60 menit di mode auto, atau operator sedang memilih mode 'masuk'
+          if ((selisihMenit < 60 && scanMode === 'auto') || scanMode === 'masuk') {
+            actionType = 'SUDAH_MASUK';
+            jamPulang = null;
+            message = `${isGuru ? 'Bapak/Ibu' : 'Siswa'} ${matched.nama} sudah tercatat masuk pada pukul ${jamMasuk} WIB`;
+          } else {
+            // Tap ke-2 pulang (setelah >= 60 menit): Catat pulang max 1x
+            actionType = 'PULANG';
+            jamPulang = jam;
+            message = isGuru ? `Check-out Pulang Guru Berhasil: ${matched.nama}` : 'Check-out Pulang Berhasil';
+            recentTapsRef.current[personKey] = { jamMasuk, jamPulang, statusMasuk };
+
+            setHistoryList(prev => {
+              const existsInFeed = prev.some(x => (x.nama || '').toLowerCase() === personKey);
+              if (existsInFeed) {
+                return prev.map(x =>
+                  (x.nama || '').toLowerCase() === personKey ? { ...x, jamPulang: jam } : x
+                );
+              }
+              const newPulangFeedItem: PresensiItem = {
+                id: Date.now(),
+                tanggal,
+                kelas: isGuru ? 'GTK' : matched.kelas,
+                nisn: matched.nisn || '-',
+                nama: matched.nama,
+                kehadiran: 'H',
+                jamMasuk,
+                jamPulang: jam,
+                statusMasuk,
+                sumber: 'GATE'
+              };
+              return [newPulangFeedItem, ...prev];
+            });
             setStats(prev => ({ ...prev, sudahPulang: prev.sudahPulang + 1 }));
           }
         }
@@ -449,7 +458,7 @@ export default function PresensiGatePage() {
       announceScanResult(actionType, instantScanResult.data, isGuru);
 
       // Simpan ke database Supabase di background tanpa menahan antrean tap berikutnya
-      if (actionType !== 'SUDAH_MASUK') {
+      if (actionType !== 'SUDAH_MASUK' && actionType !== 'SUDAH_PULANG') {
         fetch('/api/presensi-gate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -999,13 +1008,25 @@ export default function PresensiGatePage() {
                 <div 
                   className={styles.heroCard}
                   style={{
-                    background: lastScan.actionType === 'PULANG' 
+                    background: lastScan.actionType === 'SUDAH_PULANG'
+                      ? 'linear-gradient(135deg, #4c1d95 0%, #1e1b4b 100%)'
+                      : lastScan.actionType === 'SUDAH_MASUK'
+                      ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)'
+                      : lastScan.actionType === 'PULANG' 
                       ? 'linear-gradient(135deg, #1e3a8a 0%, #1e1b4b 100%)' 
                       : lastScan.data.statusMasuk === 'Terlambat'
                       ? 'linear-gradient(135deg, #78350f 0%, #451a03 100%)'
                       : 'linear-gradient(135deg, #064e3b 0%, #022c22 100%)',
                     border: `2px solid ${
-                      lastScan.actionType === 'PULANG' ? '#3b82f6' : lastScan.data.statusMasuk === 'Terlambat' ? '#f59e0b' : '#10b981'
+                      lastScan.actionType === 'SUDAH_PULANG'
+                        ? '#a855f7'
+                        : lastScan.actionType === 'SUDAH_MASUK'
+                        ? '#64748b'
+                        : lastScan.actionType === 'PULANG'
+                        ? '#3b82f6'
+                        : lastScan.data.statusMasuk === 'Terlambat'
+                        ? '#f59e0b'
+                        : '#10b981'
                     }`
                   }}
                 >
@@ -1035,10 +1056,26 @@ export default function PresensiGatePage() {
                         fontSize: '11px',
                         fontWeight: 800,
                         textTransform: 'uppercase',
-                        background: lastScan.actionType === 'PULANG' ? '#3b82f6' : lastScan.data.statusMasuk === 'Terlambat' ? '#f59e0b' : '#10b981',
+                        background: lastScan.actionType === 'SUDAH_PULANG'
+                          ? '#a855f7'
+                          : lastScan.actionType === 'SUDAH_MASUK'
+                          ? '#64748b'
+                          : lastScan.actionType === 'PULANG'
+                          ? '#3b82f6'
+                          : lastScan.data.statusMasuk === 'Terlambat'
+                          ? '#f59e0b'
+                          : '#10b981',
                         color: 'white'
                       }}>
-                        {lastScan.actionType === 'PULANG' ? 'CHECK-OUT PULANG' : lastScan.data.statusMasuk === 'Terlambat' ? 'TERLAMBAT' : 'TEPAT WAKTU'}
+                        {lastScan.actionType === 'SUDAH_PULANG'
+                          ? 'SUDAH PULANG (LENGKAP)'
+                          : lastScan.actionType === 'SUDAH_MASUK'
+                          ? 'SUDAH MASUK'
+                          : lastScan.actionType === 'PULANG'
+                          ? 'CHECK-OUT PULANG'
+                          : lastScan.data.statusMasuk === 'Terlambat'
+                          ? 'TERLAMBAT'
+                          : 'TEPAT WAKTU'}
                       </span>
                       <span style={{ fontSize: '13px', color: '#cbd5e1', fontWeight: 700 }}>
                         Kelas {lastScan.data.kelas}
