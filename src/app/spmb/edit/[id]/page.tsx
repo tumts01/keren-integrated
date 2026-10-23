@@ -20,7 +20,7 @@ export default function SpmbEditPage() {
       try {
         const userStr = localStorage.getItem('keren_user_data');
         if (!userStr) {
-          router.push('/portal/login');
+          router.push('/');
           return;
         }
         
@@ -28,12 +28,12 @@ export default function SpmbEditPage() {
         try {
           user = JSON.parse(userStr);
         } catch(e) {
-          router.push('/portal/login');
+          router.push('/');
           return;
         }
         
         if (!user) {
-          router.push('/portal/login');
+          router.push('/');
           return;
         }
 

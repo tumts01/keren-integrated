@@ -7,10 +7,12 @@ import styles from './Rekap.module.css';
 import ModalAturJalur from '../components/ModalAturJalur';
 import ModalPengumumanSpmb from '../components/ModalPengumumanSpmb';
 import ModalDaftarUlang from '../components/ModalDaftarUlang';
+import LoadingScreen from '@/components/LoadingScreen';
 
 export default function RekapSpmb() {
   const router = useRouter();
   const pathname = usePathname();
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -859,19 +861,27 @@ export default function RekapSpmb() {
 
   useEffect(() => {
     const userStr = localStorage.getItem('keren_user_data');
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        if (user) {
-          const role = (user.role || '').toLowerCase();
-          setIsAdmin(role === 'admin' || role.includes('admin'));
-        }
-      } catch (e) {
-        console.error(e);
+    if (!userStr) {
+      router.replace('/');
+      return;
+    }
+    try {
+      const user = JSON.parse(userStr);
+      if (user) {
+        const role = (user.role || '').toLowerCase();
+        setIsAdmin(role === 'admin' || role.includes('admin'));
+        setIsAuthorized(true);
+      } else {
+        router.replace('/');
+        return;
       }
+    } catch (e) {
+      console.error(e);
+      router.replace('/');
+      return;
     }
     fetchData();
-  }, []);
+  }, [router]);
 
   const fetchData = async () => {
     try {
@@ -898,6 +908,10 @@ export default function RekapSpmb() {
     setViewerUrl(null);
     setViewerTitle('');
   };
+
+  if (!isAuthorized) {
+    return <LoadingScreen message="Memverifikasi hak akses..." />;
+  }
 
   return (
     <div className={styles.container}>

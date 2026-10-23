@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const { data: rows, error } = await supabase.from('data_spmb').select('*');
@@ -70,7 +72,7 @@ export async function GET() {
     });
 
     return NextResponse.json({ success: true, data }, {
-      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
+      headers: { 'Cache-Control': 'private, no-cache, no-store, max-age=0, must-revalidate' }
     });
 
   } catch (error: any) {

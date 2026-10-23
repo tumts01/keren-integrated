@@ -182,7 +182,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Halaman Publik (tanpa login atau layout khusus)
   const isPublicPage = 
     pathname?.startsWith('/survey-madrasah') || 
-    pathname?.startsWith('/spmb') ||
+    pathname === '/spmb' ||
+    pathname === '/spmb/' ||
+    pathname === '/spmb/login' ||
+    pathname === '/spmb/portal' ||
+    pathname?.startsWith('/spmb/cetak') ||
     pathname === '/wali-murid' || 
     pathname?.startsWith('/wali-murid/') ||
     pathname === '/olimpiade-seni' ||

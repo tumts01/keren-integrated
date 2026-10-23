@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
 import styles from '../rekap/Rekap.module.css';
+import LoadingScreen from '@/components/LoadingScreen';
 
 export const KELAS_PROGRAM_KHUSUS = [
   'Agama Tahfidh',
@@ -142,6 +144,8 @@ function normalizeGender(jk: string): 'L' | 'P' {
 }
 
 export default function PemetaanKelasPage() {
+  const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [students, setStudents] = useState<CalonSiswaSPMB[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -180,8 +184,24 @@ export default function PemetaanKelasPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    const userStr = localStorage.getItem('keren_user_data');
+    if (!userStr) {
+      router.replace('/');
+      return;
+    }
+    try {
+      const user = JSON.parse(userStr);
+      if (!user) {
+        router.replace('/');
+        return;
+      }
+      setIsAuthorized(true);
+    } catch (e) {
+      router.replace('/');
+      return;
+    }
     fetchData();
-  }, []);
+  }, [router]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -1017,6 +1037,10 @@ export default function PemetaanKelasPage() {
   const totalLaki = computedStudents.filter((s) => s.genderNorm === 'L').length;
   const totalPerempuan = computedStudents.filter((s) => s.genderNorm === 'P').length;
   const totalSudahIsi = computedStudents.filter((s) => s.hasInput).length;
+
+  if (!isAuthorized) {
+    return <LoadingScreen message="Memverifikasi hak akses..." />;
+  }
 
   return (
     <div className={styles.container}>
