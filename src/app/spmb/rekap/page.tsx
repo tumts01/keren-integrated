@@ -440,12 +440,18 @@ export default function RekapSpmb() {
 
   const handleUpdateVerifikasiKk = async (id: string, nama: string, newStatus: string) => {
     let catatan = '';
+    const existingItem = data.find(item => item.rowNumber === id);
     if (newStatus === 'perbaikan') {
       const { value: text, isConfirmed } = await Swal.fire({
         title: 'Catatan Perbaikan Dokumen KK / Akta',
-        text: `Tuliskan catatan perbaikan dokumen identitas / KK untuk ${nama}:`,
+        html: `
+          <div style="text-align: left; font-size: 13px; color: #475569; margin-bottom: 8px;">
+            Tuliskan catatan perbaikan dokumen identitas / KK untuk <b>${nama}</b> agar orang tua mengetahui bagian yang perlu diperbaiki:
+          </div>
+        `,
         input: 'textarea',
-        inputPlaceholder: 'Contoh: Foto KK buram/tidak terbaca, mohon kirim ulang KK yang jelas',
+        inputValue: existingItem?.catatanVerifikasi || '',
+        inputPlaceholder: 'Contoh: Foto KK buram/tidak terbaca, mohon unggah ulang foto asli yang jelas atau kirim ke WA Panitia SPMB',
         showCancelButton: true,
         confirmButtonColor: '#059669',
         cancelButtonColor: '#94a3b8',
@@ -453,7 +459,7 @@ export default function RekapSpmb() {
         cancelButtonText: 'Batal'
       });
       if (!isConfirmed) return;
-      catatan = text || 'Dokumen KK/Akta belum jelas/lengkap. Silakan unggah ulang atau kirim via WA Panitia.';
+      catatan = text ? text.trim() : (existingItem?.catatanVerifikasi || 'Foto dokumen KK/Akta belum jelas atau perlu dicek ulang. Hubungi Panitia SPMB.');
     }
 
     try {
@@ -476,13 +482,74 @@ export default function RekapSpmb() {
     }
   };
 
+  const handleEditCatatanKk = async (id: string, nama: string, currentCatatan: string, currentStatus: string) => {
+    const { value: text, isConfirmed } = await Swal.fire({
+      title: 'Catatan Perbaikan Verifikasi KK',
+      html: `
+        <div style="text-align: left; font-size: 13px; color: #475569; margin-bottom: 8px;">
+          Tentukan catatan perbaikan dokumen identitas / KK untuk <b>${nama}</b> agar orang tua mengetahui hal yang perlu diperbaiki:
+        </div>
+      `,
+      input: 'textarea',
+      inputValue: currentCatatan,
+      inputPlaceholder: 'Contoh: Foto KK buram/terpotong, mohon unggah ulang foto asli yang jelas atau kirim ke WA Panitia SPMB',
+      showCancelButton: true,
+      confirmButtonColor: '#059669',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Simpan Catatan',
+      cancelButtonText: 'Batal'
+    });
+    if (!isConfirmed) return;
+
+    const finalCatatan = text ? text.trim() : '';
+    // Jika ada catatan perbaikan diinput dan status sebelumnya bukan perbaikan, ubah otomatis ke perbaikan
+    const newStatus = (currentStatus !== 'perbaikan' && finalCatatan) ? 'perbaikan' : currentStatus;
+
+    try {
+      Swal.fire({ title: 'Menyimpan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      const res = await fetch(`/api/spmb/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          catatanVerifikasi: finalCatatan,
+          statusVerifikasi: newStatus
+        })
+      });
+      const resJson = await res.json();
+      if (resJson.success) {
+        setData(prev => prev.map(item => item.rowNumber === id ? { 
+          ...item, 
+          catatanVerifikasi: finalCatatan,
+          statusVerifikasi: newStatus
+        } : item));
+        Swal.fire({
+          icon: 'success',
+          title: 'Tersimpan!',
+          text: 'Catatan perbaikan verifikasi KK berhasil diperbarui.',
+          timer: 1500,
+          showConfirmButton: false
+        });
+      } else {
+        Swal.fire('Gagal', resJson.error || 'Gagal menyimpan catatan', 'error');
+      }
+    } catch (err) {
+      Swal.fire('Error', 'Gagal menghubungi server', 'error');
+    }
+  };
+
   const handleUpdateVerifikasiRapor = async (id: string, nama: string, newStatus: string) => {
     let catatan = '';
+    const existingItem = data.find(item => item.rowNumber === id);
     if (newStatus === 'perbaikan') {
       const { value: text, isConfirmed } = await Swal.fire({
         title: 'Catatan Perbaikan Berkas Rapor',
-        text: `Tuliskan catatan perbaikan berkas rapor untuk ${nama}:`,
+        html: `
+          <div style="text-align: left; font-size: 13px; color: #475569; margin-bottom: 8px;">
+            Tuliskan catatan perbaikan berkas rapor untuk <b>${nama}</b> agar orang tua mengetahui bagian yang perlu diperbaiki:
+          </div>
+        `,
         input: 'textarea',
+        inputValue: existingItem?.catatanVerifikasiRapor || '',
         inputPlaceholder: 'Contoh: FC Rapor semester 2 belum dikumpulkan / nilai tidak terbaca',
         showCancelButton: true,
         confirmButtonColor: '#059669',
@@ -491,7 +558,7 @@ export default function RekapSpmb() {
         cancelButtonText: 'Batal'
       });
       if (!isConfirmed) return;
-      catatan = text || 'Berkas rapor kelas 5 belum lengkap. Silakan serahkan fisik ke madrasah atau kirim file via WA Panitia.';
+      catatan = text ? text.trim() : (existingItem?.catatanVerifikasiRapor || 'Berkas rapor kelas 5 belum lengkap. Silakan serahkan fisik ke madrasah atau kirim file via WA Panitia.');
     }
 
     try {
@@ -508,6 +575,60 @@ export default function RekapSpmb() {
         setData(prev => prev.map(item => item.rowNumber === id ? { ...item, statusVerifikasiRapor: newStatus, catatanVerifikasiRapor: catatan } : item));
       } else {
         Swal.fire('Gagal', resJson.error || 'Gagal mengubah status verifikasi rapor', 'error');
+      }
+    } catch (err) {
+      Swal.fire('Error', 'Gagal menghubungi server', 'error');
+    }
+  };
+
+  const handleEditCatatanRapor = async (id: string, nama: string, currentCatatan: string, currentStatus: string) => {
+    const { value: text, isConfirmed } = await Swal.fire({
+      title: 'Catatan Perbaikan Verifikasi Rapor',
+      html: `
+        <div style="text-align: left; font-size: 13px; color: #475569; margin-bottom: 8px;">
+          Tentukan catatan perbaikan berkas rapor untuk <b>${nama}</b> agar orang tua mengetahui hal yang perlu diperbaiki:
+        </div>
+      `,
+      input: 'textarea',
+      inputValue: currentCatatan,
+      inputPlaceholder: 'Contoh: Nilai semester 2 tidak terlihat / halaman belum lengkap',
+      showCancelButton: true,
+      confirmButtonColor: '#059669',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: 'Simpan Catatan',
+      cancelButtonText: 'Batal'
+    });
+    if (!isConfirmed) return;
+
+    const finalCatatan = text ? text.trim() : '';
+    const newStatus = (currentStatus !== 'perbaikan' && finalCatatan) ? 'perbaikan' : currentStatus;
+
+    try {
+      Swal.fire({ title: 'Menyimpan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      const res = await fetch(`/api/spmb/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          catatanVerifikasiRapor: finalCatatan,
+          statusVerifikasiRapor: newStatus
+        })
+      });
+      const resJson = await res.json();
+      if (resJson.success) {
+        setData(prev => prev.map(item => item.rowNumber === id ? { 
+          ...item, 
+          catatanVerifikasiRapor: finalCatatan,
+          statusVerifikasiRapor: newStatus
+        } : item));
+        Swal.fire({
+          icon: 'success',
+          title: 'Tersimpan!',
+          text: 'Catatan perbaikan verifikasi rapor berhasil diperbarui.',
+          timer: 1500,
+          showConfirmButton: false
+        });
+      } else {
+        Swal.fire('Gagal', resJson.error || 'Gagal menyimpan catatan', 'error');
       }
     } catch (err) {
       Swal.fire('Error', 'Gagal menghubungi server', 'error');
@@ -1536,87 +1657,191 @@ export default function RekapSpmb() {
                       </span>
                     </td>
                     {/* Verifikasi KK / Identitas */}
-                    <td>
-                      {isAdmin ? (
-                        <select
-                          value={item.statusVerifikasi || 'menunggu'}
-                          onChange={(e) => handleUpdateVerifikasiKk(item.rowNumber, item.namaLengkap, e.target.value)}
-                          style={{
-                            padding: '6px 8px',
+                    <td style={{ minWidth: '170px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        {isAdmin ? (
+                          <select
+                            value={item.statusVerifikasi || 'menunggu'}
+                            onChange={(e) => handleUpdateVerifikasiKk(item.rowNumber, item.namaLengkap, e.target.value)}
+                            style={{
+                              padding: '6px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              border: '1.5px solid',
+                              borderColor: item.statusVerifikasi === 'valid' ? '#86efac' : item.statusVerifikasi === 'perbaikan' ? '#fca5a5' : '#fde68a',
+                              background: item.statusVerifikasi === 'valid' ? '#f0fdf4' : item.statusVerifikasi === 'perbaikan' ? '#fef2f2' : '#fffbeb',
+                              color: item.statusVerifikasi === 'valid' ? '#15803d' : item.statusVerifikasi === 'perbaikan' ? '#b91c1c' : '#b45309',
+                              cursor: 'pointer',
+                              outline: 'none'
+                            }}
+                            title="Klik untuk mengubah status verifikasi identitas / KK"
+                          >
+                            <option value="menunggu">⏳ Menunggu</option>
+                            <option value="valid">✅ Valid</option>
+                            <option value="perbaikan">⚠️ Perbaikan</option>
+                          </select>
+                        ) : (
+                          <span style={{
+                            padding: '4px 10px',
                             borderRadius: '6px',
                             fontSize: '0.78rem',
                             fontWeight: 700,
-                            border: '1.5px solid',
-                            borderColor: item.statusVerifikasi === 'valid' ? '#86efac' : item.statusVerifikasi === 'perbaikan' ? '#fca5a5' : '#fde68a',
-                            background: item.statusVerifikasi === 'valid' ? '#f0fdf4' : item.statusVerifikasi === 'perbaikan' ? '#fef2f2' : '#fffbeb',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: item.statusVerifikasi === 'valid' ? '#dcfce7' : item.statusVerifikasi === 'perbaikan' ? '#fee2e2' : '#fef3c7',
                             color: item.statusVerifikasi === 'valid' ? '#15803d' : item.statusVerifikasi === 'perbaikan' ? '#b91c1c' : '#b45309',
-                            cursor: 'pointer',
-                            outline: 'none'
-                          }}
-                          title="Klik untuk mengubah status verifikasi identitas / KK"
-                        >
-                          <option value="menunggu">⏳ Menunggu</option>
-                          <option value="valid">✅ Valid</option>
-                          <option value="perbaikan">⚠️ Perbaikan</option>
-                        </select>
-                      ) : (
-                        <span style={{
-                          padding: '4px 8px',
+                            border: `1px solid ${item.statusVerifikasi === 'valid' ? '#bbf7d0' : item.statusVerifikasi === 'perbaikan' ? '#fecaca' : '#fde68a'}`
+                          }}>
+                            {item.statusVerifikasi === 'valid' ? '✅ Valid' : item.statusVerifikasi === 'perbaikan' ? '⚠️ Perlu Perbaikan' : '⏳ Menunggu'}
+                          </span>
+                        )}
+
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => handleEditCatatanKk(item.rowNumber, item.namaLengkap, item.catatanVerifikasi || '', item.statusVerifikasi || 'menunggu')}
+                            style={{
+                              padding: '4px 7px',
+                              background: item.catatanVerifikasi ? '#fee2e2' : '#f1f5f9',
+                              border: `1px solid ${item.catatanVerifikasi ? '#fca5a5' : '#cbd5e1'}`,
+                              borderRadius: '6px',
+                              fontSize: '11px',
+                              color: item.catatanVerifikasi ? '#b91c1c' : '#475569',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px'
+                            }}
+                            title="Ubah / Tambah Catatan Perbaikan KK"
+                          >
+                            <i className="fas fa-edit" style={{ fontSize: '10px' }}></i>
+                            {item.catatanVerifikasi ? 'Catatan' : '+ Catatan'}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Kotak Catatan Perbaikan KK untuk Orang Tua & Admin */}
+                      {(item.statusVerifikasi === 'perbaikan' || item.catatanVerifikasi) && (
+                        <div style={{
+                          marginTop: '6px',
+                          padding: '6px 9px',
+                          background: item.statusVerifikasi === 'perbaikan' ? '#fff1f2' : '#f8fafc',
+                          border: `1px solid ${item.statusVerifikasi === 'perbaikan' ? '#fecdd3' : '#e2e8f0'}`,
                           borderRadius: '6px',
-                          fontSize: '0.78rem',
-                          fontWeight: 700,
-                          background: item.statusVerifikasi === 'valid' ? '#dcfce7' : item.statusVerifikasi === 'perbaikan' ? '#fee2e2' : '#fef3c7',
-                          color: item.statusVerifikasi === 'valid' ? '#15803d' : item.statusVerifikasi === 'perbaikan' ? '#b91c1c' : '#b45309'
+                          fontSize: '0.74rem',
+                          color: item.statusVerifikasi === 'perbaikan' ? '#9f1239' : '#334155',
+                          lineHeight: 1.45,
+                          textAlign: 'left'
                         }}>
-                          {item.statusVerifikasi === 'valid' ? 'Valid' : item.statusVerifikasi === 'perbaikan' ? 'Perbaikan' : 'Menunggu'}
-                        </span>
-                      )}
-                      {item.catatanVerifikasi && (
-                        <div style={{ fontSize: '11px', color: '#b91c1c', marginTop: '4px', fontWeight: 600 }}>
-                          Catatan: {item.catatanVerifikasi}
+                          <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px', color: item.statusVerifikasi === 'perbaikan' ? '#be123c' : '#475569' }}>
+                            <i className={item.statusVerifikasi === 'perbaikan' ? 'fas fa-exclamation-triangle' : 'fas fa-info-circle'} style={{ fontSize: '11px' }}></i>
+                            Catatan Perbaikan KK:
+                          </div>
+                          <div style={{ wordBreak: 'break-word', fontWeight: 500 }}>
+                            {item.catatanVerifikasi || (
+                              <span style={{ fontStyle: 'italic', color: '#be123c' }}>
+                                Dokumen KK/Akta belum jelas atau perlu dicek ulang. Silakan hubungi Panitia SPMB.
+                              </span>
+                            )}
+                          </div>
                         </div>
                       )}
                     </td>
 
                     {/* Verifikasi FC Rapor */}
-                    <td>
-                      {isAdmin ? (
-                        <select
-                          value={item.statusVerifikasiRapor || 'menunggu'}
-                          onChange={(e) => handleUpdateVerifikasiRapor(item.rowNumber, item.namaLengkap, e.target.value)}
-                          style={{
-                            padding: '6px 8px',
+                    <td style={{ minWidth: '170px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        {isAdmin ? (
+                          <select
+                            value={item.statusVerifikasiRapor || 'menunggu'}
+                            onChange={(e) => handleUpdateVerifikasiRapor(item.rowNumber, item.namaLengkap, e.target.value)}
+                            style={{
+                              padding: '6px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              border: '1.5px solid',
+                              borderColor: item.statusVerifikasiRapor === 'valid' ? '#86efac' : item.statusVerifikasiRapor === 'perbaikan' ? '#fca5a5' : '#fde68a',
+                              background: item.statusVerifikasiRapor === 'valid' ? '#f0fdf4' : item.statusVerifikasiRapor === 'perbaikan' ? '#fef2f2' : '#fffbeb',
+                              color: item.statusVerifikasiRapor === 'valid' ? '#15803d' : item.statusVerifikasiRapor === 'perbaikan' ? '#b91c1c' : '#b45309',
+                              cursor: 'pointer',
+                              outline: 'none'
+                            }}
+                            title="Klik untuk mengubah status verifikasi berkas FC Rapor Kelas 5"
+                          >
+                            <option value="menunggu">⏳ Belum</option>
+                            <option value="valid">✅ Valid</option>
+                            <option value="perbaikan">⚠️ Perbaikan</option>
+                          </select>
+                        ) : (
+                          <span style={{
+                            padding: '4px 10px',
                             borderRadius: '6px',
                             fontSize: '0.78rem',
                             fontWeight: 700,
-                            border: '1.5px solid',
-                            borderColor: item.statusVerifikasiRapor === 'valid' ? '#86efac' : item.statusVerifikasiRapor === 'perbaikan' ? '#fca5a5' : '#fde68a',
-                            background: item.statusVerifikasiRapor === 'valid' ? '#f0fdf4' : item.statusVerifikasiRapor === 'perbaikan' ? '#fef2f2' : '#fffbeb',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background: item.statusVerifikasiRapor === 'valid' ? '#dcfce7' : item.statusVerifikasiRapor === 'perbaikan' ? '#fee2e2' : '#fef3c7',
                             color: item.statusVerifikasiRapor === 'valid' ? '#15803d' : item.statusVerifikasiRapor === 'perbaikan' ? '#b91c1c' : '#b45309',
-                            cursor: 'pointer',
-                            outline: 'none'
-                          }}
-                          title="Klik untuk mengubah status verifikasi berkas FC Rapor Kelas 5"
-                        >
-                          <option value="menunggu">⏳ Belum</option>
-                          <option value="valid">✅ Valid</option>
-                          <option value="perbaikan">⚠️ Perbaikan</option>
-                        </select>
-                      ) : (
-                        <span style={{
-                          padding: '4px 8px',
+                            border: `1px solid ${item.statusVerifikasiRapor === 'valid' ? '#bbf7d0' : item.statusVerifikasiRapor === 'perbaikan' ? '#fecaca' : '#fde68a'}`
+                          }}>
+                            {item.statusVerifikasiRapor === 'valid' ? '✅ Valid' : item.statusVerifikasiRapor === 'perbaikan' ? '⚠️ Perlu Perbaikan' : '⏳ Belum'}
+                          </span>
+                        )}
+
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => handleEditCatatanRapor(item.rowNumber, item.namaLengkap, item.catatanVerifikasiRapor || '', item.statusVerifikasiRapor || 'menunggu')}
+                            style={{
+                              padding: '4px 7px',
+                              background: item.catatanVerifikasiRapor ? '#fee2e2' : '#f1f5f9',
+                              border: `1px solid ${item.catatanVerifikasiRapor ? '#fca5a5' : '#cbd5e1'}`,
+                              borderRadius: '6px',
+                              fontSize: '11px',
+                              color: item.catatanVerifikasiRapor ? '#b91c1c' : '#475569',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '3px'
+                            }}
+                            title="Ubah / Tambah Catatan Perbaikan Rapor"
+                          >
+                            <i className="fas fa-edit" style={{ fontSize: '10px' }}></i>
+                            {item.catatanVerifikasiRapor ? 'Catatan' : '+ Catatan'}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Kotak Catatan Perbaikan Rapor untuk Orang Tua & Admin */}
+                      {(item.statusVerifikasiRapor === 'perbaikan' || item.catatanVerifikasiRapor) && (
+                        <div style={{
+                          marginTop: '6px',
+                          padding: '6px 9px',
+                          background: item.statusVerifikasiRapor === 'perbaikan' ? '#fff1f2' : '#f8fafc',
+                          border: `1px solid ${item.statusVerifikasiRapor === 'perbaikan' ? '#fecdd3' : '#e2e8f0'}`,
                           borderRadius: '6px',
-                          fontSize: '0.78rem',
-                          fontWeight: 700,
-                          background: item.statusVerifikasiRapor === 'valid' ? '#dcfce7' : item.statusVerifikasiRapor === 'perbaikan' ? '#fee2e2' : '#fef3c7',
-                          color: item.statusVerifikasiRapor === 'valid' ? '#15803d' : item.statusVerifikasiRapor === 'perbaikan' ? '#b91c1c' : '#b45309'
+                          fontSize: '0.74rem',
+                          color: item.statusVerifikasiRapor === 'perbaikan' ? '#9f1239' : '#334155',
+                          lineHeight: 1.45,
+                          textAlign: 'left'
                         }}>
-                          {item.statusVerifikasiRapor === 'valid' ? 'Valid' : item.statusVerifikasiRapor === 'perbaikan' ? 'Perbaikan' : 'Belum'}
-                        </span>
-                      )}
-                      {item.catatanVerifikasiRapor && (
-                        <div style={{ fontSize: '11px', color: '#b91c1c', marginTop: '4px', fontWeight: 600 }}>
-                          Catatan: {item.catatanVerifikasiRapor}
+                          <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px', color: item.statusVerifikasiRapor === 'perbaikan' ? '#be123c' : '#475569' }}>
+                            <i className={item.statusVerifikasiRapor === 'perbaikan' ? 'fas fa-exclamation-triangle' : 'fas fa-info-circle'} style={{ fontSize: '11px' }}></i>
+                            Catatan Perbaikan Rapor:
+                          </div>
+                          <div style={{ wordBreak: 'break-word', fontWeight: 500 }}>
+                            {item.catatanVerifikasiRapor || (
+                              <span style={{ fontStyle: 'italic', color: '#be123c' }}>
+                                Berkas FC Rapor kelas 5 belum lengkap atau kurang jelas. Silakan hubungi Panitia SPMB.
+                              </span>
+                            )}
+                          </div>
                         </div>
                       )}
                     </td>

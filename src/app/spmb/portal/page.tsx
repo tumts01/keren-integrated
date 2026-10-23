@@ -443,6 +443,89 @@ export default function SpmbPortalDashboard() {
           </div>
         )}
 
+        {/* Card Perbaikan Dokumen KK / Identitas */}
+        {statusVerifikasiKk === 'perbaikan' && (
+          <div style={{
+            background: '#fff5f5',
+            border: '1.5px solid #fecaca',
+            borderRadius: '16px',
+            padding: '22px 24px',
+            marginBottom: '24px',
+            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.03)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+              <div style={{ display: 'flex', gap: '14px', flex: 1, minWidth: '280px' }}>
+                <div style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '12px',
+                  background: '#fee2e2',
+                  color: '#ef4444',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.3rem',
+                  flexShrink: 0
+                }}>
+                  <i className="fas fa-exclamation-triangle"></i>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <h3 style={{ margin: '0 0 6px 0', fontSize: '15.5px', fontWeight: 800, color: '#991b1b' }}>
+                    ⚠️ Perbaikan Dokumen KK / Data Identitas
+                  </h3>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '13.5px', color: '#991b1b', lineHeight: 1.5 }}>
+                    Terdapat catatan dari Panitia SPMB mengenai verifikasi dokumen identitas / KK ananda:
+                  </p>
+                  <div style={{ background: '#fee2e2', border: '1px solid #fecaca', borderRadius: '8px', padding: '10px 14px', marginBottom: '12px', fontSize: '13px', color: '#7f1d1d', fontWeight: 600 }}>
+                    <i className="fas fa-comment-dots" style={{ marginRight: '6px' }}></i>
+                    {data.catatanVerifikasi || 'Foto dokumen KK/Akta belum jelas, terpotong, atau data NISN perlu diperbaiki. Silakan kirim ulang dokumen yang jelas ke Panitia SPMB.'}
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <a
+                      href={getWaUrl('085659735348', 'Pak Alfian', 'Berikut saya kirimkan perbaikan berkas/dokumen Kartu Keluarga ananda.')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        background: '#15803d',
+                        color: 'white',
+                        padding: '8px 14px',
+                        borderRadius: '8px',
+                        fontSize: '12.5px',
+                        fontWeight: 700,
+                        textDecoration: 'none',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <i className="fab fa-whatsapp"></i> Kirim Perbaikan ke Pak Alfian
+                    </a>
+                    <a
+                      href={getWaUrl('087859171158', 'Bu Izza', 'Berikut saya kirimkan perbaikan berkas/dokumen Kartu Keluarga ananda.')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        background: '#047857',
+                        color: 'white',
+                        padding: '8px 14px',
+                        borderRadius: '8px',
+                        fontSize: '12.5px',
+                        fontWeight: 700,
+                        textDecoration: 'none',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <i className="fab fa-whatsapp"></i> Kirim Perbaikan ke Bu Izza
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Card Pengumpulan Berkas Rapor */}
         <div style={{
           background: statusVerifikasiRapor === 'valid' ? '#f0fdf4' : statusVerifikasiRapor === 'perbaikan' ? '#fff5f5' : '#fffbeb',
