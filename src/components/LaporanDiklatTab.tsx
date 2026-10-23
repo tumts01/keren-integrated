@@ -465,7 +465,7 @@ export default function LaporanDiklatTab() {
     try {
       Swal.fire({
         title: 'Menyiapkan File Word...',
-        text: 'Mengonversi format sesuai template resmi MTs Almaarif 01.',
+        text: 'Mengonversi format sesuai template resmi & memproses lampiran foto kegiatan...',
         allowOutsideClick: false,
         didOpen: () => Swal.showLoading()
       });
@@ -483,7 +483,8 @@ export default function LaporanDiklatTab() {
         tujuan: item.tujuan,
         isi: item.isi,
         tindakLanjut: item.tindakLanjut,
-        dampak: item.dampak
+        dampak: item.dampak,
+        dokumentasi: item.dokumentasi || []
       });
       Swal.close();
     } catch (err) {

@@ -1,4 +1,4 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, AlignmentType, WidthType, BorderStyle } from 'docx';
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, AlignmentType, WidthType, BorderStyle, ImageRun, PageBreak } from 'docx';
 import { saveAs } from 'file-saver';
 
 export interface DiklatDocxData {
@@ -16,6 +16,20 @@ export interface DiklatDocxData {
   isi: string;
   tindakLanjut: string;
   dampak: string;
+  dokumentasi?: string[];
+}
+
+async function fetchImageBuffer(url: string): Promise<Uint8Array | null> {
+  try {
+    const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(url)}&size=w800`;
+    const res = await fetch(proxyUrl);
+    if (!res.ok) return null;
+    const arrayBuffer = await res.arrayBuffer();
+    return new Uint8Array(arrayBuffer);
+  } catch (err) {
+    console.warn('Failed to fetch image for docx export:', url, err);
+    return null;
+  }
 }
 
 export async function exportDiklatToDocx(data: DiklatDocxData) {
@@ -59,6 +73,159 @@ export async function exportDiklatToDocx(data: DiklatDocxData) {
       ]
     });
   };
+
+  // Unduh lampiran foto kegiatan (jika ada) untuk disematkan ke dalam Word
+  const photoRuns: { buffer: Uint8Array; index: number }[] = [];
+  if (data.dokumentasi && data.dokumentasi.length > 0) {
+    for (let i = 0; i < data.dokumentasi.length; i++) {
+      const imgUrl = data.dokumentasi[i];
+      if (imgUrl && typeof imgUrl === 'string' && imgUrl.trim()) {
+        const buf = await fetchImageBuffer(imgUrl.trim());
+        if (buf) {
+          photoRuns.push({ buffer: buf, index: photoRuns.length + 1 });
+        }
+      }
+    }
+  }
+
+  const lampiranElements: (Paragraph | Table)[] = [];
+
+  if (photoRuns.length > 0) {
+    lampiranElements.push(
+      new Paragraph({
+        children: [new PageBreak()]
+      }),
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 200, after: 100 },
+        children: [
+          new TextRun({
+            text: 'LAMPIRAN',
+            font: 'Times New Roman',
+            bold: true,
+            size: 28,
+          })
+        ]
+      }),
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 200 },
+        children: [
+          new TextRun({
+            text: 'DOKUMENTASI FOTO KEGIATAN',
+            font: 'Times New Roman',
+            bold: true,
+            size: 28,
+            underline: {}
+          })
+        ]
+      }),
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { after: 400 },
+        children: [
+          new TextRun({
+            text: `${data.namaKegiatan} — ${data.tempat}`,
+            font: 'Times New Roman',
+            italics: true,
+            size: 22,
+            color: '444444'
+          })
+        ]
+      })
+    );
+
+    const photoTableRows: TableRow[] = [];
+    for (let i = 0; i < photoRuns.length; i += 2) {
+      const p1 = photoRuns[i];
+      const p2 = photoRuns[i + 1];
+
+      const cells: TableCell[] = [
+        new TableCell({
+          width: { size: 50, type: WidthType.PERCENTAGE },
+          borders: borderNone,
+          children: [
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 100 },
+              children: [
+                new ImageRun({
+                  type: 'jpg',
+                  data: p1.buffer,
+                  transformation: { width: 270, height: 190 }
+                })
+              ]
+            }),
+            new Paragraph({
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 300 },
+              children: [
+                new TextRun({
+                  text: `Foto Dokumentasi ${p1.index}`,
+                  font: 'Times New Roman',
+                  bold: true,
+                  italics: true,
+                  size: 20
+                })
+              ]
+            })
+          ]
+        })
+      ];
+
+      if (p2) {
+        cells.push(
+          new TableCell({
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            borders: borderNone,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 100 },
+                children: [
+                  new ImageRun({
+                    type: 'jpg',
+                    data: p2.buffer,
+                    transformation: { width: 270, height: 190 }
+                  })
+                ]
+              }),
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 300 },
+                children: [
+                  new TextRun({
+                    text: `Foto Dokumentasi ${p2.index}`,
+                    font: 'Times New Roman',
+                    bold: true,
+                    italics: true,
+                    size: 20
+                  })
+                ]
+              })
+            ]
+          })
+        );
+      } else {
+        cells.push(
+          new TableCell({
+            width: { size: 50, type: WidthType.PERCENTAGE },
+            borders: borderNone,
+            children: [new Paragraph({ children: [] })]
+          })
+        );
+      }
+
+      photoTableRows.push(new TableRow({ children: cells }));
+    }
+
+    lampiranElements.push(
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: photoTableRows
+      })
+    );
+  }
 
   const doc = new Document({
     sections: [
@@ -289,7 +456,10 @@ export async function exportDiklatToDocx(data: DiklatDocxData) {
                 ]
               })
             ]
-          })
+          }),
+
+          // Lampiran Foto Dokumentasi Kegiatan jika ada
+          ...lampiranElements
         ]
       }
     ]
