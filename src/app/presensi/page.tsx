@@ -298,12 +298,13 @@ export default function PresensiPage() {
       .then(r => r.json())
       .then(data => {
         if (data.success) {
-          setJamTersedia(data.jamTersedia);
-          const isDefault = data.jamTersedia.length === 13 && [1,2,3,4,5,6,7,8,9,10,11,12,13].every((j: number) => data.jamTersedia.includes(j));
-          setHasJamConfig(!isDefault);
-          setKonfigJam(data.jamTersedia);
+          const availableJams = Array.isArray(data.jamTersedia) ? data.jamTersedia : [];
+          setJamTersedia(availableJams);
+          const isDefault = availableJams.length === 13 && [1,2,3,4,5,6,7,8,9,10,11,12,13].every((j: number) => availableJams.includes(j));
+          setHasJamConfig(data.hasConfig !== undefined ? data.hasConfig : !isDefault);
+          setKonfigJam(availableJams);
           setKonfigKeterangan(data.keterangan || '');
-          setSelectedJam(prev => prev.filter(j => data.jamTersedia.includes(j)));
+          setSelectedJam(prev => prev.filter(j => availableJams.includes(j)));
         }
       })
       .catch(() => {})
@@ -1183,6 +1184,14 @@ export default function PresensiPage() {
   };
 
   const handleJurnalSubmit = async () => {
+    if (jamTersedia.length === 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Jurnal Dinonaktifkan',
+        text: `Pengisian Jurnal Mengajar pada tanggal ini sedang dinonaktifkan (0 Jam Pelajaran).${konfigKeterangan ? ` Keterangan: ${konfigKeterangan}` : ''}`
+      });
+      return;
+    }
     if (!selectedKelas || !selectedMapel) {
       Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Mohon pilih Kelas dan Mata Pelajaran terlebih dahulu!' });
       return;
@@ -2004,8 +2013,17 @@ export default function PresensiPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                   <label style={{ margin: 0 }}>Jam Ke (Bisa pilih lebih dari satu)</label>
                   {hasJamConfig && (
-                    <span style={{ fontSize: '0.72rem', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', borderRadius: 6, padding: '1px 8px', fontWeight: 600 }}>
-                      <i className="fas fa-cog" style={{ marginRight: 4 }}></i>Jam dikonfigurasi
+                    <span style={{
+                      fontSize: '0.72rem',
+                      background: jamTersedia.length === 0 ? '#fee2e2' : '#fef3c7',
+                      color: jamTersedia.length === 0 ? '#b91c1c' : '#b45309',
+                      border: `1px solid ${jamTersedia.length === 0 ? '#fca5a5' : '#fde68a'}`,
+                      borderRadius: 6,
+                      padding: '1px 8px',
+                      fontWeight: 600
+                    }}>
+                      <i className={`fas ${jamTersedia.length === 0 ? 'fa-ban' : 'fa-cog'}`} style={{ marginRight: 4 }}></i>
+                      {jamTersedia.length === 0 ? '0 Jam (Dinonaktifkan)' : `${jamTersedia.length} Jam Aktif`}
                     </span>
                   )}
                   {isAdmin && (
@@ -2018,6 +2036,19 @@ export default function PresensiPage() {
                     </button>
                   )}
                 </div>
+
+                {hasJamConfig && jamTersedia.length === 0 && (
+                  <div style={{ marginTop: 6, marginBottom: 10, padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, color: '#991b1b', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <i className="fas fa-calendar-times" style={{ fontSize: '1.2rem', color: '#ef4444', flexShrink: 0 }}></i>
+                    <div>
+                      <div style={{ fontWeight: 700 }}>Jurnal Mengajar Dinonaktifkan (0 Jam Pelajaran)</div>
+                      <div style={{ fontSize: '0.8rem', color: '#7f1d1d', marginTop: 2 }}>
+                        {konfigKeterangan ? `Keterangan: ${konfigKeterangan}` : 'Hari ini diset tanpa jam KBM. Guru tidak dapat mengisi jurnal mengajar pada tanggal ini.'}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className={styles.jamPills}>
                   {[1,2,3,4,5,6,7,8,9,10,11,12,13].map(jam => {
                     const available = jamTersedia.includes(jam);
@@ -2042,7 +2073,7 @@ export default function PresensiPage() {
                         onClick={() => available ? toggleJam(jam) : null}
                         className={`${styles.jamPill} ${isActive && !isExtra ? styles.jamPillActive : ''}`}
                         style={customStyle}
-                        title={!available ? `Jam ${jam} tidak tersedia untuk tanggal ini` : `Jam ${jam}`}
+                        title={!available ? (jamTersedia.length === 0 ? 'Jurnal mengajar dinonaktifkan' : `Jam ${jam} tidak tersedia untuk tanggal ini`) : `Jam ${jam}`}
                       >
                         {jam}
                       </button>
@@ -2054,9 +2085,53 @@ export default function PresensiPage() {
                 {/* Panel konfigurasi jam — admin only */}
                 {isAdmin && showJamConfig && (
                   <div style={{ marginTop: 12, background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, padding: 16 }}>
-                    <p style={{ margin: '0 0 10px', fontWeight: 700, color: '#0369a1', fontSize: '0.85rem' }}>
-                      <i className="fas fa-cog" style={{ marginRight: 6 }}></i>Atur Jam Tersedia untuk {tanggal || 'tanggal ini'}
-                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+                      <p style={{ margin: 0, fontWeight: 700, color: '#0369a1', fontSize: '0.85rem' }}>
+                        <i className="fas fa-cog" style={{ marginRight: 6 }}></i>Atur Jam Tersedia untuk {tanggal || 'tanggal ini'}
+                      </p>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          type="button"
+                          onClick={() => setKonfigJam([1,2,3,4,5,6,7,8,9,10,11,12,13])}
+                          style={{
+                            fontSize: '0.75rem',
+                            padding: '3px 8px',
+                            borderRadius: 6,
+                            border: '1px solid #38bdf8',
+                            background: konfigJam.length === 13 ? '#0284c7' : '#ffffff',
+                            color: konfigJam.length === 13 ? '#ffffff' : '#0284c7',
+                            cursor: 'pointer',
+                            fontWeight: 600
+                          }}
+                        >
+                          <i className="fas fa-check-double" style={{ marginRight: 4 }}></i>Pilih Semua (1-13)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setKonfigJam([])}
+                          style={{
+                            fontSize: '0.75rem',
+                            padding: '3px 8px',
+                            borderRadius: 6,
+                            border: '1px solid #f87171',
+                            background: konfigJam.length === 0 ? '#ef4444' : '#ffffff',
+                            color: konfigJam.length === 0 ? '#ffffff' : '#ef4444',
+                            cursor: 'pointer',
+                            fontWeight: 600
+                          }}
+                        >
+                          <i className="fas fa-ban" style={{ marginRight: 4 }}></i>Kosongkan (0 Jam / Nonaktif)
+                        </button>
+                      </div>
+                    </div>
+
+                    {konfigJam.length === 0 && (
+                      <div style={{ marginBottom: 10, padding: '8px 12px', background: '#fee2e2', border: '1px solid #fecaca', borderRadius: 6, fontSize: '0.8rem', color: '#991b1b', fontWeight: 600 }}>
+                        <i className="fas fa-info-circle" style={{ marginRight: 6 }}></i>
+                        0 Jam dipilih: Guru tidak dapat mengisi jurnal mengajar pada tanggal ini (hari libur/ujian/tanpa KBM).
+                      </div>
+                    )}
+
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
                       {[1,2,3,4,5,6,7,8,9,10,11,12,13].map(j => (
                         <label key={j} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', padding: '4px 10px', background: konfigJam.includes(j) ? '#0284c7' : '#e2e8f0', color: konfigJam.includes(j) ? 'white' : '#475569', borderRadius: 8, fontWeight: 600, fontSize: '0.85rem', userSelect: 'none' }}>
@@ -2073,7 +2148,7 @@ export default function PresensiPage() {
                     <div style={{ marginBottom: 8 }}>
                       <input
                         type="text"
-                        placeholder="Keterangan (opsional), contoh: Hari Pendek"
+                        placeholder={konfigJam.length === 0 ? "Keterangan nonaktif (opsional), contoh: Libur / Ujian Sekolah / Hari Tanpa KBM" : "Keterangan (opsional), contoh: Hari Pendek"}
                         value={konfigKeterangan}
                         onChange={e => setKonfigKeterangan(e.target.value)}
                         style={{ width: '100%', padding: '6px 10px', border: '1px solid #bae6fd', borderRadius: 6, fontSize: '0.85rem' }}
@@ -2083,7 +2158,6 @@ export default function PresensiPage() {
                       <button
                         type="button"
                         onClick={async () => {
-                          if (konfigJam.length === 0) { alert('Pilih minimal 1 jam!'); return; }
                           const res = await fetch('/api/jam-config', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -2095,7 +2169,10 @@ export default function PresensiPage() {
                             setHasJamConfig(true);
                             setSelectedJam(prev => prev.filter(j => konfigJam.includes(j)));
                             setShowJamConfig(false);
-                            Swal.fire({ icon: 'success', title: 'Tersimpan!', text: `Jam ${konfigJam.join(', ')} diatur untuk ${tanggal}`, timer: 1500, showConfirmButton: false });
+                            const text = konfigJam.length === 0
+                              ? `0 Jam (Jurnal dinonaktifkan) diatur untuk ${tanggal}`
+                              : `Jam ${konfigJam.join(', ')} diatur untuk ${tanggal}`;
+                            Swal.fire({ icon: 'success', title: 'Tersimpan!', text, timer: 1500, showConfirmButton: false });
                           }
                         }}
                         style={{ background: '#0284c7', color: 'white', border: 'none', borderRadius: 8, padding: '6px 16px', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
@@ -2114,7 +2191,7 @@ export default function PresensiPage() {
                               setKonfigKeterangan('');
                               setHasJamConfig(false);
                               setShowJamConfig(false);
-                              Swal.fire({ icon: 'success', title: 'Direset!', text: `Konfigurasi jam untuk ${tanggal} dihapus`, timer: 1500, showConfirmButton: false });
+                              Swal.fire({ icon: 'success', title: 'Direset!', text: `Konfigurasi jam untuk ${tanggal} dihapus (kembali ke normal 1-13)`, timer: 1500, showConfirmButton: false });
                             }
                           }}
                           style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: 8, padding: '6px 16px', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
@@ -2144,11 +2221,16 @@ export default function PresensiPage() {
                   <button 
                     className={styles.submitBtn} 
                     onClick={handleJurnalSubmit} 
-                    disabled={isSubmitting}
-                    style={{ opacity: isSubmitting ? 0.7 : 1, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}
+                    disabled={isSubmitting || jamTersedia.length === 0}
+                    style={{
+                      opacity: (isSubmitting || jamTersedia.length === 0) ? 0.6 : 1,
+                      cursor: (isSubmitting || jamTersedia.length === 0) ? 'not-allowed' : 'pointer',
+                      background: jamTersedia.length === 0 ? '#94a3b8' : undefined
+                    }}
+                    title={jamTersedia.length === 0 ? 'Pengisian jurnal dinonaktifkan untuk tanggal ini (0 jam)' : undefined}
                   >
-                    <i className={isSubmitting ? "fas fa-spinner fa-spin" : "fas fa-save"} style={{ marginRight: '8px' }}></i>
-                    {isSubmitting ? 'Menyimpan...' : 'Simpan Jurnal'}
+                    <i className={isSubmitting ? "fas fa-spinner fa-spin" : (jamTersedia.length === 0 ? "fas fa-ban" : "fas fa-save")} style={{ marginRight: '8px' }}></i>
+                    {isSubmitting ? 'Menyimpan...' : (jamTersedia.length === 0 ? 'Jurnal Dinonaktifkan (0 Jam)' : 'Simpan Jurnal')}
                   </button>
                 </div>
               </div>
