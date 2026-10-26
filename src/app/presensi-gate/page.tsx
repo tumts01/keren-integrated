@@ -43,6 +43,9 @@ export default function PresensiGatePage() {
   const [currentTime, setCurrentTime] = useState('');
   const [currentDate, setCurrentDate] = useState('');
 
+  // Admin Authorization State
+  const [isAdmin, setIsAdmin] = useState(false);
+
   // Gate Scan Mode: 'auto' | 'masuk' | 'pulang'
   const [scanMode, setScanMode] = useState<'auto' | 'masuk' | 'pulang'>('auto');
   const [voiceTheme, setVoiceTheme] = useState<'anime' | 'anime_jp' | 'standard'>('anime');
@@ -118,6 +121,22 @@ export default function PresensiGatePage() {
     '8A', '8B', '8C', '8D', '8E', '8F', '8G', '8H', '8I',
     '9A', '9B', '9C', '9D', '9E', '9F', '9G', '9H'
   ];
+
+  // Check Admin Role & Saved Settings on Mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem('keren_user_data');
+    if (storedUser) {
+      try {
+        const u = JSON.parse(storedUser);
+        const role = (u.role || '').toLowerCase();
+        setIsAdmin(role === 'admin' || role === 'pimpinan');
+      } catch (e) {}
+    }
+    const savedMode = localStorage.getItem('gate_scan_mode') as 'auto' | 'masuk' | 'pulang';
+    if (savedMode && ['auto', 'masuk', 'pulang'].includes(savedMode)) {
+      setScanMode(savedMode);
+    }
+  }, []);
 
   // Digital Clock Updater (WIB)
   useEffect(() => {
@@ -205,10 +224,11 @@ export default function PresensiGatePage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Keep input focused constantly in Kiosk mode
+  // Keep input focused constantly in Kiosk mode (skip if SweetAlert or modal is active)
   useEffect(() => {
     if (activeTab === 'kiosk' && !pairingStudent) {
       const focusInterval = setInterval(() => {
+        if (typeof document !== 'undefined' && Swal.isVisible()) return;
         if (inputRef.current && document.activeElement !== inputRef.current) {
           inputRef.current.focus();
         }
@@ -366,7 +386,97 @@ export default function PresensiGatePage() {
     }
   };
 
+  const handleScanModeChange = (newMode: 'auto' | 'masuk' | 'pulang') => {
+    if (!isAdmin) {
+      Swal.fire('Akses Ditolak', 'Pengaturan mode gerbang hanya untuk Admin.', 'warning');
+      return;
+    }
+    setScanMode(newMode);
+    try {
+      localStorage.setItem('gate_scan_mode', newMode);
+    } catch {}
+  };
+
+  const handleUnlockAdmin = async () => {
+    if (isAdmin) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Mode Admin Aktif',
+        text: 'Anda saat ini sudah memiliki hak akses Admin.',
+        timer: 1500,
+        showConfirmButton: false
+      });
+      return;
+    }
+
+    const { value: formValues } = await Swal.fire({
+      title: 'Buka Pengaturan Admin',
+      html: `
+        <div style="text-align:left;font-size:13px;">
+          <p style="margin:0 0 10px;color:#64748b;">Pengaturan Presensi Gerbang dikhususkan untuk akun Admin. Silakan masukkan kredensial Admin untuk membuka pengaturan.</p>
+          <label style="font-weight:700;display:block;margin-bottom:4px;color:#334155;">Username Admin:</label>
+          <input id="swal-admin-user" type="text" placeholder="Username admin..." style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #cbd5e1;margin-bottom:10px;font-size:13px;box-sizing:border-box;" />
+          <label style="font-weight:700;display:block;margin-bottom:4px;color:#334155;">PIN / Password (opsional jika ada):</label>
+          <input id="swal-admin-pin" type="password" placeholder="PIN / Password..." style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #cbd5e1;font-size:13px;box-sizing:border-box;" />
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonColor: '#0284c7',
+      confirmButtonText: '<i class="fas fa-unlock"></i> Buka Akses',
+      cancelButtonText: 'Batal',
+      preConfirm: () => {
+        const user = (document.getElementById('swal-admin-user') as HTMLInputElement)?.value?.trim();
+        const pin = (document.getElementById('swal-admin-pin') as HTMLInputElement)?.value?.trim();
+        if (!user) {
+          Swal.showValidationMessage('Username admin harus diisi!');
+          return false;
+        }
+        return { user, pin };
+      }
+    });
+
+    if (!formValues) return;
+
+    try {
+      Swal.showLoading();
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: formValues.user })
+      });
+      const data = await res.json();
+      if (data.success && data.user) {
+        const role = (data.user.role || '').toLowerCase();
+        if (role === 'admin' || role === 'pimpinan') {
+          if (data.user.pin && formValues.pin && String(data.user.pin).trim() !== String(formValues.pin).trim()) {
+            Swal.fire('PIN Salah', 'PIN admin yang Anda masukkan tidak sesuai.', 'error');
+            return;
+          }
+          setIsAdmin(true);
+          Swal.fire({
+            icon: 'success',
+            title: 'Akses Admin Terbuka',
+            text: `Selamat datang, ${data.user.nama || data.user.username}. Pengaturan gerbang sekarang dapat diakses.`,
+            timer: 1800,
+            showConfirmButton: false
+          });
+        } else {
+          Swal.fire('Akses Ditolak', 'Akun tersebut bukan merupakan Admin.', 'error');
+        }
+      } else {
+        Swal.fire('Gagal', data.error || 'User admin tidak ditemukan.', 'error');
+      }
+    } catch (e: any) {
+      Swal.fire('Error', e.message, 'error');
+    }
+  };
+
   const handleVoiceThemeChange = (newTheme: 'anime' | 'anime_jp' | 'standard') => {
+    if (!isAdmin) {
+      Swal.fire('Akses Ditolak', 'Hanya Admin yang dapat mengubah karakter suara gerbang.', 'warning');
+      return;
+    }
     setVoiceTheme(newTheme);
     voiceThemeRef.current = newTheme;
     try {
@@ -629,6 +739,10 @@ export default function PresensiGatePage() {
 
   // Pulihkan Presensi (jika ternyata bukan titip kartu, misal izin UKS / dipanggil guru)
   const handleRestoreAudit = async (item: any) => {
+    if (!isAdmin) {
+      Swal.fire('Akses Ditolak', 'Hanya Admin yang dapat memulihkan presensi audit.', 'warning');
+      return;
+    }
     const { value: alasan, isConfirmed } = await Swal.fire({
       title: `Pulihkan Presensi ${item.nama}?`,
       input: 'text',
@@ -664,6 +778,10 @@ export default function PresensiGatePage() {
 
   // Kelola / Tetapkan Sanksi Pelanggaran RFID
   const handleUpdateSanksi = async (item: any) => {
+    if (!isAdmin) {
+      Swal.fire('Akses Ditolak', 'Hanya Admin yang dapat menetapkan sanksi pelanggaran RFID.', 'warning');
+      return;
+    }
     const buddyInfo = Array.isArray(item.terdugaPembawa) && item.terdugaPembawa.length > 0
       ? item.terdugaPembawa.map((b: any) => `${b.nama} (${b.kelas}) - selisih ${b.selisihDetik} dtk`).join(', ')
       : 'Tidak terlacak';
@@ -756,6 +874,10 @@ export default function PresensiGatePage() {
 
   // Open Pairing Modal
   const openPairingModal = (student: any) => {
+    if (!isAdmin) {
+      Swal.fire('Akses Ditolak', 'Hanya Admin yang dapat memasang kartu RFID.', 'warning');
+      return;
+    }
     setPairingStudent(student);
     setPairingUid('');
     setTimeout(() => {
@@ -766,6 +888,10 @@ export default function PresensiGatePage() {
   // Save Pairing RFID
   const handleSavePairing = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (!isAdmin) {
+      Swal.fire('Akses Ditolak', 'Hanya Admin yang dapat mendaftarkan kartu RFID.', 'warning');
+      return;
+    }
     if (!pairingStudent || !pairingUid.trim()) return;
 
     setSavingPairing(true);
@@ -815,6 +941,10 @@ export default function PresensiGatePage() {
 
   // Delete / Unpair RFID
   const handleDeletePairing = async (student: any) => {
+    if (!isAdmin) {
+      Swal.fire('Akses Ditolak', 'Hanya Admin yang dapat mencabut kartu RFID.', 'warning');
+      return;
+    }
     const confirm = await Swal.fire({
       title: 'Hapus Tautan Kartu?',
       text: `Cabut kartu RFID dari ${student.nama}?`,
@@ -935,13 +1065,63 @@ export default function PresensiGatePage() {
                 </span>
               )}
             </button>
-            <button
-              onClick={() => setActiveTab('mapping')}
-              className={`${styles.tabBtn} ${activeTab === 'mapping' ? styles.tabBtnActive : ''}`}
-            >
-              <i className="fas fa-user-tag"></i> Pasang Kartu RFID
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => setActiveTab('mapping')}
+                className={`${styles.tabBtn} ${activeTab === 'mapping' ? styles.tabBtnActive : ''}`}
+              >
+                <i className="fas fa-user-tag"></i> Pasang Kartu RFID
+              </button>
+            )}
           </div>
+
+          {/* Admin Status / Unlock Button */}
+          {!isAdmin ? (
+            <button
+              onClick={handleUnlockAdmin}
+              className={styles.iconBtn}
+              style={{ background: '#1e293b', border: '1px solid #475569' }}
+              title="Buka Akses Pengaturan Admin"
+            >
+              <i className="fas fa-lock" style={{ color: '#f59e0b' }}></i>
+            </button>
+          ) : (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 10px',
+              background: 'rgba(16, 185, 129, 0.15)',
+              border: '1px solid #10b981',
+              borderRadius: '8px',
+              fontSize: '11.5px',
+              fontWeight: 800,
+              color: '#34d399'
+            }}>
+              <i className="fas fa-user-shield"></i>
+              <span>Admin</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAdmin(false);
+                  if (activeTab === 'mapping') setActiveTab('kiosk');
+                  Swal.fire({ icon: 'info', title: 'Mode Admin Dikunci', text: 'Pengaturan gerbang kembali dikunci.', timer: 1500, showConfirmButton: false });
+                }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  marginLeft: '4px',
+                  fontSize: '11px',
+                  padding: '0 2px'
+                }}
+                title="Kunci kembali pengaturan admin"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+          )}
 
           {/* Sound Toggle */}
           <button
@@ -996,75 +1176,157 @@ export default function PresensiGatePage() {
                     </span>
                   </div>
 
-                  {/* Selectors: Karakter Suara & Mode */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    {/* Karakter Suara Selector */}
-                    <div className={styles.modeSelectWrapper}>
-                      <span style={{ fontSize: '12px', color: voiceTheme !== 'standard' ? '#f472b6' : '#94a3b8' }}>
-                        <i className={`fas ${voiceTheme !== 'standard' ? 'fa-wand-magic-sparkles' : 'fa-robot'}`}></i> Karakter:
-                      </span>
-                      <select
-                        value={voiceTheme}
-                        onChange={(e) => handleVoiceThemeChange(e.target.value as any)}
-                        style={{
-                          padding: '6px 12px',
-                          borderRadius: '8px',
-                          background: voiceTheme !== 'standard' ? '#831843' : '#1e293b',
-                          color: voiceTheme !== 'standard' ? '#fbcfe8' : '#f8fafc',
-                          border: `1px solid ${voiceTheme !== 'standard' ? '#f472b6' : '#475569'}`,
-                          fontSize: '12px',
-                          fontWeight: 700,
-                          outline: 'none',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <option value="anime">🌸 Anime Jepang - Bilingual (Seiyuu)</option>
-                        <option value="anime_jp">🎌 Anime Jepang - Full Bahasa Jepang</option>
-                        <option value="standard">🎙️ Standar (Mbak Google)</option>
-                      </select>
+                  {/* Selectors: Karakter Suara & Mode (Admin Only) */}
+                  {isAdmin ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      {/* Karakter Suara Selector */}
+                      <div className={styles.modeSelectWrapper}>
+                        <span style={{ fontSize: '12px', color: voiceTheme !== 'standard' ? '#f472b6' : '#94a3b8' }}>
+                          <i className={`fas ${voiceTheme !== 'standard' ? 'fa-wand-magic-sparkles' : 'fa-robot'}`}></i> Karakter:
+                        </span>
+                        <select
+                          value={voiceTheme}
+                          onChange={(e) => handleVoiceThemeChange(e.target.value as any)}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            background: voiceTheme !== 'standard' ? '#831843' : '#1e293b',
+                            color: voiceTheme !== 'standard' ? '#fbcfe8' : '#f8fafc',
+                            border: `1px solid ${voiceTheme !== 'standard' ? '#f472b6' : '#475569'}`,
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            outline: 'none',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <option value="anime">🌸 Anime Jepang - Bilingual (Seiyuu)</option>
+                          <option value="anime_jp">🎌 Anime Jepang - Full Bahasa Jepang</option>
+                          <option value="standard">🎙️ Standar (Mbak Google)</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => playVoiceEvent('MASUK_TEPAT')}
+                          style={{
+                            padding: '5px 10px',
+                            borderRadius: '8px',
+                            background: '#be185d',
+                            color: '#fff',
+                            border: '1px solid #f472b6',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                          title="Tes putar contoh suara karakter aktif"
+                        >
+                          <i className="fas fa-volume-high"></i> Tes
+                        </button>
+                      </div>
+
+                      {/* Mode Selector */}
+                      <div className={styles.modeSelectWrapper}>
+                        <span style={{ fontSize: '12px', color: '#94a3b8' }}>Mode:</span>
+                        <select
+                          value={scanMode}
+                          onChange={(e) => handleScanModeChange(e.target.value as any)}
+                          style={{
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            background: '#1e293b',
+                            color: '#f8fafc',
+                            border: '1px solid #475569',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            outline: 'none',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <option value="auto">⚡ Otomatis (Masuk Pagi / Pulang Siang)</option>
+                          <option value="masuk">🟢 Khusus Masuk (Check-In)</option>
+                          <option value="pulang">🔵 Khusus Pulang (Check-Out)</option>
+                        </select>
+                      </div>
+
                       <button
                         type="button"
-                        onClick={() => playVoiceEvent('MASUK_TEPAT')}
+                        onClick={() => {
+                          setIsAdmin(false);
+                          Swal.fire({ icon: 'info', title: 'Mode Admin Dikunci', text: 'Pengaturan gerbang kembali terkunci untuk non-admin.', timer: 1500, showConfirmButton: false });
+                        }}
                         style={{
-                          padding: '5px 10px',
+                          padding: '6px 10px',
                           borderRadius: '8px',
-                          background: '#be185d',
-                          color: '#fff',
-                          border: '1px solid #f472b6',
+                          background: '#334155',
+                          color: '#94a3b8',
+                          border: '1px solid #475569',
                           fontSize: '11px',
                           fontWeight: 700,
                           cursor: 'pointer'
                         }}
-                        title="Tes putar contoh suara karakter aktif"
+                        title="Kunci kembali pengaturan admin"
                       >
-                        <i className="fas fa-volume-high"></i> Tes
+                        <i className="fas fa-lock"></i> Kunci
                       </button>
                     </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      {/* Read-Only Status Badges for Non-Admin */}
+                      <div style={{
+                        padding: '5px 12px',
+                        borderRadius: '8px',
+                        background: 'rgba(30, 41, 59, 0.8)',
+                        border: '1px solid #334155',
+                        fontSize: '12px',
+                        color: '#94a3b8',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}>
+                        <span style={{ color: voiceTheme !== 'standard' ? '#f472b6' : '#94a3b8' }}>
+                          <i className={`fas ${voiceTheme !== 'standard' ? 'fa-wand-magic-sparkles' : 'fa-robot'}`}></i>
+                        </span>
+                        <span>Karakter: <strong style={{ color: voiceTheme !== 'standard' ? '#fbcfe8' : '#f8fafc' }}>
+                          {voiceTheme === 'anime' ? '🌸 Anime (Bilingual)' : voiceTheme === 'anime_jp' ? '🎌 Anime (Full JP)' : '🎙️ Standar'}
+                        </strong></span>
+                      </div>
 
-                    {/* Mode Selector */}
-                    <div className={styles.modeSelectWrapper}>
-                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>Mode:</span>
-                      <select
-                        value={scanMode}
-                        onChange={(e) => setScanMode(e.target.value as any)}
+                      <div style={{
+                        padding: '5px 12px',
+                        borderRadius: '8px',
+                        background: 'rgba(30, 41, 59, 0.8)',
+                        border: '1px solid #334155',
+                        fontSize: '12px',
+                        color: '#94a3b8',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}>
+                        <span>Mode: <strong style={{ color: '#38bdf8' }}>
+                          {scanMode === 'auto' ? '⚡ Otomatis' : scanMode === 'masuk' ? '🟢 Khusus Masuk' : '🔵 Khusus Pulang'}
+                        </strong></span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleUnlockAdmin}
                         style={{
-                          padding: '6px 12px',
+                          padding: '5px 10px',
                           borderRadius: '8px',
                           background: '#1e293b',
-                          color: '#f8fafc',
+                          color: '#94a3b8',
                           border: '1px solid #475569',
-                          fontSize: '12px',
+                          fontSize: '11px',
                           fontWeight: 700,
-                          outline: 'none',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '5px'
                         }}
+                        title="Klik untuk membuka pengaturan (khusus Admin)"
                       >
-                        <option value="auto">⚡ Otomatis (Masuk Pagi / Pulang Siang)</option>
-                        <option value="masuk">🟢 Khusus Masuk (Check-In)</option>
-                        <option value="pulang">🔵 Khusus Pulang (Check-Out)</option>
-                      </select>
+                        <i className="fas fa-lock" style={{ color: '#f59e0b' }}></i> Ubah Pengaturan
+                      </button>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Animated Scanner Radar & Hidden Input Form */}
@@ -1582,42 +1844,48 @@ export default function PresensiGatePage() {
                             )}
                           </td>
                           <td style={{ padding: '14px', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
-                              <button
-                                onClick={() => handleUpdateSanksi(item)}
-                                style={{
-                                  padding: '6px 10px',
-                                  borderRadius: '6px',
-                                  background: '#dc2626',
-                                  color: 'white',
-                                  border: 'none',
-                                  fontSize: '11.5px',
-                                  fontWeight: 700,
-                                  cursor: 'pointer'
-                                }}
-                                title="Atur / Tetapkan Sanksi"
-                              >
-                                <i className="fas fa-gavel"></i> Sanksi
-                              </button>
-                              {isCancelled && (
+                            {isAdmin ? (
+                              <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
                                 <button
-                                  onClick={() => handleRestoreAudit(item)}
+                                  onClick={() => handleUpdateSanksi(item)}
                                   style={{
                                     padding: '6px 10px',
                                     borderRadius: '6px',
-                                    background: '#334155',
-                                    color: '#cbd5e1',
-                                    border: '1px solid #475569',
+                                    background: '#dc2626',
+                                    color: 'white',
+                                    border: 'none',
                                     fontSize: '11.5px',
                                     fontWeight: 700,
                                     cursor: 'pointer'
                                   }}
-                                  title="Pulihkan jika bukan titip kartu (misal izin UKS / BK)"
+                                  title="Atur / Tetapkan Sanksi"
                                 >
-                                  <i className="fas fa-undo"></i> Pulihkan
+                                  <i className="fas fa-gavel"></i> Sanksi
                                 </button>
-                              )}
-                            </div>
+                                {isCancelled && (
+                                  <button
+                                    onClick={() => handleRestoreAudit(item)}
+                                    style={{
+                                      padding: '6px 10px',
+                                      borderRadius: '6px',
+                                      background: '#334155',
+                                      color: '#cbd5e1',
+                                      border: '1px solid #475569',
+                                      fontSize: '11.5px',
+                                      fontWeight: 700,
+                                      cursor: 'pointer'
+                                    }}
+                                    title="Pulihkan jika bukan titip kartu (misal izin UKS / BK)"
+                                  >
+                                    <i className="fas fa-undo"></i> Pulihkan
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: '11px', color: '#64748b', fontStyle: 'italic' }}>
+                                <i className="fas fa-lock" style={{ marginRight: '4px' }}></i>Hanya Admin
+                              </span>
+                            )}
                           </td>
                         </tr>
                       );
@@ -1630,9 +1898,34 @@ export default function PresensiGatePage() {
         )}
 
         {/* ========================================================================= */}
-        {/* TAB 2: DAFTARKAN / MAPPING KARTU RFID SISWA */}
+        {/* TAB 2: DAFTARKAN / MAPPING KARTU RFID SISWA (ADMIN ONLY) */}
         {/* ========================================================================= */}
         {activeTab === 'mapping' && (
+          !isAdmin ? (
+            <div className={styles.mappingCard} style={{ textAlign: 'center', padding: '60px 20px' }}>
+              <i className="fas fa-lock" style={{ fontSize: '3rem', color: '#f59e0b', marginBottom: '16px' }}></i>
+              <h3 style={{ color: '#ffffff', margin: '0 0 8px' }}>Pengaturan Khusus Admin</h3>
+              <p style={{ color: '#94a3b8', fontSize: '13px', maxWidth: '450px', margin: '0 auto 20px', lineHeight: 1.5 }}>
+                Menu Pemasangan & Registrasi Kartu RFID Siswa/Guru hanya dapat diakses dan diubah oleh akun Admin.
+              </p>
+              <button
+                type="button"
+                onClick={handleUnlockAdmin}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: '8px',
+                  background: '#0284c7',
+                  color: 'white',
+                  border: 'none',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  cursor: 'pointer'
+                }}
+              >
+                <i className="fas fa-unlock" style={{ marginRight: '6px' }}></i> Buka Akses Admin
+              </button>
+            </div>
+          ) : (
           <div className={styles.mappingCard}>
             <div className={styles.mappingHeader}>
               <div>
@@ -1810,6 +2103,7 @@ export default function PresensiGatePage() {
               </div>
             )}
           </div>
+          )
         )}
 
       </div>
