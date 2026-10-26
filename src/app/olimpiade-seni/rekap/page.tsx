@@ -47,6 +47,23 @@ export default function RekapOlimpiadeSeni() {
   const [editFormData, setEditFormData] = useState<any>({});
   const [savingEdit, setSavingEdit] = useState(false);
 
+  // Modal Edit Pendaftar Kolektif
+  const [editingKolektif, setEditingKolektif] = useState<OlimpiadeData | null>(null);
+  const [editKolektifFormData, setEditKolektifFormData] = useState<{
+    asalSekolah: string;
+    noWa: string;
+    statusPembayaran: string;
+    totalBiaya: number | string;
+    detailLomba: string;
+  }>({
+    asalSekolah: '',
+    noWa: '',
+    statusPembayaran: 'Valid',
+    totalBiaya: 0,
+    detailLomba: ''
+  });
+  const [savingEditKolektif, setSavingEditKolektif] = useState(false);
+
   // Modal Kelola Peserta Kolektif
   const [kelolaKolektif, setKelolaKolektif] = useState<OlimpiadeData | null>(null);
 
@@ -571,6 +588,82 @@ export default function RekapOlimpiadeSeni() {
     }
   };
 
+  // Buka Modal Edit Pendaftar Kolektif
+  const handleOpenEditKolektif = (item: OlimpiadeData) => {
+    const meta = item.metadata || {};
+    let total = meta.TOTAL_BIAYA;
+    if (total === undefined || total === null) {
+      const rekap = meta.REKAP_PESERTA || {};
+      let b = 0;
+      Object.entries(rekap).forEach(([lombaKey, count]) => {
+        const lk = lombaKey.toLowerCase();
+        const cnt = Number(count) || 0;
+        if (lk.includes('singer') || lk.includes('solo')) b += cnt * 50000;
+        else if (lk.includes('banjari')) b += cnt * 100000;
+        else if (lk.includes('sandi') || lk.includes('morse') || lk.includes('sms')) b += cnt * 50000;
+      });
+      total = b;
+    }
+
+    setEditKolektifFormData({
+      asalSekolah: String(meta.ASAL_SEKOLAH || ''),
+      noWa: String(meta.NO_WA || ''),
+      statusPembayaran: String(meta.STATUS_PEMBAYARAN || (Number(total) === 0 ? 'Valid' : 'Menunggu')),
+      totalBiaya: Number(total) || 0,
+      detailLomba: String(meta.DETAIL_LOMBA || '')
+    });
+    setEditingKolektif(item);
+  };
+
+  // Simpan Perubahan Edit Pendaftar Kolektif
+  const handleSaveEditKolektif = async () => {
+    if (!editingKolektif) return;
+    if (!editKolektifFormData.asalSekolah || !String(editKolektifFormData.asalSekolah).trim()) {
+      Swal.fire('Peringatan', 'Nama Asal Sekolah / Madrasah tidak boleh kosong!', 'warning');
+      return;
+    }
+
+    setSavingEditKolektif(true);
+    try {
+      const updatedMetadata = {
+        ...(editingKolektif.metadata || {}),
+        ASAL_SEKOLAH: String(editKolektifFormData.asalSekolah || '').trim(),
+        NO_WA: String(editKolektifFormData.noWa || '').trim(),
+        STATUS_PEMBAYARAN: editKolektifFormData.statusPembayaran,
+        TOTAL_BIAYA: Number(editKolektifFormData.totalBiaya) || 0,
+        DETAIL_LOMBA: String(editKolektifFormData.detailLomba || '').trim(),
+      };
+
+      const res = await fetch('/api/olimpiade-seni/rekap', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingKolektif.id,
+          metadata: updatedMetadata
+        })
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Berhasil',
+          text: 'Data pendaftar kolektif berhasil diperbarui!',
+          timer: 1500,
+          showConfirmButton: false
+        });
+        setEditingKolektif(null);
+        fetchData();
+      } else {
+        Swal.fire('Gagal', json.error || 'Terjadi kesalahan saat menyimpan data.', 'error');
+      }
+    } catch (err: any) {
+      Swal.fire('Error', err.message || 'Gagal menghubungi server.', 'error');
+    } finally {
+      setSavingEditKolektif(false);
+    }
+  };
+
   // Daftar siswa dari sekolah kolektif yang sedang dibuka
   const collectiveStudents = useMemo(() => {
     if (!kelolaKolektif) return [];
@@ -1048,11 +1141,19 @@ export default function RekapOlimpiadeSeni() {
                           {isAdmin && (
                             <td style={{ padding: '16px', textAlign: 'right' }}>
                               <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                                {isIndividu && (
+                                {isIndividu ? (
                                   <button
                                     onClick={() => handleOpenEdit(row)}
                                     style={{ padding: '6px 10px', borderRadius: '6px', background: '#f59e0b', color: 'white', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', fontWeight: 700 }}
                                     title="Edit Data Peserta"
+                                  >
+                                    <i className="fas fa-edit"></i> Edit
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleOpenEditKolektif(row)}
+                                    style={{ padding: '6px 10px', borderRadius: '6px', background: '#f59e0b', color: 'white', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem', fontWeight: 700 }}
+                                    title="Edit Data Pendaftar Kolektif"
                                   >
                                     <i className="fas fa-edit"></i> Edit
                                   </button>
@@ -1596,6 +1697,170 @@ export default function RekapOlimpiadeSeni() {
         </div>
       )}
 
+      {/* MODAL EDIT PENDAFTAR KOLEKTIF */}
+      {editingKolektif && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '16px',
+            width: '100%',
+            maxWidth: '650px',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)',
+            border: '1px solid #e2e8f0'
+          }}>
+            {/* Header */}
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#0f172a' }}>
+                  <i className="fas fa-edit" style={{ color: '#0284c7', marginRight: '8px' }}></i>
+                  Edit Pendaftar Kolektif
+                </h3>
+                <p style={{ margin: '3px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+                  Perbarui informasi lembaga, narahubung, dan status pembayaran kolektif ini.
+                </p>
+              </div>
+              <button
+                onClick={() => setEditingKolektif(null)}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '1.2rem', cursor: 'pointer' }}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            {/* Form Fields */}
+            <div style={{ padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Asal Sekolah */}
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  Nama Asal Sekolah / Madrasah *
+                </label>
+                <input
+                  type="text"
+                  value={editKolektifFormData.asalSekolah}
+                  onChange={e => setEditKolektifFormData({ ...editKolektifFormData, asalSekolah: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+                  placeholder="Contoh: MI Almaarif 02 Singosari"
+                />
+                <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                  * Mengubah nama sekolah di sini otomatis memperbarui nama sekolah seluruh siswa kolektif terkait.
+                </span>
+              </div>
+
+              {/* No WhatsApp & Status Pembayaran */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                    No. WhatsApp Pendamping
+                  </label>
+                  <input
+                    type="text"
+                    value={editKolektifFormData.noWa}
+                    onChange={e => setEditKolektifFormData({ ...editKolektifFormData, noWa: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+                    placeholder="08xxxxxxxxxx"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                    Status Pembayaran
+                  </label>
+                  <select
+                    value={editKolektifFormData.statusPembayaran}
+                    onChange={e => setEditKolektifFormData({ ...editKolektifFormData, statusPembayaran: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: 'white' }}
+                  >
+                    <option value="Valid">Valid / Lunas</option>
+                    <option value="Menunggu">Menunggu Verifikasi</option>
+                    <option value="Ditolak">Ditolak</option>
+                  </select>
+                  <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                    * Status akan disinkronkan ke seluruh siswa kolektif ini.
+                  </span>
+                </div>
+              </div>
+
+              {/* Total Biaya Pendaftaran */}
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  Total Biaya Pendaftaran (Rp)
+                </label>
+                <input
+                  type="number"
+                  value={editKolektifFormData.totalBiaya}
+                  onChange={e => setEditKolektifFormData({ ...editKolektifFormData, totalBiaya: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+                  placeholder="0 jika gratis"
+                />
+              </div>
+
+              {/* Catatan / Detail Lomba */}
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  Catatan / Detail Pendaftaran
+                </label>
+                <textarea
+                  value={editKolektifFormData.detailLomba}
+                  onChange={e => setEditKolektifFormData({ ...editKolektifFormData, detailLomba: e.target.value })}
+                  rows={2}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '13px', outline: 'none', boxSizing: 'border-box', resize: 'vertical' }}
+                  placeholder="Catatan pendaftaran kolektif (opsional)..."
+                />
+              </div>
+
+              {/* Shortcut Buka Kelola Peserta */}
+              <div style={{ background: '#f0f9ff', padding: '12px 16px', borderRadius: '8px', border: '1px solid #bae6fd', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: '12px', color: '#0369a1' }}>
+                  Ingin mengedit siswa individual dari sekolah ini?
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const row = editingKolektif;
+                    setEditingKolektif(null);
+                    setKelolaKolektif(row);
+                  }}
+                  style={{ padding: '6px 12px', borderRadius: '6px', background: '#0284c7', color: 'white', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <i className="fas fa-users-cog"></i> Buka Kelola Peserta
+                </button>
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setEditingKolektif(null)}
+                style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', color: '#475569', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEditKolektif}
+                disabled={savingEditKolektif}
+                style={{ padding: '9px 20px', borderRadius: '8px', border: 'none', background: '#047857', color: 'white', fontWeight: 700, fontSize: '13px', cursor: savingEditKolektif ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                {savingEditKolektif ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>}
+                Simpan Perubahan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL 2: KELOLA PESERTA KOLEKTIF */}
       {kelolaKolektif && (
         <div style={{
@@ -1692,16 +1957,26 @@ export default function RekapOlimpiadeSeni() {
                       </div>
                     )}
                   </div>
-                  {kelolaKolektif.bukti_pembayaran_url && (
-                    <a
-                      href={kelolaKolektif.bukti_pembayaran_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ padding: '6px 14px', borderRadius: '8px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', fontSize: '0.82rem', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditKolektif(kelolaKolektif)}
+                      style={{ padding: '6px 12px', borderRadius: '8px', background: '#f59e0b', color: 'white', border: 'none', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      title="Edit Data Lembaga / Biaya Kolektif"
                     >
-                      <i className="fas fa-receipt"></i> Lihat Bukti Transfer
-                    </a>
-                  )}
+                      <i className="fas fa-edit"></i> Edit Info Kolektif
+                    </button>
+                    {kelolaKolektif.bukti_pembayaran_url && (
+                      <a
+                        href={kelolaKolektif.bukti_pembayaran_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ padding: '6px 14px', borderRadius: '8px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', fontSize: '0.82rem', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <i className="fas fa-receipt"></i> Lihat Bukti Transfer
+                      </a>
+                    )}
+                  </div>
                 </div>
               );
             })()}

@@ -259,6 +259,69 @@ export async function PATCH(req: Request) {
       await syncCollectiveRecap(sekolah);
     }
 
+    if (existing.jenis_pendaftaran === 'kolektif') {
+      const oldSekolah = String(existing.metadata?.ASAL_SEKOLAH || '').trim();
+      const newSekolah = String(updatedMeta.ASAL_SEKOLAH || '').trim();
+      const oldStatus = existing.metadata?.STATUS_PEMBAYARAN;
+      const newStatus = updatedMeta.STATUS_PEMBAYARAN;
+
+      // 1. Jika nama asal sekolah diubah, update juga pada semua data peserta_kolektif
+      if (newSekolah && oldSekolah && newSekolah.toLowerCase() !== oldSekolah.toLowerCase()) {
+        const { data: pesertasi } = await supabase
+          .from('data_olimpiade_seni')
+          .select('id, metadata')
+          .eq('jenis_pendaftaran', 'peserta_kolektif');
+
+        const targets = (pesertasi || []).filter(p => {
+          const s1 = String(p.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase();
+          const s2 = String(p.metadata?.['NAMA SD/MI'] || '').trim().toLowerCase();
+          const target = oldSekolah.toLowerCase();
+          return s1 === target || s2 === target;
+        });
+
+        for (const t of targets) {
+          await supabase
+            .from('data_olimpiade_seni')
+            .update({
+              metadata: {
+                ...t.metadata,
+                ASAL_SEKOLAH: newSekolah,
+                'NAMA SD/MI': newSekolah
+              }
+            })
+            .eq('id', t.id);
+        }
+      }
+
+      // 2. Jika status pembayaran diubah, sinkronkan ke semua peserta_kolektif
+      if (newStatus && newStatus !== oldStatus) {
+        const sekolahTarget = newSekolah || oldSekolah;
+        const { data: pesertasi } = await supabase
+          .from('data_olimpiade_seni')
+          .select('id, metadata')
+          .eq('jenis_pendaftaran', 'peserta_kolektif');
+
+        const targets = (pesertasi || []).filter(p => {
+          const s1 = String(p.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase();
+          const s2 = String(p.metadata?.['NAMA SD/MI'] || '').trim().toLowerCase();
+          const target = sekolahTarget.toLowerCase();
+          return s1 === target || s2 === target;
+        });
+
+        for (const t of targets) {
+          await supabase
+            .from('data_olimpiade_seni')
+            .update({
+              metadata: {
+                ...t.metadata,
+                STATUS_PEMBAYARAN: newStatus
+              }
+            })
+            .eq('id', t.id);
+        }
+      }
+    }
+
     return NextResponse.json({ success: true, message: 'Data peserta berhasil diperbarui' });
   } catch (error: any) {
     console.error('PATCH Rekap Olimpiade Error:', error);
