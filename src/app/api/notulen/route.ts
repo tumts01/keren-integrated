@@ -6,6 +6,9 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
     const { data: rows, error } = await supabase.from('data_notulen').select('*').order('id', { ascending: false });
     
     if (error) throw error;
@@ -26,6 +29,14 @@ export async function GET(request: Request) {
         dokumentasi: meta['Dokumentasi'] || '',
       };
     });
+
+    if (id) {
+      const single = data.find((d: any) => d.id === id || d.db_id?.toString() === id);
+      if (!single) {
+        return NextResponse.json({ success: false, error: 'Data notulen tidak ditemukan' }, { status: 404 });
+      }
+      return NextResponse.json({ success: true, data: single });
+    }
 
     return NextResponse.json({ success: true, data }, {
       headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }

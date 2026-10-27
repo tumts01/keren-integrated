@@ -618,12 +618,7 @@ export default function JurnalKegiatanPage() {
   };
 
   const handlePrintNotulen = (n: any) => {
-    setPrintNotulenData(n);
-    setIsPrintingNotulen(true);
-    setTimeout(() => {
-      window.print();
-      setIsPrintingNotulen(false);
-    }, 800);
+    window.open(`/jurnal-kegiatan/cetak-notulen?id=${encodeURIComponent(n.id)}`, '_blank');
   };
 
   return (
