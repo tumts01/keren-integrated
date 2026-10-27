@@ -429,23 +429,8 @@ function CetakPiketContent() {
             </div>
           ) : (
             <>
-              {/* Kop Surat Madrasah */}
-              <div style={{ textAlign: 'center', marginBottom: '6px' }}>
-                <img
-                  src="/kop_surat_mts.png"
-                  alt="Kop Surat MTs Almaarif 01 Singosari"
-                  style={{
-                    width: '100%',
-                    maxHeight: '76px',
-                    objectFit: 'contain',
-                    display: 'block',
-                    margin: '0 auto'
-                  }}
-                />
-              </div>
-
               {/* Title Block */}
-              <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+              <div style={{ textAlign: 'center', marginBottom: '14px' }}>
                 <h2 style={{
                   margin: 0,
                   fontSize: '12.5pt',
