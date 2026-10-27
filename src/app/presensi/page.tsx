@@ -1,5 +1,15 @@
 'use client';
 
+function normalizeCleanName(name: string): string {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .replace(/^(h\.|hj\.|drs\.|dra\.|dr\.|kh\.)\s+/gi, '')
+    .split(',')[0]
+    .replace(/[^a-z0-9]/g, '')
+    .trim();
+}
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
@@ -324,22 +334,29 @@ export default function PresensiPage() {
     }
   }, [activeTab]);
 
-  const fetchRekapPiket = async () => {
+  const fetchRekapPiket = async (customFrom?: string, customTo?: string) => {
     setRekapPiketLoading(true);
     try {
+      const fromVal = customFrom !== undefined ? customFrom : rpFilterFrom;
+      const toVal = customTo !== undefined ? customTo : rpFilterTo;
       let url = '/api/jurnal-piket';
-      if (rpFilterFrom || rpFilterTo) {
+      if (fromVal || toVal) {
         const q = new URLSearchParams();
-        if (rpFilterFrom) q.append('from', rpFilterFrom);
-        if (rpFilterTo) q.append('to', rpFilterTo);
+        if (fromVal) q.append('from', fromVal);
+        if (toVal) q.append('to', toVal);
         url += '?' + q.toString();
       }
       const res = await fetch(url);
       const json = await res.json();
-      if (json.success) {
+      if (json.success && Array.isArray(json.data)) {
         setRekapPiketData(json.data);
+        return json.data;
       }
-    } catch (e) { console.error(e); }
+      return [];
+    } catch (e) { 
+      console.error(e); 
+      return [];
+    }
     finally { setRekapPiketLoading(false); }
   };
 
@@ -699,7 +716,9 @@ export default function PresensiPage() {
       if (pStr) {
         let matched = false;
         for (const g of sortedGuruList) {
-          if (pStr.toLowerCase().includes(g.toLowerCase())) {
+          const normG = normalizeCleanName(g);
+          const normP = normalizeCleanName(pStr);
+          if (pStr.toLowerCase().includes(g.toLowerCase()) || (normG.length >= 4 && normP.includes(normG))) {
             matched = true;
             if (!dutyMap.has(g)) dutyMap.set(g, { piketDates: new Set(), dispoDates: new Set() });
             dutyMap.get(g)!.piketDates.add(tanggal);
@@ -708,7 +727,7 @@ export default function PresensiPage() {
         if (!matched) {
           pStr.split(',').forEach((part: string) => {
             const trimmed = part.trim();
-            if (trimmed) {
+            if (trimmed && trimmed.length > 3) {
               if (!dutyMap.has(trimmed)) dutyMap.set(trimmed, { piketDates: new Set(), dispoDates: new Set() });
               dutyMap.get(trimmed)!.piketDates.add(tanggal);
             }
@@ -719,7 +738,9 @@ export default function PresensiPage() {
       if (dStr) {
         let matched = false;
         for (const g of sortedGuruList) {
-          if (dStr.toLowerCase().includes(g.toLowerCase())) {
+          const normG = normalizeCleanName(g);
+          const normD = normalizeCleanName(dStr);
+          if (dStr.toLowerCase().includes(g.toLowerCase()) || (normG.length >= 4 && normD.includes(normG))) {
             matched = true;
             if (!dutyMap.has(g)) dutyMap.set(g, { piketDates: new Set(), dispoDates: new Set() });
             dutyMap.get(g)!.dispoDates.add(tanggal);
@@ -728,7 +749,7 @@ export default function PresensiPage() {
         if (!matched) {
           dStr.split(',').forEach((part: string) => {
             const trimmed = part.trim();
-            if (trimmed) {
+            if (trimmed && trimmed.length > 3) {
               if (!dutyMap.has(trimmed)) dutyMap.set(trimmed, { piketDates: new Set(), dispoDates: new Set() });
               dutyMap.get(trimmed)!.dispoDates.add(tanggal);
             }
@@ -3078,32 +3099,68 @@ export default function PresensiPage() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
               <h2 style={{ margin: 0 }}>Rekap Jurnal Piket</h2>
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                <input type="date" value={rpFilterFrom} onChange={(e) => setRpFilterFrom(e.target.value)} className={styles.inputField} style={{ marginBottom: 0, padding: '6px 12px', width: 'auto' }} />
+                <input 
+                  type="date" 
+                  value={rpFilterFrom} 
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setRpFilterFrom(val);
+                    fetchRekapPiket(val, rpFilterTo);
+                  }} 
+                  className={styles.inputField} 
+                  style={{ marginBottom: 0, padding: '6px 12px', width: 'auto' }} 
+                />
                 <span>s/d</span>
-                <input type="date" value={rpFilterTo} onChange={(e) => setRpFilterTo(e.target.value)} className={styles.inputField} style={{ marginBottom: 0, padding: '6px 12px', width: 'auto' }} />
+                <input 
+                  type="date" 
+                  value={rpFilterTo} 
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setRpFilterTo(val);
+                    fetchRekapPiket(rpFilterFrom, val);
+                  }} 
+                  className={styles.inputField} 
+                  style={{ marginBottom: 0, padding: '6px 12px', width: 'auto' }} 
+                />
                 
                 <button 
-                  onClick={() => setShowModalRekapTugas(true)}
+                  onClick={async () => {
+                    await fetchRekapPiket(rpFilterFrom, rpFilterTo);
+                    setShowModalRekapTugas(true);
+                  }}
                   style={{ background: '#059669', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
                   title="Lihat rekapitulasi beban tugas piket dan dispo per guru"
                 >
                   <i className="fas fa-chart-pie"></i> Rekap Piket &amp; Dispo
                 </button>
                 <button 
-                  onClick={() => exportRekapTugasExcel(rpFiltered)}
+                  onClick={() => window.open(`/presensi/cetak-piket?from=${encodeURIComponent(rpFilterFrom)}&to=${encodeURIComponent(rpFilterTo)}`, '_blank')}
+                  style={{ background: '#2563eb', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+                  title="Cetak format resmi Rekapitulasi Tugas Piket & Dispo (PDF / Print)"
+                >
+                  <i className="fas fa-print"></i> Cetak PDF Rekap
+                </button>
+                <button 
+                  onClick={async () => {
+                    const fresh = await fetchRekapPiket(rpFilterFrom, rpFilterTo);
+                    exportRekapTugasExcel(fresh && fresh.length > 0 ? fresh : rpFiltered);
+                  }}
                   style={{ background: '#d97706', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
                   title="Download langsung file Excel rekap jumlah tugas piket dan dispo"
                 >
                   <i className="fas fa-download"></i> Download Rekap
                 </button>
                 <button 
-                  onClick={() => exportPiketExcel(rpFiltered)}
+                  onClick={async () => {
+                    const fresh = await fetchRekapPiket(rpFilterFrom, rpFilterTo);
+                    exportPiketExcel(fresh && fresh.length > 0 ? fresh : rpFiltered);
+                  }}
                   style={{ background: '#16a34a', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
                 >
                   <i className="fas fa-file-excel"></i> Export Log Jurnal
                 </button>
                 <button 
-                  onClick={fetchRekapPiket}
+                  onClick={() => fetchRekapPiket(rpFilterFrom, rpFilterTo)}
                   style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
                   disabled={rekapPiketLoading}
                 >
@@ -3606,12 +3663,21 @@ export default function PresensiPage() {
                   </label>
                 </div>
 
-                <button 
-                  onClick={() => exportRekapTugasExcel(rpFiltered)}
-                  style={{ background: '#059669', color: 'white', border: 'none', padding: '9px 18px', borderRadius: 8, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', boxShadow: '0 2px 4px rgba(5, 150, 105, 0.2)' }}
-                >
-                  <i className="fas fa-file-excel" style={{ fontSize: '1rem' }}></i> Download Rekap (.xlsx)
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button 
+                    onClick={() => window.open(`/presensi/cetak-piket?from=${encodeURIComponent(rpFilterFrom)}&to=${encodeURIComponent(rpFilterTo)}`, '_blank')}
+                    style={{ background: '#2563eb', color: 'white', border: 'none', padding: '9px 18px', borderRadius: 8, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)' }}
+                    title="Cetak format resmi Rekapitulasi Tugas Piket & Dispo (PDF / Print)"
+                  >
+                    <i className="fas fa-print" style={{ fontSize: '1rem' }}></i> Cetak PDF Rekap
+                  </button>
+                  <button 
+                    onClick={() => exportRekapTugasExcel(rpFiltered)}
+                    style={{ background: '#059669', color: 'white', border: 'none', padding: '9px 18px', borderRadius: 8, cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', boxShadow: '0 2px 4px rgba(5, 150, 105, 0.2)' }}
+                  >
+                    <i className="fas fa-file-excel" style={{ fontSize: '1rem' }}></i> Download Rekap (.xlsx)
+                  </button>
+                </div>
               </div>
             </div>
 
