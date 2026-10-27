@@ -546,6 +546,55 @@ export default function PresensiPage() {
     XLSX.writeFile(wb, `Rekap_SIA_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.xlsx`);
   };
 
+  const handleCetakRekapPdfModal = async () => {
+    const defaultKelas = rsFilterKelas || kelasList[0] || '7A';
+    const now = new Date();
+    const defaultMonth = (rsFilterFrom ? rsFilterFrom.slice(0, 7) : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+
+    const classSource = kelasList.length > 0 ? kelasList : ['7A', '7B', '7C', '7D', '7E', '7F', '7G', '7H', '7I', '8A', '8B', '8C', '8D', '8E', '8F', '8G', '8H', '8I', '9A', '9B', '9C', '9D', '9E', '9F', '9G', '9H'];
+    const optionsKelasHtml = classSource
+      .map((k: string) => `<option value="${k}" ${k === defaultKelas ? 'selected' : ''}>Kelas ${k}</option>`)
+      .join('');
+
+    const { value: formValues } = await Swal.fire({
+      title: 'Cetak Rekap Kehadiran Siswa (PDF)',
+      html: `
+        <div style="text-align: left; font-size: 0.9rem;">
+          <p style="margin: 0 0 12px; color: #64748b; font-size: 0.85rem; line-height: 1.4;">
+            Cetak Rekap Ketidakhadiran Murid per Hari dalam format PDF Landscape resmi (dilengkapi Kop Surat, Rekap Harian, Total Jam, dan Tanda Tangan Wali Kelas).
+          </p>
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-weight: 700; margin-bottom: 4px; color: #334155;">Pilih Kelas:</label>
+            <select id="swal-cetak-kelas" style="width: 100%; padding: 8px 10px; border-radius: 8px; border: 1.5px solid #0284c7; font-size: 0.9rem; font-weight: 600; background: #f0f9ff; color: #0369a1;">
+              ${optionsKelasHtml}
+            </select>
+          </div>
+          <div style="margin-bottom: 8px;">
+            <label style="display: block; font-weight: 700; margin-bottom: 4px; color: #334155;">Pilih Bulan & Tahun:</label>
+            <input id="swal-cetak-bulan" type="month" value="${defaultMonth}" style="width: 100%; padding: 8px 10px; border-radius: 8px; border: 1.5px solid #0284c7; font-size: 0.9rem; box-sizing: border-box; background: #f0f9ff; color: #0369a1;" />
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      confirmButtonText: '<i class="fas fa-print" style="margin-right: 6px;"></i> Buka Format Cetak PDF',
+      cancelButtonText: 'Batal',
+      preConfirm: () => {
+        const k = (document.getElementById('swal-cetak-kelas') as HTMLSelectElement)?.value;
+        const b = (document.getElementById('swal-cetak-bulan') as HTMLInputElement)?.value;
+        if (!k || !b) {
+          Swal.showValidationMessage('Mohon pilih Kelas dan Bulan!');
+          return false;
+        }
+        return { kelas: k, bulan: b };
+      }
+    });
+
+    if (formValues) {
+      window.open(`/presensi/cetak-rekap?kelas=${encodeURIComponent(formValues.kelas)}&bulan=${encodeURIComponent(formValues.bulan)}`, '_blank');
+    }
+  };
+
   const exportPiketExcel = (filtered: any[]) => {
     const rows = filtered.map((r, i) => ({
       'No': i + 1,
@@ -2354,6 +2403,11 @@ export default function PresensiPage() {
                       title="Pilih otomatis data presensi yang ganda untuk dihapus masal">
                       <i className="fas fa-clone"></i> Pilih Data Dobel
                     </button>
+                    <button onClick={handleCetakRekapPdfModal}
+                      style={{ background: '#dc2626', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+                      title="Cetak Rekap Ketidakhadiran Murid per Hari (Format PDF Resmi)">
+                      <i className="fas fa-file-pdf"></i> Cetak Rekap PDF
+                    </button>
                     <button onClick={() => exportSiswaExcel(rsFiltered)}
                       style={{ background: '#16a34a', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
                       <i className="fas fa-file-excel"></i> Export Excel ({rsFiltered.length})
@@ -2459,10 +2513,17 @@ export default function PresensiPage() {
                     <span style={{ fontSize: '0.82rem', color: '#64748b' }}>{rsSiaList.length} siswa dengan total S/I/A tercatat</span>
                     <span style={{ fontSize: '0.78rem', background: '#fee2e2', color: '#dc2626', padding: '2px 8px', borderRadius: 20 }}>🔴 = lebih dari atau sama dengan 5 hari</span>
                   </div>
-                  <button onClick={() => exportAlphaExcel(rsSiaList)}
-                    style={{ background: '#16a34a', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
-                    <i className="fas fa-file-excel"></i> Export Excel
-                  </button>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button onClick={handleCetakRekapPdfModal}
+                      style={{ background: '#dc2626', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+                      title="Cetak Rekap Ketidakhadiran Murid per Hari (Format PDF Resmi)">
+                      <i className="fas fa-file-pdf"></i> Cetak Rekap PDF
+                    </button>
+                    <button onClick={() => exportAlphaExcel(rsSiaList)}
+                      style={{ background: '#16a34a', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
+                      <i className="fas fa-file-excel"></i> Export Excel
+                    </button>
+                  </div>
                 </div>
                 {rsSiaList.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '32px 0', color: '#94a3b8' }}>
