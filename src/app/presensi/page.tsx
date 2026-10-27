@@ -547,46 +547,114 @@ export default function PresensiPage() {
   };
 
   const handleCetakRekapPdfModal = async () => {
-    const defaultKelas = rsFilterKelas || kelasList[0] || '7A';
+    const defaultKelas = rsFilterKelas || '';
     const now = new Date();
     const defaultMonth = (rsFilterFrom ? rsFilterFrom.slice(0, 7) : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
 
-    const classSource = kelasList.length > 0 ? kelasList : ['7A', '7B', '7C', '7D', '7E', '7F', '7G', '7H', '7I', '8A', '8B', '8C', '8D', '8E', '8F', '8G', '8H', '8I', '9A', '9B', '9C', '9D', '9E', '9F', '9G', '9H'];
-    const optionsKelasHtml = classSource
-      .map((k: string) => `<option value="${k}" ${k === defaultKelas ? 'selected' : ''}>Kelas ${k}</option>`)
-      .join('');
+    const classSource = (kelasList.length > 0 ? kelasList : ['7A', '7B', '7C', '7D', '7E', '7F', '7G', '7H', '7I', '8A', '8B', '8C', '8D', '8E', '8F', '8G', '8H', '8I', '9A', '9B', '9C', '9D', '9E', '9F', '9G', '9H']).slice().sort();
+
+    const checkboxesHtml = classSource.map((k: string) => {
+      const isChecked = defaultKelas ? (k === defaultKelas) : true;
+      return `
+        <label style="display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 700; color: #1e293b; user-select: none;">
+          <input type="checkbox" class="swal-kelas-cb" value="${k}" ${isChecked ? 'checked' : ''} style="cursor: pointer; width: 15px; height: 15px; accent-color: #0284c7;" />
+          <span>${k}</span>
+        </label>
+      `;
+    }).join('');
 
     const { value: formValues } = await Swal.fire({
       title: 'Cetak Rekap Kehadiran Siswa (PDF)',
+      width: 580,
       html: `
-        <div style="text-align: left; font-size: 0.9rem;">
-          <p style="margin: 0 0 12px; color: #64748b; font-size: 0.85rem; line-height: 1.4;">
-            Cetak Rekap Ketidakhadiran Murid per Hari dalam format PDF Landscape resmi (dilengkapi Kop Surat, Rekap Harian, Total Jam, dan Tanda Tangan Wali Kelas).
+        <div style="text-align: left; font-size: 0.88rem;">
+          <p style="margin: 0 0 12px; color: #64748b; font-size: 0.82rem; line-height: 1.4;">
+            Pilih satu atau beberapa kelas sekaligus. Semua kelas terpilih akan digabungkan menjadi <strong>1 dokumen PDF resmi</strong> (setiap kelas tercetak rapi pada 1 lembar A4 Landscape tersendiri).
           </p>
           <div style="margin-bottom: 12px;">
-            <label style="display: block; font-weight: 700; margin-bottom: 4px; color: #334155;">Pilih Kelas:</label>
-            <select id="swal-cetak-kelas" style="width: 100%; padding: 8px 10px; border-radius: 8px; border: 1.5px solid #0284c7; font-size: 0.9rem; font-weight: 600; background: #f0f9ff; color: #0369a1;">
-              ${optionsKelasHtml}
-            </select>
-          </div>
-          <div style="margin-bottom: 8px;">
             <label style="display: block; font-weight: 700; margin-bottom: 4px; color: #334155;">Pilih Bulan & Tahun:</label>
-            <input id="swal-cetak-bulan" type="month" value="${defaultMonth}" style="width: 100%; padding: 8px 10px; border-radius: 8px; border: 1.5px solid #0284c7; font-size: 0.9rem; box-sizing: border-box; background: #f0f9ff; color: #0369a1;" />
+            <input id="swal-cetak-bulan" type="month" value="${defaultMonth}" style="width: 100%; padding: 8px 10px; border-radius: 8px; border: 1.5px solid #0284c7; font-size: 0.9rem; box-sizing: border-box; background: #f0f9ff; color: #0369a1; font-weight: 700;" />
+          </div>
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label style="font-weight: 700; color: #334155;">Pilih Kelas (<span id="swal-kelas-count">0</span> terpilih):</label>
+              <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                <button type="button" id="swal-btn-all" style="background: #0284c7; color: white; border: none; padding: 2px 7px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Semua</button>
+                <button type="button" id="swal-btn-7" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Kls 7</button>
+                <button type="button" id="swal-btn-8" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Kls 8</button>
+                <button type="button" id="swal-btn-9" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Kls 9</button>
+                <button type="button" id="swal-btn-clear" style="background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Reset</button>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-height: 190px; overflow-y: auto; padding: 8px; border: 1.5px solid #cbd5e1; border-radius: 8px; background: #f8fafc;">
+              ${checkboxesHtml}
+            </div>
           </div>
         </div>
       `,
+      didOpen: () => {
+        const updateCount = () => {
+          const checked = document.querySelectorAll('.swal-kelas-cb:checked');
+          const counter = document.getElementById('swal-kelas-count');
+          if (counter) counter.innerText = String(checked.length);
+        };
+        updateCount();
+
+        document.querySelectorAll('.swal-kelas-cb').forEach(cb => {
+          cb.addEventListener('change', updateCount);
+        });
+
+        document.getElementById('swal-btn-all')?.addEventListener('click', () => {
+          document.querySelectorAll('.swal-kelas-cb').forEach(cb => ((cb as HTMLInputElement).checked = true));
+          updateCount();
+        });
+
+        document.getElementById('swal-btn-clear')?.addEventListener('click', () => {
+          document.querySelectorAll('.swal-kelas-cb').forEach(cb => ((cb as HTMLInputElement).checked = false));
+          updateCount();
+        });
+
+        document.getElementById('swal-btn-7')?.addEventListener('click', () => {
+          document.querySelectorAll('.swal-kelas-cb').forEach(cb => {
+            const input = cb as HTMLInputElement;
+            if (input.value.startsWith('7')) input.checked = true;
+          });
+          updateCount();
+        });
+
+        document.getElementById('swal-btn-8')?.addEventListener('click', () => {
+          document.querySelectorAll('.swal-kelas-cb').forEach(cb => {
+            const input = cb as HTMLInputElement;
+            if (input.value.startsWith('8')) input.checked = true;
+          });
+          updateCount();
+        });
+
+        document.getElementById('swal-btn-9')?.addEventListener('click', () => {
+          document.querySelectorAll('.swal-kelas-cb').forEach(cb => {
+            const input = cb as HTMLInputElement;
+            if (input.value.startsWith('9')) input.checked = true;
+          });
+          updateCount();
+        });
+      },
       showCancelButton: true,
       confirmButtonColor: '#dc2626',
       confirmButtonText: '<i class="fas fa-print" style="margin-right: 6px;"></i> Buka Format Cetak PDF',
       cancelButtonText: 'Batal',
       preConfirm: () => {
-        const k = (document.getElementById('swal-cetak-kelas') as HTMLSelectElement)?.value;
+        const checked = Array.from(document.querySelectorAll('.swal-kelas-cb:checked')) as HTMLInputElement[];
         const b = (document.getElementById('swal-cetak-bulan') as HTMLInputElement)?.value;
-        if (!k || !b) {
-          Swal.showValidationMessage('Mohon pilih Kelas dan Bulan!');
+        if (checked.length === 0) {
+          Swal.showValidationMessage('Mohon centang minimal 1 kelas!');
           return false;
         }
-        return { kelas: k, bulan: b };
+        if (!b) {
+          Swal.showValidationMessage('Mohon tentukan Bulan & Tahun!');
+          return false;
+        }
+        const classes = checked.map(cb => cb.value).join(',');
+        return { kelas: classes, bulan: b };
       }
     });
 

@@ -13,6 +13,7 @@ export async function GET(request: Request) {
     }
 
     const cleanKelas = kelas.trim().toUpperCase();
+    const isMultiple = cleanKelas === 'ALL' || cleanKelas.includes(',');
 
     // 1. Ambil data kelas dari table data_kelas
     const { data: rowsKelas, error: errKelas } = await supabase
@@ -24,32 +25,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: errKelas.message }, { status: 500 });
     }
 
-    const matchedKelas = (rowsKelas || []).find((k: any) => {
-      const rombel = (k.rombel || k.metadata?.['ROMBEL'] || '').trim().toUpperCase();
-      return rombel === cleanKelas;
-    });
-
-    if (!matchedKelas) {
-      return NextResponse.json({ success: true, data: null, message: 'Kelas tidak ditemukan' });
-    }
-
-    const namaWaliRaw = (matchedKelas.wali_kelas || matchedKelas.metadata?.['WALI KELAS'] || '').trim();
-
-    if (!namaWaliRaw) {
-      return NextResponse.json({ 
-        success: true, 
-        data: { 
-          rombel: cleanKelas, 
-          nama: 'Belum ditentukan', 
-          noWa: '', 
-          cleanWa: '',
-          foto: '', 
-          nip: '' 
-        } 
-      });
-    }
-
-    // 2. Ambil data guru & user untuk mendapatkan No WA dan Foto
+    // 2. Ambil data guru & user untuk mendapatkan No WA, NIP, dan Foto
     const { data: rowsGuru } = await supabase.from('data_guru').select('nama, nomor_induk, metadata');
     const { data: rowsUsers } = await supabase.from('data_users').select('nama, metadata');
 
@@ -63,18 +39,6 @@ export async function GET(request: Request) {
         .trim();
     };
 
-    const targetKey = normalizeName(namaWaliRaw);
-
-    const matchedGuru = (rowsGuru || []).find((g: any) => {
-      const gNama = g.nama || '';
-      return normalizeName(gNama) === targetKey || gNama.toLowerCase().includes(namaWaliRaw.toLowerCase().split(',')[0].trim());
-    });
-
-    const matchedUser = (rowsUsers || []).find((u: any) => {
-      const uNama = u.nama || '';
-      return normalizeName(uNama) === targetKey || uNama.toLowerCase().includes(namaWaliRaw.toLowerCase().split(',')[0].trim());
-    });
-
     // Helper thumbnail foto Google Drive
     const getThumbUrl = (url: string) => {
       if (!url) return '';
@@ -85,24 +49,86 @@ export async function GET(request: Request) {
       return url;
     };
 
-    const rawFoto = matchedUser?.metadata?.['Foto'] || matchedUser?.metadata?.['foto'] || matchedGuru?.metadata?.['Foto'] || '';
-    const noWaRaw = matchedGuru?.metadata?.['No WA'] || matchedGuru?.metadata?.['no_wa'] || matchedGuru?.metadata?.['NO WA'] || '';
-    
-    // Normalisasi No WA ke format internasional 628...
-    let cleanWa = String(noWaRaw || '').replace(/[^0-9]/g, '');
-    if (cleanWa.startsWith('0')) {
-      cleanWa = '62' + cleanWa.substring(1);
+    const extractWaliInfo = (k: any, rombelKey: string) => {
+      const namaWaliRaw = (k.wali_kelas || k.metadata?.['WALI KELAS'] || '').trim();
+      if (!namaWaliRaw) {
+        return {
+          rombel: rombelKey,
+          nama: 'Belum ditentukan',
+          noWa: '',
+          cleanWa: '',
+          foto: '',
+          nip: '',
+          email: ''
+        };
+      }
+
+      const targetKey = normalizeName(namaWaliRaw);
+      const matchedGuru = (rowsGuru || []).find((g: any) => {
+        const gNama = g.nama || '';
+        return normalizeName(gNama) === targetKey || (namaWaliRaw && gNama.toLowerCase().includes(namaWaliRaw.toLowerCase().split(',')[0].trim()));
+      });
+
+      const matchedUser = (rowsUsers || []).find((u: any) => {
+        const uNama = u.nama || '';
+        return normalizeName(uNama) === targetKey || (namaWaliRaw && uNama.toLowerCase().includes(namaWaliRaw.toLowerCase().split(',')[0].trim()));
+      });
+
+      const rawFoto = matchedUser?.metadata?.['Foto'] || matchedUser?.metadata?.['foto'] || matchedGuru?.metadata?.['Foto'] || '';
+      const noWaRaw = matchedGuru?.metadata?.['No WA'] || matchedGuru?.metadata?.['no_wa'] || matchedGuru?.metadata?.['NO WA'] || '';
+
+      let cleanWa = String(noWaRaw || '').replace(/[^0-9]/g, '');
+      if (cleanWa.startsWith('0')) {
+        cleanWa = '62' + cleanWa.substring(1);
+      }
+
+      return {
+        rombel: rombelKey,
+        nama: namaWaliRaw,
+        nip: matchedGuru?.nomor_induk || matchedGuru?.metadata?.['Nomor Induk Pegawai'] || '',
+        noWa: noWaRaw,
+        cleanWa: cleanWa,
+        foto: getThumbUrl(rawFoto),
+        email: matchedGuru?.metadata?.['Email'] || ''
+      };
+    };
+
+    // Mode Multiple / All
+    if (isMultiple) {
+      const targetList = cleanKelas === 'ALL'
+        ? []
+        : cleanKelas.split(',').map((c: string) => c.trim().toUpperCase()).filter(Boolean);
+
+      const waliMap: Record<string, any> = {};
+
+      (rowsKelas || []).forEach((k: any) => {
+        const rombel = (k.rombel || k.metadata?.['ROMBEL'] || '').trim().toUpperCase();
+        if (!rombel) return;
+        if (targetList.length > 0 && !targetList.includes(rombel) && !targetList.includes(rombel.replace(/[^A-Z0-9]/g, ''))) {
+          return;
+        }
+        waliMap[rombel] = extractWaliInfo(k, rombel);
+      });
+
+      return NextResponse.json({
+        success: true,
+        data: waliMap
+      }, {
+        headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' }
+      });
     }
 
-    const waliInfo = {
-      rombel: cleanKelas,
-      nama: namaWaliRaw,
-      nip: matchedGuru?.nomor_induk || matchedGuru?.metadata?.['Nomor Induk Pegawai'] || '',
-      noWa: noWaRaw,
-      cleanWa: cleanWa,
-      foto: getThumbUrl(rawFoto),
-      email: matchedGuru?.metadata?.['Email'] || ''
-    };
+    // Mode Single Class
+    const matchedKelas = (rowsKelas || []).find((k: any) => {
+      const rombel = (k.rombel || k.metadata?.['ROMBEL'] || '').trim().toUpperCase();
+      return rombel === cleanKelas;
+    });
+
+    if (!matchedKelas) {
+      return NextResponse.json({ success: true, data: null, message: 'Kelas tidak ditemukan' });
+    }
+
+    const waliInfo = extractWaliInfo(matchedKelas, cleanKelas);
 
     return NextResponse.json({
       success: true,
