@@ -3,6 +3,73 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import styles from '../../Spmb.module.css';
 
+const BULAN_OPTIONS = [
+  { val: '01', label: 'Januari' },
+  { val: '02', label: 'Februari' },
+  { val: '03', label: 'Maret' },
+  { val: '04', label: 'April' },
+  { val: '05', label: 'Mei' },
+  { val: '06', label: 'Juni' },
+  { val: '07', label: 'Juli' },
+  { val: '08', label: 'Agustus' },
+  { val: '09', label: 'September' },
+  { val: '10', label: 'Oktober' },
+  { val: '11', label: 'November' },
+  { val: '12', label: 'Desember' }
+];
+
+const HARI_OPTIONS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
+const TAHUN_LAHIR_OPTIONS = Array.from({ length: 18 }, (_, i) => String(2022 - i));
+
+const PENDIDIKAN_OPTIONS = [
+  'SD / MI Sederajat',
+  'SMP / MTs Sederajat',
+  'SMA / SMK / MA Sederajat',
+  'D1 / D2 / D3',
+  'D4 / S1',
+  'S2',
+  'S3',
+  'Tidak Bersekolah'
+];
+
+function parseDateToDmy(dateStr: string) {
+  if (!dateStr) return { day: '', month: '', year: '' };
+  const str = dateStr.trim();
+  const isoMatch = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    return {
+      year: isoMatch[1],
+      month: isoMatch[2].padStart(2, '0'),
+      day: isoMatch[3].padStart(2, '0')
+    };
+  }
+  const dmyMatch = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+  if (dmyMatch) {
+    return {
+      day: dmyMatch[1].padStart(2, '0'),
+      month: dmyMatch[2].padStart(2, '0'),
+      year: dmyMatch[3]
+    };
+  }
+  const bulanIndoMap: Record<string, string> = {
+    'januari': '01', 'februari': '02', 'maret': '03', 'april': '04',
+    'mei': '05', 'juni': '06', 'juli': '07', 'agustus': '08',
+    'september': '09', 'oktober': '10', 'november': '11', 'desember': '12'
+  };
+  const textMatch = str.match(/^(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})/);
+  if (textMatch) {
+    const bKey = textMatch[2].toLowerCase();
+    if (bulanIndoMap[bKey]) {
+      return {
+        day: textMatch[1].padStart(2, '0'),
+        month: bulanIndoMap[bKey],
+        year: textMatch[3]
+      };
+    }
+  }
+  return { day: '', month: '', year: '' };
+}
+
 export default function SpmbEditPage() {
   const router = useRouter();
   const params = useParams();
@@ -12,6 +79,11 @@ export default function SpmbEditPage() {
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   const [sekolahRef, setSekolahRef] = useState<{nama: string, alamat: string, npsn?: string}[]>([]);
   const [jalurList, setJalurList] = useState<string[]>(['Inden', 'Reguler', 'Terpadu', 'Afirmasi', 'Prestasi', 'Mandiri']);
+
+  // Date of birth dropdown states
+  const [tglLahirHari, setTglLahirHari] = useState('');
+  const [tglLahirBulan, setTglLahirBulan] = useState('');
+  const [tglLahirTahun, setTglLahirTahun] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -75,11 +147,15 @@ export default function SpmbEditPage() {
           let ttl = meta['Tempat, Tanggal Lahir'] || '';
           let tLahir = '';
           let dLahir = '';
-          if (ttl.includes(', ')) {
-            const parts = ttl.split(', ');
+          if (ttl.includes(',')) {
+            const parts = ttl.split(',').map((s: string) => s.trim());
             tLahir = parts[0];
-            dLahir = parts[1];
+            dLahir = parts.slice(1).join(', ').trim();
           }
+          const parsedD = parseDateToDmy(dLahir);
+          setTglLahirHari(parsedD.day);
+          setTglLahirBulan(parsedD.month);
+          setTglLahirTahun(parsedD.year);
 
           setFormData(prev => ({
             ...prev,
@@ -89,13 +165,15 @@ export default function SpmbEditPage() {
             tempatLahir: tLahir,
             tanggalLahir: dLahir,
             jenisKelamin: meta['Jenis Kelamin'] || 'Laki-laki',
-            agama: meta['Agama'] || 'Islam',
+            agama: 'Islam',
             asalSekolah: meta['Asal Sekolah'] || '',
             npsnSekolahAsal: meta['NPSN SD/MI'] || '',
             alamatSekolahAsal: meta['Alamat Sekolah Asal'] || '',
             namaAyah: meta['Nama Ayah'] || '',
+            pendidikanAyah: meta['Pendidikan Terakhir Ayah'] || meta['Pendidikan Ayah'] || '',
             pekerjaanAyah: meta['Pekerjaan Ayah'] || '',
             namaIbu: meta['Nama Ibu'] || '',
+            pendidikanIbu: meta['Pendidikan Terakhir Ibu'] || meta['Pendidikan Ibu'] || '',
             pekerjaanIbu: meta['Pekerjaan Ibu'] || '',
             nomorWaAyah: meta['Nomor WA Ayah'] || '',
             nomorWaIbu: meta['Nomor WA Ibu'] || '',
@@ -151,8 +229,10 @@ export default function SpmbEditPage() {
     alamatSekolahAsal: '',
     npsnSekolahAsal: '',
     namaAyah: '',
+    pendidikanAyah: '',
     pekerjaanAyah: '',
     namaIbu: '',
+    pendidikanIbu: '',
     pekerjaanIbu: '',
     nomorWaAyah: '',
     nomorWaIbu: '',
@@ -223,10 +303,13 @@ export default function SpmbEditPage() {
       
       if (fileKk) newLinkKk = await uploadToDrive(fileKk, `KK_${safeName}`);
 
-      const tempatTanggalLahir = `${formData.tempatLahir}, ${formData.tanggalLahir}`;
+      const tanggalLahir = (tglLahirHari && tglLahirBulan && tglLahirTahun) ? `${tglLahirTahun}-${tglLahirBulan}-${tglLahirHari}` : formData.tanggalLahir;
+      const tempatTanggalLahir = `${formData.tempatLahir}, ${tanggalLahir}`;
       const dbPayload = {
         ...formData,
+        tanggalLahir,
         tempatTanggalLahir,
+        agama: 'Islam',
         linkKk: newLinkKk
       };
 
@@ -320,8 +403,42 @@ export default function SpmbEditPage() {
               <input type="text" name="tempatLahir" className={styles.input} placeholder="Contoh: Malang" value={formData.tempatLahir} onChange={handleInputChange} required />
             </div>
             <div className={styles.formGroup}>
-              <label className={styles.label}>Tanggal Lahir <span>*</span></label>
-              <input type="date" name="tanggalLahir" className={styles.input} value={formData.tanggalLahir} onChange={handleInputChange} required />
+              <label className={styles.label}>Tanggal Lahir (Hari / Bulan / Tahun) <span>*</span></label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                <select
+                  value={tglLahirHari}
+                  onChange={e => setTglLahirHari(e.target.value)}
+                  className={styles.select}
+                  required
+                >
+                  <option value="">Hari</option>
+                  {HARI_OPTIONS.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+                <select
+                  value={tglLahirBulan}
+                  onChange={e => setTglLahirBulan(e.target.value)}
+                  className={styles.select}
+                  required
+                >
+                  <option value="">Bulan</option>
+                  {BULAN_OPTIONS.map(b => (
+                    <option key={b.val} value={b.val}>{b.label}</option>
+                  ))}
+                </select>
+                <select
+                  value={tglLahirTahun}
+                  onChange={e => setTglLahirTahun(e.target.value)}
+                  className={styles.select}
+                  required
+                >
+                  <option value="">Tahun</option>
+                  {TAHUN_LAHIR_OPTIONS.map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div className={styles.formGroup}>
               <label className={styles.label}>Jenis Kelamin <span>*</span></label>
@@ -332,14 +449,15 @@ export default function SpmbEditPage() {
             </div>
             <div className={styles.formGroup}>
               <label className={styles.label}>Agama <span>*</span></label>
-              <select name="agama" className={styles.select} value={formData.agama} onChange={handleInputChange} required>
-                <option value="Islam">Islam</option>
-                <option value="Kristen">Kristen</option>
-                <option value="Katolik">Katolik</option>
-                <option value="Hindu">Hindu</option>
-                <option value="Buddha">Buddha</option>
-                <option value="Konghucu">Konghucu</option>
-              </select>
+              <input 
+                type="text" 
+                name="agama" 
+                className={styles.input} 
+                value="Islam" 
+                readOnly 
+                style={{ background: '#f8fafc', color: '#0f172a', fontWeight: 600, cursor: 'not-allowed' }}
+                title="Agama calon santri/siswa MTs Almaarif 01 adalah Islam" 
+              />
             </div>
               <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
                 <label className={styles.label}>Jalan / RT / RW (Tempat Tinggal) <span>*</span></label>
@@ -387,32 +505,50 @@ export default function SpmbEditPage() {
           </div>
 
           <div className={styles.sectionTitle}>
-            <i className="fas fa-users"></i> Data Orang Tua
+            <i className="fas fa-users"></i> Data Orang Tua / Wali
           </div>
           <div className={styles.formGrid}>
             <div className={styles.formGroup}>
-              <label className={styles.label}>Nama Ayah <span>*</span></label>
+              <label className={styles.label}>Nama Ayah Kandung <span>*</span></label>
               <input type="text" name="namaAyah" className={styles.input} value={formData.namaAyah} onChange={handleInputChange} required />
             </div>
             <div className={styles.formGroup}>
+              <label className={styles.label}>Pendidikan Terakhir Ayah <span>*</span></label>
+              <select name="pendidikanAyah" className={styles.select} value={formData.pendidikanAyah} onChange={handleInputChange} required>
+                <option value="">-- Pilih Pendidikan Terakhir --</option>
+                {PENDIDIKAN_OPTIONS.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+            <div className={styles.formGroup}>
               <label className={styles.label}>Pekerjaan Ayah <span>*</span></label>
-              <input type="text" name="pekerjaanAyah" className={styles.input} value={formData.pekerjaanAyah} onChange={handleInputChange} required />
+              <input type="text" name="pekerjaanAyah" className={styles.input} placeholder="Contoh: Wiraswasta / Karyawan / PNS" value={formData.pekerjaanAyah} onChange={handleInputChange} required />
             </div>
             <div className={styles.formGroup}>
               <label className={styles.label}>Nomor WA Ayah <span>*</span></label>
               <input type="tel" name="nomorWaAyah" className={styles.input} placeholder="Contoh: 081234567890" value={formData.nomorWaAyah} onChange={handleInputChange} required />
             </div>
             <div className={styles.formGroup}>
-              <label className={styles.label}>Nama Ibu <span>*</span></label>
+              <label className={styles.label}>Nama Ibu Kandung <span>*</span></label>
               <input type="text" name="namaIbu" className={styles.input} value={formData.namaIbu} onChange={handleInputChange} required />
             </div>
             <div className={styles.formGroup}>
-              <label className={styles.label}>Pekerjaan Ibu <span>*</span></label>
-              <input type="text" name="pekerjaanIbu" className={styles.input} value={formData.pekerjaanIbu} onChange={handleInputChange} required />
+              <label className={styles.label}>Pendidikan Terakhir Ibu <span>*</span></label>
+              <select name="pendidikanIbu" className={styles.select} value={formData.pendidikanIbu} onChange={handleInputChange} required>
+                <option value="">-- Pilih Pendidikan Terakhir --</option>
+                {PENDIDIKAN_OPTIONS.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
             </div>
             <div className={styles.formGroup}>
-              <label className={styles.label}>Nomor WA Ibu <span>*</span></label>
-              <input type="tel" name="nomorWaIbu" className={styles.input} placeholder="Contoh: 081234567890" value={formData.nomorWaIbu} onChange={handleInputChange} required />
+              <label className={styles.label}>Pekerjaan Ibu <span>*</span></label>
+              <input type="text" name="pekerjaanIbu" className={styles.input} placeholder="Contoh: Ibu Rumah Tangga / Guru" value={formData.pekerjaanIbu} onChange={handleInputChange} required />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Nomor WA Ibu</label>
+              <input type="tel" name="nomorWaIbu" className={styles.input} placeholder="Contoh: 081234567890 (Opsional)" value={formData.nomorWaIbu} onChange={handleInputChange} />
             </div>
           </div>
 

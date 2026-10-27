@@ -6,6 +6,35 @@ import Swal from 'sweetalert2';
 import styles from './Spmb.module.css';
 import ModalAturJalur, { JalurItem } from './components/ModalAturJalur';
 
+const BULAN_OPTIONS = [
+  { val: '01', label: 'Januari' },
+  { val: '02', label: 'Februari' },
+  { val: '03', label: 'Maret' },
+  { val: '04', label: 'April' },
+  { val: '05', label: 'Mei' },
+  { val: '06', label: 'Juni' },
+  { val: '07', label: 'Juli' },
+  { val: '08', label: 'Agustus' },
+  { val: '09', label: 'September' },
+  { val: '10', label: 'Oktober' },
+  { val: '11', label: 'November' },
+  { val: '12', label: 'Desember' }
+];
+
+const HARI_OPTIONS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0'));
+const TAHUN_LAHIR_OPTIONS = Array.from({ length: 18 }, (_, i) => String(2022 - i));
+
+const PENDIDIKAN_OPTIONS = [
+  'SD / MI Sederajat',
+  'SMP / MTs Sederajat',
+  'SMA / SMK / MA Sederajat',
+  'D1 / D2 / D3',
+  'D4 / S1',
+  'S2',
+  'S3',
+  'Tidak Bersekolah'
+];
+
 export default function SpmbPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -101,6 +130,11 @@ export default function SpmbPage() {
     spmbYear = `${currentYear}/${currentYear + 1}`;
   }
 
+  // Date of Birth Dropdown States
+  const [tglLahirHari, setTglLahirHari] = useState('');
+  const [tglLahirBulan, setTglLahirBulan] = useState('');
+  const [tglLahirTahun, setTglLahirTahun] = useState('');
+
   // Form States
   const [formData, setFormData] = useState({
     jalurPendaftaran: '',
@@ -114,8 +148,10 @@ export default function SpmbPage() {
     alamatSekolahAsal: '',
     npsnSekolahAsal: '',
     namaAyah: '',
+    pendidikanAyah: '',
     pekerjaanAyah: '',
     namaIbu: '',
+    pendidikanIbu: '',
     pekerjaanIbu: '',
     nomorWaAyah: '',
     nomorWaIbu: '',
@@ -203,6 +239,11 @@ export default function SpmbPage() {
       return;
     }
 
+    if (!tglLahirHari || !tglLahirBulan || !tglLahirTahun) {
+      showToast('Mohon lengkapi Hari, Bulan, dan Tahun Tanggal Lahir!', 'error');
+      return;
+    }
+
     setLoading(true);
     try {
       // Format nama untuk file: hilangkan spasi ganda, ganti spasi dengan underscore
@@ -212,7 +253,8 @@ export default function SpmbPage() {
       const linkKk = await uploadToDrive(fileKk, `KK_${safeName}`);
 
       // 3. Save to Database
-      const tempatTanggalLahir = `${formData.tempatLahir}, ${formData.tanggalLahir}`;
+      const tanggalLahir = (tglLahirHari && tglLahirBulan && tglLahirTahun) ? `${tglLahirTahun}-${tglLahirBulan}-${tglLahirHari}` : formData.tanggalLahir;
+      const tempatTanggalLahir = `${formData.tempatLahir}, ${tanggalLahir}`;
 
       const dbPayload = {
         jalurPendaftaran: formData.jalurPendaftaran,
@@ -220,13 +262,15 @@ export default function SpmbPage() {
         nisn: formData.nisn,
         tempatTanggalLahir: tempatTanggalLahir,
         jenisKelamin: formData.jenisKelamin,
-        agama: formData.agama,
+        agama: 'Islam',
         asalSekolah: formData.asalSekolah,
         npsnSekolahAsal: formData.npsnSekolahAsal,
         alamatSekolahAsal: formData.alamatSekolahAsal,
         namaAyah: formData.namaAyah,
+        pendidikanAyah: formData.pendidikanAyah,
         pekerjaanAyah: formData.pekerjaanAyah,
         namaIbu: formData.namaIbu,
+        pendidikanIbu: formData.pendidikanIbu,
         pekerjaanIbu: formData.pekerjaanIbu,
         nomorWaAyah: formData.nomorWaAyah,
         nomorWaIbu: formData.nomorWaIbu,
@@ -321,8 +365,10 @@ export default function SpmbPage() {
           alamatSekolahAsal: '',
           npsnSekolahAsal: '',
           namaAyah: '',
+          pendidikanAyah: '',
           pekerjaanAyah: '',
           namaIbu: '',
+          pendidikanIbu: '',
           pekerjaanIbu: '',
           nomorWaAyah: '',
           nomorWaIbu: '',
@@ -332,6 +378,9 @@ export default function SpmbPage() {
           kabupaten: '',
           prestasi: ''
         });
+        setTglLahirHari('');
+        setTglLahirBulan('');
+        setTglLahirTahun('');
         setFileKk(null);
         if (fileKkRef.current) fileKkRef.current.value = '';
 
@@ -932,11 +981,45 @@ export default function SpmbPage() {
           <div className={styles.formGrid}>
             <div className={styles.formGroup}>
               <label className={styles.label}>Tempat Lahir <span>*</span></label>
-              <input type="text" name="tempatLahir" className={styles.input} value={formData.tempatLahir} onChange={handleInputChange} required />
+              <input type="text" name="tempatLahir" className={styles.input} placeholder="Kota/Kabupaten Lahir" value={formData.tempatLahir} onChange={handleInputChange} required />
             </div>
             <div className={styles.formGroup}>
-              <label className={styles.label}>Tanggal Lahir <span>*</span></label>
-              <input type="date" name="tanggalLahir" className={styles.input} value={formData.tanggalLahir} onChange={handleInputChange} required />
+              <label className={styles.label}>Tanggal Lahir (Hari / Bulan / Tahun) <span>*</span></label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                <select
+                  value={tglLahirHari}
+                  onChange={e => setTglLahirHari(e.target.value)}
+                  className={styles.select}
+                  required
+                >
+                  <option value="">Hari</option>
+                  {HARI_OPTIONS.map(d => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+                <select
+                  value={tglLahirBulan}
+                  onChange={e => setTglLahirBulan(e.target.value)}
+                  className={styles.select}
+                  required
+                >
+                  <option value="">Bulan</option>
+                  {BULAN_OPTIONS.map(b => (
+                    <option key={b.val} value={b.val}>{b.label}</option>
+                  ))}
+                </select>
+                <select
+                  value={tglLahirTahun}
+                  onChange={e => setTglLahirTahun(e.target.value)}
+                  className={styles.select}
+                  required
+                >
+                  <option value="">Tahun</option>
+                  {TAHUN_LAHIR_OPTIONS.map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -950,14 +1033,15 @@ export default function SpmbPage() {
             </div>
             <div className={styles.formGroup}>
               <label className={styles.label}>Agama <span>*</span></label>
-              <select name="agama" className={styles.select} value={formData.agama} onChange={handleInputChange} required>
-                <option value="Islam">Islam</option>
-                <option value="Kristen">Kristen</option>
-                <option value="Katolik">Katolik</option>
-                <option value="Hindu">Hindu</option>
-                <option value="Buddha">Buddha</option>
-                <option value="Khonghucu">Khonghucu</option>
-              </select>
+              <input 
+                type="text" 
+                name="agama" 
+                className={styles.input} 
+                value="Islam" 
+                readOnly 
+                style={{ background: '#f8fafc', color: '#0f172a', fontWeight: 600, cursor: 'not-allowed' }}
+                title="Agama calon santri/siswa MTs Almaarif 01 adalah Islam" 
+              />
             </div>
           </div>
 
@@ -1009,14 +1093,31 @@ export default function SpmbPage() {
           <div className={styles.sectionTitle}>
             <i className="fas fa-users"></i> Data Orang Tua / Wali
           </div>
+
           <div className={styles.formGrid}>
             <div className={styles.formGroup}>
               <label className={styles.label}>Nama Ayah Kandung <span>*</span></label>
               <input type="text" name="namaAyah" className={styles.input} value={formData.namaAyah} onChange={handleInputChange} required />
             </div>
             <div className={styles.formGroup}>
+              <label className={styles.label}>Pendidikan Terakhir Ayah <span>*</span></label>
+              <select name="pendidikanAyah" className={styles.select} value={formData.pendidikanAyah} onChange={handleInputChange} required>
+                <option value="">-- Pilih Pendidikan Terakhir --</option>
+                {PENDIDIKAN_OPTIONS.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className={styles.formGrid}>
+            <div className={styles.formGroup}>
               <label className={styles.label}>Pekerjaan Ayah <span>*</span></label>
-              <input type="text" name="pekerjaanAyah" className={styles.input} value={formData.pekerjaanAyah} onChange={handleInputChange} required />
+              <input type="text" name="pekerjaanAyah" className={styles.input} placeholder="Contoh: Wiraswasta / Karyawan / PNS" value={formData.pekerjaanAyah} onChange={handleInputChange} required />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>Nomor WhatsApp Ayah <span>*</span></label>
+              <input type="tel" name="nomorWaAyah" className={styles.input} placeholder="08xxxxxxxxxx" value={formData.nomorWaAyah} onChange={handleInputChange} required />
             </div>
           </div>
 
@@ -1026,19 +1127,24 @@ export default function SpmbPage() {
               <input type="text" name="namaIbu" className={styles.input} value={formData.namaIbu} onChange={handleInputChange} required />
             </div>
             <div className={styles.formGroup}>
-              <label className={styles.label}>Pekerjaan Ibu <span>*</span></label>
-              <input type="text" name="pekerjaanIbu" className={styles.input} value={formData.pekerjaanIbu} onChange={handleInputChange} required />
+              <label className={styles.label}>Pendidikan Terakhir Ibu <span>*</span></label>
+              <select name="pendidikanIbu" className={styles.select} value={formData.pendidikanIbu} onChange={handleInputChange} required>
+                <option value="">-- Pilih Pendidikan Terakhir --</option>
+                {PENDIDIKAN_OPTIONS.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
             </div>
           </div>
 
           <div className={styles.formGrid}>
             <div className={styles.formGroup}>
-              <label className={styles.label}>Nomor WhatsApp Ayah <span>*</span></label>
-              <input type="tel" name="nomorWaAyah" className={styles.input} placeholder="08xxxxxxxxxx" value={formData.nomorWaAyah} onChange={handleInputChange} required />
+              <label className={styles.label}>Pekerjaan Ibu <span>*</span></label>
+              <input type="text" name="pekerjaanIbu" className={styles.input} placeholder="Contoh: Ibu Rumah Tangga / Guru / Karyawan" value={formData.pekerjaanIbu} onChange={handleInputChange} required />
             </div>
             <div className={styles.formGroup}>
               <label className={styles.label}>Nomor WhatsApp Ibu</label>
-              <input type="tel" name="nomorWaIbu" className={styles.input} placeholder="08xxxxxxxxxx" value={formData.nomorWaIbu} onChange={handleInputChange} />
+              <input type="tel" name="nomorWaIbu" className={styles.input} placeholder="08xxxxxxxxxx (Opsional)" value={formData.nomorWaIbu} onChange={handleInputChange} />
             </div>
           </div>
 
