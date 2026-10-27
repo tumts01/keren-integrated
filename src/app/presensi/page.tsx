@@ -961,6 +961,262 @@ export default function PresensiPage() {
     finally { setRekapJurnalLoading(false); }
   };
 
+  const handleExportRincianJurnalModal = async () => {
+    const defaultKelas = filterKelasRekap || '';
+    const now = new Date();
+    const defaultMonth = (filterFrom ? filterFrom.slice(0, 7) : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
+
+    const classSource = (kelasListRekap.length > 0 ? kelasListRekap : kelasList.length > 0 ? kelasList : ['7A', '7B', '7C', '7D', '7E', '7F', '7G', '7H', '7I', '8A', '8B', '8C', '8D', '8E', '8F', '8G', '8H', '8I', '9A', '9B', '9C', '9D', '9E', '9F', '9G', '9H']).slice().sort();
+
+    const checkboxesHtml = classSource.map((k: string) => {
+      const isChecked = defaultKelas ? (k === defaultKelas) : true;
+      return `
+        <label style="display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: #ffffff; border: 1.5px solid #e2e8f0; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 700; color: #1e293b; user-select: none;">
+          <input type="checkbox" class="swal-jurnal-cb" value="${k}" ${isChecked ? 'checked' : ''} style="cursor: pointer; width: 15px; height: 15px; accent-color: #0284c7;" />
+          <span>${k}</span>
+        </label>
+      `;
+    }).join('');
+
+    const { value: formValues, isDenied } = await Swal.fire({
+      title: 'Export Rincian Jurnal Mengajar',
+      width: 590,
+      html: `
+        <div style="text-align: left; font-size: 0.88rem;">
+          <p style="margin: 0 0 12px; color: #64748b; font-size: 0.82rem; line-height: 1.4;">
+            Pilih bulan dan kelas untuk mengunduh <strong>rincian jadwal KBM harian</strong> (pada jam sekian diajar oleh siapa dan materinya apa). Tersedia format <strong>Excel (.xlsx)</strong> atau <strong>Cetak PDF Landscape</strong>.
+          </p>
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-weight: 700; margin-bottom: 4px; color: #334155;">Pilih Bulan & Tahun:</label>
+            <input id="swal-jurnal-bulan" type="month" value="${defaultMonth}" style="width: 100%; padding: 8px 10px; border-radius: 8px; border: 1.5px solid #0284c7; font-size: 0.9rem; box-sizing: border-box; background: #f0f9ff; color: #0369a1; font-weight: 700;" />
+          </div>
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label style="font-weight: 700; color: #334155;">Pilih Kelas (<span id="swal-jurnal-count">0</span> terpilih):</label>
+              <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                <button type="button" id="swal-j-btn-all" style="background: #0284c7; color: white; border: none; padding: 2px 7px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Semua</button>
+                <button type="button" id="swal-j-btn-7" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Kls 7</button>
+                <button type="button" id="swal-j-btn-8" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Kls 8</button>
+                <button type="button" id="swal-j-btn-9" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Kls 9</button>
+                <button type="button" id="swal-j-btn-clear" style="background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Reset</button>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; max-height: 190px; overflow-y: auto; padding: 8px; border: 1.5px solid #cbd5e1; border-radius: 8px; background: #f8fafc;">
+              ${checkboxesHtml}
+            </div>
+          </div>
+        </div>
+      `,
+      didOpen: () => {
+        const updateCount = () => {
+          const checked = document.querySelectorAll('.swal-jurnal-cb:checked');
+          const counter = document.getElementById('swal-jurnal-count');
+          if (counter) counter.innerText = String(checked.length);
+        };
+        updateCount();
+
+        document.querySelectorAll('.swal-jurnal-cb').forEach(cb => {
+          cb.addEventListener('change', updateCount);
+        });
+
+        document.getElementById('swal-j-btn-all')?.addEventListener('click', () => {
+          document.querySelectorAll('.swal-jurnal-cb').forEach(cb => ((cb as HTMLInputElement).checked = true));
+          updateCount();
+        });
+
+        document.getElementById('swal-j-btn-clear')?.addEventListener('click', () => {
+          document.querySelectorAll('.swal-jurnal-cb').forEach(cb => ((cb as HTMLInputElement).checked = false));
+          updateCount();
+        });
+
+        document.getElementById('swal-j-btn-7')?.addEventListener('click', () => {
+          document.querySelectorAll('.swal-jurnal-cb').forEach(cb => {
+            const input = cb as HTMLInputElement;
+            if (input.value.startsWith('7')) input.checked = true;
+          });
+          updateCount();
+        });
+
+        document.getElementById('swal-j-btn-8')?.addEventListener('click', () => {
+          document.querySelectorAll('.swal-jurnal-cb').forEach(cb => {
+            const input = cb as HTMLInputElement;
+            if (input.value.startsWith('8')) input.checked = true;
+          });
+          updateCount();
+        });
+
+        document.getElementById('swal-j-btn-9')?.addEventListener('click', () => {
+          document.querySelectorAll('.swal-jurnal-cb').forEach(cb => {
+            const input = cb as HTMLInputElement;
+            if (input.value.startsWith('9')) input.checked = true;
+          });
+          updateCount();
+        });
+      },
+      showCancelButton: true,
+      showDenyButton: true,
+      confirmButtonColor: '#16a34a',
+      denyButtonColor: '#dc2626',
+      confirmButtonText: '<i class="fas fa-file-excel" style="margin-right: 6px;"></i> Export Excel',
+      denyButtonText: '<i class="fas fa-file-pdf" style="margin-right: 6px;"></i> Cetak PDF',
+      cancelButtonText: 'Batal',
+      preConfirm: () => {
+        const checked = Array.from(document.querySelectorAll('.swal-jurnal-cb:checked')) as HTMLInputElement[];
+        const b = (document.getElementById('swal-jurnal-bulan') as HTMLInputElement)?.value;
+        if (checked.length === 0) {
+          Swal.showValidationMessage('Mohon centang minimal 1 kelas!');
+          return false;
+        }
+        if (!b) {
+          Swal.showValidationMessage('Mohon tentukan Bulan & Tahun!');
+          return false;
+        }
+        const classes = checked.map(cb => cb.value).join(',');
+        return { kelas: classes, bulan: b, action: 'excel' };
+      },
+      preDeny: () => {
+        const checked = Array.from(document.querySelectorAll('.swal-jurnal-cb:checked')) as HTMLInputElement[];
+        const b = (document.getElementById('swal-jurnal-bulan') as HTMLInputElement)?.value;
+        if (checked.length === 0) {
+          Swal.showValidationMessage('Mohon centang minimal 1 kelas!');
+          return false;
+        }
+        if (!b) {
+          Swal.showValidationMessage('Mohon tentukan Bulan & Tahun!');
+          return false;
+        }
+        const classes = checked.map(cb => cb.value).join(',');
+        return { kelas: classes, bulan: b, action: 'pdf' };
+      }
+    });
+
+    const actionData = isDenied ? (formValues || null) : formValues;
+    if (!actionData) return;
+
+    const { kelas: targetKelas, bulan: targetBulan, action } = actionData;
+
+    if (action === 'pdf') {
+      window.open(`/presensi/cetak-jurnal?kelas=${encodeURIComponent(targetKelas)}&bulan=${encodeURIComponent(targetBulan)}`, '_blank');
+      return;
+    }
+
+    if (action === 'excel') {
+      Swal.fire({
+        title: 'Menyiapkan Data Excel...',
+        html: 'Mengambil rincian jurnal mengajar kelas terpilih...',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      try {
+        const parts = targetBulan.split('-');
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10);
+        const dCount = new Date(y, m, 0).getDate();
+        const startDate = `${y}-${String(m).padStart(2, '0')}-01`;
+        const endDate = `${y}-${String(m).padStart(2, '0')}-${String(dCount).padStart(2, '0')}`;
+
+        const res = await fetch(`/api/jurnal?from=${startDate}&to=${endDate}`);
+        const json = await res.json();
+        if (!json.success || !Array.isArray(json.data)) {
+          Swal.fire('Gagal', 'Tidak dapat mengambil data jurnal.', 'error');
+          return;
+        }
+
+        const chosenClasses = targetKelas.split(',').map((c: string) => c.trim().toUpperCase());
+        const filteredRecords = json.data
+          .filter((r: any) => {
+            const rk = (r.kelas || '').trim().toUpperCase();
+            return chosenClasses.includes(rk) || chosenClasses.includes(rk.replace(/[^A-Z0-9]/g, ''));
+          })
+          .sort((a: any, b: any) => {
+            if (a.kelas !== b.kelas) return a.kelas.localeCompare(b.kelas);
+            if (a.tanggal !== b.tanggal) return a.tanggal.localeCompare(b.tanggal);
+            const jamA = parseInt((a.jamKe || '').split(',')[0], 10) || 0;
+            const jamB = parseInt((b.jamKe || '').split(',')[0], 10) || 0;
+            return jamA - jamB;
+          });
+
+        if (filteredRecords.length === 0) {
+          Swal.fire('Info', `Tidak ada data jurnal pada kelas terpilih untuk bulan ${targetBulan}.`, 'info');
+          return;
+        }
+
+        const monthNames = [
+          'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+          'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        ];
+        const mName = monthNames[m - 1] || targetBulan;
+        const wb = XLSX.utils.book_new();
+
+        const buildSheetAoa = (items: any[], titleKelas?: string) => {
+          const aoa: any[][] = [
+            ['RINCIAN JURNAL MENGAJAR HARIAN'],
+            ['MTs ALMAARIF 01 SINGOSARI'],
+            [titleKelas ? `Kelas: ${titleKelas}  |  Periode: ${mName} ${y}` : `Periode: ${mName} ${y}`],
+            [],
+            ['No', 'Kelas', 'Hari', 'Tanggal', 'Jam Ke', 'Mata Pelajaran', 'Guru Pengajar', 'Materi Pembahasan']
+          ];
+
+          items.forEach((r, idx) => {
+            let hari = '-';
+            let tglFmt = r.tanggal || '-';
+            if (r.tanggal) {
+              try {
+                const d = new Date(r.tanggal);
+                hari = d.toLocaleDateString('id-ID', { weekday: 'long' });
+                tglFmt = d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+              } catch {}
+            }
+            aoa.push([
+              idx + 1,
+              r.kelas || '-',
+              hari,
+              tglFmt,
+              r.jamKe ? `Jam ${r.jamKe}` : '-',
+              r.mapel || '-',
+              r.namaGuru || '-',
+              r.materi || '-'
+            ]);
+          });
+
+          const ws = XLSX.utils.aoa_to_sheet(aoa);
+          ws['!cols'] = [
+            { wch: 5 }, { wch: 8 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 25 }, { wch: 32 }, { wch: 65 }
+          ];
+          return ws;
+        };
+
+        const masterWs = buildSheetAoa(filteredRecords);
+        XLSX.utils.book_append_sheet(wb, masterWs, 'Semua Kelas');
+
+        if (chosenClasses.length > 1) {
+          chosenClasses.forEach((cls: string) => {
+            const clsItems = filteredRecords.filter((r: any) => {
+              const rk = (r.kelas || '').trim().toUpperCase();
+              return rk === cls || rk.replace(/[^A-Z0-9]/g, '') === cls.replace(/[^A-Z0-9]/g, '');
+            });
+            if (clsItems.length > 0) {
+              const ws = buildSheetAoa(clsItems, cls);
+              XLSX.utils.book_append_sheet(wb, ws, cls.slice(0, 31));
+            }
+          });
+        }
+
+        const fileName = chosenClasses.length === 1
+          ? `Rincian_Jurnal_${chosenClasses[0]}_${targetBulan}.xlsx`
+          : `Rincian_Jurnal_${chosenClasses.length}_Kelas_${targetBulan}.xlsx`;
+
+        XLSX.writeFile(wb, fileName);
+        Swal.close();
+      } catch (err: any) {
+        Swal.fire('Error', 'Gagal membuat file Excel: ' + err.message, 'error');
+      }
+    }
+  };
+
   const handleExportExcel = (filtered: any[]) => {
     // Hitung jam per entri: "9,10" = 2 jam, "1,2,3" = 3 jam
     const countJam = (jamKe: string) => {
@@ -2949,6 +3205,13 @@ export default function PresensiPage() {
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button
+                  onClick={handleExportRincianJurnalModal}
+                  style={{ background: '#0284c7', border: 'none', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, boxShadow: '0 2px 6px rgba(2,132,199,0.25)' }}
+                  title="Export rincian jurnal mengajar per kelas (pada jam sekian diajar oleh siapa dan materinya apa)"
+                >
+                  <i className="fas fa-file-export"></i> Export Rincian Jurnal
+                </button>
+                <button
                   onClick={fetchRekapJurnal}
                   style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}
                 >
@@ -3072,6 +3335,13 @@ export default function PresensiPage() {
                           style={{ background: '#ecfdf5', border: '1px solid #10b981', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: '#059669', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
                         >
                           <i className="fas fa-file-excel"></i> Export Proksus
+                        </button>
+                        <button
+                          onClick={handleExportRincianJurnalModal}
+                          style={{ background: '#0284c7', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+                          title="Export rincian jurnal mengajar per kelas (pada jam sekian diajar oleh siapa dan materinya apa)"
+                        >
+                          <i className="fas fa-file-export"></i> Export Rincian Jurnal
                         </button>
                         <button
                           onClick={() => handleExportExcel(filtered)}
