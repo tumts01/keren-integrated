@@ -7,6 +7,7 @@ import styles from './Rekap.module.css';
 import ModalAturJalur from '../components/ModalAturJalur';
 import ModalPengumumanSpmb from '../components/ModalPengumumanSpmb';
 import ModalDaftarUlang from '../components/ModalDaftarUlang';
+import MonitoringSpmb, { getApplicantLocation } from '../components/MonitoringSpmb';
 import LoadingScreen from '@/components/LoadingScreen';
 
 export default function RekapSpmb() {
@@ -36,6 +37,8 @@ export default function RekapSpmb() {
   const [filterKelulusan, setFilterKelulusan] = useState('semua');
   const [filterJadwal, setFilterJadwal] = useState('semua');
   const [filterDaftarUlang, setFilterDaftarUlang] = useState('semua');
+  const [filterSekolah, setFilterSekolah] = useState('');
+  const [filterWilayah, setFilterWilayah] = useState('');
   const [sortOrder, setSortOrder] = useState<'terbaru' | 'terlama' | 'asc' | 'desc'>('terbaru');
 
   // Helper parsing timestamp SPMB
@@ -130,6 +133,18 @@ export default function RekapSpmb() {
         if (filterDaftarUlang === 'belum_bayar' && st !== 'belum_bayar') return false;
       }
 
+      // Filter Sekolah Asal dari Pemantauan
+      if (filterSekolah) {
+        const sNorm = (item.asalSekolah || '').trim().toUpperCase();
+        if (sNorm !== filterSekolah.trim().toUpperCase()) return false;
+      }
+
+      // Filter Wilayah dari Pemantauan
+      if (filterWilayah) {
+        const loc = getApplicantLocation(item.alamatLengkap || '', item.alamatSekolahAsal || '');
+        if (loc !== filterWilayah) return false;
+      }
+
       return true;
     })
     .sort((a, b) => {
@@ -159,7 +174,7 @@ export default function RekapSpmb() {
   // Reset to page 1 when any filter or sort changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterJalur, filterVerifikasiKk, filterVerifikasiRapor, filterKelulusan, filterJadwal, filterDaftarUlang, sortOrder]);
+  }, [searchTerm, filterJalur, filterVerifikasiKk, filterVerifikasiRapor, filterKelulusan, filterJadwal, filterDaftarUlang, filterSekolah, filterWilayah, sortOrder]);
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
@@ -197,7 +212,35 @@ export default function RekapSpmb() {
     setFilterKelulusan('semua');
     setFilterJadwal('semua');
     setFilterDaftarUlang('semua');
+    setFilterSekolah('');
+    setFilterWilayah('');
     setSortOrder('terbaru');
+    setCurrentPage(1);
+  };
+
+  const handleSelectSchoolFilter = (schoolName: string) => {
+    setFilterSekolah(schoolName);
+    setFilterWilayah('');
+    setCurrentPage(1);
+    if (typeof window !== 'undefined') {
+      const el = document.getElementById('tabel-pendaftar-spmb');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleSelectLocationFilter = (locName: string) => {
+    setFilterWilayah(locName);
+    setFilterSekolah('');
+    setCurrentPage(1);
+    if (typeof window !== 'undefined') {
+      const el = document.getElementById('tabel-pendaftar-spmb');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const handleClearMonitoringFilters = () => {
+    setFilterSekolah('');
+    setFilterWilayah('');
     setCurrentPage(1);
   };
 
@@ -217,7 +260,7 @@ export default function RekapSpmb() {
     return pages;
   };
 
-  const isFiltered = searchTerm.trim() !== '' || filterJalur !== 'semua' || filterVerifikasiKk !== 'semua' || filterVerifikasiRapor !== 'semua' || filterKelulusan !== 'semua' || filterJadwal !== 'semua' || filterDaftarUlang !== 'semua' || sortOrder !== 'terbaru';
+  const isFiltered = searchTerm.trim() !== '' || filterJalur !== 'semua' || filterVerifikasiKk !== 'semua' || filterVerifikasiRapor !== 'semua' || filterKelulusan !== 'semua' || filterJadwal !== 'semua' || filterDaftarUlang !== 'semua' || filterSekolah !== '' || filterWilayah !== '' || sortOrder !== 'terbaru';
 
   const allJalurOptions = Array.from(new Set(data.map(d => d.jalurPendaftaran).filter(Boolean)));
   if (!allJalurOptions.includes('Reguler')) allJalurOptions.push('Reguler');
@@ -1038,8 +1081,73 @@ export default function RekapSpmb() {
         )}
       </div>
 
+      {/* Panel Pemantauan & Analitik Data Input SPMB */}
+      {!loading && !error && data.length > 0 && (
+        <MonitoringSpmb
+          data={data}
+          onSelectSchoolFilter={handleSelectSchoolFilter}
+          onSelectLocationFilter={handleSelectLocationFilter}
+          activeSchoolFilter={filterSekolah}
+          activeLocationFilter={filterWilayah}
+          onClearFilters={handleClearMonitoringFilters}
+        />
+      )}
+
+      {/* Banner Filter Aktif (Sekolah / Wilayah) */}
+      {(filterSekolah || filterWilayah) && (
+        <div style={{
+          background: '#ecfdf5',
+          border: '1.5px solid #10b981',
+          borderRadius: '14px',
+          padding: '14px 20px',
+          marginBottom: '20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 12,
+          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.12)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, color: '#065f46', fontSize: '0.92rem', fontWeight: 600 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#d1fae5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669', fontSize: '1rem' }}>
+              <i className={filterSekolah ? "fas fa-school" : "fas fa-map-marker-alt"}></i>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#047857' }}>
+                Filter Pemantauan Aktif:
+              </div>
+              <div style={{ fontSize: '1rem', fontWeight: 800, color: '#064e3b' }}>
+                {filterSekolah && <>{filterSekolah} <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#047857' }}>({filteredData.length} siswa ditemukan)</span></>}
+                {filterWilayah && <>{filterWilayah} <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#047857' }}>({filteredData.length} siswa ditemukan)</span></>}
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleClearMonitoringFilters}
+            style={{
+              background: '#dc2626',
+              color: 'white',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '10px',
+              fontSize: '0.84rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              boxShadow: '0 2px 6px rgba(220, 38, 38, 0.25)',
+              transition: 'all 0.2s'
+            }}
+          >
+            <i className="fas fa-times"></i> Hapus Filter &amp; Tampilkan Semua
+          </button>
+        </div>
+      )}
+
       {/* Filter & Pencarian Bar */}
-      <div style={{
+      <div id="tabel-pendaftar-spmb" style={{
         background: 'white',
         borderRadius: '16px',
         padding: '18px 20px',

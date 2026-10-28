@@ -1,0 +1,640 @@
+.wrapper {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e2e8f0;
+  margin-bottom: 24px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+/* HEADER BAR */
+.headerBar {
+  padding: 16px 22px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.iconCircle {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  box-shadow: 0 4px 10px rgba(5, 150, 105, 0.25);
+}
+
+.headerTitle {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.liveBadge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #dcfce7;
+  color: #15803d;
+  padding: 3px 8px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.liveDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #16a34a;
+  animation: pulse 1.8s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
+  70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+}
+
+.headerSubtitle {
+  font-size: 0.82rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btnPrintRekap {
+  background: white;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.btnPrintRekap:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.btnToggleCollapse {
+  background: transparent;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.btnToggleCollapse:hover {
+  background: white;
+  color: #0f172a;
+}
+
+/* BODY */
+.bodyContent {
+  padding: 20px 22px;
+}
+
+/* TOP METRICS GRID */
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.metricCard {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+
+.metricCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+}
+
+.metricIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.metricInfo {
+  flex: 1;
+}
+
+.metricLabel {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748b;
+}
+
+.metricValue {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+  margin: 4px 0 2px;
+}
+
+.metricSub {
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+/* TABS NAVIGATION */
+.tabNav {
+  display: flex;
+  gap: 8px;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.tabItem {
+  background: none;
+  border: none;
+  padding: 10px 16px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px 8px 0 0;
+  position: relative;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.tabItem:hover {
+  color: #0f172a;
+  background: #f8fafc;
+}
+
+.tabActive {
+  color: #059669;
+  font-weight: 700;
+}
+
+.tabActive::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #059669;
+  border-radius: 3px 3px 0 0;
+}
+
+/* TAB CONTENT: SEKOLAH */
+.schoolControls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.schoolSearch {
+  flex: 1 1 240px;
+  position: relative;
+}
+
+.schoolSearch input {
+  width: 100%;
+  padding: 8px 12px 8px 34px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.schoolSearch input:focus {
+  border-color: #059669;
+  box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.15);
+}
+
+.schoolSearchIcon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.schoolFilterPills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.filterPill {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filterPill:hover {
+  background: #e2e8f0;
+}
+
+.filterPillActive {
+  background: #059669;
+  border-color: #059669;
+  color: white;
+}
+
+.sortSelect {
+  padding: 7px 10px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.82rem;
+  color: #334155;
+  outline: none;
+  background: white;
+}
+
+/* SCHOOLS GRID */
+.schoolsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.schoolCard {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.schoolCard:hover {
+  background: white;
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.schoolCardActive {
+  background: #ecfdf5 !important;
+  border-color: #10b981 !important;
+}
+
+.schoolCardTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.schoolRankName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.schoolRank {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.rankTop1 { background: #fef3c7; color: #b45309; }
+.rankTop2 { background: #f1f5f9; color: #475569; font-weight: 800; }
+.rankTop3 { background: #ffedd5; color: #c2410c; }
+
+.schoolName {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.3;
+}
+
+.schoolTypeBadge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.typeMi { background: #dcfce7; color: #15803d; }
+.typeSd { background: #e0f2fe; color: #0369a1; }
+.typeOther { background: #f1f5f9; color: #475569; }
+
+.schoolCountBadge {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #059669;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1;
+}
+
+.schoolCountLabel {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.progressBarContainer {
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+
+.progressBarFill {
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+  transition: width 0.5s ease;
+}
+
+.schoolCardFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  font-size: 0.76rem;
+  color: #64748b;
+}
+
+.genderSummary {
+  display: flex;
+  gap: 8px;
+}
+
+.btnSchoolAction {
+  background: white;
+  border: 1px solid #cbd5e1;
+  color: #059669;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btnSchoolAction:hover {
+  background: #059669;
+  color: white;
+  border-color: #059669;
+}
+
+/* EXPANDED STUDENT LIST */
+.studentListDrawer {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed #cbd5e1;
+  font-size: 0.78rem;
+}
+
+.studentListItem {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  color: #334155;
+}
+
+/* REGION TAB */
+.regionsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.regionCard {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  transition: all 0.2s;
+}
+
+.regionCard:hover {
+  background: white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.regionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.regionName {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.regionCount {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #2563eb;
+}
+
+/* JALUR & GENDER TAB */
+.twoColGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+}
+
+.subCard {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.subCardTitle {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.jalurItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.jalurItemHeader {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* TIMELINE TAB */
+.timelineGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.monthCard {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+}
+
+.monthName {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.monthCount {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #059669;
+  margin: 6px 0;
+}
+
+/* PRINT MODAL REKAP SEKOLAH */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(4px);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modalBox {
+  background: white;
+  width: 100%;
+  max-width: 860px;
+  max-height: 92vh;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+}
+
+.modalHeader {
+  padding: 14px 20px;
+  background: #1e293b;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modalBody {
+  padding: 24px;
+  overflow-y: auto;
+  font-family: 'Times New Roman', Times, serif;
+}
+
+/* PRINT STYLES FOR SCHOOL REPORT */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .printableReport, .printableReport * {
+    visibility: visible;
+  }
+  .printableReport {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 10mm 15mm;
+    background: white;
+  }
+}
