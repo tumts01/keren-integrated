@@ -14,9 +14,14 @@ export default function PemantauanSpmbPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    const userStr = localStorage.getItem('keren_user_data');
+    if (!userStr) {
+      router.replace('/');
+      return;
+    }
     try {
-      const sessionStr = localStorage.getItem('user') || sessionStorage.getItem('user');
-      if (sessionStr) {
+      const user = JSON.parse(userStr);
+      if (user) {
         setIsAuthorized(true);
       } else {
         router.replace('/');
