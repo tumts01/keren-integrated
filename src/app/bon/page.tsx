@@ -87,6 +87,7 @@ function PrintModal({ url, onClose }: { url: string; onClose: () => void }) {
   };
 
   const iframeSrc = useMemo(() => {
+    if (url.includes('cetak-nota')) return url;
     const sep = url.includes('?') ? '&' : '?';
     return `${url}${sep}ttd=${ttdMode}`;
   }, [url, ttdMode]);
@@ -100,44 +101,53 @@ function PrintModal({ url, onClose }: { url: string; onClose: () => void }) {
       <div className={styles.printBar}>
         <div className={styles.printBarLeft}>
           <i className="fas fa-file-pdf" style={{ color: '#ef4444' }}></i>
-          <span>Preview Dokumen</span>
+          <span>{url.includes('cetak-nota') ? 'Preview Nota TU' : 'Preview Dokumen'}</span>
         </div>
 
-        <div className={styles.printTtdGroup}>
-          <span className={styles.printTtdLabel}>
-            <i className="fas fa-signature" style={{ marginRight: 6 }}></i>
-            Tanda Tangan:
-          </span>
-          <div className={styles.ttdToggle}>
-            <button
-              type="button"
-              className={`${styles.ttdToggleBtn} ${ttdMode === 'tu' ? styles.ttdToggleActive : ''}`}
-              onClick={() => handleTtdChange('tu')}
-              title="Tanda tangan Kepala TU (M. Faisal Abda'u)"
-            >
-              <i className="fas fa-user-tie" style={{ marginRight: 5 }}></i>
-              Kepala TU
-            </button>
-            <button
-              type="button"
-              className={`${styles.ttdToggleBtn} ${ttdMode === 'kamad' ? styles.ttdToggleActive : ''}`}
-              onClick={() => handleTtdChange('kamad')}
-              title="Tanda tangan Kepala Madrasah (Dwi Retno Palupi, M.Pd.)"
-            >
-              <i className="fas fa-user-shield" style={{ marginRight: 5 }}></i>
-              Kepala Madrasah
-            </button>
-            <button
-              type="button"
-              className={`${styles.ttdToggleBtn} ${ttdMode === 'semua' ? styles.ttdToggleActive : ''}`}
-              onClick={() => handleTtdChange('semua')}
-              title="Tanda tangan Keduanya (Kepala Madrasah & Kepala TU)"
-            >
-              <i className="fas fa-users" style={{ marginRight: 5 }}></i>
-              Keduanya
-            </button>
+        {url.includes('cetak-nota') ? (
+          <div className={styles.printTtdGroup}>
+            <span style={{ color: '#86efac', fontWeight: 600, fontSize: '0.85rem', display: 'flex', alignItems: 'center' }}>
+              <i className="fas fa-stamp" style={{ marginRight: 6 }}></i>
+              Nota Resmi Bagian Tata Usaha (Ka. TU: M. Faisal Abda&apos;u)
+            </span>
           </div>
-        </div>
+        ) : (
+          <div className={styles.printTtdGroup}>
+            <span className={styles.printTtdLabel}>
+              <i className="fas fa-signature" style={{ marginRight: 6 }}></i>
+              Tanda Tangan:
+            </span>
+            <div className={styles.ttdToggle}>
+              <button
+                type="button"
+                className={`${styles.ttdToggleBtn} ${ttdMode === 'tu' ? styles.ttdToggleActive : ''}`}
+                onClick={() => handleTtdChange('tu')}
+                title="Tanda tangan Kepala TU (M. Faisal Abda'u)"
+              >
+                <i className="fas fa-user-tie" style={{ marginRight: 5 }}></i>
+                Kepala TU
+              </button>
+              <button
+                type="button"
+                className={`${styles.ttdToggleBtn} ${ttdMode === 'kamad' ? styles.ttdToggleActive : ''}`}
+                onClick={() => handleTtdChange('kamad')}
+                title="Tanda tangan Kepala Madrasah (Dwi Retno Palupi, M.Pd.)"
+              >
+                <i className="fas fa-user-shield" style={{ marginRight: 5 }}></i>
+                Kepala Madrasah
+              </button>
+              <button
+                type="button"
+                className={`${styles.ttdToggleBtn} ${ttdMode === 'semua' ? styles.ttdToggleActive : ''}`}
+                onClick={() => handleTtdChange('semua')}
+                title="Tanda tangan Keduanya (Kepala Madrasah & Kepala TU)"
+              >
+                <i className="fas fa-users" style={{ marginRight: 5 }}></i>
+                Keduanya
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className={styles.printBarRight}>
           {ready && (
@@ -723,6 +733,18 @@ function TabRekap({ onPrint }: { onPrint: (url: string) => void }) {
                       }} title="Cetak Pengajuan BON">
                         <i className="fas fa-print"></i>
                         <span>Cetak BON</span>
+                      </button>
+                      <button
+                        className={styles.actionBtn}
+                        style={{ background: '#ecfdf5', color: '#059669', borderColor: '#a7f3d0' }}
+                        onClick={() => {
+                          const id = encodeURIComponent(item['NoBon'] || item['ID']);
+                          onPrint(`/bon/cetak-nota/${id}`);
+                        }}
+                        title="Cetak Nota TU resmi (tertanda tangan Kepala TU)"
+                      >
+                        <i className="fas fa-file-invoice"></i>
+                        <span>Cetak Nota TU</span>
                       </button>
                       {(item['Status'] || '').toLowerCase() === 'selesai' && (
                         <>
@@ -1623,12 +1645,318 @@ function TabLaporanKeuangan({ onPrint }: { onPrint: (url: string) => void }) {
   );
 }
 
+// ===== TAB NOTA TU =====
+function TabNotaTU({ onPrint }: { onPrint: (url: string) => void }) {
+  const [bonList, setBonList] = useState<any[]>([]);
+  const [selectedBonId, setSelectedBonId] = useState('');
+  const [noNota, setNoNota] = useState('');
+  const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
+  const [sumberAnggaran, setSumberAnggaran] = useState('Kas Madrasah MTs Almaarif 01');
+  const [keperluan, setKeperluan] = useState('');
+  const [penerima, setPenerima] = useState('');
+  const [rincian, setRincian] = useState<any[]>([
+    { barang: '', qty: 1, satuan: 'ORANG', harga: 0 }
+  ]);
+  const [keterangan, setKeterangan] = useState('');
+  const [loadingBons, setLoadingBons] = useState(false);
+
+  useEffect(() => {
+    setLoadingBons(true);
+    fetch('/api/bon')
+      .then(r => r.json())
+      .then(j => {
+        setBonList(j.data || []);
+        setLoadingBons(false);
+      })
+      .catch(() => setLoadingBons(false));
+
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const randomCode = Math.floor(100 + Math.random() * 900);
+    setNoNota(`NOTA-TU/${yyyy}/${mm}-${randomCode}`);
+  }, []);
+
+  const handleSelectBon = (val: string) => {
+    setSelectedBonId(val);
+    if (!val) return;
+
+    const item = bonList.find(b => (b.NoBon || b.ID) === val);
+    if (item) {
+      setNoNota(`NOTA-TU/${item.NoBon || item.ID}`);
+      if (item.Tanggal) setTanggal(item.Tanggal);
+      if (item.Keperluan) setKeperluan(item.Keperluan);
+      if (item.Nama) setPenerima(item.Nama);
+
+      let rArr: any[] = [];
+      if (item.RealisasiRincianJSON) {
+        try { rArr = JSON.parse(item.RealisasiRincianJSON); } catch {}
+      } else if (item.RincianJSON) {
+        try { rArr = JSON.parse(item.RincianJSON); } catch {}
+      }
+      if (rArr.length > 0) {
+        setRincian(rArr);
+      }
+      if (item.Keterangan) setKeterangan(item.Keterangan);
+    }
+  };
+
+  const handlePresetLembur = () => {
+    setSelectedBonId('');
+    setKeperluan('Lembur mengerjakan data siswa');
+    setPenerima('Tim Staf Tata Usaha');
+    setRincian([
+      { barang: 'Uang Lembur Pengerjaan Data Siswa', qty: 3, satuan: 'ORANG', harga: 50000 },
+      { barang: 'Konsumsi Lembur Staf TU', qty: 3, satuan: 'BKS', harga: 20000 }
+    ]);
+    setKeterangan('Pengerjaan dan verifikasi data siswa madrasah');
+  };
+
+  const updateRow = (idx: number, field: string, val: any) => {
+    const arr = [...rincian];
+    (arr[idx] as any)[field] = val;
+    setRincian(arr);
+  };
+  const addRow = () => setRincian([...rincian, { barang: '', qty: 1, satuan: 'ORANG', harga: 0 }]);
+  const removeRow = (idx: number) => setRincian(rincian.filter((_, i) => i !== idx));
+
+  const totalRincian = rincian.reduce((s, i) => s + ((Number(i.qty) || 0) * (Number(i.harga) || 0)), 0);
+
+  const handlePrintSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!keperluan) return alert('Silakan masukkan keperluan / uraian kegiatan!');
+    if (!penerima) return alert('Silakan masukkan nama penerima!');
+
+    const payload = {
+      noNota: noNota || `NOTA-TU-${Date.now()}`,
+      tanggal,
+      sumberAnggaran,
+      keperluan,
+      penerima,
+      rincian,
+      keterangan
+    };
+
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('custom_nota_tu', JSON.stringify(payload));
+    }
+    onPrint('/bon/cetak-nota/custom');
+  };
+
+  return (
+    <div className={styles.formCard}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
+        <div>
+          <h3 className={styles.formTitle} style={{ margin: 0 }}>
+            <i className="fas fa-file-invoice" style={{ color: '#16a34a', marginRight: 8 }}></i>
+            Penerbitan Nota Pengeluaran / Pembayaran TU
+          </h3>
+          <p style={{ color: '#64748b', fontSize: '0.86rem', margin: '4px 0 0' }}>
+            Keluarkan nota resmi Bagian Tata Usaha untuk kegiatan internal (lembur data siswa, operasional, dll) yang tertanda tangan Kepala TU (M. Faisal Abda&apos;u).
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handlePresetLembur}
+          className={styles.btnSm}
+          style={{ background: '#ecfdf5', color: '#059669', borderColor: '#a7f3d0', padding: '7px 14px', fontSize: '0.85rem' }}
+          title="Isi otomatis contoh lembur data siswa"
+        >
+          <i className="fas fa-magic" style={{ marginRight: 6 }}></i>
+          Template Cepat: Lembur Data Siswa
+        </button>
+      </div>
+
+      <div style={{ background: '#f8fafc', padding: '14px 16px', borderRadius: 8, border: '1px solid #e2e8f0', marginBottom: 20 }}>
+        <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155', display: 'block', marginBottom: 6 }}>
+          <i className="fas fa-link" style={{ marginRight: 6 }}></i>
+          Pilih dari Data BON yang Ada (Opsional):
+        </label>
+        <select
+          className={styles.input}
+          value={selectedBonId}
+          onChange={e => handleSelectBon(e.target.value)}
+          disabled={loadingBons}
+        >
+          <option value="">-- Buat Nota Bebas / Mandiri (Tanpa Pilih BON) --</option>
+          {bonList.map((b, idx) => (
+            <option key={idx} value={b.NoBon || b.ID}>
+              {b.NoBon || b.ID} — {b.Keperluan} ({b.Nama || '-'})
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <form onSubmit={handlePrintSubmit}>
+        <div className={styles.formRow}>
+          <div className={styles.formGroup}>
+            <label>Nomor Nota <span className={styles.required}>*</span></label>
+            <input
+              className={styles.input}
+              value={noNota}
+              onChange={e => setNoNota(e.target.value)}
+              placeholder="Contoh: NOTA-TU/2026/10-001"
+              required
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label>Tanggal Nota <span className={styles.required}>*</span></label>
+            <input
+              type="date"
+              className={styles.input}
+              value={tanggal}
+              onChange={e => setTanggal(e.target.value)}
+              required
+            />
+          </div>
+        </div>
+
+        <div className={styles.formRow}>
+          <div className={styles.formGroup}>
+            <label>Diberikan Kepada / Penerima <span className={styles.required}>*</span></label>
+            <input
+              className={styles.input}
+              value={penerima}
+              onChange={e => setPenerima(e.target.value)}
+              placeholder="Nama staf / penerima uang lembur / tim..."
+              required
+            />
+          </div>
+          <div className={styles.formGroup}>
+            <label>Sumber Anggaran</label>
+            <input
+              className={styles.input}
+              value={sumberAnggaran}
+              onChange={e => setSumberAnggaran(e.target.value)}
+              placeholder="Kas Madrasah / MTs Almaarif 01 Singosari"
+            />
+          </div>
+        </div>
+
+        <div className={styles.formGroup}>
+          <label>Untuk Keperluan / Pembayaran <span className={styles.required}>*</span></label>
+          <input
+            className={styles.input}
+            value={keperluan}
+            onChange={e => setKeperluan(e.target.value)}
+            placeholder="Contoh: Lembur mengerjakan data siswa"
+            required
+          />
+        </div>
+
+        {/* Tabel Rincian */}
+        <div className={styles.rincianSection}>
+          <div className={styles.rincianHeader}>
+            <span><i className="fas fa-list-check" style={{ marginRight: 6 }}></i>Rincian Pengeluaran / Biaya</span>
+            <button type="button" className={styles.btnSm} onClick={addRow}>
+              <i className="fas fa-plus"></i> Tambah Baris
+            </button>
+          </div>
+          <div className={styles.tableWrap}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th style={{ width: '40%' }}>Nama Barang / Uraian Kegiatan</th>
+                  <th style={{ width: 60 }}>Banyak</th>
+                  <th style={{ width: 90 }}>Satuan</th>
+                  <th style={{ width: 130 }}>Harga Satuan (Rp)</th>
+                  <th style={{ width: 120 }}>Jumlah (Rp)</th>
+                  <th style={{ width: 36 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rincian.map((item, idx) => (
+                  <tr key={idx}>
+                    <td>
+                      <input
+                        className={styles.rincianInput}
+                        value={item.barang}
+                        onChange={e => updateRow(idx, 'barang', e.target.value)}
+                        placeholder="Contoh: Uang Lembur Pengerjaan Data Siswa"
+                        required
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        className={styles.rincianInput}
+                        style={{ textAlign: 'center' }}
+                        value={item.qty === 0 ? '' : item.qty}
+                        onChange={e => updateRow(idx, 'qty', parseInt(e.target.value.replace(/[^0-9]/g,'')) || 0)}
+                        placeholder="1"
+                      />
+                    </td>
+                    <td>
+                      <select
+                        className={styles.rincianInput}
+                        value={item.satuan}
+                        onChange={e => updateRow(idx, 'satuan', e.target.value)}
+                      >
+                        {['ORANG', 'HARI', 'JAM', 'KEGIATAN', 'KALI', 'PAKET', 'PCS', 'BKS', 'BOX', 'SET', 'UNIT'].map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        className={styles.rincianInput}
+                        value={item.harga === 0 ? '' : item.harga.toLocaleString('id-ID')}
+                        onChange={e => updateRow(idx, 'harga', parseInt(e.target.value.replace(/[^0-9]/g,'')) || 0)}
+                        placeholder="0"
+                      />
+                    </td>
+                    <td style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                      {formatRp((item.qty || 0) * (item.harga || 0))}
+                    </td>
+                    <td>
+                      {rincian.length > 1 && (
+                        <button type="button" className={`${styles.btnSm} ${styles.btnRed}`} onClick={() => removeRow(idx)}>
+                          <i className="fas fa-times"></i>
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className={styles.totalRow}>
+            Total Pengeluaran: <strong style={{ color: '#16a34a', marginLeft: 8, fontSize: '1.05rem' }}>{formatRp(totalRincian)}</strong>
+          </div>
+        </div>
+
+        <div className={styles.formGroup}>
+          <label>Catatan / Keterangan (Opsional)</label>
+          <textarea
+            className={styles.textarea}
+            value={keterangan}
+            onChange={e => setKeterangan(e.target.value)}
+            rows={2}
+            placeholder="Catatan tambahan pada nota (opsional)"
+          />
+        </div>
+
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 20 }}>
+          <button type="submit" className={styles.submitBtn} style={{ background: '#16a34a' }}>
+            <i className="fas fa-print" style={{ marginRight: 8 }}></i>
+            Preview &amp; Cetak Nota TU
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 // ===== MAIN PAGE =====
 const TABS = [
   { id: 'laporan',     label: 'Lap. Keuangan', icon: 'fa-book',                color: '#ec4899' },
   { id: 'ajukan',      label: 'Ajukan BON',    icon: 'fa-file-invoice-dollar', color: '#237227' },
   { id: 'realisasi',   label: 'Lap. Realisasi', icon: 'fa-receipt',             color: '#0ea5e9' },
   { id: 'rekap',       label: 'Rekap Data',     icon: 'fa-chart-bar',           color: '#8b5cf6' },
+  { id: 'nota-tu',     label: 'Cetak Nota TU',  icon: 'fa-file-invoice',        color: '#16a34a' },
   { id: 'tambah-toko', label: 'Tambah Toko',    icon: 'fa-store',               color: '#f59e0b' },
   { id: 'data-toko',   label: 'Data Penerima/Toko', icon: 'fa-list-ul', color: '#64748b' },
 ];
@@ -1671,6 +1999,7 @@ export default function BonPage() {
         {activeTab === 'ajukan'      && <TabAjukan onPrint={setPrintUrl} />}
         {activeTab === 'realisasi'   && <TabRealisasi onPrint={setPrintUrl} />}
         {activeTab === 'rekap'       && <TabRekap onPrint={setPrintUrl} />}
+        {activeTab === 'nota-tu'     && <TabNotaTU onPrint={setPrintUrl} />}
         {activeTab === 'tambah-toko' && <TabTambahToko />}
         {activeTab === 'data-toko'   && <TabDataToko />}
       </div>

@@ -1,0 +1,281 @@
+.page {
+  background: #f1f5f9;
+  min-height: 100vh;
+  padding: 20px;
+  font-family: 'Times New Roman', Times, serif;
+}
+
+.noPrint {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.printBtn {
+  background: #16a34a;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+
+.printBtn:hover {
+  background: #15803d;
+}
+
+.backBtn {
+  background: #64748b;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+
+.backBtn:hover {
+  background: #475569;
+}
+
+/* NOTA DOCUMENT CONTAINER */
+.doc {
+  background: white;
+  width: 210mm;
+  min-height: 270mm;
+  margin: 0 auto;
+  padding: 15mm 20mm;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+  font-size: 11pt;
+  color: #000;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.notaBorder {
+  border: 2px solid #1e293b;
+  padding: 16px 20px;
+  min-height: calc(270mm - 30mm);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+/* KOP */
+.kop {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.logo {
+  width: 65px;
+  height: 65px;
+  object-fit: contain;
+}
+
+.kopText {
+  flex: 1;
+  text-align: center;
+}
+
+.kopSekolah {
+  font-size: 13.5pt;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #0f172a;
+}
+
+.kopUnit {
+  font-size: 12pt;
+  font-weight: 700;
+  color: #1e3a8a;
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+
+.kopAlamat {
+  font-size: 8.5pt;
+  color: #475569;
+  margin-top: 3px;
+}
+
+.kopLine {
+  border-top: 3px double #0f172a;
+  margin-bottom: 14px;
+}
+
+/* NOTA TITLE */
+.notaTitleBox {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.notaTitle {
+  font-size: 15pt;
+  font-weight: 800;
+  text-decoration: underline;
+  letter-spacing: 1.5px;
+  color: #0f172a;
+}
+
+.notaNomor {
+  font-size: 10pt;
+  font-weight: 600;
+  color: #334155;
+  margin-top: 4px;
+}
+
+/* INFO TABLE */
+.infoTable {
+  width: 100%;
+  margin-bottom: 14px;
+  font-size: 10pt;
+  border-collapse: collapse;
+}
+
+.infoTable td {
+  padding: 3px 4px;
+  vertical-align: top;
+}
+
+.infoKey {
+  width: 130px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.infoColon {
+  width: 12px;
+  text-align: center;
+}
+
+.infoVal {
+  color: #000;
+}
+
+/* RINCIAN TABLE */
+.rincianTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+  font-size: 10pt;
+}
+
+.rincianTable th {
+  background: #f1f5f9;
+  color: #0f172a;
+  padding: 6px 8px;
+  border: 1px solid #000;
+  text-align: center;
+  font-weight: 700;
+}
+
+.rincianTable td {
+  padding: 6px 8px;
+  border: 1px solid #000;
+  vertical-align: middle;
+}
+
+.totalRow td {
+  background: #f8fafc;
+  font-weight: 700;
+  border-top: 2px solid #000;
+}
+
+/* TERBILANG */
+.terbilangBox {
+  border: 1px dashed #64748b;
+  background: #f8fafc;
+  padding: 8px 12px;
+  margin-bottom: 24px;
+  font-size: 10pt;
+  font-style: italic;
+  color: #1e293b;
+}
+
+/* TTD SECTION */
+.ttdWrapper {
+  margin-top: auto;
+  padding-top: 16px;
+}
+
+.ttdTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ttdCell {
+  text-align: center;
+  vertical-align: top;
+  padding: 0 10px;
+}
+
+.ttdKota {
+  font-size: 10pt;
+  margin-bottom: 2px;
+}
+
+.ttdTitle {
+  font-weight: 700;
+  font-size: 10.5pt;
+  margin-bottom: 2px;
+}
+
+.ttdSub {
+  font-size: 9pt;
+  font-style: italic;
+  color: #475569;
+  margin-bottom: 4px;
+}
+
+.ttdSpace {
+  height: 65px;
+  border-bottom: 1px solid #000;
+  margin: 0 24px 4px;
+}
+
+.ttdName {
+  font-weight: 700;
+  font-size: 10.5pt;
+  color: #000;
+}
+
+.ttdNip {
+  font-size: 9pt;
+  color: #334155;
+}
+
+/* PRINT MEDIA */
+@media print {
+  .noPrint { display: none !important; }
+  .page { background: white; padding: 0; min-height: auto; }
+  .doc {
+    box-shadow: none;
+    margin: 0;
+    width: 100%;
+    min-height: auto;
+    padding: 8mm 12mm;
+  }
+  .notaBorder {
+    min-height: auto;
+  }
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+}
