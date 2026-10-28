@@ -1081,17 +1081,64 @@ export default function RekapSpmb() {
         )}
       </div>
 
-      {/* Panel Pemantauan & Analitik Data Input SPMB */}
-      {!loading && !error && data.length > 0 && (
-        <MonitoringSpmb
-          data={data}
-          onSelectSchoolFilter={handleSelectSchoolFilter}
-          onSelectLocationFilter={handleSelectLocationFilter}
-          activeSchoolFilter={filterSekolah}
-          activeLocationFilter={filterWilayah}
-          onClearFilters={handleClearMonitoringFilters}
-        />
-      )}
+      {/* Sub-menu Tabs SPMB */}
+      <div style={{
+        display: 'flex',
+        gap: '8px',
+        marginBottom: '20px',
+        borderBottom: '2px solid #e2e8f0',
+        paddingBottom: '2px',
+        overflowX: 'auto'
+      }}>
+        <div
+          style={{
+            padding: '10px 18px',
+            fontSize: '0.92rem',
+            fontWeight: 700,
+            color: '#059669',
+            borderBottom: '3px solid #059669',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            whiteSpace: 'nowrap',
+            cursor: 'default'
+          }}
+        >
+          <i className="fas fa-list-alt"></i> Rekap Tabel Data Siswa
+        </div>
+        <Link
+          href="/spmb/pemantauan"
+          style={{
+            padding: '10px 18px',
+            fontSize: '0.92rem',
+            fontWeight: 600,
+            color: '#64748b',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <i className="fas fa-chart-pie"></i> Menu Pemantauan Input
+        </Link>
+        <Link
+          href="/spmb/pemetaan-kelas"
+          style={{
+            padding: '10px 18px',
+            fontSize: '0.92rem',
+            fontWeight: 600,
+            color: '#64748b',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <i className="fas fa-layer-group"></i> Pemetaan Kelas
+        </Link>
+      </div>
 
       {/* Banner Filter Aktif (Sekolah / Wilayah) */}
       {(filterSekolah || filterWilayah) && (

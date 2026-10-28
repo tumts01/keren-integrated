@@ -1229,6 +1229,65 @@ export default function PemetaanKelasPage() {
         </div>
       </div>
 
+      {/* Sub-menu Tabs SPMB */}
+      <div style={{
+        display: 'flex',
+        gap: '8px',
+        marginBottom: '20px',
+        borderBottom: '2px solid #e2e8f0',
+        paddingBottom: '2px',
+        overflowX: 'auto'
+      }}>
+        <Link
+          href="/spmb/rekap"
+          style={{
+            padding: '10px 18px',
+            fontSize: '0.92rem',
+            fontWeight: 600,
+            color: '#64748b',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <i className="fas fa-list-alt"></i> Rekap Tabel Data Siswa
+        </Link>
+        <Link
+          href="/spmb/pemantauan"
+          style={{
+            padding: '10px 18px',
+            fontSize: '0.92rem',
+            fontWeight: 600,
+            color: '#64748b',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <i className="fas fa-chart-pie"></i> Pemantauan Input &amp; Asal SD/MI
+        </Link>
+        <div
+          style={{
+            padding: '10px 18px',
+            fontSize: '0.92rem',
+            fontWeight: 700,
+            color: '#059669',
+            borderBottom: '3px solid #059669',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            whiteSpace: 'nowrap',
+            cursor: 'default'
+          }}
+        >
+          <i className="fas fa-layer-group"></i> Pemetaan Kelas
+        </div>
+      </div>
+
       {/* Main Navigation Tabs */}
       <div
         style={{

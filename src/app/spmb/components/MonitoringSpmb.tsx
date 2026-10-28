@@ -469,10 +469,10 @@ export default function MonitoringSpmb({
                                   onSelectSchoolFilter(sch.name);
                                 }
                               }}
-                              title="Filter tabel utama pendaftar di bawah"
+                              title="Lihat siswa dari sekolah ini di tabel rekap pendaftar"
                             >
-                              <i className="fas fa-filter"></i>
-                              {isActive ? 'Aktif' : 'Filter Tabel'}
+                              <i className="fas fa-list-alt"></i>
+                              {isActive ? 'Filter Aktif' : 'Lihat di Rekap'}
                             </button>
                           </div>
                         </div>
@@ -550,7 +550,7 @@ export default function MonitoringSpmb({
                             }
                           }}
                         >
-                          <i className="fas fa-filter"></i> {isActive ? 'Filter Aktif' : 'Filter Tabel'}
+                          <i className="fas fa-list-alt"></i> {isActive ? 'Filter Aktif' : 'Lihat di Rekap'}
                         </button>
                       </div>
                     </div>
