@@ -10,6 +10,46 @@
   gap: 12px;
   margin-bottom: 16px;
   justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ttdSelectContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  padding: 6px 14px;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+.ttdBtnGroup {
+  display: flex;
+  gap: 4px;
+}
+
+.ttdChoiceBtn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.ttdChoiceBtn:hover {
+  background: #e2e8f0;
+}
+
+.ttdChoiceActive {
+  background: #237227 !important;
+  color: white !important;
+  border-color: #237227 !important;
 }
 
 .printBtn {

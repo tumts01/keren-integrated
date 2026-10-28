@@ -41,6 +41,8 @@
   background: #1e293b;
   border-bottom: 1px solid #334155;
   flex-shrink: 0;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .printBarLeft {
@@ -52,7 +54,56 @@
   font-size: 0.95rem;
 }
 
-.printBarRight { display: flex; gap: 10px; }
+.printTtdGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.printTtdLabel {
+  color: #94a3b8;
+  font-size: 0.84rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+.ttdToggle {
+  display: inline-flex;
+  background: #0f172a;
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  gap: 2px;
+}
+
+.ttdToggleBtn {
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.ttdToggleBtn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ttdToggleActive {
+  background: #237227 !important;
+  color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.printBarRight { display: flex; gap: 10px; align-items: center; }
 
 .printBarBtn {
   background: #237227;

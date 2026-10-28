@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import styles from './Bon.module.css';
 
 // ===== SATUAN OPTIONS =====
@@ -69,6 +69,27 @@ function PenerimaField({ penerima, onChange, tokoList }: {
 function PrintModal({ url, onClose }: { url: string; onClose: () => void }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [ready, setReady] = useState(false);
+  const [ttdMode, setTtdMode] = useState<'tu' | 'kamad' | 'semua'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('bon_ttd_preference') as 'tu' | 'kamad' | 'semua' | null;
+      if (saved && ['tu', 'kamad', 'semua'].includes(saved)) return saved;
+    }
+    return 'tu';
+  });
+
+  const handleTtdChange = (mode: 'tu' | 'kamad' | 'semua') => {
+    if (mode === ttdMode) return;
+    setTtdMode(mode);
+    setReady(false);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bon_ttd_preference', mode);
+    }
+  };
+
+  const iframeSrc = useMemo(() => {
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}ttd=${ttdMode}`;
+  }, [url, ttdMode]);
 
   const handlePrint = () => {
     iframeRef.current?.contentWindow?.print();
@@ -81,6 +102,43 @@ function PrintModal({ url, onClose }: { url: string; onClose: () => void }) {
           <i className="fas fa-file-pdf" style={{ color: '#ef4444' }}></i>
           <span>Preview Dokumen</span>
         </div>
+
+        <div className={styles.printTtdGroup}>
+          <span className={styles.printTtdLabel}>
+            <i className="fas fa-signature" style={{ marginRight: 6 }}></i>
+            Tanda Tangan:
+          </span>
+          <div className={styles.ttdToggle}>
+            <button
+              type="button"
+              className={`${styles.ttdToggleBtn} ${ttdMode === 'tu' ? styles.ttdToggleActive : ''}`}
+              onClick={() => handleTtdChange('tu')}
+              title="Tanda tangan Kepala TU (M. Faisal Abda'u)"
+            >
+              <i className="fas fa-user-tie" style={{ marginRight: 5 }}></i>
+              Kepala TU
+            </button>
+            <button
+              type="button"
+              className={`${styles.ttdToggleBtn} ${ttdMode === 'kamad' ? styles.ttdToggleActive : ''}`}
+              onClick={() => handleTtdChange('kamad')}
+              title="Tanda tangan Kepala Madrasah (Dwi Retno Palupi, M.Pd.)"
+            >
+              <i className="fas fa-user-shield" style={{ marginRight: 5 }}></i>
+              Kepala Madrasah
+            </button>
+            <button
+              type="button"
+              className={`${styles.ttdToggleBtn} ${ttdMode === 'semua' ? styles.ttdToggleActive : ''}`}
+              onClick={() => handleTtdChange('semua')}
+              title="Tanda tangan Keduanya (Kepala Madrasah & Kepala TU)"
+            >
+              <i className="fas fa-users" style={{ marginRight: 5 }}></i>
+              Keduanya
+            </button>
+          </div>
+        </div>
+
         <div className={styles.printBarRight}>
           {ready && (
             <button className={styles.printBarBtn} onClick={handlePrint}>
@@ -100,7 +158,8 @@ function PrintModal({ url, onClose }: { url: string; onClose: () => void }) {
       )}
       <iframe
         ref={iframeRef}
-        src={url}
+        key={iframeSrc}
+        src={iframeSrc}
         className={styles.printIframe}
         style={{ opacity: ready ? 1 : 0 }}
         onLoad={() => setReady(true)}

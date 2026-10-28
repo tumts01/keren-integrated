@@ -21,7 +21,33 @@ export default function CetakBonPage() {
   const id = decodeURIComponent(params.id as string);
   const [bon, setBon] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [ttdMode, setTtdMode] = useState<'tu' | 'kamad' | 'semua'>('tu');
   const inIframe = typeof window !== 'undefined' && window !== window.parent;
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search);
+      const param = sp.get('ttd') as 'tu' | 'kamad' | 'semua' | null;
+      if (param && ['tu', 'kamad', 'semua'].includes(param)) {
+        setTtdMode(param);
+      } else {
+        const saved = localStorage.getItem('bon_ttd_preference') as 'tu' | 'kamad' | 'semua' | null;
+        if (saved && ['tu', 'kamad', 'semua'].includes(saved)) {
+          setTtdMode(saved);
+        }
+      }
+    }
+  }, []);
+
+  const handleTtdChange = (mode: 'tu' | 'kamad' | 'semua') => {
+    setTtdMode(mode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bon_ttd_preference', mode);
+      const url = new URL(window.location.href);
+      url.searchParams.set('ttd', mode);
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
 
   useEffect(() => {
     fetch(`/api/bon/detail/${encodeURIComponent(id)}`)
@@ -53,6 +79,38 @@ export default function CetakBonPage() {
       {/* Print Button (hidden when printing) */}
       {(!inIframe) && (
         <div className={styles.noPrint}>
+          <div className={styles.ttdSelectContainer}>
+            <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#334155' }}>
+              <i className="fas fa-signature" style={{ marginRight: 6 }}></i>
+              Tanda Tangan:
+            </span>
+            <div className={styles.ttdBtnGroup}>
+              <button
+                type="button"
+                className={`${styles.ttdChoiceBtn} ${ttdMode === 'tu' ? styles.ttdChoiceActive : ''}`}
+                onClick={() => handleTtdChange('tu')}
+                title="Tanda tangan Kepala TU (M. Faisal Abda'u)"
+              >
+                Kepala TU
+              </button>
+              <button
+                type="button"
+                className={`${styles.ttdChoiceBtn} ${ttdMode === 'kamad' ? styles.ttdChoiceActive : ''}`}
+                onClick={() => handleTtdChange('kamad')}
+                title="Tanda tangan Kepala Madrasah (Dwi Retno Palupi, M.Pd.)"
+              >
+                Kepala Madrasah
+              </button>
+              <button
+                type="button"
+                className={`${styles.ttdChoiceBtn} ${ttdMode === 'semua' ? styles.ttdChoiceActive : ''}`}
+                onClick={() => handleTtdChange('semua')}
+                title="Tanda tangan Keduanya (Kepala Madrasah & Kepala TU)"
+              >
+                Keduanya
+              </button>
+            </div>
+          </div>
           <button className={styles.printBtn} onClick={() => window.print()}>
             <i className="fas fa-print"></i> Cetak / Unduh PDF
           </button>
@@ -182,19 +240,29 @@ export default function CetakBonPage() {
         <table className={styles.ttdTable}>
           <tbody>
             <tr>
-              <td className={styles.ttdCell}>
-                <div className={styles.ttdTitle}>Kepala Madrasah</div>
-                <div className={styles.ttdSub}>Menyetujui</div>
-                <div className={styles.ttdSpace}></div>
-                <div className={styles.ttdName}>Dwi Retno Palupi, M.Pd.</div>
-              </td>
-              <td className={styles.ttdCell}>
+              {(ttdMode === 'kamad' || ttdMode === 'semua') && (
+                <td className={styles.ttdCell} style={{ width: ttdMode === 'semua' ? '25%' : '33.3%' }}>
+                  <div className={styles.ttdTitle}>Kepala Madrasah</div>
+                  <div className={styles.ttdSub}>Menyetujui</div>
+                  <div className={styles.ttdSpace}></div>
+                  <div className={styles.ttdName}>Dwi Retno Palupi, M.Pd.</div>
+                </td>
+              )}
+              {(ttdMode === 'tu' || ttdMode === 'semua') && (
+                <td className={styles.ttdCell} style={{ width: ttdMode === 'semua' ? '25%' : '33.3%' }}>
+                  <div className={styles.ttdTitle}>Kepala Tata Usaha</div>
+                  <div className={styles.ttdSub}>Menyetujui</div>
+                  <div className={styles.ttdSpace}></div>
+                  <div className={styles.ttdName}>M. Faisal Abda&apos;u</div>
+                </td>
+              )}
+              <td className={styles.ttdCell} style={{ width: ttdMode === 'semua' ? '25%' : '33.3%' }}>
                 <div className={styles.ttdTitle}>Bendahara</div>
                 <div className={styles.ttdSub}>Mengetahui / Menyetujui</div>
                 <div className={styles.ttdSpace}></div>
                 <div className={styles.ttdName}>S. Nur Ainy, S.Pd.</div>
               </td>
-              <td className={styles.ttdCell}>
+              <td className={styles.ttdCell} style={{ width: ttdMode === 'semua' ? '25%' : '33.3%' }}>
                 <div className={styles.ttdTitle}>Pemohon</div>
                 <div className={styles.ttdSub}>&nbsp;</div>
                 <div className={styles.ttdSpace}></div>
