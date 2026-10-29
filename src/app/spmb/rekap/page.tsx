@@ -7,7 +7,7 @@ import styles from './Rekap.module.css';
 import ModalAturJalur from '../components/ModalAturJalur';
 import ModalPengumumanSpmb from '../components/ModalPengumumanSpmb';
 import ModalDaftarUlang from '../components/ModalDaftarUlang';
-import MonitoringSpmb, { getApplicantLocation } from '../components/MonitoringSpmb';
+import MonitoringSpmb, { getApplicantLocation, CANONICAL_NPSN_MAP, inferNpsnFromName } from '../components/MonitoringSpmb';
 import LoadingScreen from '@/components/LoadingScreen';
 
 export default function RekapSpmb() {
@@ -133,10 +133,25 @@ export default function RekapSpmb() {
         if (filterDaftarUlang === 'belum_bayar' && st !== 'belum_bayar') return false;
       }
 
-      // Filter Sekolah Asal dari Pemantauan
+      // Filter Sekolah Asal dari Pemantauan (NPSN & Nama Kanonik)
       if (filterSekolah) {
+        const filterVal = filterSekolah.trim().toUpperCase();
         const sNorm = (item.asalSekolah || '').trim().toUpperCase();
-        if (sNorm !== filterSekolah.trim().toUpperCase()) return false;
+        const itemNpsn = (item.npsnSekolahAsal || '').toString().trim().toUpperCase();
+        const itemInferred = inferNpsnFromName(item.asalSekolah || '');
+        const effectiveNpsn = itemNpsn || itemInferred;
+
+        let match = false;
+        if (effectiveNpsn && (effectiveNpsn === filterVal || filterVal.includes(effectiveNpsn))) {
+          match = true;
+        } else if (sNorm === filterVal) {
+          match = true;
+        } else if (effectiveNpsn && CANONICAL_NPSN_MAP[effectiveNpsn]) {
+          const canonical = CANONICAL_NPSN_MAP[effectiveNpsn].toUpperCase();
+          if (canonical === filterVal) match = true;
+        }
+
+        if (!match) return false;
       }
 
       // Filter Wilayah dari Pemantauan
@@ -923,6 +938,15 @@ export default function RekapSpmb() {
       router.replace('/');
       return;
     }
+
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlSekolah = urlParams.get('sekolah');
+      const urlWilayah = urlParams.get('wilayah');
+      if (urlSekolah) setFilterSekolah(urlSekolah);
+      if (urlWilayah) setFilterWilayah(urlWilayah);
+    }
+
     fetchData();
   }, [router]);
 
@@ -2262,7 +2286,14 @@ export default function RekapSpmb() {
                         );
                       })()}
                     </td>
-                    <td>{item.asalSekolah}</td>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{item.asalSekolah}</div>
+                      {item.npsnSekolahAsal && (
+                        <div style={{ fontSize: '11px', color: '#0369a1', fontFamily: 'monospace', marginTop: '2px' }}>
+                          NPSN: {item.npsnSekolahAsal}
+                        </div>
+                      )}
+                    </td>
                     <td>
                       {item.nomorWaAyah ? (
                         <a href={`https://wa.me/${item.nomorWaAyah.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" style={{ color: '#16a34a', fontWeight: 600, textDecoration: 'none' }}>

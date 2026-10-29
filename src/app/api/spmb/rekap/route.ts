@@ -23,6 +23,7 @@ export async function GET() {
         agama: row.get('Agama') || '',
         asalSekolah: row.get('Asal Sekolah') || '',
         alamatSekolahAsal: row.get('Alamat Sekolah Asal') || '',
+        npsnSekolahAsal: row.get('NPSN SD/MI') || row.get('NPSN') || row.get('npsn') || '',
         namaAyah: row.get('Nama Ayah') || '',
         pendidikanAyah: row.get('Pendidikan Terakhir Ayah') || row.get('Pendidikan Ayah') || '',
         pekerjaanAyah: row.get('Pekerjaan Ayah') || '',

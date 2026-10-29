@@ -390,6 +390,46 @@
   text-transform: uppercase;
 }
 
+.npsnBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #0369a1;
+  background: #e0f2fe;
+  border: 1px solid #bae6fd;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.npsnBadgeEmpty {
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+}
+
+.variasiEjaanBox {
+  margin-top: 8px;
+  font-size: 0.72rem;
+  color: #475569;
+  background: #ffffff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 10px;
+  line-height: 1.45;
+}
+
+.variasiEjaanTitle {
+  font-weight: 700;
+  color: #0284c7;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
 .typeMi { background: #dcfce7; color: #15803d; }
 .typeSd { background: #e0f2fe; color: #0369a1; }
 .typeOther { background: #f1f5f9; color: #475569; }

@@ -2,6 +2,70 @@
 import { useState, useMemo } from 'react';
 import styles from './MonitoringSpmb.module.css';
 
+// Kamus Nama Resmi / Kanonik berdasarkan Nomor Pokok Sekolah Nasional (NPSN)
+export const CANONICAL_NPSN_MAP: Record<string, string> = {
+  '60715198': "MI AL MA'ARIF 04 SINGOSARI",
+  '60715204': "MI ALMAARIF 02 SINGOSARI",
+  '20554142': "SDI ALMAARIF 02 SINGOSARI",
+  '20554136': "SDI ALMAARIF 01 SINGOSARI",
+  '60715195': "MI ALMAARIF 03 LANGLANG",
+  '60715206': "MI ALMAARIF 05 BANJARARUM",
+  '60715196': "MI ALMAARIF 08 WATUGEDE",
+  '60715200': "MI ALMAARIF 09 RANDUAGUNG",
+  '60715201': "MI ALMAARIF 12 ARDIMULYO",
+  '20517086': "SDN 1 PAGENTAN",
+  '20517087': "SDN 2 PAGENTAN",
+  '20554102': "SDN 2 TAMANHARJO",
+  '20554382': "SDI BANI HASYIM",
+  '20518701': "SD ISLAM NU LAWANG",
+  '20518730': "SD UMMU AIMAN",
+  '20533696': "SDN POLOWIJEN 3",
+  '20539137': "SDIT AL-FATHIMIYYAH",
+  '60715102': "MI AR RAUDHAH",
+  '60715150': "MI AL HIDAYAT",
+  '60715144': "MI MAMBAUL ULUM PAKIS",
+  '60715197': "MIS MIFTAHUL ULUM BATURETNO",
+  '20518285': "MI MIFTAHUL ULUM BATURETNO",
+  '60716683': "MIN 2 PASURUAN",
+  '60720753': "MINU POLOWIJEN",
+  '60720754': "MI NURUL ULUM ARJOSARI",
+  '69755371': "MIS MERAH PUTIH",
+  '69945547': "SDI NURUL JADID",
+  '69977696': "MI AL-QUR'AN SINGOSARI",
+  '69977745': "MI BAIPAS",
+  '69980084': "SDIT IQRO BINA UMAT",
+  '20572178': "SDIT AL USWAH SINGOSARI",
+  '20539130': "SDI BAITUL MAKMUR",
+};
+
+// Deteksi otomatis NPSN jika data lama tidak mengisi / belum merekam NPSN
+export function inferNpsnFromName(name: string): string {
+  const norm = (name || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!norm) return '';
+  if (norm.includes('ALMAARIF04') || norm.includes('ALMAARIF4')) return '60715198';
+  if (norm.includes('ALMAARIF02') || norm.includes('MIA02') || norm.includes('ALMAARIF2')) {
+    if (norm.includes('SD') || norm.includes('SDI')) return '20554142';
+    return '60715204';
+  }
+  if (norm.includes('ALMAARIF01') || norm.includes('ALMAARIF1')) return '20554136';
+  if (norm.includes('ALMAARIF03') || norm.includes('ALMAARIF3')) return '60715195';
+  if (norm.includes('ALMAARIF05') || norm.includes('ALMAARIF5')) return '60715206';
+  if (norm.includes('ALMAARIF08') || norm.includes('ALMAARIF8')) return '60715196';
+  if (norm.includes('ALMAARIF09') || norm.includes('ALMAARIF9')) return '60715200';
+  if (norm.includes('ALMAARIF12')) return '60715201';
+  if (norm.includes('BANIHASYIM') || norm.includes('BANTHASYIM')) return '20554382';
+  if (norm.includes('BAIPAS')) return '69977745';
+  if (norm.includes('BAITULMAKMUR')) return '20539130';
+  if (norm.includes('NULAWANG')) return '20518701';
+  if (norm.includes('PAGENTAN1') || norm.includes('PAGENTAN01')) return '20517086';
+  if (norm.includes('PAGENTAN2') || norm.includes('PAGENTAN02')) return '20517087';
+  if (norm.includes('MIN2PASURUAN') || norm.includes('MINPASURUAN2')) return '60716683';
+  if (norm.includes('MAMBAULULUM')) return '60715144';
+  if (norm.includes('IQRO')) return '69980084';
+  if (norm.includes('ALUSWAH')) return '20572178';
+  return '';
+}
+
 // Deteksi jenis sekolah: MI, SD, atau Lainnya
 export function getSchoolType(name: string): 'MI' | 'SD' | 'Lainnya' {
   const upper = (name || '').toUpperCase();
@@ -67,7 +131,7 @@ export default function MonitoringSpmb({
   const [activeTab, setActiveTab] = useState<'sekolah' | 'wilayah' | 'jalur' | 'tren'>('sekolah');
   const [schoolSearch, setSchoolSearch] = useState('');
   const [schoolTypeFilter, setSchoolTypeFilter] = useState<'semua' | 'MI' | 'SD'>('semua');
-  const [schoolSort, setSchoolSort] = useState<'terbanyak' | 'abjad'>('terbanyak');
+  const [schoolSort, setSchoolSort] = useState<'terbanyak' | 'abjad' | 'npsn'>('terbanyak');
   const [expandedSchool, setExpandedSchool] = useState<string | null>(null);
   const [showPrintModal, setShowPrintModal] = useState(false);
 
@@ -77,14 +141,20 @@ export default function MonitoringSpmb({
     let totalL = 0;
     let totalP = 0;
 
-    const schoolMap: Record<string, {
+    interface SchoolStatGroup {
+      key: string;
+      npsn: string;
       name: string;
+      allVariations: string[];
+      nameCounts: Record<string, number>;
       type: 'MI' | 'SD' | 'Lainnya';
       total: number;
       laki: number;
       perempuan: number;
-      students: { nama: string; jalur: string; tanggal: string }[];
-    }> = {};
+      students: { nama: string; jalur: string; tanggal: string; ejaanAsal: string }[];
+    }
+
+    const schoolMap: Record<string, SchoolStatGroup> = {};
 
     const regionMap: Record<string, { total: number; laki: number; perempuan: number }> = {};
     const jalurMap: Record<string, number> = {};
@@ -101,15 +171,26 @@ export default function MonitoringSpmb({
       if (isL) totalL++;
       else totalP++;
 
-      // Sekolah Asal
+      // Sekolah Asal & NPSN
       let sRaw = (item.asalSekolah || '').trim();
       if (!sRaw) sRaw = 'Tidak Mengisi';
-      const sKey = sRaw.toUpperCase().replace(/\s+/g, ' ');
+
+      let npsn = (item.npsnSekolahAsal || item.npsn || '').toString().trim();
+      if (!npsn || npsn === '-' || npsn === '0') {
+        npsn = inferNpsnFromName(sRaw);
+      }
+
+      // Kunci pengelompokan berdasarkan NPSN jika ada, atau nama jika tanpa NPSN
+      const sKey = npsn ? `NPSN_${npsn}` : `SCH_${sRaw.toUpperCase().replace(/\s+/g, ' ')}`;
 
       if (!schoolMap[sKey]) {
         schoolMap[sKey] = {
-          name: sRaw,
-          type: getSchoolType(sRaw),
+          key: sKey,
+          npsn: npsn || '-',
+          name: '',
+          allVariations: [],
+          nameCounts: {},
+          type: 'Lainnya',
           total: 0,
           laki: 0,
           perempuan: 0,
@@ -119,10 +200,13 @@ export default function MonitoringSpmb({
       schoolMap[sKey].total++;
       if (isL) schoolMap[sKey].laki++;
       else schoolMap[sKey].perempuan++;
+
+      schoolMap[sKey].nameCounts[sRaw] = (schoolMap[sKey].nameCounts[sRaw] || 0) + 1;
       schoolMap[sKey].students.push({
         nama: item.namaLengkap || '-',
         jalur: item.jalurPendaftaran || '-',
-        tanggal: item.timestamp ? item.timestamp.split(',')[0] : '-'
+        tanggal: item.timestamp ? item.timestamp.split(',')[0] : '-',
+        ejaanAsal: sRaw
       });
 
       // Wilayah
@@ -144,6 +228,22 @@ export default function MonitoringSpmb({
         const mKey = dObj.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
         monthMap[mKey] = (monthMap[mKey] || 0) + 1;
       }
+    });
+
+    // Tetapkan 1 nama sekolah kanonik & jenis sekolah untuk tiap NPSN
+    Object.values(schoolMap).forEach(sch => {
+      sch.allVariations = Object.keys(sch.nameCounts);
+
+      // Ambil 1 nama kanonik resmi jika terdaftar di kamus NPSN
+      if (sch.npsn && sch.npsn !== '-' && CANONICAL_NPSN_MAP[sch.npsn]) {
+        sch.name = CANONICAL_NPSN_MAP[sch.npsn];
+      } else {
+        // Jika belum terdaftar, gunakan ejaan yang paling banyak diinputkan siswa
+        const sortedEntries = Object.entries(sch.nameCounts).sort((a, b) => b[1] - a[1]);
+        sch.name = sortedEntries[0] ? sortedEntries[0][0] : 'Tidak Diketahui';
+      }
+
+      sch.type = getSchoolType(sch.name);
     });
 
     const schoolsArray = Object.values(schoolMap);
@@ -174,7 +274,10 @@ export default function MonitoringSpmb({
     let list = stats.schoolsArray.filter(s => {
       if (schoolSearch.trim()) {
         const q = schoolSearch.toLowerCase().trim();
-        if (!s.name.toLowerCase().includes(q)) return false;
+        const matchName = s.name.toLowerCase().includes(q);
+        const matchNpsn = s.npsn.toLowerCase().includes(q);
+        const matchVars = s.allVariations.some(v => v.toLowerCase().includes(q));
+        if (!matchName && !matchNpsn && !matchVars) return false;
       }
       if (schoolTypeFilter !== 'semua') {
         if (s.type !== schoolTypeFilter) return false;
@@ -185,6 +288,11 @@ export default function MonitoringSpmb({
     list.sort((a, b) => {
       if (schoolSort === 'terbanyak') {
         return b.total - a.total;
+      }
+      if (schoolSort === 'npsn') {
+        const valA = a.npsn === '-' ? '99999999' : a.npsn;
+        const valB = b.npsn === '-' ? '99999999' : b.npsn;
+        return valA.localeCompare(valB, undefined, { numeric: true });
       }
       return a.name.localeCompare(b.name, 'id');
     });
@@ -348,7 +456,7 @@ export default function MonitoringSpmb({
                   <i className={`fas fa-search ${styles.schoolSearchIcon}`}></i>
                   <input
                     type="text"
-                    placeholder="Cari nama SD / MI..."
+                    placeholder="Cari nama SD / MI atau NPSN..."
                     value={schoolSearch}
                     onChange={e => setSchoolSearch(e.target.value)}
                   />
@@ -387,6 +495,7 @@ export default function MonitoringSpmb({
                   >
                     <option value="terbanyak">Pendaftar Terbanyak</option>
                     <option value="abjad">Nama Sekolah (A - Z)</option>
+                    <option value="npsn">Nomor NPSN</option>
                   </select>
                 </div>
               </div>
@@ -416,9 +525,14 @@ export default function MonitoringSpmb({
                             </span>
                             <div>
                               <div className={styles.schoolName}>{sch.name}</div>
-                              <span className={`${styles.schoolTypeBadge} ${sch.type === 'MI' ? styles.typeMi : sch.type === 'SD' ? styles.typeSd : styles.typeOther}`}>
-                                {sch.type}
-                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+                                <span className={`${styles.schoolTypeBadge} ${sch.type === 'MI' ? styles.typeMi : sch.type === 'SD' ? styles.typeSd : styles.typeOther}`}>
+                                  {sch.type}
+                                </span>
+                                <span className={`${styles.npsnBadge} ${sch.npsn === '-' ? styles.npsnBadgeEmpty : ''}`}>
+                                  <i className="fas fa-barcode"></i> NPSN: {sch.npsn}
+                                </span>
+                              </div>
                             </div>
                           </div>
 
@@ -427,6 +541,23 @@ export default function MonitoringSpmb({
                             <span className={styles.schoolCountLabel}>Siswa ({pct}%)</span>
                           </div>
                         </div>
+
+                        {/* Box Variasi Ejaan Terkelompok */}
+                        {sch.allVariations.length > 1 && (
+                          <div className={styles.variasiEjaanBox}>
+                            <div className={styles.variasiEjaanTitle}>
+                              <i className="fas fa-info-circle"></i> {sch.allVariations.length} Variasi Ejaan Pendaftar:
+                            </div>
+                            <div style={{ color: '#334155' }}>
+                              {sch.allVariations.map((v, i) => (
+                                <span key={i}>
+                                  {v} <span style={{ color: '#0284c7', fontWeight: 700 }}>({sch.nameCounts[v]} siswa)</span>
+                                  {i < sch.allVariations.length - 1 ? ' • ' : ''}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         {/* Progress Bar */}
                         <div className={styles.progressBarContainer}>
@@ -487,6 +618,11 @@ export default function MonitoringSpmb({
                               <div key={si} className={styles.studentListItem}>
                                 <span><strong>{si + 1}.</strong> {st.nama}</span>
                                 <span style={{ color: '#64748b', fontSize: '0.72rem' }}>
+                                  {st.ejaanAsal !== sch.name && (
+                                    <span style={{ fontStyle: 'italic', color: '#0284c7', marginRight: 5 }}>
+                                      [input: &quot;{st.ejaanAsal}&quot;]
+                                    </span>
+                                  )}
                                   ({st.jalur}) {st.tanggal}
                                 </span>
                               </div>
@@ -712,13 +848,14 @@ export default function MonitoringSpmb({
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9.5pt' }}>
                   <thead>
                     <tr style={{ background: '#f1f5f9' }}>
-                      <th style={{ border: '1px solid #000', padding: '6px 8px', width: 36, textAlign: 'center' }}>No</th>
+                      <th style={{ border: '1px solid #000', padding: '6px 8px', width: 32, textAlign: 'center' }}>No</th>
+                      <th style={{ border: '1px solid #000', padding: '6px 8px', width: 85, textAlign: 'center' }}>NPSN</th>
                       <th style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'left' }}>Nama Asal SD / MI</th>
-                      <th style={{ border: '1px solid #000', padding: '6px 8px', width: 60, textAlign: 'center' }}>Tipe</th>
-                      <th style={{ border: '1px solid #000', padding: '6px 8px', width: 50, textAlign: 'center' }}>L</th>
-                      <th style={{ border: '1px solid #000', padding: '6px 8px', width: 50, textAlign: 'center' }}>P</th>
-                      <th style={{ border: '1px solid #000', padding: '6px 8px', width: 90, textAlign: 'center' }}>Total Siswa</th>
-                      <th style={{ border: '1px solid #000', padding: '6px 8px', width: 80, textAlign: 'center' }}>Persentase</th>
+                      <th style={{ border: '1px solid #000', padding: '6px 8px', width: 55, textAlign: 'center' }}>Tipe</th>
+                      <th style={{ border: '1px solid #000', padding: '6px 8px', width: 45, textAlign: 'center' }}>L</th>
+                      <th style={{ border: '1px solid #000', padding: '6px 8px', width: 45, textAlign: 'center' }}>P</th>
+                      <th style={{ border: '1px solid #000', padding: '6px 8px', width: 85, textAlign: 'center' }}>Total Siswa</th>
+                      <th style={{ border: '1px solid #000', padding: '6px 8px', width: 75, textAlign: 'center' }}>Persentase</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -729,7 +866,15 @@ export default function MonitoringSpmb({
                         return (
                           <tr key={idx}>
                             <td style={{ border: '1px solid #000', padding: '5px 8px', textAlign: 'center' }}>{idx + 1}</td>
-                            <td style={{ border: '1px solid #000', padding: '5px 8px', fontWeight: 600 }}>{s.name}</td>
+                            <td style={{ border: '1px solid #000', padding: '5px 8px', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}>{s.npsn}</td>
+                            <td style={{ border: '1px solid #000', padding: '5px 8px', fontWeight: 600 }}>
+                              <div>{s.name}</div>
+                              {s.allVariations.length > 1 && (
+                                <div style={{ fontSize: '7.5pt', color: '#64748b', fontStyle: 'italic', fontWeight: 400, marginTop: 2 }}>
+                                  Variasi ejaan: {s.allVariations.join(' / ')}
+                                </div>
+                              )}
+                            </td>
                             <td style={{ border: '1px solid #000', padding: '5px 8px', textAlign: 'center', fontStyle: 'italic' }}>{s.type}</td>
                             <td style={{ border: '1px solid #000', padding: '5px 8px', textAlign: 'center' }}>{s.laki}</td>
                             <td style={{ border: '1px solid #000', padding: '5px 8px', textAlign: 'center' }}>{s.perempuan}</td>
@@ -739,7 +884,7 @@ export default function MonitoringSpmb({
                         );
                       })}
                     <tr style={{ background: '#f8fafc', fontWeight: 800 }}>
-                      <td colSpan={3} style={{ border: '2px solid #000', padding: '7px 8px', textAlign: 'center' }}>TOTAL KESELURUHAN</td>
+                      <td colSpan={4} style={{ border: '2px solid #000', padding: '7px 8px', textAlign: 'center' }}>TOTAL KESELURUHAN</td>
                       <td style={{ border: '2px solid #000', padding: '7px 8px', textAlign: 'center' }}>{stats.totalL}</td>
                       <td style={{ border: '2px solid #000', padding: '7px 8px', textAlign: 'center' }}>{stats.totalP}</td>
                       <td style={{ border: '2px solid #000', padding: '7px 8px', textAlign: 'center', color: '#059669' }}>{stats.total}</td>
