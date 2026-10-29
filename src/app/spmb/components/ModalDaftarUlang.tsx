@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
+import { compressDocumentImage } from '@/lib/image-compression';
 
 interface ModalDaftarUlangProps {
   isOpen: boolean;
@@ -75,15 +76,30 @@ export default function ModalDaftarUlang({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      Swal.fire('File Terlalu Besar', 'Maksimal ukuran file adalah 10MB.', 'warning');
+    if (file.size > 15 * 1024 * 1024) {
+      Swal.fire('File Terlalu Besar', 'Maksimal ukuran file adalah 15MB.', 'warning');
       return;
     }
 
     try {
       setUploadingBukti(true);
+
+      let uploadFile = file;
+      if (file.type.startsWith('image/')) {
+        try {
+          const compResult = await compressDocumentImage(file, {
+            maxDimension: 2200,
+            initialQuality: 0.85,
+            maxFileSizeBytes: 2.5 * 1024 * 1024,
+          });
+          uploadFile = compResult.file;
+        } catch (e) {
+          console.warn('Compress fallback to original:', e);
+        }
+      }
+
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', uploadFile);
       formData.append('type', 'bukti_daftar_ulang');
 
       const res = await fetch('/api/spmb/upload', {

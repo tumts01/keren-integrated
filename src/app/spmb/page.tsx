@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Swal from 'sweetalert2';
 import styles from './Spmb.module.css';
 import ModalAturJalur, { JalurItem } from './components/ModalAturJalur';
+import { compressDocumentImage, formatFileSize } from '@/lib/image-compression';
 
 const BULAN_OPTIONS = [
   { val: '01', label: 'Januari' },
@@ -163,8 +164,96 @@ export default function SpmbPage() {
   });
 
   const [fileKk, setFileKk] = useState<File | null>(null);
+  const [compressingKk, setCompressingKk] = useState(false);
+  const [kkFileInfo, setKkFileInfo] = useState<{
+    originalSize: number;
+    compressedSize: number;
+    isCompressed: boolean;
+  } | null>(null);
 
   const fileKkRef = useRef<HTMLInputElement>(null);
+
+  const handleFileKkChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset input value agar dapat memilih ulang file yang sama jika diperlukan
+    if (fileKkRef.current) {
+      fileKkRef.current.value = '';
+    }
+
+    // 1. Jika berkas berupa PDF
+    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('Ukuran file PDF terlalu besar! Maksimal 5 MB.', 'error');
+        setFileKk(null);
+        setKkFileInfo(null);
+        return;
+      }
+      setFileKk(file);
+      setKkFileInfo({
+        originalSize: file.size,
+        compressedSize: file.size,
+        isCompressed: false,
+      });
+      return;
+    }
+
+    // 2. Jika berkas berupa Gambar (Foto Kamera, Galeri HP, JPG, PNG, WEBP, dll)
+    if (file.type.startsWith('image/') || /\.(jpe?g|png|webp|heic|bmp)$/i.test(file.name)) {
+      setCompressingKk(true);
+      try {
+        const result = await compressDocumentImage(file, {
+          maxDimension: 2200,      // Resolusi tinggi agar teks/angka di KK tetap tajam & tidak pecah
+          initialQuality: 0.85,    // Kualitas JPEG jernih
+          maxFileSizeBytes: 2.5 * 1024 * 1024 // Target di bawah 2.5 MB
+        });
+
+        if (result.file.size > 2.5 * 1024 * 1024) {
+          showToast('Ukuran file foto KK masih di atas 2.5 MB. Mohon gunakan foto dengan pencahayaan cukup.', 'error');
+          setFileKk(null);
+          setKkFileInfo(null);
+          return;
+        }
+
+        setFileKk(result.file);
+        setKkFileInfo({
+          originalSize: result.originalSize,
+          compressedSize: result.compressedSize,
+          isCompressed: result.isCompressed,
+        });
+
+        if (result.isCompressed) {
+          showToast(
+            `Foto KK berhasil dioptimasi (${formatFileSize(result.originalSize)} ➔ ${formatFileSize(result.compressedSize)}) dengan kualitas tajam!`,
+            'success'
+          );
+        }
+      } catch (err) {
+        console.error('Gagal mengompresi gambar KK:', err);
+        if (file.size > 2.5 * 1024 * 1024) {
+          showToast('Ukuran file terlalu besar! Maksimal 2.5 MB.', 'error');
+          setFileKk(null);
+          setKkFileInfo(null);
+        } else {
+          setFileKk(file);
+          setKkFileInfo({
+            originalSize: file.size,
+            compressedSize: file.size,
+            isCompressed: false,
+          });
+        }
+      } finally {
+        setCompressingKk(false);
+      }
+      return;
+    }
+
+    // 3. Jika format tidak sesuai
+    showToast('Format file tidak didukung! Gunakan foto (JPG/PNG) atau dokumen PDF.', 'error');
+    setFileKk(null);
+    setKkFileInfo(null);
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -382,6 +471,7 @@ export default function SpmbPage() {
         setTglLahirBulan('');
         setTglLahirTahun('');
         setFileKk(null);
+        setKkFileInfo(null);
         if (fileKkRef.current) fileKkRef.current.value = '';
 
       } else {
@@ -1221,29 +1311,53 @@ export default function SpmbPage() {
           <div className={styles.fileGrid}>
             
             {/* KK Upload */}
-            <div className={`${styles.fileUploadBox} ${fileKk ? styles.hasFile : ''}`} onClick={() => fileKkRef.current?.click()}>
+            <div 
+              className={`${styles.fileUploadBox} ${fileKk ? styles.hasFile : ''}`} 
+              onClick={() => !compressingKk && fileKkRef.current?.click()}
+              style={{ cursor: compressingKk ? 'wait' : 'pointer' }}
+            >
               <input 
                 type="file" 
                 accept="image/*,.pdf" 
                 className={styles.hiddenInput} 
                 ref={fileKkRef} 
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file && file.size > 2.5 * 1024 * 1024) {
-                    showToast('Ukuran file terlalu besar! Maksimal 2.5 MB.', 'error');
-                    if (fileKkRef.current) fileKkRef.current.value = '';
-                    setFileKk(null);
-                  } else {
-                    setFileKk(file || null);
-                  }
-                }}
+                onChange={handleFileKkChange}
+                disabled={compressingKk}
               />
-              <i className={`fas fa-id-card ${styles.fileIcon}`}></i>
+              <i 
+                className={`fas ${compressingKk ? 'fa-spinner fa-spin' : fileKk ? 'fa-check-circle' : 'fa-id-card'} ${styles.fileIcon}`} 
+                style={{ color: compressingKk ? '#3b82f6' : fileKk ? '#16a34a' : undefined }}
+              ></i>
               <div className={styles.fileTitle}>Kartu Keluarga (KK) <span>*</span></div>
-              {fileKk ? (
-                <div className={styles.fileName}><i className="fas fa-check"></i> {fileKk.name}</div>
+              
+              {compressingKk ? (
+                <div style={{ fontSize: '0.82rem', color: '#2563eb', fontWeight: 600, marginTop: '6px' }}>
+                  <i className="fas fa-magic"></i> Mengoptimasi foto KK agar tajam &amp; hemat kuota...
+                </div>
+              ) : fileKk ? (
+                <div style={{ marginTop: '4px' }}>
+                  <div className={styles.fileName}>
+                    <i className="fas fa-file-image"></i> {fileKk.name}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#15803d', marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <span>Ukuran: <b>{formatFileSize(fileKk.size)}</b></span>
+                    {kkFileInfo?.isCompressed && (
+                      <span style={{ background: '#dcfce7', color: '#166534', padding: '1px 7px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 700 }}>
+                        <i className="fas fa-shield-alt"></i> HD Terkompresi
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '5px' }}>
+                    Klik untuk mengganti foto / dokumen
+                  </div>
+                </div>
               ) : (
-                <div className={styles.fileDesc}>Klik untuk memilih file PDF atau Gambar</div>
+                <>
+                  <div className={styles.fileDesc}>Klik untuk memilih Foto (Kamera / Galeri) atau Dokumen PDF</div>
+                  <div style={{ fontSize: '0.73rem', color: '#047857', marginTop: '6px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                    <i className="fas fa-bolt" style={{ color: '#f59e0b' }}></i> Foto kamera besar otomatis dikompresi resolusi HD (teks tetap jernih &amp; tajam)
+                  </div>
+                </>
               )}
             </div>
 
