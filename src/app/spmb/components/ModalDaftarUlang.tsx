@@ -76,6 +76,19 @@ export default function ModalDaftarUlang({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const fileName = (file.name || '').toLowerCase();
+    const fileType = (file.type || '').toLowerCase();
+    const isVideo = fileType.startsWith('video/') || /\.(mp4|mov|avi|mkv|webm|3gp|wmv|flv|m4v|mpg|mpeg)$/i.test(fileName);
+    if (isVideo) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Berkas Video Ditolak!',
+        text: 'Bukti transfer tidak boleh berupa video. Silakan upload foto bukti transfer (JPG/PNG) atau file PDF.',
+        confirmButtonColor: '#ef4444'
+      });
+      return;
+    }
+
     if (file.size > 15 * 1024 * 1024) {
       Swal.fire('File Terlalu Besar', 'Maksimal ukuran file adalah 15MB.', 'warning');
       return;
@@ -729,7 +742,7 @@ export default function ModalDaftarUlang({
                   <span>{uploadingBukti ? 'Mengunggah...' : buktiUrl ? 'Ganti Bukti' : 'Unggah Bukti'}</span>
                   <input
                     type="file"
-                    accept="image/*,application/pdf"
+                    accept="image/jpeg,image/png,image/webp,image/jpg,application/pdf,.pdf"
                     disabled={uploadingBukti}
                     onChange={handleUploadFile}
                     style={{ display: 'none' }}

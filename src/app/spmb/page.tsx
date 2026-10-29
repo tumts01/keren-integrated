@@ -182,8 +182,31 @@ export default function SpmbPage() {
       fileKkRef.current.value = '';
     }
 
+    const fileName = (file.name || '').toLowerCase();
+    const fileType = (file.type || '').toLowerCase();
+
+    // 0. Tolak secara tegas jika berkas berupa VIDEO
+    const isVideo = fileType.startsWith('video/') || /\.(mp4|mov|avi|mkv|webm|3gp|wmv|flv|m4v|mpg|mpeg)$/i.test(fileName);
+    if (isVideo) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Berkas Video Ditolak!',
+        html: `
+          <div style="text-align: left; font-size: 13.5px; color: #475569; line-height: 1.6;">
+            Mohon maaf, berkas Kartu Keluarga <b>tidak boleh dalam format video</b>.<br/><br/>
+            Silakan unggah <b>foto dokumen KK</b> (JPG/PNG) atau <b>dokumen scan PDF</b>.
+          </div>
+        `,
+        confirmButtonColor: '#ef4444',
+        confirmButtonText: 'Mengerti'
+      });
+      setFileKk(null);
+      setKkFileInfo(null);
+      return;
+    }
+
     // 1. Jika berkas berupa PDF
-    if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+    if (fileType === 'application/pdf' || fileName.endsWith('.pdf')) {
       if (file.size > 5 * 1024 * 1024) {
         showToast('Ukuran file PDF terlalu besar! Maksimal 5 MB.', 'error');
         setFileKk(null);
@@ -200,7 +223,7 @@ export default function SpmbPage() {
     }
 
     // 2. Jika berkas berupa Gambar (Foto Kamera, Galeri HP, JPG, PNG, WEBP, dll)
-    if (file.type.startsWith('image/') || /\.(jpe?g|png|webp|heic|bmp)$/i.test(file.name)) {
+    if (fileType.startsWith('image/') || /\.(jpe?g|png|webp|heic|bmp)$/i.test(fileName)) {
       setCompressingKk(true);
       try {
         const result = await compressDocumentImage(file, {
@@ -1318,7 +1341,7 @@ export default function SpmbPage() {
             >
               <input 
                 type="file" 
-                accept="image/*,.pdf" 
+                accept="image/jpeg,image/png,image/webp,image/jpg,application/pdf,.pdf" 
                 className={styles.hiddenInput} 
                 ref={fileKkRef} 
                 onChange={handleFileKkChange}
@@ -1353,9 +1376,12 @@ export default function SpmbPage() {
                 </div>
               ) : (
                 <>
-                  <div className={styles.fileDesc}>Klik untuk memilih Foto (Kamera / Galeri) atau Dokumen PDF</div>
+                  <div className={styles.fileDesc}>Klik untuk memilih Foto KK (Kamera / Galeri) atau Dokumen PDF</div>
                   <div style={{ fontSize: '0.73rem', color: '#047857', marginTop: '6px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
                     <i className="fas fa-bolt" style={{ color: '#f59e0b' }}></i> Foto kamera besar otomatis dikompresi resolusi HD (teks tetap jernih &amp; tajam)
+                  </div>
+                  <div style={{ fontSize: '0.71rem', color: '#dc2626', marginTop: '4px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+                    <i className="fas fa-ban"></i> Format Video Ditolak (Wajib Foto Dokumen atau PDF)
                   </div>
                 </>
               )}

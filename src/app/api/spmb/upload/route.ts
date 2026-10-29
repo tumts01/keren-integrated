@@ -11,6 +11,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'File tidak ditemukan' }, { status: 400 });
     }
 
+    // Tolak secara tegas jika file berupa VIDEO
+    const fileName = (file.name || '').toLowerCase();
+    const fileType = (file.type || '').toLowerCase();
+    const isVideo = fileType.startsWith('video/') || /\.(mp4|mov|avi|mkv|webm|3gp|wmv|flv|m4v|mpg|mpeg)$/i.test(fileName);
+
+    if (isVideo) {
+      return NextResponse.json({
+        success: false,
+        error: 'Upload berkas video ditolak! Berkas Kartu Keluarga dan bukti persyaratan hanya boleh berupa foto dokumen (JPG/PNG) atau scan PDF.'
+      }, { status: 400 });
+    }
+
+    // Hanya izinkan Foto/Gambar dan Dokumen PDF
+    const isImage = fileType.startsWith('image/') || /\.(jpe?g|png|webp|heic|bmp)$/i.test(fileName);
+    const isPdf = fileType === 'application/pdf' || /\.pdf$/i.test(fileName);
+
+    if (!isImage && !isPdf) {
+      return NextResponse.json({
+        success: false,
+        error: 'Format berkas tidak didukung! Hanya diperbolehkan foto dokumen (JPG/PNG) atau file PDF.'
+      }, { status: 400 });
+    }
+
     const folderId = process.env.GOOGLE_DRIVE_SPMB_FOLDER_ID;
 
     if (!folderId) {
