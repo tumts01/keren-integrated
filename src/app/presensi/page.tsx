@@ -982,6 +982,270 @@ export default function PresensiPage() {
     finally { setRekapJurnalLoading(false); }
   };
 
+  const handleExportRincianGuruModal = async (targetGuruParam?: string) => {
+    const allGurus = Array.from(new Set([...guruListRekap, ...guruList]))
+      .map(g => (g || '').trim().replace(/\s+/g, ' '))
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, 'id'));
+
+    const defaultGuru = targetGuruParam || (isAdmin ? (filterGuruRekap || '') : currentUsername);
+    const now = new Date();
+    const defaultFrom = filterFrom || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const defaultTo = filterTo || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    const { value: formValues } = await Swal.fire({
+      title: 'Export Rincian Jurnal Guru',
+      width: 540,
+      html: `
+        <div style="text-align: left; font-size: 0.88rem;">
+          <p style="margin: 0 0 14px; color: #64748b; font-size: 0.82rem; line-height: 1.4;">
+            Pilih nama guru dan rentang tanggal untuk mengunduh <strong>rincian jadwal KBM lengkap</strong> (hari, tanggal, jam ke, durasi jam, kelas, mata pelajaran, dan materi pembahasan) dalam format <strong>Excel (.xlsx)</strong>.
+          </p>
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-weight: 700; margin-bottom: 4px; color: #334155;">Pilih Guru:</label>
+            ${isAdmin ? `
+              <input id="swal-rg-guru" list="swal-rg-guru-list" value="${defaultGuru}" placeholder="Ketik atau pilih nama guru..." style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid #7c3aed; font-size: 0.9rem; box-sizing: border-box; background: #faf5ff; color: #6b21a8; font-weight: 700;" />
+              <datalist id="swal-rg-guru-list">
+                ${allGurus.map(g => `<option value="${g}"></option>`).join('')}
+              </datalist>
+            ` : `
+              <input id="swal-rg-guru" type="text" value="${currentUsername}" readonly style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.9rem; box-sizing: border-box; background: #f1f5f9; color: #475569; font-weight: 700; cursor: not-allowed;" />
+            `}
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+            <div>
+              <label style="display: block; font-weight: 700; margin-bottom: 4px; color: #334155;">Dari Tanggal:</label>
+              <input id="swal-rg-from" type="date" value="${defaultFrom}" style="width: 100%; padding: 8px 10px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.88rem; box-sizing: border-box;" />
+            </div>
+            <div>
+              <label style="display: block; font-weight: 700; margin-bottom: 4px; color: #334155;">Sampai Tanggal:</label>
+              <input id="swal-rg-to" type="date" value="${defaultTo}" style="width: 100%; padding: 8px 10px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.88rem; box-sizing: border-box;" />
+            </div>
+          </div>
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-weight: 700; margin-bottom: 4px; color: #334155;">Kategori Mata Pelajaran:</label>
+            <select id="swal-rg-kategori" style="width: 100%; padding: 8px 10px; border-radius: 8px; border: 1.5px solid #cbd5e1; font-size: 0.88rem; box-sizing: border-box; background: white;">
+              <option value="semua">Semua Mata Pelajaran (Reguler & Proksus)</option>
+              <option value="reguler">Hanya Mapel Reguler (di luar Proksus)</option>
+              <option value="proksus">Hanya Program Khusus (Proksus)</option>
+            </select>
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonColor: '#7c3aed',
+      cancelButtonColor: '#94a3b8',
+      confirmButtonText: '<i class="fas fa-file-excel" style="margin-right: 6px;"></i> Unduh Excel',
+      cancelButtonText: 'Batal',
+      preConfirm: () => {
+        const g = (document.getElementById('swal-rg-guru') as HTMLInputElement)?.value.trim();
+        const f = (document.getElementById('swal-rg-from') as HTMLInputElement)?.value;
+        const t = (document.getElementById('swal-rg-to') as HTMLInputElement)?.value;
+        const k = (document.getElementById('swal-rg-kategori') as HTMLSelectElement)?.value || 'semua';
+
+        if (!g) {
+          Swal.showValidationMessage('Nama guru wajib dipilih atau diisi!');
+          return false;
+        }
+        if (!f || !t) {
+          Swal.showValidationMessage('Rentang tanggal (Dari & Sampai) harus ditentukan!');
+          return false;
+        }
+        if (f > t) {
+          Swal.showValidationMessage('Tanggal Mulai tidak boleh melewati Tanggal Selesai!');
+          return false;
+        }
+        return { guru: g, from: f, to: t, kategori: k };
+      }
+    });
+
+    if (!formValues) return;
+
+    const { guru: targetGuru, from: targetFrom, to: targetTo, kategori: targetKategori } = formValues;
+
+    Swal.fire({
+      title: 'Menyiapkan Data Excel...',
+      html: `Mengambil rincian jurnal untuk <b>${targetGuru}</b>...`,
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
+    try {
+      const res = await fetch(`/api/jurnal?from=${targetFrom}&to=${targetTo}`);
+      const json = await res.json();
+      if (!json.success || !Array.isArray(json.data)) {
+        Swal.fire('Gagal', 'Tidak dapat mengambil data jurnal.', 'error');
+        return;
+      }
+
+      const norm = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      const targetNorm = norm(targetGuru);
+
+      let matched = json.data.filter((r: any) => {
+        const gNorm = norm(r.namaGuru);
+        return gNorm === targetNorm || gNorm.includes(targetNorm) || targetNorm.includes(gNorm);
+      });
+
+      if (targetKategori === 'reguler') {
+        matched = matched.filter((r: any) => {
+          const m = (r.mapel || '').toLowerCase();
+          return !m.includes('program khusus') && !m.includes('proksus');
+        });
+      } else if (targetKategori === 'proksus') {
+        matched = matched.filter((r: any) => {
+          const m = (r.mapel || '').toLowerCase();
+          return m.includes('program khusus') || m.includes('proksus');
+        });
+      }
+
+      if (matched.length === 0) {
+        Swal.fire('Info', `Tidak ditemukan data jurnal untuk <b>${targetGuru}</b> pada periode ${targetFrom} s.d. ${targetTo}.`, 'info');
+        return;
+      }
+
+      matched.sort((a: any, b: any) => {
+        if (a.tanggal !== b.tanggal) return a.tanggal.localeCompare(b.tanggal);
+        const jamA = parseInt((a.jamKe || '').split(',')[0], 10) || 0;
+        const jamB = parseInt((b.jamKe || '').split(',')[0], 10) || 0;
+        return jamA - jamB;
+      });
+
+      const countJam = (jamKe: string) => {
+        if (!jamKe) return 1;
+        return jamKe.split(',').map((s: string) => s.trim()).filter(Boolean).length;
+      };
+
+      let totalJamReguler = 0;
+      let totalJamProksus = 0;
+
+      matched.forEach((r: any) => {
+        const j = countJam(r.jamKe || '');
+        const m = (r.mapel || '').toLowerCase();
+        if (m.includes('program khusus') || m.includes('proksus')) {
+          totalJamProksus += j;
+        } else {
+          totalJamReguler += j;
+        }
+      });
+
+      const totalJamSemua = totalJamReguler + totalJamProksus;
+
+      const formatTglIndo = (str: string) => {
+        if (!str) return '-';
+        try {
+          const [yStr, mStr, dStr] = str.split('-');
+          if (yStr && mStr && dStr) {
+            const d = new Date(parseInt(yStr, 10), parseInt(mStr, 10) - 1, parseInt(dStr, 10));
+            return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+          }
+          const d = new Date(str);
+          return isNaN(d.getTime()) ? str : d.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+        } catch {
+          return str;
+        }
+      };
+
+      const periodeText = `${formatTglIndo(targetFrom)} s.d. ${formatTglIndo(targetTo)}`;
+      const cetakText = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+
+      const aoa: any[][] = [
+        ['RINCIAN JURNAL MENGAJAR GURU'],
+        ['MTs ALMAARIF 01 SINGOSARI'],
+        [`Nama Guru   : ${targetGuru}`],
+        [`Periode     : ${periodeText}`],
+        [`Kategori    : ${targetKategori === 'reguler' ? 'Hanya Mapel Reguler' : targetKategori === 'proksus' ? 'Hanya Program Khusus' : 'Semua Mapel'}`],
+        [`Dicetak     : ${cetakText}`],
+        [],
+        ['No', 'Hari', 'Tanggal', 'Jam Ke', 'Durasi (Jam)', 'Kelas', 'Mata Pelajaran', 'Materi Pembahasan']
+      ];
+
+      matched.forEach((r: any, idx: number) => {
+        let hari = '-';
+        let tglFmt = r.tanggal || '-';
+        if (r.tanggal) {
+          try {
+            const [yStr, mStr, dStr] = r.tanggal.split('-');
+            if (yStr && mStr && dStr) {
+              const d = new Date(parseInt(yStr, 10), parseInt(mStr, 10) - 1, parseInt(dStr, 10));
+              hari = d.toLocaleDateString('id-ID', { weekday: 'long' });
+              tglFmt = d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            } else {
+              const d = new Date(r.tanggal);
+              if (!isNaN(d.getTime())) {
+                hari = d.toLocaleDateString('id-ID', { weekday: 'long' });
+                tglFmt = d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
+              }
+            }
+          } catch {}
+        }
+        const durasi = countJam(r.jamKe || '');
+        aoa.push([
+          idx + 1,
+          hari,
+          tglFmt,
+          r.jamKe ? `Jam ${r.jamKe}` : '-',
+          durasi,
+          r.kelas || '-',
+          r.mapel || '-',
+          r.materi || '-'
+        ]);
+      });
+
+      aoa.push([]);
+      aoa.push(['RINGKASAN JAM MENGAJAR:']);
+      aoa.push(['Total Pertemuan / KBM', '', '', '', matched.length, 'entri']);
+      if (targetKategori !== 'proksus') {
+        aoa.push(['Total Jam Mengajar Reguler', '', '', '', totalJamReguler, 'Jam']);
+      }
+      if (targetKategori !== 'reguler' && (totalJamProksus > 0 || targetKategori === 'proksus')) {
+        aoa.push(['Total Jam Program Khusus (Proksus)', '', '', '', totalJamProksus, 'Jam']);
+      }
+      aoa.push(['TOTAL KESELURUHAN JAM', '', '', '', totalJamSemua, 'Jam']);
+
+      aoa.push([]);
+      aoa.push([]);
+      aoa.push(['', '', 'Mengetahui,', '', '', '', '', `Singosari, ${cetakText}`]);
+      aoa.push(['', '', 'Kepala Madrasah / Kepala TU,', '', '', '', '', 'Guru Pengajar,']);
+      aoa.push([]);
+      aoa.push([]);
+      aoa.push([]);
+      aoa.push(['', '', '( __________________________ )', '', '', '', '', `( ${targetGuru} )`]);
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = [
+        { wch: 5 },
+        { wch: 10 },
+        { wch: 14 },
+        { wch: 12 },
+        { wch: 14 },
+        { wch: 10 },
+        { wch: 28 },
+        { wch: 65 }
+      ];
+
+      const wb = XLSX.utils.book_new();
+      const safeSheetName = (targetGuru || 'Guru').replace(/[\\/?*\[\]:]/g, ' ').trim().slice(0, 31);
+      XLSX.utils.book_append_sheet(wb, ws, safeSheetName || 'Rincian Jurnal');
+
+      const safeFileName = `Rincian_Jurnal_${targetGuru.replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, '_')}_${targetFrom}_sd_${targetTo}.xlsx`;
+      XLSX.writeFile(wb, safeFileName);
+      Swal.close();
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Berhasil Diexport!',
+        html: `File <b>${safeFileName}</b> berhasil diunduh.<br><span style="font-size:0.85rem;color:#64748b;">(${matched.length} KBM, Total ${totalJamSemua} Jam)</span>`,
+        timer: 3000,
+        showConfirmButton: true,
+        confirmButtonColor: '#7c3aed'
+      });
+    } catch (err: any) {
+      Swal.fire('Error', 'Gagal membuat file Excel: ' + err.message, 'error');
+    }
+  };
+
   const handleExportRincianJurnalModal = async () => {
     const defaultKelas = filterKelasRekap || '';
     const now = new Date();
@@ -3260,7 +3524,14 @@ export default function PresensiPage() {
                   {isAdmin ? 'Data semua guru' : `Data jurnal: ${currentUsername}`}
                 </p>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => handleExportRincianGuruModal()}
+                  style={{ background: '#7c3aed', border: 'none', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, boxShadow: '0 2px 6px rgba(124,58,237,0.25)' }}
+                  title="Export rincian jurnal mengajar guru tertentu pada rentang tanggal tertentu"
+                >
+                  <i className="fas fa-user-check"></i> Export Rincian Jurnal Guru
+                </button>
                 <button
                   onClick={handleExportRincianJurnalModal}
                   style={{ background: '#0284c7', border: 'none', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, boxShadow: '0 2px 6px rgba(2,132,199,0.25)' }}
@@ -3398,7 +3669,14 @@ export default function PresensiPage() {
                           style={{ background: '#0284c7', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
                           title="Export rincian jurnal mengajar per kelas (pada jam sekian diajar oleh siapa dan materinya apa)"
                         >
-                          <i className="fas fa-file-export"></i> Export Rincian Jurnal
+                          <i className="fas fa-file-export"></i> Export Rincian Jurnal (Kelas)
+                        </button>
+                        <button
+                          onClick={() => handleExportRincianGuruModal()}
+                          style={{ background: '#7c3aed', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+                          title="Export rincian jurnal mengajar guru tertentu pada rentang tanggal tertentu"
+                        >
+                          <i className="fas fa-user-check"></i> Export Rincian Guru
                         </button>
                         <button
                           onClick={() => handleExportExcel(filtered)}
@@ -3430,7 +3708,13 @@ export default function PresensiPage() {
                               </td>
                               {isAdmin && (
                                 <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>
-                                  <span style={{ background: '#e0e7ff', color: '#4338ca', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600 }}>{r.namaGuru}</span>
+                                  <span
+                                    onClick={() => handleExportRincianGuruModal(r.namaGuru)}
+                                    title={`Klik untuk export rincian jurnal ${r.namaGuru}`}
+                                    style={{ background: '#e0e7ff', color: '#4338ca', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+                                  >
+                                    {r.namaGuru}
+                                  </span>
                                 </td>
                               )}
                               <td style={{ padding: '10px 14px', whiteSpace: 'nowrap', fontWeight: 600, color: '#1e293b' }}>{r.kelas}</td>
