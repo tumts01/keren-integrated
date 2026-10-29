@@ -542,23 +542,6 @@ export default function MonitoringSpmb({
                           </div>
                         </div>
 
-                        {/* Box Variasi Ejaan Terkelompok */}
-                        {sch.allVariations.length > 1 && (
-                          <div className={styles.variasiEjaanBox}>
-                            <div className={styles.variasiEjaanTitle}>
-                              <i className="fas fa-info-circle"></i> {sch.allVariations.length} Variasi Ejaan Pendaftar:
-                            </div>
-                            <div style={{ color: '#334155' }}>
-                              {sch.allVariations.map((v, i) => (
-                                <span key={i}>
-                                  {v} <span style={{ color: '#0284c7', fontWeight: 700 }}>({sch.nameCounts[v]} siswa)</span>
-                                  {i < sch.allVariations.length - 1 ? ' • ' : ''}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
                         {/* Progress Bar */}
                         <div className={styles.progressBarContainer}>
                           <div
@@ -618,11 +601,6 @@ export default function MonitoringSpmb({
                               <div key={si} className={styles.studentListItem}>
                                 <span><strong>{si + 1}.</strong> {st.nama}</span>
                                 <span style={{ color: '#64748b', fontSize: '0.72rem' }}>
-                                  {st.ejaanAsal !== sch.name && (
-                                    <span style={{ fontStyle: 'italic', color: '#0284c7', marginRight: 5 }}>
-                                      [input: &quot;{st.ejaanAsal}&quot;]
-                                    </span>
-                                  )}
                                   ({st.jalur}) {st.tanggal}
                                 </span>
                               </div>
@@ -868,12 +846,7 @@ export default function MonitoringSpmb({
                             <td style={{ border: '1px solid #000', padding: '5px 8px', textAlign: 'center' }}>{idx + 1}</td>
                             <td style={{ border: '1px solid #000', padding: '5px 8px', textAlign: 'center', fontFamily: 'monospace', fontWeight: 700 }}>{s.npsn}</td>
                             <td style={{ border: '1px solid #000', padding: '5px 8px', fontWeight: 600 }}>
-                              <div>{s.name}</div>
-                              {s.allVariations.length > 1 && (
-                                <div style={{ fontSize: '7.5pt', color: '#64748b', fontStyle: 'italic', fontWeight: 400, marginTop: 2 }}>
-                                  Variasi ejaan: {s.allVariations.join(' / ')}
-                                </div>
-                              )}
+                              {s.name}
                             </td>
                             <td style={{ border: '1px solid #000', padding: '5px 8px', textAlign: 'center', fontStyle: 'italic' }}>{s.type}</td>
                             <td style={{ border: '1px solid #000', padding: '5px 8px', textAlign: 'center' }}>{s.laki}</td>
