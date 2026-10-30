@@ -62,6 +62,7 @@ export default function CbtMonitoringPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedPesertaLog, setSelectedPesertaLog] = useState<PesertaCBT | null>(null);
   const [cbtBuka, setCbtBuka] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(30);
 
@@ -100,6 +101,10 @@ export default function CbtMonitoringPage() {
   };
 
   const handleToggleCbt = async () => {
+    if (!isAdmin) {
+      Swal.fire('Akses Ditolak', 'Pengaturan buka/tutup ujian CBT hanya dapat dilakukan oleh Admin.', 'warning');
+      return;
+    }
     try {
       const newVal = !cbtBuka;
       const res = await fetch('/api/olimpiade-seni/config-cbt', {
@@ -125,6 +130,15 @@ export default function CbtMonitoringPage() {
   };
 
   useEffect(() => {
+    const sessionStr = localStorage.getItem('keren_user_data');
+    if (sessionStr) {
+      try {
+        const session = JSON.parse(sessionStr);
+        setIsAdmin(session.role === 'admin' || session.role === 'Admin' || session.role === 'ADMIN');
+      } catch (e) {
+        setIsAdmin(false);
+      }
+    }
     fetchData();
     fetchCbtConfig();
   }, []);
@@ -148,6 +162,10 @@ export default function CbtMonitoringPage() {
 
   // Aksi Kelola Sesi
   const handleAction = async (action: string, p: PesertaCBT, extraBody: any = {}) => {
+    if (!isAdmin) {
+      Swal.fire('Akses Ditolak', 'Aksi kelola dan reset sesi ujian ini hanya dapat dilakukan oleh Admin.', 'warning');
+      return;
+    }
     let confirmTitle = '';
     let confirmText = '';
     let confirmBtn = 'Ya, Lanjutkan';
@@ -396,48 +414,70 @@ export default function CbtMonitoringPage() {
             >
               <i className="fas fa-trophy"></i> Live Score Pemenang
             </button>
-            <button
-              onClick={() => router.push('/olimpiade-seni/admin-soal')}
-              style={{
-                background: 'white',
-                border: '1.5px solid #cbd5e1',
-                padding: '8px 14px',
-                borderRadius: '8px',
-                color: '#475569',
-                cursor: 'pointer',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <i className="fas fa-book"></i> Bank Soal CBT
-            </button>
+            {isAdmin && (
+              <button
+                onClick={() => router.push('/olimpiade-seni/admin-soal')}
+                style={{
+                  background: 'white',
+                  border: '1.5px solid #cbd5e1',
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  color: '#475569',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <i className="fas fa-book"></i> Bank Soal CBT
+              </button>
+            )}
           </div>
 
           {/* TOGGLE STATUS CBT & CONTROLS */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <button
-              onClick={handleToggleCbt}
-              title={cbtBuka ? 'Klik untuk mengunci/menutup CBT' : 'Klik untuk membuka CBT bagi peserta'}
-              style={{
-                background: cbtBuka ? '#dcfce7' : '#fee2e2',
-                color: cbtBuka ? '#15803d' : '#b91c1c',
-                border: `1.5px solid ${cbtBuka ? '#86efac' : '#fca5a5'}`,
-                padding: '8px 14px',
-                borderRadius: '8px',
-                fontWeight: 700,
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-              }}
-            >
-              <i className={`fas ${cbtBuka ? 'fa-lock-open' : 'fa-lock'}`}></i>
-              Portal CBT: {cbtBuka ? 'BUKA' : 'DITUTUP'}
-            </button>
+            {isAdmin ? (
+              <button
+                onClick={handleToggleCbt}
+                title={cbtBuka ? 'Klik untuk mengunci/menutup CBT' : 'Klik untuk membuka CBT bagi peserta'}
+                style={{
+                  background: cbtBuka ? '#dcfce7' : '#fee2e2',
+                  color: cbtBuka ? '#15803d' : '#b91c1c',
+                  border: `1.5px solid ${cbtBuka ? '#86efac' : '#fca5a5'}`,
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <i className={`fas ${cbtBuka ? 'fa-lock-open' : 'fa-lock'}`}></i>
+                Portal CBT: {cbtBuka ? 'BUKA' : 'DITUTUP'}
+              </button>
+            ) : (
+              <div
+                style={{
+                  background: cbtBuka ? '#dcfce7' : '#f1f5f9',
+                  color: cbtBuka ? '#15803d' : '#64748b',
+                  border: `1.5px solid ${cbtBuka ? '#86efac' : '#cbd5e1'}`,
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <i className={`fas ${cbtBuka ? 'fa-lock-open' : 'fa-lock'}`}></i>
+                Status CBT: {cbtBuka ? 'BUKA' : 'DITUTUP'}
+              </div>
+            )}
 
             {/* AUTO REFRESH TOGGLE */}
             <div
@@ -504,25 +544,27 @@ export default function CbtMonitoringPage() {
                 Pantau langsung status pengerjaan, sisa waktu, butir soal terjawab, pelanggaran anti-cheat, dan kelola/reset sesi ujian peserta secara instan.
               </p>
             </div>
-            <button
-              onClick={handleExportExcel}
-              style={{
-                background: '#16a34a',
-                color: 'white',
-                border: 'none',
-                padding: '10px 18px',
-                borderRadius: '10px',
-                fontWeight: 700,
-                fontSize: '0.9rem',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                boxShadow: '0 2px 8px rgba(22,163,74,0.3)',
-              }}
-            >
-              <i className="fas fa-file-excel"></i> Export Rekap Sesi
-            </button>
+            {isAdmin && (
+              <button
+                onClick={handleExportExcel}
+                style={{
+                  background: '#16a34a',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 18px',
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 2px 8px rgba(22,163,74,0.3)',
+                }}
+              >
+                <i className="fas fa-file-excel"></i> Export Rekap Sesi
+              </button>
+            )}
           </div>
         </div>
 
@@ -793,7 +835,7 @@ export default function CbtMonitoringPage() {
                             </span>
                             {p.username_cbt && (
                               <span style={{ color: '#0284c7', background: '#eff6ff', padding: '2px 6px', borderRadius: '4px', border: '1px solid #dbeafe' }}>
-                                Akun: <b>{p.username_cbt}</b> | <b>{p.password_cbt}</b>
+                                Akun: <b>{p.username_cbt}</b> {isAdmin && <>| <b>{p.password_cbt}</b></>}
                               </span>
                             )}
                           </div>
@@ -932,6 +974,11 @@ export default function CbtMonitoringPage() {
 
                         {/* Aksi */}
                         <td style={{ padding: '14px', textAlign: 'center' }}>
+                          {!isAdmin ? (
+                            <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontStyle: 'italic', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                              <i className="fas fa-lock"></i> Hanya Admin
+                            </span>
+                          ) : (
                           <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', flexWrap: 'wrap' }}>
                             {/* Tombol Buka Kunci (Reopen) jika sudah selesai */}
                             {isSelesai && (
@@ -1051,6 +1098,7 @@ export default function CbtMonitoringPage() {
                               </button>
                             )}
                           </div>
+                          )}
                         </td>
                       </tr>
                     );
@@ -1269,25 +1317,27 @@ export default function CbtMonitoringPage() {
 
                 {/* Footer Modal Actions */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #e2e8f0' }}>
-                  <button
-                    onClick={() => handleAction('reset_pelanggaran', selectedPesertaLog)}
-                    disabled={actionLoading}
-                    style={{
-                      background: '#7c3aed',
-                      color: 'white',
-                      border: 'none',
-                      padding: '8px 16px',
-                      borderRadius: '8px',
-                      fontWeight: 700,
-                      fontSize: '0.85rem',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                    }}
-                  >
-                    <i className="fas fa-shield-alt"></i> Reset Pelanggaran ke 0x
-                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => handleAction('reset_pelanggaran', selectedPesertaLog)}
+                      disabled={actionLoading}
+                      style={{
+                        background: '#7c3aed',
+                        color: 'white',
+                        border: 'none',
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        fontWeight: 700,
+                        fontSize: '0.85rem',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <i className="fas fa-shield-alt"></i> Reset Pelanggaran ke 0x
+                    </button>
+                  )}
                   <button
                     onClick={() => setSelectedPesertaLog(null)}
                     style={{
