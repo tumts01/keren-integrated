@@ -62,6 +62,8 @@ export default function CbtMonitoringPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedPesertaLog, setSelectedPesertaLog] = useState<PesertaCBT | null>(null);
   const [cbtBuka, setCbtBuka] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(30);
 
   const REFRESH_INTERVAL = 15; // Detik
 
@@ -264,6 +266,28 @@ export default function CbtMonitoringPage() {
       return true;
     });
   }, [data, filterCabang, filterStatus, searchQuery]);
+
+  const totalPages = itemsPerPage === 999999 ? 1 : Math.ceil(filteredData.length / itemsPerPage) || 1;
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, filteredData.length);
+  const paginatedData = itemsPerPage === 999999 ? filteredData : filteredData.slice(startIndex, endIndex);
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (safeCurrentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, '...', totalPages);
+      } else if (safeCurrentPage >= totalPages - 3) {
+        pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', safeCurrentPage - 1, safeCurrentPage, safeCurrentPage + 1, '...', totalPages);
+      }
+    }
+    return pages;
+  };
 
   // Export to Excel
   const handleExportExcel = () => {
@@ -625,7 +649,10 @@ export default function CbtMonitoringPage() {
                 type="text"
                 placeholder="Cari nama, no peserta, sekolah, username..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
                 style={{
                   width: '100%',
                   padding: '9px 12px 9px 36px',
@@ -650,7 +677,10 @@ export default function CbtMonitoringPage() {
             <div style={{ minWidth: '160px' }}>
               <select
                 value={filterCabang}
-                onChange={(e) => setFilterCabang(e.target.value)}
+                onChange={(e) => {
+                  setFilterCabang(e.target.value);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', background: 'white' }}
               >
                 <option value="Semua">Semua Cabang</option>
@@ -666,7 +696,10 @@ export default function CbtMonitoringPage() {
             <div style={{ minWidth: '180px' }}>
               <select
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                onChange={(e) => {
+                  setFilterStatus(e.target.value);
+                  setCurrentPage(1);
+                }}
                 style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', background: 'white' }}
               >
                 <option value="Semua">Semua Status</option>
@@ -684,6 +717,7 @@ export default function CbtMonitoringPage() {
                 setFilterCabang('Semua');
                 setFilterStatus('Semua');
                 setSearchQuery('');
+                setCurrentPage(1);
               }}
               style={{
                 background: '#fee2e2',
@@ -714,7 +748,8 @@ export default function CbtMonitoringPage() {
               <p style={{ margin: '6px 0 0', fontSize: '0.85rem' }}>Coba ubah kata kunci pencarian atau reset filter.</p>
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
+            <>
+              <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
                 <thead>
                   <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569', textAlign: 'left' }}>
@@ -730,7 +765,8 @@ export default function CbtMonitoringPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredData.map((p, idx) => {
+                  {paginatedData.map((p, idx) => {
+                    const globalIdx = itemsPerPage === 999999 ? idx + 1 : startIndex + idx + 1;
                     const isSedangUjian = p.status === 'sedang_mengerjakan';
                     const isSelesai = p.status === 'selesai';
                     const persen = p.total_soal > 0 ? Math.round((p.terjawab / p.total_soal) * 100) : 0;
@@ -743,7 +779,7 @@ export default function CbtMonitoringPage() {
                           background: isSedangUjian ? '#f0fdf4' : idx % 2 === 0 ? 'white' : '#fafafa',
                         }}
                       >
-                        <td style={{ padding: '14px', color: '#94a3b8', fontWeight: 600 }}>{idx + 1}</td>
+                        <td style={{ padding: '14px', color: '#94a3b8', fontWeight: 600 }}>{globalIdx}</td>
 
                         {/* Peserta Info */}
                         <td style={{ padding: '14px' }}>
@@ -1022,6 +1058,129 @@ export default function CbtMonitoringPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {filteredData.length > 0 && (
+              <div style={{
+                padding: '16px 20px',
+                borderTop: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '14px',
+                background: '#f8fafc',
+                borderRadius: '0 0 16px 16px'
+              }}>
+                <div style={{ fontSize: '0.86rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontWeight: 600 }}>Tampilkan:</span>
+                    <select
+                      value={itemsPerPage}
+                      onChange={(e) => {
+                        setItemsPerPage(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      style={{
+                        padding: '5px 10px',
+                        borderRadius: '6px',
+                        border: '1.5px solid #cbd5e1',
+                        outline: 'none',
+                        background: 'white',
+                        color: '#334155',
+                        fontWeight: 600,
+                        fontSize: '0.84rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value={30}>30 per halaman</option>
+                      <option value={50}>50 per halaman</option>
+                      <option value={100}>100 per halaman</option>
+                      <option value={999999}>Semua</option>
+                    </select>
+                  </div>
+                  <span>
+                    Menampilkan <b>{startIndex + 1} - {endIndex}</b> dari total <b>{filteredData.length}</b> peserta CBT
+                  </span>
+                </div>
+
+                {totalPages > 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={safeCurrentPage === 1}
+                      style={{
+                        padding: '6px 12px',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '6px',
+                        background: safeCurrentPage === 1 ? '#f1f5f9' : 'white',
+                        cursor: safeCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                        color: safeCurrentPage === 1 ? '#94a3b8' : '#334155',
+                        fontSize: '0.84rem',
+                        fontWeight: 600,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <i className="fas fa-chevron-left" style={{ fontSize: '0.75rem' }}></i> Sebelumnya
+                    </button>
+
+                    {getPageNumbers().map((page, pIdx) => (
+                      typeof page === 'number' ? (
+                        <button
+                          key={pIdx}
+                          type="button"
+                          onClick={() => setCurrentPage(page)}
+                          style={{
+                            minWidth: '34px',
+                            height: '34px',
+                            padding: '0 8px',
+                            border: safeCurrentPage === page ? 'none' : '1px solid #cbd5e1',
+                            borderRadius: '6px',
+                            background: safeCurrentPage === page ? '#0284c7' : 'white',
+                            color: safeCurrentPage === page ? 'white' : '#334155',
+                            cursor: 'pointer',
+                            fontSize: '0.84rem',
+                            fontWeight: safeCurrentPage === page ? 700 : 500,
+                            transition: 'all 0.15s'
+                          }}
+                        >
+                          {page}
+                        </button>
+                      ) : (
+                        <span key={pIdx} style={{ padding: '0 6px', color: '#94a3b8', fontSize: '0.9rem' }}>
+                          {page}
+                        </span>
+                      )
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={safeCurrentPage === totalPages}
+                      style={{
+                        padding: '6px 12px',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '6px',
+                        background: safeCurrentPage === totalPages ? '#f1f5f9' : 'white',
+                        cursor: safeCurrentPage === totalPages ? 'not-allowed' : 'pointer',
+                        color: safeCurrentPage === totalPages ? '#94a3b8' : '#334155',
+                        fontSize: '0.84rem',
+                        fontWeight: 600,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      Selanjutnya <i className="fas fa-chevron-right" style={{ fontSize: '0.75rem' }}></i>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            </>
           )}
         </div>
 

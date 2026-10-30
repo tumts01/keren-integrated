@@ -15,6 +15,8 @@ export default function MonitoringOlimpiadePage() {
   const [publishedAt, setPublishedAt] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(30);
 
   useEffect(() => {
     const sessionStr = localStorage.getItem('keren_user_data');
@@ -140,6 +142,28 @@ export default function MonitoringOlimpiadePage() {
 
   // Re-sort karena gabungan mungkin tidak urut per cabang
   const sortedData = [...filteredData].sort((a, b) => Number(b.rata_rata) - Number(a.rata_rata));
+
+  const totalPages = itemsPerPage === 999999 ? 1 : Math.ceil(sortedData.length / itemsPerPage) || 1;
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, sortedData.length);
+  const paginatedData = itemsPerPage === 999999 ? sortedData : sortedData.slice(startIndex, endIndex);
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      if (safeCurrentPage <= 4) {
+        pages.push(1, 2, 3, 4, 5, '...', totalPages);
+      } else if (safeCurrentPage >= totalPages - 3) {
+        pages.push(1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        pages.push(1, '...', safeCurrentPage - 1, safeCurrentPage, safeCurrentPage + 1, '...', totalPages);
+      }
+    }
+    return pages;
+  };
 
   const juaraUmumList = useMemo(() => {
     if (!cabangOptions || cabangOptions.length === 0 || data.length === 0) return [];
@@ -296,7 +320,10 @@ export default function MonitoringOlimpiadePage() {
           <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Filter Cabang Lomba</label>
           <select 
             value={filterCabang} 
-            onChange={(e) => setFilterCabang(e.target.value)}
+            onChange={(e) => {
+              setFilterCabang(e.target.value);
+              setCurrentPage(1);
+            }}
             style={{ padding: '10px 15px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', minWidth: '300px' }}
           >
             <option value="Semua">Semua Cabang Lomba</option>
@@ -311,7 +338,8 @@ export default function MonitoringOlimpiadePage() {
             <InlineLoading message="Menghitung klasemen..." />
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <>
+            <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', color: '#334155', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>
@@ -334,7 +362,8 @@ export default function MonitoringOlimpiadePage() {
                     </td>
                   </tr>
                 ) : (
-                  sortedData.map((d, i) => {
+                  paginatedData.map((d, i) => {
+                    const globalRank = itemsPerPage === 999999 ? i + 1 : startIndex + i + 1;
                     const lolos = isLolos(d);
                     const durationText = (() => {
                       if (d.waktu_mulai && d.waktu_selesai) {
@@ -351,11 +380,11 @@ export default function MonitoringOlimpiadePage() {
                     
                     return (
                     <tr key={d.id} style={{ borderBottom: '1px solid #e2e8f0', background: lolos ? (i === 0 ? '#fef9c3' : i === 1 ? '#f0fdf4' : i === 2 ? '#fff7ed' : '#f0fdf4') : '#fff5f5' }}>
-                      <td style={{ padding: '15px', fontWeight: 'bold', color: i === 0 ? '#ca8a04' : i === 1 ? '#64748b' : i === 2 ? '#ea580c' : '#334155' }}>
-                        {i === 0 ? <><i className="fas fa-trophy" style={{color: '#eab308'}}></i> 1</> : 
-                         i === 1 ? <><i className="fas fa-medal" style={{color: '#94a3b8'}}></i> 2</> : 
-                         i === 2 ? <><i className="fas fa-medal" style={{color: '#c2410c'}}></i> 3</> : 
-                         i + 1}
+                      <td style={{ padding: '15px', fontWeight: 'bold', color: globalRank === 1 ? '#ca8a04' : globalRank === 2 ? '#64748b' : globalRank === 3 ? '#ea580c' : '#334155' }}>
+                        {globalRank === 1 ? <><i className="fas fa-trophy" style={{color: '#eab308'}}></i> 1</> : 
+                         globalRank === 2 ? <><i className="fas fa-medal" style={{color: '#94a3b8'}}></i> 2</> : 
+                         globalRank === 3 ? <><i className="fas fa-medal" style={{color: '#c2410c'}}></i> 3</> : 
+                         globalRank}
                       </td>
                       <td style={{ padding: '15px', fontWeight: 600 }}>{d.nama}</td>
                       <td style={{ padding: '15px', color: '#64748b' }}>{d.asal_sekolah || '-'}</td>
@@ -409,6 +438,129 @@ export default function MonitoringOlimpiadePage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {sortedData.length > 0 && (
+            <div style={{
+              padding: '16px 20px',
+              borderTop: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '14px',
+              background: '#f8fafc',
+              borderRadius: '0 0 12px 12px'
+            }}>
+              <div style={{ fontSize: '0.86rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontWeight: 600 }}>Tampilkan:</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    style={{
+                      padding: '5px 10px',
+                      borderRadius: '6px',
+                      border: '1.5px solid #cbd5e1',
+                      outline: 'none',
+                      background: 'white',
+                      color: '#334155',
+                      fontWeight: 600,
+                      fontSize: '0.84rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value={30}>30 per halaman</option>
+                    <option value={50}>50 per halaman</option>
+                    <option value={100}>100 per halaman</option>
+                    <option value={999999}>Semua</option>
+                  </select>
+                </div>
+                <span>
+                  Menampilkan <b>{startIndex + 1} - {endIndex}</b> dari total <b>{sortedData.length}</b> data peserta
+                </span>
+              </div>
+
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={safeCurrentPage === 1}
+                    style={{
+                      padding: '6px 12px',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      background: safeCurrentPage === 1 ? '#f1f5f9' : 'white',
+                      cursor: safeCurrentPage === 1 ? 'not-allowed' : 'pointer',
+                      color: safeCurrentPage === 1 ? '#94a3b8' : '#334155',
+                      fontSize: '0.84rem',
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <i className="fas fa-chevron-left" style={{ fontSize: '0.75rem' }}></i> Sebelumnya
+                  </button>
+
+                  {getPageNumbers().map((page, pIdx) => (
+                    typeof page === 'number' ? (
+                      <button
+                        key={pIdx}
+                        type="button"
+                        onClick={() => setCurrentPage(page)}
+                        style={{
+                          minWidth: '34px',
+                          height: '34px',
+                          padding: '0 8px',
+                          border: safeCurrentPage === page ? 'none' : '1px solid #cbd5e1',
+                          borderRadius: '6px',
+                          background: safeCurrentPage === page ? '#3b82f6' : 'white',
+                          color: safeCurrentPage === page ? 'white' : '#334155',
+                          cursor: 'pointer',
+                          fontSize: '0.84rem',
+                          fontWeight: safeCurrentPage === page ? 700 : 500,
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        {page}
+                      </button>
+                    ) : (
+                      <span key={pIdx} style={{ padding: '0 6px', color: '#94a3b8', fontSize: '0.9rem' }}>
+                        {page}
+                      </span>
+                    )
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={safeCurrentPage === totalPages}
+                    style={{
+                      padding: '6px 12px',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      background: safeCurrentPage === totalPages ? '#f1f5f9' : 'white',
+                      cursor: safeCurrentPage === totalPages ? 'not-allowed' : 'pointer',
+                      color: safeCurrentPage === totalPages ? '#94a3b8' : '#334155',
+                      fontSize: '0.84rem',
+                      fontWeight: 600,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    Selanjutnya <i className="fas fa-chevron-right" style={{ fontSize: '0.75rem' }}></i>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+          </>
         )}
           </div>
         </>
