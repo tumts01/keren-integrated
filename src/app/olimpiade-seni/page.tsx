@@ -130,7 +130,31 @@ export default function OlimpiadeSeniPage() {
           </button>
 
 
-          <button 
+                    <button 
+            onClick={() => router.push('/olimpiade-seni/cbt-monitoring')}
+            style={{
+              padding: '16px 32px',
+              borderRadius: '12px',
+              background: '#7c3aed',
+              color: 'white',
+              border: 'none',
+              fontSize: '1rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(124, 58, 237, 0.4)',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(124, 58, 237, 0.5)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(124, 58, 237, 0.4)'; }}
+          >
+            <i className="fas fa-desktop" style={{ fontSize: '1.2rem' }}></i>
+            Monitoring CBT & Sesi
+          </button>
+
+<button 
             onClick={() => router.push('/olimpiade-seni/monitoring')}
             style={{
               padding: '16px 32px',

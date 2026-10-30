@@ -1,10 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 
 export default function AdminSoalCBT() {
+  const router = useRouter();
   const [soalList, setSoalList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [lombaFilter, setLombaFilter] = useState('Matematika');
@@ -191,7 +193,26 @@ export default function AdminSoalCBT() {
       <div style={{ maxWidth: '1200px', margin: '0 auto', background: 'white', padding: '32px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
           <h1 style={{ fontSize: '1.8rem', color: '#0f172a', margin: 0 }}>Bank Soal CBT Olimpiade</h1>
-          <button 
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              onClick={() => router.push('/olimpiade-seni/cbt-monitoring')}
+              style={{
+                padding: '10px 18px',
+                borderRadius: '8px',
+                background: '#7c3aed',
+                color: 'white',
+                border: 'none',
+                cursor: 'pointer',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 2px 8px rgba(124, 58, 237, 0.3)'
+              }}
+            >
+              <i className="fas fa-desktop"></i> Monitoring CBT & Sesi
+            </button>
+            <button 
             onClick={handleToggleCbt}
             style={{ 
               padding: '10px 20px', 
@@ -209,6 +230,7 @@ export default function AdminSoalCBT() {
             <i className={`fas ${cbtBuka ? 'fa-eye-slash' : 'fa-eye'}`}></i> 
             {cbtBuka ? 'Tutup CBT (Sembunyikan)' : 'Buka CBT (Tampilkan)'}
           </button>
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: '16px', marginBottom: '32px', flexWrap: 'wrap', alignItems: 'center' }}>
