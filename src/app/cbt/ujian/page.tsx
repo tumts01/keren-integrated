@@ -29,10 +29,20 @@ export default function CBTUjianPage() {
   const isUnloadingRef = useRef(false);
   const isOfflineRef = useRef(false);
   const hasEnteredFullscreenRef = useRef(false);
+  const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const initialGraceRef = useRef(true);
 
   // Constants
   const DURASI_MENIT = 90;
   const MAX_WARNINGS = 3;
+
+  // Grace period 5 detik pertama sejak ujian dibuka (agar pop-up awal Chrome/browser tidak memicu pelanggaran)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      initialGraceRef.current = false;
+    }, 5000);
+    return () => clearTimeout(t);
+  }, []);
 
   // Monitor network online / offline
   useEffect(() => {
@@ -167,16 +177,58 @@ export default function CBTUjianPage() {
         return;
       }
       if (document.visibilityState === 'hidden') {
+        if (blurTimeoutRef.current) {
+          clearTimeout(blurTimeoutRef.current);
+          blurTimeoutRef.current = null;
+        }
         logAndWarn('tab_switch');
       }
     };
 
-    // Window blur: detects Windows key, Alt+Tab, click outside browser
+    // Window blur: jika document masih 'visible', ini adalah interaksi pop-up bawaan browser
+    // (misalnya pop-up Chrome "Simpan Sandi", notifikasi izin, atau klik toolbar).
+    // Diberi masa toleransi 2.5 detik. Jika dalam 2.5 detik fokus kembali ke halaman ujian,
+    // maka batalkan dan JANGAN hitung sebagai pelanggaran!
     const handleWindowBlur = () => {
-      if (isSubmittingRef.current || isUnloadingRef.current || isOfflineRef.current) {
+      if (
+        isSubmittingRef.current ||
+        isUnloadingRef.current ||
+        isOfflineRef.current ||
+        initialGraceRef.current
+      ) {
         return;
       }
-      logAndWarn('tab_switch');
+
+      // Jika document sudah 'hidden' (berpindah tab/minimize), langsung ditangani handleVisibilityChange
+      if (document.visibilityState === 'hidden') {
+        return;
+      }
+
+      // Beri jeda toleransi 2.5 detik untuk interaksi pop-up browser seperti Simpan Sandi Chrome
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+      }
+
+      blurTimeoutRef.current = setTimeout(() => {
+        // Cek apakah setelah 2.5 detik jendela ujian masih tetap tidak fokus
+        if (
+          !document.hasFocus() &&
+          !isSubmittingRef.current &&
+          !isUnloadingRef.current &&
+          !isOfflineRef.current &&
+          !initialGraceRef.current
+        ) {
+          logAndWarn('tab_switch');
+        }
+      }, 2500);
+    };
+
+    // Saat fokus kembali ke dokumen (misal setelah klik 'Simpan/X' pada pop-up Chrome)
+    const handleWindowFocus = () => {
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+        blurTimeoutRef.current = null;
+      }
     };
 
     // 5. Detect fullscreen exit — hanya catat jika sudah pernah masuk fullscreen
@@ -200,16 +252,24 @@ export default function CBTUjianPage() {
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('selectstart', preventSelect);
     window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('focus', handleWindowFocus);
+    document.addEventListener('pointerdown', handleWindowFocus);
     window.addEventListener('beforeunload', handleBeforeUnload);
     window.addEventListener('pagehide', handlePageHide);
 
     return () => {
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+        blurTimeoutRef.current = null;
+      }
       document.removeEventListener('contextmenu', preventContextMenu);
       document.removeEventListener('keydown', preventKeys);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('selectstart', preventSelect);
       window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('focus', handleWindowFocus);
+      document.removeEventListener('pointerdown', handleWindowFocus);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handlePageHide);
     };

@@ -48,11 +48,19 @@ export default function LoginCBT() {
           <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>Olimpiade Akademik MTs Almaarif 01</p>
         </div>
 
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleLogin} autoComplete="off">
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Username</label>
             <input 
               type="text" 
+              name="cbt_user_token"
+              id="cbt_user_token"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck="false"
+              data-lpignore="true"
+              data-form-type="other"
               required
               value={username} 
               onChange={e => setUsername(e.target.value)}
@@ -65,6 +73,14 @@ export default function LoginCBT() {
             <div style={{ position: 'relative' }}>
               <input 
                 type={showPassword ? 'text' : 'password'} 
+                name="cbt_pass_token"
+                id="cbt_pass_token"
+                autoComplete="one-time-code"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+                data-lpignore="true"
+                data-form-type="other"
                 required
                 value={password} 
                 onChange={e => setPassword(e.target.value)}
