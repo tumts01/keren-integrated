@@ -21,13 +21,70 @@ export default function CBTUjianPage() {
   const [warningCount, setWarningCount] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showWarningBanner, setShowWarningBanner] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
+
   const warningCountRef = useRef(0);
   const userRef = useRef<any>(null);
   const isSubmittingRef = useRef(false);
+  const isUnloadingRef = useRef(false);
+  const isOfflineRef = useRef(false);
+  const hasEnteredFullscreenRef = useRef(false);
 
   // Constants
   const DURASI_MENIT = 90;
   const MAX_WARNINGS = 3;
+
+  // Monitor network online / offline
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const offlineStatus = !navigator.onLine;
+    setIsOffline(offlineStatus);
+    isOfflineRef.current = offlineStatus;
+
+    const handleOnline = () => {
+      setIsOffline(false);
+      isOfflineRef.current = false;
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: 'Koneksi internet pulih. Menyinkronkan jawaban...',
+        showConfirmButton: false,
+        timer: 3000
+      });
+
+      // Sinkronkan seluruh jawaban lokal yang tersimpan
+      if (userRef.current?.nomorPeserta) {
+        try {
+          const savedStr = localStorage.getItem(`cbt_jawaban_${userRef.current.nomorPeserta}`);
+          if (savedStr) {
+            const backup = JSON.parse(savedStr);
+            for (const [noSoal, ans] of Object.entries(backup)) {
+              fetch('/api/cbt/sesi', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'save', nomorPeserta: userRef.current.nomorPeserta, nomorSoal: noSoal, jawaban: ans })
+              }).catch(() => {});
+            }
+          }
+        } catch {}
+      }
+    };
+
+    const handleOffline = () => {
+      setIsOffline(true);
+      isOfflineRef.current = true;
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const savedFont = localStorage.getItem('cbt_font_size');
@@ -62,38 +119,79 @@ export default function CBTUjianPage() {
     // 1. Disable right-click
     const preventContextMenu = (e: MouseEvent) => e.preventDefault();
 
-    // 2. Disable copy/paste/cut/select shortcuts
+    // 2. Disable copy/paste/cut/select shortcuts & Block Reload Keys (F5, Ctrl+R, Cmd+R)
     const preventKeys = (e: KeyboardEvent) => {
-      const blocked = (e.ctrlKey || e.metaKey) && ['c', 'v', 'x', 'a', 'u'].includes(e.key.toLowerCase());
-      // Also block F12 devtools, PrintScreen
+      const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+
+      // Cegah reload dari keyboard agar peserta tidak refresh tidak sengaja
+      const isReload = e.key === 'F5' || (isCtrlOrMeta && e.key.toLowerCase() === 'r');
+      if (isReload) {
+        e.preventDefault();
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'info',
+          title: 'Halaman menyimpan otomatis, tidak perlu di-refresh.',
+          showConfirmButton: false,
+          timer: 3000
+        });
+        return;
+      }
+
+      const blocked = isCtrlOrMeta && ['c', 'v', 'x', 'a', 'u'].includes(e.key.toLowerCase());
       const devtools = e.key === 'F12' || e.key === 'PrintScreen';
       if (blocked || devtools) e.preventDefault();
     };
 
-    // 3. Detect tab/window blur — covers visibilitychange AND window.blur (Windows key, alt-tab, dll.)
+    // 3. Tangani beforeunload & pagehide — tandai sedang proses reload/tutup halaman agar TIDAK dihitung pelanggaran
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isSubmittingRef.current) return;
+      isUnloadingRef.current = true;
+      // Jika peserta membatalkan reload di dialog browser, reset kembali proteksi setelah jeda
+      setTimeout(() => {
+        isUnloadingRef.current = false;
+      }, 2000);
+
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    };
+
+    const handlePageHide = () => {
+      isUnloadingRef.current = true;
+    };
+
+    // 4. Detect tab/window blur — kecualikan saat reload (isUnloadingRef), offline (isOfflineRef), atau sedang submit
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden' && !isSubmittingRef.current) {
+      if (isSubmittingRef.current || isUnloadingRef.current || isOfflineRef.current) {
+        return;
+      }
+      if (document.visibilityState === 'hidden') {
         logAndWarn('tab_switch');
       }
     };
 
     // Window blur: detects Windows key, Alt+Tab, click outside browser
     const handleWindowBlur = () => {
-      if (!isSubmittingRef.current) {
-        logAndWarn('tab_switch');
+      if (isSubmittingRef.current || isUnloadingRef.current || isOfflineRef.current) {
+        return;
       }
+      logAndWarn('tab_switch');
     };
 
-    // 4. Detect fullscreen exit
+    // 5. Detect fullscreen exit — hanya catat jika sudah pernah masuk fullscreen
     const handleFullscreenChange = () => {
       const isFull = !!(document.fullscreenElement);
       setIsFullscreen(isFull);
-      if (!isFull && !isSubmittingRef.current) {
+      if (isFull) {
+        hasEnteredFullscreenRef.current = true;
+      } else if (!isSubmittingRef.current && !isUnloadingRef.current && !isOfflineRef.current && hasEnteredFullscreenRef.current) {
+        hasEnteredFullscreenRef.current = false;
         logAndWarn('fullscreen_exit');
       }
     };
 
-    // 5. Disable text selection (CSS approach via JS)
+    // 6. Disable text selection (CSS approach via JS)
     const preventSelect = (e: Event) => e.preventDefault();
 
     document.addEventListener('contextmenu', preventContextMenu);
@@ -102,6 +200,8 @@ export default function CBTUjianPage() {
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('selectstart', preventSelect);
     window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handlePageHide);
 
     return () => {
       document.removeEventListener('contextmenu', preventContextMenu);
@@ -110,6 +210,8 @@ export default function CBTUjianPage() {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       document.removeEventListener('selectstart', preventSelect);
       window.removeEventListener('blur', handleWindowBlur);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
     };
   }, [user]);
 
@@ -124,6 +226,7 @@ export default function CBTUjianPage() {
     try {
       await document.documentElement.requestFullscreen();
       setIsFullscreen(true);
+      hasEnteredFullscreenRef.current = true;
     } catch {
       // Silently ignore if fullscreen is denied
     }
@@ -229,7 +332,16 @@ export default function CBTUjianPage() {
       if (dataSoal.success) {
         setSesi(dataSoal.sesi);
         setSoalList(dataSoal.soal);
-        setJawaban(dataSoal.sesi.jawaban_tersimpan || {});
+
+        // Gabungkan jawaban dari server dengan backup lokal jika ada (misal sempat offline sebelum reload)
+        const serverJawaban = dataSoal.sesi.jawaban_tersimpan || {};
+        let localBackup: Record<string, string> = {};
+        try {
+          const savedStr = localStorage.getItem(`cbt_jawaban_${u.nomorPeserta}`);
+          if (savedStr) localBackup = JSON.parse(savedStr);
+        } catch {}
+        const mergedJawaban = { ...serverJawaban, ...localBackup };
+        setJawaban(mergedJawaban);
         
         // Restore warning count if any
         if (dataSoal.sesi.log_kecurangan) {
@@ -288,10 +400,18 @@ export default function CBTUjianPage() {
     if (!soalList[currentIndex]) return;
     const noSoal = soalList[currentIndex].nomor_soal.toString();
     
-    // Update local state
-    setJawaban(prev => ({ ...prev, [noSoal]: opsi }));
+    // Update local state dan simpan backup di localStorage segera
+    const nextJawaban = { ...jawaban, [noSoal]: opsi };
+    setJawaban(nextJawaban);
+    try {
+      if (user?.nomorPeserta) {
+        localStorage.setItem(`cbt_jawaban_${user.nomorPeserta}`, JSON.stringify(nextJawaban));
+      }
+    } catch (err) {
+      // ignore
+    }
 
-    // Auto-save to server
+    // Auto-save ke server
     try {
       const res = await fetch('/api/cbt/sesi', {
         method: 'POST',
@@ -310,7 +430,7 @@ export default function CBTUjianPage() {
         router.push('/cbt');
       }
     } catch (e) {
-      console.error('Auto save failed', e);
+      console.warn('Auto save tertunda (offline/koneksi tidak stabil)', e);
     }
   };
 
@@ -355,6 +475,10 @@ export default function CBTUjianPage() {
       }
 
       if (data.success) {
+        try {
+          localStorage.removeItem(`cbt_jawaban_${nomorPeserta}`);
+        } catch {}
+
         Swal.fire({
           title: 'Ujian Selesai! 🎉',
           html: `
@@ -393,10 +517,26 @@ export default function CBTUjianPage() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f1f5f9', userSelect: 'none' }}>
 
+      {/* OFFLINE FLOATING WARNING BANNER */}
+      {isOffline && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 10000,
+          background: 'linear-gradient(90deg, #d97706, #b45309)', color: 'white',
+          padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          gap: '12px', fontWeight: 700, fontSize: '0.88rem', boxShadow: '0 4px 15px rgba(180,83,9,0.35)'
+        }}>
+          <i className="fas fa-wifi" style={{ fontSize: '1.2rem', color: '#fef08a' }}></i>
+          <span>
+            <b>Koneksi Internet Terputus!</b> Jawaban Anda tetap tersimpan aman di browser ini. 
+            Mohon <u>jangan me-refresh atau menutup halaman</u>, sistem otomatis terhubung kembali begitu jaringan normal.
+          </span>
+        </div>
+      )}
+
       {/* WARNING BANNER */}
       {showWarningBanner && (
         <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999,
+          position: 'fixed', top: isOffline ? '48px' : 0, left: 0, right: 0, zIndex: 9999,
           background: '#ef4444', color: 'white', padding: '14px', textAlign: 'center',
           fontWeight: 700, fontSize: '1rem', letterSpacing: '0.02em',
           boxShadow: '0 4px 20px rgba(239,68,68,0.4)'
@@ -413,6 +553,33 @@ export default function CBTUjianPage() {
             <div style={{ fontWeight: 800, fontSize: '1.25rem', color: '#0f172a', letterSpacing: '-0.3px' }}>{user.lomba}</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            {/* Indikator Status Jaringan Online / Offline */}
+            <div
+              title={isOffline ? 'Koneksi internet sedang terputus' : 'Koneksi internet stabil'}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: isOffline ? '#fef2f2' : '#f0fdf4',
+                color: isOffline ? '#dc2626' : '#16a34a',
+                border: `1px solid ${isOffline ? '#fca5a5' : '#bbf7d0'}`,
+                fontSize: '0.82rem',
+                fontWeight: 700
+              }}
+            >
+              <span style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: isOffline ? '#ef4444' : '#22c55e',
+                boxShadow: isOffline ? '0 0 6px rgba(239,68,68,0.6)' : '0 0 6px rgba(34,197,94,0.6)'
+              }}></span>
+              <i className={`fas ${isOffline ? 'fa-wifi-slash' : 'fa-wifi'}`} style={{ fontSize: '0.78rem' }}></i>
+              {isOffline ? 'Offline' : 'Online'}
+            </div>
+
             {/* Pengatur Ukuran Font Soal */}
             <div style={{
               display: 'inline-flex',
