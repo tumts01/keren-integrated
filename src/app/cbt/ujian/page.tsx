@@ -501,6 +501,24 @@ export default function CBTUjianPage() {
     setIsSubmitting(false);
   };
 
+  const handleSafeReload = async () => {
+    const confirm = await Swal.fire({
+      title: 'Muat Ulang Halaman Ujian?',
+      text: 'Semua jawaban Anda yang sudah dipilih tersimpan dengan aman. Halaman akan dimuat ulang secara resmi tanpa dianggap pelanggaran.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#0284c7',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Ya, Muat Ulang',
+      cancelButtonText: 'Batal'
+    });
+    if (!confirm.isConfirmed) return;
+
+    // Tandai reload resmi agar sensor anti-cheat tidak menganggap pelanggaran
+    isUnloadingRef.current = true;
+    window.location.reload();
+  };
+
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
@@ -523,13 +541,34 @@ export default function CBTUjianPage() {
           position: 'fixed', top: 0, left: 0, right: 0, zIndex: 10000,
           background: 'linear-gradient(90deg, #d97706, #b45309)', color: 'white',
           padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          gap: '12px', fontWeight: 700, fontSize: '0.88rem', boxShadow: '0 4px 15px rgba(180,83,9,0.35)'
+          gap: '12px', fontWeight: 700, fontSize: '0.88rem', boxShadow: '0 4px 15px rgba(180,83,9,0.35)',
+          flexWrap: 'wrap'
         }}>
           <i className="fas fa-wifi" style={{ fontSize: '1.2rem', color: '#fef08a' }}></i>
           <span>
             <b>Koneksi Internet Terputus!</b> Jawaban Anda tetap tersimpan aman di browser ini. 
-            Mohon <u>jangan me-refresh atau menutup halaman</u>, sistem otomatis terhubung kembali begitu jaringan normal.
+            Mohon <u>jangan panik</u>, sistem otomatis terhubung kembali begitu jaringan normal.
           </span>
+          <button
+            type="button"
+            onClick={handleSafeReload}
+            style={{
+              padding: '5px 12px',
+              borderRadius: '6px',
+              background: '#fef08a',
+              color: '#854d0e',
+              border: 'none',
+              fontWeight: 800,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}
+          >
+            <i className="fas fa-sync-alt"></i> Coba Muat Ulang
+          </button>
         </div>
       )}
 
@@ -579,6 +618,30 @@ export default function CBTUjianPage() {
               <i className={`fas ${isOffline ? 'fa-wifi-slash' : 'fa-wifi'}`} style={{ fontSize: '0.78rem' }}></i>
               {isOffline ? 'Offline' : 'Online'}
             </div>
+
+            {/* Tombol Muat Ulang Resmi & Aman */}
+            <button
+              type="button"
+              onClick={handleSafeReload}
+              title="Muat ulang halaman ujian secara aman jika ada kendala koneksi tanpa dianggap pelanggaran"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: '#f1f5f9',
+                color: '#334155',
+                border: '1px solid #cbd5e1',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <i className="fas fa-sync-alt" style={{ color: '#0284c7' }}></i>
+              Muat Ulang
+            </button>
 
             {/* Pengatur Ukuran Font Soal */}
             <div style={{
