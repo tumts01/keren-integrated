@@ -20,6 +20,7 @@ export default function MonitoringOlimpiadePage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(30);
+  const [showAllJuaraUmum, setShowAllJuaraUmum] = useState(false);
 
   useEffect(() => {
     const sessionStr = localStorage.getItem('keren_user_data');
@@ -566,35 +567,94 @@ export default function MonitoringOlimpiadePage() {
 
           {juaraUmumList.length > 0 && (
             <div style={{ background: 'linear-gradient(to right, #1e293b, #0f172a)', borderRadius: '12px', padding: '24px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', marginBottom: '24px', color: 'white' }}>
-              <h3 style={{ margin: '0 0 16px 0', display: 'flex', alignItems: 'center', gap: '10px', color: '#f8fafc' }}>
-                <i className="fas fa-crown" style={{ color: '#fbbf24', fontSize: '1.2rem' }}></i>
-                Klasemen Juara Umum Sekolah
-              </h3>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px', color: '#f8fafc', fontSize: '1.25rem' }}>
+                  <i className="fas fa-crown" style={{ color: '#fbbf24', fontSize: '1.3rem' }}></i>
+                  Klasemen Juara Umum Sekolah
+                </h3>
+                {juaraUmumList.length > 6 && (
+                  <button
+                    onClick={() => setShowAllJuaraUmum(!showAllJuaraUmum)}
+                    style={{
+                      background: 'rgba(255,255,255,0.12)',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      color: '#f8fafc',
+                      padding: '6px 14px',
+                      borderRadius: '8px',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <i className={`fas fa-${showAllJuaraUmum ? 'chevron-up' : 'chevron-down'}`}></i>
+                    {showAllJuaraUmum ? 'Tampilkan 6 Besar Saja' : `Lihat Semua (${juaraUmumList.length} Sekolah)`}
+                  </button>
+                )}
+              </div>
               
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-                {juaraUmumList.slice(0, 6).map((juara, index) => (
-                  <div key={juara.sekolah} style={{ background: 'rgba(255,255,255,0.1)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '16px' }}>
+                {(showAllJuaraUmum ? juaraUmumList : juaraUmumList.slice(0, 6)).map((juara, index) => (
+                  <div 
+                    key={juara.sekolah} 
+                    style={{ 
+                      background: index === 0 ? 'rgba(251, 191, 36, 0.12)' : 'rgba(255,255,255,0.06)', 
+                      padding: '16px 18px', 
+                      borderRadius: '10px', 
+                      border: index === 0 ? '1px solid rgba(251, 191, 36, 0.35)' : '1px solid rgba(255,255,255,0.1)', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '16px' 
+                    }}
+                  >
                     <div style={{ 
-                      width: '40px', height: '40px', borderRadius: '50%', 
-                      background: index === 0 ? '#fbbf24' : index === 1 ? '#94a3b8' : index === 2 ? '#b45309' : '#475569', 
+                      width: '42px', height: '42px', minWidth: '42px', borderRadius: '50%', flexShrink: 0,
+                      background: index === 0 ? 'linear-gradient(135deg, #fbbf24, #d97706)' : 
+                                  index === 1 ? 'linear-gradient(135deg, #cbd5e1, #64748b)' : 
+                                  index === 2 ? 'linear-gradient(135deg, #f97316, #b45309)' : 
+                                  '#334155', 
                       display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                      color: 'white', fontWeight: 'bold', fontSize: '1.2rem',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      color: 'white', fontWeight: 800, fontSize: '1.2rem',
+                      boxShadow: '0 3px 8px rgba(0,0,0,0.3)',
+                      border: index < 3 ? '2px solid rgba(255,255,255,0.4)' : '1px solid rgba(255,255,255,0.1)'
                     }}>
                       {index + 1}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div 
+                        title={juara.sekolah}
+                        style={{ 
+                          fontWeight: 700, 
+                          fontSize: '0.98rem', 
+                          lineHeight: 1.35, 
+                          marginBottom: '6px', 
+                          wordBreak: 'break-word',
+                          color: '#ffffff'
+                        }}
+                      >
                         {juara.sekolah}
                       </div>
-                      <div style={{ fontSize: '0.85rem', color: '#cbd5e1', display: 'flex', gap: '12px' }}>
-                        <span title="Juara 1"><i className="fas fa-medal" style={{ color: '#fbbf24' }}></i> {juara.j1}</span>
-                        <span title="Juara 2"><i className="fas fa-medal" style={{ color: '#e2e8f0' }}></i> {juara.j2}</span>
-                        <span title="Juara 3"><i className="fas fa-medal" style={{ color: '#b45309' }}></i> {juara.j3}</span>
+                      <div style={{ fontSize: '0.82rem', color: '#cbd5e1', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        <span title="Juara 1 (Emas)" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <i className="fas fa-medal" style={{ color: '#fbbf24' }}></i> {juara.j1}
+                        </span>
+                        <span title="Juara 2 (Perak)" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <i className="fas fa-medal" style={{ color: '#e2e8f0' }}></i> {juara.j2}
+                        </span>
+                        <span title="Juara 3 (Perunggu)" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                          <i className="fas fa-medal" style={{ color: '#f97316' }}></i> {juara.j3}
+                        </span>
                       </div>
                     </div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#f8fafc' }}>
-                      {juara.totalPoints}<span style={{ fontSize: '0.8rem', fontWeight: 'normal', color: '#94a3b8', marginLeft: '4px' }}>pts</span>
+                    <div style={{ textAlign: 'right', flexShrink: 0, paddingLeft: '8px' }}>
+                      <div style={{ fontSize: '1.6rem', fontWeight: 900, color: index === 0 ? '#fde047' : '#f8fafc', lineHeight: 1 }}>
+                        {juara.totalPoints}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '2px' }}>
+                        Poin
+                      </div>
                     </div>
                   </div>
                 ))}
