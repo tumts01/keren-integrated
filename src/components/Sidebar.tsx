@@ -179,16 +179,17 @@ export default function Sidebar() {
         },
       ]
     },
-    ...(isAdmin ? [
-      {
-        title: 'Keuangan',
-        items: [
+    {
+      title: 'Keuangan',
+      items: [
+        ...(isAdmin || isIzzatul ? [
           { name: 'Bendahara', path: '/bendahara', icon: 'fa-wallet' },
           { name: 'Pembayaran', path: '/pembayaran', icon: 'fa-money-bill-wave' },
           { name: 'Nota Bon', path: '/bon', icon: 'fa-file-invoice-dollar' }
-        ]
-      }
-    ] : [])
+        ] : []),
+        { name: 'Bantuan PIP', path: '/keuangan/pip', icon: 'fa-hand-holding-heart' }
+      ]
+    }
   ];
 
   const [openCategories, setOpenCategories] = useState<string[]>(['Utama', 'Akademik & KBM', 'Administrasi', 'Event Madrasah', 'Keuangan']);
