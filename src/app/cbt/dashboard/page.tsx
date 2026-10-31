@@ -4,6 +4,27 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
 
+function isCabangMatch(cabang1: string, cabang2: string) {
+  const c1 = (cabang1 || '').trim().toLowerCase();
+  const c2 = (cabang2 || '').trim().toLowerCase();
+  if (!c1 || !c2) return false;
+  if (c1 === c2) return true;
+  if (
+    (c1.includes('arab') && c2.includes('arab')) ||
+    (c1.includes('inggris') && c2.includes('inggris')) ||
+    (c1.includes('matematika') && c2.includes('matematika')) ||
+    (c1.includes('ipas') && c2.includes('ipas')) ||
+    (c1.includes('ipa') && c2.includes('ipa')) ||
+    (c1.includes('pai') && c2.includes('pai')) ||
+    (c1.includes('banjari') && c2.includes('banjari')) ||
+    (c1.includes('singer') && c2.includes('singer')) ||
+    (c1.includes('sms') && c2.includes('sms'))
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export default function DashboardCBT() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -24,7 +45,7 @@ export default function DashboardCBT() {
     const parsed = JSON.parse(data);
     setUser(parsed);
     fetchSesi(parsed.nomorPeserta);
-    fetchConfig(parsed.nomorPeserta);
+    fetchConfig(parsed.nomorPeserta, parsed.lomba);
     fetchCbtConfig();
   }, [router]);
 
@@ -38,13 +59,20 @@ export default function DashboardCBT() {
     } catch { /* silent */ }
   };
 
-  const fetchConfig = async (nomorPeserta: string) => {
+  const fetchConfig = async (nomorPeserta: string, userLomba?: string) => {
     try {
       const res = await fetch('/api/olimpiade-seni/config');
       const json = await res.json();
       if (json.success) {
-        setHasilPublished(json.hasil_published);
-        if (json.hasil_published) {
+        const pubCabangs: string[] = Array.isArray(json.published_cabang) ? json.published_cabang : [];
+        const targetLomba = userLomba || user?.lomba || '';
+        
+        // Cek apakah lomba peserta ini termasuk yang dipublikasikan
+        const isMyLombaPublished = pubCabangs.some(c => isCabangMatch(c, targetLomba)) || 
+          (pubCabangs.length === 0 && json.hasil_published);
+
+        setHasilPublished(isMyLombaPublished);
+        if (isMyLombaPublished) {
           checkLolosStatus(nomorPeserta);
         }
       }
