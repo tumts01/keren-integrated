@@ -486,13 +486,14 @@ export async function POST(req: Request) {
       const nextItems = allItems.map(item => {
         if (item.id === id) {
           found = true;
+          const isReset = status_kelayakan === 'belum_diverifikasi';
           return {
             ...item,
             status_kelayakan,
-            alasan_tidak_layak: alasan_tidak_layak || '',
-            catatan_wali: catatan_wali || '',
-            verified_by: verified_by || 'Wali Kelas',
-            verified_at: new Date().toISOString()
+            alasan_tidak_layak: isReset ? '' : (alasan_tidak_layak || ''),
+            catatan_wali: isReset ? '' : (catatan_wali || ''),
+            verified_by: isReset ? '' : (verified_by || 'Wali Kelas'),
+            verified_at: isReset ? null : new Date().toISOString()
           };
         }
         return item;

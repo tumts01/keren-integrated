@@ -556,6 +556,49 @@ export default function BantuanPipPage() {
     }
   };
 
+  const handleResetVerification = async (item: PipItem) => {
+    const nama = item.nama_siswa || item.nama_excel;
+    const confirm = await Swal.fire({
+      title: 'Reset Verifikasi?',
+      text: `Kembalikan status verifikasi siswa "${nama}" menjadi "Belum Dicek"?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#0284c7',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Ya, Reset',
+      cancelButtonText: 'Batal'
+    });
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const res = await fetch('/api/keuangan/pip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'verify',
+          id: item.id,
+          status_kelayakan: 'belum_diverifikasi'
+        })
+      });
+      const json = await res.json();
+      if (json.success) {
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          title: `Status ${nama} direset ke Belum Dicek`,
+          showConfirmButton: false,
+          timer: 1500
+        });
+        fetchData();
+      } else {
+        Swal.fire('Gagal', json.error || 'Terjadi kesalahan', 'error');
+      }
+    } catch (e: any) {
+      Swal.fire('Error', e.message, 'error');
+    }
+  };
+
   return (
     <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
       {/* Header Halaman */}
@@ -1128,18 +1171,94 @@ export default function BantuanPipPage() {
                               </button>
                             )}
                           </div>
+                        ) : isVerified ? (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              padding: '5px 10px',
+                              borderRadius: '6px',
+                              background: isLayak ? '#ecfdf5' : '#fef2f2',
+                              color: isLayak ? '#047857' : '#b91c1c',
+                              border: `1px solid ${isLayak ? '#a7f3d0' : '#fecaca'}`,
+                              fontWeight: 700,
+                              fontSize: '0.78rem'
+                            }}>
+                              <i className={isLayak ? "fas fa-check-circle" : "fas fa-times-circle"}></i>
+                              {isLayak ? 'Layak' : 'Tidak Layak'}
+                            </span>
+
+                            <button
+                              onClick={() => openVerifyDialog(item, item.status_kelayakan === 'tidak_layak' ? 'tidak_layak' : 'layak')}
+                              disabled={!canVerify}
+                              title={!canVerify ? 'Hanya wali kelas terkait atau Admin yang dapat mengubah' : 'Ubah status atau catatan verifikasi'}
+                              style={{
+                                padding: '5px 9px',
+                                borderRadius: '6px',
+                                background: '#f8fafc',
+                                color: canVerify ? '#334155' : '#94a3b8',
+                                border: '1px solid #cbd5e1',
+                                cursor: canVerify ? 'pointer' : 'not-allowed',
+                                fontSize: '0.75rem',
+                                fontWeight: 600,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <i className="fas fa-pencil-alt"></i> Ubah
+                            </button>
+
+                            {canVerify && (
+                              <button
+                                onClick={() => handleResetVerification(item)}
+                                title="Reset status kembali ke Belum Dicek"
+                                style={{
+                                  padding: '5px 7px',
+                                  borderRadius: '6px',
+                                  background: '#f8fafc',
+                                  color: '#64748b',
+                                  border: '1px solid #e2e8f0',
+                                  cursor: 'pointer',
+                                  fontSize: '0.75rem'
+                                }}
+                              >
+                                <i className="fas fa-undo"></i>
+                              </button>
+                            )}
+
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleDeleteItem(item.id)}
+                                title="Hapus Usulan Siswa Ini"
+                                style={{
+                                  padding: '5px 7px',
+                                  borderRadius: '6px',
+                                  background: '#ffffff',
+                                  color: '#dc2626',
+                                  border: '1px solid #fca5a5',
+                                  cursor: 'pointer',
+                                  fontSize: '0.75rem'
+                                }}
+                              >
+                                <i className="fas fa-trash-alt"></i>
+                              </button>
+                            )}
+                          </div>
                         ) : (
                           <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                             <button
                               onClick={() => handleQuickLayak(item)}
-                              title="Verifikasi Layak Menerima PIP"
+                              disabled={!canVerify}
+                              title={!canVerify ? 'Hanya wali kelas terkait atau Admin yang dapat memverifikasi' : 'Verifikasi Layak Menerima PIP'}
                               style={{
                                 padding: '6px 10px',
                                 borderRadius: '6px',
-                                background: '#10b981',
+                                background: canVerify ? '#10b981' : '#cbd5e1',
                                 color: 'white',
                                 border: 'none',
-                                cursor: 'pointer',
+                                cursor: canVerify ? 'pointer' : 'not-allowed',
                                 fontWeight: 700,
                                 fontSize: '0.78rem',
                                 display: 'inline-flex',
@@ -1152,14 +1271,15 @@ export default function BantuanPipPage() {
 
                             <button
                               onClick={() => openVerifyDialog(item, 'tidak_layak')}
-                              title="Tandai Tidak Layak Menerima PIP"
+                              disabled={!canVerify}
+                              title={!canVerify ? 'Hanya wali kelas terkait atau Admin yang dapat memverifikasi' : 'Tandai Tidak Layak Menerima PIP'}
                               style={{
                                 padding: '6px 10px',
                                 borderRadius: '6px',
-                                background: '#ef4444',
+                                background: canVerify ? '#ef4444' : '#cbd5e1',
                                 color: 'white',
                                 border: 'none',
-                                cursor: 'pointer',
+                                cursor: canVerify ? 'pointer' : 'not-allowed',
                                 fontWeight: 700,
                                 fontSize: '0.78rem',
                                 display: 'inline-flex',
@@ -1171,15 +1291,16 @@ export default function BantuanPipPage() {
                             </button>
 
                             <button
-                              onClick={() => openVerifyDialog(item, item.status_kelayakan === 'tidak_layak' ? 'tidak_layak' : 'layak')}
-                              title="Ubah Catatan / Detail Verifikasi"
+                              onClick={() => openVerifyDialog(item, 'layak')}
+                              disabled={!canVerify}
+                              title={!canVerify ? 'Hanya wali kelas terkait atau Admin yang dapat mengedit catatan' : 'Verifikasi dengan Catatan Khusus'}
                               style={{
                                 padding: '6px 8px',
                                 borderRadius: '6px',
                                 background: '#f1f5f9',
-                                color: '#475569',
+                                color: canVerify ? '#475569' : '#94a3b8',
                                 border: '1px solid #cbd5e1',
-                                cursor: 'pointer',
+                                cursor: canVerify ? 'pointer' : 'not-allowed',
                                 fontSize: '0.78rem'
                               }}
                             >
@@ -1586,29 +1707,43 @@ export default function BantuanPipPage() {
             </div>
 
             {/* Footer */}
-            <div style={{ padding: '16px 24px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button
-                type="button"
-                onClick={() => setShowVerifyModal(false)}
-                disabled={savingVerify}
-                style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', color: '#64748b', fontWeight: 600, cursor: 'pointer' }}
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveVerification}
-                disabled={savingVerify}
-                style={{
-                  padding: '10px 22px', borderRadius: '8px',
-                  background: verifyStatus === 'layak' ? '#059669' : '#dc2626',
-                  color: 'white', border: 'none', fontWeight: 700, cursor: savingVerify ? 'not-allowed' : 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '8px'
-                }}
-              >
-                <i className={`fas ${savingVerify ? 'fa-spinner fa-spin' : 'fa-save'}`}></i>
-                {savingVerify ? 'Menyimpan...' : 'Simpan Verifikasi'}
-              </button>
+            <div style={{ padding: '16px 24px', background: '#f8fafc', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                {(selectedItem.status_kelayakan === 'layak' || selectedItem.status_kelayakan === 'tidak_layak') && (
+                  <button
+                    type="button"
+                    onClick={() => { setShowVerifyModal(false); handleResetVerification(selectedItem); }}
+                    disabled={savingVerify}
+                    style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', color: '#64748b', fontWeight: 600, cursor: 'pointer', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <i className="fas fa-undo"></i> Reset ke Belum Dicek
+                  </button>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowVerifyModal(false)}
+                  disabled={savingVerify}
+                  style={{ padding: '10px 18px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', color: '#64748b', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveVerification}
+                  disabled={savingVerify}
+                  style={{
+                    padding: '10px 22px', borderRadius: '8px',
+                    background: verifyStatus === 'layak' ? '#059669' : '#dc2626',
+                    color: 'white', border: 'none', fontWeight: 700, cursor: savingVerify ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '8px'
+                  }}
+                >
+                  <i className={`fas ${savingVerify ? 'fa-spinner fa-spin' : 'fa-save'}`}></i>
+                  {savingVerify ? 'Menyimpan...' : 'Simpan Verifikasi'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
