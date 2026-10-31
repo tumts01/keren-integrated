@@ -228,27 +228,26 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, error: 'Tidak ada baris data siswa yang dikirimkan.' }, { status: 400 });
       }
 
-      // Ambil seluruh data siswa aktif dari cache data induk
+      // Ambil seluruh data siswa dari cache data induk (baik aktif maupun tidak aktif)
       const rawSiswa = await getAllCachedDataInduk();
-      const activeStudents = rawSiswa
-        .filter(s => {
-          const st = (s.metadata?.['STATUS SISWA'] || '').toUpperCase().trim();
-          return st === 'AKTIF' || st === 'AKTIF ';
-        })
-        .map(s => {
-          const rombel = (s.metadata?.ROMBEL || '').trim().toUpperCase();
-          const tingkat = getTingkatFromRombel(rombel);
-          return {
-            id: s.id,
-            nama: (s.metadata?.NAMA || '').trim(),
-            nisn: (s.metadata?.NISN || '').trim(),
-            rombel,
-            tingkat,
-            kip: (s.metadata?.KIP || '').trim(),
-            ayah: (s.metadata?.['NAMA AYAH KANDUNG'] || '').trim(),
-            ibu: (s.metadata?.['NAMA IBU KANDUNG'] || '').trim(),
-          };
-        });
+      const allMappedStudents = rawSiswa.map(s => {
+        const rombel = (s.metadata?.ROMBEL || '').trim().toUpperCase();
+        const tingkat = getTingkatFromRombel(rombel);
+        const status = (s.metadata?.['STATUS SISWA'] || '').trim().toUpperCase();
+        return {
+          id: s.id,
+          nama: (s.metadata?.NAMA || '').trim(),
+          nisn: (s.metadata?.NISN || '').trim(),
+          rombel,
+          tingkat,
+          status,
+          kip: (s.metadata?.KIP || '').trim(),
+          ayah: (s.metadata?.['NAMA AYAH KANDUNG'] || '').trim(),
+          ibu: (s.metadata?.['NAMA IBU KANDUNG'] || '').trim(),
+        };
+      });
+
+      const activeStudents = allMappedStudents.filter(s => s.status === 'AKTIF' || s.status === 'AKTIF ');
 
       // Ambil mapping wali kelas dari data_kelas
       const { data: rowsKelas } = await supabase.from('data_kelas').select('*');
@@ -258,14 +257,14 @@ export async function POST(req: Request) {
         if (rombel) waliMap[rombel] = (k.metadata?.['WALI KELAS'] || '').trim();
       });
 
-      // Kelompokkan siswa berdasarkan tingkat kelas (7, 8, 9) untuk pencarian cepat & akurat
+      // Kelompokkan siswa aktif berdasarkan tingkat kelas (7, 8, 9)
       const poolByTingkat: Record<string, typeof activeStudents> = {
         '7': activeStudents.filter(s => s.tingkat === '7'),
         '8': activeStudents.filter(s => s.tingkat === '8'),
         '9': activeStudents.filter(s => s.tingkat === '9')
       };
 
-      // Jalankan matching algorithm untuk setiap baris di file Excel
+      // Jalankan matching algorithm bertahap (Tier 1: Tingkat sama aktif -> Tier 2: Semua aktif -> Tier 3: Riwayat non-aktif)
       const matchedResults = rawRows.map((row, index) => {
         const rawNama = String(row.nama || '').trim();
         const rawKelas = parseKelasExcel(row.kelas);
@@ -275,19 +274,20 @@ export async function POST(req: Request) {
           return null;
         }
 
-        // Cari di pool siswa dengan tingkat kelas yang sesuai (7, 8, atau 9)
-        // Jika kelas tidak terdeteksi, fallback cari di seluruh siswa aktif
-        const pool = poolByTingkat[rawKelas] && poolByTingkat[rawKelas].length > 0
+        let bestMatch: (typeof allMappedStudents)[0] | null = null;
+        let bestScore = 0;
+        let matchType: 'exact' | 'fuzzy' | 'unmatched' = 'unmatched';
+        let matchWarning = '';
+
+        // TAHAP 1: Cari pada tingkat kelas yang sesuai di antara siswa AKTIF
+        const poolStage1 = poolByTingkat[rawKelas] && poolByTingkat[rawKelas].length > 0
           ? poolByTingkat[rawKelas]
           : activeStudents;
 
-        let bestMatch: (typeof activeStudents)[0] | null = null;
-        let bestScore = 0;
-        let matchType: 'exact' | 'fuzzy' | 'unmatched' = 'unmatched';
-
-        // 1. Cek Exact Match Terlebih Dahulu
         const normInput = normalizeName(rawNama);
-        for (const cand of pool) {
+
+        // 1a. Cek Exact Match di Tahap 1
+        for (const cand of poolStage1) {
           const normCand = normalizeName(cand.nama);
           if (normInput === normCand) {
             bestMatch = cand;
@@ -297,18 +297,50 @@ export async function POST(req: Request) {
           }
         }
 
-        // 2. Jika bukan exact match, jalankan Fuzzy & Jaccard String Matching
+        // 1b. Cek Fuzzy di Tahap 1
         if (!bestMatch) {
-          for (const cand of pool) {
+          for (const cand of poolStage1) {
             const score = computeSimilarity(rawNama, cand.nama);
             if (score > bestScore) {
               bestScore = score;
               bestMatch = cand;
             }
           }
-
           if (bestScore >= 0.80) {
             matchType = 'fuzzy';
+          }
+        }
+
+        // TAHAP 2: Jika belum ketemu di tingkat tersebut, cari di seluruh siswa AKTIF (beda kelas)
+        if (bestScore < 0.80) {
+          for (const cand of activeStudents) {
+            const score = computeSimilarity(rawNama, cand.nama);
+            if (score > bestScore) {
+              bestScore = score;
+              bestMatch = cand;
+            }
+          }
+          if (bestScore >= 0.80 && bestMatch) {
+            matchType = 'fuzzy';
+            if (rawKelas && bestMatch.tingkat !== rawKelas) {
+              matchWarning = `Di Excel tertulis Kelas ${rawKelas}, di database terdaftar di Kelas ${bestMatch.rombel}`;
+            }
+          }
+        }
+
+        // TAHAP 3: Jika masih belum ketemu, cari di riwayat siswa Non-Aktif / Alumni / Mutasi
+        if (bestScore < 0.80) {
+          const inactiveStudents = allMappedStudents.filter(s => s.status !== 'AKTIF' && s.status !== 'AKTIF ');
+          for (const cand of inactiveStudents) {
+            const score = computeSimilarity(rawNama, cand.nama);
+            if (score > bestScore) {
+              bestScore = score;
+              bestMatch = cand;
+            }
+          }
+          if (bestScore >= 0.80 && bestMatch) {
+            matchType = 'fuzzy';
+            matchWarning = `Siswa ditemukan di database tetapi berstatus: ${bestMatch.status || 'TIDAK AKTIF'}`;
           } else {
             matchType = 'unmatched';
           }
@@ -331,6 +363,7 @@ export async function POST(req: Request) {
           tingkat: bestMatch ? bestMatch.tingkat : (rawKelas || ''),
           wali_kelas: bestMatch ? (waliMap[bestMatch.rombel] || '-') : '-',
           kip: bestMatch ? bestMatch.kip : '',
+          warning: matchWarning,
 
           // Status & Skor Kecocokan
           match_type: matchType,
