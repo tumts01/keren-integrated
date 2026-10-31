@@ -152,17 +152,54 @@ export async function GET(req: Request) {
     // Filter items berdasarkan periode aktif
     const periodItems = allItems.filter(item => (item.periode || activePeriode) === activePeriode);
 
+    // Ambil data siswa dari cache data induk untuk memastikan status keaktifan real-time
+    const rawSiswa = await getAllCachedDataInduk();
+    const siswaMap: Record<number, any> = {};
+    rawSiswa.forEach(s => {
+      siswaMap[s.id] = s.metadata || {};
+    });
+
+    // Perkaya item dengan status keaktifan terkini
+    let totalTidakAktif = 0;
+    const enrichedItems = periodItems.map(item => {
+      let statusSiswa = item.status_siswa || '';
+      let isTidakAktif = item.is_tidak_aktif || false;
+
+      if (item.siswa_id && siswaMap[item.siswa_id]) {
+        const metaSiswa = siswaMap[item.siswa_id];
+        const dbStatus = (metaSiswa['STATUS SISWA'] || '').trim().toUpperCase();
+        const hasMutasiKeluar = !!metaSiswa['TANGGAL MUTASI KELUAR'] || !!metaSiswa['TANGGAL KELUAR'];
+        statusSiswa = dbStatus || 'AKTIF';
+        if (dbStatus !== 'AKTIF' || hasMutasiKeluar) {
+          isTidakAktif = true;
+        }
+      } else if (item.warning?.toLowerCase().includes('tidak aktif') || item.warning?.toLowerCase().includes('mutasi')) {
+        isTidakAktif = true;
+        statusSiswa = statusSiswa || 'TIDAK AKTIF';
+      }
+
+      if (isTidakAktif) {
+        totalTidakAktif++;
+      }
+
+      return {
+        ...item,
+        status_siswa: statusSiswa || (isTidakAktif ? 'TIDAK AKTIF' : 'AKTIF'),
+        is_tidak_aktif: !!isTidakAktif
+      };
+    });
+
     // Hitung ringkasan statistik
     let totalLayak = 0;
     let totalTidakLayak = 0;
     let totalBelum = 0;
-    const perRombelMap: Record<string, { total: number, layak: number, tidak_layak: number, belum: number, wali_kelas: string }> = {};
+    const perRombelMap: Record<string, { total: number, layak: number, tidak_layak: number, belum: number, tidak_aktif: number, wali_kelas: string }> = {};
 
     classesList.forEach(c => {
-      perRombelMap[c.rombel] = { total: 0, layak: 0, tidak_layak: 0, belum: 0, wali_kelas: c.waliKelas };
+      perRombelMap[c.rombel] = { total: 0, layak: 0, tidak_layak: 0, belum: 0, tidak_aktif: 0, wali_kelas: c.waliKelas };
     });
 
-    periodItems.forEach(item => {
+    enrichedItems.forEach(item => {
       const st = item.status_kelayakan || 'belum_diverifikasi';
       if (st === 'layak') totalLayak++;
       else if (st === 'tidak_layak') totalTidakLayak++;
@@ -171,9 +208,10 @@ export async function GET(req: Request) {
       const r = item.rombel;
       if (r) {
         if (!perRombelMap[r]) {
-          perRombelMap[r] = { total: 0, layak: 0, tidak_layak: 0, belum: 0, wali_kelas: item.wali_kelas || '-' };
+          perRombelMap[r] = { total: 0, layak: 0, tidak_layak: 0, belum: 0, tidak_aktif: 0, wali_kelas: item.wali_kelas || '-' };
         }
         perRombelMap[r].total++;
+        if (item.is_tidak_aktif) perRombelMap[r].tidak_aktif++;
         if (st === 'layak') perRombelMap[r].layak++;
         else if (st === 'tidak_layak') perRombelMap[r].tidak_layak++;
         else perRombelMap[r].belum++;
@@ -181,12 +219,16 @@ export async function GET(req: Request) {
     });
 
     // Filter tampilan data sesuai query params
-    let filteredItems = periodItems;
+    let filteredItems = enrichedItems;
     if (kelasParam && kelasParam !== 'Semua') {
       filteredItems = filteredItems.filter(item => item.rombel === kelasParam.toUpperCase());
     }
     if (statusParam && statusParam !== 'Semua') {
-      filteredItems = filteredItems.filter(item => (item.status_kelayakan || 'belum_diverifikasi') === statusParam);
+      if (statusParam === 'tidak_aktif') {
+        filteredItems = filteredItems.filter(item => item.is_tidak_aktif || (item.status_siswa && item.status_siswa !== 'AKTIF'));
+      } else {
+        filteredItems = filteredItems.filter(item => (item.status_kelayakan || 'belum_diverifikasi') === statusParam);
+      }
     }
 
     return NextResponse.json({
@@ -200,6 +242,7 @@ export async function GET(req: Request) {
         layak: totalLayak,
         tidak_layak: totalTidakLayak,
         belum_diverifikasi: totalBelum,
+        tidak_aktif: totalTidakAktif,
         per_rombel: perRombelMap
       },
       classes: classesList
@@ -347,6 +390,8 @@ export async function POST(req: Request) {
         }
 
         const matchScorePercent = Math.round(bestScore * 100);
+        const statusSiswa = bestMatch ? (bestMatch.status || 'AKTIF') : '';
+        const isTidakAktif = statusSiswa !== 'AKTIF';
 
         return {
           id: `pip-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 5)}`,
@@ -364,32 +409,35 @@ export async function POST(req: Request) {
           wali_kelas: bestMatch ? (waliMap[bestMatch.rombel] || '-') : '-',
           kip: bestMatch ? bestMatch.kip : '',
           warning: matchWarning,
+          status_siswa: statusSiswa,
+          is_tidak_aktif: isTidakAktif,
 
           // Status & Skor Kecocokan
           match_type: matchType,
           match_score: matchScorePercent,
 
           // Status Verifikasi oleh Wali Kelas
-          status_kelayakan: 'belum_diverifikasi',
-          alasan_tidak_layak: '',
+          status_kelayakan: isTidakAktif ? 'tidak_layak' : 'belum_diverifikasi',
+          alasan_tidak_layak: isTidakAktif ? (matchWarning || `Siswa berstatus ${statusSiswa || 'TIDAK AKTIF'}`) : '',
           catatan_wali: '',
-          verified_by: '',
-          verified_at: null,
+          verified_by: isTidakAktif ? 'Sistem (Otomatis: Tidak Aktif)' : '',
+          verified_at: isTidakAktif ? new Date().toISOString() : null,
           created_at: new Date().toISOString()
         };
       }).filter(Boolean);
 
       // Jika hanya preview match, jangan simpan ke database dulu
       if (action === 'preview_match') {
-        const exactCount = matchedResults.filter(r => r?.match_type === 'exact').length;
-        const fuzzyCount = matchedResults.filter(r => r?.match_type === 'fuzzy').length;
+        const inactiveCount = matchedResults.filter(r => r?.is_tidak_aktif).length;
+        const exactCount = matchedResults.filter(r => r?.match_type === 'exact' && !r?.is_tidak_aktif).length;
+        const fuzzyCount = matchedResults.filter(r => r?.match_type === 'fuzzy' && !r?.is_tidak_aktif).length;
         const unmatchedCount = matchedResults.filter(r => r?.match_type === 'unmatched').length;
 
         return NextResponse.json({
           success: true,
           preview: true,
           total: matchedResults.length,
-          stats: { exactCount, fuzzyCount, unmatchedCount },
+          stats: { exactCount, fuzzyCount, unmatchedCount, inactiveCount },
           items: matchedResults
         });
       }

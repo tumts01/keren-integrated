@@ -30,6 +30,9 @@ interface PipItem {
   verified_by?: string;
   verified_at?: string | null;
   created_at?: string;
+  status_siswa?: string;
+  is_tidak_aktif?: boolean;
+  warning?: string;
 }
 
 interface ClassOption {
@@ -153,8 +156,13 @@ export default function BantuanPipPage() {
       }
       // Filter Status
       if (filterStatus !== 'Semua') {
-        const st = item.status_kelayakan || 'belum_diverifikasi';
-        if (st !== filterStatus) return false;
+        if (filterStatus === 'tidak_aktif') {
+          const isTidakAktif = item.is_tidak_aktif || (item.status_siswa && item.status_siswa !== 'AKTIF');
+          if (!isTidakAktif) return false;
+        } else {
+          const st = item.status_kelayakan || 'belum_diverifikasi';
+          if (st !== filterStatus) return false;
+        }
       }
       // Filter Search (Nama / NISN / Keterangan)
       if (searchQuery.trim()) {
@@ -261,9 +269,12 @@ export default function BantuanPipPage() {
 
   // Verifikasi Massal seluruh siswa yang tampil di kelas ini sebagai Layak
   const handleBatchVerifyAllLayak = async () => {
-    const unverifiedItems = filteredData.filter(i => (i.status_kelayakan || 'belum_diverifikasi') === 'belum_diverifikasi');
+    const unverifiedItems = filteredData.filter(i => {
+      const isTidakAktif = i.is_tidak_aktif || (i.status_siswa && i.status_siswa !== 'AKTIF');
+      return (i.status_kelayakan || 'belum_diverifikasi') === 'belum_diverifikasi' && !isTidakAktif;
+    });
     if (unverifiedItems.length === 0) {
-      Swal.fire('Info', 'Seluruh siswa pada filter ini sudah diverifikasi.', 'info');
+      Swal.fire('Info', 'Seluruh siswa aktif pada filter ini sudah diverifikasi.', 'info');
       return;
     }
 
@@ -509,6 +520,42 @@ export default function BantuanPipPage() {
     }
   };
 
+  const handleDeleteItem = async (id: string) => {
+    const confirm = await Swal.fire({
+      title: 'Hapus Siswa?',
+      text: 'Data usulan siswa ini akan dihapus dari daftar.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal'
+    });
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const res = await fetch('/api/keuangan/pip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete_item', id })
+      });
+      const json = await res.json();
+      if (json.success) {
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          title: 'Data siswa berhasil dihapus',
+          showConfirmButton: false,
+          timer: 1500
+        });
+        fetchData();
+      }
+    } catch (e: any) {
+      Swal.fire('Error', e.message, 'error');
+    }
+  };
+
   return (
     <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
       {/* Header Halaman */}
@@ -739,6 +786,34 @@ export default function BantuanPipPage() {
             Belum dicek oleh wali kelas
           </div>
         </div>
+
+        {Boolean(summary.tidak_aktif && summary.tidak_aktif > 0) && (
+          <div
+            onClick={() => setFilterStatus(filterStatus === 'tidak_aktif' ? 'Semua' : 'tidak_aktif')}
+            style={{
+              background: filterStatus === 'tidak_aktif' ? '#fee2e2' : 'white',
+              borderRadius: '12px',
+              padding: '18px 20px',
+              border: filterStatus === 'tidak_aktif' ? '2px solid #ef4444' : '1px solid #fecaca',
+              boxShadow: '0 1px 3px rgba(239, 68, 68, 0.1)',
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: '0.82rem', color: '#b91c1c', fontWeight: 700 }}>TIDAK AKTIF / MUTASI</div>
+                <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#991b1b', marginTop: '4px' }}>{summary.tidak_aktif}</div>
+              </div>
+              <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#fee2e2', color: '#b91c1c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem' }}>
+                <i className="fas fa-user-slash"></i>
+              </div>
+            </div>
+            <div style={{ fontSize: '0.78rem', color: '#b91c1c', marginTop: '8px', fontWeight: 600 }}>
+              {filterStatus === 'tidak_aktif' ? '✕ Reset Filter' : '🔴 Klik untuk filter'}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Content Card */}
@@ -782,6 +857,9 @@ export default function BantuanPipPage() {
                 <option value="belum_diverifikasi">Menunggu Verifikasi</option>
                 <option value="layak">Layak Menerima</option>
                 <option value="tidak_layak">Tidak Layak</option>
+                {Boolean(summary.tidak_aktif && summary.tidak_aktif > 0) && (
+                  <option value="tidak_aktif">🔴 Siswa Tidak Aktif ({summary.tidak_aktif})</option>
+                )}
               </select>
             </div>
 
@@ -865,31 +943,52 @@ export default function BantuanPipPage() {
                   const isVerified = item.status_kelayakan === 'layak' || item.status_kelayakan === 'tidak_layak';
                   const isLayak = item.status_kelayakan === 'layak';
                   const canVerify = isAdmin || (myWaliKelas && item.rombel === myWaliKelas);
+                  const isTidakAktif = item.is_tidak_aktif || (item.status_siswa && item.status_siswa !== 'AKTIF');
 
                   return (
                     <tr
                       key={item.id}
                       style={{
                         borderBottom: '1px solid #f1f5f9',
-                        background: !isVerified ? '#ffffff' : isLayak ? '#f0fdf4' : '#fef2f2',
+                        background: isTidakAktif ? '#fee2e2' : !isVerified ? '#ffffff' : isLayak ? '#f0fdf4' : '#fef2f2',
+                        borderLeft: isTidakAktif ? '4px solid #ef4444' : '4px solid transparent',
                         transition: 'background 0.15s ease'
                       }}
                     >
-                      <td style={{ padding: '14px 16px', fontWeight: 600, color: '#64748b' }}>
+                      <td style={{ padding: '14px 16px', fontWeight: 600, color: isTidakAktif ? '#991b1b' : '#64748b' }}>
                         {globalIdx}
                       </td>
 
                       <td style={{ padding: '14px 16px' }}>
-                        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '0.95rem' }}>
-                          {item.nama_siswa || item.nama_excel}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 700, color: isTidakAktif ? '#991b1b' : '#0f172a', fontSize: '0.95rem' }}>
+                            {item.nama_siswa || item.nama_excel}
+                          </span>
+                          {isTidakAktif && (
+                            <span style={{
+                              background: '#ef4444',
+                              color: '#ffffff',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '0.7rem',
+                              fontWeight: 800,
+                              letterSpacing: '0.3px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}>
+                              <i className="fas fa-user-times" style={{ fontSize: '0.65rem' }}></i>
+                              {item.status_siswa && item.status_siswa !== 'AKTIF' ? item.status_siswa : 'TIDAK AKTIF / MUTASI'}
+                            </span>
+                          )}
                         </div>
                         {item.nama_excel !== item.nama_siswa && (
-                          <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>
-                            <i className="fas fa-file-excel" style={{ marginRight: '4px', color: '#10b981' }}></i>
+                          <div style={{ fontSize: '0.78rem', color: isTidakAktif ? '#b91c1c' : '#64748b', marginTop: '2px' }}>
+                            <i className="fas fa-file-excel" style={{ marginRight: '4px', color: isTidakAktif ? '#ef4444' : '#10b981' }}></i>
                             Nama di Excel: <i>{item.nama_excel}</i>
                           </div>
                         )}
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px', fontSize: '0.78rem', color: '#64748b' }}>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px', fontSize: '0.78rem', color: isTidakAktif ? '#991b1b' : '#64748b' }}>
                           <span>NISN: <b>{item.nisn || '-'}</b></span>
                           {item.kip && (
                             <span style={{ background: '#fef3c7', color: '#b45309', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
@@ -904,8 +1003,8 @@ export default function BantuanPipPage() {
                           display: 'inline-block',
                           padding: '4px 10px',
                           borderRadius: '6px',
-                          background: item.rombel ? '#e0f2fe' : '#f1f5f9',
-                          color: item.rombel ? '#0369a1' : '#64748b',
+                          background: isTidakAktif ? '#fecaca' : item.rombel ? '#e0f2fe' : '#f1f5f9',
+                          color: isTidakAktif ? '#991b1b' : item.rombel ? '#0369a1' : '#64748b',
                           fontWeight: 800,
                           fontSize: '0.9rem'
                         }}>
@@ -914,7 +1013,7 @@ export default function BantuanPipPage() {
                       </td>
 
                       <td style={{ padding: '14px 16px' }}>
-                        <div style={{ fontWeight: 600, color: '#334155' }}>
+                        <div style={{ fontWeight: 600, color: isTidakAktif ? '#991b1b' : '#334155' }}>
                           {item.wali_kelas || '-'}
                         </div>
                         {myWaliKelas && item.rombel === myWaliKelas && (
@@ -933,16 +1032,20 @@ export default function BantuanPipPage() {
                           borderRadius: '12px',
                           fontSize: '0.75rem',
                           fontWeight: 700,
-                          background: item.match_type === 'exact' ? '#dcfce7' : item.match_type === 'fuzzy' ? '#e0f2fe' : '#fee2e2',
-                          color: item.match_type === 'exact' ? '#15803d' : item.match_type === 'fuzzy' ? '#0369a1' : '#b91c1c'
+                          background: isTidakAktif ? '#fee2e2' : item.match_type === 'exact' ? '#dcfce7' : item.match_type === 'fuzzy' ? '#e0f2fe' : '#fee2e2',
+                          color: isTidakAktif ? '#b91c1c' : item.match_type === 'exact' ? '#15803d' : item.match_type === 'fuzzy' ? '#0369a1' : '#b91c1c'
                         }}>
-                          <i className={`fas ${item.match_type === 'exact' ? 'fa-check-circle' : item.match_type === 'fuzzy' ? 'fa-search' : 'fa-exclamation-triangle'}`}></i>
+                          <i className={`fas ${isTidakAktif ? 'fa-ban' : item.match_type === 'exact' ? 'fa-check-circle' : item.match_type === 'fuzzy' ? 'fa-search' : 'fa-exclamation-triangle'}`}></i>
                           {item.match_score}% {item.match_type === 'exact' ? 'Cocok' : item.match_type === 'fuzzy' ? 'Mirip' : 'Unmatched'}
                         </span>
                       </td>
 
                       <td style={{ padding: '14px 16px', textAlign: 'center' }}>
-                        {item.status_kelayakan === 'layak' ? (
+                        {isTidakAktif ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 12px', borderRadius: '20px', background: '#ef4444', color: 'white', fontWeight: 800, fontSize: '0.82rem', border: '1px solid #dc2626' }}>
+                            <i className="fas fa-user-slash"></i> TIDAK AKTIF
+                          </span>
+                        ) : item.status_kelayakan === 'layak' ? (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 12px', borderRadius: '20px', background: '#dcfce7', color: '#15803d', fontWeight: 800, fontSize: '0.82rem', border: '1px solid #86efac' }}>
                             <i className="fas fa-check-circle"></i> LAYAK
                           </span>
@@ -958,79 +1061,150 @@ export default function BantuanPipPage() {
                       </td>
 
                       <td style={{ padding: '14px 16px' }}>
-                        {item.status_kelayakan === 'tidak_layak' && (
-                          <div style={{ color: '#b91c1c', fontWeight: 600, fontSize: '0.82rem', marginBottom: '2px' }}>
-                            Alasan: {item.alasan_tidak_layak || '-'}
+                        {isTidakAktif ? (
+                          <div>
+                            <div style={{ color: '#b91c1c', fontWeight: 700, fontSize: '0.82rem' }}>
+                              <i className="fas fa-exclamation-triangle" style={{ marginRight: '4px' }}></i>
+                              Siswa Mutasi / Tidak Aktif
+                            </div>
+                            {item.alasan_tidak_layak && (
+                              <div style={{ fontSize: '0.78rem', color: '#7f1d1d', marginTop: '2px' }}>
+                                {item.alasan_tidak_layak}
+                              </div>
+                            )}
                           </div>
-                        )}
-                        <div style={{ color: '#475569', fontSize: '0.82rem' }}>
-                          {item.catatan_wali || item.keterangan_excel || '-'}
-                        </div>
-                        {item.verified_by && (
-                          <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px' }}>
-                            Diverifikasi oleh: <b>{item.verified_by}</b>
-                          </div>
+                        ) : (
+                          <>
+                            {item.status_kelayakan === 'tidak_layak' && (
+                              <div style={{ color: '#b91c1c', fontWeight: 600, fontSize: '0.82rem', marginBottom: '2px' }}>
+                                Alasan: {item.alasan_tidak_layak || '-'}
+                              </div>
+                            )}
+                            <div style={{ color: '#475569', fontSize: '0.82rem' }}>
+                              {item.catatan_wali || item.keterangan_excel || '-'}
+                            </div>
+                            {item.verified_by && (
+                              <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px' }}>
+                                Diverifikasi oleh: <b>{item.verified_by}</b>
+                              </div>
+                            )}
+                          </>
                         )}
                       </td>
 
                       <td style={{ padding: '14px 16px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                          <button
-                            onClick={() => handleQuickLayak(item)}
-                            title="Verifikasi Layak Menerima PIP"
-                            style={{
-                              padding: '6px 10px',
-                              borderRadius: '6px',
-                              background: '#10b981',
-                              color: 'white',
-                              border: 'none',
-                              cursor: 'pointer',
-                              fontWeight: 700,
-                              fontSize: '0.78rem',
+                        {isTidakAktif ? (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            <span style={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            <i className="fas fa-check"></i> Layak
-                          </button>
-
-                          <button
-                            onClick={() => openVerifyDialog(item, 'tidak_layak')}
-                            title="Tandai Tidak Layak Menerima PIP"
-                            style={{
-                              padding: '6px 10px',
+                              gap: '5px',
+                              padding: '6px 14px',
                               borderRadius: '6px',
                               background: '#ef4444',
-                              color: 'white',
-                              border: 'none',
-                              cursor: 'pointer',
-                              fontWeight: 700,
-                              fontSize: '0.78rem',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            <i className="fas fa-times"></i> Tidak Layak
-                          </button>
+                              color: '#ffffff',
+                              fontWeight: 800,
+                              fontSize: '0.8rem',
+                              letterSpacing: '0.3px',
+                              boxShadow: '0 1px 2px rgba(239, 68, 68, 0.25)'
+                            }}>
+                              <i className="fas fa-user-slash"></i> Tidak Aktif
+                            </span>
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleDeleteItem(item.id)}
+                                title="Hapus Usulan Siswa Ini"
+                                style={{
+                                  padding: '6px 8px',
+                                  borderRadius: '6px',
+                                  background: '#ffffff',
+                                  color: '#dc2626',
+                                  border: '1px solid #fca5a5',
+                                  cursor: 'pointer',
+                                  fontSize: '0.78rem'
+                                }}
+                              >
+                                <i className="fas fa-trash-alt"></i>
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                            <button
+                              onClick={() => handleQuickLayak(item)}
+                              title="Verifikasi Layak Menerima PIP"
+                              style={{
+                                padding: '6px 10px',
+                                borderRadius: '6px',
+                                background: '#10b981',
+                                color: 'white',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontWeight: 700,
+                                fontSize: '0.78rem',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <i className="fas fa-check"></i> Layak
+                            </button>
 
-                          <button
-                            onClick={() => openVerifyDialog(item, item.status_kelayakan === 'tidak_layak' ? 'tidak_layak' : 'layak')}
-                            title="Ubah Catatan / Detail Verifikasi"
-                            style={{
-                              padding: '6px 8px',
-                              borderRadius: '6px',
-                              background: '#f1f5f9',
-                              color: '#475569',
-                              border: '1px solid #cbd5e1',
-                              cursor: 'pointer',
-                              fontSize: '0.78rem'
-                            }}
-                          >
-                            <i className="fas fa-edit"></i>
-                          </button>
-                        </div>
+                            <button
+                              onClick={() => openVerifyDialog(item, 'tidak_layak')}
+                              title="Tandai Tidak Layak Menerima PIP"
+                              style={{
+                                padding: '6px 10px',
+                                borderRadius: '6px',
+                                background: '#ef4444',
+                                color: 'white',
+                                border: 'none',
+                                cursor: 'pointer',
+                                fontWeight: 700,
+                                fontSize: '0.78rem',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <i className="fas fa-times"></i> Tidak Layak
+                            </button>
+
+                            <button
+                              onClick={() => openVerifyDialog(item, item.status_kelayakan === 'tidak_layak' ? 'tidak_layak' : 'layak')}
+                              title="Ubah Catatan / Detail Verifikasi"
+                              style={{
+                                padding: '6px 8px',
+                                borderRadius: '6px',
+                                background: '#f1f5f9',
+                                color: '#475569',
+                                border: '1px solid #cbd5e1',
+                                cursor: 'pointer',
+                                fontSize: '0.78rem'
+                              }}
+                            >
+                              <i className="fas fa-edit"></i>
+                            </button>
+
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleDeleteItem(item.id)}
+                                title="Hapus Usulan Siswa Ini"
+                                style={{
+                                  padding: '6px 8px',
+                                  borderRadius: '6px',
+                                  background: '#ffffff',
+                                  color: '#dc2626',
+                                  border: '1px solid #fca5a5',
+                                  cursor: 'pointer',
+                                  fontSize: '0.78rem'
+                                }}
+                              >
+                                <i className="fas fa-trash-alt"></i>
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );
@@ -1148,8 +1322,13 @@ export default function BantuanPipPage() {
                 <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '6px 12px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700 }}>
                   <i className="fas fa-search"></i> Mirip ({'>'}=80%): <b>{previewStats?.fuzzyCount || 0}</b> siswa
                 </span>
-                {previewStats?.unmatchedCount > 0 && (
+                {previewStats?.inactiveCount > 0 && (
                   <span style={{ background: '#fee2e2', color: '#b91c1c', padding: '6px 12px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700 }}>
+                    <i className="fas fa-user-slash"></i> Tidak Aktif: <b>{previewStats?.inactiveCount}</b> siswa
+                  </span>
+                )}
+                {previewStats?.unmatchedCount > 0 && (
+                  <span style={{ background: '#fef2f2', color: '#dc2626', padding: '6px 12px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700 }}>
                     <i className="fas fa-exclamation-triangle"></i> Tidak Ditemukan: <b>{previewStats?.unmatchedCount}</b> siswa
                   </span>
                 )}
@@ -1179,34 +1358,80 @@ export default function BantuanPipPage() {
                     <th style={{ padding: '10px 12px' }}>Siswa Cocok di Database</th>
                     <th style={{ padding: '10px 12px', textAlign: 'center' }}>Rombel Asli</th>
                     <th style={{ padding: '10px 12px' }}>Wali Kelas</th>
-                    <th style={{ padding: '10px 12px', textAlign: 'center' }}>Skor Cocok</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'center' }}>Status / Skor Cocok</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {previewItems.map((p, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', background: p.match_type === 'exact' ? '#ffffff' : p.match_type === 'fuzzy' ? '#f0f9ff' : '#fef2f2' }}>
-                      <td style={{ padding: '10px 12px', fontWeight: 600 }}>{p.nama_excel}</td>
-                      <td style={{ padding: '10px 12px', textAlign: 'center' }}>{p.kelas_excel}</td>
-                      <td style={{ padding: '10px 12px', fontWeight: 700, color: p.nama_siswa ? '#0f172a' : '#ef4444' }}>
-                        {p.nama_siswa || 'Tidak ditemukan di database'}
-                      </td>
-                      <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                        <span style={{ padding: '2px 8px', borderRadius: '4px', background: p.rombel ? '#e0f2fe' : '#f1f5f9', color: p.rombel ? '#0369a1' : '#64748b', fontWeight: 700 }}>
-                          {p.rombel ? `Kelas ${p.rombel}` : '-'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '10px 12px', color: '#475569', fontSize: '0.82rem' }}>{p.wali_kelas || '-'}</td>
-                      <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                        <span style={{
-                          padding: '3px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700,
-                          background: p.match_type === 'exact' ? '#dcfce7' : p.match_type === 'fuzzy' ? '#e0f2fe' : '#fee2e2',
-                          color: p.match_type === 'exact' ? '#15803d' : p.match_type === 'fuzzy' ? '#0369a1' : '#b91c1c'
-                        }}>
-                          {p.match_score}%
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {previewItems.map((p, idx) => {
+                    const isTidakAktif = p.is_tidak_aktif || (p.status_siswa && p.status_siswa !== 'AKTIF');
+                    return (
+                      <tr
+                        key={idx}
+                        style={{
+                          borderBottom: '1px solid #f1f5f9',
+                          background: isTidakAktif ? '#fee2e2' : p.match_type === 'exact' ? '#ffffff' : p.match_type === 'fuzzy' ? '#f0f9ff' : '#fef2f2',
+                          borderLeft: isTidakAktif ? '4px solid #ef4444' : '4px solid transparent'
+                        }}
+                      >
+                        <td style={{ padding: '10px 12px', fontWeight: 600 }}>{p.nama_excel}</td>
+                        <td style={{ padding: '10px 12px', textAlign: 'center' }}>{p.kelas_excel}</td>
+                        <td style={{ padding: '10px 12px', fontWeight: 700, color: isTidakAktif ? '#991b1b' : p.nama_siswa ? '#0f172a' : '#ef4444' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <span>{p.nama_siswa || 'Tidak ditemukan di database'}</span>
+                            {isTidakAktif && (
+                              <span style={{
+                                background: '#ef4444',
+                                color: 'white',
+                                padding: '1px 6px',
+                                borderRadius: '4px',
+                                fontSize: '0.68rem',
+                                fontWeight: 800
+                              }}>
+                                {p.status_siswa || 'TIDAK AKTIF / MUTASI'}
+                              </span>
+                            )}
+                          </div>
+                          {p.warning && (
+                            <div style={{ fontSize: '0.72rem', color: '#dc2626', fontWeight: 500, marginTop: '2px' }}>
+                              <i className="fas fa-exclamation-triangle" style={{ marginRight: '3px' }}></i>
+                              {p.warning}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                          <span style={{ padding: '2px 8px', borderRadius: '4px', background: isTidakAktif ? '#fecaca' : p.rombel ? '#e0f2fe' : '#f1f5f9', color: isTidakAktif ? '#991b1b' : p.rombel ? '#0369a1' : '#64748b', fontWeight: 700 }}>
+                            {p.rombel ? `Kelas ${p.rombel}` : '-'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 12px', color: isTidakAktif ? '#991b1b' : '#475569', fontSize: '0.82rem' }}>{p.wali_kelas || '-'}</td>
+                        <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                          {isTidakAktif ? (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '3px 8px',
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: 800,
+                              background: '#ef4444',
+                              color: 'white'
+                            }}>
+                              <i className="fas fa-ban"></i> TIDAK AKTIF
+                            </span>
+                          ) : (
+                            <span style={{
+                              padding: '3px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700,
+                              background: p.match_type === 'exact' ? '#dcfce7' : p.match_type === 'fuzzy' ? '#e0f2fe' : '#fee2e2',
+                              color: p.match_type === 'exact' ? '#15803d' : p.match_type === 'fuzzy' ? '#0369a1' : '#b91c1c'
+                            }}>
+                              {p.match_score}%
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
