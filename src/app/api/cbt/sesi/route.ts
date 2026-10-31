@@ -21,6 +21,24 @@ export async function GET(req: Request) {
     const nomor = searchParams.get('nomorPeserta');
     if (!nomor) return NextResponse.json({ success: false, error: 'Parameter nomorPeserta wajib' }, { status: 400 });
 
+    // Validasi apakah peserta masih terdaftar aktif di data_olimpiade_seni
+    const { data: peserta } = await supabase
+      .from('data_olimpiade_seni')
+      .select('id')
+      .in('jenis_pendaftaran', ['individu', 'peserta_kolektif'])
+      .filter('metadata->>NOMOR_PESERTA', 'eq', nomor)
+      .maybeSingle();
+
+    if (!peserta) {
+      // Hapus sesi orphan jika ada
+      await supabase.from('cbt_sesi').delete().eq('nomor_peserta', nomor);
+      return NextResponse.json({
+        success: false,
+        isDeleted: true,
+        error: 'Akun pendaftaran Anda tidak ditemukan atau telah dihapus dari sistem.'
+      }, { status: 403 });
+    }
+
     const { data: sesi, error } = await supabase.from('cbt_sesi').select('*').eq('nomor_peserta', nomor).single();
     
     if (error && error.code !== 'PGRST116') { // PGRST116 is not found
@@ -43,6 +61,28 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { action, nomorPeserta, lomba } = body;
+
+    if (!nomorPeserta) {
+      return NextResponse.json({ success: false, error: 'Parameter nomorPeserta wajib diisi' }, { status: 400 });
+    }
+
+    // Validasi apakah peserta masih terdaftar aktif di data_olimpiade_seni
+    const { data: peserta } = await supabase
+      .from('data_olimpiade_seni')
+      .select('id')
+      .in('jenis_pendaftaran', ['individu', 'peserta_kolektif'])
+      .filter('metadata->>NOMOR_PESERTA', 'eq', nomorPeserta)
+      .maybeSingle();
+
+    if (!peserta) {
+      // Hapus sesi orphan jika ada
+      await supabase.from('cbt_sesi').delete().eq('nomor_peserta', nomorPeserta);
+      return NextResponse.json({
+        success: false,
+        isDeleted: true,
+        error: 'Akun pendaftaran Anda tidak ditemukan atau telah dihapus dari sistem.'
+      }, { status: 403 });
+    }
 
     if (action === 'start') {
       // Cek apakah ujian sedang dibuka

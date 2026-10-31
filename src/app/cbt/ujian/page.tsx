@@ -195,6 +195,17 @@ export default function CBTUjianPage() {
       const data = await res.json();
       
       if (!data.success) {
+        if (data.isDeleted) {
+          localStorage.removeItem('cbt_user');
+          await Swal.fire({
+            icon: 'error',
+            title: 'Akses Ditolak',
+            text: data.error || 'Akun peserta tidak ditemukan atau telah dihapus dari sistem.',
+            confirmButtonColor: '#059669'
+          });
+          router.push('/cbt');
+          return;
+        }
         Swal.fire('Info', data.error, 'info').then(() => router.push('/cbt/dashboard'));
         return;
       }
@@ -202,6 +213,18 @@ export default function CBTUjianPage() {
       // Fetch questions
       const resSoal = await fetch(`/api/cbt/sesi?nomorPeserta=${u.nomorPeserta}`);
       const dataSoal = await resSoal.json();
+      
+      if (dataSoal.isDeleted) {
+        localStorage.removeItem('cbt_user');
+        await Swal.fire({
+          icon: 'error',
+          title: 'Akses Ditolak',
+          text: dataSoal.error || 'Akun peserta tidak ditemukan atau telah dihapus dari sistem.',
+          confirmButtonColor: '#059669'
+        });
+        router.push('/cbt');
+        return;
+      }
       
       if (dataSoal.success) {
         setSesi(dataSoal.sesi);
@@ -270,11 +293,22 @@ export default function CBTUjianPage() {
 
     // Auto-save to server
     try {
-      fetch('/api/cbt/sesi', {
+      const res = await fetch('/api/cbt/sesi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'save', nomorPeserta: user.nomorPeserta, nomorSoal: noSoal, jawaban: opsi })
-      }); // fire and forget
+      });
+      const data = await res.json();
+      if (data.isDeleted) {
+        localStorage.removeItem('cbt_user');
+        await Swal.fire({
+          icon: 'error',
+          title: 'Akses Ditolak',
+          text: data.error || 'Akun peserta tidak ditemukan atau telah dihapus dari sistem.',
+          confirmButtonColor: '#059669'
+        });
+        router.push('/cbt');
+      }
     } catch (e) {
       console.error('Auto save failed', e);
     }
@@ -307,6 +341,18 @@ export default function CBTUjianPage() {
         body: JSON.stringify({ action: 'submit', nomorPeserta })
       });
       const data = await res.json();
+
+      if (data.isDeleted) {
+        localStorage.removeItem('cbt_user');
+        await Swal.fire({
+          icon: 'error',
+          title: 'Akses Ditolak',
+          text: data.error || 'Akun peserta tidak ditemukan atau telah dihapus dari sistem.',
+          confirmButtonColor: '#059669'
+        });
+        router.push('/cbt');
+        return;
+      }
 
       if (data.success) {
         Swal.fire({

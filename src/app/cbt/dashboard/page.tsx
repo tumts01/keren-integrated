@@ -79,6 +79,17 @@ export default function DashboardCBT() {
     try {
       const res = await fetch(`/api/cbt/sesi?nomorPeserta=${nomorPeserta}`);
       const data = await res.json();
+      if (data.isDeleted) {
+        localStorage.removeItem('cbt_user');
+        await Swal.fire({
+          icon: 'error',
+          title: 'Akses Ditolak',
+          text: data.error || 'Akun pendaftaran Anda tidak ditemukan atau telah dihapus dari sistem.',
+          confirmButtonColor: '#059669'
+        });
+        router.push('/cbt');
+        return;
+      }
       if (data.success && data.sesi) {
         setSesi(data.sesi);
       }

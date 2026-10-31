@@ -343,6 +343,60 @@ export async function DELETE(req: Request) {
       .eq('id', id)
       .single();
 
+    if (!existing) {
+      return NextResponse.json({ success: true, message: 'Data sudah tidak ada' });
+    }
+
+    // 1. Jika yang dihapus master 'kolektif', hapus juga seluruh data anak peserta_kolektif beserta sesi CBT-nya
+    if (existing.jenis_pendaftaran === 'kolektif') {
+      const sekolah = existing.metadata?.ASAL_SEKOLAH || existing.metadata?.['NAMA SD/MI'];
+      if (sekolah) {
+        const { data: children } = await supabase
+          .from('data_olimpiade_seni')
+          .select('id, metadata')
+          .eq('jenis_pendaftaran', 'peserta_kolektif');
+
+        const matchedChildren = (children || []).filter(c => {
+          const s1 = String(c.metadata?.ASAL_SEKOLAH || '').trim().toLowerCase();
+          const s2 = String(c.metadata?.['NAMA SD/MI'] || '').trim().toLowerCase();
+          const target = String(sekolah).trim().toLowerCase();
+          return s1 === target || s2 === target;
+        });
+
+        if (matchedChildren.length > 0) {
+          const childIds = matchedChildren.map(c => c.id);
+          const childNomorPeserta = matchedChildren
+            .map(c => c.metadata?.NOMOR_PESERTA)
+            .filter(Boolean);
+
+          // Hapus sesi CBT anak-anak kolektif ini
+          if (childNomorPeserta.length > 0) {
+            await supabase.from('cbt_sesi').delete().in('nomor_peserta', childNomorPeserta);
+          }
+          // Hapus nilai juri anak-anak kolektif ini
+          await supabase.from('olimpiade_nilai').delete().in('peserta_id', childIds);
+          // Hapus seluruh baris peserta_kolektif dari database
+          await supabase.from('data_olimpiade_seni').delete().in('id', childIds);
+        }
+      }
+    } else {
+      // 2. Jika yang dihapus Individu atau Peserta Kolektif tunggal:
+      const nomorPeserta = existing.metadata?.NOMOR_PESERTA;
+      if (nomorPeserta) {
+        await supabase.from('cbt_sesi').delete().eq('nomor_peserta', nomorPeserta);
+      }
+      await supabase.from('olimpiade_nilai').delete().eq('peserta_id', id);
+
+      // Jika peserta_kolektif, sinkronkan counter master kolektif
+      if (existing.jenis_pendaftaran === 'peserta_kolektif') {
+        const sekolah = existing.metadata?.ASAL_SEKOLAH;
+        if (sekolah) {
+          await syncCollectiveRecap(sekolah);
+        }
+      }
+    }
+
+    // Hapus baris utama
     const { error } = await supabase
       .from('data_olimpiade_seni')
       .delete()
@@ -352,15 +406,7 @@ export async function DELETE(req: Request) {
       throw error;
     }
 
-    // Jika yang dihapus peserta_kolektif, update counter master kolektif
-    if (existing && existing.jenis_pendaftaran === 'peserta_kolektif') {
-      const sekolah = existing.metadata?.ASAL_SEKOLAH;
-      if (sekolah) {
-        await syncCollectiveRecap(sekolah);
-      }
-    }
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, message: 'Data dan seluruh sesi terkait berhasil dihapus' });
   } catch (error: any) {
     console.error('DELETE Rekap Olimpiade Error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
