@@ -191,7 +191,7 @@ export default function SpmbPortalDashboard() {
             title: 'Bukti Berhasil Diunggah!',
             html: `
               <p style="font-size: 13.5px; color: #475569; margin-bottom: 12px;">
-                Bukti pembayaran telah berhasil disimpan. Silakan klik tombol <b>WhatsApp Ibu Ida</b> untuk konfirmasi dan validasi nominal pembayaran.
+                Bukti pembayaran telah berhasil disimpan. Silakan klik tombol <b>WhatsApp Bendahara (Ibu S. Nur Ainy)</b> untuk konfirmasi dan validasi nominal pembayaran.
               </p>
             `,
             confirmButtonText: 'OK',
@@ -210,11 +210,11 @@ export default function SpmbPortalDashboard() {
     }
   };
 
-  const getWaIbuIdaUrl = () => {
+  const getWaBendaharaUrl = () => {
     if (!data) return '';
-    const cleanPhone = '6285708332179';
+    const cleanPhone = '6285236660862';
     const text = encodeURIComponent(
-      `Assalamu'alaikum Ibu Ida (Panitia Pembayaran SPMB MTs Almaarif 01 Singosari).\n\n` +
+      `Assalamu'alaikum Ibu S. Nur Ainy (Bendahara SPMB MTs Almaarif 01 Singosari).\n\n` +
       `Saya wali dari calon santri:\n` +
       `*Nama:* ${data.namaLengkap}\n` +
       `*No. Pendaftaran:* ${data.nomorPendaftaran}\n` +
@@ -224,6 +224,7 @@ export default function SpmbPortalDashboard() {
     );
     return `https://wa.me/${cleanPhone}?text=${text}`;
   };
+  const getWaIbuIdaUrl = getWaBendaharaUrl;
 
   if (loading) {
     return <LoadingScreen message="Memuat Portal Calon Siswa SPMB..." />;
@@ -982,8 +983,8 @@ export default function SpmbPortalDashboard() {
                 </div>
                 <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b' }}>
                   {data.buktiDaftarUlang 
-                    ? 'Bukti telah tersimpan di sistem. Hubungi Ibu Ida via WhatsApp untuk konfirmasi dan pencatatan nominal valid.'
-                    : 'Setelah transfer BCA, unggah bukti pembayaran di sini lalu kirim konfirmasi WhatsApp ke Ibu Ida.'}
+                    ? 'Bukti telah tersimpan di sistem. Hubungi Bendahara (Ibu S. Nur Ainy) via WhatsApp untuk konfirmasi dan pencatatan nominal valid.'
+                    : 'Setelah transfer BCA, unggah bukti pembayaran di sini lalu kirim konfirmasi WhatsApp ke Bendahara (Ibu S. Nur Ainy).'}
                 </p>
               </div>
 
@@ -1033,9 +1034,9 @@ export default function SpmbPortalDashboard() {
                   />
                 </label>
 
-                {/* Tombol WhatsApp ke Ibu Ida */}
+                {/* Tombol WhatsApp ke Bendahara */}
                 <a
-                  href={getWaIbuIdaUrl()}
+                  href={getWaBendaharaUrl()}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
@@ -1051,10 +1052,10 @@ export default function SpmbPortalDashboard() {
                     gap: '6px',
                     boxShadow: '0 2px 6px rgba(34, 197, 94, 0.3)'
                   }}
-                  title="Kirim konfirmasi pembayaran ke Ibu Ida via WhatsApp"
+                  title="Kirim konfirmasi pembayaran ke Bendahara (Ibu S. Nur Ainy) via WhatsApp"
                 >
                   <i className="fab fa-whatsapp" style={{ fontSize: '15px' }}></i>
-                  <span>WA Panitia Pembayaran (Ibu Ida)</span>
+                  <span>WA Bendahara (Ibu S. Nur Ainy)</span>
                 </a>
               </div>
             </div>
@@ -1508,9 +1509,9 @@ export default function SpmbPortalDashboard() {
             </div>
           </a>
 
-          {/* Card Bantuan Panitia Pembayaran WA: Ibu Ida */}
+          {/* Card Bantuan Bendahara WA: Ibu S. Nur Ainy */}
           <a
-            href={getWaIbuIdaUrl()}
+            href={getWaBendaharaUrl()}
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -1543,10 +1544,10 @@ export default function SpmbPortalDashboard() {
             </div>
             <div>
               <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#065f46', marginBottom: '2px' }}>
-                Panitia Pembayaran: Ibu Ida
+                Bendahara: Ibu S. Nur Ainy
               </div>
               <div style={{ fontSize: '12px', color: '#64748b' }}>
-                0857-0833-2179 (Konfirmasi Daftar Ulang)
+                +62 852-3666-0862 (Konfirmasi Pembayaran & Daftar Ulang)
               </div>
             </div>
           </a>
