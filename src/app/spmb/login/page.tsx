@@ -218,39 +218,6 @@ export default function SpmbLogin() {
               <i className="fas fa-chalkboard-teacher"></i> Masuk sebagai Guru / Staf Madrasah
             </Link>
           </div>
-
-          {/* Kontak Bantuan / Bendahara SPMB */}
-          <div style={{
-            marginTop: '18px',
-            padding: '12px 14px',
-            background: '#f0fdf4',
-            borderRadius: '12px',
-            border: '1px solid #bbf7d0',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '11.5px', color: '#166534', fontWeight: 600, marginBottom: '4px' }}>
-              <i className="fas fa-headset" style={{ marginRight: '5px' }}></i>
-              Bantuan Login / Pembayaran SPMB:
-            </div>
-            <a
-              href="https://wa.me/6285236660862?text=Assalamu%27alaikum%20Ibu%20S.%20Nur%20Ainy%20(Bendahara%20SPMB%20MTs%20Almaarif%2001)%2C%20mohon%20bantuan%20terkait%20login%20%2F%20pembayaran%20SPMB."
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                fontSize: '12.5px',
-                color: '#059669',
-                fontWeight: 700,
-                textDecoration: 'none',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px'
-              }}
-            >
-              <i className="fab fa-whatsapp" style={{ fontSize: '15px', color: '#16a34a' }}></i>
-              <span>Bendahara (Ibu S. Nur Ainy): <b>+62 852-3666-0862</b></span>
-            </a>
-          </div>
         </div>
       </div>
     </div>
