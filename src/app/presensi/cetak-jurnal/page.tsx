@@ -15,6 +15,8 @@ interface JurnalItem {
   namaGuru: string;
   materi: string;
   tahunAjaran?: string;
+  isGuruPengganti?: boolean;
+  guruDigantikan?: string;
 }
 
 interface WaliInfo {
@@ -141,7 +143,9 @@ function CetakJurnalContent() {
             mapel: r.mapel || '',
             namaGuru: r.namaGuru || '',
             materi: r.materi || '',
-            tahunAjaran: r.tahunAjaran || ''
+            tahunAjaran: r.tahunAjaran || '',
+            isGuruPengganti: Boolean(r.isGuruPengganti),
+            guruDigantikan: r.guruDigantikan || ''
           }));
           setJurnalRecords(mapped);
         }
@@ -710,7 +714,14 @@ function CetakJurnalContent() {
                               {r.jamKe ? `Jam ${r.jamKe}` : '-'}
                             </td>
                             <td style={{ border: '1px solid #000000', padding: '3.5px 4px', fontWeight: 600 }}>{r.mapel}</td>
-                            <td style={{ border: '1px solid #000000', padding: '3.5px 4px' }}>{r.namaGuru}</td>
+                            <td style={{ border: '1px solid #000000', padding: '3.5px 4px' }}>
+                              <div>{r.namaGuru}</div>
+                              {r.isGuruPengganti && (
+                                <div style={{ fontSize: '6.5pt', color: '#b45309', fontWeight: 700, marginTop: '1px' }}>
+                                  [Inval: {r.guruDigantikan || 'Guru Lain'}]
+                                </div>
+                              )}
+                            </td>
                             <td style={{ border: '1px solid #000000', padding: '3.5px 6px', lineHeight: 1.25 }}>{r.materi}</td>
                             <td style={{ border: '1px solid #000000', padding: '3.5px 2px', textAlign: 'center' }}></td>
                           </tr>

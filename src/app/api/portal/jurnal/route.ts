@@ -47,6 +47,8 @@ export async function GET(request: Request) {
       mapel: r.metadata?.['MAPEL'] || '',
       namaGuru: r.metadata?.['NAMA GURU'] || '',
       materi: r.metadata?.['MATERI'] || '',
+      isGuruPengganti: r.metadata?.['IS_GURU_PENGGANTI'] === true || r.metadata?.['STATUS_INVAL'] === 'Inval' || !!r.metadata?.['GURU_DIGANTIKAN'],
+      guruDigantikan: r.metadata?.['GURU_DIGANTIKAN'] || '',
     }));
 
     // Deduplicate

@@ -350,9 +350,14 @@ export default function PortalJurnal() {
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                       <i className="fas fa-user-tie" style={{ color: '#0284c7', fontSize: '11px' }}></i>
                       <span>{item.namaGuru || 'Guru Pengampu'}</span>
+                      {item.isGuruPengganti && (
+                        <span style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontSize: '10px', fontWeight: 700, padding: '1px 6px', borderRadius: '4px' }}>
+                          Inval: {item.guruDigantikan || 'Guru Lain'}
+                        </span>
+                      )}
                     </div>
                   </div>
 

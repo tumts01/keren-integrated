@@ -170,6 +170,8 @@ export default function PresensiPage() {
   // Jurnal: guru yang mengajar
   const [guruList, setGuruList] = useState<string[]>([]);
   const [selectedGuru, setSelectedGuru] = useState('');
+  const [isGuruPengganti, setIsGuruPengganti] = useState(false);
+  const [guruDigantikan, setGuruDigantikan] = useState('');
 
   // Jurnal Piket states
   const [jpPetugasPiket, setJpPetugasPiket] = useState<string[]>([]);
@@ -1181,6 +1183,9 @@ export default function PresensiPage() {
           } catch {}
         }
         const durasi = countJam(r.jamKe || '');
+        const mapelText = r.isGuruPengganti
+          ? `${r.mapel || '-'} [Inval: Menggantikan ${r.guruDigantikan || 'Guru Lain'}]`
+          : (r.mapel || '-');
         aoa.push([
           idx + 1,
           hari,
@@ -1188,7 +1193,7 @@ export default function PresensiPage() {
           r.jamKe ? `Jam ${r.jamKe}` : '-',
           durasi,
           r.kelas || '-',
-          r.mapel || '-',
+          mapelText,
           r.materi || '-'
         ]);
       });
@@ -1455,6 +1460,9 @@ export default function PresensiPage() {
                 tglFmt = d.toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' });
               } catch {}
             }
+            const guruText = r.isGuruPengganti
+              ? `${r.namaGuru || '-'} (Inval: Menggantikan ${r.guruDigantikan || 'Guru Lain'})`
+              : (r.namaGuru || '-');
             aoa.push([
               idx + 1,
               r.kelas || '-',
@@ -1462,7 +1470,7 @@ export default function PresensiPage() {
               tglFmt,
               r.jamKe ? `Jam ${r.jamKe}` : '-',
               r.mapel || '-',
-              r.namaGuru || '-',
+              guruText,
               r.materi || '-'
             ]);
           });
@@ -1863,6 +1871,11 @@ export default function PresensiPage() {
       return;
     }
 
+    if (isGuruPengganti && !guruDigantikan.trim()) {
+      Swal.fire({ icon: 'warning', title: 'Guru Pengganti', text: 'Mohon pilih atau ketik nama guru yang digantikan!' });
+      return;
+    }
+
     const guru = selectedGuru || currentUsername || 'Unknown';
     // Format tanggal ke format Indonesia yang mudah dibaca, misal: 25 Juli 2026
     const formattedTanggal = tanggal ? new Date(tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
@@ -1872,6 +1885,9 @@ export default function PresensiPage() {
         <table style="width: 100%; border-collapse: collapse;">
           <tr><td style="padding: 4px 0; width: 110px; color: #64748b; font-weight: 600;">Tanggal</td><td>: <strong>${formattedTanggal}</strong></td></tr>
           <tr><td style="padding: 4px 0; color: #64748b; font-weight: 600;">Guru</td><td>: <strong>${guru}</strong></td></tr>
+          ${isGuruPengganti ? `
+          <tr><td style="padding: 4px 0; color: #d97706; font-weight: 700;">Status</td><td>: <span style="background: #fef3c7; color: #b45309; border: 1px solid #fde68a; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.8rem;">INVAL (Menggantikan: ${guruDigantikan})</span></td></tr>
+          ` : ''}
           <tr><td style="padding: 4px 0; color: #64748b; font-weight: 600;">Kelas</td><td>: <strong>${selectedKelas}</strong></td></tr>
           <tr><td style="padding: 4px 0; color: #64748b; font-weight: 600;">Mapel</td><td>: <strong>${selectedMapel}</strong></td></tr>
           <tr><td style="padding: 4px 0; color: #64748b; font-weight: 600;">Jam Ke</td><td>: <strong>${selectedJam.join(', ')}</strong></td></tr>
@@ -1905,7 +1921,9 @@ export default function PresensiPage() {
           mapel: selectedMapel,
           guru,
           materi,
-          tahunAjaran: new Date().getFullYear().toString() + '/' + (new Date().getFullYear() + 1).toString()
+          tahunAjaran: new Date().getFullYear().toString() + '/' + (new Date().getFullYear() + 1).toString(),
+          isGuruPengganti,
+          guruDigantikan: isGuruPengganti ? guruDigantikan.trim() : ''
         })
       });
       const data = await res.json();
@@ -1918,6 +1936,8 @@ export default function PresensiPage() {
         });
         setMateri('');
         setSelectedJam([]);
+        setIsGuruPengganti(false);
+        setGuruDigantikan('');
       } else {
         Swal.fire({
           icon: 'error',
@@ -2665,6 +2685,72 @@ export default function PresensiPage() {
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Opsi Guru Pengganti (Inval) */}
+              <div style={{
+                flex: '1 1 100%',
+                background: isGuruPengganti ? '#fffbeb' : '#f8fafc',
+                border: `1.5px solid ${isGuruPengganti ? '#f59e0b' : '#e2e8f0'}`,
+                borderRadius: 10,
+                padding: '12px 16px',
+                transition: 'all 0.2s ease',
+                marginBottom: 6
+              }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', margin: 0, userSelect: 'none' }}>
+                  <input
+                    type="checkbox"
+                    checked={isGuruPengganti}
+                    onChange={e => {
+                      setIsGuruPengganti(e.target.checked);
+                      if (!e.target.checked) setGuruDigantikan('');
+                    }}
+                    style={{ width: 18, height: 18, accentColor: '#d97706', cursor: 'pointer' }}
+                  />
+                  <div>
+                    <span style={{ fontWeight: 700, fontSize: '0.9rem', color: isGuruPengganti ? '#92400e' : '#334155' }}>
+                      <i className="fas fa-user-clock" style={{ marginRight: 6, color: isGuruPengganti ? '#d97706' : '#64748b' }}></i>
+                      Sebagai Guru Pengganti (Inval)
+                    </span>
+                    <span style={{ display: 'block', fontSize: '0.78rem', color: '#64748b', marginTop: 2 }}>
+                      Centang jika Anda menggantikan jam mengajar guru lain (diperbolehkan jika jam pelajaran bertepatan dengan kelas Anda yang lain).
+                    </span>
+                  </div>
+                </label>
+
+                {isGuruPengganti && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed #fde68a' }}>
+                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#92400e', marginBottom: 6 }}>
+                      Pilih Guru yang Digantikan: <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        list="list-guru-digantikan-presensi"
+                        type="text"
+                        value={guruDigantikan}
+                        onChange={e => setGuruDigantikan(e.target.value)}
+                        placeholder="-- Ketik atau cari nama guru yang berhalangan hadir --"
+                        className={styles.inputField}
+                        style={{
+                          width: '100%',
+                          background: '#ffffff',
+                          borderColor: '#f59e0b',
+                          color: '#1e293b',
+                          fontWeight: 600
+                        }}
+                      />
+                      <datalist id="list-guru-digantikan-presensi">
+                        {guruList.map((g, idx) => (
+                          <option key={idx} value={g} />
+                        ))}
+                      </datalist>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#b45309', marginTop: 4 }}>
+                      <i className="fas fa-info-circle" style={{ marginRight: 4 }}></i>
+                      Jam pelajaran untuk entri ini tetap dihitung penuh ke rekap jam mengajar Anda.
+                    </div>
+                  </div>
+                )}
               </div>
               
               <div className={styles.filterGroup} style={{ flex: '1 1 100%' }}>
@@ -3718,7 +3804,28 @@ export default function PresensiPage() {
                                 </td>
                               )}
                               <td style={{ padding: '10px 14px', whiteSpace: 'nowrap', fontWeight: 600, color: '#1e293b' }}>{r.kelas}</td>
-                              <td style={{ padding: '10px 14px', whiteSpace: 'nowrap', color: '#475569' }}>{r.mapel}</td>
+                              <td style={{ padding: '10px 14px', whiteSpace: 'nowrap', color: '#475569' }}>
+                                <div>{r.mapel}</div>
+                                {r.isGuruPengganti && (
+                                  <div style={{ marginTop: 2 }}>
+                                    <span style={{
+                                      background: '#fef3c7',
+                                      color: '#b45309',
+                                      border: '1px solid #fde68a',
+                                      padding: '1px 6px',
+                                      borderRadius: 4,
+                                      fontSize: '0.72rem',
+                                      fontWeight: 700,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 4
+                                    }}>
+                                      <i className="fas fa-user-clock" style={{ fontSize: '0.68rem' }}></i>
+                                      Inval: {r.guruDigantikan || 'Guru Lain'}
+                                    </span>
+                                  </div>
+                                )}
+                              </td>
                               <td style={{ padding: '10px 14px', textAlign: 'center' }}>
                                 <span style={{ background: /(11|12|13)/.test(r.jamKe) ? '#fee2e2' : '#dcfce7', color: /(11|12|13)/.test(r.jamKe) ? '#ef4444' : '#16a34a', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600 }}>Jam {r.jamKe}</span>
                               </td>
@@ -3858,6 +3965,42 @@ export default function PresensiPage() {
               <div>
                 <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Mata Pelajaran</label>
                 <input type="text" value={editingJurnal.mapel} onChange={e => setEditingJurnal({ ...editingJurnal, mapel: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+              </div>
+
+              <div style={{ background: editingJurnal.isGuruPengganti ? '#fffbeb' : '#f8fafc', border: `1px solid ${editingJurnal.isGuruPengganti ? '#f59e0b' : '#e2e8f0'}`, padding: '12px', borderRadius: '8px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', margin: 0, userSelect: 'none' }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(editingJurnal.isGuruPengganti)}
+                    onChange={e => setEditingJurnal({
+                      ...editingJurnal,
+                      isGuruPengganti: e.target.checked,
+                      guruDigantikan: e.target.checked ? editingJurnal.guruDigantikan : ''
+                    })}
+                    style={{ width: 16, height: 16, accentColor: '#d97706' }}
+                  />
+                  <span style={{ fontSize: '0.88rem', fontWeight: 700, color: editingJurnal.isGuruPengganti ? '#b45309' : '#334155' }}>
+                    Sebagai Guru Pengganti (Inval)
+                  </span>
+                </label>
+                {editingJurnal.isGuruPengganti && (
+                  <div style={{ marginTop: 10 }}>
+                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#92400e', marginBottom: 4 }}>Guru yang Digantikan:</label>
+                    <input
+                      list="list-guru-digantikan-edit"
+                      type="text"
+                      value={editingJurnal.guruDigantikan || ''}
+                      onChange={e => setEditingJurnal({ ...editingJurnal, guruDigantikan: e.target.value })}
+                      placeholder="Nama guru yang digantikan..."
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', border: '1px solid #f59e0b', fontSize: '0.88rem', boxSizing: 'border-box' }}
+                    />
+                    <datalist id="list-guru-digantikan-edit">
+                      {guruList.map((g, idx) => (
+                        <option key={idx} value={g} />
+                      ))}
+                    </datalist>
+                  </div>
+                )}
               </div>
 
               <div>

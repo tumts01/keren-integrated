@@ -48,6 +48,9 @@ export async function GET(request: Request) {
       mapel: (r.metadata?.['MAPEL'] || '').replace(/\bllmu\b/g, 'Ilmu'),
       namaGuru: r.metadata?.['NAMA GURU'] || '',
       materi: r.metadata?.['MATERI'] || '',
+      isGuruPengganti: r.metadata?.['IS_GURU_PENGGANTI'] === true || r.metadata?.['STATUS_INVAL'] === 'Inval' || !!r.metadata?.['GURU_DIGANTIKAN'],
+      guruDigantikan: r.metadata?.['GURU_DIGANTIKAN'] || '',
+      statusInval: r.metadata?.['STATUS_INVAL'] || (r.metadata?.['IS_GURU_PENGGANTI'] ? 'Inval' : 'Reguler'),
     })).filter((r: any) => r.tanggal || r.materi);
 
     const seen = new Set<string>();
@@ -68,7 +71,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    let { tanggal, jamKe, kelas, mapel, guru, materi, tahunAjaran } = body;
+    let { tanggal, jamKe, kelas, mapel, guru, materi, tahunAjaran, isGuruPengganti, guruDigantikan } = body;
 
     if (!tanggal || !jamKe || !kelas || !mapel || !materi) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
@@ -110,7 +113,12 @@ export async function POST(request: Request) {
             }
           }
           if ((r.metadata?.['NAMA GURU'] || '').trim().toLowerCase() === guru.trim().toLowerCase()) {
-            overlappingGuru = r;
+            const isExistingInval = r.metadata?.['STATUS_INVAL'] === 'Inval' || r.metadata?.['IS_GURU_PENGGANTI'] === true || Boolean(r.metadata?.['GURU_DIGANTIKAN']);
+            const isCurrentInval = Boolean(isGuruPengganti);
+            // Hanya anggap overlap bentrok jika KEDUANYA bukan inval (jadwal ganda tanpa status guru pengganti)
+            if (!isExistingInval && !isCurrentInval) {
+              overlappingGuru = r;
+            }
           }
         }
       }
@@ -138,6 +146,9 @@ export async function POST(request: Request) {
       }, { status: 409 });
     }
 
+    const isPengganti = Boolean(isGuruPengganti);
+    const namaGuruDigantikan = isPengganti ? String(guruDigantikan || '').trim() : '';
+
     const metadata = {
       'ID': id,
       'TIMESTAMP': timestamp,
@@ -147,7 +158,10 @@ export async function POST(request: Request) {
       'KELAS': kelas,
       'MAPEL': mapel,
       'NAMA GURU': guru,
-      'MATERI': materi
+      'MATERI': materi,
+      'STATUS_INVAL': isPengganti ? 'Inval' : 'Reguler',
+      'IS_GURU_PENGGANTI': isPengganti,
+      'GURU_DIGANTIKAN': namaGuruDigantikan
     };
 
     const { error: insertError } = await supabase.from('data_jurnal_mengajar').insert([{ tanggal, kelas, metadata }]);
@@ -165,7 +179,7 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const { id, tanggal, jamKe, kelas, mapel, guru, namaGuru, materi, tahunAjaran } = body;
+    const { id, tanggal, jamKe, kelas, mapel, guru, namaGuru, materi, tahunAjaran, isGuruPengganti, guruDigantikan } = body;
 
     const actualGuru = guru || namaGuru;
 
@@ -206,7 +220,11 @@ export async function PUT(request: Request) {
             overlappingClass = r;
           }
           if ((r.metadata?.['NAMA GURU'] || '').trim().toLowerCase() === actualGuru.trim().toLowerCase()) {
-            overlappingGuru = r;
+            const isExistingInval = r.metadata?.['STATUS_INVAL'] === 'Inval' || r.metadata?.['IS_GURU_PENGGANTI'] === true || Boolean(r.metadata?.['GURU_DIGANTIKAN']);
+            const isCurrentInval = Boolean(isGuruPengganti);
+            if (!isExistingInval && !isCurrentInval) {
+              overlappingGuru = r;
+            }
           }
         }
       }
@@ -247,6 +265,9 @@ export async function PUT(request: Request) {
 
     const { data: existingRow } = await supabase.from('data_jurnal_mengajar').select('metadata').eq('id', dbId).single();
 
+    const isPengganti = Boolean(isGuruPengganti);
+    const namaGuruDigantikan = isPengganti ? String(guruDigantikan || '').trim() : '';
+
     const metadata = {
       ...(existingRow?.metadata || {}),
       'TANGGAL': tanggal,
@@ -255,7 +276,10 @@ export async function PUT(request: Request) {
       'KELAS': kelas,
       'MAPEL': mapel,
       'NAMA GURU': actualGuru,
-      'MATERI': materi
+      'MATERI': materi,
+      'STATUS_INVAL': isPengganti ? 'Inval' : 'Reguler',
+      'IS_GURU_PENGGANTI': isPengganti,
+      'GURU_DIGANTIKAN': namaGuruDigantikan
     };
 
     const { error: updateError } = await supabase.from('data_jurnal_mengajar').update({ tanggal, kelas, metadata }).eq('id', dbId);
