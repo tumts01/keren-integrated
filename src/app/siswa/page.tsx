@@ -776,7 +776,9 @@ function PrintSiswaModal({
         th { background: #f0f0f0; padding: ${paddingPt}pt 5pt; font-weight: 600; text-align: left; border: 1px solid #999; }
         td { padding: ${paddingPt}pt 5pt; border: 1px solid #bbb; vertical-align: middle; height: ${rowHeightPt}pt; }
         .col-no { width: 26pt; text-align: center; }
-        .col-nama { width: 45%; }
+        .col-nama { width: ${mode === 'manual' ? '36%' : '45%'}; }
+        .col-kelas { text-align: center; }
+        .col-ket { text-align: center; }
         .group-header td { background: #e8e8e8; font-weight: 600; font-size: ${subPt}pt; padding: ${Math.max(paddingPt - 1, 1)}pt 5pt; border: 1px solid #999; }
         .page-section { page-break-after: always; }
         .page-section:last-child { page-break-after: avoid; }
@@ -1092,14 +1094,16 @@ function PrintSiswaModal({
                       <th className="col-nama">Nama Siswa</th>
                       {mode === 'manual' ? (
                         <>
-                          <th className="col-kelas" style={{ width: '20%' }}>Kelas</th>
-                          <th className="col-domisili" style={{ width: '20%' }}>Domisili</th>
+                          <th className="col-kelas" style={{ width: '12%', textAlign: 'center' }}>Kelas</th>
+                          <th className="col-domisili" style={{ width: '18%' }}>Domisili</th>
+                          <th className="col-ket" style={{ textAlign: 'center' }}>{customKeterangan1 || 'Keterangan'}</th>
+                          <th className="col-ket" style={{ textAlign: 'center' }}>{customKeterangan2 || 'Keterangan'}</th>
                         </>
                       ) : (
                         <>
                           <th className="col-domisili" style={{ width: '20%' }}>Domisili</th>
-                          <th className="col-ket">{customKeterangan1 || 'Keterangan'}</th>
-                          <th className="col-ket">{customKeterangan2 || 'Keterangan'}</th>
+                          <th className="col-ket" style={{ textAlign: 'center' }}>{customKeterangan1 || 'Keterangan'}</th>
+                          <th className="col-ket" style={{ textAlign: 'center' }}>{customKeterangan2 || 'Keterangan'}</th>
                         </>
                       )}
                     </tr>
@@ -1111,8 +1115,10 @@ function PrintSiswaModal({
                         <td className="col-nama">{s.nama}</td>
                         {mode === 'manual' ? (
                           <>
-                            <td className="col-kelas">{s.rombel}</td>
+                            <td className="col-kelas" style={{ textAlign: 'center' }}>{s.rombel}</td>
                             <td className="col-domisili">{s.domisili || '-'}</td>
+                            <td className="col-ket"></td>
+                            <td className="col-ket"></td>
                           </>
                         ) : (
                           <>
