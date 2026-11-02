@@ -621,6 +621,14 @@ export default function JurnalKegiatanPage() {
     window.open(`/jurnal-kegiatan/cetak-notulen?id=${encodeURIComponent(n.id)}`, '_blank');
   };
 
+  const handlePrintRekap = () => {
+    const params = new URLSearchParams();
+    if (filterName) params.set('nama', filterName);
+    if (filterStartDate) params.set('startDate', filterStartDate);
+    if (filterEndDate) params.set('endDate', filterEndDate);
+    window.open(`/jurnal-kegiatan/cetak-rekap?${params.toString()}`, '_blank');
+  };
+
   return (
     <div className={`${styles.container} ${isPrintingNotulen ? styles.printingNotulen : ''}`}>
       <div className={styles.header} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '16px' }}>
@@ -915,7 +923,7 @@ export default function JurnalKegiatanPage() {
                     </datalist>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
-                    <button type="button" onClick={() => window.print()} className={styles.btnPrimary} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#3b82f6', color: 'white', fontWeight: 600, cursor: 'pointer' }}><i className="fas fa-print" style={{ marginRight: '8px' }}></i>Preview & Cetak</button>
+                    <button type="button" onClick={handlePrintRekap} className={styles.btnPrimary} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#3b82f6', color: 'white', fontWeight: 600, cursor: 'pointer' }}><i className="fas fa-print" style={{ marginRight: '8px' }}></i>Preview & Cetak</button>
                   </div>
                 </div>
                 {/* KOP SURAT (Hanya tampil saat print) */}
