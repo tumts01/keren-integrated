@@ -10,18 +10,20 @@ export default function AdminSoalCBT() {
   const [soalList, setSoalList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [lombaFilter, setLombaFilter] = useState('Matematika');
+  const [tahapSoal, setTahapSoal] = useState<'seleksi' | 'final'>('seleksi');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // State untuk melacak ID soal yang sedang diupload gambarnya
   const [uploadingImageId, setUploadingImageId] = useState<number | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [cbtBuka, setCbtBuka] = useState(false);
+  const [tahapCbtAktif, setTahapCbtAktif] = useState<'seleksi' | 'final'>('seleksi');
 
   const lombaOptions = ['Matematika', 'IPAS', 'PAI', 'Inggris', 'Arab'];
 
   useEffect(() => {
     fetchSoal();
-  }, [lombaFilter]);
+  }, [lombaFilter, tahapSoal]);
 
   useEffect(() => {
     fetchConfig();
@@ -33,6 +35,9 @@ export default function AdminSoalCBT() {
       const json = await res.json();
       if (json.success) {
         setCbtBuka(json.cbt_buka);
+        if (json.tahap_cbt === 'final' || json.tahap_cbt === 'seleksi') {
+          setTahapCbtAktif(json.tahap_cbt);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -57,10 +62,43 @@ export default function AdminSoalCBT() {
     }
   };
 
+  const handleChangeTahapAktif = async (newTahap: 'seleksi' | 'final') => {
+    if (newTahap === tahapCbtAktif) return;
+    const label = newTahap === 'final' ? 'Babak Final' : 'Babak Seleksi (Penyisihan)';
+    const confirm = await Swal.fire({
+      title: `Aktifkan Ujian ${label}?`,
+      text: newTahap === 'final'
+        ? 'Portal CBT siswa akan diarahkan ke paket soal Babak Final (hanya peserta yang Lolos Top 30 Seleksi yang dapat mengerjakan).'
+        : 'Portal CBT siswa akan diarahkan ke paket soal Babak Seleksi (Penyisihan).',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#0284c7',
+      confirmButtonText: `Ya, Aktifkan ${label}`,
+      cancelButtonText: 'Batal'
+    });
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const res = await fetch('/api/olimpiade-seni/config-cbt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tahap_cbt: newTahap })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTahapCbtAktif(newTahap);
+        setTahapSoal(newTahap);
+        Swal.fire('Berhasil', `Tahap ujian CBT aktif berhasil diubah ke ${label}.`, 'success');
+      }
+    } catch (err: any) {
+      Swal.fire('Error', err.message, 'error');
+    }
+  };
+
   const fetchSoal = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/cbt/admin/soal?lomba=${lombaFilter}`);
+      const res = await fetch(`/api/cbt/admin/soal?lomba=${lombaFilter}&tahap=${tahapSoal}`);
       const data = await res.json();
       if (data.success) {
         setSoalList(data.data);
@@ -88,7 +126,7 @@ export default function AdminSoalCBT() {
     if (!file) return;
 
     Swal.fire({
-      title: 'Mengunggah Soal...',
+      title: `Mengunggah Soal (${tahapSoal === 'final' ? 'Babak Final' : 'Babak Seleksi'})...`,
       allowOutsideClick: false,
       didOpen: () => Swal.showLoading()
     });
@@ -96,6 +134,7 @@ export default function AdminSoalCBT() {
     try {
       const formData = new FormData();
       formData.append('type', 'excel');
+      formData.append('tahap', tahapSoal);
       formData.append('fileExcel', file);
 
       const res = await fetch('/api/cbt/admin/soal', {
@@ -118,11 +157,12 @@ export default function AdminSoalCBT() {
   };
 
   const handleDeleteAll = async () => {
-    if (!confirm(`Yakin ingin menghapus semua soal untuk ${lombaFilter}?`)) return;
+    const labelTahap = tahapSoal === 'final' ? 'Babak Final' : 'Babak Seleksi';
+    if (!confirm(`Yakin ingin menghapus semua soal ${lombaFilter} untuk ${labelTahap}?`)) return;
     
     setLoading(true);
     try {
-      const res = await fetch(`/api/cbt/admin/soal?lomba=${lombaFilter}`, { method: 'DELETE' });
+      const res = await fetch(`/api/cbt/admin/soal?lomba=${lombaFilter}&tahap=${tahapSoal}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         fetchSoal();
@@ -191,8 +231,13 @@ export default function AdminSoalCBT() {
   return (
     <div style={{ padding: '40px', background: '#f8fafc', minHeight: '100vh' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto', background: 'white', padding: '32px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
-          <h1 style={{ fontSize: '1.8rem', color: '#0f172a', margin: 0 }}>Bank Soal CBT Olimpiade</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <h1 style={{ fontSize: '1.8rem', color: '#0f172a', margin: 0 }}>Bank Soal CBT Olimpiade</h1>
+            <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '0.9rem' }}>
+              Kelola paket soal terpisah untuk <b>Babak Seleksi (Penyisihan)</b> dan <b>Babak Final</b>
+            </p>
+          </div>
           <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               onClick={() => router.push('/olimpiade-seni/cbt-monitoring')}
@@ -213,24 +258,125 @@ export default function AdminSoalCBT() {
               <i className="fas fa-desktop"></i> Monitoring CBT & Sesi
             </button>
             <button 
-            onClick={handleToggleCbt}
-            style={{ 
-              padding: '10px 20px', 
-              borderRadius: '8px', 
-              background: cbtBuka ? '#ef4444' : '#10b981', 
-              color: 'white', 
-              border: 'none', 
-              cursor: 'pointer', 
-              fontWeight: 600,
+              onClick={handleToggleCbt}
+              style={{ 
+                padding: '10px 20px', 
+                borderRadius: '8px', 
+                background: cbtBuka ? '#ef4444' : '#10b981', 
+                color: 'white', 
+                border: 'none', 
+                cursor: 'pointer', 
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <i className={`fas ${cbtBuka ? 'fa-eye-slash' : 'fa-eye'}`}></i> 
+              {cbtBuka ? 'Tutup CBT (Sembunyikan)' : 'Buka CBT (Tampilkan)'}
+            </button>
+          </div>
+        </div>
+
+        {/* PENGATURAN TAHAP UJIAN CBT AKTIF */}
+        <div style={{
+          background: tahapCbtAktif === 'final' ? '#fffbeb' : '#f0f9ff',
+          border: `1.5px solid ${tahapCbtAktif === 'final' ? '#fde68a' : '#bae6fd'}`,
+          borderRadius: '12px',
+          padding: '14px 20px',
+          marginBottom: '24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}>
+          <div>
+            <div style={{ fontWeight: 800, color: tahapCbtAktif === 'final' ? '#92400e' : '#0369a1', fontSize: '0.95rem' }}>
+              <i className={`fas ${tahapCbtAktif === 'final' ? 'fa-trophy' : 'fa-filter'}`} style={{ marginRight: '8px' }}></i>
+              Tahap Ujian CBT Aktif Saat Ini: <span style={{ textDecoration: 'underline' }}>{tahapCbtAktif === 'final' ? 'BABAK FINAL' : 'BABAK SELEKSI (PENYISIHAN)'}</span>
+            </div>
+            <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '2px' }}>
+              {tahapCbtAktif === 'final'
+                ? 'Siswa yang login ke CBT saat ini akan mengerjakan Paket Soal Babak Final (khusus Finalis Top 30).'
+                : 'Siswa yang login ke CBT saat ini akan mengerjakan Paket Soal Babak Seleksi.'}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => handleChangeTahapAktif('seleksi')}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: tahapCbtAktif === 'seleksi' ? 'none' : '1px solid #cbd5e1',
+                background: tahapCbtAktif === 'seleksi' ? '#0284c7' : 'white',
+                color: tahapCbtAktif === 'seleksi' ? 'white' : '#475569',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                cursor: 'pointer'
+              }}
+            >
+              Set Aktif: Babak Seleksi
+            </button>
+            <button
+              type="button"
+              onClick={() => handleChangeTahapAktif('final')}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '8px',
+                border: tahapCbtAktif === 'final' ? 'none' : '1px solid #cbd5e1',
+                background: tahapCbtAktif === 'final' ? '#d97706' : 'white',
+                color: tahapCbtAktif === 'final' ? 'white' : '#475569',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                cursor: 'pointer'
+              }}
+            >
+              <i className="fas fa-trophy" style={{ marginRight: '6px' }}></i>
+              Set Aktif: Babak Final
+            </button>
+          </div>
+        </div>
+
+        {/* TAB PILIHAN PAKET SOAL (SELEKSI VS FINAL) */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', borderBottom: '2px solid #e2e8f0', paddingBottom: '12px' }}>
+          <button
+            type="button"
+            onClick={() => setTahapSoal('seleksi')}
+            style={{
+              padding: '10px 20px',
+              borderRadius: '10px',
+              border: 'none',
+              background: tahapSoal === 'seleksi' ? '#0f172a' : '#f1f5f9',
+              color: tahapSoal === 'seleksi' ? 'white' : '#475569',
+              fontWeight: 700,
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: '8px'
             }}
           >
-            <i className={`fas ${cbtBuka ? 'fa-eye-slash' : 'fa-eye'}`}></i> 
-            {cbtBuka ? 'Tutup CBT (Sembunyikan)' : 'Buka CBT (Tampilkan)'}
+            <i className="fas fa-list-check"></i> Paket Soal Babak Seleksi
           </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setTahapSoal('final')}
+            style={{
+              padding: '10px 20px',
+              borderRadius: '10px',
+              border: 'none',
+              background: tahapSoal === 'final' ? '#b45309' : '#f1f5f9',
+              color: tahapSoal === 'final' ? 'white' : '#475569',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <i className="fas fa-award"></i> Paket Soal Babak Final
+          </button>
         </div>
 
         <div style={{ display: 'flex', gap: '16px', marginBottom: '32px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -239,7 +385,7 @@ export default function AdminSoalCBT() {
             onChange={e => setLombaFilter(e.target.value)}
             style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', minWidth: '200px' }}
           >
-            {lombaOptions.map(l => <option key={l} value={l}>{l}</option>)}
+            {lombaOptions.map(l => <option key={l} value={l}>{l} ({tahapSoal === 'final' ? 'Final' : 'Seleksi'})</option>)}
           </select>
 
           <button 
@@ -253,7 +399,7 @@ export default function AdminSoalCBT() {
             onClick={() => fileInputRef.current?.click()}
             style={{ padding: '10px 20px', borderRadius: '8px', background: '#3b82f6', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 600 }}
           >
-            <i className="fas fa-upload" style={{ marginRight: '8px' }}></i> Upload Excel Soal
+            <i className="fas fa-upload" style={{ marginRight: '8px' }}></i> Upload Excel Soal ({tahapSoal === 'final' ? 'Babak Final' : 'Babak Seleksi'})
           </button>
           <input type="file" accept=".xlsx, .xls" ref={fileInputRef} onChange={handleFileUpload} style={{ display: 'none' }} />
 
@@ -261,7 +407,7 @@ export default function AdminSoalCBT() {
             onClick={handleDeleteAll}
             style={{ padding: '10px 20px', borderRadius: '8px', background: '#ef4444', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 600, marginLeft: 'auto' }}
           >
-            <i className="fas fa-trash" style={{ marginRight: '8px' }}></i> Kosongkan Soal {lombaFilter}
+            <i className="fas fa-trash" style={{ marginRight: '8px' }}></i> Kosongkan Soal {lombaFilter} ({tahapSoal === 'final' ? 'Final' : 'Seleksi'})
           </button>
         </div>
 
@@ -280,7 +426,7 @@ export default function AdminSoalCBT() {
           <div style={{ display: 'grid', gap: '16px' }}>
             {soalList.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px', color: '#64748b', background: '#f1f5f9', borderRadius: '12px' }}>
-                Belum ada soal untuk {lombaFilter}
+                Belum ada soal untuk {lombaFilter} pada {tahapSoal === 'final' ? 'Babak Final' : 'Babak Seleksi'}
               </div>
             ) : (
               soalList.map(soal => (

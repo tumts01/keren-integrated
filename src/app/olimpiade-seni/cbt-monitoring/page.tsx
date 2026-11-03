@@ -25,6 +25,8 @@ interface PesertaCBT {
   terjawab: number;
   total_soal: number;
   nilai_akhir: string | null;
+  nilai_seleksi?: string | null;
+  lolos_seleksi?: boolean;
   waktu_mulai: string | null;
   waktu_selesai: string | null;
   sisa_waktu_detik: number | null;
@@ -62,6 +64,8 @@ export default function CbtMonitoringPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedPesertaLog, setSelectedPesertaLog] = useState<PesertaCBT | null>(null);
   const [cbtBuka, setCbtBuka] = useState(false);
+  const [tahapCbtAktif, setTahapCbtAktif] = useState<'seleksi' | 'final'>('seleksi');
+  const [tahapPantau, setTahapPantau] = useState<'seleksi' | 'final'>('seleksi');
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(30);
@@ -69,10 +73,11 @@ export default function CbtMonitoringPage() {
   const REFRESH_INTERVAL = 15; // Detik
 
   // Fetch data
-  const fetchData = async (silent = false) => {
+  const fetchData = async (silent = false, targetTahap?: 'seleksi' | 'final') => {
+    const t = targetTahap || tahapPantau;
     if (!silent) setLoading(true);
     try {
-      const res = await fetch('/api/cbt/monitoring');
+      const res = await fetch(`/api/cbt/monitoring?tahap=${t}`);
       const json = await res.json();
       if (json.success) {
         setData(json.data || []);
@@ -94,9 +99,88 @@ export default function CbtMonitoringPage() {
       const json = await res.json();
       if (json.success) {
         setCbtBuka(json.cbt_buka);
+        if (json.tahap_cbt === 'final' || json.tahap_cbt === 'seleksi') {
+          setTahapCbtAktif(json.tahap_cbt);
+        }
       }
     } catch {
       // silent
+    }
+  };
+
+  const handleChangeTahapAktif = async (newTahap: 'seleksi' | 'final') => {
+    if (!isAdmin) return;
+    if (newTahap === tahapCbtAktif) return;
+    const label = newTahap === 'final' ? 'Babak Final' : 'Babak Seleksi (Penyisihan)';
+    const confirm = await Swal.fire({
+      title: `Aktifkan Ujian ${label}?`,
+      text: newTahap === 'final'
+        ? 'Portal CBT siswa akan diarahkan ke paket soal Babak Final (hanya peserta Lolos Top 30 Seleksi yang dapat mengerjakan).'
+        : 'Portal CBT siswa akan diarahkan ke paket soal Babak Seleksi (Penyisihan).',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#0284c7',
+      confirmButtonText: `Ya, Aktifkan ${label}`,
+      cancelButtonText: 'Batal',
+    });
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const res = await fetch('/api/olimpiade-seni/config-cbt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tahap_cbt: newTahap }),
+      });
+      const resJson = await res.json();
+      if (resJson.success) {
+        setTahapCbtAktif(newTahap);
+        setTahapPantau(newTahap);
+        fetchData(false, newTahap);
+        Swal.fire('Berhasil', `Tahap ujian CBT aktif berhasil diubah ke ${label}.`, 'success');
+      }
+    } catch (err: any) {
+      Swal.fire('Error', err.message, 'error');
+    }
+  };
+
+  const handleResetAllSesi = async () => {
+    if (!isAdmin) return;
+    const labelTahap = tahapPantau === 'final' ? 'Babak Final' : 'Babak Seleksi';
+    const labelCabang = filterCabang !== 'Semua' ? `Cabang ${filterCabang}` : 'SEMUA Cabang Lomba';
+    const confirm = await Swal.fire({
+      title: `Reset Massal Sesi (${labelTahap})?`,
+      html: `Anda akan menghapus seluruh data sesi pengerjaan CBT pada <b>${labelTahap}</b> (${labelCabang}).<br/><br/>Gunakan fitur ini untuk menghapus data simulasi atau mengulang babak dari awal.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Ya, Hapus Semua Sesi Ini',
+      cancelButtonText: 'Batal',
+    });
+    if (!confirm.isConfirmed) return;
+
+    setActionLoading(true);
+    try {
+      const res = await fetch('/api/cbt/monitoring', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reset_all_sesi',
+          tahap: tahapPantau,
+          cabang: filterCabang,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        Swal.fire('Berhasil!', json.message, 'success');
+        await fetchData(false, tahapPantau);
+      } else {
+        Swal.fire('Gagal', json.error || 'Gagal mereset sesi', 'error');
+      }
+    } catch (err: any) {
+      Swal.fire('Error', err.message, 'error');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -158,7 +242,7 @@ export default function CbtMonitoringPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [autoRefresh]);
+  }, [autoRefresh, tahapPantau]);
 
   // Aksi Kelola Sesi
   const handleAction = async (action: string, p: PesertaCBT, extraBody: any = {}) => {
@@ -238,6 +322,7 @@ export default function CbtMonitoringPage() {
         body: JSON.stringify({
           action,
           nomorPeserta: p.nomor_peserta,
+          tahap: tahapPantau,
           ...extraBody,
         }),
       });
@@ -545,25 +630,146 @@ export default function CbtMonitoringPage() {
               </p>
             </div>
             {isAdmin && (
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  onClick={handleResetAllSesi}
+                  disabled={actionLoading}
+                  style={{
+                    background: '#fee2e2',
+                    color: '#dc2626',
+                    border: '1.5px solid #fca5a5',
+                    padding: '10px 16px',
+                    borderRadius: '10px',
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <i className="fas fa-trash-alt"></i> Reset Sesi ({tahapPantau === 'final' ? 'Final' : 'Seleksi'})
+                </button>
+                <button
+                  onClick={handleExportExcel}
+                  style={{
+                    background: '#16a34a',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 18px',
+                    borderRadius: '10px',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    boxShadow: '0 2px 8px rgba(22,163,74,0.3)',
+                  }}
+                >
+                  <i className="fas fa-file-excel"></i> Export Rekap Sesi
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* STAGE SELECTOR & ACTIVE CBT STAGE BANNER */}
+          <div style={{
+            marginTop: '20px',
+            paddingTop: '18px',
+            borderTop: '1px solid #e2e8f0',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '14px'
+          }}>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#475569' }}>Pantau Sesi Babak:</span>
               <button
-                onClick={handleExportExcel}
+                type="button"
+                onClick={() => {
+                  setTahapPantau('seleksi');
+                  setCurrentPage(1);
+                  fetchData(false, 'seleksi');
+                }}
                 style={{
-                  background: '#16a34a',
-                  color: 'white',
-                  border: 'none',
-                  padding: '10px 18px',
-                  borderRadius: '10px',
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: tahapPantau === 'seleksi' ? 'none' : '1.5px solid #cbd5e1',
+                  background: tahapPantau === 'seleksi' ? '#0284c7' : 'white',
+                  color: tahapPantau === 'seleksi' ? 'white' : '#475569',
                   fontWeight: 700,
-                  fontSize: '0.9rem',
+                  fontSize: '0.88rem',
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '8px',
-                  boxShadow: '0 2px 8px rgba(22,163,74,0.3)',
+                  gap: '8px'
                 }}
               >
-                <i className="fas fa-file-excel"></i> Export Rekap Sesi
+                <i className="fas fa-list-check"></i> Babak Seleksi (Penyisihan)
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTahapPantau('final');
+                  setCurrentPage(1);
+                  fetchData(false, 'final');
+                }}
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: tahapPantau === 'final' ? 'none' : '1.5px solid #cbd5e1',
+                  background: tahapPantau === 'final' ? '#d97706' : 'white',
+                  color: tahapPantau === 'final' ? 'white' : '#475569',
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <i className="fas fa-trophy"></i> Babak Final (Finalis Top 30)
+              </button>
+            </div>
+
+            {isAdmin && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#f8fafc', padding: '6px 12px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b' }}>Tahap CBT Aktif Siswa:</span>
+                <button
+                  type="button"
+                  onClick={() => handleChangeTahapAktif('seleksi')}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: tahapCbtAktif === 'seleksi' ? '#0f172a' : 'transparent',
+                    color: tahapCbtAktif === 'seleksi' ? 'white' : '#64748b',
+                    fontWeight: 700,
+                    fontSize: '0.78rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Seleksi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleChangeTahapAktif('final')}
+                  style={{
+                    padding: '5px 10px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: tahapCbtAktif === 'final' ? '#b45309' : 'transparent',
+                    color: tahapCbtAktif === 'final' ? 'white' : '#64748b',
+                    fontWeight: 700,
+                    fontSize: '0.78rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Final
+                </button>
+              </div>
             )}
           </div>
         </div>

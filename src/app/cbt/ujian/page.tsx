@@ -25,6 +25,7 @@ export default function CBTUjianPage() {
 
   const warningCountRef = useRef(0);
   const userRef = useRef<any>(null);
+  const sesiRef = useRef<any>(null);
   const isSubmittingRef = useRef(false);
   const isUnloadingRef = useRef(false);
   const isOfflineRef = useRef(false);
@@ -65,9 +66,9 @@ export default function CBTUjianPage() {
       });
 
       // Sinkronkan seluruh jawaban lokal yang tersimpan
-      if (userRef.current?.nomorPeserta) {
+      if (userRef.current?.nomorPeserta && sesiRef.current?.id) {
         try {
-          const savedStr = localStorage.getItem(`cbt_jawaban_${userRef.current.nomorPeserta}`);
+          const savedStr = localStorage.getItem(`cbt_jawaban_sesi_${sesiRef.current.id}`);
           if (savedStr) {
             const backup = JSON.parse(savedStr);
             for (const [noSoal, ans] of Object.entries(backup)) {
@@ -391,13 +392,16 @@ export default function CBTUjianPage() {
       
       if (dataSoal.success) {
         setSesi(dataSoal.sesi);
+        sesiRef.current = dataSoal.sesi;
         setSoalList(dataSoal.soal);
 
-        // Gabungkan jawaban dari server dengan backup lokal jika ada (misal sempat offline sebelum reload)
+        // Gabungkan jawaban dari server dengan backup lokal sesi ini jika ada (misal sempat offline sebelum reload)
         const serverJawaban = dataSoal.sesi.jawaban_tersimpan || {};
         let localBackup: Record<string, string> = {};
         try {
-          const savedStr = localStorage.getItem(`cbt_jawaban_${u.nomorPeserta}`);
+          // Bersihkan kunci lama dari simulasi agar tidak tercampur
+          localStorage.removeItem(`cbt_jawaban_${u.nomorPeserta}`);
+          const savedStr = localStorage.getItem(`cbt_jawaban_sesi_${dataSoal.sesi.id}`);
           if (savedStr) localBackup = JSON.parse(savedStr);
         } catch {}
         const mergedJawaban = { ...serverJawaban, ...localBackup };
@@ -460,12 +464,12 @@ export default function CBTUjianPage() {
     if (!soalList[currentIndex]) return;
     const noSoal = soalList[currentIndex].nomor_soal.toString();
     
-    // Update local state dan simpan backup di localStorage segera
+    // Update local state dan simpan backup di localStorage segera (terikat ke ID sesi aktif)
     const nextJawaban = { ...jawaban, [noSoal]: opsi };
     setJawaban(nextJawaban);
     try {
-      if (user?.nomorPeserta) {
-        localStorage.setItem(`cbt_jawaban_${user.nomorPeserta}`, JSON.stringify(nextJawaban));
+      if (sesi?.id) {
+        localStorage.setItem(`cbt_jawaban_sesi_${sesi.id}`, JSON.stringify(nextJawaban));
       }
     } catch (err) {
       // ignore
@@ -537,6 +541,9 @@ export default function CBTUjianPage() {
       if (data.success) {
         try {
           localStorage.removeItem(`cbt_jawaban_${nomorPeserta}`);
+          if (sesiRef.current?.id) {
+            localStorage.removeItem(`cbt_jawaban_sesi_${sesiRef.current.id}`);
+          }
         } catch {}
 
         Swal.fire({

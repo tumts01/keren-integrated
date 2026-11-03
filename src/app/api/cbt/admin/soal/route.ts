@@ -5,16 +5,26 @@ import * as xlsx from 'xlsx';
 
 export const dynamic = 'force-dynamic';
 
+function resolveCabangKey(lomba: string, tahap?: string | null): string {
+  const base = (lomba || '').trim().replace(/_FINAL$/i, '');
+  if (tahap === 'final') {
+    return `${base}_FINAL`;
+  }
+  return base;
+}
+
 // GET: Ambil daftar soal
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const lomba = searchParams.get('lomba');
+    const tahap = searchParams.get('tahap');
 
     let query = supabase.from('cbt_soal').select('*').order('nomor_soal', { ascending: true });
     
     if (lomba) {
-      query = query.eq('cabang_lomba', lomba);
+      const targetCabang = resolveCabangKey(lomba, tahap);
+      query = query.eq('cabang_lomba', targetCabang);
     }
 
     const { data, error } = await query;
@@ -31,6 +41,7 @@ export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const type = formData.get('type') as string;
+    const tahap = (formData.get('tahap') as string) || 'seleksi';
 
     if (type === 'excel') {
       const fileExcel = formData.get('fileExcel') as File;
@@ -43,7 +54,7 @@ export async function POST(req: Request) {
       const dataExcel = xlsx.utils.sheet_to_json<any>(workbook.Sheets[sheetName]);
 
       const rowsToInsert = dataExcel.map(row => {
-        let cabang = (row['LOMBA'] || '').toString().trim();
+        let cabang = (row['LOMBA'] || '').toString().trim().replace(/_FINAL$/i, '');
         // Auto-fix common naming issues
         if (cabang.toLowerCase() === 'arab' || cabang.toLowerCase() === 'bahasa arab' || cabang.toLowerCase() === 'b. arab') cabang = 'Arab';
         if (cabang.toLowerCase() === 'inggris' || cabang.toLowerCase() === 'bahasa inggris' || cabang.toLowerCase() === 'b. inggris') cabang = 'Inggris';
@@ -51,8 +62,10 @@ export async function POST(req: Request) {
         if (cabang.toLowerCase() === 'ipas' || cabang.toLowerCase() === 'ipa') cabang = 'IPAS';
         if (cabang.toLowerCase() === 'matematika' || cabang.toLowerCase() === 'mtk') cabang = 'Matematika';
 
+        const finalCabangKey = cabang ? resolveCabangKey(cabang, tahap) : '';
+
         return {
-          cabang_lomba: cabang,
+          cabang_lomba: finalCabangKey,
           nomor_soal: parseInt(row['NOMOR_SOAL'] || '0', 10),
           pertanyaan: row['PERTANYAAN'] || '',
           opsi_a: row['OPSI_A'] || '',
@@ -68,11 +81,13 @@ export async function POST(req: Request) {
       const { error } = await supabase.from('cbt_soal').insert(rowsToInsert);
       if (error) throw error;
 
-      return NextResponse.json({ success: true, message: `${rowsToInsert.length} soal berhasil diunggah` });
+      const labelTahap = tahap === 'final' ? 'Babak Final' : 'Babak Seleksi';
+      return NextResponse.json({ success: true, message: `${rowsToInsert.length} soal (${labelTahap}) berhasil diunggah` });
     } 
     
     else if (type === 'single') {
-      const lomba = formData.get('cabang_lomba') as string;
+      const rawLomba = formData.get('cabang_lomba') as string;
+      const lomba = resolveCabangKey(rawLomba, tahap);
       const nomor = parseInt(formData.get('nomor_soal') as string, 10);
       const pertanyaan = formData.get('pertanyaan') as string;
       const opsiA = formData.get('opsi_a') as string;
@@ -115,12 +130,14 @@ export async function DELETE(req: Request) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     const lomba = searchParams.get('lomba'); // Untuk clear semua soal 1 lomba
+    const tahap = searchParams.get('tahap');
 
     if (id) {
       const { error } = await supabase.from('cbt_soal').delete().eq('id', id);
       if (error) throw error;
     } else if (lomba) {
-      const { error } = await supabase.from('cbt_soal').delete().eq('cabang_lomba', lomba);
+      const targetCabang = resolveCabangKey(lomba, tahap);
+      const { error } = await supabase.from('cbt_soal').delete().eq('cabang_lomba', targetCabang);
       if (error) throw error;
     } else {
       return NextResponse.json({ success: false, error: 'ID atau Lomba harus disertakan' }, { status: 400 });

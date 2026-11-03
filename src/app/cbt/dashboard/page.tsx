@@ -34,6 +34,7 @@ export default function DashboardCBT() {
   const [hasilPublished, setHasilPublished] = useState(false);
   const [statusLolos, setStatusLolos] = useState<boolean | null>(null);
   const [cbtBuka, setCbtBuka] = useState(false);
+  const [tahapCbt, setTahapCbt] = useState<'seleksi' | 'final'>('seleksi');
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -55,6 +56,9 @@ export default function DashboardCBT() {
       const json = await res.json();
       if (json.success) {
         setCbtBuka(json.cbt_buka);
+        if (json.tahap_cbt === 'final' || json.tahap_cbt === 'seleksi') {
+          setTahapCbt(json.tahap_cbt);
+        }
       }
     } catch { /* silent */ }
   };
@@ -81,7 +85,7 @@ export default function DashboardCBT() {
 
   const checkLolosStatus = async (nomorPeserta: string) => {
     try {
-      const res = await fetch('/api/olimpiade-seni/monitoring');
+      const res = await fetch('/api/olimpiade-seni/monitoring?tahap=seleksi');
       const json = await res.json();
       if (json.success && json.data) {
         const pesertaUser = json.data.find((d: any) => d.nomor_peserta === nomorPeserta);
@@ -95,7 +99,7 @@ export default function DashboardCBT() {
 
         if (pesertaCabang.length > 0) {
           const cutoff = pesertaCabang[Math.min(30 - 1, pesertaCabang.length - 1)];
-          setStatusLolos(Number(pesertaUser.rata_rata) >= cutoff);
+          setStatusLolos(Number(pesertaUser.rata_rata) > 0 && Number(pesertaUser.rata_rata) >= cutoff);
         }
       }
     } catch (err) {
@@ -118,8 +122,17 @@ export default function DashboardCBT() {
         router.push('/cbt');
         return;
       }
-      if (data.success && data.sesi) {
-        setSesi(data.sesi);
+      if (data.success) {
+        if (data.tahap_cbt === 'final' || data.tahap_cbt === 'seleksi') {
+          setTahapCbt(data.tahap_cbt);
+        }
+        if (typeof data.cbt_buka === 'boolean') {
+          setCbtBuka(data.cbt_buka);
+        }
+        if (typeof data.lolos_seleksi === 'boolean') {
+          setStatusLolos(data.lolos_seleksi);
+        }
+        setSesi(data.sesi || null);
       }
     } catch (err) {
       console.error(err);
@@ -132,8 +145,17 @@ export default function DashboardCBT() {
       Swal.fire('Ujian Belum Dibuka', 'Ujian CBT saat ini sedang disembunyikan/ditutup oleh panitia.', 'info');
       return;
     }
+    if (tahapCbt === 'final' && statusLolos === false) {
+      Swal.fire(
+        'Khusus Finalis (Top 30)',
+        'Ujian CBT yang sedang berlangsung saat ini adalah Babak Final khusus bagi peserta yang lolos Top 30 Babak Seleksi.',
+        'warning'
+      );
+      return;
+    }
+    const labelTahap = tahapCbt === 'final' ? 'Babak Final' : 'Babak Seleksi';
     Swal.fire({
-      title: 'Mulai Ujian?',
+      title: `Mulai Ujian ${labelTahap}?`,
       text: "Waktu akan berjalan selama 90 menit. Pastikan koneksi internet Anda stabil.",
       icon: 'question',
       showCancelButton: true,
@@ -185,9 +207,7 @@ export default function DashboardCBT() {
   if (!user || loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Memuat Dashboard...</div>;
 
   const isSelesai = sesi && sesi.status === 'selesai';
-  // Skor mentah dari sistem +4/-1/0 (tersimpan di nilai_akhir dalam skala 0-100)
-  // Kita tidak bisa menentukan lolos/tidak dari sisi client tanpa data semua peserta
-  // Tapi admin sudah publikasikan hasil → kita tampilkan skor saja + status menunggu pengumuman detailnya
+  const labelTahap = tahapCbt === 'final' ? 'Babak Final' : 'Babak Seleksi (Penyisihan)';
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '40px 20px' }}>
@@ -204,9 +224,22 @@ export default function DashboardCBT() {
         </div>
 
         <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-          <div style={{ background: '#0284c7', padding: '24px', color: 'white' }}>
-            <h2 style={{ margin: '0 0 8px 0' }}>Selamat Datang, {user.nama}</h2>
-            <p style={{ margin: 0, opacity: 0.9 }}>Asal Sekolah: {user.asalSekolah}</p>
+          <div style={{ background: tahapCbt === 'final' ? 'linear-gradient(135deg, #b45309, #d97706)' : '#0284c7', padding: '24px', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <h2 style={{ margin: '0 0 8px 0' }}>Selamat Datang, {user.nama}</h2>
+              <p style={{ margin: 0, opacity: 0.9 }}>Asal Sekolah: {user.asalSekolah}</p>
+            </div>
+            <span style={{
+              background: 'rgba(255,255,255,0.2)',
+              border: '1px solid rgba(255,255,255,0.4)',
+              padding: '6px 14px',
+              borderRadius: '20px',
+              fontWeight: 800,
+              fontSize: '0.85rem'
+            }}>
+              <i className={`fas ${tahapCbt === 'final' ? 'fa-trophy' : 'fa-layer-group'}`} style={{ marginRight: '6px' }}></i>
+              Tahap: {labelTahap}
+            </span>
           </div>
           
           <div style={{ padding: '32px' }}>
@@ -221,28 +254,46 @@ export default function DashboardCBT() {
               </div>
             </div>
 
-            {isSelesai ? (
+            {tahapCbt === 'final' && statusLolos === false ? (
+              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '12px', padding: '24px', textAlign: 'center' }}>
+                <i className="fas fa-award" style={{ fontSize: '3rem', color: '#d97706', marginBottom: '12px' }}></i>
+                <h3 style={{ color: '#92400e', margin: '0 0 8px 0' }}>Tahap Ujian Saat Ini: Babak Final</h3>
+                <p style={{ color: '#b45309', margin: 0, lineHeight: '1.6' }}>
+                  Saat ini sedang berlangsung Ujian CBT Babak Final bagi peserta yang masuk <b>Top 30 Babak Seleksi</b>. Terima kasih atas partisipasi dan semangat Anda dalam mengikuti Olimpiade Akademik!
+                </p>
+              </div>
+            ) : isSelesai ? (
               <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                 <div style={{ fontSize: '4rem', color: '#0284c7', marginBottom: '16px' }}>
                   <i className="fas fa-flag-checkered"></i>
                 </div>
                 <h3 style={{ fontSize: '1.5rem', color: '#0f172a', margin: '0 0 8px 0' }}>
-                  Ujian Selesai!
+                  Ujian {labelTahap} Selesai!
                 </h3>
                 <p style={{ color: '#64748b', fontSize: '1.1rem', marginBottom: '24px' }}>
-                  Terima kasih telah mengerjakan soal dengan sebaik-baiknya.
+                  Terima kasih telah mengerjakan soal {labelTahap} dengan sebaik-baiknya.
                 </p>
 
-                {hasilPublished ? (
+                {tahapCbt === 'final' ? (
+                  <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '24px', textAlign: 'left' }}>
+                    <h4 style={{ color: '#1d4ed8', fontSize: '1.1rem', margin: '0 0 10px 0' }}>
+                      <i className="fas fa-trophy" style={{ marginRight: '8px' }}></i>
+                      Jawaban Babak Final Tersimpan
+                    </h4>
+                    <p style={{ color: '#1e40af', margin: 0, lineHeight: '1.6' }}>
+                      Penentuan Juara ditentukan murni dari hasil Babak Final ini. Silakan memantau halaman pengumuman resmi / Live Score dari panitia.
+                    </p>
+                  </div>
+                ) : hasilPublished ? (
                   statusLolos === null ? (
                     <div style={{ padding: '20px', color: '#64748b' }}>
                       <i className="fas fa-spinner fa-spin" style={{ marginRight: '8px' }}></i> Memuat hasil...
                     </div>
                   ) : statusLolos === true ? (
                     <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '24px', textAlign: 'left' }}>
-                      <h4 style={{ color: '#065f46', fontSize: '1.2rem', margin: '0 0 12px 0' }}>🎉 Selamat, Anda dinyatakan LOLOS!</h4>
+                      <h4 style={{ color: '#065f46', fontSize: '1.2rem', margin: '0 0 12px 0' }}>🎉 Selamat, Anda dinyatakan LOLOS ke Babak Final!</h4>
                       <p style={{ color: '#047857', marginBottom: '16px', lineHeight: '1.5' }}>
-                        Silakan lanjutkan ke tahap berikutnya dengan melakukan pembayaran dan mengunggah bukti pembayaran pada tombol di bawah ini.
+                        Silakan lanjutkan ke tahap berikutnya dengan melakukan pembayaran dan mengunggah bukti pembayaran pada tombol di bawah ini. Saat jadwal Babak Final dimulai, Anda dapat kembali ke halaman ini untuk mengerjakan soal CBT Babak Final.
                       </p>
                       <button 
                         onClick={() => fileRef.current?.click()}
@@ -278,8 +329,19 @@ export default function DashboardCBT() {
               </div>
             ) : (
               <>
+                {tahapCbt === 'final' && statusLolos === true && (
+                  <div style={{ background: '#ecfdf5', border: '1.5px solid #86efac', padding: '16px 20px', borderRadius: '12px', marginBottom: '20px', color: '#065f46' }}>
+                    <div style={{ fontWeight: 800, fontSize: '1.05rem', marginBottom: '4px' }}>
+                      🎉 Selamat! Anda Lolos sebagai Finalis {user.lomba}
+                    </div>
+                    <div style={{ fontSize: '0.9rem' }}>
+                      Silakan kerjakan Ujian CBT <b>Babak Final</b> di bawah ini. Penentuan Juara 1, 2, dan 3 ditentukan murni dari nilai Babak Final ini.
+                    </div>
+                  </div>
+                )}
+
                 <div style={{ background: '#fef3c7', border: '1px solid #fde68a', padding: '20px', borderRadius: '12px', marginBottom: '32px' }}>
-                  <h3 style={{ margin: '0 0 12px 0', color: '#b45309', fontSize: '1.1rem' }}><i className="fas fa-info-circle"></i> Tata Tertib Ujian</h3>
+                  <h3 style={{ margin: '0 0 12px 0', color: '#b45309', fontSize: '1.1rem' }}><i className="fas fa-info-circle"></i> Tata Tertib Ujian ({labelTahap})</h3>
                   <ul style={{ margin: 0, paddingLeft: '20px', color: '#92400e', lineHeight: '1.6' }}>
                     <li>Waktu ujian adalah <strong>90 menit</strong>.</li>
                     <li>Pilih jawaban yang paling tepat. Jawaban otomatis tersimpan.</li>
@@ -293,7 +355,7 @@ export default function DashboardCBT() {
                   onClick={handleMulaiUjian}
                   style={{ width: '100%', padding: '16px', borderRadius: '12px', background: cbtBuka ? '#10b981' : '#94a3b8', color: 'white', border: 'none', fontWeight: 700, fontSize: '1.2rem', cursor: cbtBuka ? 'pointer' : 'not-allowed', boxShadow: cbtBuka ? '0 4px 14px rgba(16, 185, 129, 0.4)' : 'none' }}
                 >
-                  <i className={`fas ${cbtBuka ? 'fa-play' : 'fa-lock'}`} style={{ marginRight: '8px' }}></i> {!cbtBuka ? 'Ujian Belum Dibuka' : (sesi ? 'Lanjutkan Ujian' : 'Mulai Ujian Sekarang')}
+                  <i className={`fas ${cbtBuka ? 'fa-play' : 'fa-lock'}`} style={{ marginRight: '8px' }}></i> {!cbtBuka ? 'Ujian Belum Dibuka' : (sesi ? `Lanjutkan Ujian ${labelTahap}` : `Mulai Ujian ${labelTahap}`)}
                 </button>
               </>
             )}

@@ -4,12 +4,25 @@ import { supabase } from '@/lib/supabase';
 export const dynamic = 'force-dynamic';
 
 const DURASI_MENIT = 90;
+const MAX_LOLOS_SELEKSI = 30;
+
+function normalizeCbtCabang(raw: string): string {
+  const clean = (raw || '').trim().replace(/_FINAL$/i, '');
+  const cLow = clean.toLowerCase();
+  if (cLow.includes('matematika') || cLow === 'mtk') return 'Matematika';
+  if (cLow.includes('ipas') || cLow.includes('ipa')) return 'IPAS';
+  if (cLow.includes('pai') || cLow.includes('agama')) return 'PAI';
+  if (cLow.includes('inggris') || cLow.includes('english')) return 'Inggris';
+  if (cLow.includes('arab')) return 'Arab';
+  return clean;
+}
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const cabangFilter = searchParams.get('cabang');
     const statusFilter = searchParams.get('status');
+    const tahap = searchParams.get('tahap') === 'final' ? 'final' : 'seleksi';
     const search = (searchParams.get('q') || '').trim().toLowerCase();
 
     // 1. Ambil data soal untuk mengetahui total soal per cabang lomba
@@ -30,11 +43,33 @@ export async function GET(req: Request) {
       .select('*');
     if (errSesi && errSesi.code !== '42P01') throw errSesi;
 
-    const sesiMap: Record<string, any> = {};
+    const sesiSeleksiMap: Record<string, any> = {};
+    const sesiFinalMap: Record<string, any> = {};
     (sesiData || []).forEach((sesi: any) => {
-      if (sesi.nomor_peserta) {
-        sesiMap[sesi.nomor_peserta.trim()] = sesi;
+      const no = (sesi.nomor_peserta || '').trim();
+      if (!no) return;
+      if (no.endsWith('_FINAL')) {
+        const baseNo = no.replace(/_FINAL$/i, '');
+        sesiFinalMap[baseNo] = sesi;
+      } else {
+        sesiSeleksiMap[no] = sesi;
       }
+    });
+
+    // Hitung cutoff Top 30 Babak Seleksi per cabang lomba
+    const scoresByCabang: Record<string, number[]> = {};
+    Object.values(sesiSeleksiMap).forEach((s: any) => {
+      const c = normalizeCbtCabang(s.cabang_lomba || '');
+      if (s.nilai_akhir !== null && s.nilai_akhir !== undefined && Number(s.nilai_akhir) > 0) {
+        if (!scoresByCabang[c]) scoresByCabang[c] = [];
+        scoresByCabang[c].push(Number(s.nilai_akhir));
+      }
+    });
+
+    const cutoffMap: Record<string, number> = {};
+    Object.entries(scoresByCabang).forEach(([c, arr]) => {
+      arr.sort((a, b) => b - a);
+      cutoffMap[c] = arr[Math.min(MAX_LOLOS_SELEKSI - 1, arr.length - 1)];
     });
 
     // 3. Ambil data peserta akademik dari data_olimpiade_seni
@@ -52,15 +87,8 @@ export async function GET(req: Request) {
       if (jenis !== 'individu' && jenis !== 'peserta_kolektif') return;
 
       const kategori = (meta.KATEGORI || '').toLowerCase();
-      let cabang = (meta.LOMBA_DIPILIH || meta['LOMBA YANG DIPILIH'] || '').trim();
-
-      // Normalisasi cabang lomba akademik
-      const cLow = cabang.toLowerCase();
-      if (cLow.includes('matematika') || cLow === 'mtk') cabang = 'Matematika';
-      else if (cLow.includes('ipas') || cLow.includes('ipa')) cabang = 'IPAS';
-      else if (cLow.includes('pai') || cLow.includes('agama')) cabang = 'PAI';
-      else if (cLow.includes('inggris') || cLow.includes('english')) cabang = 'Inggris';
-      else if (cLow.includes('arab')) cabang = 'Arab';
+      const rawCabang = (meta.LOMBA_DIPILIH || meta['LOMBA YANG DIPILIH'] || '').trim();
+      const cabang = normalizeCbtCabang(rawCabang);
 
       // Pastikan peserta ini peserta akademik (CBT)
       const isAkademik = kategori.includes('akademik') || ['Matematika', 'IPAS', 'PAI', 'Inggris', 'Arab'].includes(cabang);
@@ -70,10 +98,29 @@ export async function GET(req: Request) {
       const nama = meta.NAMA || meta.NAMA_REGU || 'Tanpa Nama';
       const asalSekolah = meta.ASAL_SEKOLAH || '-';
 
-      const sesi = sesiMap[nomorPeserta] || null;
+      const sesiSeleksi = sesiSeleksiMap[nomorPeserta] || null;
+      const nilaiSeleksiNum = sesiSeleksi && sesiSeleksi.nilai_akhir !== null && sesiSeleksi.nilai_akhir !== undefined
+        ? Number(sesiSeleksi.nilai_akhir)
+        : null;
+      const cutoff = cutoffMap[cabang];
+      const isLolosSeleksi = meta.LOLOS_FINAL === true || (
+        nilaiSeleksiNum !== null &&
+        nilaiSeleksiNum > 0 &&
+        cutoff !== undefined &&
+        nilaiSeleksiNum >= cutoff
+      );
+
+      // Jika memantau Babak Final, hanya tampilkan peserta yang Lolos Seleksi (Finalis) atau sudah punya sesi Final
+      if (tahap === 'final' && !isLolosSeleksi && !sesiFinalMap[nomorPeserta]) {
+        return;
+      }
+
+      const sesi = tahap === 'final' ? (sesiFinalMap[nomorPeserta] || null) : sesiSeleksi;
+      const targetSoalKey = tahap === 'final' ? `${cabang}_FINAL` : cabang;
+
       let status = 'belum_mulai';
       let terjawab = 0;
-      let totalSoal = soalCountMap[cabang] || 40;
+      let totalSoal = soalCountMap[targetSoalKey] || soalCountMap[cabang] || 40;
       let sisaWaktuDetik: number | null = null;
       let durasiMenitPengerjaan: number | null = null;
 
@@ -110,6 +157,8 @@ export async function GET(req: Request) {
         terjawab,
         total_soal: totalSoal,
         nilai_akhir: sesi && sesi.nilai_akhir !== null && sesi.nilai_akhir !== undefined ? Number(sesi.nilai_akhir).toFixed(1) : null,
+        nilai_seleksi: nilaiSeleksiNum !== null ? nilaiSeleksiNum.toFixed(1) : null,
+        lolos_seleksi: isLolosSeleksi,
         waktu_mulai: sesi?.waktu_mulai || null,
         waktu_selesai: sesi?.waktu_selesai || null,
         sisa_waktu_detik: sisaWaktuDetik,
@@ -156,6 +205,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       success: true,
+      tahap,
       summary,
       total_filtered: filtered.length,
       data: filtered
@@ -170,13 +220,52 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { action, nomorPeserta } = body;
+    const { action, nomorPeserta, tahap, cabang } = body;
+    const isFinalTahap = tahap === 'final';
+
+    // 0. Reset Massal Semua Sesi (Hapus data simulasi atau reset 1 babak)
+    if (action === 'reset_all_sesi') {
+      const { data: allSesi, error: errFetch } = await supabase
+        .from('cbt_sesi')
+        .select('id, nomor_peserta, cabang_lomba');
+      if (errFetch) throw errFetch;
+
+      const idsToDelete: number[] = [];
+      (allSesi || []).forEach((s: any) => {
+        const no = (s.nomor_peserta || '').trim();
+        const isRowFinal = no.endsWith('_FINAL');
+        if (isFinalTahap !== isRowFinal) return;
+
+        if (cabang && cabang !== 'Semua') {
+          const normCabang = normalizeCbtCabang(s.cabang_lomba || '');
+          if (normCabang !== cabang) return;
+        }
+        idsToDelete.push(s.id);
+      });
+
+      if (idsToDelete.length > 0) {
+        const { error: errDel } = await supabase
+          .from('cbt_sesi')
+          .delete()
+          .in('id', idsToDelete);
+        if (errDel) throw errDel;
+      }
+
+      const labelTahap = isFinalTahap ? 'Babak Final' : 'Babak Seleksi';
+      const labelCabang = cabang && cabang !== 'Semua' ? ` cabang ${cabang}` : '';
+      return NextResponse.json({
+        success: true,
+        deletedCount: idsToDelete.length,
+        message: `${idsToDelete.length} sesi pengerjaan CBT (${labelTahap}${labelCabang}) berhasil dihapus/direset.`
+      });
+    }
 
     if (!nomorPeserta) {
       return NextResponse.json({ success: false, error: 'Nomor peserta wajib diisi' }, { status: 400 });
     }
 
-    const cleanNomor = nomorPeserta.trim();
+    const baseNomor = nomorPeserta.trim().replace(/_FINAL$/i, '');
+    const cleanNomor = isFinalTahap ? `${baseNomor}_FINAL` : baseNomor;
 
     // 1. Reset Sesi Total (hapus record sesi sehingga peserta mulai dari awal)
     if (action === 'reset_sesi_full') {
@@ -188,7 +277,7 @@ export async function POST(req: Request) {
       if (error) throw error;
       return NextResponse.json({
         success: true,
-        message: `Sesi peserta ${cleanNomor} berhasil direset penuh. Peserta dapat memulai ujian dari awal.`
+        message: `Sesi peserta ${baseNomor} (${isFinalTahap ? 'Babak Final' : 'Babak Seleksi'}) berhasil direset penuh. Peserta dapat memulai ujian dari awal.`
       });
     }
 
@@ -204,13 +293,11 @@ export async function POST(req: Request) {
         return NextResponse.json({ success: false, error: 'Sesi peserta tidak ditemukan' }, { status: 404 });
       }
 
-      // Berikan tambahan waktu jika waktu awal sudah habis (misal beri 30 menit sisa waktu)
       const startTime = sesi.waktu_mulai ? new Date(sesi.waktu_mulai).getTime() : Date.now();
       const endTime = startTime + DURASI_MENIT * 60 * 1000;
       const now = Date.now();
 
       let newStartTime = sesi.waktu_mulai;
-      // Jika waktu sudah lewat atau sisa waktu < 10 menit, mundurkan waktu_mulai agar peserta mendapat sisa 30 menit
       if (endTime - now < 10 * 60 * 1000) {
         newStartTime = new Date(now - 60 * 60 * 1000).toISOString(); // 90 - 60 = sisa 30 menit
       }
@@ -229,7 +316,7 @@ export async function POST(req: Request) {
       if (error) throw error;
       return NextResponse.json({
         success: true,
-        message: `Sesi ${cleanNomor} berhasil dibuka kembali. Jawaban yang tersimpan tetap utuh dan peserta dapat melanjutkan ujian.`
+        message: `Sesi ${baseNomor} berhasil dibuka kembali. Jawaban yang tersimpan tetap utuh dan peserta dapat melanjutkan ujian.`
       });
     }
 
@@ -246,7 +333,7 @@ export async function POST(req: Request) {
       if (error) throw error;
       return NextResponse.json({
         success: true,
-        message: `Riwayat peringatan/pelanggaran peserta ${cleanNomor} telah direset menjadi 0.`
+        message: `Riwayat peringatan/pelanggaran peserta ${baseNomor} telah direset menjadi 0.`
       });
     }
 
@@ -264,11 +351,6 @@ export async function POST(req: Request) {
       }
 
       const curStart = sesi.waktu_mulai ? new Date(sesi.waktu_mulai).getTime() : Date.now();
-      // Menambah sisa waktu = memajukan waktu selesai / memundurkan waktu_mulai
-      const newStart = new Date(curStart + (menitTambahan * 60 * 1000) > Date.now() ? Date.now() : curStart + (menitTambahan * 60 * 1000)).toISOString();
-      // Sebenarnya jika endTime = startTime + 90m, untuk menambah endTime sebesar X menit, startTime harus ditambah X menit!
-      // Mari kita pastikan rumusnya:
-      // endTime_baru = (startTime + X) + 90m = endTime_lama + X menit. Betul!
       const adjustedStartTime = new Date(curStart + menitTambahan * 60 * 1000).toISOString();
 
       const { error } = await supabase
@@ -282,7 +364,7 @@ export async function POST(req: Request) {
       if (error) throw error;
       return NextResponse.json({
         success: true,
-        message: `Waktu pengerjaan peserta ${cleanNomor} berhasil ditambah +${menitTambahan} menit.`
+        message: `Waktu pengerjaan peserta ${baseNomor} berhasil ditambah +${menitTambahan} menit.`
       });
     }
 
@@ -335,7 +417,7 @@ export async function POST(req: Request) {
       if (error) throw error;
       return NextResponse.json({
         success: true,
-        message: `Ujian peserta ${cleanNomor} berhasil diakhiri secara manual oleh pengawas. Nilai akhir: ${nilaiAkhir.toFixed(1)}`
+        message: `Ujian peserta ${baseNomor} berhasil diakhiri secara manual oleh pengawas. Nilai akhir: ${nilaiAkhir.toFixed(1)}`
       });
     }
 
