@@ -139,7 +139,8 @@ export default function Sidebar() {
             { name: 'Pendaftaran', path: '/spmb' },
             { name: 'Rekap Data Siswa', path: '/spmb/rekap' },
             { name: 'Pemantauan Input', path: '/spmb/pemantauan' },
-            { name: 'Pemetaan Kelas', path: '/spmb/pemetaan-kelas' }
+            { name: 'Pemetaan Kelas', path: '/spmb/pemetaan-kelas' },
+            ...(isAdmin ? [{ name: 'Pembayaran', path: '/spmb/pembayaran' }] : [])
           ]
         },
         ...(isAdmin ? [

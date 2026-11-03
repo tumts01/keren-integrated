@@ -1162,6 +1162,24 @@ export default function RekapSpmb() {
         >
           <i className="fas fa-layer-group"></i> Pemetaan Kelas
         </Link>
+        {isAdmin && (
+          <Link
+            href="/spmb/pembayaran"
+            style={{
+              padding: '10px 18px',
+              fontSize: '0.92rem',
+              fontWeight: 600,
+              color: '#64748b',
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <i className="fas fa-wallet"></i> Pembayaran &amp; Daftar Ulang
+          </Link>
+        )}
       </div>
 
       {/* Banner Filter Aktif (Sekolah / Wilayah) */}
@@ -1475,35 +1493,34 @@ export default function RekapSpmb() {
             </select>
           </div>
 
-          {/* Filter Status Daftar Ulang */}
-          <div>
-            <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
-              Status Daftar Ulang
-            </label>
-            <select
-              value={filterDaftarUlang}
-              onChange={e => setFilterDaftarUlang(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                border: '1.5px solid #cbd5e1',
-                fontSize: '13px',
-                background: filterDaftarUlang !== 'semua' ? '#ecfdf5' : 'white',
-                fontWeight: filterDaftarUlang !== 'semua' ? 700 : 500,
-                color: filterDaftarUlang !== 'semua' ? '#047857' : '#334155',
-                outline: 'none',
-                cursor: 'pointer',
-                boxSizing: 'border-box'
-              }}
-            >
-              <option value="semua">Semua Daftar Ulang</option>
-              <option value="lunas">✅ Lunas</option>
-              <option value="cicilan">⏳ Cicilan / Titipan</option>
-              <option value="menunggu_verifikasi">📄 Menunggu Verifikasi</option>
-              <option value="belum_bayar">⚪ Belum Bayar</option>
-            </select>
-          </div>
+          {isAdmin && (
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
+              <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                Pembayaran &amp; DPP
+              </label>
+              <Link
+                href="/spmb/pembayaran"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  background: '#ecfdf5',
+                  color: '#047857',
+                  border: '1.5px solid #a7f3d0',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <i className="fas fa-wallet"></i> Menu Pembayaran &rarr;
+              </Link>
+            </div>
+          )}
 
           {/* Urutan Pendaftar */}
           <div>
@@ -1798,7 +1815,6 @@ export default function RekapSpmb() {
                   <th>Verifikasi Rapor</th>
                   <th>Jadwal Tes / Observasi</th>
                   <th>Status Kelulusan</th>
-                  <th>Daftar Ulang</th>
                   <th>Asal Sekolah</th>
                   <th>No. WA Ayah</th>
                   <th>No. WA Ibu</th>
@@ -2132,160 +2148,7 @@ export default function RekapSpmb() {
                         </span>
                       )}
                     </td>
-                    {/* Status Daftar Ulang & Keuangan */}
-                    <td>
-                      {(() => {
-                        const biaya = item.biayaDaftarUlang !== undefined && item.biayaDaftarUlang !== '' ? Number(item.biayaDaftarUlang) : 4500000;
-                        const pot = Number(item.potonganDaftarUlang || 0);
-                        const tagihan = Math.max(0, biaya - pot);
-                        const dibayar = Number(item.nominalDibayarDaftarUlang || 0);
-                        const sisa = Math.max(0, tagihan - dibayar);
-                        let st = item.statusDaftarUlang || 'belum_bayar';
-                        if (dibayar >= tagihan && tagihan > 0) st = 'lunas';
-                        else if (dibayar > 0) st = 'cicilan';
-                        else if (item.buktiDaftarUlang && dibayar === 0) st = 'menunggu_verifikasi';
-
-                        return (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', minWidth: '135px' }}>
-                            {st === 'lunas' && (
-                              <span style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '3px 8px',
-                                borderRadius: '6px',
-                                fontSize: '0.78rem',
-                                fontWeight: 800,
-                                background: '#dcfce7',
-                                color: '#15803d',
-                                border: '1px solid #86efac',
-                                width: 'fit-content'
-                              }}>
-                                <i className="fas fa-check-circle"></i> LUNAS
-                              </span>
-                            )}
-                            {st === 'cicilan' && (
-                              <span style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '3px 8px',
-                                borderRadius: '6px',
-                                fontSize: '0.78rem',
-                                fontWeight: 800,
-                                background: '#fef3c7',
-                                color: '#b45309',
-                                border: '1px solid #fde68a',
-                                width: 'fit-content'
-                              }}>
-                                <i className="fas fa-clock"></i> CICILAN / TITIPAN
-                              </span>
-                            )}
-                            {st === 'menunggu_verifikasi' && (
-                              <span style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '3px 8px',
-                                borderRadius: '6px',
-                                fontSize: '0.78rem',
-                                fontWeight: 800,
-                                background: '#e0f2fe',
-                                color: '#0369a1',
-                                border: '1px solid #bae6fd',
-                                width: 'fit-content'
-                              }}>
-                                <i className="fas fa-file-invoice-dollar"></i> Cek Bukti TF
-                              </span>
-                            )}
-                            {st === 'belum_bayar' && (
-                              <span style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '3px 8px',
-                                borderRadius: '6px',
-                                fontSize: '0.78rem',
-                                fontWeight: 600,
-                                background: '#f1f5f9',
-                                color: '#64748b',
-                                border: '1px solid #cbd5e1',
-                                width: 'fit-content'
-                              }}>
-                                Belum Bayar
-                              </span>
-                            )}
-
-                            {dibayar > 0 && (
-                              <div style={{ fontSize: '11px', color: '#15803d', fontWeight: 700 }}>
-                                Masuk: Rp {dibayar.toLocaleString('id-ID')}
-                              </div>
-                            )}
-                            {st === 'cicilan' && sisa > 0 && (
-                              <div style={{ fontSize: '11px', color: '#b91c1c', fontWeight: 700 }}>
-                                Kurang: Rp {sisa.toLocaleString('id-ID')}
-                              </div>
-                            )}
-                            {pot > 0 && (
-                              <div style={{ fontSize: '10.5px', color: '#047857', fontStyle: 'italic' }}>
-                                Potongan: Rp {pot.toLocaleString('id-ID')}
-                              </div>
-                            )}
-
-                            <div style={{ display: 'flex', gap: '4px', marginTop: '3px', flexWrap: 'wrap' }}>
-                              {item.buktiDaftarUlang && (
-                                <button
-                                  type="button"
-                                  onClick={() => openViewer(item.buktiDaftarUlang, `Bukti Daftar Ulang - ${item.namaLengkap}`)}
-                                  style={{
-                                    background: '#eff6ff',
-                                    color: '#1d4ed8',
-                                    border: '1px solid #bfdbfe',
-                                    padding: '2px 6px',
-                                    borderRadius: '4px',
-                                    fontSize: '11px',
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '3px'
-                                  }}
-                                  title="Lihat Bukti Transfer"
-                                >
-                                  <i className="fas fa-receipt"></i> Bukti{Array.isArray(item.riwayatBuktiDaftarUlang) && item.riwayatBuktiDaftarUlang.length > 1 ? ` (${item.riwayatBuktiDaftarUlang.length})` : ""}
-                                </button>
-                              )}
-
-                              {isAdmin && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setSelectedForDaftarUlang(item);
-                                    setShowDaftarUlangModal(true);
-                                  }}
-                                  style={{
-                                    background: '#ecfdf5',
-                                    color: '#047857',
-                                    border: '1px solid #a7f3d0',
-                                    padding: '2px 8px',
-                                    borderRadius: '4px',
-                                    fontSize: '11px',
-                                    fontWeight: 700,
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px'
-                                  }}
-                                  title="Validasi / Kelola Daftar Ulang"
-                                >
-                                  <i className="fas fa-coins"></i> Validasi
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </td>
+                    
                     <td>
                       <div style={{ fontWeight: 600 }}>{item.asalSekolah}</div>
                       {item.npsnSekolahAsal && (

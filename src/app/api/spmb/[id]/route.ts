@@ -100,7 +100,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       ...(body.riwayatBuktiDaftarUlang !== undefined ? { riwayat_bukti_daftar_ulang: body.riwayatBuktiDaftarUlang } : {}),
       ...(body.catatanDaftarUlang !== undefined ? { catatan_daftar_ulang: body.catatanDaftarUlang } : {}),
       ...(body.metodeBayarDaftarUlang !== undefined ? { metode_bayar_daftar_ulang: body.metodeBayarDaftarUlang } : {}),
-      ...(body.tglBayarDaftarUlang !== undefined ? { tgl_bayar_daftar_ulang: body.tglBayarDaftarUlang } : {})
+      ...(body.tglBayarDaftarUlang !== undefined ? { tgl_bayar_daftar_ulang: body.tglBayarDaftarUlang } : {}),
+      ...(body.keteranganPotongan !== undefined ? { keterangan_potongan: body.keteranganPotongan } : {}),
+      ...(body.sebaranDpp !== undefined ? { sebaran_dpp: body.sebaranDpp } : {})
     };
 
     const { error: updateError } = await supabase

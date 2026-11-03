@@ -9,6 +9,7 @@ import LoadingScreen from '@/components/LoadingScreen';
 export default function PemantauanSpmbPage() {
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -22,6 +23,8 @@ export default function PemantauanSpmbPage() {
     try {
       const user = JSON.parse(userStr);
       if (user) {
+        const role = (user.role || '').toLowerCase();
+        setIsAdmin(role === 'admin' || role.includes('admin') || role === 'pimpinan');
         setIsAuthorized(true);
       } else {
         router.replace('/');
@@ -179,6 +182,24 @@ export default function PemantauanSpmbPage() {
         >
           <i className="fas fa-layer-group"></i> Pemetaan Kelas
         </Link>
+        {isAdmin && (
+          <Link
+            href="/spmb/pembayaran"
+            style={{
+              padding: '10px 18px',
+              fontSize: '0.92rem',
+              fontWeight: 600,
+              color: '#64748b',
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <i className="fas fa-wallet"></i> Pembayaran &amp; Daftar Ulang
+          </Link>
+        )}
       </div>
 
       {/* ERROR ALERT IF ANY */}

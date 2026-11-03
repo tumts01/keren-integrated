@@ -146,6 +146,7 @@ function normalizeGender(jk: string): 'L' | 'P' {
 export default function PemetaanKelasPage() {
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [students, setStudents] = useState<CalonSiswaSPMB[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -195,6 +196,8 @@ export default function PemetaanKelasPage() {
         router.replace('/');
         return;
       }
+      const role = (user.role || '').toLowerCase();
+      setIsAdmin(role === 'admin' || role.includes('admin') || role === 'pimpinan');
       setIsAuthorized(true);
     } catch (e) {
       router.replace('/');
@@ -1286,6 +1289,24 @@ export default function PemetaanKelasPage() {
         >
           <i className="fas fa-layer-group"></i> Pemetaan Kelas
         </div>
+        {isAdmin && (
+          <Link
+            href="/spmb/pembayaran"
+            style={{
+              padding: '10px 18px',
+              fontSize: '0.92rem',
+              fontWeight: 600,
+              color: '#64748b',
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <i className="fas fa-wallet"></i> Pembayaran &amp; Daftar Ulang
+          </Link>
+        )}
       </div>
 
       {/* Main Navigation Tabs */}

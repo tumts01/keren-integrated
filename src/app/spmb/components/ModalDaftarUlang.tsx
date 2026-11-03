@@ -9,6 +9,7 @@ interface ModalDaftarUlangProps {
   student: any;
   onSuccess: (updated: any) => void;
   onOpenViewer?: (url: string, title: string) => void;
+  onPrintPos80?: (student: any) => void;
 }
 
 export default function ModalDaftarUlang({
@@ -16,10 +17,12 @@ export default function ModalDaftarUlang({
   onClose,
   student,
   onSuccess,
-  onOpenViewer
+  onOpenViewer,
+  onPrintPos80
 }: ModalDaftarUlangProps) {
   const [biayaStandar, setBiayaStandar] = useState<number>(4500000);
   const [potongan, setPotongan] = useState<number>(0);
+  const [keteranganPotongan, setKeteranganPotongan] = useState<string>('');
   const [nominalDibayar, setNominalDibayar] = useState<number>(0);
   const [metodeBayar, setMetodeBayar] = useState<string>('transfer');
   const [tglBayar, setTglBayar] = useState<string>('');
@@ -44,6 +47,7 @@ export default function ModalDaftarUlang({
 
       setBiayaStandar(bs);
       setPotongan(pot);
+      setKeteranganPotongan(student.keteranganPotongan || '');
       setNominalDibayar(dibayar);
       setMetodeBayar(metode);
       setTglBayar(tgl);
@@ -146,6 +150,7 @@ export default function ModalDaftarUlang({
       const payload = {
         biayaDaftarUlang: biayaStandar,
         potonganDaftarUlang: potongan,
+        keteranganPotongan: keteranganPotongan,
         nominalDibayarDaftarUlang: nominalDibayar,
         statusDaftarUlang: calculatedStatus,
         metodeBayarDaftarUlang: metodeBayar,
@@ -390,6 +395,73 @@ export default function ModalDaftarUlang({
               />
               <div style={{ fontSize: '11px', color: potongan > 0 ? '#15803d' : '#64748b', marginTop: '3px' }}>
                 {potongan > 0 ? `Diskon Rp ${formatRupiah(potongan)} diberikan` : 'Isi nominal jika mendapat beasiswa / dispensasi'}
+              </div>
+
+              {/* Quick Presets Keringanan */}
+              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => { setPotongan(500000); setKeteranganPotongan('Keringanan Prestasi'); }}
+                  style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', padding: '2px 6px', borderRadius: '4px', fontSize: '10.5px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Prestasi 500rb
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setPotongan(1000000); setKeteranganPotongan('Keringanan Prestasi'); }}
+                  style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', padding: '2px 6px', borderRadius: '4px', fontSize: '10.5px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Prestasi 1jt
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setPotongan(1500000); setKeteranganPotongan('Keringanan Yatim / Dhuafa'); }}
+                  style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', padding: '2px 6px', borderRadius: '4px', fontSize: '10.5px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Yatim 1.5jt
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setPotongan(500000); setKeteranganPotongan('Alumni SD/MI Almaarif'); }}
+                  style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1d4ed8', padding: '2px 6px', borderRadius: '4px', fontSize: '10.5px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Alumni 500rb
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setPotongan(biayaStandar); setKeteranganPotongan('Beasiswa Penuh (Bebas DPP)'); }}
+                  style={{ background: '#fef3c7', border: '1px solid #fde68a', color: '#b45309', padding: '2px 6px', borderRadius: '4px', fontSize: '10.5px', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Bebas DPP
+                </button>
+                {potongan > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => { setPotongan(0); setKeteranganPotongan(''); }}
+                    style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c', padding: '2px 6px', borderRadius: '4px', fontSize: '10.5px', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Reset (0)
+                  </button>
+                )}
+              </div>
+
+              {/* Keterangan Potongan */}
+              <div style={{ marginTop: '8px' }}>
+                <input
+                  type="text"
+                  placeholder="Keterangan / Alasan Keringanan (Contoh: Juara 1 Atletik, Yatim, dll)"
+                  value={keteranganPotongan}
+                  onChange={e => setKeteranganPotongan(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '12px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
               </div>
             </div>
           </div>
@@ -856,6 +928,37 @@ export default function ModalDaftarUlang({
           )}
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginLeft: 'auto' }}>
+            {onPrintPos80 && (
+              <button
+                type="button"
+                onClick={() => onPrintPos80({
+                  ...student,
+                  biayaDaftarUlang: biayaStandar,
+                  potonganDaftarUlang: potongan,
+                  keteranganPotongan,
+                  nominalDibayarDaftarUlang: nominalDibayar,
+                  statusDaftarUlang: calculatedStatus,
+                  metodeBayarDaftarUlang: metodeBayar,
+                  tglBayarDaftarUlang: tglBayar,
+                  catatanDaftarUlang: catatan
+                })}
+                style={{
+                  background: '#f8fafc',
+                  border: '1.5px solid #cbd5e1',
+                  color: '#334155',
+                  padding: '9px 14px',
+                  borderRadius: '8px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <i className="fas fa-print"></i> Struk POS 80
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}

@@ -58,7 +58,9 @@ export async function GET() {
             }] : []),
         catatanDaftarUlang: r.metadata?.['catatan_daftar_ulang'] || '',
         metodeBayarDaftarUlang: r.metadata?.['metode_bayar_daftar_ulang'] || '',
-        tglBayarDaftarUlang: r.metadata?.['tgl_bayar_daftar_ulang'] || ''
+        tglBayarDaftarUlang: r.metadata?.['tgl_bayar_daftar_ulang'] || '',
+        keteranganPotongan: r.metadata?.['keterangan_potongan'] || '',
+        sebaranDpp: r.metadata?.['sebaran_dpp'] || null
       };
     }).filter((item: any) => item.namaLengkap !== ''); // filter out empty rows
 
