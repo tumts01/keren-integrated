@@ -137,7 +137,7 @@ export default function ModalCetakStrukPos80({
   <div class="receipt-header">
     <div class="bold" style="font-size: 13px;">MTs ALMAARIF 01 SINGOSARI</div>
     <div style="font-size: 10px;">PANITIA PENERIMAAN SANTRI BARU (SPMB)</div>
-    <div style="font-size: 9.5px;">Jl. Raya Singosari No. 123 Malang - Jatim</div>
+    <div style="font-size: 9.5px;">Jl. Masjid No. 33 Pagentan Singosari Malang</div>
     <div style="font-size: 9.5px;">Telp/WA: +62 852-3666-0862</div>
   </div>
 
@@ -270,6 +270,7 @@ export default function ModalCetakStrukPos80({
 ========================================
        MTs ALMAARIF 01 SINGOSARI
  PANITIA PENERIMAAN SANTRI BARU (SPMB)
+Jl. Masjid No. 33 Pagentan Singosari Malang
 ========================================
 STRUK BUKTI DAFTAR ULANG (DPP)
 ----------------------------------------
@@ -406,7 +407,7 @@ Bendahara SPMB: Ibu S. Nur Ainy (+62 852-3666-0862)
             <div style={{ textAlign: 'center', marginBottom: '8px' }}>
               <div style={{ fontWeight: 800, fontSize: '12.5px' }}>MTs ALMAARIF 01 SINGOSARI</div>
               <div style={{ fontSize: '10px' }}>PANITIA SPMB TAHUN 2026</div>
-              <div style={{ fontSize: '9px', color: '#64748b' }}>Jl. Raya Singosari No. 123 Malang</div>
+              <div style={{ fontSize: '9px', color: '#64748b' }}>Jl. Masjid No. 33 Pagentan Singosari Malang</div>
               <div style={{ fontSize: '9px', color: '#64748b' }}>WA: +62 852-3666-0862</div>
             </div>
 
