@@ -104,13 +104,21 @@ export default function SpmbPortalDashboard() {
     setTimeout(() => setCopiedRekening(false), 2500);
   };
 
-  const handleUploadBuktiDaftarUlang = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleUploadBuktiDaftarUlang = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !data) return;
+    if (!file) return;
 
-    const fileName = (file.name || '').toLowerCase();
-    const fileType = (file.type || '').toLowerCase();
-    const isVideo = fileType.startsWith('video/') || /\.(mp4|mov|avi|mkv|webm|3gp|wmv|flv|m4v|mpg|mpeg)$/i.test(fileName);
+    // Reset input agar file yang sama bisa dipilih ulang jika perlu
+    e.target.value = '';
+
+    const validTypes = [
+      'image/jpeg', 'image/png', 'image/webp', 'image/jpg',
+      'application/pdf'
+    ];
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/') || /\.(mp4|mkv|mov|avi|webm|3gp|flv|wmv)$/i.test(file.name);
+
     if (isVideo) {
       Swal.fire({
         icon: 'error',
@@ -121,13 +129,97 @@ export default function SpmbPortalDashboard() {
       return;
     }
 
+    if (!validTypes.includes(file.type) && !isPdf && !isImage) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Format Berkas Tidak Didukung',
+        text: 'Silakan pilih berkas struk transfer berformat Gambar (JPG, PNG, WEBP) atau PDF.',
+        confirmButtonColor: '#ef4444'
+      });
+      return;
+    }
+
     if (file.size > 15 * 1024 * 1024) {
       Swal.fire('File Terlalu Besar', 'Maksimal ukuran file adalah 15MB.', 'warning');
       return;
     }
 
+    const existingRiwayat: any[] = Array.isArray(data.riwayatBuktiDaftarUlang) && data.riwayatBuktiDaftarUlang.length > 0
+      ? [...data.riwayatBuktiDaftarUlang]
+      : (data.buktiDaftarUlang ? [{
+          id: 'bkt_legacy',
+          ke: 1,
+          url: data.buktiDaftarUlang,
+          waktu: data.tglBayarDaftarUlang || data.timestamp || new Date().toISOString(),
+          keterangan: 'Pembayaran Awal'
+        }] : []);
+
+    const nextKe = existingRiwayat.length + 1;
+    const defaultKeterangan = nextKe === 1 ? 'Pembayaran Awal / Angsuran 1' : `Angsuran ke-${nextKe}`;
+
+    const { value: formValues } = await Swal.fire({
+      title: 'Konfirmasi Unggah Bukti',
+      html: `
+        <div style="text-align: left; font-size: 13px; color: #334155;">
+          <div style="background: #f1f5f9; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; border: 1px solid #e2e8f0;">
+            <div style="font-size: 11.5px; color: #64748b;">Berkas Dipilih:</div>
+            <div style="font-weight: 700; color: #0f172a; word-break: break-all;">${file.name}</div>
+          </div>
+
+          <label style="display: block; font-weight: 700; margin-bottom: 5px; color: #1e293b;">
+            Keterangan Pembayaran:
+          </label>
+          <input
+            id="swal-keterangan"
+            class="swal2-input"
+            style="width: 100%; margin: 0 0 12px 0; font-size: 13px; box-sizing: border-box;"
+            placeholder="Contoh: Angsuran 1 / Angsuran 2 / Pelunasan"
+            value="${defaultKeterangan}"
+          />
+
+          <label style="display: block; font-weight: 700; margin-bottom: 5px; color: #1e293b;">
+            Nominal yang Ditransfer (Opsional):
+          </label>
+          <input
+            id="swal-nominal"
+            type="number"
+            class="swal2-input"
+            style="width: 100%; margin: 0 0 6px 0; font-size: 13px; box-sizing: border-box;"
+            placeholder="Contoh: 1500000"
+          />
+          <span style="font-size: 11.5px; color: #64748b; font-style: italic;">
+            *Nominal ini akan dicantumkan pada pesan WhatsApp ke Bendahara untuk memudahkan pencocokan mutasi rekening.
+          </span>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: '<i class="fas fa-upload" style="margin-right: 6px;"></i> Unggah Sekarang',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#047857',
+      cancelButtonColor: '#94a3b8',
+      preConfirm: () => {
+        const ketEl = document.getElementById('swal-keterangan') as HTMLInputElement;
+        const nomEl = document.getElementById('swal-nominal') as HTMLInputElement;
+        return {
+          keterangan: ketEl?.value?.trim() || defaultKeterangan,
+          nominal: Number(nomEl?.value || 0)
+        };
+      }
+    });
+
+    if (!formValues) return;
+
     try {
       setUploadingBukti(true);
+      Swal.fire({
+        title: 'Mengunggah Bukti Transfer...',
+        html: 'Sedang mengompresi dan menyimpan berkas bukti ke server. Mohon tunggu...',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
 
       let uploadFile = file;
       if (file.type.startsWith('image/')) {
@@ -165,11 +257,24 @@ export default function SpmbPortalDashboard() {
         if (dibayar >= tagihan && tagihan > 0) newStatus = 'lunas';
         else if (dibayar > 0) newStatus = 'cicilan';
 
+        const nowIso = new Date().toISOString();
+        const newBuktiItem = {
+          id: 'bkt_' + Date.now(),
+          ke: nextKe,
+          url: link,
+          waktu: nowIso,
+          keterangan: formValues.keterangan || defaultKeterangan,
+          nominal: formValues.nominal > 0 ? formValues.nominal : undefined
+        };
+
+        const updatedRiwayat = [...existingRiwayat, newBuktiItem];
+
         const patchRes = await fetch(`/api/spmb/${data.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             buktiDaftarUlang: link,
+            riwayatBuktiDaftarUlang: updatedRiwayat,
             statusDaftarUlang: newStatus,
             metodeBayarDaftarUlang: 'transfer'
           })
@@ -180,22 +285,33 @@ export default function SpmbPortalDashboard() {
           const updated = {
             ...data,
             buktiDaftarUlang: link,
+            riwayatBuktiDaftarUlang: updatedRiwayat,
             statusDaftarUlang: newStatus,
             metodeBayarDaftarUlang: 'transfer'
           };
           setData(updated);
           localStorage.setItem('spmb_session', JSON.stringify(updated));
 
+          const waUrlForThis = getWaBendaharaUrl(newBuktiItem);
+
           Swal.fire({
             icon: 'success',
             title: 'Bukti Berhasil Diunggah!',
             html: `
-              <p style="font-size: 13.5px; color: #475569; margin-bottom: 12px;">
-                Bukti pembayaran telah berhasil disimpan. Silakan klik tombol <b>WhatsApp Bendahara (Ibu S. Nur Ainy)</b> untuk konfirmasi dan validasi nominal pembayaran.
+              <p style="font-size: 13.5px; color: #334155; margin-bottom: 14px; line-height: 1.5;">
+                Bukti pembayaran <b>${newBuktiItem.keterangan}</b> berhasil disimpan ke sistem.<br/><br/>
+                Kirim pesan konfirmasi ke WhatsApp Bendahara agar pembayaran Anda langsung dicek dan divalidasi. <b>Tautan bukti transfer sudah otomatis terlampir di dalam pesan WhatsApp!</b>
               </p>
             `,
-            confirmButtonText: 'OK',
-            confirmButtonColor: '#059669'
+            showCancelButton: true,
+            confirmButtonText: '<i class="fab fa-whatsapp" style="margin-right: 6px;"></i> Kirim WA ke Bendahara',
+            confirmButtonColor: '#22c55e',
+            cancelButtonText: 'Tutup',
+            cancelButtonColor: '#64748b'
+          }).then((result) => {
+            if (result.isConfirmed) {
+              window.open(waUrlForThis, '_blank');
+            }
           });
         } else {
           Swal.fire('Gagal Menyimpan', patchJson.error || 'Terjadi kesalahan saat menyimpan bukti', 'error');
@@ -210,17 +326,46 @@ export default function SpmbPortalDashboard() {
     }
   };
 
-  const getWaBendaharaUrl = () => {
+  const getWaBendaharaUrl = (buktiItem?: any) => {
     if (!data) return '';
     const cleanPhone = '6285236660862';
+
+    const bs = data.biayaDaftarUlang !== undefined && data.biayaDaftarUlang !== '' ? Number(data.biayaDaftarUlang) : 4500000;
+    const pot = Number(data.potonganDaftarUlang || 0);
+    const tagihan = Math.max(0, bs - pot);
+    const dibayar = Number(data.nominalDibayarDaftarUlang || 0);
+    const sisa = Math.max(0, tagihan - dibayar);
+
+    let detailBukti = '';
+    if (buktiItem) {
+      const tglFormatted = buktiItem.waktu 
+        ? new Date(buktiItem.waktu).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) + ' WIB'
+        : 'Baru saja';
+      detailBukti = 
+        `Mengonfirmasi pembayaran daftar ulang (*${buktiItem.keterangan || `Pembayaran ke-${buktiItem.ke || 1}`}*):\n` +
+        (buktiItem.nominal ? `*Nominal Transfer:* Rp ${Number(buktiItem.nominal).toLocaleString('id-ID')}\n` : '') +
+        `*Tautan Bukti Transfer:* ${buktiItem.url}\n` +
+        `*Waktu Unggah:* ${tglFormatted}\n\n`;
+    } else if (data.buktiDaftarUlang) {
+      detailBukti = 
+        `Mengonfirmasi pembayaran daftar ulang via transfer Bank BCA:\n` +
+        `*Tautan Bukti Transfer:* ${data.buktiDaftarUlang}\n\n`;
+    } else {
+      detailBukti = `Saya ingin mengonfirmasi terkait pembayaran daftar ulang calon santri.\n\n`;
+    }
+
     const text = encodeURIComponent(
       `Assalamu'alaikum Ibu S. Nur Ainy (Bendahara SPMB MTs Almaarif 01 Singosari).\n\n` +
       `Saya wali dari calon santri:\n` +
       `*Nama:* ${data.namaLengkap}\n` +
       `*No. Pendaftaran:* ${data.nomorPendaftaran}\n` +
       `*Jalur:* ${data.jalurPendaftaran || 'Reguler'}\n\n` +
-      `Saya telah melakukan pembayaran daftar ulang via transfer Bank BCA dan mengunggah bukti pembayaran di Portal Calon Siswa SPMB.\n\n` +
-      `Mohon bantuannya untuk memeriksa dan memvalidasi nominal pembayaran kami. Terima kasih.`
+      detailBukti +
+      `*Status Biaya Daftar Ulang di Sistem:*\n` +
+      `- Total Biaya: Rp ${tagihan.toLocaleString('id-ID')}\n` +
+      `- Tercatat Masuk: Rp ${dibayar.toLocaleString('id-ID')}\n` +
+      `- Sisa Tagihan: Rp ${sisa.toLocaleString('id-ID')}\n\n` +
+      `Mohon bantuannya untuk memeriksa dan memvalidasi pembayaran kami di sistem SPMB. Terima kasih.`
     );
     return `https://wa.me/${cleanPhone}?text=${text}`;
   };
@@ -964,101 +1109,232 @@ export default function SpmbPortalDashboard() {
               </div>
             )}
 
-            {/* Upload Bukti Pembayaran & Tombol WhatsApp Panitia */}
-            <div style={{
-              background: '#f8fafc',
-              border: '1px dashed #cbd5e1',
-              borderRadius: '12px',
-              padding: '16px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '14px'
-            }}>
-              <div>
-                <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0f172a' }}>
-                  <i className="fas fa-receipt" style={{ color: '#047857', marginRight: '6px' }}></i>
-                  {data.buktiDaftarUlang ? 'Bukti Pembayaran Terunggah' : 'Unggah Bukti Transfer (BCA)'}
-                </div>
-                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b' }}>
-                  {data.buktiDaftarUlang 
-                    ? 'Bukti telah tersimpan di sistem. Hubungi Bendahara (Ibu S. Nur Ainy) via WhatsApp untuk konfirmasi dan pencatatan nominal valid.'
-                    : 'Setelah transfer BCA, unggah bukti pembayaran di sini lalu kirim konfirmasi WhatsApp ke Bendahara (Ibu S. Nur Ainy).'}
-                </p>
-              </div>
+            {/* Upload Bukti Pembayaran & Riwayat Angsuran */}
+            {(() => {
+              const riwayatList: any[] = Array.isArray(data.riwayatBuktiDaftarUlang) && data.riwayatBuktiDaftarUlang.length > 0
+                ? data.riwayatBuktiDaftarUlang
+                : (data.buktiDaftarUlang ? [{
+                    id: 'bkt_legacy',
+                    ke: 1,
+                    url: data.buktiDaftarUlang,
+                    waktu: data.tglBayarDaftarUlang || data.timestamp || '',
+                    keterangan: 'Pembayaran Awal'
+                  }] : []);
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                {data.buktiDaftarUlang && (
-                  <a
-                    href={data.buktiDaftarUlang}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      background: '#047857',
-                      color: 'white',
-                      padding: '9px 14px',
-                      borderRadius: '8px',
-                      fontSize: '12.5px',
-                      fontWeight: 700,
-                      textDecoration: 'none',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    <i className="fas fa-external-link-alt"></i> Lihat Bukti
-                  </a>
-                )}
+              const hasProof = riwayatList.length > 0;
 
-                <label style={{
-                  background: uploadingBukti ? '#94a3b8' : '#334155',
-                  color: 'white',
-                  padding: '9px 14px',
-                  borderRadius: '8px',
-                  fontSize: '12.5px',
-                  fontWeight: 700,
-                  cursor: uploadingBukti ? 'not-allowed' : 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px'
+              return (
+                <div style={{
+                  background: '#f8fafc',
+                  border: '1px dashed #cbd5e1',
+                  borderRadius: '12px',
+                  padding: '18px 20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '16px'
                 }}>
-                  <i className={`fas ${uploadingBukti ? 'fa-spinner fa-spin' : 'fa-upload'}`}></i>
-                  <span>{uploadingBukti ? 'Mengunggah...' : data.buktiDaftarUlang ? 'Ganti Bukti' : 'Unggah Bukti Transfer'}</span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/jpg,application/pdf,.pdf"
-                    disabled={uploadingBukti}
-                    onChange={handleUploadBuktiDaftarUlang}
-                    style={{ display: 'none' }}
-                  />
-                </label>
-
-                {/* Tombol WhatsApp ke Bendahara */}
-                <a
-                  href={getWaBendaharaUrl()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    background: '#22c55e',
-                    color: 'white',
-                    padding: '9px 16px',
-                    borderRadius: '8px',
-                    fontSize: '12.5px',
-                    fontWeight: 700,
-                    textDecoration: 'none',
-                    display: 'inline-flex',
+                  {/* Top Bar Upload & Tombol WA Utama */}
+                  <div style={{
+                    display: 'flex',
                     alignItems: 'center',
-                    gap: '6px',
-                    boxShadow: '0 2px 6px rgba(34, 197, 94, 0.3)'
-                  }}
-                  title="Kirim konfirmasi pembayaran ke Bendahara (Ibu S. Nur Ainy) via WhatsApp"
-                >
-                  <i className="fab fa-whatsapp" style={{ fontSize: '15px' }}></i>
-                  <span>WA Bendahara (Ibu S. Nur Ainy)</span>
-                </a>
-              </div>
-            </div>
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '14px'
+                  }}>
+                    <div>
+                      <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <i className="fas fa-receipt" style={{ color: '#047857' }}></i>
+                        {hasProof ? `Bukti Transfer Terunggah (${riwayatList.length} Pembayaran)` : 'Unggah Bukti Transfer (BCA)'}
+                      </div>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#64748b', maxWidth: '580px', lineHeight: '1.5' }}>
+                        {hasProof 
+                          ? 'Bukti tersimpan di sistem. Anda dapat mengunggah bukti tambahan kapan saja jika melakukan pembayaran secara bertahap (angsuran), lalu konfirmasi via WhatsApp ke Bendahara.'
+                          : 'Setelah transfer BCA, unggah bukti pembayaran di sini. Anda juga bisa mengunggah bertahap (angsuran). Tautan bukti akan otomatis terlampir saat konfirmasi WhatsApp ke Bendahara.'}
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      <label style={{
+                        background: uploadingBukti ? '#94a3b8' : '#047857',
+                        color: 'white',
+                        padding: '9px 15px',
+                        borderRadius: '8px',
+                        fontSize: '12.5px',
+                        fontWeight: 700,
+                        cursor: uploadingBukti ? 'not-allowed' : 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: '0 2px 6px rgba(4, 120, 87, 0.25)',
+                        transition: 'all 0.15s ease'
+                      }}>
+                        <i className={`fas ${uploadingBukti ? 'fa-spinner fa-spin' : 'fa-plus-circle'}`}></i>
+                        <span>{uploadingBukti ? 'Mengunggah...' : hasProof ? 'Unggah Bukti Angsuran Baru' : 'Unggah Bukti Transfer'}</span>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/jpg,application/pdf,.pdf"
+                          disabled={uploadingBukti}
+                          onChange={handleUploadBuktiDaftarUlang}
+                          style={{ display: 'none' }}
+                        />
+                      </label>
+
+                      {/* Tombol WhatsApp Umum ke Bendahara */}
+                      <a
+                        href={getWaBendaharaUrl()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          background: '#22c55e',
+                          color: 'white',
+                          padding: '9px 16px',
+                          borderRadius: '8px',
+                          fontSize: '12.5px',
+                          fontWeight: 700,
+                          textDecoration: 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          boxShadow: '0 2px 6px rgba(34, 197, 94, 0.3)'
+                        }}
+                        title="Kirim konfirmasi pembayaran ke Bendahara (Ibu S. Nur Ainy) via WhatsApp"
+                      >
+                        <i className="fab fa-whatsapp" style={{ fontSize: '15px' }}></i>
+                        <span>WA Bendahara</span>
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Riwayat Daftar Bukti Terunggah (Multi-Angsuran) */}
+                  {hasProof && (
+                    <div style={{
+                      marginTop: '6px',
+                      paddingTop: '14px',
+                      borderTop: '1px solid #e2e8f0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px'
+                    }}>
+                      <div style={{ fontSize: '12px', fontWeight: 800, color: '#334155', display: 'flex', alignItems: 'center', gap: '6px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                        <i className="fas fa-history" style={{ color: '#0284c7' }}></i>
+                        Riwayat Bukti Pembayaran Calon Santri:
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {riwayatList.map((item, idx) => {
+                          const itemNumber = item.ke || idx + 1;
+                          const waUrlThisItem = getWaBendaharaUrl(item);
+                          const tglLabel = item.waktu 
+                            ? new Date(item.waktu).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }) + ' WIB'
+                            : 'Tersimpan';
+
+                          return (
+                            <div
+                              key={item.id || idx}
+                              style={{
+                                background: 'white',
+                                border: '1px solid #e2e8f0',
+                                borderLeft: '4px solid #047857',
+                                borderRadius: '8px',
+                                padding: '12px 16px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                flexWrap: 'wrap',
+                                gap: '12px',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '50%',
+                                  background: '#ecfdf5',
+                                  color: '#047857',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontWeight: 800,
+                                  fontSize: '12px'
+                                }}>
+                                  #{itemNumber}
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>
+                                    {item.keterangan || `Pembayaran #${itemNumber}`}
+                                  </div>
+                                  <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                                    <span>
+                                      <i className="fas fa-calendar-alt" style={{ marginRight: '4px', color: '#94a3b8' }}></i>
+                                      {tglLabel}
+                                    </span>
+                                    {item.nominal && item.nominal > 0 && (
+                                      <span style={{ color: '#047857', fontWeight: 700 }}>
+                                        <i className="fas fa-money-bill-wave" style={{ marginRight: '4px' }}></i>
+                                        Rp {Number(item.nominal).toLocaleString('id-ID')}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                <a
+                                  href={item.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    background: '#f1f5f9',
+                                    color: '#334155',
+                                    border: '1px solid #cbd5e1',
+                                    padding: '6px 12px',
+                                    borderRadius: '6px',
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    textDecoration: 'none',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '5px'
+                                  }}
+                                  title="Buka file bukti transfer"
+                                >
+                                  <i className="fas fa-external-link-alt" style={{ color: '#047857' }}></i>
+                                  Lihat Bukti
+                                </a>
+
+                                <a
+                                  href={waUrlThisItem}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    background: '#22c55e',
+                                    color: 'white',
+                                    padding: '6px 12px',
+                                    borderRadius: '6px',
+                                    fontSize: '12px',
+                                    fontWeight: 700,
+                                    textDecoration: 'none',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    boxShadow: '0 1px 4px rgba(34, 197, 94, 0.3)'
+                                  }}
+                                  title="Kirim pesan WhatsApp otomatis melampirkan tautan bukti ini ke Bendahara"
+                                >
+                                  <i className="fab fa-whatsapp"></i>
+                                  <span>Konfirmasi WA Bukti Ini</span>
+                                </a>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
           </div>
 

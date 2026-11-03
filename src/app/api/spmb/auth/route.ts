@@ -37,6 +37,15 @@ function mapStudentData(r: any) {
     nominalDibayarDaftarUlang: Number(meta['nominal_dibayar_daftar_ulang'] || 0),
     statusDaftarUlang: meta['status_daftar_ulang'] || 'belum_bayar',
     buktiDaftarUlang: meta['bukti_daftar_ulang'] || '',
+    riwayatBuktiDaftarUlang: Array.isArray(meta['riwayat_bukti_daftar_ulang'])
+      ? meta['riwayat_bukti_daftar_ulang']
+      : (meta['bukti_daftar_ulang'] ? [{
+          id: 'bkt_legacy',
+          ke: 1,
+          url: meta['bukti_daftar_ulang'],
+          waktu: meta['tgl_bayar_daftar_ulang'] || meta['Timestamp'] || '',
+          keterangan: 'Pembayaran'
+        }] : []),
     catatanDaftarUlang: meta['catatan_daftar_ulang'] || '',
     metodeBayarDaftarUlang: meta['metode_bayar_daftar_ulang'] || '',
     tglBayarDaftarUlang: meta['tgl_bayar_daftar_ulang'] || '',

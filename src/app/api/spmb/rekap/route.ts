@@ -47,6 +47,15 @@ export async function GET() {
         nominalDibayarDaftarUlang: Number(r.metadata?.['nominal_dibayar_daftar_ulang'] || 0),
         statusDaftarUlang: r.metadata?.['status_daftar_ulang'] || 'belum_bayar',
         buktiDaftarUlang: r.metadata?.['bukti_daftar_ulang'] || '',
+        riwayatBuktiDaftarUlang: Array.isArray(r.metadata?.['riwayat_bukti_daftar_ulang'])
+          ? r.metadata['riwayat_bukti_daftar_ulang']
+          : (r.metadata?.['bukti_daftar_ulang'] ? [{
+              id: 'bkt_legacy',
+              ke: 1,
+              url: r.metadata['bukti_daftar_ulang'],
+              waktu: r.metadata['tgl_bayar_daftar_ulang'] || r.metadata['Timestamp'] || '',
+              keterangan: 'Pembayaran'
+            }] : []),
         catatanDaftarUlang: r.metadata?.['catatan_daftar_ulang'] || '',
         metodeBayarDaftarUlang: r.metadata?.['metode_bayar_daftar_ulang'] || '',
         tglBayarDaftarUlang: r.metadata?.['tgl_bayar_daftar_ulang'] || ''

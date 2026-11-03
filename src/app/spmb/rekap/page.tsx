@@ -2252,7 +2252,7 @@ export default function RekapSpmb() {
                                   }}
                                   title="Lihat Bukti Transfer"
                                 >
-                                  <i className="fas fa-receipt"></i> Bukti
+                                  <i className="fas fa-receipt"></i> Bukti{Array.isArray(item.riwayatBuktiDaftarUlang) && item.riwayatBuktiDaftarUlang.length > 1 ? ` (${item.riwayatBuktiDaftarUlang.length})` : ""}
                                 </button>
                               )}
 

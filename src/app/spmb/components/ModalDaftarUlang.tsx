@@ -750,6 +750,72 @@ export default function ModalDaftarUlang({
                 </label>
               </div>
             </div>
+            {/* Riwayat Multi Bukti jika ada */}
+            {(() => {
+              const riwayat = Array.isArray(student.riwayatBuktiDaftarUlang) && student.riwayatBuktiDaftarUlang.length > 0
+                ? student.riwayatBuktiDaftarUlang
+                : (buktiUrl ? [{ id: 'bkt_cur', ke: 1, url: buktiUrl, keterangan: 'Bukti Pembayaran Terkini', waktu: student.tglBayarDaftarUlang || '' }] : []);
+
+              if (riwayat.length <= 1) return null;
+
+              return (
+                <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#334155', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <i className="fas fa-history" style={{ color: '#0284c7' }}></i>
+                    Riwayat Seluruh Bukti Transfer Yang Pernah Diunggah ({riwayat.length}):
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {riwayat.map((b: any, idx: number) => (
+                      <div key={b.id || idx} style={{
+                        background: 'white',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '6px',
+                        padding: '8px 12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        fontSize: '11.5px',
+                        gap: '8px'
+                      }}>
+                        <div>
+                          <b style={{ color: '#0f172a' }}>#{b.ke || idx + 1} {b.keterangan || 'Bukti Transfer'}</b>
+                          {b.nominal && b.nominal > 0 ? (
+                            <span style={{ color: '#047857', fontWeight: 700, marginLeft: '6px' }}>
+                              Rp {Number(b.nominal).toLocaleString('id-ID')}
+                            </span>
+                          ) : null}
+                          <span style={{ color: '#94a3b8', marginLeft: '6px', fontSize: '10.5px' }}>
+                            ({b.waktu ? new Date(b.waktu).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '-'})
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onOpenViewer) onOpenViewer(b.url, `Bukti #${b.ke || idx + 1} (${b.keterangan || 'Transfer'}) - ${student.namaLengkap}`);
+                            else window.open(b.url, '_blank');
+                          }}
+                          style={{
+                            background: '#047857',
+                            color: 'white',
+                            border: 'none',
+                            padding: '4px 10px',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <i className="fas fa-eye"></i> Buka
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 

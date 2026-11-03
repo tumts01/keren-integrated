@@ -97,6 +97,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       ...(body.nominalDibayarDaftarUlang !== undefined ? { nominal_dibayar_daftar_ulang: Number(body.nominalDibayarDaftarUlang) } : {}),
       ...(body.statusDaftarUlang !== undefined ? { status_daftar_ulang: body.statusDaftarUlang } : {}),
       ...(body.buktiDaftarUlang !== undefined ? { bukti_daftar_ulang: body.buktiDaftarUlang } : {}),
+      ...(body.riwayatBuktiDaftarUlang !== undefined ? { riwayat_bukti_daftar_ulang: body.riwayatBuktiDaftarUlang } : {}),
       ...(body.catatanDaftarUlang !== undefined ? { catatan_daftar_ulang: body.catatanDaftarUlang } : {}),
       ...(body.metodeBayarDaftarUlang !== undefined ? { metode_bayar_daftar_ulang: body.metodeBayarDaftarUlang } : {}),
       ...(body.tglBayarDaftarUlang !== undefined ? { tgl_bayar_daftar_ulang: body.tglBayarDaftarUlang } : {})
