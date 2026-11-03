@@ -18,8 +18,14 @@ export default function AdminSoalCBT() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [cbtBuka, setCbtBuka] = useState(false);
   const [tahapCbtAktif, setTahapCbtAktif] = useState<'seleksi' | 'final'>('seleksi');
+  const [soalCounts, setSoalCounts] = useState<Record<string, number>>({});
 
   const lombaOptions = ['Matematika', 'IPAS', 'PAI', 'Inggris', 'Arab'];
+
+  const getSoalCount = (lomba: string, tahap: 'seleksi' | 'final' = tahapSoal) => {
+    const key = tahap === 'final' ? `${lomba}_FINAL` : lomba;
+    return soalCounts[key] || 0;
+  };
 
   useEffect(() => {
     fetchSoal();
@@ -102,6 +108,9 @@ export default function AdminSoalCBT() {
       const data = await res.json();
       if (data.success) {
         setSoalList(data.data);
+        if (data.counts) {
+          setSoalCounts(data.counts);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -380,13 +389,46 @@ export default function AdminSoalCBT() {
         </div>
 
         <div style={{ display: 'flex', gap: '16px', marginBottom: '32px', flexWrap: 'wrap', alignItems: 'center' }}>
-          <select 
-            value={lombaFilter} 
-            onChange={e => setLombaFilter(e.target.value)}
-            style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', minWidth: '200px' }}
-          >
-            {lombaOptions.map(l => <option key={l} value={l}>{l} ({tahapSoal === 'final' ? 'Final' : 'Seleksi'})</option>)}
-          </select>
+          {(() => {
+            const selectedCount = getSoalCount(lombaFilter, tahapSoal);
+            const isSelectedUploaded = selectedCount > 0;
+            return (
+              <select 
+                value={lombaFilter} 
+                onChange={e => setLombaFilter(e.target.value)}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: '8px',
+                  border: `2px solid ${isSelectedUploaded ? '#22c55e' : '#ef4444'}`,
+                  background: isSelectedUploaded ? '#f0fdf4' : '#fef2f2',
+                  color: isSelectedUploaded ? '#15803d' : '#b91c1c',
+                  fontWeight: 700,
+                  fontSize: '1rem',
+                  minWidth: '280px',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+              >
+                {lombaOptions.map(l => {
+                  const cnt = getSoalCount(l, tahapSoal);
+                  const uploaded = cnt > 0;
+                  return (
+                    <option
+                      key={l}
+                      value={l}
+                      style={{
+                        color: uploaded ? '#15803d' : '#dc2626',
+                        background: 'white',
+                        fontWeight: 700
+                      }}
+                    >
+                      {uploaded ? `✅ ${l} (${tahapSoal === 'final' ? 'Final' : 'Seleksi'}) — ${cnt} Soal` : `🔴 ${l} (${tahapSoal === 'final' ? 'Final' : 'Seleksi'}) — Belum Diupload`}
+                    </option>
+                  );
+                })}
+              </select>
+            );
+          })()}
 
           <button 
             onClick={handleDownloadTemplate}

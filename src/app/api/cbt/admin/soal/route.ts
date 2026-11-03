@@ -27,10 +27,19 @@ export async function GET(req: Request) {
       query = query.eq('cabang_lomba', targetCabang);
     }
 
-    const { data, error } = await query;
+    const [{ data, error }, { data: allRows }] = await Promise.all([
+      query,
+      supabase.from('cbt_soal').select('cabang_lomba')
+    ]);
     if (error) throw error;
 
-    return NextResponse.json({ success: true, data });
+    const counts: Record<string, number> = {};
+    (allRows || []).forEach((r: any) => {
+      const c = (r.cabang_lomba || '').trim();
+      if (c) counts[c] = (counts[c] || 0) + 1;
+    });
+
+    return NextResponse.json({ success: true, data, counts });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
