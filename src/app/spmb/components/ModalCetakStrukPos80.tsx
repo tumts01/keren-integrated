@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import Swal from 'sweetalert2';
 
 interface ModalCetakStrukPos80Props {
@@ -15,6 +15,10 @@ export default function ModalCetakStrukPos80({
   student
 }: ModalCetakStrukPos80Props) {
   const printIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const previewReceiptRef = useRef<HTMLDivElement | null>(null);
+
+  // Opsi tinggi kertas (agar Chrome tidak menganggap roll tak terbatas 3276mm)
+  const [selectedHeightPreset, setSelectedHeightPreset] = useState<'auto' | '150' | '175' | '200'>('auto');
 
   if (!isOpen || !student) return null;
 
@@ -51,7 +55,23 @@ export default function ModalCetakStrukPos80({
     ? (student.tglBayarDaftarUlang.includes('T') ? student.tglBayarDaftarUlang.split('T')[0] : student.tglBayarDaftarUlang)
     : tglCetak;
 
-  const getReceiptHtml = () => {
+  // Hitung tinggi proporsional kertas dalam mm
+  const calculateHeightMm = (): number => {
+    if (selectedHeightPreset !== 'auto') {
+      return Number(selectedHeightPreset);
+    }
+    if (previewReceiptRef.current) {
+      const px = previewReceiptRef.current.offsetHeight;
+      if (px > 0) {
+        // Konversi 96 DPI: px -> mm + 8mm safety margin
+        const mm = Math.ceil((px / 96) * 25.4) + 8;
+        return Math.max(140, Math.min(mm, 260));
+      }
+    }
+    return 160;
+  };
+
+  const getReceiptHtml = (pageHeightMm: number) => {
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -59,34 +79,39 @@ export default function ModalCetakStrukPos80({
   <title>Struk Bukti Pembayaran SPMB - ${student.namaLengkap || ''}</title>
   <style>
     @page {
-      size: 80mm auto;
-      margin: 2mm 3mm;
+      size: 80mm ${pageHeightMm}mm;
+      margin: 0mm;
     }
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
     }
+    html, body {
+      width: 80mm;
+      height: ${pageHeightMm}mm;
+      margin: 0 auto;
+      padding: 0;
+      background: #fff;
+      overflow: hidden;
+    }
     body {
       font-family: 'Courier New', Courier, monospace;
       font-size: 11px;
-      line-height: 1.35;
+      line-height: 1.32;
       color: #000;
-      background: #fff;
-      width: 74mm;
-      margin: 0 auto;
-      padding: 4mm 2mm;
+      padding: 4mm 4mm 5mm 4mm;
     }
     .text-center { text-align: center; }
     .text-right { text-align: right; }
     .bold { font-weight: bold; }
     .divider {
       border-top: 1px dashed #000;
-      margin: 5px 0;
+      margin: 4px 0;
     }
     .double-divider {
       border-top: 2px solid #000;
-      margin: 5px 0;
+      margin: 4px 0;
     }
     .row {
       display: flex;
@@ -103,13 +128,13 @@ export default function ModalCetakStrukPos80({
     }
     .receipt-header {
       text-align: center;
-      margin-bottom: 5px;
+      margin-bottom: 4px;
     }
     .receipt-title {
-      font-size: 12.5px;
+      font-size: 12px;
       font-weight: bold;
       text-align: center;
-      margin: 4px 0;
+      margin: 3px 0;
       letter-spacing: 0.5px;
     }
     .badge-status {
@@ -117,18 +142,18 @@ export default function ModalCetakStrukPos80({
       padding: 2px 6px;
       font-weight: bold;
       border: 1px solid #000;
-      margin: 4px 0;
-      font-size: 11px;
+      margin: 3px 0;
+      font-size: 10.5px;
     }
     .footer-sign {
-      margin-top: 12px;
+      margin-top: 10px;
       text-align: right;
     }
     @media print {
       body {
         width: 100%;
         margin: 0;
-        padding: 2mm;
+        padding: 3mm 4mm 5mm 4mm;
       }
     }
   </style>
@@ -137,8 +162,8 @@ export default function ModalCetakStrukPos80({
   <div class="receipt-header">
     <div class="bold" style="font-size: 13px;">MTs ALMAARIF 01 SINGOSARI</div>
     <div style="font-size: 10px;">PANITIA PENERIMAAN SANTRI BARU (SPMB)</div>
-    <div style="font-size: 9.5px;">Jl. Masjid No. 33 Pagentan Singosari Malang</div>
-    <div style="font-size: 9.5px;">Telp/WA: +62 852-3666-0862</div>
+    <div style="font-size: 9px;">Jl. Masjid No. 33 Pagentan Singosari Malang</div>
+    <div style="font-size: 9px;">Telp/WA: +62 852-3666-0862</div>
   </div>
 
   <div class="double-divider"></div>
@@ -159,7 +184,7 @@ export default function ModalCetakStrukPos80({
   </div>
 
   <div class="divider"></div>
-  <div class="bold" style="margin-bottom: 3px;">DATA CALON SISWA:</div>
+  <div class="bold" style="margin-bottom: 2px;">DATA CALON SISWA:</div>
   <div class="row">
     <div class="row-title">No. Reg</div>
     <div class="row-value bold">${student.nomorPendaftaran || '-'}</div>
@@ -182,7 +207,7 @@ export default function ModalCetakStrukPos80({
   </div>
 
   <div class="divider"></div>
-  <div class="bold" style="margin-bottom: 3px;">RINCIAN BIAYA &amp; PEMBAYARAN:</div>
+  <div class="bold" style="margin-bottom: 2px;">RINCIAN BIAYA &amp; PEMBAYARAN:</div>
   <div class="row">
     <div class="row-title">Biaya Standar DPP</div>
     <div class="row-value">Rp ${formatRupiah(biaya)}</div>
@@ -193,7 +218,7 @@ export default function ModalCetakStrukPos80({
     <div class="row-value">-Rp ${formatRupiah(potongan)}</div>
   </div>
   ${student.keteranganPotongan ? `
-  <div style="font-size: 9.5px; font-style: italic; margin-bottom: 2px;">
+  <div style="font-size: 9px; font-style: italic; margin-bottom: 2px;">
     Ket: ${student.keteranganPotongan}
   </div>` : ''}
   ` : ''}
@@ -203,7 +228,7 @@ export default function ModalCetakStrukPos80({
   </div>
 
   <div class="divider"></div>
-  <div class="row bold" style="font-size: 11.5px;">
+  <div class="row bold" style="font-size: 11px;">
     <div class="row-title">TOTAL DIBAYAR</div>
     <div class="row-value">Rp ${formatRupiah(dibayar)}</div>
   </div>
@@ -232,15 +257,15 @@ export default function ModalCetakStrukPos80({
   </div>` : ''}
 
   <div class="double-divider"></div>
-  <div style="font-size: 9.5px; text-align: center; margin: 4px 0;">
+  <div style="font-size: 9px; text-align: center; margin: 3px 0;">
     * Simpan struk ini sebagai bukti pembayaran sah *<br/>
     Terima kasih telah mendaftar di MTs Almaarif 01 Singosari
   </div>
 
   <div class="footer-sign">
     <div>Singosari, ${tglCetak}</div>
-    <div style="margin-top: 3px;">Bendahara SPMB,</div>
-    <div style="height: 38px;"></div>
+    <div style="margin-top: 2px;">Bendahara SPMB,</div>
+    <div style="height: 32px;"></div>
     <div class="bold">( Ibu S. Nur Ainy )</div>
   </div>
 </body>
@@ -251,18 +276,23 @@ export default function ModalCetakStrukPos80({
     const iframe = printIframeRef.current;
     if (!iframe) return;
 
+    const heightMm = calculateHeightMm();
+
+    iframe.style.width = '80mm';
+    iframe.style.height = `${heightMm}mm`;
+
     const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
     if (!iframeDoc) return;
 
     iframeDoc.open();
-    iframeDoc.write(getReceiptHtml());
+    iframeDoc.write(getReceiptHtml(heightMm));
     iframeDoc.close();
 
     // Tunggu render sebelum print
     setTimeout(() => {
       iframe.contentWindow?.focus();
       iframe.contentWindow?.print();
-    }, 250);
+    }, 280);
   };
 
   const handleCopyText = () => {
@@ -329,7 +359,7 @@ Bendahara SPMB: Ibu S. Nur Ainy (+62 852-3666-0862)
         background: '#ffffff',
         borderRadius: '16px',
         width: '100%',
-        maxWidth: '460px',
+        maxWidth: '480px',
         maxHeight: '94vh',
         display: 'flex',
         flexDirection: 'column',
@@ -364,7 +394,7 @@ Bendahara SPMB: Ibu S. Nur Ainy (+62 852-3666-0862)
                 Cetak Struk POS 80mm
               </h3>
               <p style={{ margin: 0, fontSize: '11px', color: '#64748b' }}>
-                Ukuran printer kasir thermal roll 80mm
+                Format printer kasir thermal roll 80mm
               </p>
             </div>
           </div>
@@ -383,39 +413,142 @@ Bendahara SPMB: Ibu S. Nur Ainy (+62 852-3666-0862)
           </button>
         </div>
 
+        {/* Setting Ukuran Panjang Kertas */}
+        <div style={{
+          background: '#f8fafc',
+          padding: '10px 18px',
+          borderBottom: '1px solid #e2e8f0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '8px'
+        }}>
+          <span style={{ fontSize: '11.5px', fontWeight: 700, color: '#334155' }}>
+            <i className="fas fa-ruler-vertical" style={{ marginRight: '5px', color: '#059669' }}></i>
+            Tinggi Kertas Struk:
+          </span>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <button
+              type="button"
+              onClick={() => setSelectedHeightPreset('auto')}
+              style={{
+                background: selectedHeightPreset === 'auto' ? '#059669' : '#ffffff',
+                color: selectedHeightPreset === 'auto' ? '#ffffff' : '#334155',
+                border: `1px solid ${selectedHeightPreset === 'auto' ? '#059669' : '#cbd5e1'}`,
+                padding: '3px 8px',
+                borderRadius: '5px',
+                fontSize: '11px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              Auto (~15cm)
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedHeightPreset('150')}
+              style={{
+                background: selectedHeightPreset === '150' ? '#059669' : '#ffffff',
+                color: selectedHeightPreset === '150' ? '#ffffff' : '#334155',
+                border: `1px solid ${selectedHeightPreset === '150' ? '#059669' : '#cbd5e1'}`,
+                padding: '3px 8px',
+                borderRadius: '5px',
+                fontSize: '11px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              15 cm
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedHeightPreset('175')}
+              style={{
+                background: selectedHeightPreset === '175' ? '#059669' : '#ffffff',
+                color: selectedHeightPreset === '175' ? '#ffffff' : '#334155',
+                border: `1px solid ${selectedHeightPreset === '175' ? '#059669' : '#cbd5e1'}`,
+                padding: '3px 8px',
+                borderRadius: '5px',
+                fontSize: '11px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              17.5 cm
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedHeightPreset('200')}
+              style={{
+                background: selectedHeightPreset === '200' ? '#059669' : '#ffffff',
+                color: selectedHeightPreset === '200' ? '#ffffff' : '#334155',
+                border: `1px solid ${selectedHeightPreset === '200' ? '#059669' : '#cbd5e1'}`,
+                padding: '3px 8px',
+                borderRadius: '5px',
+                fontSize: '11px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              20 cm
+            </button>
+          </div>
+        </div>
+
         {/* Content / Preview Kertas Struk Thermal */}
         <div style={{
-          padding: '20px',
+          padding: '16px',
           overflowY: 'auto',
           background: '#f1f5f9',
           display: 'flex',
-          justifyContent: 'center'
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '10px'
         }}>
-          {/* Kertas Struk Virtual POS 80 */}
+          {/* Petunjuk Margin Chrome */}
           <div style={{
-            background: '#ffffff',
             width: '320px',
-            padding: '18px 16px',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.08)',
-            border: '1px solid #e2e8f0',
-            borderRadius: '4px',
-            fontFamily: "'Courier New', Courier, monospace",
-            fontSize: '11px',
-            lineHeight: 1.35,
-            color: '#111827'
+            background: '#ecfdf5',
+            border: '1px solid #a7f3d0',
+            borderRadius: '6px',
+            padding: '7px 10px',
+            fontSize: '10.5px',
+            color: '#065f46',
+            lineHeight: 1.4
           }}>
-            <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+            <i className="fas fa-info-circle" style={{ marginRight: '4px', color: '#059669' }}></i>
+            <b>Tips Dialog Print:</b> Di panel kanan Chrome (<i>More settings</i>), atur <b>Margins: &quot;None&quot;</b> agar struk tercetak proporsional dan tidak ada ruang kosong tepi.
+          </div>
+
+          {/* Kertas Struk Virtual POS 80 */}
+          <div
+            ref={previewReceiptRef}
+            style={{
+              background: '#ffffff',
+              width: '320px',
+              padding: '16px 14px',
+              boxShadow: '0 4px 15px rgba(0,0,0,0.08)',
+              border: '1px solid #e2e8f0',
+              borderRadius: '4px',
+              fontFamily: "'Courier New', Courier, monospace",
+              fontSize: '11px',
+              lineHeight: 1.35,
+              color: '#111827'
+            }}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '6px' }}>
               <div style={{ fontWeight: 800, fontSize: '12.5px' }}>MTs ALMAARIF 01 SINGOSARI</div>
               <div style={{ fontSize: '10px' }}>PANITIA SPMB TAHUN 2026</div>
               <div style={{ fontSize: '9px', color: '#64748b' }}>Jl. Masjid No. 33 Pagentan Singosari Malang</div>
               <div style={{ fontSize: '9px', color: '#64748b' }}>WA: +62 852-3666-0862</div>
             </div>
 
-            <div style={{ borderTop: '2px solid #000', margin: '6px 0' }}></div>
+            <div style={{ borderTop: '2px solid #000', margin: '5px 0' }}></div>
             <div style={{ textAlign: 'center', fontWeight: 800, fontSize: '11.5px', letterSpacing: '0.5px' }}>
               STRUK BUKTI DAFTAR ULANG
             </div>
-            <div style={{ borderTop: '2px solid #000', margin: '6px 0' }}></div>
+            <div style={{ borderTop: '2px solid #000', margin: '5px 0' }}></div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
               <span>No. Struk</span>
@@ -430,8 +563,8 @@ Bendahara SPMB: Ibu S. Nur Ainy (+62 852-3666-0862)
               <span>Bendahara SPMB</span>
             </div>
 
-            <div style={{ borderTop: '1px dashed #94a3b8', margin: '6px 0' }}></div>
-            <div style={{ fontWeight: 700, marginBottom: '3px' }}>DATA CALON SISWA:</div>
+            <div style={{ borderTop: '1px dashed #94a3b8', margin: '5px 0' }}></div>
+            <div style={{ fontWeight: 700, marginBottom: '2px' }}>DATA CALON SISWA:</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
               <span>No. Reg</span>
               <span style={{ fontWeight: 700 }}>{student.nomorPendaftaran || '-'}</span>
@@ -457,8 +590,8 @@ Bendahara SPMB: Ibu S. Nur Ainy (+62 852-3666-0862)
               </span>
             </div>
 
-            <div style={{ borderTop: '1px dashed #94a3b8', margin: '6px 0' }}></div>
-            <div style={{ fontWeight: 700, marginBottom: '3px' }}>RINCIAN PEMBAYARAN:</div>
+            <div style={{ borderTop: '1px dashed #94a3b8', margin: '5px 0' }}></div>
+            <div style={{ fontWeight: 700, marginBottom: '2px' }}>RINCIAN PEMBAYARAN:</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
               <span>Biaya Standar DPP</span>
               <span>Rp {formatRupiah(biaya)}</span>
@@ -481,7 +614,7 @@ Bendahara SPMB: Ibu S. Nur Ainy (+62 852-3666-0862)
               <span>Rp {formatRupiah(tagihan)}</span>
             </div>
 
-            <div style={{ borderTop: '1px dashed #94a3b8', margin: '6px 0' }}></div>
+            <div style={{ borderTop: '1px dashed #94a3b8', margin: '5px 0' }}></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '11.5px', marginBottom: '2px' }}>
               <span>TOTAL DIBAYAR</span>
               <span>Rp {formatRupiah(dibayar)}</span>
@@ -493,7 +626,7 @@ Bendahara SPMB: Ibu S. Nur Ainy (+62 852-3666-0862)
               </span>
             </div>
 
-            <div style={{ textAlign: 'center', margin: '8px 0' }}>
+            <div style={{ textAlign: 'center', margin: '6px 0' }}>
               <span style={{
                 display: 'inline-block',
                 padding: '2px 8px',
@@ -521,15 +654,15 @@ Bendahara SPMB: Ibu S. Nur Ainy (+62 852-3666-0862)
               </div>
             )}
 
-            <div style={{ borderTop: '2px solid #000', margin: '8px 0 6px 0' }}></div>
-            <div style={{ fontSize: '9px', textAlign: 'center', color: '#475569', marginBottom: '10px' }}>
+            <div style={{ borderTop: '2px solid #000', margin: '6px 0 5px 0' }}></div>
+            <div style={{ fontSize: '9px', textAlign: 'center', color: '#475569', marginBottom: '8px' }}>
               Simpan struk ini sebagai bukti pembayaran sah.
             </div>
 
             <div style={{ textAlign: 'right', fontSize: '10px' }}>
               <div>Singosari, {tglCetak}</div>
               <div style={{ marginTop: '2px' }}>Bendahara SPMB,</div>
-              <div style={{ height: '36px' }}></div>
+              <div style={{ height: '32px' }}></div>
               <div style={{ fontWeight: 800 }}>( Ibu S. Nur Ainy )</div>
             </div>
           </div>
@@ -611,7 +744,7 @@ Bendahara SPMB: Ibu S. Nur Ainy (+62 852-3666-0862)
           right: '-1000px',
           bottom: '-1000px',
           width: '80mm',
-          height: '200mm',
+          height: '180mm',
           border: 'none',
           visibility: 'hidden'
         }}
