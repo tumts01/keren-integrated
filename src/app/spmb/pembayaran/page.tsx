@@ -10,6 +10,7 @@ import ModalDaftarUlang from '../components/ModalDaftarUlang';
 import ModalCetakStrukPos80 from '../components/ModalCetakStrukPos80';
 import ModalAturSebaranDpp from '../components/ModalAturSebaranDpp';
 import ModalEditPlotingSiswa from '../components/ModalEditPlotingSiswa';
+import ModalRekapPembayaran from '../components/ModalRekapPembayaran';
 
 export interface SebaranKomponen {
   id: string;
@@ -54,6 +55,8 @@ export default function PembayaranSpmbPage() {
 
   const [showEditPlotingModal, setShowEditPlotingModal] = useState(false);
   const [selectedForPloting, setSelectedForPloting] = useState<any | null>(null);
+
+  const [showRekapModal, setShowRekapModal] = useState(false);
 
   // Document Viewer Modal for proofs
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
@@ -505,6 +508,28 @@ export default function PembayaranSpmbPage() {
           >
             <i className={`fas fa-sync-alt ${loading ? 'fa-spin' : ''}`}></i> Refresh
           </button>
+
+          {activeTab === 'daftar_ulang' && (
+            <button
+              onClick={() => setShowRekapModal(true)}
+              style={{
+                background: '#059669',
+                border: 'none',
+                color: '#ffffff',
+                padding: '8px 16px',
+                borderRadius: '8px',
+                fontSize: '0.86rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '7px',
+                boxShadow: '0 2px 6px rgba(5, 150, 105, 0.25)'
+              }}
+            >
+              <i className="fas fa-file-invoice-dollar"></i> Unduh Rekap Pembayaran
+            </button>
+          )}
 
           {activeTab === 'sebaran_dpp' && (
             <>
@@ -1002,9 +1027,30 @@ export default function PembayaranSpmbPage() {
           overflow: 'hidden',
           width: '100%'
         }}>
-          <div style={{ padding: '14px 18px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#1e293b' }}>
-              Menampilkan {filteredData.length} Calon Santri ({paginatedData.length} per halaman)
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#1e293b' }}>
+                Menampilkan {filteredData.length} Calon Santri ({paginatedData.length} per halaman)
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRekapModal(true)}
+                style={{
+                  background: '#ecfdf5',
+                  border: '1.5px solid #a7f3d0',
+                  color: '#047857',
+                  padding: '5px 12px',
+                  borderRadius: '7px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <i className="fas fa-file-invoice-dollar"></i> Unduh Rekap Masuk (Pilih Tanggal)
+              </button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#64748b' }}>
               <span>Tampilkan:</span>
@@ -1602,6 +1648,15 @@ export default function PembayaranSpmbPage() {
           onSaveSuccess={(updated) => {
             setData(prev => prev.map(s => s.rowNumber === updated.rowNumber ? { ...s, ...updated } : s));
           }}
+        />
+      )}
+
+      {/* MODAL 5: REKAP PEMBAYARAN MASUK (RENTANG TANGGAL) */}
+      {showRekapModal && (
+        <ModalRekapPembayaran
+          isOpen={showRekapModal}
+          onClose={() => setShowRekapModal(false)}
+          data={data}
         />
       )}
 
