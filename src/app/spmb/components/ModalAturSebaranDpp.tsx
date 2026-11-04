@@ -21,6 +21,50 @@ export default function ModalAturSebaranDpp({
   const [newNama, setNewNama] = useState('');
   const [newNominal, setNewNominal] = useState<number>(0);
   const [saving, setSaving] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  const handleMoveUp = (index: number) => {
+    if (index <= 0) return;
+    setList(prev => {
+      const next = [...prev];
+      const temp = next[index];
+      next[index] = next[index - 1];
+      next[index - 1] = temp;
+      return next;
+    });
+  };
+
+  const handleMoveDown = (index: number) => {
+    if (index >= list.length - 1) return;
+    setList(prev => {
+      const next = [...prev];
+      const temp = next[index];
+      next[index] = next[index + 1];
+      next[index + 1] = temp;
+      return next;
+    });
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (index: number) => {
+    if (draggedIndex === null || draggedIndex === index) return;
+    setList(prev => {
+      const next = [...prev];
+      const item = next.splice(draggedIndex, 1)[0];
+      next.splice(index, 0, item);
+      return next;
+    });
+    setDraggedIndex(null);
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -252,9 +296,14 @@ export default function ModalAturSebaranDpp({
           {/* List Komponen Aktif */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 700, color: '#334155' }}>
-                Daftar Kolom Ploting Aktif ({list.length} Komponen)
-              </label>
+              <div>
+                <label style={{ fontSize: '13px', fontWeight: 700, color: '#334155', display: 'block' }}>
+                  Daftar Kolom Ploting Aktif ({list.length} Komponen)
+                </label>
+                <span style={{ fontSize: '11px', color: '#64748b' }}>
+                  Gunakan tombol panah ⬆ ⬇ atau tarik (drag) baris untuk mengubah urutan posisi kolom.
+                </span>
+              </div>
               <button
                 type="button"
                 onClick={handleResetDefault}
@@ -277,19 +326,67 @@ export default function ModalAturSebaranDpp({
               {list.map((item, idx) => (
                 <div
                   key={item.id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, idx)}
+                  onDragOver={(e) => handleDragOver(e, idx)}
+                  onDrop={() => handleDrop(idx)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',
-                    background: '#f8fafc',
+                    background: draggedIndex === idx ? '#eff6ff' : '#f8fafc',
                     padding: '8px 12px',
                     borderRadius: '8px',
-                    border: '1px solid #e2e8f0'
+                    border: draggedIndex === idx ? '1.5px dashed #3b82f6' : '1px solid #e2e8f0',
+                    opacity: draggedIndex === idx ? 0.6 : 1,
+                    transition: 'background 0.15s, border 0.15s'
                   }}
                 >
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', width: '22px' }}>
-                    #{idx + 1}
-                  </span>
+                  {/* Tombol Pindah Urutan Up & Down */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleMoveUp(idx)}
+                      disabled={idx === 0}
+                      style={{
+                        background: idx === 0 ? '#f1f5f9' : '#ffffff',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '3px',
+                        padding: '1px 5px',
+                        fontSize: '9px',
+                        color: idx === 0 ? '#cbd5e1' : '#334155',
+                        cursor: idx === 0 ? 'not-allowed' : 'pointer'
+                      }}
+                      title="Pindah ke atas"
+                    >
+                      <i className="fas fa-chevron-up"></i>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleMoveDown(idx)}
+                      disabled={idx === list.length - 1}
+                      style={{
+                        background: idx === list.length - 1 ? '#f1f5f9' : '#ffffff',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '3px',
+                        padding: '1px 5px',
+                        fontSize: '9px',
+                        color: idx === list.length - 1 ? '#cbd5e1' : '#334155',
+                        cursor: idx === list.length - 1 ? 'not-allowed' : 'pointer'
+                      }}
+                      title="Pindah ke bawah"
+                    >
+                      <i className="fas fa-chevron-down"></i>
+                    </button>
+                  </div>
+
+                  {/* Drag Handle & Nomor Urut */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'grab' }} title="Tahan dan geser untuk memindahkan posisi">
+                    <i className="fas fa-grip-vertical" style={{ color: '#94a3b8', fontSize: '13px' }}></i>
+                    <span style={{ fontSize: '12px', fontWeight: 800, color: '#475569', width: '22px' }}>
+                      #{idx + 1}
+                    </span>
+                  </div>
                   <input
                     type="text"
                     value={item.nama}
