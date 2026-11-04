@@ -227,7 +227,7 @@ export default function ModalCetakStrukPos80({
       <div>Singosari, ${tglCetak}</div>
       <div style="margin-top: 2px;">Bendahara SPMB,</div>
       <div style="height: 30px;"></div>
-      <div class="bold">( Ibu S. Nur Ainy )</div>
+      <div class="bold">( S. Nur Ainy, S.Pd. )</div>
     </div>
     `;
   };
@@ -405,7 +405,7 @@ ${student.catatanDaftarUlang ? `Catatan      : ${student.catatanDaftarUlang}\n` 
 
     plainText += `----------------------------------------
 * Simpan struk ini sebagai bukti resmi *
-Bendahara SPMB: Ibu S. Nur Ainy (+62 852-3666-0862)
+Bendahara SPMB: S. Nur Ainy, S.Pd. (+62 852-3666-0862)
 ========================================`;
 
     navigator.clipboard.writeText(plainText.trim()).then(() => {
@@ -838,7 +838,7 @@ Bendahara SPMB: Ibu S. Nur Ainy (+62 852-3666-0862)
               <div>Singosari, {tglCetak}</div>
               <div style={{ marginTop: '2px' }}>Bendahara SPMB,</div>
               <div style={{ height: '30px' }}></div>
-              <div style={{ fontWeight: 800 }}>( Ibu S. Nur Ainy )</div>
+              <div style={{ fontWeight: 800 }}>( S. Nur Ainy, S.Pd. )</div>
             </div>
           </div>
         </div>

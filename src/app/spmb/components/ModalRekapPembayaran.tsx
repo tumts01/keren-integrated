@@ -43,9 +43,6 @@ export default function ModalRekapPembayaran({
   const [selectedStatus, setSelectedStatus] = useState<string>('semua'); // 'semua' | 'lunas' | 'cicilan'
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
   const [groupMode, setGroupMode] = useState<'per_siswa' | 'per_transaksi'>('per_siswa');
-
-  // Preview tab: 'filter' | 'preview'
-  const [activeTab, setActiveTab] = useState<'filter' | 'preview'>('filter');
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   // Helpers
@@ -484,7 +481,7 @@ export default function ModalRekapPembayaran({
             border: 1px solid #ddd6fe;
           }
 
-          /* TANDA TANGAN SECTION (LEGA, TANPA NIP) */
+          /* TANDA TANGAN SECTION (DWI RETNO PALUPI, M.PD. & S. NUR AINY, S.PD. - TANPA NIP) */
           .sign-section {
             margin-top: 45px;
             display: flex;
@@ -617,7 +614,7 @@ export default function ModalRekapPembayaran({
           </tbody>
         </table>
 
-        <!-- PENGESAHAN / TANDA TANGAN (KEPALA MADRASAH: DWI RETNO PALUPI, M.PD. - TANPA NIP) -->
+        <!-- PENGESAHAN / TANDA TANGAN (KEPALA: DWI RETNO PALUPI, M.PD. & BENDAHARA: S. NUR AINY, S.PD. - TANPA NIP) -->
         <div class="sign-section">
           <div class="sign-box">
             <div class="sign-role">Mengetahui,<br/>Kepala MTs Almaarif 01</div>
@@ -625,7 +622,7 @@ export default function ModalRekapPembayaran({
           </div>
           <div class="sign-box">
             <div class="sign-role">Singosari, ${tglCetak}<br/>Bendahara SPMB</div>
-            <div class="sign-name">Ibu S. Nur Ainy</div>
+            <div class="sign-name">S. Nur Ainy, S.Pd.</div>
           </div>
         </div>
 
@@ -848,7 +845,7 @@ export default function ModalRekapPembayaran({
         }
       });
 
-      // 4. Signatures (Dwi Retno Palupi, M.Pd. - TANPA NIP)
+      // 4. Signatures (Dwi Retno Palupi, M.Pd. & S. Nur Ainy, S.Pd. - TANPA NIP)
       let finalY = (doc as any).lastAutoTable.finalY + 14;
       const maxY = isLandscape ? 165 : 245;
       if (finalY > maxY) {
@@ -871,7 +868,7 @@ export default function ModalRekapPembayaran({
       doc.setLineWidth(0.4);
       doc.line(margin + 15, finalY + 27, margin + 58, finalY + 27);
 
-      // Kanan: Bendahara (Ibu S. Nur Ainy)
+      // Kanan: Bendahara (S. Nur Ainy, S.Pd.)
       const signRightX = pageWidth - margin - signW;
       doc.setTextColor(71, 85, 105);
       doc.setFontSize(8.5);
@@ -881,10 +878,10 @@ export default function ModalRekapPembayaran({
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(15, 23, 42);
       doc.setFontSize(9.5);
-      doc.text('Ibu S. Nur Ainy', signRightX + 10, finalY + 26);
+      doc.text('S. Nur Ainy, S.Pd.', signRightX + 10, finalY + 26);
       doc.setDrawColor(15, 23, 42);
       doc.setLineWidth(0.4);
-      doc.line(signRightX + 10, finalY + 27, signRightX + 45, finalY + 27);
+      doc.line(signRightX + 10, finalY + 27, signRightX + 50, finalY + 27);
 
       // Save PDF
       const cleanStart = startDate || 'awal';
@@ -926,14 +923,13 @@ export default function ModalRekapPembayaran({
         background: '#ffffff',
         borderRadius: '20px',
         width: '100%',
-        maxWidth: activeTab === 'preview' ? '1120px' : '740px',
+        maxWidth: '700px',
         maxHeight: '94vh',
         display: 'flex',
         flexDirection: 'column',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
         border: '1px solid #e2e8f0',
-        overflow: 'hidden',
-        transition: 'max-width 0.2s ease'
+        overflow: 'hidden'
       }}>
         {/* MODAL HEADER */}
         <div style={{
@@ -983,561 +979,299 @@ export default function ModalRekapPembayaran({
           </button>
         </div>
 
-        {/* TAB TOGGLE: FILTER / PREVIEW */}
-        <div style={{
-          padding: '10px 22px',
-          borderBottom: '1px solid #e2e8f0',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          background: '#ffffff',
-          gap: '10px',
-          flexWrap: 'wrap'
-        }}>
-          <div style={{
-            background: '#f1f5f9',
-            padding: '3px',
-            borderRadius: '10px',
-            display: 'inline-flex',
-            gap: '4px'
-          }}>
-            <button
-              onClick={() => setActiveTab('filter')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '7px',
-                border: 'none',
-                fontSize: '12px',
-                fontWeight: activeTab === 'filter' ? 700 : 600,
-                color: activeTab === 'filter' ? '#0f172a' : '#64748b',
-                background: activeTab === 'filter' ? '#ffffff' : 'transparent',
-                cursor: 'pointer',
-                boxShadow: activeTab === 'filter' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-              }}
-            >
-              <i className="fas fa-sliders-h" style={{ marginRight: '6px' }}></i> 1. Pengaturan Filter
-            </button>
-            <button
-              onClick={() => setActiveTab('preview')}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '7px',
-                border: 'none',
-                fontSize: '12px',
-                fontWeight: activeTab === 'preview' ? 700 : 600,
-                color: activeTab === 'preview' ? '#0f172a' : '#64748b',
-                background: activeTab === 'preview' ? '#ffffff' : 'transparent',
-                cursor: 'pointer',
-                boxShadow: activeTab === 'preview' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
-              }}
-            >
-              <i className="fas fa-eye" style={{ marginRight: '6px' }}></i> 2. Pratinjau Dokumen ({processedPayments.length})
-            </button>
-          </div>
-
-          {/* Quick Metrics Tag */}
-          <div style={{ fontSize: '12px', color: '#047857', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ background: '#ecfdf5', padding: '4px 10px', borderRadius: '15px', border: '1px solid #a7f3d0' }}>
-              💰 Kas Masuk: <b>Rp {formatRupiah(summary.totalNominal)}</b> ({summary.countTransaksi} Transaksi)
-            </span>
-          </div>
-        </div>
-
         {/* MODAL BODY */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px' }}>
-          {activeTab === 'filter' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* RENTANG TANGGAL */}
-              <div style={{
-                background: '#f8fafc',
-                border: '1.5px solid #e2e8f0',
-                borderRadius: '14px',
-                padding: '16px'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 800, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <i className="fas fa-calendar-alt" style={{ color: '#059669' }}></i> Rentang Tanggal Pembayaran
-                  </label>
-                  <span style={{ fontSize: '11px', color: '#64748b' }}>
-                    Filter transaksi uang masuk
-                  </span>
-                </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* RENTANG TANGGAL */}
+          <div style={{
+            background: '#f8fafc',
+            border: '1.5px solid #e2e8f0',
+            borderRadius: '14px',
+            padding: '16px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 800, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <i className="fas fa-calendar-alt" style={{ color: '#059669' }}></i> Rentang Tanggal Pembayaran
+              </label>
+              <span style={{ fontSize: '11px', color: '#64748b' }}>
+                Filter transaksi uang masuk
+              </span>
+            </div>
 
-                {/* Preset Chips */}
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
-                  <button
-                    type="button"
-                    onClick={() => handlePreset('today')}
-                    style={{
-                      background: startDate === todayStr && endDate === todayStr ? '#059669' : '#ffffff',
-                      color: startDate === todayStr && endDate === todayStr ? '#ffffff' : '#334155',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '20px',
-                      padding: '4px 12px',
-                      fontSize: '11.5px',
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Hari Ini
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handlePreset('7days')}
-                    style={{
-                      background: startDate === sevenDaysAgoStr && endDate === todayStr ? '#059669' : '#ffffff',
-                      color: startDate === sevenDaysAgoStr && endDate === todayStr ? '#ffffff' : '#334155',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '20px',
-                      padding: '4px 12px',
-                      fontSize: '11.5px',
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    7 Hari Terakhir
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handlePreset('this_month')}
-                    style={{
-                      background: startDate === startOfMonthStr && endDate === todayStr ? '#059669' : '#ffffff',
-                      color: startDate === startOfMonthStr && endDate === todayStr ? '#ffffff' : '#334155',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '20px',
-                      padding: '4px 12px',
-                      fontSize: '11.5px',
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Bulan Ini (Nov 2026)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handlePreset('30days')}
-                    style={{
-                      background: startDate === thirtyDaysAgoStr && endDate === todayStr ? '#059669' : '#ffffff',
-                      color: startDate === thirtyDaysAgoStr && endDate === todayStr ? '#ffffff' : '#334155',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '20px',
-                      padding: '4px 12px',
-                      fontSize: '11.5px',
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    30 Hari Terakhir
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handlePreset('all')}
-                    style={{
-                      background: !startDate && !endDate ? '#059669' : '#ffffff',
-                      color: !startDate && !endDate ? '#ffffff' : '#334155',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '20px',
-                      padding: '4px 12px',
-                      fontSize: '11.5px',
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Semua Periode
-                  </button>
-                </div>
+            {/* Preset Chips */}
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '14px' }}>
+              <button
+                type="button"
+                onClick={() => handlePreset('today')}
+                style={{
+                  background: startDate === todayStr && endDate === todayStr ? '#059669' : '#ffffff',
+                  color: startDate === todayStr && endDate === todayStr ? '#ffffff' : '#334155',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '20px',
+                  padding: '4px 12px',
+                  fontSize: '11.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Hari Ini
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePreset('7days')}
+                style={{
+                  background: startDate === sevenDaysAgoStr && endDate === todayStr ? '#059669' : '#ffffff',
+                  color: startDate === sevenDaysAgoStr && endDate === todayStr ? '#ffffff' : '#334155',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '20px',
+                  padding: '4px 12px',
+                  fontSize: '11.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                7 Hari Terakhir
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePreset('this_month')}
+                style={{
+                  background: startDate === startOfMonthStr && endDate === todayStr ? '#059669' : '#ffffff',
+                  color: startDate === startOfMonthStr && endDate === todayStr ? '#ffffff' : '#334155',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '20px',
+                  padding: '4px 12px',
+                  fontSize: '11.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Bulan Ini (Nov 2026)
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePreset('30days')}
+                style={{
+                  background: startDate === thirtyDaysAgoStr && endDate === todayStr ? '#059669' : '#ffffff',
+                  color: startDate === thirtyDaysAgoStr && endDate === todayStr ? '#ffffff' : '#334155',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '20px',
+                  padding: '4px 12px',
+                  fontSize: '11.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                30 Hari Terakhir
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePreset('all')}
+                style={{
+                  background: !startDate && !endDate ? '#059669' : '#ffffff',
+                  color: !startDate && !endDate ? '#ffffff' : '#334155',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '20px',
+                  padding: '4px 12px',
+                  fontSize: '11.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Semua Periode
+              </button>
+            </div>
 
-                {/* Input Dari & Sampai */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
-                      Dari Tanggal:
-                    </label>
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={e => setStartDate(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        borderRadius: '8px',
-                        border: '1.5px solid #cbd5e1',
-                        fontSize: '13px',
-                        outline: 'none',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
-                      Sampai Tanggal:
-                    </label>
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={e => setEndDate(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        borderRadius: '8px',
-                        border: '1.5px solid #cbd5e1',
-                        fontSize: '13px',
-                        outline: 'none',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* FILTER TAMBAHAN (OPSIONAL) & ORIENTASI KERTAS */}
-              <div style={{
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
-                borderRadius: '14px',
-                padding: '16px'
-              }}>
-                <div style={{ fontSize: '12.5px', fontWeight: 800, color: '#1e293b', marginBottom: '12px' }}>
-                  Filter Tambahan &amp; Format Cetak
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
-                      Jalur Pendaftaran
-                    </label>
-                    <select
-                      value={selectedJalur}
-                      onChange={e => setSelectedJalur(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '8px 10px',
-                        borderRadius: '8px',
-                        border: '1.5px solid #cbd5e1',
-                        fontSize: '12.5px',
-                        outline: 'none',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <option value="semua">Semua Jalur</option>
-                      <option value="inden">Inden</option>
-                      <option value="reguler">Reguler</option>
-                      <option value="terpadu">Terpadu</option>
-                      <option value="afirmasi">Afirmasi</option>
-                      <option value="prestasi">Prestasi</option>
-                      <option value="mandiri">Mandiri</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
-                      Status Pembayaran
-                    </label>
-                    <select
-                      value={selectedStatus}
-                      onChange={e => setSelectedStatus(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '8px 10px',
-                        borderRadius: '8px',
-                        border: '1.5px solid #cbd5e1',
-                        fontSize: '12.5px',
-                        outline: 'none',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <option value="semua">Semua (Lunas &amp; Cicilan)</option>
-                      <option value="lunas">Hanya Lunas</option>
-                      <option value="cicilan">Hanya Cicilan / Titipan</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
-                      Metode Pembayaran
-                    </label>
-                    <select
-                      value={selectedMetode}
-                      onChange={e => setSelectedMetode(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '8px 10px',
-                        borderRadius: '8px',
-                        border: '1.5px solid #cbd5e1',
-                        fontSize: '12.5px',
-                        outline: 'none',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <option value="semua">Semua Metode</option>
-                      <option value="transfer">Transfer Bank (BCA / Lainnya)</option>
-                      <option value="tunai">Tunai / Cash (Bendahara)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
-                      Orientasi Halaman Cetak
-                    </label>
-                    <select
-                      value={orientation}
-                      onChange={e => setOrientation(e.target.value as any)}
-                      style={{
-                        width: '100%',
-                        padding: '8px 10px',
-                        borderRadius: '8px',
-                        border: '1.5px solid #cbd5e1',
-                        fontSize: '12.5px',
-                        outline: 'none',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <option value="landscape">📄 Landscape (Melebar - Rekomendasi)</option>
-                      <option value="portrait">📃 Portrait (Tegak)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* STATISTIK HASIL FILTER */}
-              <div style={{
-                background: '#ecfdf5',
-                border: '1.5px solid #a7f3d0',
-                borderRadius: '14px',
-                padding: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '12px'
-              }}>
-                <div>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#065f46', textTransform: 'uppercase' }}>
-                    Hasil Pencocokan Data
-                  </div>
-                  <div style={{ fontSize: '18px', fontWeight: 900, color: '#047857', marginTop: '2px' }}>
-                    Rp {formatRupiah(summary.totalNominal)}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#065f46', marginTop: '2px' }}>
-                    Ditemukan <b>{summary.countTransaksi} calon santri</b> ({summary.countLunas} Lunas, {summary.countCicilan} Cicilan)
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('preview')}
+            {/* Input Dari & Sampai */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                  Dari Tanggal:
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={e => setStartDate(e.target.value)}
                   style={{
-                    background: '#059669',
-                    color: '#ffffff',
-                    border: 'none',
-                    padding: '10px 18px',
+                    width: '100%',
+                    padding: '8px 12px',
                     borderRadius: '8px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '13px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                  Sampai Tanggal:
+                </label>
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={e => setEndDate(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '13px',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* FILTER TAMBAHAN (OPSIONAL) & ORIENTASI KERTAS */}
+          <div style={{
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: '14px',
+            padding: '16px'
+          }}>
+            <div style={{ fontSize: '12.5px', fontWeight: 800, color: '#1e293b', marginBottom: '12px' }}>
+              Filter Tambahan &amp; Format Cetak
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                  Jalur Pendaftaran
+                </label>
+                <select
+                  value={selectedJalur}
+                  onChange={e => setSelectedJalur(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    border: '1.5px solid #cbd5e1',
                     fontSize: '12.5px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    boxShadow: '0 2px 6px rgba(5, 150, 105, 0.25)'
+                    outline: 'none',
+                    cursor: 'pointer'
                   }}
                 >
-                  <i className="fas fa-eye"></i> Lihat Pratinjau Dokumen
-                </button>
+                  <option value="semua">Semua Jalur</option>
+                  <option value="inden">Inden</option>
+                  <option value="reguler">Reguler</option>
+                  <option value="terpadu">Terpadu</option>
+                  <option value="afirmasi">Afirmasi</option>
+                  <option value="prestasi">Prestasi</option>
+                  <option value="mandiri">Mandiri</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                  Status Pembayaran
+                </label>
+                <select
+                  value={selectedStatus}
+                  onChange={e => setSelectedStatus(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '12.5px',
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="semua">Semua (Lunas &amp; Cicilan)</option>
+                  <option value="lunas">Hanya Lunas</option>
+                  <option value="cicilan">Hanya Cicilan / Titipan</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                  Metode Pembayaran
+                </label>
+                <select
+                  value={selectedMetode}
+                  onChange={e => setSelectedMetode(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '12.5px',
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="semua">Semua Metode</option>
+                  <option value="transfer">Transfer Bank (BCA / Lainnya)</option>
+                  <option value="tunai">Tunai / Cash (Bendahara)</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                  Orientasi Halaman Cetak
+                </label>
+                <select
+                  value={orientation}
+                  onChange={e => setOrientation(e.target.value as any)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: '12.5px',
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="landscape">📄 Landscape (Melebar - Rekomendasi)</option>
+                  <option value="portrait">📃 Portrait (Tegak)</option>
+                </select>
               </div>
             </div>
-          ) : (
-            /* PREVIEW DOKUMEN MODERN */
-            <div>
-              <div style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: '12px',
-                padding: '20px',
-                overflowX: 'auto',
-                boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.03)'
-              }}>
-                {/* Visual Preview Container */}
-                <div style={{
-                  background: '#ffffff',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '10px',
-                  padding: '30px 32px',
-                  minWidth: orientation === 'landscape' ? '820px' : '650px',
-                  boxShadow: '0 4px 15px rgba(0,0,0,0.06)'
-                }}>
-                  {/* Header */}
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    borderBottom: '2.5px solid #059669',
-                    paddingBottom: '16px',
-                    marginBottom: '20px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                      <div style={{
-                        width: '48px',
-                        height: '48px',
-                        borderRadius: '10px',
-                        background: '#059669',
-                        color: '#fff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 900,
-                        fontSize: '17px'
-                      }}>
-                        MTS
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '15px', fontWeight: 900, color: '#065f46', textTransform: 'uppercase' }}>
-                          MTs Almaarif 01 Singosari Malang
-                        </div>
-                        <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#1e293b' }}>
-                          Laporan Rekapitulasi Pembayaran &amp; Daftar Ulang (DPP) SPMB
-                        </div>
-                        <div style={{ fontSize: '9.5px', color: '#64748b' }}>
-                          Jl. Masjid No. 33 Pagentan Singosari Malang 65153 • Telp: (0341) 458784
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{
-                        background: '#ecfdf5',
-                        border: '1px solid #a7f3d0',
-                        color: '#047857',
-                        padding: '4px 12px',
-                        borderRadius: '20px',
-                        fontWeight: 700,
-                        fontSize: '10px',
-                        display: 'inline-block'
-                      }}>
-                        📅 Periode: {startDate ? formatTanggalIndo(startDate) : 'Awal'} s/d {endDate ? formatTanggalIndo(endDate) : 'Akhir'}
-                      </span>
-                      <div style={{ fontSize: '9px', color: '#64748b', marginTop: '3px' }}>
-                        Dicetak: {new Date().toLocaleDateString('id-ID')}
-                      </div>
-                    </div>
-                  </div>
+          </div>
 
-                  {/* 4 Mini Cards */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
-                    <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', padding: '10px 12px' }}>
-                      <div style={{ fontSize: '9px', fontWeight: 700, color: '#059669' }}>TOTAL UANG MASUK</div>
-                      <div style={{ fontSize: '14.5px', fontWeight: 900, color: '#065f46' }}>Rp {formatRupiah(summary.totalNominal)}</div>
-                    </div>
-                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 12px' }}>
-                      <div style={{ fontSize: '9px', fontWeight: 700, color: '#64748b' }}>TRANSAKSI SANTRI</div>
-                      <div style={{ fontSize: '14.5px', fontWeight: 900, color: '#0f172a' }}>{summary.countTransaksi} Siswa</div>
-                    </div>
-                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 12px' }}>
-                      <div style={{ fontSize: '9px', fontWeight: 700, color: '#64748b' }}>STATUS PELUNASAN</div>
-                      <div style={{ fontSize: '12px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>{summary.countLunas} Lunas • {summary.countCicilan} Cicilan</div>
-                    </div>
-                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 12px' }}>
-                      <div style={{ fontSize: '9px', fontWeight: 700, color: '#64748b' }}>METODE BAYAR</div>
-                      <div style={{ fontSize: '12px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>{summary.countTransfer} Transfer • {summary.countTunai} Tunai</div>
-                    </div>
-                  </div>
-
-                  {/* Table */}
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', marginBottom: '24px' }}>
-                    <thead>
-                      <tr style={{ background: '#059669', color: '#fff' }}>
-                        <th style={{ padding: '8px 10px', textAlign: 'center', width: '30px' }}>NO</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'center', width: '85px' }}>TGL BAYAR</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'center', width: '105px' }}>NO. REG</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'left' }}>NAMA CALON SANTRI</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'center', width: '75px' }}>JALUR</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'left', width: '135px' }}>ASAL SEKOLAH</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'center', width: '70px' }}>METODE</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'center', width: '70px' }}>STATUS</th>
-                        <th style={{ padding: '8px 10px', textAlign: 'right', width: '115px' }}>NOMINAL (RP)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {processedPayments.length === 0 ? (
-                        <tr>
-                          <td colSpan={9} style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>
-                            Tidak ada data transaksi pembayaran pada rentang tanggal ini.
-                          </td>
-                        </tr>
-                      ) : processedPayments.map((p, idx) => (
-                        <tr key={p.id} style={{ borderBottom: '1px solid #e2e8f0', background: idx % 2 === 1 ? '#f8fafc' : '#fff' }}>
-                          <td style={{ padding: '7px 10px', textAlign: 'center', color: '#64748b' }}>{idx + 1}</td>
-                          <td style={{ padding: '7px 10px', textAlign: 'center' }}>{formatTanggalIndo(p.tanggalBayar)}</td>
-                          <td style={{ padding: '7px 10px', textAlign: 'center', fontFamily: 'monospace' }}>{p.nomorPendaftaran}</td>
-                          <td style={{ padding: '7px 10px', fontWeight: 700 }}>{p.namaLengkap}</td>
-                          <td style={{ padding: '7px 10px', textAlign: 'center' }}>{p.jalurPendaftaran}</td>
-                          <td style={{ padding: '7px 10px' }}>{p.asalSekolah}</td>
-                          <td style={{ padding: '7px 10px', textAlign: 'center' }}>
-                            <span style={{
-                              padding: '2px 7px',
-                              borderRadius: '8px',
-                              fontSize: '8.5px',
-                              fontWeight: 700,
-                              background: p.metodeBayar.toLowerCase().includes('tunai') ? '#f5f3ff' : '#eff6ff',
-                              color: p.metodeBayar.toLowerCase().includes('tunai') ? '#6d28d9' : '#1d4ed8'
-                            }}>
-                              {p.metodeBayar}
-                            </span>
-                          </td>
-                          <td style={{ padding: '7px 10px', textAlign: 'center' }}>
-                            <span style={{
-                              padding: '2px 7px',
-                              borderRadius: '8px',
-                              fontSize: '8.5px',
-                              fontWeight: 700,
-                              background: p.statusBayar === 'lunas' ? '#d1fae5' : '#fef3c7',
-                              color: p.statusBayar === 'lunas' ? '#047857' : '#b45309'
-                            }}>
-                              {p.statusBayar === 'lunas' ? 'LUNAS' : 'CICILAN'}
-                            </span>
-                          </td>
-                          <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 800, color: '#047857' }}>
-                            Rp {formatRupiah(p.nominalMasuk)}
-                          </td>
-                        </tr>
-                      ))}
-                      <tr style={{ background: '#f1f5f9', fontWeight: 800, borderTop: '2.5px solid #059669' }}>
-                        <td colSpan={8} style={{ padding: '9px 12px', textAlign: 'right' }}>
-                          TOTAL PEMBAYARAN MASUK :
-                        </td>
-                        <td style={{ padding: '9px 12px', textAlign: 'right', color: '#065f46', fontSize: '11.5px' }}>
-                          Rp {formatRupiah(summary.totalNominal)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-
-                  {/* Pengesahan Tanda Tangan (Dwi Retno Palupi, M.Pd. - TANPA NIP) */}
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    marginTop: '36px',
-                    padding: '0 20px'
-                  }}>
-                    <div style={{ textAlign: 'center', width: '240px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 600, color: '#475569', marginBottom: '55px', lineHeight: 1.5 }}>
-                        Mengetahui,<br/>Kepala MTs Almaarif 01
-                      </div>
-                      <div style={{ fontSize: '12px', fontWeight: 800, color: '#0f172a', borderBottom: '1.5px solid #0f172a', display: 'inline-block', paddingBottom: '2px' }}>
-                        Dwi Retno Palupi, M.Pd.
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'center', width: '240px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 600, color: '#475569', marginBottom: '55px', lineHeight: 1.5 }}>
-                        Singosari, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br/>Bendahara SPMB
-                      </div>
-                      <div style={{ fontSize: '12px', fontWeight: 800, color: '#0f172a', borderBottom: '1.5px solid #0f172a', display: 'inline-block', paddingBottom: '2px' }}>
-                        Ibu S. Nur Ainy
-                      </div>
-                    </div>
-                  </div>
+          {/* STATISTIK HASIL FILTER (RINGKAS & JELAS) */}
+          <div style={{
+            background: '#ecfdf5',
+            border: '1.5px solid #a7f3d0',
+            borderRadius: '14px',
+            padding: '16px 20px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#065f46', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                  HASIL PENCOCOKAN DATA PEMBAYARAN
+                </div>
+                <div style={{ fontSize: '20px', fontWeight: 900, color: '#047857', marginTop: '3px' }}>
+                  Rp {formatRupiah(summary.totalNominal)}
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '13px', fontWeight: 800, color: '#065f46' }}>
+                  {summary.countTransaksi} Calon Santri Masuk
+                </div>
+                <div style={{ fontSize: '11.5px', color: '#047857', marginTop: '2px' }}>
+                  {summary.countLunas} Lunas • {summary.countCicilan} Cicilan
                 </div>
               </div>
             </div>
-          )}
+
+            <div style={{
+              marginTop: '10px',
+              paddingTop: '10px',
+              borderTop: '1px dashed #a7f3d0',
+              fontSize: '11.5px',
+              color: '#065f46',
+              display: 'flex',
+              justifyContent: 'space-between'
+            }}>
+              <span>Metode: {summary.countTransfer} Transfer, {summary.countTunai} Tunai</span>
+              <span>Orientasi: A4 {orientation === 'landscape' ? 'Landscape' : 'Portrait'}</span>
+            </div>
+          </div>
         </div>
 
         {/* MODAL FOOTER ACTIONS */}
@@ -1558,7 +1292,7 @@ export default function ModalRekapPembayaran({
               background: '#ffffff',
               border: '1.5px solid #cbd5e1',
               color: '#475569',
-              padding: '8px 16px',
+              padding: '8px 18px',
               borderRadius: '8px',
               fontSize: '12.5px',
               fontWeight: 600,
@@ -1578,7 +1312,7 @@ export default function ModalRekapPembayaran({
                 background: '#ffffff',
                 border: '1.5px solid #059669',
                 color: '#059669',
-                padding: '8px 16px',
+                padding: '8px 18px',
                 borderRadius: '8px',
                 fontSize: '12.5px',
                 fontWeight: 700,
@@ -1600,7 +1334,7 @@ export default function ModalRekapPembayaran({
                 background: '#059669',
                 border: 'none',
                 color: '#ffffff',
-                padding: '8px 18px',
+                padding: '8px 20px',
                 borderRadius: '8px',
                 fontSize: '12.5px',
                 fontWeight: 700,
