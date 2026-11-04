@@ -253,26 +253,44 @@ export default function PembayaranSpmbPage() {
   // Sebaran DPP Calculations per Student
   const getStudentSebaranValues = (item: any) => {
     const fin = getStudentFinance(item);
-    const uangDpp = fin.tagihan;
+    // Kolom Uang DPP disesuaikan dengan uang yang sudah masuk/dibayar
+    const uangDpp = fin.dibayar;
     const existingAlloc = item.sebaranDpp || {};
 
     let totalPloting = 0;
     const values: { [key: string]: number } = {};
 
-    komponenList.forEach(k => {
+    // Total nominal standar dari semua komponen yang aktif
+    const defaultSum = komponenList.reduce((acc, curr) => acc + (Number(curr.nominal) || 0), 0);
+
+    komponenList.forEach((k, idx) => {
       let val = 0;
       if (existingAlloc[k.id] !== undefined) {
         val = Number(existingAlloc[k.id]) || 0;
       } else {
-        // Jika tidak ada custom allocation, pakai default nominal komponen
-        val = Number(k.nominal) || 0;
+        // Jika belum ada custom allocation dari admin:
+        if (uangDpp === 0) {
+          // Belum bayar: dana yang bisa diploting adalah 0
+          val = 0;
+        } else if (uangDpp >= defaultSum) {
+          // Lunas / mencapai standar: gunakan nominal default komponen
+          val = Number(k.nominal) || 0;
+        } else {
+          // Cicilan / sebagian: alokasikan proporsional sesuai rasio uang masuk
+          const ratio = defaultSum > 0 ? (uangDpp / defaultSum) : 0;
+          if (idx === komponenList.length - 1) {
+            val = Math.max(0, uangDpp - totalPloting);
+          } else {
+            val = Math.round((k.nominal * ratio) / 1000) * 1000;
+          }
+        }
       }
       values[k.id] = val;
       totalPloting += val;
     });
 
     const selisih = uangDpp - totalPloting;
-    return { uangDpp, values, totalPloting, selisih };
+    return { uangDpp, values, totalPloting, selisih, fin };
   };
 
   // Sebaran DPP Total Summary Row
@@ -318,7 +336,7 @@ export default function PembayaranSpmbPage() {
       'Nama Calon Siswa',
       'Jalur',
       'Asal SD/MI',
-      'Uang DPP (Rp)',
+      'Uang DPP Masuk (Rp)',
       ...komponenList.map(k => `${k.nama} (Rp)`),
       'Total Ploting (Rp)',
       'Selisih (Rp)',
@@ -1364,7 +1382,12 @@ export default function PembayaranSpmbPage() {
                   <th style={{ padding: '12px 14px', fontSize: '0.82rem', fontWeight: 800, color: '#334155' }}>NAMA CALON SISWA</th>
                   <th style={{ padding: '12px 14px', fontSize: '0.82rem', fontWeight: 800, color: '#334155' }}>JALUR</th>
                   <th style={{ padding: '12px 14px', fontSize: '0.82rem', fontWeight: 800, color: '#334155' }}>ASAL SD / MI</th>
-                  <th style={{ padding: '12px 14px', fontSize: '0.82rem', fontWeight: 800, color: '#047857', textAlign: 'right' }}>UANG DPP</th>
+                  <th style={{ padding: '12px 14px', fontSize: '0.82rem', fontWeight: 800, color: '#047857', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    UANG DPP (MASUK)
+                    <div style={{ fontSize: '10px', color: '#059669', fontWeight: 600 }}>
+                      (Tervalidasi)
+                    </div>
+                  </th>
 
                   {/* Dynamic Columns Ploting */}
                   {komponenList.map(k => (
@@ -1425,6 +1448,16 @@ export default function PembayaranSpmbPage() {
                         </td>
                         <td style={{ padding: '10px 14px', textAlign: 'right', fontWeight: 800, color: '#047857', fontSize: '0.88rem' }}>
                           Rp {formatRupiah(s.uangDpp)}
+                          {s.fin.sisa > 0 && s.fin.dibayar > 0 && (
+                            <div style={{ fontSize: '10px', color: '#b45309', fontWeight: 600 }}>
+                              Kurang: Rp {formatRupiah(s.fin.sisa)}
+                            </div>
+                          )}
+                          {s.fin.status === 'belum_bayar' && (
+                            <div style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 500 }}>
+                              Belum Bayar
+                            </div>
+                          )}
                         </td>
 
                         {/* Ploting values per component */}

@@ -44,7 +44,10 @@ export default function ModalEditPlotingSiswa({
     ? Number(student.biayaDaftarUlang) 
     : 4500000;
   const potongan = Number(student.potonganDaftarUlang || 0);
-  const uangDpp = Math.max(0, biaya - potongan);
+  const tagihan = Math.max(0, biaya - potongan);
+  const dibayar = Number(student.nominalDibayarDaftarUlang || 0);
+  // Kolom Uang DPP disesuaikan dengan uang yang sudah masuk/bayar
+  const uangDpp = dibayar;
 
   const totalAlokasi = Object.values(allocations).reduce((acc, curr) => acc + (Number(curr) || 0), 0);
   const selisih = uangDpp - totalAlokasi;
@@ -197,10 +200,15 @@ export default function ModalEditPlotingSiswa({
             textAlign: 'center'
           }}>
             <div>
-              <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Uang DPP Bersih</div>
-              <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#0f172a' }}>
+              <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Uang DPP Masuk</div>
+              <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#047857' }}>
                 Rp {formatRupiah(uangDpp)}
               </div>
+              {tagihan !== uangDpp && (
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
+                  Tagihan: Rp {formatRupiah(tagihan)}
+                </div>
+              )}
             </div>
             <div>
               <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>Total Terploting</div>
@@ -238,7 +246,7 @@ export default function ModalEditPlotingSiswa({
             >
               <i className="fas fa-undo"></i> Gunakan Nilai Standar
             </button>
-            {potongan > 0 && (
+            {uangDpp > 0 && (
               <button
                 type="button"
                 onClick={handleApplyProportional}
@@ -253,7 +261,7 @@ export default function ModalEditPlotingSiswa({
                   cursor: 'pointer'
                 }}
               >
-                <i className="fas fa-percentage"></i> Alokasi Proporsional (Sesuai Diskon)
+                <i className="fas fa-percentage"></i> Alokasi Proporsional (Sesuai Uang Masuk)
               </button>
             )}
           </div>
