@@ -41,6 +41,7 @@ export default function ModalRekapPembayaran({
   const [selectedJalur, setSelectedJalur] = useState<string>('semua');
   const [selectedMetode, setSelectedMetode] = useState<string>('semua');
   const [selectedStatus, setSelectedStatus] = useState<string>('semua'); // 'semua' | 'lunas' | 'cicilan'
+  const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
   const [groupMode, setGroupMode] = useState<'per_siswa' | 'per_transaksi'>('per_siswa');
 
   // Preview tab: 'filter' | 'preview'
@@ -282,6 +283,8 @@ export default function ModalRekapPembayaran({
       minute: '2-digit'
     });
 
+    const isLandscape = orientation === 'landscape';
+
     return `
       <!DOCTYPE html>
       <html lang="id">
@@ -290,8 +293,8 @@ export default function ModalRekapPembayaran({
         <title>Rekap Pembayaran Masuk SPMB</title>
         <style>
           @page {
-            size: A4 landscape;
-            margin: 12mm 15mm;
+            size: A4 ${isLandscape ? 'landscape' : 'portrait'};
+            margin: ${isLandscape ? '16mm 20mm 16mm 20mm' : '18mm 16mm 18mm 16mm'};
           }
           * {
             box-sizing: border-box;
@@ -303,24 +306,24 @@ export default function ModalRekapPembayaran({
             color: #0f172a;
             background: #ffffff;
             margin: 0;
-            padding: 0;
+            padding: 8px 12px;
             font-size: 11px;
-            line-height: 1.4;
+            line-height: 1.5;
           }
           
-          /* HEADER MODERN */
+          /* HEADER MODERN BERSIH & TIDAK MEPET */
           .doc-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
             border-bottom: 2.5px solid #059669;
-            padding-bottom: 12px;
-            margin-bottom: 14px;
+            padding-bottom: 14px;
+            margin-bottom: 20px;
           }
           .doc-header-left {
             display: flex;
             align-items: center;
-            gap: 14px;
+            gap: 15px;
           }
           .doc-logo-emblem {
             width: 52px;
@@ -335,9 +338,10 @@ export default function ModalRekapPembayaran({
             font-size: 19px;
             letter-spacing: -0.5px;
             box-shadow: 0 4px 10px rgba(5, 150, 105, 0.25);
+            flex-shrink: 0;
           }
           .doc-institution {
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 900;
             color: #065f46;
             letter-spacing: 0.3px;
@@ -348,12 +352,12 @@ export default function ModalRekapPembayaran({
             font-size: 13px;
             font-weight: 700;
             color: #1e293b;
-            margin: 2px 0 0 0;
+            margin: 3px 0 0 0;
           }
           .doc-address {
             font-size: 9.5px;
             color: #64748b;
-            margin-top: 2px;
+            margin-top: 3px;
           }
           .doc-header-right {
             text-align: right;
@@ -363,42 +367,43 @@ export default function ModalRekapPembayaran({
             background: #ecfdf5;
             border: 1px solid #a7f3d0;
             color: #047857;
-            padding: 4px 12px;
+            padding: 5px 14px;
             border-radius: 20px;
             font-weight: 700;
             font-size: 10px;
-            margin-bottom: 4px;
+            margin-bottom: 5px;
           }
           .doc-print-meta {
             font-size: 9px;
             color: #64748b;
+            line-height: 1.4;
           }
 
-          /* KPI SUMMARY CARDS */
+          /* KPI SUMMARY CARDS (LEBIH LEGA & RAPI) */
           .summary-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-            margin-bottom: 14px;
+            gap: 12px;
+            margin-bottom: 22px;
           }
           .summary-card {
             background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 9px 12px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 12px 14px;
           }
           .summary-label {
-            font-size: 9px;
+            font-size: 9.5px;
             font-weight: 700;
             color: #64748b;
             text-transform: uppercase;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.4px;
+            margin-bottom: 3px;
           }
           .summary-value {
-            font-size: 14px;
+            font-size: 15px;
             font-weight: 900;
             color: #0f172a;
-            margin-top: 2px;
           }
           .summary-card.highlight {
             background: #ecfdf5;
@@ -415,15 +420,16 @@ export default function ModalRekapPembayaran({
           table.data-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 10px;
+            font-size: 10.5px;
+            margin-bottom: 20px;
           }
           table.data-table th {
             background: #059669;
             color: #ffffff;
             font-weight: 700;
             text-align: left;
-            padding: 8px 10px;
-            font-size: 9.5px;
+            padding: 10px 12px;
+            font-size: 10px;
             letter-spacing: 0.3px;
             border: 1px solid #047857;
           }
@@ -431,7 +437,7 @@ export default function ModalRekapPembayaran({
           table.data-table th.text-right { text-align: right; }
           
           table.data-table td {
-            padding: 7px 10px;
+            padding: 10px 12px;
             border: 1px solid #e2e8f0;
             color: #1e293b;
             vertical-align: middle;
@@ -441,18 +447,19 @@ export default function ModalRekapPembayaran({
           }
           table.data-table tr.total-row td {
             background: #f1f5f9;
-            border-top: 2px solid #059669;
+            border-top: 2.5px solid #059669;
             font-weight: 800;
-            font-size: 11px;
+            font-size: 11.5px;
             color: #0f172a;
+            padding: 12px 14px;
           }
 
           /* BADGES */
           .pill-badge {
             display: inline-block;
-            padding: 2px 7px;
+            padding: 3px 8px;
             border-radius: 12px;
-            font-size: 8.5px;
+            font-size: 9px;
             font-weight: 700;
             text-transform: uppercase;
           }
@@ -477,42 +484,39 @@ export default function ModalRekapPembayaran({
             border: 1px solid #ddd6fe;
           }
 
-          /* TANDA TANGAN SECTION */
+          /* TANDA TANGAN SECTION (LEGA, TANPA NIP) */
           .sign-section {
-            margin-top: 24px;
+            margin-top: 45px;
             display: flex;
             justify-content: space-between;
             page-break-inside: avoid;
+            padding: 0 15px;
           }
           .sign-box {
             text-align: center;
-            width: 240px;
+            width: 260px;
           }
           .sign-role {
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 600;
-            color: #475569;
-            margin-bottom: 50px;
+            color: #334155;
+            margin-bottom: 70px;
+            line-height: 1.5;
           }
           .sign-name {
-            font-size: 11px;
+            font-size: 11.5px;
             font-weight: 800;
             color: #0f172a;
-            border-bottom: 1px solid #0f172a;
+            border-bottom: 1.5px solid #0f172a;
             display: inline-block;
             padding-bottom: 2px;
           }
-          .sign-nip {
-            font-size: 9px;
-            color: #64748b;
-            margin-top: 3px;
-          }
 
           .doc-footer-note {
-            margin-top: 18px;
-            padding-top: 8px;
+            margin-top: 30px;
+            padding-top: 10px;
             border-top: 1px dashed #cbd5e1;
-            font-size: 8.5px;
+            font-size: 9px;
             color: #94a3b8;
             display: flex;
             justify-content: space-between;
@@ -561,21 +565,21 @@ export default function ModalRekapPembayaran({
         <table class="data-table">
           <thead>
             <tr>
-              <th class="text-center" style="width: 32px;">NO</th>
-              <th class="text-center" style="width: 85px;">TGL BAYAR</th>
+              <th class="text-center" style="width: 35px;">NO</th>
+              <th class="text-center" style="width: 90px;">TGL BAYAR</th>
               <th style="width: 110px;">NO. DAFTAR</th>
               <th>NAMA CALON SANTRI</th>
               <th style="width: 80px;">JALUR</th>
               <th style="width: 150px;">ASAL SD / MI</th>
-              <th class="text-center" style="width: 75px;">METODE</th>
+              <th class="text-center" style="width: 80px;">METODE</th>
               <th class="text-center" style="width: 80px;">STATUS</th>
-              <th class="text-right" style="width: 115px;">NOMINAL MASUK</th>
+              <th class="text-right" style="width: 120px;">NOMINAL MASUK</th>
             </tr>
           </thead>
           <tbody>
             ${processedPayments.length === 0 ? `
               <tr>
-                <td colspan="9" style="text-align: center; padding: 24px; color: #64748b;">
+                <td colspan="9" style="text-align: center; padding: 28px; color: #64748b;">
                   Tidak ada transaksi pembayaran pada rentang tanggal yang dipilih.
                 </td>
               </tr>
@@ -606,31 +610,29 @@ export default function ModalRekapPembayaran({
               <td colspan="8" class="text-right" style="padding-right: 14px; text-transform: uppercase;">
                 TOTAL KESELURUHAN PEMBAYARAN MASUK :
               </td>
-              <td class="text-right" style="color: #065f46; font-size: 12px;">
+              <td class="text-right" style="color: #065f46; font-size: 13px;">
                 Rp ${formatRupiah(summary.totalNominal)}
               </td>
             </tr>
           </tbody>
         </table>
 
-        <!-- PENGESAHAN / TANDA TANGAN -->
+        <!-- PENGESAHAN / TANDA TANGAN (KEPALA MADRASAH: DWI RETNO PALUPI, M.PD. - TANPA NIP) -->
         <div class="sign-section">
           <div class="sign-box">
             <div class="sign-role">Mengetahui,<br/>Kepala MTs Almaarif 01</div>
-            <div class="sign-name">H. M. Ilham Fahrudi, M.Pd.</div>
-            <div class="sign-nip">NIP. 19780512 200501 1 004</div>
+            <div class="sign-name">Dwi Retno Palupi, M.Pd.</div>
           </div>
           <div class="sign-box">
             <div class="sign-role">Singosari, ${tglCetak}<br/>Bendahara SPMB</div>
             <div class="sign-name">Ibu S. Nur Ainy</div>
-            <div class="sign-nip">NIP. -</div>
           </div>
         </div>
 
         <!-- FOOTER VERIFIKASI -->
         <div class="doc-footer-note">
           <span>* Dokumen resmi rekapitulasi pembayaran digenerate otomatis oleh Sistem Terpadu Madrasah SPMB.</span>
-          <span>Halaman 1 dari 1</span>
+          <span>Dicetak dengan format A4 ${isLandscape ? 'Landscape' : 'Portrait'}</span>
         </div>
       </body>
       </html>
@@ -660,9 +662,10 @@ export default function ModalRekapPembayaran({
   const handleDownloadDirectPdf = () => {
     try {
       setIsGeneratingPdf(true);
-      const doc = new jsPDF('l', 'mm', 'a4'); // Landscape A4: 297mm x 210mm
-      const pageWidth = 297;
-      const margin = 14;
+      const isLandscape = orientation === 'landscape';
+      const doc = new jsPDF(isLandscape ? 'l' : 'p', 'mm', 'a4');
+      const pageWidth = isLandscape ? 297 : 210;
+      const margin = isLandscape ? 16 : 14;
 
       const periodeLabel = startDate && endDate
         ? `${formatTanggalIndo(startDate)} s/d ${formatTanggalIndo(endDate)}`
@@ -680,30 +683,30 @@ export default function ModalRekapPembayaran({
 
       // 1. Header Banner
       doc.setFillColor(5, 150, 105); // #059669
-      doc.rect(margin, 12, 10, 10, 'F');
+      doc.roundedRect(margin, 12, 11, 11, 2, 2, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8);
-      doc.text('MTS', margin + 5, 18.5, { align: 'center' });
+      doc.setFontSize(8.5);
+      doc.text('MTS', margin + 5.5, 19, { align: 'center' });
 
       doc.setTextColor(6, 95, 70); // #065f46
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
-      doc.text('MTs ALMAARIF 01 SINGOSARI MALANG', margin + 14, 17);
+      doc.setFontSize(13.5);
+      doc.text('MTs ALMAARIF 01 SINGOSARI MALANG', margin + 15, 17);
 
       doc.setTextColor(30, 41, 59);
       doc.setFontSize(10);
-      doc.text('Laporan Rekapitulasi Pembayaran & Daftar Ulang (DPP) SPMB', margin + 14, 22);
+      doc.text('Laporan Rekapitulasi Pembayaran & Daftar Ulang (DPP) SPMB', margin + 15, 22);
 
       doc.setTextColor(100, 116, 139);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
-      doc.text('Jl. Masjid No. 33 Pagentan Singosari Malang 65153 • Telp: (0341) 458784 • Website: mtsalmaarif01.sch.id', margin, 27);
+      doc.text('Jl. Masjid No. 33 Pagentan Singosari Malang 65153 • Telp: (0341) 458784 • Website: mtsalmaarif01.sch.id', margin, 28);
 
       // Meta Kanan
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(5, 150, 105);
-      doc.setFontSize(9);
+      doc.setFontSize(8.5);
       doc.text(`Periode: ${periodeLabel}`, pageWidth - margin, 17, { align: 'right' });
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(100, 116, 139);
@@ -712,13 +715,13 @@ export default function ModalRekapPembayaran({
 
       // Divider line
       doc.setDrawColor(5, 150, 105);
-      doc.setLineWidth(0.6);
-      doc.line(margin, 29, pageWidth - margin, 29);
+      doc.setLineWidth(0.7);
+      doc.line(margin, 31, pageWidth - margin, 31);
 
       // 2. Summary Mini Cards
-      const cardY = 32;
+      const cardY = 34;
       const cardW = (pageWidth - (margin * 2) - 9) / 4;
-      const cardH = 13;
+      const cardH = 14;
 
       // Card 1
       doc.setFillColor(236, 253, 245); // light green
@@ -727,10 +730,10 @@ export default function ModalRekapPembayaran({
       doc.setTextColor(5, 150, 105);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7.5);
-      doc.text('TOTAL UANG MASUK', margin + 4, cardY + 4.5);
+      doc.text('TOTAL UANG MASUK', margin + 4, cardY + 5);
       doc.setTextColor(6, 95, 70);
-      doc.setFontSize(10.5);
-      doc.text(`Rp ${formatRupiah(summary.totalNominal)}`, margin + 4, cardY + 10);
+      doc.setFontSize(11);
+      doc.text(`Rp ${formatRupiah(summary.totalNominal)}`, margin + 4, cardY + 11);
 
       // Card 2
       const c2x = margin + cardW + 3;
@@ -739,30 +742,30 @@ export default function ModalRekapPembayaran({
       doc.roundedRect(c2x, cardY, cardW, cardH, 2, 2, 'FD');
       doc.setTextColor(100, 116, 139);
       doc.setFontSize(7.5);
-      doc.text('TOTAL TRANSAKSI', c2x + 4, cardY + 4.5);
+      doc.text('TOTAL TRANSAKSI', c2x + 4, cardY + 5);
       doc.setTextColor(15, 23, 42);
       doc.setFontSize(10.5);
-      doc.text(`${summary.countTransaksi} Calon Santri`, c2x + 4, cardY + 10);
+      doc.text(`${summary.countTransaksi} Calon Santri`, c2x + 4, cardY + 11);
 
       // Card 3
       const c3x = c2x + cardW + 3;
       doc.roundedRect(c3x, cardY, cardW, cardH, 2, 2, 'FD');
       doc.setTextColor(100, 116, 139);
       doc.setFontSize(7.5);
-      doc.text('STATUS PELUNASAN', c3x + 4, cardY + 4.5);
+      doc.text('STATUS PELUNASAN', c3x + 4, cardY + 5);
       doc.setTextColor(15, 23, 42);
       doc.setFontSize(9);
-      doc.text(`${summary.countLunas} Lunas • ${summary.countCicilan} Cicilan`, c3x + 4, cardY + 10);
+      doc.text(`${summary.countLunas} Lunas • ${summary.countCicilan} Cicilan`, c3x + 4, cardY + 11);
 
       // Card 4
       const c4x = c3x + cardW + 3;
       doc.roundedRect(c4x, cardY, cardW, cardH, 2, 2, 'FD');
       doc.setTextColor(100, 116, 139);
       doc.setFontSize(7.5);
-      doc.text('METODE PEMBAYARAN', c4x + 4, cardY + 4.5);
+      doc.text('METODE PEMBAYARAN', c4x + 4, cardY + 5);
       doc.setTextColor(15, 23, 42);
       doc.setFontSize(9);
-      doc.text(`${summary.countTransfer} Transfer • ${summary.countTunai} Tunai`, c4x + 4, cardY + 10);
+      doc.text(`${summary.countTransfer} Transfer • ${summary.countTunai} Tunai`, c4x + 4, cardY + 11);
 
       // 3. Table Data
       const tableRows = processedPayments.map((p, idx) => [
@@ -786,7 +789,7 @@ export default function ModalRekapPembayaran({
       ];
 
       autoTable(doc, {
-        startY: cardY + cardH + 4,
+        startY: cardY + cardH + 5,
         margin: { left: margin, right: margin },
         head: [['NO', 'TGL BAYAR', 'NO. REG', 'NAMA CALON SANTRI', 'JALUR', 'ASAL SD / MI', 'METODE', 'STATUS', 'NOMINAL MASUK']],
         body: tableRows.length > 0 ? tableRows : [['-', '-', '-', 'Tidak ada data transaksi pembayaran pada rentang tanggal ini', '-', '-', '-', '-', '-']],
@@ -795,7 +798,7 @@ export default function ModalRekapPembayaran({
         styles: {
           font: 'helvetica',
           fontSize: 8,
-          cellPadding: 2,
+          cellPadding: 2.8,
           textColor: [30, 41, 59],
           valign: 'middle'
         },
@@ -809,7 +812,7 @@ export default function ModalRekapPembayaran({
         alternateRowStyles: {
           fillColor: [248, 250, 252]
         },
-        columnStyles: {
+        columnStyles: isLandscape ? {
           0: { cellWidth: 10, halign: 'center' },
           1: { cellWidth: 26, halign: 'center' },
           2: { cellWidth: 28, halign: 'center' },
@@ -819,6 +822,16 @@ export default function ModalRekapPembayaran({
           6: { cellWidth: 22, halign: 'center' },
           7: { cellWidth: 22, halign: 'center' },
           8: { cellWidth: 32, halign: 'right', fontStyle: 'bold' }
+        } : {
+          0: { cellWidth: 8, halign: 'center' },
+          1: { cellWidth: 22, halign: 'center' },
+          2: { cellWidth: 22, halign: 'center' },
+          3: { cellWidth: 38, fontStyle: 'bold' },
+          4: { cellWidth: 16, halign: 'center' },
+          5: { cellWidth: 32 },
+          6: { cellWidth: 16, halign: 'center' },
+          7: { cellWidth: 16, halign: 'center' },
+          8: { cellWidth: 24, halign: 'right', fontStyle: 'bold' }
         },
         footStyles: {
           fillColor: [241, 245, 249],
@@ -826,23 +839,25 @@ export default function ModalRekapPembayaran({
         },
         didDrawPage: (data) => {
           // Page Numbering
+          const pageH = isLandscape ? 210 : 297;
           const pageStr = `Halaman ${doc.getNumberOfPages()}`;
           doc.setFontSize(8);
           doc.setTextColor(148, 163, 184);
-          doc.text(pageStr, pageWidth - margin, 202, { align: 'right' });
-          doc.text('* Dokumen resmi rekapitulasi pembayaran digenerate otomatis oleh Sistem Terpadu Madrasah MTs Almaarif 01.', margin, 202);
+          doc.text(pageStr, pageWidth - margin, pageH - 8, { align: 'right' });
+          doc.text('* Dokumen resmi rekapitulasi pembayaran digenerate otomatis oleh Sistem Terpadu Madrasah MTs Almaarif 01.', margin, pageH - 8);
         }
       });
 
-      // 4. Signatures (Check if space allows on same page)
-      let finalY = (doc as any).lastAutoTable.finalY + 12;
-      if (finalY > 170) {
+      // 4. Signatures (Dwi Retno Palupi, M.Pd. - TANPA NIP)
+      let finalY = (doc as any).lastAutoTable.finalY + 14;
+      const maxY = isLandscape ? 165 : 245;
+      if (finalY > maxY) {
         doc.addPage();
         finalY = 25;
       }
 
       const signW = 60;
-      // Kiri: Kamad
+      // Kiri: Kamad (Dwi Retno Palupi, M.Pd.)
       doc.setTextColor(71, 85, 105);
       doc.setFontSize(8.5);
       doc.setFont('helvetica', 'normal');
@@ -850,27 +865,26 @@ export default function ModalRekapPembayaran({
       doc.text('Kepala MTs Almaarif 01', margin + 15, finalY + 4.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(15, 23, 42);
-      doc.setFontSize(9);
-      doc.text('H. M. Ilham Fahrudi, M.Pd.', margin + 15, finalY + 25);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
-      doc.setTextColor(100, 116, 139);
-      doc.text('NIP. 19780512 200501 1 004', margin + 15, finalY + 29);
+      doc.setFontSize(9.5);
+      doc.text('Dwi Retno Palupi, M.Pd.', margin + 15, finalY + 26);
+      doc.setDrawColor(15, 23, 42);
+      doc.setLineWidth(0.4);
+      doc.line(margin + 15, finalY + 27, margin + 58, finalY + 27);
 
-      // Kanan: Bendahara
+      // Kanan: Bendahara (Ibu S. Nur Ainy)
       const signRightX = pageWidth - margin - signW;
       doc.setTextColor(71, 85, 105);
       doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'normal');
       doc.text(`Singosari, ${tglCetak}`, signRightX + 10, finalY);
       doc.text('Bendahara SPMB', signRightX + 10, finalY + 4.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(15, 23, 42);
-      doc.setFontSize(9);
-      doc.text('Ibu S. Nur Ainy', signRightX + 10, finalY + 25);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
-      doc.setTextColor(100, 116, 139);
-      doc.text('NIP. -', signRightX + 10, finalY + 29);
+      doc.setFontSize(9.5);
+      doc.text('Ibu S. Nur Ainy', signRightX + 10, finalY + 26);
+      doc.setDrawColor(15, 23, 42);
+      doc.setLineWidth(0.4);
+      doc.line(signRightX + 10, finalY + 27, signRightX + 45, finalY + 27);
 
       // Save PDF
       const cleanStart = startDate || 'awal';
@@ -912,7 +926,7 @@ export default function ModalRekapPembayaran({
         background: '#ffffff',
         borderRadius: '20px',
         width: '100%',
-        maxWidth: activeTab === 'preview' ? '1100px' : '720px',
+        maxWidth: activeTab === 'preview' ? '1120px' : '740px',
         maxHeight: '94vh',
         display: 'flex',
         flexDirection: 'column',
@@ -950,7 +964,7 @@ export default function ModalRekapPembayaran({
               </h3>
             </div>
             <p style={{ margin: '3px 0 0 40px', fontSize: '11.5px', color: '#64748b' }}>
-              Pilih rentang tanggal untuk mengunduh laporan berformat modern, bersih, dan profesional
+              Pilih rentang tanggal untuk mengunduh laporan berformat modern, lega, dan profesional
             </p>
           </div>
 
@@ -1176,7 +1190,7 @@ export default function ModalRekapPembayaran({
                 </div>
               </div>
 
-              {/* FILTER TAMBAHAN (OPSIONAL) */}
+              {/* FILTER TAMBAHAN (OPSIONAL) & ORIENTASI KERTAS */}
               <div style={{
                 background: '#ffffff',
                 border: '1px solid #e2e8f0',
@@ -1184,7 +1198,7 @@ export default function ModalRekapPembayaran({
                 padding: '16px'
               }}>
                 <div style={{ fontSize: '12.5px', fontWeight: 800, color: '#1e293b', marginBottom: '12px' }}>
-                  Filter Tambahan (Opsional)
+                  Filter Tambahan &amp; Format Cetak
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
@@ -1260,6 +1274,28 @@ export default function ModalRekapPembayaran({
                       <option value="tunai">Tunai / Cash (Bendahara)</option>
                     </select>
                   </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                      Orientasi Halaman Cetak
+                    </label>
+                    <select
+                      value={orientation}
+                      onChange={e => setOrientation(e.target.value as any)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        border: '1.5px solid #cbd5e1',
+                        fontSize: '12.5px',
+                        outline: 'none',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="landscape">📄 Landscape (Melebar - Rekomendasi)</option>
+                      <option value="portrait">📃 Portrait (Tegak)</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -1316,7 +1352,7 @@ export default function ModalRekapPembayaran({
                 background: '#f8fafc',
                 border: '1px solid #e2e8f0',
                 borderRadius: '12px',
-                padding: '16px',
+                padding: '20px',
                 overflowX: 'auto',
                 boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.03)'
               }}>
@@ -1324,10 +1360,10 @@ export default function ModalRekapPembayaran({
                 <div style={{
                   background: '#ffffff',
                   border: '1px solid #cbd5e1',
-                  borderRadius: '8px',
-                  padding: '24px',
-                  minWidth: '780px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                  borderRadius: '10px',
+                  padding: '30px 32px',
+                  minWidth: orientation === 'landscape' ? '820px' : '650px',
+                  boxShadow: '0 4px 15px rgba(0,0,0,0.06)'
                 }}>
                   {/* Header */}
                   <div style={{
@@ -1335,13 +1371,13 @@ export default function ModalRekapPembayaran({
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     borderBottom: '2.5px solid #059669',
-                    paddingBottom: '12px',
-                    marginBottom: '14px'
+                    paddingBottom: '16px',
+                    marginBottom: '20px'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                       <div style={{
-                        width: '44px',
-                        height: '44px',
+                        width: '48px',
+                        height: '48px',
                         borderRadius: '10px',
                         background: '#059669',
                         color: '#fff',
@@ -1349,18 +1385,18 @@ export default function ModalRekapPembayaran({
                         alignItems: 'center',
                         justifyContent: 'center',
                         fontWeight: 900,
-                        fontSize: '16px'
+                        fontSize: '17px'
                       }}>
                         MTS
                       </div>
                       <div>
-                        <div style={{ fontSize: '13.5px', fontWeight: 900, color: '#065f46', textTransform: 'uppercase' }}>
+                        <div style={{ fontSize: '15px', fontWeight: 900, color: '#065f46', textTransform: 'uppercase' }}>
                           MTs Almaarif 01 Singosari Malang
                         </div>
-                        <div style={{ fontSize: '12px', fontWeight: 700, color: '#1e293b' }}>
+                        <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#1e293b' }}>
                           Laporan Rekapitulasi Pembayaran &amp; Daftar Ulang (DPP) SPMB
                         </div>
-                        <div style={{ fontSize: '9px', color: '#64748b' }}>
+                        <div style={{ fontSize: '9.5px', color: '#64748b' }}>
                           Jl. Masjid No. 33 Pagentan Singosari Malang 65153 • Telp: (0341) 458784
                         </div>
                       </div>
@@ -1370,75 +1406,75 @@ export default function ModalRekapPembayaran({
                         background: '#ecfdf5',
                         border: '1px solid #a7f3d0',
                         color: '#047857',
-                        padding: '3px 10px',
+                        padding: '4px 12px',
                         borderRadius: '20px',
                         fontWeight: 700,
-                        fontSize: '9.5px',
+                        fontSize: '10px',
                         display: 'inline-block'
                       }}>
                         📅 Periode: {startDate ? formatTanggalIndo(startDate) : 'Awal'} s/d {endDate ? formatTanggalIndo(endDate) : 'Akhir'}
                       </span>
-                      <div style={{ fontSize: '8.5px', color: '#64748b', marginTop: '3px' }}>
+                      <div style={{ fontSize: '9px', color: '#64748b', marginTop: '3px' }}>
                         Dicetak: {new Date().toLocaleDateString('id-ID')}
                       </div>
                     </div>
                   </div>
 
                   {/* 4 Mini Cards */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '14px' }}>
-                    <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', padding: '8px 10px' }}>
-                      <div style={{ fontSize: '8.5px', fontWeight: 700, color: '#059669' }}>TOTAL UANG MASUK</div>
-                      <div style={{ fontSize: '13.5px', fontWeight: 900, color: '#065f46' }}>Rp {formatRupiah(summary.totalNominal)}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+                    <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', padding: '10px 12px' }}>
+                      <div style={{ fontSize: '9px', fontWeight: 700, color: '#059669' }}>TOTAL UANG MASUK</div>
+                      <div style={{ fontSize: '14.5px', fontWeight: 900, color: '#065f46' }}>Rp {formatRupiah(summary.totalNominal)}</div>
                     </div>
-                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 10px' }}>
-                      <div style={{ fontSize: '8.5px', fontWeight: 700, color: '#64748b' }}>TRANSAKSI SANTRI</div>
-                      <div style={{ fontSize: '13.5px', fontWeight: 900, color: '#0f172a' }}>{summary.countTransaksi} Siswa</div>
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 12px' }}>
+                      <div style={{ fontSize: '9px', fontWeight: 700, color: '#64748b' }}>TRANSAKSI SANTRI</div>
+                      <div style={{ fontSize: '14.5px', fontWeight: 900, color: '#0f172a' }}>{summary.countTransaksi} Siswa</div>
                     </div>
-                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 10px' }}>
-                      <div style={{ fontSize: '8.5px', fontWeight: 700, color: '#64748b' }}>STATUS PELUNASAN</div>
-                      <div style={{ fontSize: '11px', fontWeight: 800, color: '#0f172a', marginTop: '3px' }}>{summary.countLunas} Lunas • {summary.countCicilan} Cicilan</div>
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 12px' }}>
+                      <div style={{ fontSize: '9px', fontWeight: 700, color: '#64748b' }}>STATUS PELUNASAN</div>
+                      <div style={{ fontSize: '12px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>{summary.countLunas} Lunas • {summary.countCicilan} Cicilan</div>
                     </div>
-                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 10px' }}>
-                      <div style={{ fontSize: '8.5px', fontWeight: 700, color: '#64748b' }}>METODE BAYAR</div>
-                      <div style={{ fontSize: '11px', fontWeight: 800, color: '#0f172a', marginTop: '3px' }}>{summary.countTransfer} Transfer • {summary.countTunai} Tunai</div>
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 12px' }}>
+                      <div style={{ fontSize: '9px', fontWeight: 700, color: '#64748b' }}>METODE BAYAR</div>
+                      <div style={{ fontSize: '12px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>{summary.countTransfer} Transfer • {summary.countTunai} Tunai</div>
                     </div>
                   </div>
 
                   {/* Table */}
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9.5px' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', marginBottom: '24px' }}>
                     <thead>
                       <tr style={{ background: '#059669', color: '#fff' }}>
-                        <th style={{ padding: '6px 8px', textAlign: 'center', width: '25px' }}>NO</th>
-                        <th style={{ padding: '6px 8px', textAlign: 'center', width: '80px' }}>TGL BAYAR</th>
-                        <th style={{ padding: '6px 8px', textAlign: 'center', width: '100px' }}>NO. REG</th>
-                        <th style={{ padding: '6px 8px', textAlign: 'left' }}>NAMA CALON SANTRI</th>
-                        <th style={{ padding: '6px 8px', textAlign: 'center', width: '70px' }}>JALUR</th>
-                        <th style={{ padding: '6px 8px', textAlign: 'left', width: '130px' }}>ASAL SEKOLAH</th>
-                        <th style={{ padding: '6px 8px', textAlign: 'center', width: '65px' }}>METODE</th>
-                        <th style={{ padding: '6px 8px', textAlign: 'center', width: '65px' }}>STATUS</th>
-                        <th style={{ padding: '6px 8px', textAlign: 'right', width: '105px' }}>NOMINAL (RP)</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'center', width: '30px' }}>NO</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'center', width: '85px' }}>TGL BAYAR</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'center', width: '105px' }}>NO. REG</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left' }}>NAMA CALON SANTRI</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'center', width: '75px' }}>JALUR</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'left', width: '135px' }}>ASAL SEKOLAH</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'center', width: '70px' }}>METODE</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'center', width: '70px' }}>STATUS</th>
+                        <th style={{ padding: '8px 10px', textAlign: 'right', width: '115px' }}>NOMINAL (RP)</th>
                       </tr>
                     </thead>
                     <tbody>
                       {processedPayments.length === 0 ? (
                         <tr>
-                          <td colSpan={9} style={{ textAlign: 'center', padding: '16px', color: '#64748b' }}>
+                          <td colSpan={9} style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>
                             Tidak ada data transaksi pembayaran pada rentang tanggal ini.
                           </td>
                         </tr>
-                      ) : processedPayments.slice(0, 15).map((p, idx) => (
+                      ) : processedPayments.map((p, idx) => (
                         <tr key={p.id} style={{ borderBottom: '1px solid #e2e8f0', background: idx % 2 === 1 ? '#f8fafc' : '#fff' }}>
-                          <td style={{ padding: '5px 8px', textAlign: 'center', color: '#64748b' }}>{idx + 1}</td>
-                          <td style={{ padding: '5px 8px', textAlign: 'center' }}>{formatTanggalIndo(p.tanggalBayar)}</td>
-                          <td style={{ padding: '5px 8px', textAlign: 'center', fontFamily: 'monospace' }}>{p.nomorPendaftaran}</td>
-                          <td style={{ padding: '5px 8px', fontWeight: 700 }}>{p.namaLengkap}</td>
-                          <td style={{ padding: '5px 8px', textAlign: 'center' }}>{p.jalurPendaftaran}</td>
-                          <td style={{ padding: '5px 8px' }}>{p.asalSekolah}</td>
-                          <td style={{ padding: '5px 8px', textAlign: 'center' }}>
+                          <td style={{ padding: '7px 10px', textAlign: 'center', color: '#64748b' }}>{idx + 1}</td>
+                          <td style={{ padding: '7px 10px', textAlign: 'center' }}>{formatTanggalIndo(p.tanggalBayar)}</td>
+                          <td style={{ padding: '7px 10px', textAlign: 'center', fontFamily: 'monospace' }}>{p.nomorPendaftaran}</td>
+                          <td style={{ padding: '7px 10px', fontWeight: 700 }}>{p.namaLengkap}</td>
+                          <td style={{ padding: '7px 10px', textAlign: 'center' }}>{p.jalurPendaftaran}</td>
+                          <td style={{ padding: '7px 10px' }}>{p.asalSekolah}</td>
+                          <td style={{ padding: '7px 10px', textAlign: 'center' }}>
                             <span style={{
-                              padding: '2px 6px',
+                              padding: '2px 7px',
                               borderRadius: '8px',
-                              fontSize: '8px',
+                              fontSize: '8.5px',
                               fontWeight: 700,
                               background: p.metodeBayar.toLowerCase().includes('tunai') ? '#f5f3ff' : '#eff6ff',
                               color: p.metodeBayar.toLowerCase().includes('tunai') ? '#6d28d9' : '#1d4ed8'
@@ -1446,11 +1482,11 @@ export default function ModalRekapPembayaran({
                               {p.metodeBayar}
                             </span>
                           </td>
-                          <td style={{ padding: '5px 8px', textAlign: 'center' }}>
+                          <td style={{ padding: '7px 10px', textAlign: 'center' }}>
                             <span style={{
-                              padding: '2px 6px',
+                              padding: '2px 7px',
                               borderRadius: '8px',
-                              fontSize: '8px',
+                              fontSize: '8.5px',
                               fontWeight: 700,
                               background: p.statusBayar === 'lunas' ? '#d1fae5' : '#fef3c7',
                               color: p.statusBayar === 'lunas' ? '#047857' : '#b45309'
@@ -1458,28 +1494,46 @@ export default function ModalRekapPembayaran({
                               {p.statusBayar === 'lunas' ? 'LUNAS' : 'CICILAN'}
                             </span>
                           </td>
-                          <td style={{ padding: '5px 8px', textAlign: 'right', fontWeight: 800, color: '#047857' }}>
+                          <td style={{ padding: '7px 10px', textAlign: 'right', fontWeight: 800, color: '#047857' }}>
                             Rp {formatRupiah(p.nominalMasuk)}
                           </td>
                         </tr>
                       ))}
-                      {processedPayments.length > 15 && (
-                        <tr>
-                          <td colSpan={9} style={{ textAlign: 'center', padding: '8px', background: '#f8fafc', color: '#64748b', fontSize: '9px', fontStyle: 'italic' }}>
-                            ... dan {processedPayments.length - 15} santri lainnya (seluruhnya akan tercetak lengkap di PDF).
-                          </td>
-                        </tr>
-                      )}
-                      <tr style={{ background: '#f1f5f9', fontWeight: 800, borderTop: '2px solid #059669' }}>
-                        <td colSpan={8} style={{ padding: '6px 8px', textAlign: 'right' }}>
+                      <tr style={{ background: '#f1f5f9', fontWeight: 800, borderTop: '2.5px solid #059669' }}>
+                        <td colSpan={8} style={{ padding: '9px 12px', textAlign: 'right' }}>
                           TOTAL PEMBAYARAN MASUK :
                         </td>
-                        <td style={{ padding: '6px 8px', textAlign: 'right', color: '#065f46', fontSize: '10.5px' }}>
+                        <td style={{ padding: '9px 12px', textAlign: 'right', color: '#065f46', fontSize: '11.5px' }}>
                           Rp {formatRupiah(summary.totalNominal)}
                         </td>
                       </tr>
                     </tbody>
                   </table>
+
+                  {/* Pengesahan Tanda Tangan (Dwi Retno Palupi, M.Pd. - TANPA NIP) */}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: '36px',
+                    padding: '0 20px'
+                  }}>
+                    <div style={{ textAlign: 'center', width: '240px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 600, color: '#475569', marginBottom: '55px', lineHeight: 1.5 }}>
+                        Mengetahui,<br/>Kepala MTs Almaarif 01
+                      </div>
+                      <div style={{ fontSize: '12px', fontWeight: 800, color: '#0f172a', borderBottom: '1.5px solid #0f172a', display: 'inline-block', paddingBottom: '2px' }}>
+                        Dwi Retno Palupi, M.Pd.
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'center', width: '240px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 600, color: '#475569', marginBottom: '55px', lineHeight: 1.5 }}>
+                        Singosari, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br/>Bendahara SPMB
+                      </div>
+                      <div style={{ fontSize: '12px', fontWeight: 800, color: '#0f172a', borderBottom: '1.5px solid #0f172a', display: 'inline-block', paddingBottom: '2px' }}>
+                        Ibu S. Nur Ainy
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
