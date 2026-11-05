@@ -605,13 +605,17 @@ export default function PenilaianDiriPage() {
                   {alreadySubmitted ? (
                     <div style={{ padding: '9px 12px', background: '#e2e8f0', borderRadius: '8px', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
                       {(() => {
-                        const s = siswaData.find(st => st.nisn === dataGuru[t.id]?.nisn);
-                        return s ? `${s.nama} (Kelas ${s.rombel})` : (dataGuru[t.id]?.nisn || '-');
+                        const s = siswaData.find(st => (st.nisn && st.nisn === dataGuru[t.id]?.nisn) || (st.nis && st.nis === dataGuru[t.id]?.nisn));
+                        return s ? `${s.nama}${s.rombel ? ` (Kelas ${s.rombel})` : ''}` : (dataGuru[t.id]?.nisn || '-');
                       })()}
                     </div>
                   ) : (
                     <SearchableSelect 
-                      options={siswaData.map(s => ({ value: s.nisn, label: s.nama, subLabel: 'Kelas ' + s.rombel }))} 
+                      options={siswaData.map(s => ({ 
+                        value: s.nisn || s.nis || String(s.id), 
+                        label: s.nama, 
+                        subLabel: s.rombel ? 'Kelas ' + s.rombel : undefined 
+                      }))} 
                       value={dataGuru[t.id]?.nisn || ''} 
                       onChange={val => setDataGuru({ ...dataGuru, [t.id]: { ...dataGuru[t.id], nisn: val } })} 
                       placeholder="-- Cari Nama Siswa --" 

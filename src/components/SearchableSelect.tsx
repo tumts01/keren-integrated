@@ -39,7 +39,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
     }
   }, [isOpen]);
 
-  const selectedOpt = options.find(o => o.value === value);
+  const selectedOpt = value ? options.find(o => o.value === value) : null;
   
   const searchWords = useMemo(() => {
     return search.toLowerCase().trim().split(/\s+/).filter(Boolean);
