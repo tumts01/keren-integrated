@@ -204,11 +204,6 @@ export default function PenilaianDiriPage() {
       } else {
         setAlreadySubmitted(false);
         setSubmittedData(null);
-        setDataDiri({});
-        setDataTeman({});
-        setDataGuru({});
-        setHalBaik('');
-        setHalDiperbaiki('');
       }
     } catch (e) {
       console.error('Error checking submission status:', e);
@@ -254,17 +249,46 @@ export default function PenilaianDiriPage() {
       // Validation
       for (const t of TRAITS) {
         if (isSiswa) {
-          if (!dataDiri[t.id]?.jawaban) return Swal.fire('Oops!', `Pilihan penilaian diri untuk sikap ${t.label} belum diisi!`, 'warning');
-          if (!dataDiri[t.id]?.alasan) return Swal.fire('Oops!', `Alasan penilaian diri untuk sikap ${t.label} wajib diisi!`, 'warning');
-          if (!dataTeman[t.id]?.nisn) return Swal.fire('Oops!', `Teman untuk sikap ${t.label} belum dipilih!`, 'warning');
-          if (!dataTeman[t.id]?.alasan) return Swal.fire('Oops!', `Alasan untuk teman (${t.label}) wajib diisi!`, 'warning');
+          if (!dataDiri[t.id]?.jawaban) {
+            const el = document.getElementById(`card_diri_${t.id}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return Swal.fire({
+              icon: 'warning',
+              title: 'Belum Lengkap!',
+              text: `Pilihan penilaian diri untuk sikap "${t.label}" belum dipilih. Silakan pilih salah satu opsi.`,
+              confirmButtonColor: '#047857'
+            });
+          }
+          if (!dataTeman[t.id]?.nisn) {
+            const el = document.getElementById(`card_teman_${t.id}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return Swal.fire({
+              icon: 'warning',
+              title: 'Belum Lengkap!',
+              text: `Teman sekelas untuk sikap "${t.label}" belum dipilih. Silakan pilih teman dari daftar.`,
+              confirmButtonColor: '#047857'
+            });
+          }
         } else {
           // Guru / Pimpinan / GTK / Staf
-          if (!dataGuru[t.id]?.nisn) return Swal.fire('Oops!', `Siswa untuk sikap ${t.label} belum dipilih!`, 'warning');
+          if (!dataGuru[t.id]?.nisn) {
+            const el = document.getElementById(`card_guru_${t.id}`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            return Swal.fire({
+              icon: 'warning',
+              title: 'Belum Lengkap!',
+              text: `Murid untuk sikap "${t.label}" belum dipilih.`,
+              confirmButtonColor: '#047857'
+            });
+          }
         }
       }
 
-      const penilai_id = isSiswa ? userNisn : (userNisn || userName);
+      const penilai_id = (isSiswa ? userNisn : (userNisn || userName)) || userNisn || userName;
+      if (!penilai_id) {
+        return Swal.fire('Error!', 'Sesi login tidak terdeteksi. Silakan muat ulang halaman atau login kembali.', 'error');
+      }
+
       const body = {
         periode,
         penilai_id,
@@ -452,7 +476,7 @@ export default function PenilaianDiriPage() {
               <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: 20 }}>Nilailah dirimu sendiri secara objektif untuk karakter-karakter di bawah ini.</p>
               
               {TRAITS.map((t, idx) => (
-                <div key={t.id} style={{ marginBottom: 25, padding: 15, background: '#f8fafc', borderRadius: 8, opacity: alreadySubmitted ? 0.85 : 1 }}>
+                <div key={t.id} id={`card_diri_${t.id}`} style={{ marginBottom: 25, padding: 15, background: '#f8fafc', borderRadius: 8, opacity: alreadySubmitted ? 0.85 : 1 }}>
                   <div style={{ marginBottom: 12 }}>
                     <p style={{ fontWeight: 'bold', margin: '0 0 4px 0', fontSize: '0.98rem', color: '#1e293b' }}>
                       {idx + 1}. Saya anak yang <span style={{ color: '#047857' }}>{t.label}</span>...
@@ -500,7 +524,7 @@ export default function PenilaianDiriPage() {
                     type="text" 
                     className={styles.inputField} 
                     style={{ width: '100%', boxSizing: 'border-box' }} 
-                    placeholder="Tuliskan alasannya..." 
+                    placeholder="Tuliskan alasannya... (Opsional)" 
                     disabled={alreadySubmitted}
                     value={dataDiri[t.id]?.alasan || ''} 
                     onChange={e => setDataDiri({ ...dataDiri, [t.id]: { ...dataDiri[t.id], alasan: e.target.value } })} 
@@ -533,7 +557,7 @@ export default function PenilaianDiriPage() {
               <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: 20 }}>Pilih teman sekelas yang paling mewakili karakter di bawah ini, dan tulis alasannya.</p>
 
               {TRAITS.map((t, idx) => (
-                <div key={`teman_${t.id}`} style={{ marginBottom: 25, padding: 15, background: '#f8fafc', borderRadius: 8, opacity: alreadySubmitted ? 0.85 : 1 }}>
+                <div key={`teman_${t.id}`} id={`card_teman_${t.id}`} style={{ marginBottom: 25, padding: 15, background: '#f8fafc', borderRadius: 8, opacity: alreadySubmitted ? 0.85 : 1 }}>
                   <p style={{ fontWeight: 'bold', margin: '0 0 4px 0', fontSize: '0.98rem', color: '#1e293b' }}>
                     {idx + 1}. Teman saya yang paling {t.id === 'leadership' ? 'berjiwa pemimpin (leadership)' : t.label.toLowerCase()} adalah:
                   </p>
@@ -586,7 +610,7 @@ export default function PenilaianDiriPage() {
               </p>
 
               {TRAITS.map((t, idx) => (
-                <div key={`guru_${t.id}`} style={{ marginBottom: 25, padding: 15, background: '#f8fafc', borderRadius: 8, opacity: alreadySubmitted ? 0.85 : 1 }}>
+                <div key={`guru_${t.id}`} id={`card_guru_${t.id}`} style={{ marginBottom: 25, padding: 15, background: '#f8fafc', borderRadius: 8, opacity: alreadySubmitted ? 0.85 : 1 }}>
                   <p style={{ fontWeight: 'bold', margin: '0 0 4px 0', fontSize: '0.98rem', color: '#1e293b' }}>
                     {idx + 1}. Murid yang paling {t.id === 'leadership' ? 'berjiwa pemimpin (leadership)' : t.label.toLowerCase()} adalah:
                   </p>
