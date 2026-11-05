@@ -25,6 +25,7 @@ const MENU_ITEMS = [
   { name: 'Jadwal Mengajar', path: '/jadwal-mengajar', icon: 'fa-clock' },
   { name: 'Nilai Siswa', path: '/nilai-siswa', icon: 'fa-star' },
   { name: 'Pengembalian Rapor', path: '/pengembalian-rapor', icon: 'fa-file-signature' },
+  { name: "Game's Zone", path: '/games-zone', icon: 'fa-gamepad' },
   { name: 'Persuratan', path: '/persuratan', icon: 'fa-envelope-open-text' },
   { name: 'Loker Digital', path: '/loker-digital', icon: 'fa-folder-open' },
   { name: 'Buku Tamu', path: '/buku-tamu', icon: 'fa-address-book' },
