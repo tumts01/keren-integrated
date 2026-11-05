@@ -465,20 +465,15 @@ export default function PenilaianDiriPage() {
                     )}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 15 }}>
-                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: alreadySubmitted ? 'default' : 'pointer' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: alreadySubmitted ? 'default' : 'pointer' }}>
                       <input 
                         type="radio" 
                         name={`diri_${t.id}`} 
-                        style={{ marginTop: 3 }}
                         disabled={alreadySubmitted}
                         checked={dataDiri[t.id]?.jawaban === 'A'} 
                         onChange={() => setDataDiri({ ...dataDiri, [t.id]: { ...dataDiri[t.id], jawaban: 'A' } })} 
                       />
-                      <span style={{ fontSize: '0.92rem', lineHeight: 1.4 }}>
-                        <b>{t.label}</b>
-                        {t.desc && <span style={{ color: '#64748b', fontSize: '0.84rem', marginLeft: 4 }}>({t.desc})</span>}{' '}
-                        <span style={{ color: '#047857', fontWeight: 600, fontSize: '0.82rem' }}>(Sangat/Selalu)</span>
-                      </span>
+                      <span>{t.label} (Sangat/Selalu)</span>
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: alreadySubmitted ? 'default' : 'pointer' }}>
                       <input 
