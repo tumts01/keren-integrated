@@ -49,7 +49,8 @@ export default function PenilaianDiriPage() {
 
   const [rekapData, setRekapData] = useState<any[]>([]);
 
-  const isSiswa = (userRole || '').toLowerCase().includes('siswa');
+  const isPortalRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/portal');
+  const isSiswa = isPortalRoute || (userRole || '').toLowerCase().includes('siswa');
 
   useEffect(() => {
     // Current period (e.g. "Oktober 2026")
@@ -57,29 +58,48 @@ export default function PenilaianDiriPage() {
     const d = new Date();
     setPeriode(`${months[d.getMonth()]} ${d.getFullYear()}`);
 
-    const str = localStorage.getItem('keren_user_data');
-    const portalStr = localStorage.getItem('portal_session');
-    
-    if (str) {
+    const isPortal = typeof window !== 'undefined' && window.location.pathname.startsWith('/portal');
+    const portalStr = typeof window !== 'undefined' ? localStorage.getItem('portal_session') : null;
+    const str = typeof window !== 'undefined' ? localStorage.getItem('keren_user_data') : null;
+
+    if (isPortal && !portalStr) {
+      window.location.href = '/portal/login';
+      return;
+    }
+
+    let sessionUser: any = null;
+    let isStudentSession = false;
+
+    // Prioritize portal_session when on /portal or when portal_session exists
+    if (isPortal && portalStr) {
       try {
-        const u = JSON.parse(str);
-        const role = (u.role || '').toLowerCase();
-        setUserRole(role);
-        setUserNisn(u.nisn || u.username || '');
-        setUserName(u.nama || u.username || '');
-        setUserRombel(u.rombel || '');
-        setIsAdmin(role.includes('admin') || role.includes('super'));
-      } catch(e){}
+        sessionUser = JSON.parse(portalStr);
+        isStudentSession = true;
+      } catch (e) {}
+    } else if (str) {
+      try {
+        sessionUser = JSON.parse(str);
+        if ((sessionUser.role || '').toLowerCase().includes('siswa')) {
+          isStudentSession = true;
+        }
+      } catch (e) {}
     } else if (portalStr) {
       try {
-        const u = JSON.parse(portalStr);
-        setUserRole('siswa');
-        setIsAdmin(false);
-        setUserNisn(u.nisn || '');
-        setUserName(u.nama || '');
-        setUserRombel(u.rombel || '');
-        setIsAdmin(false);
-      } catch(e){}
+        sessionUser = JSON.parse(portalStr);
+        isStudentSession = true;
+      } catch (e) {}
+    }
+
+    if (sessionUser) {
+      const role = (sessionUser.role || (isStudentSession ? 'siswa' : '')).toLowerCase();
+      setUserRole(role);
+      const studentId = sessionUser.nisn || sessionUser.nis || sessionUser.username || '';
+      setUserNisn(studentId);
+      setUserName(sessionUser.nama || sessionUser.username || '');
+      // In portal_session, class is stored in 'kelas', while in user_data it could be 'rombel' or 'kelas'
+      const rombel = sessionUser.kelas || sessionUser.rombel || sessionUser.rombel_nama || '';
+      setUserRombel(rombel);
+      setIsAdmin(role.includes('admin') || role.includes('super'));
     }
 
     fetchSiswa();
@@ -90,7 +110,7 @@ export default function PenilaianDiriPage() {
       const res = await fetch('/api/siswa');
       const json = await res.json();
       if (json.success && json.data) {
-        const aktif = json.data.filter((s: any) => (s.status || '').toLowerCase() === 'aktif' && s.isLatest);
+        const aktif = json.data.filter((s: any) => (s.status || '').toLowerCase().includes('aktif') && s.isLatest);
         setSiswaData(aktif);
       }
     } catch (e) {
@@ -101,10 +121,55 @@ export default function PenilaianDiriPage() {
   };
 
   useEffect(() => {
-    if (isSiswa && userRombel && siswaData.length > 0) {
-      setTemanSekelas(siswaData.filter(s => s.rombel === userRombel && s.nisn !== userNisn));
+    if (isSiswa && siswaData.length > 0) {
+      const clean = (val: any) => String(val || '').trim().replace(/^0+/, '');
+      const norm = (r: string) => String(r || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+      // Locate student in siswaData if possible to obtain canonical rombel
+      const myRecord = siswaData.find(s => 
+        (clean(s.nisn) && clean(s.nisn) === clean(userNisn)) ||
+        (clean(s.nis) && clean(s.nis) === clean(userNisn)) ||
+        (s.nama && userName && s.nama.trim().toLowerCase() === userName.trim().toLowerCase())
+      );
+
+      const targetRombel = (myRecord?.rombel || userRombel || '').trim();
+      const targetNorm = norm(targetRombel);
+
+      const isMe = (s: any) => {
+        if (clean(s.nisn) && clean(s.nisn) === clean(userNisn)) return true;
+        if (clean(s.nis) && clean(s.nis) === clean(userNisn)) return true;
+        if (s.nama && userName && s.nama.trim().toLowerCase() === userName.trim().toLowerCase()) return true;
+        return false;
+      };
+
+      let classmates: any[] = [];
+      if (targetNorm) {
+        classmates = siswaData.filter(s => norm(s.rombel) === targetNorm && !isMe(s));
+      }
+
+      // If classmates is empty, try partial matching
+      if (classmates.length === 0 && targetNorm) {
+        classmates = siswaData.filter(s => {
+          const sNorm = norm(s.rombel);
+          return (sNorm.includes(targetNorm) || targetNorm.includes(sNorm)) && !isMe(s);
+        });
+      }
+
+      // Fallback: show all active students except self so dropdown is never stuck empty
+      if (classmates.length === 0) {
+        classmates = siswaData.filter(s => !isMe(s));
+      }
+
+      // Sort alphabetically by name
+      classmates.sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
+
+      setTemanSekelas(classmates);
+
+      if (!userRombel && targetRombel) {
+        setUserRombel(targetRombel);
+      }
     }
-  }, [isSiswa, userRombel, siswaData, userNisn]);
+  }, [isSiswa, userRombel, siswaData, userNisn, userName]);
 
   // Check submission status whenever period or user changes
   useEffect(() => {
@@ -339,7 +404,7 @@ export default function PenilaianDiriPage() {
             </select>
 
             <span style={{ marginLeft: 'auto', fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>
-              Penilai: <b style={{ color: '#0f172a' }}>{userName || 'User'}</b> ({userRole || 'Umum'})
+              Penilai: <b style={{ color: '#0f172a' }}>{userName || 'User'}</b> {isSiswa ? (userRombel ? `(Kelas ${userRombel})` : '(Siswa)') : `(${userRole || 'Umum'})`}
             </span>
           </div>
 
@@ -462,11 +527,17 @@ export default function PenilaianDiriPage() {
                   <p style={{ fontWeight: 'bold', margin: '0 0 10px 0' }}>{idx + 1}. Teman saya yang paling {t.label.toLowerCase()} adalah:</p>
                   {alreadySubmitted ? (
                     <div style={{ padding: '9px 12px', background: '#e2e8f0', borderRadius: '8px', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
-                      {temanSekelas.find(s => s.nisn === dataTeman[t.id]?.nisn)?.nama || dataTeman[t.id]?.nisn || '-'}
+                      {temanSekelas.find(s => (s.nisn && s.nisn === dataTeman[t.id]?.nisn) || (s.nis && s.nis === dataTeman[t.id]?.nisn))?.nama ||
+                       siswaData.find(s => (s.nisn && s.nisn === dataTeman[t.id]?.nisn) || (s.nis && s.nis === dataTeman[t.id]?.nisn))?.nama ||
+                       dataTeman[t.id]?.nisn || '-'}
                     </div>
                   ) : (
                     <SearchableSelect 
-                      options={temanSekelas.map(s => ({ value: s.nisn, label: s.nama }))} 
+                      options={temanSekelas.map(s => ({ 
+                        value: s.nisn || s.nis, 
+                        label: s.nama,
+                        subLabel: s.rombel ? `Kelas ${s.rombel}` : undefined
+                      }))} 
                       value={dataTeman[t.id]?.nisn || ''} 
                       onChange={val => setDataTeman({ ...dataTeman, [t.id]: { ...dataTeman[t.id], nisn: val } })} 
                       placeholder="-- Cari Teman Sekelas --" 

@@ -20,16 +20,42 @@ export async function GET(request: Request) {
 
     // Get all siswa
     const semuaSiswa = await getAllCachedDataInduk();
-    const siswaAktif = semuaSiswa.filter(s => s.status === 'Aktif' && s.isLatest);
+    const siswaAktif: any[] = [];
+    
+    for (const row of semuaSiswa) {
+      const meta = row.metadata || {};
+      const status = (meta['STATUS SISWA'] || '').toUpperCase().trim();
+      if (!status.includes('AKTIF')) continue;
 
-    // Initialize scores: { nisn: { religius: 0, disiplin: 0, ... } }
+      let rombel = (meta['ROMBEL KELAS 9'] || '').trim();
+      if (!rombel) rombel = (meta['ROMBEL KELAS 8'] || '').trim();
+      if (!rombel) rombel = (meta['ROMBEL KELAS 7'] || '').trim();
+      if (!rombel) rombel = (meta['ROMBEL'] || '').trim();
+
+      const nisn = (meta['NISN'] || '').trim();
+      const nis = (meta['ID SISWA'] || row.id_siswa || '').trim();
+      const id = nisn || nis;
+
+      siswaAktif.push({
+        id,
+        nisn: id,
+        nis,
+        nama: row.nama || meta['NAMA'] || '',
+        rombel,
+      });
+    }
+
+    // Initialize scores: { nisn/id: { religius: 0, disiplin: 0, ... } }
     const scores: Record<string, Record<string, number>> = {};
     siswaAktif.forEach(s => {
-      scores[s.nisn || ''] = {
+      const initScores = {
         religius: 0, disiplin: 0, demokratis: 0, kreatif: 0,
         mandiri: 0, kritis: 0, responsif: 0, nasionalis: 0,
         toleran: 0, peduli: 0, leadership: 0, jujur: 0
       };
+      scores[s.id] = { ...initScores };
+      if (s.nisn) scores[s.nisn] = scores[s.id];
+      if (s.nis) scores[s.nis] = scores[s.id];
     });
 
     const traits = ['religius', 'disiplin', 'demokratis', 'kreatif', 'mandiri', 'kritis', 'responsif', 'nasionalis', 'toleran', 'peduli', 'leadership', 'jujur'];
@@ -68,17 +94,21 @@ export async function GET(request: Request) {
     });
 
     // Format output
-    const rekapData = siswaAktif.map(s => {
-      const sScores = scores[s.nisn || ''] || {};
+    const seen = new Set();
+    const rekapData: any[] = [];
+    for (const s of siswaAktif) {
+      if (seen.has(s.id)) continue;
+      seen.add(s.id);
+      const sScores = scores[s.id] || {};
       const total = Object.values(sScores).reduce((a, b) => a + b, 0);
-      return {
+      rekapData.push({
         nisn: s.nisn,
         nama: s.nama,
         kelas: s.rombel,
         scores: sScores,
         total
-      };
-    });
+      });
+    }
 
     return NextResponse.json({ success: true, data: rekapData });
   } catch (error: any) {
