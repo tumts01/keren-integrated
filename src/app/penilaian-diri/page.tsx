@@ -6,17 +6,17 @@ import SearchableSelect from '@/components/SearchableSelect';
 import Swal from 'sweetalert2';
 
 const TRAITS = [
-  { id: 'religius', label: 'Religius' },
+  { id: 'religius', label: 'Religius', desc: 'sikap/perilaku yang bersifat keagamaan' },
   { id: 'disiplin', label: 'Disiplin' },
-  { id: 'demokratis', label: 'Demokratis' },
-  { id: 'kreatif', label: 'Kreatif' },
-  { id: 'mandiri', label: 'Mandiri' },
-  { id: 'kritis', label: 'Kritis' },
-  { id: 'responsif', label: 'Responsif' },
-  { id: 'nasionalis', label: 'Nasionalis' },
-  { id: 'toleran', label: 'Toleran' },
-  { id: 'peduli', label: 'Peduli' },
-  { id: 'leadership', label: 'Leadership' },
+  { id: 'demokratis', label: 'Demokratis', desc: 'cara berpikir, bersikap yang mengakui kesetaraan hak' },
+  { id: 'kreatif', label: 'Kreatif', desc: 'kemampuan menciptakan ide baru serta menemukan solusi inovatif' },
+  { id: 'mandiri', label: 'Mandiri', desc: 'kemampuan berdiri sendiri tanpa bergantung pada orang lain' },
+  { id: 'kritis', label: 'Kritis', desc: 'kemampuan untuk berpikir secara rasional, objektif, dan mendalam dalam menganalisis serta mengevaluasi informasi atau masalah' },
+  { id: 'responsif', label: 'Responsif', desc: 'sikap cepat dan bijaksana dalam menanggapi situasi, kebutuhan, atau permintaan dengan sigap' },
+  { id: 'nasionalis', label: 'Nasionalis', desc: 'memiliki rasa cinta, bangga, dan kesetiaan terhadap tanah airnya' },
+  { id: 'toleran', label: 'Toleran', desc: 'sikap menghargai, membiarkan, atau membolehkan pendirian, pendapat, yang berbeda atau bertentangan dengan diri sendiri' },
+  { id: 'peduli', label: 'Peduli', desc: 'sikap memperhatikan dan menghiraukan kondisi atau keadaan orang lain dan lingkungan sekitar, sering kali ditandai dengan simpati, empati, dan tindakan proaktif untuk membantu' },
+  { id: 'leadership', label: 'Leadership', desc: 'berjiwa pemimpin' },
   { id: 'jujur', label: 'Jujur' }
 ];
 
@@ -453,17 +453,32 @@ export default function PenilaianDiriPage() {
               
               {TRAITS.map((t, idx) => (
                 <div key={t.id} style={{ marginBottom: 25, padding: 15, background: '#f8fafc', borderRadius: 8, opacity: alreadySubmitted ? 0.85 : 1 }}>
-                  <p style={{ fontWeight: 'bold', margin: '0 0 10px 0' }}>{idx + 1}. Saya anak yang...</p>
+                  <div style={{ marginBottom: 12 }}>
+                    <p style={{ fontWeight: 'bold', margin: '0 0 4px 0', fontSize: '0.98rem', color: '#1e293b' }}>
+                      {idx + 1}. Saya anak yang <span style={{ color: '#047857' }}>{t.label}</span>...
+                    </p>
+                    {t.desc && (
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', fontStyle: 'italic', lineHeight: 1.4 }}>
+                        <i className="fas fa-info-circle" style={{ marginRight: 6, color: '#10b981', fontSize: '0.8rem' }}></i>
+                        {t.desc}
+                      </p>
+                    )}
+                  </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 15 }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: alreadySubmitted ? 'default' : 'pointer' }}>
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: alreadySubmitted ? 'default' : 'pointer' }}>
                       <input 
                         type="radio" 
                         name={`diri_${t.id}`} 
+                        style={{ marginTop: 3 }}
                         disabled={alreadySubmitted}
                         checked={dataDiri[t.id]?.jawaban === 'A'} 
                         onChange={() => setDataDiri({ ...dataDiri, [t.id]: { ...dataDiri[t.id], jawaban: 'A' } })} 
                       />
-                      <span>{t.label} (Sangat/Selalu)</span>
+                      <span style={{ fontSize: '0.92rem', lineHeight: 1.4 }}>
+                        <b>{t.label}</b>
+                        {t.desc && <span style={{ color: '#64748b', fontSize: '0.84rem', marginLeft: 4 }}>({t.desc})</span>}{' '}
+                        <span style={{ color: '#047857', fontWeight: 600, fontSize: '0.82rem' }}>(Sangat/Selalu)</span>
+                      </span>
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: alreadySubmitted ? 'default' : 'pointer' }}>
                       <input 
@@ -483,7 +498,7 @@ export default function PenilaianDiriPage() {
                         checked={dataDiri[t.id]?.jawaban === 'C'} 
                         onChange={() => setDataDiri({ ...dataDiri, [t.id]: { ...dataDiri[t.id], jawaban: 'C' } })} 
                       />
-                      <span>Tidak/Kurang {t.label.toLowerCase()}</span>
+                      <span>{t.id === 'leadership' ? 'Tidak/Kurang mempunyai leadership' : `Tidak/Kurang ${t.label.toLowerCase()}`}</span>
                     </label>
                   </div>
                   <input 
@@ -524,7 +539,15 @@ export default function PenilaianDiriPage() {
 
               {TRAITS.map((t, idx) => (
                 <div key={`teman_${t.id}`} style={{ marginBottom: 25, padding: 15, background: '#f8fafc', borderRadius: 8, opacity: alreadySubmitted ? 0.85 : 1 }}>
-                  <p style={{ fontWeight: 'bold', margin: '0 0 10px 0' }}>{idx + 1}. Teman saya yang paling {t.label.toLowerCase()} adalah:</p>
+                  <p style={{ fontWeight: 'bold', margin: '0 0 4px 0', fontSize: '0.98rem', color: '#1e293b' }}>
+                    {idx + 1}. Teman saya yang paling {t.id === 'leadership' ? 'berjiwa pemimpin (leadership)' : t.label.toLowerCase()} adalah:
+                  </p>
+                  {t.desc && (
+                    <p style={{ margin: '0 0 10px 0', fontSize: '0.84rem', color: '#64748b', fontStyle: 'italic', lineHeight: 1.4 }}>
+                      <i className="fas fa-info-circle" style={{ marginRight: 6, color: '#10b981', fontSize: '0.8rem' }}></i>
+                      {t.desc}
+                    </p>
+                  )}
                   {alreadySubmitted ? (
                     <div style={{ padding: '9px 12px', background: '#e2e8f0', borderRadius: '8px', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
                       {temanSekelas.find(s => (s.nisn && s.nisn === dataTeman[t.id]?.nisn) || (s.nis && s.nis === dataTeman[t.id]?.nisn))?.nama ||
@@ -569,7 +592,15 @@ export default function PenilaianDiriPage() {
 
               {TRAITS.map((t, idx) => (
                 <div key={`guru_${t.id}`} style={{ marginBottom: 25, padding: 15, background: '#f8fafc', borderRadius: 8, opacity: alreadySubmitted ? 0.85 : 1 }}>
-                  <p style={{ fontWeight: 'bold', margin: '0 0 10px 0' }}>{idx + 1}. Murid yang paling {t.label.toLowerCase()} adalah:</p>
+                  <p style={{ fontWeight: 'bold', margin: '0 0 4px 0', fontSize: '0.98rem', color: '#1e293b' }}>
+                    {idx + 1}. Murid yang paling {t.id === 'leadership' ? 'berjiwa pemimpin (leadership)' : t.label.toLowerCase()} adalah:
+                  </p>
+                  {t.desc && (
+                    <p style={{ margin: '0 0 10px 0', fontSize: '0.84rem', color: '#64748b', fontStyle: 'italic', lineHeight: 1.4 }}>
+                      <i className="fas fa-info-circle" style={{ marginRight: 6, color: '#10b981', fontSize: '0.8rem' }}></i>
+                      {t.desc}
+                    </p>
+                  )}
                   
                   {alreadySubmitted ? (
                     <div style={{ padding: '9px 12px', background: '#e2e8f0', borderRadius: '8px', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
