@@ -135,13 +135,12 @@ export default function ModalCetakStrukPos80({
 
     <div class="divider"></div>
     <div class="bold" style="margin-bottom: 2px;">DATA CALON SISWA:</div>
+    <div class="student-name-center">
+      ${(student.namaLengkap || '-').toUpperCase()}
+    </div>
     <div class="row">
       <div class="row-title">No. Reg</div>
       <div class="row-value bold">${student.nomorPendaftaran || '-'}</div>
-    </div>
-    <div class="row">
-      <div class="row-title">Nama</div>
-      <div class="row-value bold" style="text-transform: uppercase;">${student.namaLengkap || '-'}</div>
     </div>
     <div class="row">
       <div class="row-title">Jalur</div>
@@ -317,6 +316,15 @@ export default function ModalCetakStrukPos80({
       margin: 3px 0;
       letter-spacing: 0.5px;
     }
+    .student-name-center {
+      text-align: center;
+      font-size: 13.5px;
+      font-weight: 900;
+      text-transform: uppercase;
+      margin: 4px 0 5px 0;
+      line-height: 1.25;
+      letter-spacing: 0.3px;
+    }
     .badge-status {
       display: inline-block;
       padding: 2px 6px;
@@ -380,8 +388,8 @@ Waktu Cetak  : ${tglCetak} ${jamCetak}
 Petugas      : Bendahara SPMB
 ----------------------------------------
 DATA CALON SISWA:
+=== ${(student.namaLengkap || '-').toUpperCase()} ===
 No. Reg      : ${student.nomorPendaftaran || '-'}
-Nama         : ${student.namaLengkap || '-'}
 Jalur        : ${student.jalurPendaftaran || '-'}
 NISN         : ${student.nisn || '-'}
 Asal Sekolah : ${student.asalSekolah || '-'}
@@ -725,15 +733,25 @@ Bendahara SPMB: S. Nur Ainy, S.Pd. (+62 852-3666-0862)
 
             <div style={{ borderTop: '1px dashed #94a3b8', margin: '5px 0' }}></div>
             <div style={{ fontWeight: 700, marginBottom: '2px' }}>DATA CALON SISWA:</div>
+            <div style={{
+              textAlign: 'center',
+              margin: '4px 0 6px 0',
+              padding: '2px 0'
+            }}>
+              <div style={{
+                fontSize: '13.5px',
+                fontWeight: 900,
+                textTransform: 'uppercase',
+                lineHeight: 1.25,
+                letterSpacing: '0.3px',
+                color: '#0f172a'
+              }}>
+                {student.namaLengkap || '-'}
+              </div>
+            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
               <span>No. Reg</span>
               <span style={{ fontWeight: 700 }}>{student.nomorPendaftaran || '-'}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-              <span>Nama</span>
-              <span style={{ fontWeight: 700, textTransform: 'uppercase', maxWidth: '180px', textAlign: 'right' }}>
-                {student.namaLengkap || '-'}
-              </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
               <span>Jalur</span>
