@@ -104,6 +104,43 @@ export default function LoginCBT() {
             {loading ? 'Memeriksa...' : 'Masuk ke CBT'}
           </button>
         </form>
+
+        <div style={{ marginTop: '16px' }}>
+          <button 
+            type="button"
+            onClick={() => router.push('/olimpiade-seni')}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              background: '#f8fafc',
+              color: '#475569',
+              border: '1.5px solid #e2e8f0',
+              fontWeight: 600,
+              fontSize: '0.95rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'all 0.2s',
+              boxSizing: 'border-box'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = '#f1f5f9';
+              e.currentTarget.style.borderColor = '#cbd5e1';
+              e.currentTarget.style.color = '#0f172a';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = '#f8fafc';
+              e.currentTarget.style.borderColor = '#e2e8f0';
+              e.currentTarget.style.color = '#475569';
+            }}
+          >
+            <i className="fas fa-arrow-left"></i>
+            Kembali ke Dasbor Olimpiade
+          </button>
+        </div>
       </div>
     </div>
   );
