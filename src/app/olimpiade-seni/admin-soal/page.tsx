@@ -554,7 +554,9 @@ export default function AdminSoalCBT() {
                         lineHeight: isFullArab ? '2.4' : '1.7',
                         textAlign: isRtl ? 'right' : 'left',
                         wordSpacing: isFullArab ? '2px' : 'normal',
-                        padding: isFullArab ? '4px 0' : '0'
+                        padding: isFullArab ? '4px 0' : '0',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word'
                       }}
                     >
                       {renderMixedText(soal.pertanyaan, isFullArab)}
@@ -612,6 +614,7 @@ export default function AdminSoalCBT() {
                                   textAlign: isOptRtl ? 'right' : 'left',
                                   wordBreak: 'break-word',
                                   wordSpacing: isFullArab ? '2px' : 'normal',
+                                  whiteSpace: 'pre-wrap',
                                   flex: 1,
                                   color: '#1e293b'
                                 }}

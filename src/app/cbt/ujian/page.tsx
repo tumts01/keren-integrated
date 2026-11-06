@@ -879,7 +879,9 @@ export default function CBTUjianPage() {
                         marginBottom: '24px',
                         textAlign: isRtl ? 'right' : 'left',
                         wordSpacing: isFullArab ? '2px' : 'normal',
-                        transition: 'font-size 0.2s ease'
+                        transition: 'font-size 0.2s ease',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word'
                       }}
                     >
                       {renderMixedText(currentSoal.pertanyaan, isFullArab)}
@@ -946,7 +948,9 @@ export default function CBTUjianPage() {
                               textAlign: isOptRtl ? 'right' : 'left',
                               wordSpacing: isFullArab ? '2px' : 'normal',
                               flex: 1,
-                              transition: 'font-size 0.2s ease'
+                              transition: 'font-size 0.2s ease',
+                              whiteSpace: 'pre-wrap',
+                              wordBreak: 'break-word'
                             }}
                           >
                             {opsiValue.startsWith('http') && opsiValue.includes('drive.google.com') ? (
