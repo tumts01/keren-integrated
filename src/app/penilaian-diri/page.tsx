@@ -42,6 +42,10 @@ export default function PenilaianDiriPage() {
   const [halBaik, setHalBaik] = useState('');
   const [halDiperbaiki, setHalDiperbaiki] = useState('');
 
+  // Draft auto-save state
+  const [lastDraftSaved, setLastDraftSaved] = useState<string>('');
+  const [isDraftRestored, setIsDraftRestored] = useState<boolean>(false);
+
   // Lock 1x per periode states
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [submittedData, setSubmittedData] = useState<any>(null);
@@ -204,12 +208,106 @@ export default function PenilaianDiriPage() {
       } else {
         setAlreadySubmitted(false);
         setSubmittedData(null);
+
+        // Pulihkan draf lokal jika siswa sebelumnya sedang mengisi dan halaman ter-refresh
+        try {
+          const draftKey = `penilaian_karakter_draft_${id}_${p}`;
+          const savedDraft = typeof window !== 'undefined' ? localStorage.getItem(draftKey) : null;
+          if (savedDraft) {
+            const parsed = JSON.parse(savedDraft);
+            if (parsed) {
+              if (parsed.dataDiri) setDataDiri(parsed.dataDiri);
+              if (parsed.dataTeman) setDataTeman(parsed.dataTeman);
+              if (parsed.dataGuru) setDataGuru(parsed.dataGuru);
+              if (parsed.halBaik) setHalBaik(parsed.halBaik);
+              if (parsed.halDiperbaiki) setHalDiperbaiki(parsed.halDiperbaiki);
+              if (parsed.lastSaved) setLastDraftSaved(parsed.lastSaved);
+              setIsDraftRestored(true);
+            }
+          }
+        } catch (err) {
+          console.error('Error restoring draft:', err);
+        }
       }
     } catch (e) {
       console.error('Error checking submission status:', e);
     } finally {
       setCheckingStatus(false);
     }
+  };
+
+  // Efek Auto-save Draf ke LocalStorage setiap ada perubahan isian
+  useEffect(() => {
+    if (checkingStatus || alreadySubmitted) return;
+    const penilaiId = isSiswa ? userNisn : (userNisn || userName);
+    if (!penilaiId || !periode || typeof window === 'undefined') return;
+
+    const hasContent = 
+      Object.keys(dataDiri).length > 0 || 
+      Object.keys(dataTeman).length > 0 || 
+      Object.keys(dataGuru).length > 0 || 
+      Boolean(halBaik) || 
+      Boolean(halDiperbaiki);
+
+    if (!hasContent) return;
+
+    const draftKey = `penilaian_karakter_draft_${penilaiId}_${periode}`;
+    const timer = setTimeout(() => {
+      try {
+        const nowStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        localStorage.setItem(draftKey, JSON.stringify({
+          dataDiri,
+          dataTeman,
+          dataGuru,
+          halBaik,
+          halDiperbaiki,
+          lastSaved: nowStr
+        }));
+        setLastDraftSaved(nowStr);
+      } catch (err) {
+        console.error('Error saving draft:', err);
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [dataDiri, dataTeman, dataGuru, halBaik, halDiperbaiki, alreadySubmitted, checkingStatus, userNisn, userName, periode, isSiswa]);
+
+  // Peringatan jika siswa mencoba reload/tutup halaman saat sedang mengisi
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!alreadySubmitted && (Object.keys(dataDiri).length > 0 || Object.keys(dataTeman).length > 0 || Boolean(halBaik))) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [alreadySubmitted, dataDiri, dataTeman, halBaik]);
+
+  const handleClearDraft = () => {
+    Swal.fire({
+      title: 'Kosongkan Draf Isian?',
+      text: 'Semua isian penilaian yang sedang Anda ketik di perangkat ini akan dikosongkan.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      confirmButtonText: 'Ya, Kosongkan',
+      cancelButtonText: 'Batal'
+    }).then(res => {
+      if (res.isConfirmed) {
+        const penilaiId = isSiswa ? userNisn : (userNisn || userName);
+        const draftKey = `penilaian_karakter_draft_${penilaiId}_${periode}`;
+        if (typeof window !== 'undefined') localStorage.removeItem(draftKey);
+        setDataDiri({});
+        setDataTeman({});
+        setDataGuru({});
+        setHalBaik('');
+        setHalDiperbaiki('');
+        setLastDraftSaved('');
+        setIsDraftRestored(false);
+        Swal.fire('Draf Dikosongkan', 'Formulir telah di-reset ke kondisi awal.', 'info');
+      }
+    });
   };
 
   const loadRekap = async () => {
@@ -306,6 +404,13 @@ export default function PenilaianDiriPage() {
       });
       const json = await res.json();
       if (json.success) {
+        // Hapus draf lokal karena isian sudah resmi terkirim dan tersimpan di server
+        const penilai_id = (isSiswa ? userNisn : (userNisn || userName)) || userNisn || userName;
+        const draftKey = `penilaian_karakter_draft_${penilai_id}_${periode}`;
+        if (typeof window !== 'undefined') localStorage.removeItem(draftKey);
+        setLastDraftSaved('');
+        setIsDraftRestored(false);
+
         Swal.fire({
           icon: 'success',
           title: 'Berhasil!',
@@ -344,6 +449,10 @@ export default function PenilaianDiriPage() {
         });
         const json = await res.json();
         if (json.success) {
+          const draftKey = `penilaian_karakter_draft_${penilaiId}_${periode}`;
+          if (typeof window !== 'undefined') localStorage.removeItem(draftKey);
+          setLastDraftSaved('');
+          setIsDraftRestored(false);
           Swal.fire('Berhasil', 'Pengisian telah direset. Formulir dapat diisi kembali.', 'success');
           setAlreadySubmitted(false);
           setSubmittedData(null);
@@ -466,6 +575,50 @@ export default function PenilaianDiriPage() {
                   Penilaian karakter dibatasi <b>1 kali pengisian per periode</b>. Isian Anda di bawah telah dikunci dan tersimpan dengan aman.
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Banner Draf Tersimpan Otomatis */}
+          {!checkingStatus && !alreadySubmitted && lastDraftSaved && (
+            <div style={{
+              background: '#f0fdf4',
+              border: '1px solid #86efac',
+              borderRadius: '12px',
+              padding: '12px 18px',
+              marginBottom: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              fontSize: '0.86rem',
+              color: '#15803d',
+              boxShadow: '0 2px 4px rgba(16,185,129,0.06)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <i className="fas fa-save" style={{ color: '#16a34a', fontSize: '0.9rem' }}></i>
+                </div>
+                <div>
+                  <span style={{ fontWeight: 700 }}>Draf isian tersimpan otomatis</span> di perangkat ini (terakhir pukul {lastDraftSaved}). Jika halaman ter-refresh atau kendala jaringan, isian tidak akan hilang.
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleClearDraft}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#dc2626',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.8rem',
+                  textDecoration: 'underline',
+                  whiteSpace: 'nowrap'
+                }}
+                title="Kosongkan draf yang sedang diketik"
+              >
+                Kosongkan Draf
+              </button>
             </div>
           )}
 
