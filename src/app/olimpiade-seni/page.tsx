@@ -81,29 +81,6 @@ export default function OlimpiadeSeniPage() {
             <i className="fas fa-user-plus" style={{ fontSize: '1.2rem' }}></i>
             Pendaftaran Peserta
           </button>
-          
-          <button 
-            onClick={() => router.push('/olimpiade-seni/rekap')}
-            style={{
-              padding: '16px 32px',
-              borderRadius: '12px',
-              background: 'white',
-              color: '#0f172a',
-              border: '2px solid #e2e8f0',
-              fontSize: '1rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px'
-            }}
-            onMouseOver={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
-            onMouseOut={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
-          >
-            <i className="fas fa-list" style={{ fontSize: '1.2rem', color: '#64748b' }}></i>
-            Rekap Data
-          </button>
 
           <button 
             onClick={() => router.push('/cbt')}
