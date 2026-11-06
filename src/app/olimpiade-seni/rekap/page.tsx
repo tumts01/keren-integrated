@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
-import { DAFTAR_CABANG_LOMBA } from '@/lib/olimpiade-config';
+import { DAFTAR_CABANG_LOMBA, DAFTAR_ITEM_BUKA_TUTUP } from '@/lib/olimpiade-config';
 
 interface OlimpiadeData {
   id: number;
@@ -729,7 +729,7 @@ export default function RekapOlimpiadeSeni() {
                 {!isBuka
                   ? 'Pendaftaran Ditutup (Semua)'
                   : closedLombas.length > 0
-                  ? `Status Pendaftaran (${closedLombas.length} Ditutup)`
+                  ? 'Status Pendaftaran (Sebagian Ditutup)'
                   : 'Status Pendaftaran (Buka Semua)'}
               </button>
             )}
@@ -2224,7 +2224,7 @@ export default function RekapOlimpiadeSeni() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setModalClosedLombas(DAFTAR_CABANG_LOMBA.map(c => c.nama))}
+                        onClick={() => setModalClosedLombas(['Olimpiade Akademik', 'Matematika', 'IPAS', 'PAI', 'Inggris', 'Arab', 'Singer (solo)', 'Al Banjari', 'Sandi Morse Semaphore (SMS)'])}
                         style={{
                           background: '#fee2e2',
                           color: '#b91c1c',
@@ -2243,24 +2243,31 @@ export default function RekapOlimpiadeSeni() {
 
                   {/* Kategori Cabang */}
                   {(['Olimpiade Akademik', 'Lomba Seni']).map(kategori => {
-                    const list = DAFTAR_CABANG_LOMBA.filter(c => c.kategori === kategori);
+                    const list = DAFTAR_ITEM_BUKA_TUTUP.filter(c => c.kategori === kategori);
                     return (
                       <div key={kategori} style={{ marginBottom: '18px' }}>
                         <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
                           {kategori}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {list.map(c => {
-                            const isClosed = modalClosedLombas.includes(c.nama);
-                            const countPeserta = summaryCounts[c.nama] || 0;
+                          {list.map(item => {
+                            const isAkademik = item.nama === 'Olimpiade Akademik';
+                            const isClosed = isAkademik
+                              ? (modalClosedLombas.includes('Olimpiade Akademik') || item.cabangTerkait.some(m => modalClosedLombas.includes(m)))
+                              : modalClosedLombas.includes(item.nama);
+
+                            const countPeserta = isAkademik
+                              ? item.cabangTerkait.reduce((acc, m) => acc + (summaryCounts[m] || 0), 0)
+                              : (summaryCounts[item.nama] || 0);
+
                             return (
                               <div
-                                key={c.nama}
+                                key={item.nama}
                                 style={{
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
-                                  padding: '10px 16px',
+                                  padding: '12px 16px',
                                   borderRadius: '10px',
                                   background: isClosed ? '#fff5f5' : '#f8fafc',
                                   border: isClosed ? '1.5px solid #fecaca' : '1px solid #e2e8f0',
@@ -2268,11 +2275,19 @@ export default function RekapOlimpiadeSeni() {
                                 }}
                               >
                                 <div>
-                                  <div style={{ fontWeight: 700, color: isClosed ? '#991b1b' : '#0f172a', fontSize: '0.9rem' }}>
-                                    {c.label}
+                                  <div style={{ fontWeight: 700, color: isClosed ? '#991b1b' : '#0f172a', fontSize: '0.92rem' }}>
+                                    {item.label}
                                   </div>
-                                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>
-                                    Peserta terdaftar: <b>{countPeserta} {c.satuan}</b>
+                                  <div style={{ fontSize: '0.76rem', color: '#64748b', marginTop: '2px' }}>
+                                    {item.keterangan}
+                                  </div>
+                                  <div style={{ fontSize: '0.78rem', color: '#475569', marginTop: '4px' }}>
+                                    Peserta terdaftar: <b>{countPeserta} {item.satuan}</b>
+                                    {isAkademik && (
+                                      <span style={{ fontSize: '0.73rem', color: '#64748b', marginLeft: '6px' }}>
+                                        (MTK: {summaryCounts['Matematika'] || 0}, IPAS: {summaryCounts['IPAS'] || 0}, PAI: {summaryCounts['PAI'] || 0}, Ing: {summaryCounts['Inggris'] || 0}, Arab: {summaryCounts['Arab'] || 0})
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
 
@@ -2292,13 +2307,22 @@ export default function RekapOlimpiadeSeni() {
                                     type="button"
                                     onClick={() => {
                                       if (isClosed) {
-                                        setModalClosedLombas(modalClosedLombas.filter(x => x !== c.nama));
+                                        if (isAkademik) {
+                                          const toRemove = new Set(['Olimpiade Akademik', ...item.cabangTerkait]);
+                                          setModalClosedLombas(modalClosedLombas.filter(x => !toRemove.has(x)));
+                                        } else {
+                                          setModalClosedLombas(modalClosedLombas.filter(x => x !== item.nama));
+                                        }
                                       } else {
-                                        setModalClosedLombas([...modalClosedLombas, c.nama]);
+                                        if (isAkademik) {
+                                          setModalClosedLombas(Array.from(new Set([...modalClosedLombas, 'Olimpiade Akademik', ...item.cabangTerkait])));
+                                        } else {
+                                          setModalClosedLombas(Array.from(new Set([...modalClosedLombas, item.nama])));
+                                        }
                                       }
                                     }}
                                     style={{
-                                      padding: '6px 12px',
+                                      padding: '6px 14px',
                                       borderRadius: '6px',
                                       background: isClosed ? '#10b981' : '#ef4444',
                                       color: 'white',
@@ -2308,7 +2332,7 @@ export default function RekapOlimpiadeSeni() {
                                       cursor: 'pointer'
                                     }}
                                   >
-                                    {isClosed ? 'Buka Cabang' : 'Tutup Cabang'}
+                                    {isClosed ? 'Buka Pendaftaran' : 'Tutup Pendaftaran'}
                                   </button>
                                 </div>
                               </div>

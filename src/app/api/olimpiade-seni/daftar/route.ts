@@ -185,9 +185,10 @@ export async function POST(req: Request) {
           }
         }
         if (lomba && isLombaClosed(lomba, pendaftaranBuka, closedLombas)) {
+          const studentName = row['NAMA LENGKAP'] || row['NAMA LENGKAP SISWA'] || row['NAMA SISWA'] || row['NAMA'] || 'Peserta';
           return NextResponse.json({
             success: false,
-            error: `Pendaftaran untuk cabang "${lomba}" saat ini telah ditutup oleh panitia. Silakan periksa kembali file Excel Anda.`
+            error: `Pendaftaran ditolak oleh sistem: Cabang lomba "${lomba}" saat ini telah ditutup oleh panitia (ditemukan pada peserta "${studentName}"). Silakan periksa dan perbaiki file Excel Anda.`
           }, { status: 400 });
         }
         let regu = '';

@@ -205,8 +205,31 @@ export default function PendaftaranOlimpiadeSeni() {
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          if (data.pendaftaran_buka !== undefined) setIsBuka(data.pendaftaran_buka);
-          if (Array.isArray(data.closed_lombas)) setClosedLombas(data.closed_lombas);
+          const nextBuka = data.pendaftaran_buka !== undefined ? data.pendaftaran_buka : true;
+          const nextClosed = Array.isArray(data.closed_lombas) ? data.closed_lombas : [];
+          setIsBuka(nextBuka);
+          setClosedLombas(nextClosed);
+
+          // Auto-adjust kategori & pilihan lomba jika pilihan awal ditutup
+          const isAkademikOpen = !isLombaClosed('Olimpiade Akademik', nextBuka, nextClosed);
+          const openSeniOpts = lombaOptions['Lomba Seni'].filter(opt => !isLombaClosed(opt, nextBuka, nextClosed));
+
+          if (!isAkademikOpen && openSeniOpts.length > 0) {
+            setForm(prev => ({
+              ...prev,
+              kategori: 'Lomba Seni',
+              lombaDipilih: openSeniOpts[0]
+            }));
+          } else if (isAkademikOpen) {
+            const openAkademikOpts = lombaOptions['Olimpiade Akademik'].filter(opt => !isLombaClosed(opt, nextBuka, nextClosed));
+            if (openAkademikOpts.length > 0) {
+              setForm(prev => ({
+                ...prev,
+                kategori: 'Olimpiade Akademik',
+                lombaDipilih: openAkademikOpts[0]
+              }));
+            }
+          }
         }
       })
       .catch(() => {})
@@ -563,16 +586,17 @@ export default function PendaftaranOlimpiadeSeni() {
               }
             }
           }
+          const namaSiswa = row['NAMA LENGKAP SISWA'] || row['NAMA LENGKAP'] || row['NAMA SISWA'] || row['NAMA'] || 'Peserta';
           if (namaLomba && isLombaClosed(String(namaLomba).trim(), isBuka, closedLombas)) {
-            closedFound.push(`Baris ke-${index + 2}: "${namaLomba}"`);
+            closedFound.push(`Baris ke-${index + 2}: <b>${namaSiswa}</b> — Cabang <b>${namaLomba}</b> (Ditutup)`);
           }
         });
 
         if (closedFound.length > 0) {
           Swal.fire({
-            icon: 'warning',
-            title: 'Cabang Lomba Ditutup!',
-            html: `File Excel memuat peserta untuk cabang lomba yang pendaftarannya sudah ditutup oleh panitia:<br/><br/><div style="text-align: left; background: #fffbeb; border: 1px solid #fde68a; padding: 10px; border-radius: 8px; max-height: 200px; overflow-y: auto; color: #92400e;">${closedFound.join('<br/>')}</div><br/>Silakan hapus baris peserta lomba tersebut dari file Excel lalu upload kembali.`
+            icon: 'error',
+            title: 'Pendaftaran Ditolak Sistem!',
+            html: `File Excel memuat peserta untuk cabang lomba yang pendaftarannya sudah <b>DITUTUP</b> oleh panitia:<br/><br/><div style="text-align: left; background: #fef2f2; border: 1.5px solid #fecaca; padding: 12px; border-radius: 8px; max-height: 220px; overflow-y: auto; color: #991b1b; font-size: 0.88rem;">${closedFound.join('<br/>')}</div><br/>Silakan hapus peserta lomba yang telah ditutup tersebut dari file Excel Anda lalu upload kembali.`
           });
           if (fileInputRef.current) fileInputRef.current.value = '';
           setUploadedFile(null);
@@ -897,28 +921,50 @@ export default function PendaftaranOlimpiadeSeni() {
 
                 
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Kategori Pendaftaran <span style={{ color: 'red' }}>*</span></label>
-                  <select 
-                    value={form.kategori} onChange={e => handleKategoriChange(e.target.value as 'Olimpiade Akademik' | 'Lomba Seni')}
-                    style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', background: 'white' }}
-                  >
-                    <option value="Olimpiade Akademik">Olimpiade Akademik</option>
-                    <option value="Lomba Seni">Lomba Seni</option>
-                  </select>
-                </div>
+                {(() => {
+                  const isAkademikOpen = !isLombaClosed('Olimpiade Akademik', isBuka, closedLombas);
+                  const openSeniOptions = lombaOptions['Lomba Seni'].filter(opt => !isLombaClosed(opt, isBuka, closedLombas));
+                  const isSeniOpen = openSeniOptions.length > 0;
+                  const availableOptions = (lombaOptions[form.kategori as 'Olimpiade Akademik' | 'Lomba Seni'] || [])
+                    .filter(opt => !isLombaClosed(opt, isBuka, closedLombas));
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Pilihan Lomba <span style={{ color: 'red' }}>*</span></label>
-                  <select 
-                    value={form.lombaDipilih} onChange={e => setForm({...form, lombaDipilih: e.target.value})}
-                    style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', background: 'white' }}
-                  >
-                    {lombaOptions[form.kategori as 'Olimpiade Akademik' | 'Lomba Seni'].map(opt => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                  </select>
-                </div>
+                  return (
+                    <>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
+                          Kategori Pendaftaran <span style={{ color: 'red' }}>*</span>
+                        </label>
+                        <select 
+                          value={form.kategori} 
+                          onChange={e => handleKategoriChange(e.target.value as 'Olimpiade Akademik' | 'Lomba Seni')}
+                          style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', background: 'white' }}
+                        >
+                          {isAkademikOpen && (
+                            <option value="Olimpiade Akademik">Olimpiade Akademik</option>
+                          )}
+                          {isSeniOpen && (
+                            <option value="Lomba Seni">Lomba Seni</option>
+                          )}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
+                          Pilihan Lomba <span style={{ color: 'red' }}>*</span>
+                        </label>
+                        <select 
+                          value={form.lombaDipilih} 
+                          onChange={e => setForm({...form, lombaDipilih: e.target.value})}
+                          style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', background: 'white' }}
+                        >
+                          {availableOptions.map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </>
+                  );
+                })()}
 
                 {form.kategori === 'Lomba Seni' && (
                   <div style={{ gridColumn: '1 / -1' }}>

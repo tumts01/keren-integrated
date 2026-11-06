@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { DAFTAR_CABANG_LOMBA } from '@/lib/olimpiade-config';
+import { DAFTAR_CABANG_LOMBA, DAFTAR_ITEM_BUKA_TUTUP } from '@/lib/olimpiade-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +22,8 @@ export async function GET() {
       success: true, 
       pendaftaran_buka: isBuka,
       closed_lombas: closedLombas,
-      all_lombas: DAFTAR_CABANG_LOMBA
+      all_lombas: DAFTAR_CABANG_LOMBA,
+      items_buka_tutup: DAFTAR_ITEM_BUKA_TUTUP
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
