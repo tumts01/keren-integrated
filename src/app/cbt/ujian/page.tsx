@@ -271,7 +271,7 @@ export default function CBTUjianPage() {
 
     // 5. Detect fullscreen exit — hanya catat jika sudah pernah masuk fullscreen
     const handleFullscreenChange = () => {
-      const isFull = !!(document.fullscreenElement);
+      const isFull = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
       setIsFullscreen(isFull);
       if (isFull) {
         hasEnteredFullscreenRef.current = true;
@@ -281,6 +281,12 @@ export default function CBTUjianPage() {
       }
     };
 
+    // Cek status awal fullscreen saat komponen dimuat
+    if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+      setIsFullscreen(true);
+      hasEnteredFullscreenRef.current = true;
+    }
+
     // 6. Disable text selection (CSS approach via JS)
     const preventSelect = (e: Event) => e.preventDefault();
 
@@ -288,6 +294,7 @@ export default function CBTUjianPage() {
     document.addEventListener('keydown', preventKeys);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
     document.addEventListener('selectstart', preventSelect);
     window.addEventListener('blur', handleWindowBlur);
     window.addEventListener('focus', handleWindowFocus);
@@ -304,6 +311,7 @@ export default function CBTUjianPage() {
       document.removeEventListener('keydown', preventKeys);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
       document.removeEventListener('selectstart', preventSelect);
       window.removeEventListener('blur', handleWindowBlur);
       window.removeEventListener('focus', handleWindowFocus);
@@ -322,11 +330,18 @@ export default function CBTUjianPage() {
 
   const requestFullscreen = async () => {
     try {
-      await document.documentElement.requestFullscreen();
+      const el = document.documentElement as any;
+      if (el.requestFullscreen) {
+        await el.requestFullscreen();
+      } else if (el.webkitRequestFullscreen) {
+        await el.webkitRequestFullscreen();
+      } else if (el.msRequestFullscreen) {
+        await el.msRequestFullscreen();
+      }
       setIsFullscreen(true);
       hasEnteredFullscreenRef.current = true;
     } catch {
-      // Silently ignore if fullscreen is denied
+      // Silently ignore if fullscreen is denied by browser without gesture
     }
   };
 
@@ -638,6 +653,82 @@ export default function CBTUjianPage() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f1f5f9', userSelect: 'none' }}>
+
+      {/* FULLSCREEN GATE OVERLAY (WAJIB LAYAR PENUH) */}
+      {!isFullscreen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.96)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 99999,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px',
+          textAlign: 'center'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '24px',
+            padding: '40px 32px',
+            maxWidth: '500px',
+            width: '100%',
+            color: '#0f172a',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'
+          }}>
+            <div style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '50%',
+              background: '#e0f2fe',
+              color: '#0284c7',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '2.4rem',
+              marginBottom: '20px'
+            }}>
+              <i className="fas fa-expand"></i>
+            </div>
+            <h2 style={{ fontSize: '1.45rem', fontWeight: 800, margin: '0 0 10px 0', color: '#0f172a' }}>
+              Mode Layar Penuh Diperlukan
+            </h2>
+            <p style={{ color: '#64748b', fontSize: '0.95rem', lineHeight: '1.6', margin: '0 0 24px 0' }}>
+              Ujian CBT MTs Almaarif 01 Singosari mengharuskan mode <b>Layar Penuh (Fullscreen)</b> aktif untuk menjaga ketertiban dan kejujuran ujian.
+            </p>
+            <button
+              type="button"
+              onClick={requestFullscreen}
+              style={{
+                width: '100%',
+                padding: '14px 24px',
+                background: '#0284c7',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                fontWeight: 700,
+                fontSize: '1.05rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '10px',
+                boxShadow: '0 4px 14px rgba(2, 132, 199, 0.4)'
+              }}
+            >
+              <i className="fas fa-expand"></i> Masuk ke Layar Penuh Sekarang
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* OFFLINE FLOATING WARNING BANNER */}
       {isOffline && (

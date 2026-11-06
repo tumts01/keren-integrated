@@ -165,8 +165,18 @@ export default function DashboardCBT() {
       confirmButtonColor: '#0284c7',
       cancelButtonColor: '#ef4444',
       confirmButtonText: 'Ya, Mulai Sekarang'
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
+        try {
+          const el = document.documentElement as any;
+          if (el.requestFullscreen) {
+            await el.requestFullscreen();
+          } else if (el.webkitRequestFullscreen) {
+            await el.webkitRequestFullscreen();
+          }
+        } catch {
+          // ignore if denied by browser, the fullscreen gate on ujian page will handle it
+        }
         router.push('/cbt/ujian');
       }
     });
