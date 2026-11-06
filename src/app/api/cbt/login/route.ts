@@ -11,14 +11,31 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Username dan Password wajib diisi' }, { status: 400 });
     }
 
+    const cleanUser = (username || '').toString().trim();
+    const cleanPass = (password || '').toString().trim();
+
+    // Alias map agar username varian (misal bypass_mtk, trial_ipas) tetap bisa login
+    const ALIAS_MAP: Record<string, string> = {
+      'bypass_mtk': 'bypass_matematika',
+      'trial_matematika': 'bypass_matematika',
+      'trial_mtk': 'bypass_matematika',
+      'trial_ipas': 'bypass_ipas',
+      'trial_ipa': 'bypass_ipas',
+      'bypass_ipa': 'bypass_ipas',
+      'trial_pai': 'bypass_pai',
+      'trial_inggris': 'bypass_inggris',
+      'trial_arab': 'bypass_arab',
+    };
+    const lookupUser = ALIAS_MAP[cleanUser.toLowerCase()] || cleanUser;
+
     // Cari peserta di data_olimpiade_seni
     // Supabase jsonb query: metadata->>USERNAME_CBT
     const { data, error } = await supabase
       .from('data_olimpiade_seni')
       .select('metadata')
       .in('jenis_pendaftaran', ['individu', 'peserta_kolektif'])
-      .filter('metadata->>USERNAME_CBT', 'eq', username)
-      .filter('metadata->>PASSWORD_CBT', 'eq', password)
+      .filter('metadata->>USERNAME_CBT', 'eq', lookupUser)
+      .filter('metadata->>PASSWORD_CBT', 'eq', cleanPass)
       .single();
 
     if (error || !data) {
@@ -57,6 +74,8 @@ export async function POST(req: Request) {
       }
     }
 
+    const isBypass = p.IS_BYPASS === true || (p.NOMOR_PESERTA || '').startsWith('BYPASS-');
+
     return NextResponse.json({ 
       success: true, 
       message: 'Login Berhasil', 
@@ -64,7 +83,8 @@ export async function POST(req: Request) {
         nomorPeserta: p.NOMOR_PESERTA,
         nama: namaStr,
         lomba: cabang,
-        asalSekolah: p.ASAL_SEKOLAH
+        asalSekolah: p.ASAL_SEKOLAH,
+        isBypass
       }
     });
 

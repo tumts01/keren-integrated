@@ -125,6 +125,10 @@ export async function GET(req: Request) {
     const baseCabang = normalizeCbtCabang(rawCabang);
     const lolosSeleksi = await checkLolosSeleksi(baseNomor, baseCabang, peserta.metadata);
 
+    const isBypass = peserta.metadata?.IS_BYPASS === true || baseNomor.startsWith('BYPASS-');
+    const effectiveCbtBuka = isBypass ? true : cbtBuka;
+    const effectiveLolos = isBypass ? true : lolosSeleksi;
+
     if (!activeSesi) {
       return NextResponse.json({
         success: true,
@@ -132,8 +136,9 @@ export async function GET(req: Request) {
         sesi_seleksi: sesiSeleksi,
         sesi_final: sesiFinal,
         tahap_cbt: tahapCbt,
-        cbt_buka: cbtBuka,
-        lolos_seleksi: lolosSeleksi
+        cbt_buka: effectiveCbtBuka,
+        lolos_seleksi: effectiveLolos,
+        is_bypass: isBypass
       });
     }
 
@@ -145,8 +150,9 @@ export async function GET(req: Request) {
       sesi_seleksi: sesiSeleksi,
       sesi_final: sesiFinal,
       tahap_cbt: tahapCbt,
-      cbt_buka: cbtBuka,
-      lolos_seleksi: lolosSeleksi,
+      cbt_buka: effectiveCbtBuka,
+      lolos_seleksi: effectiveLolos,
+      is_bypass: isBypass,
       soal
     });
   } catch (error: any) {
@@ -183,18 +189,19 @@ export async function POST(req: Request) {
       }, { status: 403 });
     }
 
+    const isBypass = peserta.metadata?.IS_BYPASS === true || baseNomor.startsWith('BYPASS-');
     const { cbtBuka, tahapCbt } = await getCbtConfig();
     const targetNomorKey = tahapCbt === 'final' ? `${baseNomor}_FINAL` : baseNomor;
     const baseCabang = normalizeCbtCabang(lomba || peserta.metadata?.LOMBA_DIPILIH || peserta.metadata?.['LOMBA YANG DIPILIH'] || '');
     const targetCabangKey = tahapCbt === 'final' ? `${baseCabang}_FINAL` : baseCabang;
 
     if (action === 'start') {
-      if (!cbtBuka) {
+      if (!cbtBuka && !isBypass) {
         return NextResponse.json({ success: false, error: 'Ujian CBT saat ini sedang ditutup/disembunyikan oleh panitia.' }, { status: 403 });
       }
 
       // Jika tahap aktif adalah FINAL, pastikan peserta lolos seleksi (Top 30)
-      if (tahapCbt === 'final') {
+      if (tahapCbt === 'final' && !isBypass) {
         const isFinalist = await checkLolosSeleksi(baseNomor, baseCabang, peserta.metadata);
         if (!isFinalist) {
           return NextResponse.json({
@@ -213,12 +220,18 @@ export async function POST(req: Request) {
       
       if (existing) {
         if (existing.status === 'selesai') {
-          return NextResponse.json({
-            success: false,
-            error: `Anda sudah menyelesaikan ujian ${tahapCbt === 'final' ? 'Babak Final' : 'Babak Seleksi'} ini.`
-          }, { status: 403 });
+          if (isBypass) {
+            // Untuk akun bypass, hapus sesi lama agar bisa menguji ulang kapan saja
+            await supabase.from('cbt_sesi').delete().eq('nomor_peserta', targetNomorKey);
+          } else {
+            return NextResponse.json({
+              success: false,
+              error: `Anda sudah menyelesaikan ujian ${tahapCbt === 'final' ? 'Babak Final' : 'Babak Seleksi'} ini.`
+            }, { status: 403 });
+          }
+        } else {
+          return NextResponse.json({ success: true, sesi: existing, tahap_cbt: tahapCbt });
         }
-        return NextResponse.json({ success: true, sesi: existing, tahap_cbt: tahapCbt });
       }
 
       // Pastikan paket soal untuk tahap & cabang ini sudah tersedia
@@ -244,6 +257,14 @@ export async function POST(req: Request) {
 
       if (error) throw error;
       return NextResponse.json({ success: true, sesi: newSesi, tahap_cbt: tahapCbt });
+    }
+
+    else if (action === 'reset') {
+      if (!isBypass) {
+        return NextResponse.json({ success: false, error: 'Aksi reset hanya untuk akun bypass/uji coba' }, { status: 403 });
+      }
+      await supabase.from('cbt_sesi').delete().in('nomor_peserta', [baseNomor, `${baseNomor}_FINAL`]);
+      return NextResponse.json({ success: true, message: 'Sesi ujian uji coba berhasil di-reset' });
     }
 
     else if (action === 'save') {

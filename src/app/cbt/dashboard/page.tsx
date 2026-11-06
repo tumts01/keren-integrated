@@ -140,12 +140,15 @@ export default function DashboardCBT() {
     setLoading(false);
   };
 
+  const isBypassUser = Boolean(user?.isBypass || user?.nomorPeserta?.startsWith('BYPASS-'));
+  const canStart = cbtBuka || isBypassUser;
+
   const handleMulaiUjian = () => {
-    if (!cbtBuka && (!sesi || sesi.status !== 'selesai')) {
+    if (!canStart && (!sesi || sesi.status !== 'selesai')) {
       Swal.fire('Ujian Belum Dibuka', 'Ujian CBT saat ini sedang disembunyikan/ditutup oleh panitia.', 'info');
       return;
     }
-    if (tahapCbt === 'final' && statusLolos === false) {
+    if (tahapCbt === 'final' && statusLolos === false && !isBypassUser) {
       Swal.fire(
         'Khusus Finalis (Top 30)',
         'Ujian CBT yang sedang berlangsung saat ini adalah Babak Final khusus bagi peserta yang lolos Top 30 Babak Seleksi.',
@@ -199,6 +202,40 @@ export default function DashboardCBT() {
     if (fileRef.current) fileRef.current.value = '';
   };
 
+  const handleResetSesi = async () => {
+    const confirm = await Swal.fire({
+      title: 'Reset Sesi Uji Coba?',
+      text: 'Jawaban dan riwayat pengerjaan sesi sebelumnya akan direset agar Anda dapat mencoba kembali ujian CBT mapel ini dari awal.',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#0284c7',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Ya, Reset Sesi',
+      cancelButtonText: 'Batal'
+    });
+    if (confirm.isConfirmed) {
+      setLoading(true);
+      try {
+        const res = await fetch('/api/cbt/sesi', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'reset', nomorPeserta: user.nomorPeserta })
+        });
+        const data = await res.json();
+        if (data.success) {
+          await Swal.fire('Berhasil', 'Sesi ujian telah direset. Anda dapat memulai kembali.', 'success');
+          setSesi(null);
+          await fetchSesi(user.nomorPeserta);
+        } else {
+          Swal.fire('Gagal', data.error || 'Gagal reset sesi', 'error');
+        }
+      } catch (e: any) {
+        Swal.fire('Error', e.message, 'error');
+      }
+      setLoading(false);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('cbt_user');
     router.push('/cbt');
@@ -243,6 +280,25 @@ export default function DashboardCBT() {
           </div>
           
           <div style={{ padding: '32px' }}>
+            {isBypassUser && (
+              <div style={{ background: '#ecfdf5', border: '1.5px solid #10b981', borderRadius: '12px', padding: '14px 18px', marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ background: '#10b981', color: 'white', padding: '4px 10px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 800 }}>AKUN BYPASS UJI COBA</span>
+                  <span style={{ fontSize: '0.9rem', color: '#065f46', fontWeight: 600 }}>
+                    Akses pengujian aktif untuk mapel <b>{user.lomba}</b>. CBT dapat dicoba kapan saja meski sistem ditutup untuk umum.
+                  </span>
+                </div>
+                {sesi && (
+                  <button
+                    onClick={handleResetSesi}
+                    style={{ padding: '8px 16px', background: '#0284c7', color: 'white', border: 'none', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <i className="fas fa-redo"></i> Reset Sesi Uji Coba
+                  </button>
+                )}
+              </div>
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
               <div style={{ border: '1px solid #e2e8f0', padding: '16px', borderRadius: '12px' }}>
                 <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '4px' }}>Nomor Peserta</div>
@@ -326,6 +382,17 @@ export default function DashboardCBT() {
                     </div>
                   </div>
                 )}
+
+                {isBypassUser && (
+                  <div style={{ marginTop: '24px', textAlign: 'center' }}>
+                    <button
+                      onClick={handleResetSesi}
+                      style={{ padding: '12px 24px', borderRadius: '8px', background: '#0284c7', color: 'white', border: 'none', fontWeight: 700, fontSize: '1rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.3)' }}
+                    >
+                      <i className="fas fa-redo"></i> Reset & Uji Coba Ulang Ujian Ini
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <>
@@ -353,9 +420,9 @@ export default function DashboardCBT() {
 
                 <button 
                   onClick={handleMulaiUjian}
-                  style={{ width: '100%', padding: '16px', borderRadius: '12px', background: cbtBuka ? '#10b981' : '#94a3b8', color: 'white', border: 'none', fontWeight: 700, fontSize: '1.2rem', cursor: cbtBuka ? 'pointer' : 'not-allowed', boxShadow: cbtBuka ? '0 4px 14px rgba(16, 185, 129, 0.4)' : 'none' }}
+                  style={{ width: '100%', padding: '16px', borderRadius: '12px', background: canStart ? '#10b981' : '#94a3b8', color: 'white', border: 'none', fontWeight: 700, fontSize: '1.2rem', cursor: canStart ? 'pointer' : 'not-allowed', boxShadow: canStart ? '0 4px 14px rgba(16, 185, 129, 0.4)' : 'none' }}
                 >
-                  <i className={`fas ${cbtBuka ? 'fa-play' : 'fa-lock'}`} style={{ marginRight: '8px' }}></i> {!cbtBuka ? 'Ujian Belum Dibuka' : (sesi ? `Lanjutkan Ujian ${labelTahap}` : `Mulai Ujian ${labelTahap}`)}
+                  <i className={`fas ${canStart ? 'fa-play' : 'fa-lock'}`} style={{ marginRight: '8px' }}></i> {!canStart ? 'Ujian Belum Dibuka' : (sesi ? `Lanjutkan Ujian ${labelTahap}` : `Mulai Ujian ${labelTahap}`)}
                 </button>
               </>
             )}
