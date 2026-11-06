@@ -472,40 +472,6 @@ export default function AdminSoalCBT() {
           style={{ display: 'none' }} 
         />
 
-        {/* BANNER NOTIFIKASI FONT ARAB */}
-        {lombaFilter === 'Arab' && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)',
-            border: '1.5px solid #86efac',
-            borderRadius: '12px',
-            padding: '12px 20px',
-            marginBottom: '20px',
-            flexWrap: 'wrap',
-            gap: '12px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#10b981', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>
-                <i className="fas fa-font"></i>
-              </div>
-              <div>
-                <div style={{ fontWeight: 800, color: '#065f46', fontSize: '0.95rem' }}>
-                  Font Khusus Bahasa Arab: <span style={{ fontFamily: "'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', serif", fontSize: '1.15rem' }}>KFGQPC Uthman Taha Naskh</span>
-                </div>
-                <div style={{ fontSize: '0.82rem', color: '#047857', marginTop: '2px' }}>
-                  Teks Arab otomatis dirender dengan khat Naskh standar Mushaf Madinah (lengkap harakat, spasi lega, dan tata letak RTL).
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <span style={{ background: '#dcfce7', border: '1px solid #bbf7d0', color: '#166534', padding: '4px 12px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 700 }}>
-                <i className="fas fa-check-circle" style={{ marginRight: '5px' }}></i>Mushaf Standar Aktif
-              </span>
-            </div>
-          </div>
-        )}
 
         {loading ? (
           <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
