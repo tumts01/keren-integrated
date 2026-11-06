@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
+import { formatMathSymbols } from '@/lib/cbt-format';
 
 export default function CBTUjianPage() {
   const router = useRouter();
@@ -44,10 +45,11 @@ export default function CBTUjianPage() {
 
   const renderMixedText = (text?: string | null, isFullArab?: boolean) => {
     if (!text) return null;
-    if (isFullArab) return text;
-    if (!/[\u0600-\u06FF]/.test(text)) return text;
+    const formatted = formatMathSymbols(text);
+    if (isFullArab) return formatted;
+    if (!/[\u0600-\u06FF]/.test(formatted)) return formatted;
 
-    const parts = text.split(/([\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+(?:[\s\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]*[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+)?)/g);
+    const parts = formatted.split(/([\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+(?:[\s\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]*[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+)?)/g);
 
     return parts.map((part, i) => {
       if (/[\u0600-\u06FF]/.test(part)) {

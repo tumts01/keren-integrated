@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { uploadFileToDrive } from '@/lib/google-drive';
+import { formatMathSymbols } from '@/lib/cbt-format';
 import * as xlsx from 'xlsx';
 
 export const dynamic = 'force-dynamic';
@@ -76,12 +77,12 @@ export async function POST(req: Request) {
         return {
           cabang_lomba: finalCabangKey,
           nomor_soal: parseInt(row['NOMOR_SOAL'] || '0', 10),
-          pertanyaan: row['PERTANYAAN'] || '',
-          opsi_a: row['OPSI_A'] || '',
-          opsi_b: row['OPSI_B'] || '',
-          opsi_c: row['OPSI_C'] || '',
-          opsi_d: row['OPSI_D'] || '',
-          opsi_e: row['OPSI_E'] || null,
+          pertanyaan: formatMathSymbols(row['PERTANYAAN'] || ''),
+          opsi_a: formatMathSymbols(row['OPSI_A'] || ''),
+          opsi_b: formatMathSymbols(row['OPSI_B'] || ''),
+          opsi_c: formatMathSymbols(row['OPSI_C'] || ''),
+          opsi_d: formatMathSymbols(row['OPSI_D'] || ''),
+          opsi_e: row['OPSI_E'] ? formatMathSymbols(row['OPSI_E']) : null,
           kunci_jawaban: (row['KUNCI'] || '').toString().trim().toUpperCase(),
           bobot_skor: parseInt(row['BOBOT'] || '1', 10)
         };
@@ -118,9 +119,17 @@ export async function POST(req: Request) {
       }
 
       const { data, error } = await supabase.from('cbt_soal').insert([{
-        cabang_lomba: lomba, nomor_soal: nomor, pertanyaan, gambar_url: gambarUrl,
-        opsi_a: opsiA, opsi_b: opsiB, opsi_c: opsiC, opsi_d: opsiD, opsi_e: opsiE,
-        kunci_jawaban: kunci, bobot_skor: bobot
+        cabang_lomba: lomba,
+        nomor_soal: nomor,
+        pertanyaan: formatMathSymbols(pertanyaan),
+        gambar_url: gambarUrl,
+        opsi_a: formatMathSymbols(opsiA),
+        opsi_b: formatMathSymbols(opsiB),
+        opsi_c: formatMathSymbols(opsiC),
+        opsi_d: formatMathSymbols(opsiD),
+        opsi_e: opsiE ? formatMathSymbols(opsiE) : null,
+        kunci_jawaban: kunci,
+        bobot_skor: bobot
       }]).select();
 
       if (error) throw error;
