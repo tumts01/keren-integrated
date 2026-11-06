@@ -331,19 +331,6 @@ export default function CBTUjianPage() {
   };
 
   const logAndWarn = useCallback(async (jenisKecurangan: string) => {
-    const isBypass = userRef.current?.isBypass || (userRef.current?.nomorPeserta || '').startsWith('BYPASS-');
-    if (isBypass) {
-      Swal.fire({
-        toast: true,
-        position: 'top-end',
-        icon: 'info',
-        title: `[Uji Coba CBT] Terdeteksi: ${jenisKecurangan} (Anti-cheat lockout dinonaktifkan untuk akun bypass)`,
-        showConfirmButton: false,
-        timer: 3000
-      });
-      return;
-    }
-
     const newCount = warningCountRef.current + 1;
     warningCountRef.current = newCount;
     setWarningCount(newCount);
