@@ -51,6 +51,8 @@ export default function RootLayout({
     <html lang="id" className={`${geistSans.variable} ${geistMono.variable}`}>
       <head>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+        <link rel="preload" href="/fonts/kfgqpc-uthman-taha-naskh.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&display=swap" />
       </head>
       <body>
         <AppLayout>

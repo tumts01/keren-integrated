@@ -22,6 +22,11 @@ export default function AdminSoalCBT() {
 
   const lombaOptions = ['Matematika', 'IPAS', 'PAI', 'Inggris', 'Arab'];
 
+  const isArabicText = (txt?: string | null): boolean => {
+    if (!txt) return false;
+    return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(txt);
+  };
+
   const getSoalCount = (lomba: string, tahap: 'seleksi' | 'final' = tahapSoal) => {
     const key = tahap === 'final' ? `${lomba}_FINAL` : lomba;
     return soalCounts[key] || 0;
@@ -119,15 +124,20 @@ export default function AdminSoalCBT() {
   };
 
   const handleDownloadTemplate = () => {
-    const ws_data = [
+    const isArab = lombaFilter === 'Arab';
+    const ws_data = isArab ? [
       ['LOMBA', 'NOMOR_SOAL', 'PERTANYAAN', 'OPSI_A', 'OPSI_B', 'OPSI_C', 'OPSI_D', 'OPSI_E', 'KUNCI'],
-      ['Matematika', 1, 'Berapakah 1+1?', '1', '2', '3', '4', '', 'B'],
-      ['Matematika', 2, 'Siapakah penemu angka 0?', 'Al-Khawarizmi', 'Newton', 'Einstein', 'Galileo', '', 'A']
+      ['Arab', 1, 'مَا هَذَا؟ هَذَا ...', 'قَلَمٌ', 'كِتَابٌ', 'مَكْتَبٌ', 'بَابٌ', '', 'A'],
+      ['Arab', 2, 'أَيْنَ تَدْرُسُ؟', 'فِي الْمَدْرَسَةِ', 'فِي الْبَيْتِ', 'فِي الْمَسْجِدِ', 'فِي الْمَكْتَبَةِ', '', 'A']
+    ] : [
+      ['LOMBA', 'NOMOR_SOAL', 'PERTANYAAN', 'OPSI_A', 'OPSI_B', 'OPSI_C', 'OPSI_D', 'OPSI_E', 'KUNCI'],
+      [lombaFilter, 1, 'Berapakah 1+1?', '1', '2', '3', '4', '', 'B'],
+      [lombaFilter, 2, 'Siapakah penemu angka 0?', 'Al-Khawarizmi', 'Newton', 'Einstein', 'Galileo', '', 'A']
     ];
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Template Soal");
-    XLSX.writeFile(wb, "Template_Soal_CBT.xlsx");
+    XLSX.writeFile(wb, `Template_Soal_${lombaFilter}_CBT.xlsx`);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -462,6 +472,41 @@ export default function AdminSoalCBT() {
           style={{ display: 'none' }} 
         />
 
+        {/* BANNER NOTIFIKASI FONT ARAB */}
+        {lombaFilter === 'Arab' && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)',
+            border: '1.5px solid #86efac',
+            borderRadius: '12px',
+            padding: '12px 20px',
+            marginBottom: '20px',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#10b981', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem' }}>
+                <i className="fas fa-font"></i>
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, color: '#065f46', fontSize: '0.95rem' }}>
+                  Font Khusus Bahasa Arab: <span style={{ fontFamily: "'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', serif", fontSize: '1.15rem' }}>KFGQPC Uthman Taha Naskh</span>
+                </div>
+                <div style={{ fontSize: '0.82rem', color: '#047857', marginTop: '2px' }}>
+                  Teks Arab otomatis dirender dengan khat Naskh standar Mushaf Madinah (lengkap harakat, spasi lega, dan tata letak RTL).
+                </div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <span style={{ background: '#dcfce7', border: '1px solid #bbf7d0', color: '#166534', padding: '4px 12px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 700 }}>
+                <i className="fas fa-check-circle" style={{ marginRight: '5px' }}></i>Mushaf Standar Aktif
+              </span>
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div style={{ textAlign: 'center', padding: '40px' }}>Loading...</div>
         ) : (
@@ -471,52 +516,116 @@ export default function AdminSoalCBT() {
                 Belum ada soal untuk {lombaFilter} pada {tahapSoal === 'final' ? 'Babak Final' : 'Babak Seleksi'}
               </div>
             ) : (
-              soalList.map(soal => (
-                <div key={soal.id} style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', alignItems: 'center' }}>
-                    <div style={{ fontWeight: 700, color: '#0f172a' }}>Soal No. {soal.nomor_soal}</div>
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                      <button 
-                        onClick={() => triggerImageUpload(soal.id)} 
-                        style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#334155', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}
-                      >
-                        <i className="fas fa-image" style={{ marginRight: '6px' }}></i> {soal.gambar_url ? 'Ganti Gambar' : 'Tambah Gambar'}
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(soal.id)} 
-                        style={{ background: '#fee2e2', border: '1px solid #fca5a5', color: '#ef4444', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}
-                      >
-                        <i className="fas fa-trash"></i>
-                      </button>
+              soalList.map(soal => {
+                const isArab = lombaFilter === 'Arab' || isArabicText(soal.pertanyaan);
+                return (
+                  <div key={soal.id} style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', background: isArab ? '#fcfffd' : 'white' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ fontWeight: 700, color: '#0f172a' }}>Soal No. {soal.nomor_soal}</div>
+                        {isArab && (
+                          <span style={{ fontSize: '0.72rem', background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                            Arab Naskh
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: '12px' }}>
+                        <button 
+                          onClick={() => triggerImageUpload(soal.id)} 
+                          style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#334155', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}
+                        >
+                          <i className="fas fa-image" style={{ marginRight: '6px' }}></i> {soal.gambar_url ? 'Ganti Gambar' : 'Tambah Gambar'}
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(soal.id)} 
+                          style={{ background: '#fee2e2', border: '1px solid #fca5a5', color: '#ef4444', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}
+                        >
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div style={{ fontSize: '1.05rem', color: '#334155', marginBottom: '16px' }}>{soal.pertanyaan}</div>
-                  
-                  {soal.gambar_url && (
-                    <div style={{ marginBottom: '16px' }}>
-                      <img src={`/api/proxy-image?url=${encodeURIComponent(soal.gambar_url)}`} alt="Gambar Soal" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px' }} />
+                    
+                    <div 
+                      dir={isArab ? "rtl" : "ltr"}
+                      style={{ 
+                        fontSize: isArab ? '1.5rem' : '1.05rem', 
+                        color: '#0f172a', 
+                        marginBottom: '18px',
+                        fontFamily: isArab ? "'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', 'Traditional Arabic', 'Amiri', serif" : 'inherit',
+                        lineHeight: isArab ? '2.4' : '1.6',
+                        textAlign: isArab ? 'right' : 'left',
+                        wordSpacing: isArab ? '2px' : 'normal',
+                        padding: isArab ? '4px 0' : '0'
+                      }}
+                    >
+                      {soal.pertanyaan}
                     </div>
-                  )}
+                    
+                    {soal.gambar_url && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <img src={`/api/proxy-image?url=${encodeURIComponent(soal.gambar_url)}`} alt="Gambar Soal" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px' }} />
+                      </div>
+                    )}
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.9rem' }}>
-                    {['A', 'B', 'C', 'D'].map(opt => {
-                      const opsiValue = soal[`opsi_${opt.toLowerCase()}`];
-                      if (!opsiValue) return null;
-                      const isImage = opsiValue.startsWith('http') && opsiValue.includes('drive.google.com');
-                      return (
-                        <div key={opt} style={{ background: soal.kunci_jawaban === opt ? '#dcfce7' : '#f8fafc', padding: '8px 12px', borderRadius: '6px', display: 'flex', gap: '8px' }}>
-                          <span style={{ fontWeight: 600 }}>{opt}.</span> 
-                          {isImage ? (
-                            <img src={`/api/proxy-image?url=${encodeURIComponent(opsiValue)}`} alt={`Opsi ${opt}`} style={{ maxWidth: '100%', maxHeight: '100px', borderRadius: '4px' }} />
-                          ) : (
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{opsiValue}</span>
-                          )}
-                        </div>
-                      );
-                    })}
+                    <div style={{ display: 'grid', gridTemplateColumns: isArab ? '1fr 1fr' : '1fr 1fr', gap: '10px', fontSize: isArab ? '1.25rem' : '0.9rem' }}>
+                      {['A', 'B', 'C', 'D'].map(opt => {
+                        const opsiValue = soal[`opsi_${opt.toLowerCase()}`];
+                        if (!opsiValue) return null;
+                        const isImage = opsiValue.startsWith('http') && opsiValue.includes('drive.google.com');
+                        const isOptArab = isArab || isArabicText(opsiValue);
+                        const isKey = soal.kunci_jawaban === opt;
+                        return (
+                          <div 
+                            key={opt} 
+                            style={{ 
+                              background: isKey ? '#dcfce7' : '#f8fafc', 
+                              border: isKey ? '1.5px solid #86efac' : '1px solid #e2e8f0',
+                              padding: '10px 14px', 
+                              borderRadius: '8px', 
+                              display: 'flex', 
+                              gap: '10px',
+                              alignItems: 'center'
+                            }}
+                          >
+                            <span style={{ 
+                              fontWeight: 700, 
+                              color: isKey ? '#166534' : '#64748b', 
+                              minWidth: '24px',
+                              textAlign: 'center',
+                              background: isKey ? '#bbf7d0' : '#e2e8f0',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '0.85rem',
+                              flexShrink: 0
+                            }}>
+                              {opt}
+                            </span> 
+                            {isImage ? (
+                              <img src={`/api/proxy-image?url=${encodeURIComponent(opsiValue)}`} alt={`Opsi ${opt}`} style={{ maxWidth: '100%', maxHeight: '100px', borderRadius: '4px' }} />
+                            ) : (
+                              <span 
+                                dir={isOptArab ? "rtl" : "ltr"}
+                                style={{ 
+                                  fontFamily: isOptArab ? "'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', 'Traditional Arabic', 'Amiri', serif" : 'inherit',
+                                  fontSize: isOptArab ? '1.35rem' : 'inherit',
+                                  lineHeight: isOptArab ? '2.1' : '1.5',
+                                  textAlign: isOptArab ? 'right' : 'left',
+                                  wordBreak: 'break-word',
+                                  wordSpacing: isOptArab ? '2px' : 'normal',
+                                  flex: 1,
+                                  color: '#1e293b'
+                                }}
+                              >
+                                {opsiValue}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}

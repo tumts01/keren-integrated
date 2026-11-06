@@ -1,5 +1,58 @@
 @import '@fortawesome/fontawesome-free/css/all.min.css';
 
+/* === Arabic Typography: KFGQPC Uthman Taha Naskh (King Fahd Glorious Quran Printing Complex) === */
+@font-face {
+  font-family: 'KFGQPC Uthman Taha Naskh';
+  src: local('KFGQPC Uthman Taha Naskh'),
+       local('KFGQPC Uthman Taha Naskh Regular'),
+       local('KFGQPCUthmanTahaNaskh'),
+       local('Uthman Taha Naskh'),
+       url('/fonts/kfgqpc-uthman-taha-naskh.woff2') format('woff2'),
+       url('/fonts/kfgqpc-uthman-taha-naskh.ttf') format('truetype'),
+       url('https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/fonts/uthman-tn1-ver10.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'KFGQPC Uthman Taha Naskh';
+  src: local('KFGQPC Uthman Taha Naskh Bold'),
+       local('KFGQPCUthmanTahaNaskh-Bold'),
+       url('/fonts/kfgqpc-uthman-taha-naskh-bold.woff2') format('woff2'),
+       url('/fonts/kfgqpc-uthman-taha-naskh-bold.ttf') format('truetype'),
+       url('https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/fonts/uthman-tn1-b-ver10.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Alias Uthman Taha Naskh */
+@font-face {
+  font-family: 'Uthman Taha Naskh';
+  src: local('KFGQPC Uthman Taha Naskh'),
+       local('KFGQPC Uthman Taha Naskh Regular'),
+       url('/fonts/kfgqpc-uthman-taha-naskh.woff2') format('woff2'),
+       url('/fonts/kfgqpc-uthman-taha-naskh.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+.font-arabic,
+.font-uthman-taha {
+  font-family: 'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', 'Traditional Arabic', 'Amiri', serif !important;
+}
+
+.cbt-arabic-text {
+  font-family: 'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', 'Traditional Arabic', 'Amiri', serif !important;
+  direction: rtl;
+  text-align: right;
+  line-height: 2.3 !important;
+  word-spacing: 2px;
+  font-feature-settings: "cv01", "cv02", "liga", "clig", "calt";
+}
+
 :root {
   /* Color Palette - Modern Emerald & Soft Slate Theme */
   --bg-main: #F1F5F9; /* Soft Slate / Cool Light Gray - comfortable on eyes */

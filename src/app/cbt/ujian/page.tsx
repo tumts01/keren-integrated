@@ -37,6 +37,11 @@ export default function CBTUjianPage() {
   const DURASI_MENIT = 90;
   const MAX_WARNINGS = 3;
 
+  const isArabicText = (txt?: string | null): boolean => {
+    if (!txt) return false;
+    return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(txt);
+  };
+
   // Grace period 5 detik pertama sejak ujian dibuka (agar pop-up awal Chrome/browser tidak memicu pelanggaran)
   useEffect(() => {
     const t = setTimeout(() => {
@@ -814,86 +819,120 @@ export default function CBTUjianPage() {
         {/* Konten Soal */}
         <div style={{ padding: '32px', flex: 1, overflowY: 'auto' }}>
           <div style={{ background: 'white', padding: '32px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-            <div style={{ display: 'flex', gap: '16px' }}>
-              <div style={{ fontSize: fontSize === 'lg' ? '1.85rem' : fontSize === 'sm' ? '1.3rem' : '1.5rem', fontWeight: 800, color: '#0284c7', transition: 'font-size 0.2s ease' }}>{currentSoal.nomor_soal}.</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ 
-                  fontSize: fontSize === 'lg' ? '1.45rem' : fontSize === 'sm' ? '1.05rem' : '1.2rem', 
-                  color: '#1e293b', 
-                  lineHeight: '1.6', 
-                  marginBottom: '24px',
-                  transition: 'font-size 0.2s ease'
-                }}>
-                  {currentSoal.pertanyaan}
-                </div>
-                {currentSoal.gambar_url && (
-                  <div style={{ marginBottom: '24px' }}>
-                    <img src={`/api/proxy-image?url=${encodeURIComponent(currentSoal.gambar_url)}`} alt="Ilustrasi Soal" style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+            {(() => {
+              const isArabQuestion = (user?.lomba && /arab/i.test(user.lomba)) || isArabicText(currentSoal.pertanyaan);
+              return (
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                  <div style={{ 
+                    fontSize: fontSize === 'lg' ? '1.85rem' : fontSize === 'sm' ? '1.3rem' : '1.5rem', 
+                    fontWeight: 800, 
+                    color: '#0284c7', 
+                    transition: 'font-size 0.2s ease',
+                    flexShrink: 0,
+                    marginTop: isArabQuestion ? '4px' : '0'
+                  }}>
+                    {currentSoal.nomor_soal}.
                   </div>
-                )}
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {['A', 'B', 'C', 'D', 'E'].map(optKey => {
-                    const opsiValue = currentSoal[`opsi_${optKey.toLowerCase()}`];
-                    if (!opsiValue) return null;
-                    
-                    const isSelected = jawaban[noSoalString] === optKey;
-                    
-                    return (
-                      <div 
-                        key={optKey}
-                        onClick={() => handlePilihJawaban(optKey)}
-                        style={{ 
-                          display: 'flex', 
-                          padding: '16px', 
-                          borderRadius: '12px', 
-                          border: `2px solid ${isSelected ? '#3b82f6' : '#e2e8f0'}`,
-                          background: isSelected ? '#eff6ff' : 'white',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                      <div style={{ 
-                        width: fontSize === 'lg' ? '40px' : fontSize === 'sm' ? '30px' : '34px', 
-                        height: fontSize === 'lg' ? '40px' : fontSize === 'sm' ? '30px' : '34px', 
-                        borderRadius: '50%', 
-                        background: isSelected ? '#3b82f6' : '#f1f5f9', 
-                        color: isSelected ? 'white' : '#64748b', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center', 
-                        fontWeight: 700, 
-                        marginRight: '16px', 
-                        flexShrink: 0,
-                        fontSize: fontSize === 'lg' ? '1.15rem' : fontSize === 'sm' ? '0.9rem' : '1rem',
-                        transition: 'all 0.2s ease'
-                      }}>
-                        {optKey}
-                      </div>
-                      <div style={{ 
-                        fontSize: fontSize === 'lg' ? '1.3rem' : fontSize === 'sm' ? '0.95rem' : '1.1rem', 
-                        color: '#334155', 
-                        alignSelf: 'center', 
-                        overflow: 'hidden',
-                        lineHeight: '1.5',
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div 
+                      dir={isArabQuestion ? "rtl" : "ltr"}
+                      style={{ 
+                        fontSize: isArabQuestion
+                          ? (fontSize === 'lg' ? '1.95rem' : fontSize === 'sm' ? '1.4rem' : '1.65rem')
+                          : (fontSize === 'lg' ? '1.45rem' : fontSize === 'sm' ? '1.05rem' : '1.2rem'), 
+                        color: '#1e293b', 
+                        fontFamily: isArabQuestion ? "'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', 'Traditional Arabic', 'Amiri', serif" : 'inherit',
+                        lineHeight: isArabQuestion ? '2.4' : '1.6', 
+                        marginBottom: '24px',
+                        textAlign: isArabQuestion ? 'right' : 'left',
+                        wordSpacing: isArabQuestion ? '2px' : 'normal',
                         transition: 'font-size 0.2s ease'
-                      }}>
-                        {opsiValue.startsWith('http') && opsiValue.includes('drive.google.com') ? (
-                          <img 
-                            src={`/api/proxy-image?url=${encodeURIComponent(opsiValue)}`} 
-                            alt={`Opsi ${optKey}`} 
-                            style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', display: 'block' }} 
-                          />
-                        ) : (
-                          opsiValue
-                        )}
+                      }}
+                    >
+                      {currentSoal.pertanyaan}
+                    </div>
+                    {currentSoal.gambar_url && (
+                      <div style={{ marginBottom: '24px' }}>
+                        <img src={`/api/proxy-image?url=${encodeURIComponent(currentSoal.gambar_url)}`} alt="Ilustrasi Soal" style={{ maxWidth: '100%', maxHeight: '400px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
                       </div>
-                      </div>
-                    );
-                  })}
+                    )}
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {['A', 'B', 'C', 'D', 'E'].map(optKey => {
+                        const opsiValue = currentSoal[`opsi_${optKey.toLowerCase()}`];
+                        if (!opsiValue) return null;
+                        
+                        const isSelected = jawaban[noSoalString] === optKey;
+                        const isOptArab = isArabQuestion || isArabicText(opsiValue);
+                        
+                        return (
+                          <div 
+                            key={optKey}
+                            onClick={() => handlePilihJawaban(optKey)}
+                            style={{ 
+                              display: 'flex', 
+                              padding: '16px', 
+                              borderRadius: '12px', 
+                              border: `2px solid ${isSelected ? '#3b82f6' : '#e2e8f0'}`,
+                              background: isSelected ? '#eff6ff' : 'white',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              alignItems: isOptArab ? 'flex-start' : 'center'
+                            }}
+                          >
+                          <div style={{ 
+                            width: fontSize === 'lg' ? '40px' : fontSize === 'sm' ? '30px' : '34px', 
+                            height: fontSize === 'lg' ? '40px' : fontSize === 'sm' ? '30px' : '34px', 
+                            borderRadius: '50%', 
+                            background: isSelected ? '#3b82f6' : '#f1f5f9', 
+                            color: isSelected ? 'white' : '#64748b', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            fontWeight: 700, 
+                            marginRight: '16px', 
+                            flexShrink: 0,
+                            fontSize: fontSize === 'lg' ? '1.15rem' : fontSize === 'sm' ? '0.9rem' : '1rem',
+                            transition: 'all 0.2s ease',
+                            marginTop: isOptArab ? '4px' : '0'
+                          }}>
+                            {optKey}
+                          </div>
+                          <div 
+                            dir={isOptArab ? "rtl" : "ltr"}
+                            style={{ 
+                              fontSize: isOptArab 
+                                ? (fontSize === 'lg' ? '1.75rem' : fontSize === 'sm' ? '1.25rem' : '1.45rem') 
+                                : (fontSize === 'lg' ? '1.3rem' : fontSize === 'sm' ? '0.95rem' : '1.1rem'), 
+                              color: '#334155', 
+                              alignSelf: 'center', 
+                              overflow: 'hidden',
+                              lineHeight: isOptArab ? '2.1' : '1.5',
+                              fontFamily: isOptArab ? "'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', 'Traditional Arabic', 'Amiri', serif" : 'inherit',
+                              textAlign: isOptArab ? 'right' : 'left',
+                              wordSpacing: isOptArab ? '2px' : 'normal',
+                              flex: 1,
+                              transition: 'font-size 0.2s ease'
+                            }}
+                          >
+                            {opsiValue.startsWith('http') && opsiValue.includes('drive.google.com') ? (
+                              <img 
+                                src={`/api/proxy-image?url=${encodeURIComponent(opsiValue)}`} 
+                                alt={`Opsi ${optKey}`} 
+                                style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', display: 'block' }} 
+                              />
+                            ) : (
+                              opsiValue
+                            )}
+                          </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px' }}>
