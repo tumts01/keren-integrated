@@ -42,6 +42,36 @@ export default function CBTUjianPage() {
     return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(txt);
   };
 
+  const renderMixedText = (text?: string | null, isFullArab?: boolean) => {
+    if (!text) return null;
+    if (isFullArab) return text;
+    if (!/[\u0600-\u06FF]/.test(text)) return text;
+
+    const parts = text.split(/([\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+(?:[\s\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]*[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+)?)/g);
+
+    return parts.map((part, i) => {
+      if (/[\u0600-\u06FF]/.test(part)) {
+        return (
+          <span
+            key={i}
+            dir="rtl"
+            style={{
+              fontFamily: "'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', 'Traditional Arabic', 'Amiri', serif",
+              fontSize: '1.28em',
+              lineHeight: '1.8',
+              unicodeBidi: 'isolate',
+              wordSpacing: '2px',
+              display: 'inline'
+            }}
+          >
+            {part}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
+
   // Grace period 5 detik pertama sejak ujian dibuka (agar pop-up awal Chrome/browser tidak memicu pelanggaran)
   useEffect(() => {
     const t = setTimeout(() => {
@@ -820,7 +850,10 @@ export default function CBTUjianPage() {
         <div style={{ padding: '32px', flex: 1, overflowY: 'auto' }}>
           <div style={{ background: 'white', padding: '32px', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
             {(() => {
-              const isArabQuestion = (user?.lomba && /arab/i.test(user.lomba)) || isArabicText(currentSoal.pertanyaan);
+              const isFullArab = Boolean(user?.lomba && /arab/i.test(user.lomba));
+              const isQuestionOnlyArab = !isFullArab && isArabicText(currentSoal.pertanyaan) && !/[a-zA-Z]/.test(currentSoal.pertanyaan);
+              const isRtl = isFullArab || isQuestionOnlyArab;
+
               return (
                 <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
                   <div style={{ 
@@ -829,27 +862,27 @@ export default function CBTUjianPage() {
                     color: '#0284c7', 
                     transition: 'font-size 0.2s ease',
                     flexShrink: 0,
-                    marginTop: isArabQuestion ? '4px' : '0'
+                    marginTop: isFullArab ? '4px' : '0'
                   }}>
                     {currentSoal.nomor_soal}.
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div 
-                      dir={isArabQuestion ? "rtl" : "ltr"}
+                      dir={isRtl ? "rtl" : "ltr"}
                       style={{ 
-                        fontSize: isArabQuestion
+                        fontSize: isFullArab
                           ? (fontSize === 'lg' ? '1.95rem' : fontSize === 'sm' ? '1.4rem' : '1.65rem')
                           : (fontSize === 'lg' ? '1.45rem' : fontSize === 'sm' ? '1.05rem' : '1.2rem'), 
                         color: '#1e293b', 
-                        fontFamily: isArabQuestion ? "'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', 'Traditional Arabic', 'Amiri', serif" : 'inherit',
-                        lineHeight: isArabQuestion ? '2.4' : '1.6', 
+                        fontFamily: isFullArab ? "'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', 'Traditional Arabic', 'Amiri', serif" : 'inherit',
+                        lineHeight: isFullArab ? '2.4' : '1.6', 
                         marginBottom: '24px',
-                        textAlign: isArabQuestion ? 'right' : 'left',
-                        wordSpacing: isArabQuestion ? '2px' : 'normal',
+                        textAlign: isRtl ? 'right' : 'left',
+                        wordSpacing: isFullArab ? '2px' : 'normal',
                         transition: 'font-size 0.2s ease'
                       }}
                     >
-                      {currentSoal.pertanyaan}
+                      {renderMixedText(currentSoal.pertanyaan, isFullArab)}
                     </div>
                     {currentSoal.gambar_url && (
                       <div style={{ marginBottom: '24px' }}>
@@ -863,7 +896,8 @@ export default function CBTUjianPage() {
                         if (!opsiValue) return null;
                         
                         const isSelected = jawaban[noSoalString] === optKey;
-                        const isOptArab = isArabQuestion || isArabicText(opsiValue);
+                        const isOptOnlyArab = !isFullArab && isArabicText(opsiValue) && !/[a-zA-Z]/.test(opsiValue);
+                        const isOptRtl = isFullArab || isOptOnlyArab;
                         
                         return (
                           <div 
@@ -877,7 +911,7 @@ export default function CBTUjianPage() {
                               background: isSelected ? '#eff6ff' : 'white',
                               cursor: 'pointer',
                               transition: 'all 0.2s',
-                              alignItems: isOptArab ? 'flex-start' : 'center'
+                              alignItems: isOptRtl ? 'flex-start' : 'center'
                             }}
                           >
                           <div style={{ 
@@ -894,23 +928,23 @@ export default function CBTUjianPage() {
                             flexShrink: 0,
                             fontSize: fontSize === 'lg' ? '1.15rem' : fontSize === 'sm' ? '0.9rem' : '1rem',
                             transition: 'all 0.2s ease',
-                            marginTop: isOptArab ? '4px' : '0'
+                            marginTop: isOptRtl ? '4px' : '0'
                           }}>
                             {optKey}
                           </div>
                           <div 
-                            dir={isOptArab ? "rtl" : "ltr"}
+                            dir={isOptRtl ? "rtl" : "ltr"}
                             style={{ 
-                              fontSize: isOptArab 
+                              fontSize: isFullArab 
                                 ? (fontSize === 'lg' ? '1.75rem' : fontSize === 'sm' ? '1.25rem' : '1.45rem') 
                                 : (fontSize === 'lg' ? '1.3rem' : fontSize === 'sm' ? '0.95rem' : '1.1rem'), 
                               color: '#334155', 
                               alignSelf: 'center', 
                               overflow: 'hidden',
-                              lineHeight: isOptArab ? '2.1' : '1.5',
-                              fontFamily: isOptArab ? "'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', 'Traditional Arabic', 'Amiri', serif" : 'inherit',
-                              textAlign: isOptArab ? 'right' : 'left',
-                              wordSpacing: isOptArab ? '2px' : 'normal',
+                              lineHeight: isFullArab ? '2.1' : '1.5',
+                              fontFamily: isFullArab ? "'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', 'Traditional Arabic', 'Amiri', serif" : 'inherit',
+                              textAlign: isOptRtl ? 'right' : 'left',
+                              wordSpacing: isFullArab ? '2px' : 'normal',
                               flex: 1,
                               transition: 'font-size 0.2s ease'
                             }}
@@ -922,7 +956,7 @@ export default function CBTUjianPage() {
                                 style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', display: 'block' }} 
                               />
                             ) : (
-                              opsiValue
+                              renderMixedText(opsiValue, isFullArab)
                             )}
                           </div>
                           </div>

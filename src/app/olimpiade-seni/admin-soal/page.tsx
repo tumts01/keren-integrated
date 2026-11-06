@@ -27,6 +27,36 @@ export default function AdminSoalCBT() {
     return /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(txt);
   };
 
+  const renderMixedText = (text?: string | null, isFullArab?: boolean) => {
+    if (!text) return null;
+    if (isFullArab) return text;
+    if (!/[\u0600-\u06FF]/.test(text)) return text;
+
+    const parts = text.split(/([\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+(?:[\s\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]*[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]+)?)/g);
+
+    return parts.map((part, i) => {
+      if (/[\u0600-\u06FF]/.test(part)) {
+        return (
+          <span
+            key={i}
+            dir="rtl"
+            style={{
+              fontFamily: "'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', 'Traditional Arabic', 'Amiri', serif",
+              fontSize: '1.28em',
+              lineHeight: '1.8',
+              unicodeBidi: 'isolate',
+              wordSpacing: '2px',
+              display: 'inline'
+            }}
+          >
+            {part}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
+
   const getSoalCount = (lomba: string, tahap: 'seleksi' | 'final' = tahapSoal) => {
     const key = tahap === 'final' ? `${lomba}_FINAL` : lomba;
     return soalCounts[key] || 0;
@@ -483,13 +513,16 @@ export default function AdminSoalCBT() {
               </div>
             ) : (
               soalList.map(soal => {
-                const isArab = lombaFilter === 'Arab' || isArabicText(soal.pertanyaan);
+                const isFullArab = lombaFilter === 'Arab';
+                const isQuestionOnlyArab = !isFullArab && isArabicText(soal.pertanyaan) && !/[a-zA-Z]/.test(soal.pertanyaan);
+                const isRtl = isFullArab || isQuestionOnlyArab;
+
                 return (
-                  <div key={soal.id} style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', background: isArab ? '#fcfffd' : 'white' }}>
+                  <div key={soal.id} style={{ border: '1px solid #e2e8f0', borderRadius: '12px', padding: '20px', background: isFullArab ? '#fcfffd' : 'white' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px', alignItems: 'center' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <div style={{ fontWeight: 700, color: '#0f172a' }}>Soal No. {soal.nomor_soal}</div>
-                        {isArab && (
+                        {isFullArab && (
                           <span style={{ fontSize: '0.72rem', background: '#dcfce7', color: '#166534', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
                             Arab Naskh
                           </span>
@@ -512,19 +545,19 @@ export default function AdminSoalCBT() {
                     </div>
                     
                     <div 
-                      dir={isArab ? "rtl" : "ltr"}
+                      dir={isRtl ? "rtl" : "ltr"}
                       style={{ 
-                        fontSize: isArab ? '1.5rem' : '1.05rem', 
+                        fontSize: isFullArab ? '1.5rem' : '1.05rem', 
                         color: '#0f172a', 
                         marginBottom: '18px',
-                        fontFamily: isArab ? "'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', 'Traditional Arabic', 'Amiri', serif" : 'inherit',
-                        lineHeight: isArab ? '2.4' : '1.6',
-                        textAlign: isArab ? 'right' : 'left',
-                        wordSpacing: isArab ? '2px' : 'normal',
-                        padding: isArab ? '4px 0' : '0'
+                        fontFamily: isFullArab ? "'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', 'Traditional Arabic', 'Amiri', serif" : 'inherit',
+                        lineHeight: isFullArab ? '2.4' : '1.7',
+                        textAlign: isRtl ? 'right' : 'left',
+                        wordSpacing: isFullArab ? '2px' : 'normal',
+                        padding: isFullArab ? '4px 0' : '0'
                       }}
                     >
-                      {soal.pertanyaan}
+                      {renderMixedText(soal.pertanyaan, isFullArab)}
                     </div>
                     
                     {soal.gambar_url && (
@@ -533,12 +566,13 @@ export default function AdminSoalCBT() {
                       </div>
                     )}
 
-                    <div style={{ display: 'grid', gridTemplateColumns: isArab ? '1fr 1fr' : '1fr 1fr', gap: '10px', fontSize: isArab ? '1.25rem' : '0.9rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isFullArab ? '1fr 1fr' : '1fr 1fr', gap: '10px', fontSize: isFullArab ? '1.25rem' : '0.9rem' }}>
                       {['A', 'B', 'C', 'D'].map(opt => {
                         const opsiValue = soal[`opsi_${opt.toLowerCase()}`];
                         if (!opsiValue) return null;
                         const isImage = opsiValue.startsWith('http') && opsiValue.includes('drive.google.com');
-                        const isOptArab = isArab || isArabicText(opsiValue);
+                        const isOptOnlyArab = !isFullArab && isArabicText(opsiValue) && !/[a-zA-Z]/.test(opsiValue);
+                        const isOptRtl = isFullArab || isOptOnlyArab;
                         const isKey = soal.kunci_jawaban === opt;
                         return (
                           <div 
@@ -570,19 +604,19 @@ export default function AdminSoalCBT() {
                               <img src={`/api/proxy-image?url=${encodeURIComponent(opsiValue)}`} alt={`Opsi ${opt}`} style={{ maxWidth: '100%', maxHeight: '100px', borderRadius: '4px' }} />
                             ) : (
                               <span 
-                                dir={isOptArab ? "rtl" : "ltr"}
+                                dir={isOptRtl ? "rtl" : "ltr"}
                                 style={{ 
-                                  fontFamily: isOptArab ? "'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', 'Traditional Arabic', 'Amiri', serif" : 'inherit',
-                                  fontSize: isOptArab ? '1.35rem' : 'inherit',
-                                  lineHeight: isOptArab ? '2.1' : '1.5',
-                                  textAlign: isOptArab ? 'right' : 'left',
+                                  fontFamily: isFullArab ? "'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', 'Traditional Arabic', 'Amiri', serif" : 'inherit',
+                                  fontSize: isFullArab ? '1.35rem' : 'inherit',
+                                  lineHeight: isFullArab ? '2.1' : '1.5',
+                                  textAlign: isOptRtl ? 'right' : 'left',
                                   wordBreak: 'break-word',
-                                  wordSpacing: isOptArab ? '2px' : 'normal',
+                                  wordSpacing: isFullArab ? '2px' : 'normal',
                                   flex: 1,
                                   color: '#1e293b'
                                 }}
                               >
-                                {opsiValue}
+                                {renderMixedText(opsiValue, isFullArab)}
                               </span>
                             )}
                           </div>
