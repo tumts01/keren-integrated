@@ -125,7 +125,7 @@ export default function PenilaianDiriPage() {
       const res = await fetch('/api/siswa');
       const json = await res.json();
       if (json.success && json.data) {
-        const aktif = json.data.filter((s: any) => (s.status || '').toLowerCase().includes('aktif') && s.isLatest);
+        const aktif = json.data.filter((s: any) => (s.status || '').toLowerCase().trim() === 'aktif' && s.isLatest);
         setSiswaData(aktif);
       }
     } catch (e) {

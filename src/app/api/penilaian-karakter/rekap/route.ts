@@ -24,13 +24,31 @@ export async function GET(request: Request) {
     
     for (const row of semuaSiswa) {
       const meta = row.metadata || {};
-      const status = (meta['STATUS SISWA'] || '').toUpperCase().trim();
-      if (!status.includes('AKTIF')) continue;
+      const status = (meta['STATUS SISWA'] || '').trim().toLowerCase();
+      // Pastikan hanya siswa yang benar-benar aktif (bukan tidak aktif / lulus / mutasi keluar)
+      if (status !== 'aktif') continue;
 
-      let rombel = (meta['ROMBEL KELAS 9'] || '').trim();
-      if (!rombel) rombel = (meta['ROMBEL KELAS 8'] || '').trim();
-      if (!rombel) rombel = (meta['ROMBEL KELAS 7'] || '').trim();
-      if (!rombel) rombel = (meta['ROMBEL'] || '').trim();
+      // Ambil rombel terbaru (sesuai logika standar Data Siswa di /api/siswa)
+      const records = [];
+      const ta7 = (meta['TA KELAS 7'] || '').trim();
+      const rombel7 = (meta['ROMBEL KELAS 7'] || '').trim();
+      if (ta7 && rombel7) records.push({ rombel: rombel7 });
+
+      const ta8 = (meta['TA KELAS 8'] || '').trim();
+      const rombel8 = (meta['ROMBEL KELAS 8'] || '').trim();
+      if (ta8 && rombel8) records.push({ rombel: rombel8 });
+
+      const ta9 = (meta['TA KELAS 9'] || '').trim();
+      const rombel9 = (meta['ROMBEL KELAS 9'] || '').trim();
+      if (ta9 && rombel9) records.push({ rombel: rombel9 });
+
+      let rombel = '';
+      if (records.length > 0) {
+        rombel = records[records.length - 1].rombel;
+      } else {
+        rombel = (meta['ROMBEL'] || '').trim();
+      }
+      if (!rombel) rombel = 'Lainnya';
 
       const nisn = (meta['NISN'] || '').trim();
       const nis = (meta['ID SISWA'] || row.id_siswa || '').trim();
