@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { uploadFileToDrive } from '@/lib/google-drive';
+import { isLombaClosed } from '@/lib/olimpiade-config';
 import * as xlsx from 'xlsx';
 
 export const dynamic = 'force-dynamic';
@@ -80,6 +81,21 @@ export async function POST(req: Request) {
     const jenisPendaftaran = formData.get('jenisPendaftaran') as string;
     const kategori = formData.get('kategori') as string || '';
     
+    // Cek konfigurasi pendaftaran (buka / tutup global & custom per cabang)
+    const { data: configData } = await supabase
+      .from('profil_lembaga')
+      .select('metadata')
+      .eq('jenis', 'CONFIG_OLIMPIADE')
+      .limit(1)
+      .maybeSingle();
+
+    const pendaftaranBuka = configData?.metadata?.pendaftaran_buka ?? true;
+    const closedLombas = Array.isArray(configData?.metadata?.closed_lombas) ? configData.metadata.closed_lombas : [];
+
+    if (!pendaftaranBuka) {
+      return NextResponse.json({ success: false, error: 'Pendaftaran Olimpiade & Lomba Seni saat ini sedang ditutup.' }, { status: 400 });
+    }
+
     // Bukti Pembayaran
     const buktiFile = formData.get('buktiPembayaran') as File | null;
     let buktiUrl = '';
@@ -167,6 +183,12 @@ export async function POST(req: Request) {
             lomba = String(row[key] || '');
             break;
           }
+        }
+        if (lomba && isLombaClosed(lomba, pendaftaranBuka, closedLombas)) {
+          return NextResponse.json({
+            success: false,
+            error: `Pendaftaran untuk cabang "${lomba}" saat ini telah ditutup oleh panitia. Silakan periksa kembali file Excel Anda.`
+          }, { status: 400 });
         }
         let regu = '';
         for (const key of Object.keys(row)) {
@@ -343,6 +365,12 @@ export async function POST(req: Request) {
       
     } else if (jenisPendaftaran === 'individu') {
       const lombaDipilih = formData.get('lombaDipilih') as string || '';
+      if (isLombaClosed(lombaDipilih, pendaftaranBuka, closedLombas)) {
+        return NextResponse.json({
+          success: false,
+          error: `Pendaftaran untuk cabang "${lombaDipilih}" saat ini telah ditutup oleh panitia.`
+        }, { status: 400 });
+      }
       const { isAkademik, isSeni } = getLombaInfo(lombaDipilih);
 
       let totalBiayaIndividu = 0;

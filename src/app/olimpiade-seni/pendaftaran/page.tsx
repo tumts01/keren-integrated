@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
+import { DAFTAR_CABANG_LOMBA, isLombaClosed } from '@/lib/olimpiade-config';
 
 // Rangkuman Biaya Pendaftaran Olimpiade dan Lomba Seni 2026:
 // - Olimpiade (Matematika, IPAS, PAI, Bahasa Arab, Bahasa Inggris):
@@ -196,14 +197,16 @@ export default function PendaftaranOlimpiadeSeni() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [isBuka, setIsBuka] = useState(true);
+  const [closedLombas, setClosedLombas] = useState<string[]>([]);
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
     fetch('/api/olimpiade-seni/config-pendaftaran')
       .then(res => res.json())
       .then(data => {
-        if (data.success && data.pendaftaran_buka !== undefined) {
-          setIsBuka(data.pendaftaran_buka);
+        if (data.success) {
+          if (data.pendaftaran_buka !== undefined) setIsBuka(data.pendaftaran_buka);
+          if (Array.isArray(data.closed_lombas)) setClosedLombas(data.closed_lombas);
         }
       })
       .catch(() => {})
@@ -242,10 +245,11 @@ export default function PendaftaranOlimpiadeSeni() {
   };
 
   const handleKategoriChange = (kat: 'Olimpiade Akademik' | 'Lomba Seni') => {
+    const openOpts = lombaOptions[kat].filter(opt => !isLombaClosed(opt, isBuka, closedLombas));
     setForm({
       ...form,
       kategori: kat,
-      lombaDipilih: lombaOptions[kat][0],
+      lombaDipilih: openOpts[0] || lombaOptions[kat][0],
       namaRegu: '' // Reset regu
     });
   };
@@ -343,6 +347,10 @@ export default function PendaftaranOlimpiadeSeni() {
 
   const handleSubmitIndividu = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLombaClosed(form.lombaDipilih, isBuka, closedLombas)) {
+      Swal.fire('Peringatan', `Pendaftaran untuk cabang ${form.lombaDipilih} saat ini telah ditutup oleh panitia.`, 'warning');
+      return;
+    }
     const biayaInfo = getBiayaIndividu(form.lombaDipilih);
     if (!biayaInfo.isGratis && !buktiIndividu) {
       Swal.fire('Peringatan', `Bukti pembayaran wajib diunggah untuk pendaftaran ${form.lombaDipilih} (${formatRupiah(biayaInfo.subtotal)})!`, 'warning');
@@ -543,6 +551,36 @@ export default function PendaftaranOlimpiadeSeni() {
           }
         });
 
+        // Cek cabang lomba yang ditutup
+        const closedFound: string[] = [];
+        excelData.forEach((row: any, index: number) => {
+          let namaLomba = row['LOMBA YANG DIPILIH'];
+          if (!namaLomba) {
+            for (const key of Object.keys(row)) {
+              if (key.toLowerCase().includes('lomba')) {
+                namaLomba = row[key];
+                break;
+              }
+            }
+          }
+          if (namaLomba && isLombaClosed(String(namaLomba).trim(), isBuka, closedLombas)) {
+            closedFound.push(`Baris ke-${index + 2}: "${namaLomba}"`);
+          }
+        });
+
+        if (closedFound.length > 0) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Cabang Lomba Ditutup!',
+            html: `File Excel memuat peserta untuk cabang lomba yang pendaftarannya sudah ditutup oleh panitia:<br/><br/><div style="text-align: left; background: #fffbeb; border: 1px solid #fde68a; padding: 10px; border-radius: 8px; max-height: 200px; overflow-y: auto; color: #92400e;">${closedFound.join('<br/>')}</div><br/>Silakan hapus baris peserta lomba tersebut dari file Excel lalu upload kembali.`
+          });
+          if (fileInputRef.current) fileInputRef.current.value = '';
+          setUploadedFile(null);
+          setKolektifLombaList([]);
+          setBiayaKolektif(null);
+          return;
+        }
+
         if (errorMsgs.length > 0) {
           Swal.fire({
             icon: 'error',
@@ -712,7 +750,9 @@ export default function PendaftaranOlimpiadeSeni() {
     );
   }
 
-  if (!isBuka) {
+  const isAllClosed = !isBuka || (DAFTAR_CABANG_LOMBA.length > 0 && DAFTAR_CABANG_LOMBA.every(c => isLombaClosed(c.nama, isBuka, closedLombas)));
+
+  if (!isChecking && isAllClosed) {
     return (
       <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '40px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ maxWidth: '500px', width: '100%', background: 'white', padding: '40px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', textAlign: 'center' }}>
@@ -735,6 +775,27 @@ export default function PendaftaranOlimpiadeSeni() {
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '40px 20px' }}>
       <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        
+        {closedLombas.length > 0 && isBuka && (
+          <div style={{
+            background: '#fffbeb',
+            border: '1.5px solid #fde68a',
+            borderRadius: '14px',
+            padding: '14px 18px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            boxShadow: '0 2px 6px rgba(245, 158, 11, 0.08)'
+          }}>
+            <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', flexShrink: 0 }}>
+              <i className="fas fa-exclamation-triangle"></i>
+            </div>
+            <div style={{ fontSize: '0.88rem', color: '#92400e', lineHeight: 1.5 }}>
+              <b>Informasi Penutupan Cabang:</b> Pendaftaran untuk cabang <b>{closedLombas.join(', ')}</b> saat ini telah ditutup oleh panitia. Cabang lomba lainnya tetap dibuka.
+            </div>
+          </div>
+        )}
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
           <button 

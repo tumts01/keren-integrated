@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
+import { DAFTAR_CABANG_LOMBA } from '@/lib/olimpiade-config';
 
 interface OlimpiadeData {
   id: number;
@@ -67,6 +68,13 @@ export default function RekapOlimpiadeSeni() {
   // Modal Kelola Peserta Kolektif
   const [kelolaKolektif, setKelolaKolektif] = useState<OlimpiadeData | null>(null);
 
+  // Custom Buka/Tutup Pendaftaran States
+  const [closedLombas, setClosedLombas] = useState<string[]>([]);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [modalClosedLombas, setModalClosedLombas] = useState<string[]>([]);
+  const [modalIsBuka, setModalIsBuka] = useState(true);
+  const [savingConfig, setSavingConfig] = useState(false);
+
   useEffect(() => {
     const sessionStr = localStorage.getItem('keren_user_data');
     if (sessionStr) {
@@ -85,44 +93,53 @@ export default function RekapOlimpiadeSeni() {
     try {
       const res = await fetch('/api/olimpiade-seni/config-pendaftaran');
       const json = await res.json();
-      if (json.success && json.pendaftaran_buka !== undefined) {
-        setIsBuka(json.pendaftaran_buka);
+      if (json.success) {
+        if (json.pendaftaran_buka !== undefined) setIsBuka(json.pendaftaran_buka);
+        if (Array.isArray(json.closed_lombas)) setClosedLombas(json.closed_lombas);
       }
     } catch (err) {}
   };
 
-  const handleToggleBuka = async () => {
-    const actionText = isBuka ? 'Menutup' : 'Membuka';
-    const confirm = await Swal.fire({
-      title: `${actionText} Pendaftaran?`,
-      text: isBuka ? 'Pendaftar baru tidak akan bisa mendaftar. Lanjutkan?' : 'Pendaftaran akan dibuka kembali untuk umum. Lanjutkan?',
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: isBuka ? '#ef4444' : '#10b981',
-      confirmButtonText: `Ya, ${isBuka ? 'Tutup' : 'Buka'}`,
-      cancelButtonText: 'Batal'
-    });
+  const handleOpenConfigModal = () => {
+    setModalIsBuka(isBuka);
+    setModalClosedLombas([...closedLombas]);
+    setShowConfigModal(true);
+  };
 
-    if (!confirm.isConfirmed) return;
-
-    setToggling(true);
+  const handleSaveConfig = async () => {
+    setSavingConfig(true);
     try {
       const res = await fetch('/api/olimpiade-seni/config-pendaftaran', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ buka: !isBuka })
+        body: JSON.stringify({
+          buka: modalIsBuka,
+          closed_lombas: modalClosedLombas
+        })
       });
       const json = await res.json();
       if (json.success) {
-        setIsBuka(!isBuka);
-        Swal.fire('Berhasil', `Pendaftaran berhasil di${isBuka ? 'tutup' : 'buka'}.`, 'success');
+        setIsBuka(json.pendaftaran_buka);
+        setClosedLombas(json.closed_lombas || []);
+        setShowConfigModal(false);
+        Swal.fire({
+          icon: 'success',
+          title: 'Pengaturan Disimpan!',
+          text: !json.pendaftaran_buka
+            ? 'Pendaftaran telah ditutup total untuk semua cabang.'
+            : (json.closed_lombas || []).length > 0
+            ? `Pendaftaran dibuka dengan ${(json.closed_lombas || []).length} cabang ditutup.`
+            : 'Pendaftaran dibuka untuk seluruh cabang lomba.',
+          timer: 2500,
+          showConfirmButton: false
+        });
       } else {
         Swal.fire('Gagal', json.error, 'error');
       }
     } catch (err: any) {
-      Swal.fire('Error', 'Terjadi kesalahan sistem', 'error');
+      Swal.fire('Error', 'Gagal menyimpan konfigurasi: ' + err.message, 'error');
     } finally {
-      setToggling(false);
+      setSavingConfig(false);
     }
   };
 
@@ -696,17 +713,24 @@ export default function RekapOlimpiadeSeni() {
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {isAdmin && (
               <button
-                onClick={handleToggleBuka}
-                disabled={toggling}
+                onClick={handleOpenConfigModal}
                 style={{
                   padding: '10px 16px', borderRadius: '8px',
-                  background: isBuka ? '#ef4444' : '#10b981', color: 'white', border: 'none',
-                  fontWeight: 600, cursor: toggling ? 'not-allowed' : 'pointer',
-                  display: 'flex', alignItems: 'center', gap: '8px', opacity: toggling ? 0.7 : 1
+                  background: !isBuka ? '#ef4444' : closedLombas.length > 0 ? '#f59e0b' : '#10b981',
+                  color: 'white', border: 'none',
+                  fontWeight: 600, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  transition: 'all 0.2s'
                 }}
+                title="Atur buka/tutup pendaftaran secara custom per cabang lomba"
               >
-                <i className={`fas ${toggling ? 'fa-spinner fa-spin' : isBuka ? 'fa-lock' : 'fa-lock-open'}`}></i>
-                {isBuka ? 'Tutup Pendaftaran' : 'Buka Pendaftaran'}
+                <i className={`fas ${!isBuka ? 'fa-lock' : closedLombas.length > 0 ? 'fa-sliders-h' : 'fa-lock-open'}`}></i>
+                {!isBuka
+                  ? 'Pendaftaran Ditutup (Semua)'
+                  : closedLombas.length > 0
+                  ? `Status Pendaftaran (${closedLombas.length} Ditutup)`
+                  : 'Status Pendaftaran (Buka Semua)'}
               </button>
             )}
             <button 
@@ -2068,6 +2092,284 @@ export default function RekapOlimpiadeSeni() {
                 style={{ padding: '8px 18px', borderRadius: '8px', border: '1px solid #cbd5e1', background: 'white', color: '#475569', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
               >
                 Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal Pengaturan Status Buka/Tutup Pendaftaran (Custom Per Cabang) */}
+      {showConfigModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(15, 23, 42, 0.65)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '20px',
+            maxWidth: '650px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid #e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: '#f8fafc',
+              borderTopLeftRadius: '20px',
+              borderTopRightRadius: '20px'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#0f172a', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <i className="fas fa-sliders-h" style={{ color: '#0284c7' }}></i>
+                  Pengaturan Buka / Tutup Pendaftaran
+                </h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+                  Tutup atau buka pendaftaran secara menyeluruh atau khusus cabang lomba tertentu.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowConfigModal(false)}
+                style={{ background: 'none', border: 'none', fontSize: '1.3rem', color: '#94a3b8', cursor: 'pointer', padding: '4px 8px' }}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Global Master Status */}
+              <div style={{
+                background: modalIsBuka ? '#f0fdf4' : '#fef2f2',
+                border: `1.5px solid ${modalIsBuka ? '#86efac' : '#fca5a5'}`,
+                borderRadius: '14px',
+                padding: '16px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '12px'
+              }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '0.98rem', color: modalIsBuka ? '#166534' : '#991b1b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <i className={`fas ${modalIsBuka ? 'fa-lock-open' : 'fa-lock'}`}></i>
+                    Status Global: {modalIsBuka ? 'Pendaftaran DIBUKA' : 'Pendaftaran DITUTUP TOTAL'}
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: modalIsBuka ? '#15803d' : '#b91c1c', marginTop: '3px' }}>
+                    {modalIsBuka
+                      ? 'Pendaftaran aktif. Anda dapat memilih cabang tertentu di bawah ini untuk ditutup.'
+                      : 'Seluruh pendaftaran dinonaktifkan (calon peserta melihat halaman "Pendaftaran Ditutup").'}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setModalIsBuka(!modalIsBuka)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    background: modalIsBuka ? '#ef4444' : '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <i className={`fas ${modalIsBuka ? 'fa-lock' : 'fa-lock-open'}`}></i>
+                  {modalIsBuka ? 'Tutup Total' : 'Buka Pendaftaran'}
+                </button>
+              </div>
+
+              {/* Status Per Cabang Lomba */}
+              {modalIsBuka && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+                    <label style={{ fontWeight: 800, color: '#1e293b', fontSize: '0.92rem' }}>
+                      Pilih Cabang Lomba yang Ditutup:
+                    </label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setModalClosedLombas([])}
+                        style={{
+                          background: '#dcfce7',
+                          color: '#15803d',
+                          border: '1px solid #86efac',
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <i className="fas fa-check-double"></i> Buka Semua
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setModalClosedLombas(DAFTAR_CABANG_LOMBA.map(c => c.nama))}
+                        style={{
+                          background: '#fee2e2',
+                          color: '#b91c1c',
+                          border: '1px solid #fca5a5',
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <i className="fas fa-ban"></i> Tutup Semua
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Kategori Cabang */}
+                  {(['Olimpiade Akademik', 'Lomba Seni']).map(kategori => {
+                    const list = DAFTAR_CABANG_LOMBA.filter(c => c.kategori === kategori);
+                    return (
+                      <div key={kategori} style={{ marginBottom: '18px' }}>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+                          {kategori}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {list.map(c => {
+                            const isClosed = modalClosedLombas.includes(c.nama);
+                            const countPeserta = summaryCounts[c.nama] || 0;
+                            return (
+                              <div
+                                key={c.nama}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  padding: '10px 16px',
+                                  borderRadius: '10px',
+                                  background: isClosed ? '#fff5f5' : '#f8fafc',
+                                  border: isClosed ? '1.5px solid #fecaca' : '1px solid #e2e8f0',
+                                  transition: 'all 0.2s'
+                                }}
+                              >
+                                <div>
+                                  <div style={{ fontWeight: 700, color: isClosed ? '#991b1b' : '#0f172a', fontSize: '0.9rem' }}>
+                                    {c.label}
+                                  </div>
+                                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '2px' }}>
+                                    Peserta terdaftar: <b>{countPeserta} {c.satuan}</b>
+                                  </div>
+                                </div>
+
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <span style={{
+                                    fontSize: '0.75rem',
+                                    fontWeight: 700,
+                                    padding: '3px 10px',
+                                    borderRadius: '50px',
+                                    background: isClosed ? '#fee2e2' : '#dcfce7',
+                                    color: isClosed ? '#dc2626' : '#16a34a'
+                                  }}>
+                                    {isClosed ? '🔴 Ditutup' : '🟢 Dibuka'}
+                                  </span>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (isClosed) {
+                                        setModalClosedLombas(modalClosedLombas.filter(x => x !== c.nama));
+                                      } else {
+                                        setModalClosedLombas([...modalClosedLombas, c.nama]);
+                                      }
+                                    }}
+                                    style={{
+                                      padding: '6px 12px',
+                                      borderRadius: '6px',
+                                      background: isClosed ? '#10b981' : '#ef4444',
+                                      color: 'white',
+                                      border: 'none',
+                                      fontWeight: 700,
+                                      fontSize: '0.78rem',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    {isClosed ? 'Buka Cabang' : 'Tutup Cabang'}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '16px 24px',
+              borderTop: '1px solid #e2e8f0',
+              background: '#f8fafc',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '12px',
+              borderBottomLeftRadius: '20px',
+              borderBottomRightRadius: '20px'
+            }}>
+              <button
+                type="button"
+                onClick={() => setShowConfigModal(false)}
+                style={{
+                  padding: '9px 18px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  background: 'white',
+                  color: '#475569',
+                  fontWeight: 600,
+                  fontSize: '0.9rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveConfig}
+                disabled={savingConfig}
+                style={{
+                  padding: '9px 24px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: '#0284c7',
+                  color: 'white',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  cursor: savingConfig ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 10px rgba(2, 132, 199, 0.3)'
+                }}
+              >
+                {savingConfig ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-save"></i>}
+                {savingConfig ? 'Menyimpan...' : 'Simpan Pengaturan'}
               </button>
             </div>
           </div>
