@@ -474,33 +474,57 @@ export default function PenilaianDiriPage() {
 
   return (
     <div className={styles.container}>
-      {isSiswa && (
-        <button onClick={() => window.location.href = '/portal/dashboard'} 
-          style={{ 
-            background: '#1e293b', 
-            color: 'white', 
-            border: 'none',
-            padding: '10px 20px', 
-            borderRadius: '10px', 
-            cursor: 'pointer', 
-            display: 'inline-flex', 
-            alignItems: 'center', 
-            gap: '10px', 
-            fontWeight: 'bold', 
-            marginBottom: '20px', 
-            boxShadow: '0 4px 6px -1px rgba(0,0,0,0.2)',
-            fontSize: '0.95rem'
-          }}
-          onMouseOver={e => e.currentTarget.style.background = '#0f172a'}
-          onMouseOut={e => e.currentTarget.style.background = '#1e293b'}
-        >
-          <i className="fas fa-arrow-left"></i> KEMBALI KE DASHBOARD
-        </button>
-      )}
+      {/* HEADER STICKY (FROZEN KETIKA DI-SCROLL) */}
+      <div style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        background: '#f8fafc',
+        paddingTop: isSiswa ? '8px' : '0',
+        paddingBottom: '8px',
+        marginBottom: '16px'
+      }}>
+        {isSiswa && (
+          <button onClick={() => window.location.href = '/portal/dashboard'} 
+            style={{ 
+              background: '#1e293b', 
+              color: 'white', 
+              border: 'none',
+              padding: '10px 20px', 
+              borderRadius: '10px', 
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '10px', 
+              fontWeight: 'bold', 
+              marginBottom: '10px', 
+              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.2)',
+              fontSize: '0.92rem',
+              width: '100%',
+              transition: 'background 0.2s'
+            }}
+            onMouseOver={e => e.currentTarget.style.background = '#0f172a'}
+            onMouseOut={e => e.currentTarget.style.background = '#1e293b'}
+          >
+            <i className="fas fa-arrow-left"></i> KEMBALI KE DASHBOARD
+          </button>
+        )}
 
-      <div style={{ background: 'linear-gradient(135deg, var(--primary) 0%, #047857 100%)', color: 'white', padding: '30px 20px', borderRadius: '16px', textAlign: 'center', marginBottom: '30px', boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.2)' }}>
-        <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>Penilaian Diri & Karakter</h1>
-        <p style={{ margin: '10px 0 0 0', opacity: 0.9, fontSize: '0.95rem' }}>Formulir evaluasi sikap dan karakter antar siswa dan guru</p>
+        <div style={{ 
+          background: 'linear-gradient(135deg, var(--primary) 0%, #047857 100%)', 
+          color: 'white', 
+          padding: '16px 20px', 
+          borderRadius: '14px', 
+          textAlign: 'center', 
+          boxShadow: '0 8px 16px -3px rgba(16, 185, 129, 0.2)' 
+        }}>
+          <h1 style={{ margin: 0, fontSize: '1.45rem', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+            Penilaian Diri &amp; Karakter
+          </h1>
+          <p style={{ margin: '4px 0 0 0', opacity: 0.9, fontSize: '0.85rem' }}>
+            Formulir evaluasi sikap dan karakter antar siswa dan guru
+          </p>
+        </div>
       </div>
       
       <div className={styles.tabsContainer} style={{ maxWidth: 450, margin: "0 auto 20px auto" }}>
