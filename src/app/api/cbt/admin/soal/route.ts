@@ -193,3 +193,74 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
+
+// PUT: Update detail data soal langsung
+export async function PUT(req: Request) {
+  try {
+    const body = await req.json();
+    const {
+      id,
+      nomor_soal,
+      pertanyaan,
+      opsi_a,
+      opsi_b,
+      opsi_c,
+      opsi_d,
+      opsi_e,
+      kunci_jawaban,
+      bobot_skor,
+      hapus_gambar
+    } = body;
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'ID soal wajib disertakan' }, { status: 400 });
+    }
+
+    const updatePayload: Record<string, any> = {};
+
+    if (nomor_soal !== undefined) {
+      updatePayload.nomor_soal = parseInt(nomor_soal.toString(), 10) || 1;
+    }
+    if (pertanyaan !== undefined) {
+      updatePayload.pertanyaan = formatMathSymbols((pertanyaan || '').toString());
+    }
+    if (opsi_a !== undefined) {
+      updatePayload.opsi_a = formatMathSymbols((opsi_a || '').toString());
+    }
+    if (opsi_b !== undefined) {
+      updatePayload.opsi_b = formatMathSymbols((opsi_b || '').toString());
+    }
+    if (opsi_c !== undefined) {
+      updatePayload.opsi_c = formatMathSymbols((opsi_c || '').toString());
+    }
+    if (opsi_d !== undefined) {
+      updatePayload.opsi_d = formatMathSymbols((opsi_d || '').toString());
+    }
+    if (opsi_e !== undefined) {
+      const trimmedE = (opsi_e || '').toString().trim();
+      updatePayload.opsi_e = trimmedE ? formatMathSymbols(trimmedE) : null;
+    }
+    if (kunci_jawaban !== undefined) {
+      updatePayload.kunci_jawaban = (kunci_jawaban || '').toString().trim().toUpperCase();
+    }
+    if (bobot_skor !== undefined) {
+      updatePayload.bobot_skor = parseInt(bobot_skor.toString(), 10) || 1;
+    }
+    if (hapus_gambar === true) {
+      updatePayload.gambar_url = null;
+    }
+
+    const { data, error } = await supabase
+      .from('cbt_soal')
+      .update(updatePayload)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, message: 'Soal berhasil diperbarui', data });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}

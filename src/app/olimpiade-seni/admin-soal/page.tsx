@@ -21,6 +21,24 @@ export default function AdminSoalCBT() {
   const [tahapCbtAktif, setTahapCbtAktif] = useState<'seleksi' | 'final'>('seleksi');
   const [soalCounts, setSoalCounts] = useState<Record<string, number>>({});
 
+  // State untuk modal edit soal langsung
+  const [editingSoal, setEditingSoal] = useState<any | null>(null);
+  const [editForm, setEditForm] = useState({
+    nomor_soal: 1,
+    pertanyaan: '',
+    opsi_a: '',
+    opsi_b: '',
+    opsi_c: '',
+    opsi_d: '',
+    opsi_e: '',
+    kunci_jawaban: 'A',
+    bobot_skor: 1,
+    gambar_url: null as string | null,
+    hapus_gambar: false
+  });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editActiveTab, setEditActiveTab] = useState<'form' | 'preview'>('form');
+
   const lombaOptions = ['Matematika', 'IPAS', 'PAI', 'Inggris', 'Arab'];
 
   const isArabicText = (txt?: string | null): boolean => {
@@ -279,6 +297,82 @@ export default function AdminSoalCBT() {
     if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
+  const openEditModal = (soal: any) => {
+    setEditingSoal(soal);
+    setEditForm({
+      nomor_soal: soal.nomor_soal || 1,
+      pertanyaan: soal.pertanyaan || '',
+      opsi_a: soal.opsi_a || '',
+      opsi_b: soal.opsi_b || '',
+      opsi_c: soal.opsi_c || '',
+      opsi_d: soal.opsi_d || '',
+      opsi_e: soal.opsi_e || '',
+      kunci_jawaban: (soal.kunci_jawaban || 'A').toUpperCase(),
+      bobot_skor: soal.bobot_skor || 1,
+      gambar_url: soal.gambar_url || null,
+      hapus_gambar: false
+    });
+    setEditActiveTab('form');
+  };
+
+  const closeEditModal = () => {
+    if (isSavingEdit) return;
+    setEditingSoal(null);
+  };
+
+  const handleSaveEdit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!editingSoal) return;
+
+    if (!editForm.pertanyaan.trim()) {
+      Swal.fire('Peringatan', 'Teks pertanyaan tidak boleh kosong', 'warning');
+      return;
+    }
+    if (!editForm.opsi_a.trim() || !editForm.opsi_b.trim() || !editForm.opsi_c.trim() || !editForm.opsi_d.trim()) {
+      Swal.fire('Peringatan', 'Opsi A, B, C, dan D wajib diisi', 'warning');
+      return;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      const res = await fetch('/api/cbt/admin/soal', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingSoal.id,
+          nomor_soal: editForm.nomor_soal,
+          pertanyaan: editForm.pertanyaan,
+          opsi_a: editForm.opsi_a,
+          opsi_b: editForm.opsi_b,
+          opsi_c: editForm.opsi_c,
+          opsi_d: editForm.opsi_d,
+          opsi_e: editForm.opsi_e,
+          kunci_jawaban: editForm.kunci_jawaban,
+          bobot_skor: editForm.bobot_skor,
+          hapus_gambar: editForm.hapus_gambar
+        })
+      });
+      const result = await res.json();
+      if (result.success) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Soal Berhasil Diperbarui',
+          text: `Perubahan Soal No. ${editForm.nomor_soal} telah disimpan!`,
+          timer: 1500,
+          showConfirmButton: false
+        });
+        setEditingSoal(null);
+        fetchSoal();
+      } else {
+        Swal.fire('Gagal Menyimpan', result.error || 'Terjadi kesalahan saat menyimpan perubahan', 'error');
+      }
+    } catch (err: any) {
+      Swal.fire('Error', err.message, 'error');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   return (
     <div style={{ padding: '40px', background: '#f8fafc', minHeight: '100vh' }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto', background: 'white', padding: '32px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
@@ -530,16 +624,58 @@ export default function AdminSoalCBT() {
                           </span>
                         )}
                       </div>
-                      <div style={{ display: 'flex', gap: '12px' }}>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <button 
+                          onClick={() => openEditModal(soal)} 
+                          style={{ 
+                            background: '#eff6ff', 
+                            border: '1px solid #bfdbfe', 
+                            color: '#1d4ed8', 
+                            padding: '6px 14px', 
+                            borderRadius: '6px', 
+                            cursor: 'pointer', 
+                            fontSize: '0.85rem', 
+                            fontWeight: 700,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            boxShadow: '0 1px 2px rgba(29, 78, 216, 0.05)'
+                          }}
+                          title="Edit teks soal, opsi pilihan jawaban, dan kunci"
+                        >
+                          <i className="fas fa-edit"></i> Edit Soal
+                        </button>
                         <button 
                           onClick={() => triggerImageUpload(soal.id)} 
-                          style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#334155', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}
+                          style={{ 
+                            background: '#f8fafc', 
+                            border: '1px solid #cbd5e1', 
+                            color: '#334155', 
+                            padding: '6px 12px', 
+                            borderRadius: '6px', 
+                            cursor: 'pointer', 
+                            fontSize: '0.85rem', 
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
                         >
-                          <i className="fas fa-image" style={{ marginRight: '6px' }}></i> {soal.gambar_url ? 'Ganti Gambar' : 'Tambah Gambar'}
+                          <i className="fas fa-image"></i> {soal.gambar_url ? 'Ganti Gambar' : 'Tambah Gambar'}
                         </button>
                         <button 
                           onClick={() => handleDelete(soal.id)} 
-                          style={{ background: '#fee2e2', border: '1px solid #fca5a5', color: '#ef4444', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}
+                          style={{ 
+                            background: '#fee2e2', 
+                            border: '1px solid #fca5a5', 
+                            color: '#ef4444', 
+                            padding: '6px 12px', 
+                            borderRadius: '6px', 
+                            cursor: 'pointer', 
+                            fontSize: '0.85rem', 
+                            fontWeight: 600 
+                          }}
+                          title="Hapus soal ini"
                         >
                           <i className="fas fa-trash"></i>
                         </button>
@@ -635,6 +771,549 @@ export default function AdminSoalCBT() {
           </div>
         )}
       </div>
+
+      {/* MODAL EDIT SOAL */}
+      {editingSoal && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px'
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeEditModal();
+          }}
+        >
+          <div 
+            style={{
+              background: 'white',
+              borderRadius: '16px',
+              maxWidth: '840px',
+              width: '100%',
+              maxHeight: '92vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              overflow: 'hidden',
+              border: '1px solid #e2e8f0'
+            }}
+          >
+            {/* Modal Header */}
+            <div 
+              style={{
+                padding: '16px 24px',
+                borderBottom: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: '#f8fafc'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  background: '#dbeafe',
+                  color: '#1d4ed8',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.1rem'
+                }}>
+                  <i className="fas fa-edit"></i>
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#0f172a', fontWeight: 800 }}>
+                    Edit Soal No. {editForm.nomor_soal}
+                  </h3>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                    Mata Pelajaran: <b>{lombaFilter}</b> &bull; Paket: <b>{tahapSoal === 'final' ? 'Babak Final' : 'Babak Seleksi'}</b>
+                  </div>
+                </div>
+              </div>
+
+              {/* Tab Selector & Close Button */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', background: '#e2e8f0', borderRadius: '8px', padding: '3px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setEditActiveTab('form')}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: editActiveTab === 'form' ? 'white' : 'transparent',
+                      color: editActiveTab === 'form' ? '#0f172a' : '#64748b',
+                      fontWeight: 700,
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      boxShadow: editActiveTab === 'form' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                    }}
+                  >
+                    <i className="fas fa-pen-to-square" style={{ marginRight: '5px' }}></i> Form
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditActiveTab('preview')}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: editActiveTab === 'preview' ? 'white' : 'transparent',
+                      color: editActiveTab === 'preview' ? '#0f172a' : '#64748b',
+                      fontWeight: 700,
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      boxShadow: editActiveTab === 'preview' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+                    }}
+                  >
+                    <i className="fas fa-eye" style={{ marginRight: '5px' }}></i> Preview
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={closeEditModal}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#64748b',
+                    cursor: 'pointer',
+                    fontSize: '1.25rem',
+                    padding: '4px 8px',
+                    borderRadius: '6px'
+                  }}
+                  title="Tutup Modal"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
+              {editActiveTab === 'form' ? (
+                <form onSubmit={handleSaveEdit} id="edit-soal-form" style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                  {/* Row 1: Nomor Soal, Kunci Jawaban, Bobot Skor */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 700, fontSize: '0.82rem', color: '#334155', marginBottom: '6px' }}>
+                        Nomor Soal
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={editForm.nomor_soal}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, nomor_soal: parseInt(e.target.value, 10) || 1 }))}
+                        style={{
+                          width: '100%',
+                          padding: '9px 12px',
+                          borderRadius: '8px',
+                          border: '1.5px solid #cbd5e1',
+                          fontWeight: 700,
+                          fontSize: '0.9rem',
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 700, fontSize: '0.82rem', color: '#334155', marginBottom: '6px' }}>
+                        Kunci Jawaban <span style={{ color: '#16a34a' }}>*</span>
+                      </label>
+                      <select
+                        value={editForm.kunci_jawaban}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, kunci_jawaban: e.target.value.toUpperCase() }))}
+                        style={{
+                          width: '100%',
+                          padding: '9px 12px',
+                          borderRadius: '8px',
+                          border: '2px solid #22c55e',
+                          background: '#f0fdf4',
+                          color: '#15803d',
+                          fontWeight: 800,
+                          fontSize: '0.9rem',
+                          outline: 'none',
+                          cursor: 'pointer',
+                          boxSizing: 'border-box'
+                        }}
+                      >
+                        <option value="A">Kunci Opsi A</option>
+                        <option value="B">Kunci Opsi B</option>
+                        <option value="C">Kunci Opsi C</option>
+                        <option value="D">Kunci Opsi D</option>
+                        <option value="E">Kunci Opsi E</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontWeight: 700, fontSize: '0.82rem', color: '#334155', marginBottom: '6px' }}>
+                        Bobot Skor
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={editForm.bobot_skor}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, bobot_skor: parseInt(e.target.value, 10) || 1 }))}
+                        style={{
+                          width: '100%',
+                          padding: '9px 12px',
+                          borderRadius: '8px',
+                          border: '1.5px solid #cbd5e1',
+                          fontWeight: 700,
+                          fontSize: '0.9rem',
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 2: Teks Pertanyaan */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <label style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e293b' }}>
+                        Teks Pertanyaan <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
+                      <span style={{ fontSize: '0.72rem', color: '#64748b', background: '#f1f5f9', padding: '2px 8px', borderRadius: '4px' }}>
+                        Enter & baris baru dipertahankan
+                      </span>
+                    </div>
+                    <textarea
+                      rows={6}
+                      value={editForm.pertanyaan}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, pertanyaan: e.target.value }))}
+                      dir={lombaFilter === 'Arab' ? 'rtl' : 'ltr'}
+                      placeholder="Tuliskan isi pertanyaan di sini..."
+                      style={{
+                        width: '100%',
+                        padding: '12px 14px',
+                        borderRadius: '10px',
+                        border: '1.5px solid #cbd5e1',
+                        fontSize: lombaFilter === 'Arab' ? '1.25rem' : '0.95rem',
+                        fontFamily: lombaFilter === 'Arab' ? "'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', 'Traditional Arabic', 'Amiri', serif" : 'inherit',
+                        lineHeight: lombaFilter === 'Arab' ? '2.1' : '1.6',
+                        outline: 'none',
+                        resize: 'vertical',
+                        boxSizing: 'border-box',
+                        whiteSpace: 'pre-wrap'
+                      }}
+                      required
+                    />
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <i className="fas fa-info-circle" style={{ color: '#3b82f6' }}></i>
+                      <span>Simbol satuan seperti <code>cm2</code>, <code>m2</code>, <code>cm3</code>, <code>m3</code>, atau pangkat <code>^2</code> otomatis diformat menjadi <code>cm²</code>, <code>m²</code>, <code>cm³</code>, <code>m³</code> saat disimpan.</span>
+                    </div>
+                  </div>
+
+                  {/* Row Gambar (jika ada) */}
+                  {editForm.gambar_url && (
+                    <div style={{
+                      padding: '12px 16px',
+                      background: editForm.hapus_gambar ? '#fef2f2' : '#f8fafc',
+                      borderRadius: '10px',
+                      border: `1.5px dashed ${editForm.hapus_gambar ? '#fca5a5' : '#cbd5e1'}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '16px'
+                    }}>
+                      <img 
+                        src={`/api/proxy-image?url=${encodeURIComponent(editForm.gambar_url)}`} 
+                        alt="Gambar Soal" 
+                        style={{ 
+                          maxWidth: '120px', 
+                          maxHeight: '75px', 
+                          borderRadius: '6px', 
+                          border: '1px solid #e2e8f0',
+                          opacity: editForm.hapus_gambar ? 0.35 : 1
+                        }} 
+                      />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.85rem', color: editForm.hapus_gambar ? '#b91c1c' : '#334155' }}>
+                          {editForm.hapus_gambar ? 'Gambar akan DIHAPUS saat Anda menekan Simpan' : 'Soal ini memiliki lampiran gambar'}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
+                          Untuk mengganti dengan gambar baru, simpan lalu klik tombol <b>Ganti Gambar</b> di kartu soal.
+                        </div>
+                      </div>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem', color: '#dc2626' }}>
+                        <input
+                          type="checkbox"
+                          checked={editForm.hapus_gambar}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, hapus_gambar: e.target.checked }))}
+                        />
+                        Hapus Gambar
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Row 3: Pilihan Jawaban A, B, C, D, E */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <label style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0f172a' }}>
+                        Pilihan Jawaban
+                      </label>
+                      <span style={{ fontSize: '0.75rem', color: '#0369a1', background: '#e0f2fe', padding: '3px 10px', borderRadius: '12px', fontWeight: 700 }}>
+                        <i className="fas fa-hand-pointer" style={{ marginRight: '4px' }}></i> Klik tombol huruf (A/B/C/D/E) untuk set sebagai Kunci
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {(['A', 'B', 'C', 'D', 'E'] as const).map(opt => {
+                        const isKey = editForm.kunci_jawaban === opt;
+                        const fieldName = `opsi_${opt.toLowerCase()}` as 'opsi_a' | 'opsi_b' | 'opsi_c' | 'opsi_d' | 'opsi_e';
+                        const isOptE = opt === 'E';
+
+                        return (
+                          <div 
+                            key={opt}
+                            style={{
+                              display: 'flex',
+                              gap: '10px',
+                              alignItems: 'flex-start',
+                              padding: '8px 12px',
+                              borderRadius: '10px',
+                              background: isKey ? '#f0fdf4' : '#ffffff',
+                              border: `1.5px solid ${isKey ? '#86efac' : '#e2e8f0'}`
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => setEditForm(prev => ({ ...prev, kunci_jawaban: opt }))}
+                              style={{
+                                width: '38px',
+                                height: '38px',
+                                borderRadius: '8px',
+                                border: 'none',
+                                background: isKey ? '#22c55e' : '#e2e8f0',
+                                color: isKey ? 'white' : '#475569',
+                                fontWeight: 800,
+                                fontSize: '0.95rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                                transition: 'all 0.15s ease'
+                              }}
+                              title={`Klik untuk jadikan Opsi ${opt} sebagai Kunci Jawaban`}
+                            >
+                              {opt}
+                            </button>
+
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: isKey ? '#15803d' : '#64748b' }}>
+                                  Opsi {opt} {isOptE ? '(Opsional)' : '*'}
+                                </span>
+                                {isKey && (
+                                  <span style={{ fontSize: '0.68rem', background: '#dcfce7', color: '#166534', padding: '1px 8px', borderRadius: '10px', fontWeight: 800 }}>
+                                    <i className="fas fa-check-circle" style={{ marginRight: '4px' }}></i> KUNCI JAWABAN
+                                  </span>
+                                )}
+                              </div>
+                              <textarea
+                                rows={2}
+                                value={editForm[fieldName]}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setEditForm(prev => ({ ...prev, [fieldName]: val }));
+                                }}
+                                dir={lombaFilter === 'Arab' ? 'rtl' : 'ltr'}
+                                placeholder={isOptE ? 'Kosongkan jika hanya ada 4 opsi (A-D)...' : `Masukkan teks opsi ${opt}...`}
+                                style={{
+                                  width: '100%',
+                                  padding: '8px 10px',
+                                  borderRadius: '6px',
+                                  border: `1px solid ${isKey ? '#86efac' : '#cbd5e1'}`,
+                                  fontSize: lombaFilter === 'Arab' ? '1.15rem' : '0.9rem',
+                                  fontFamily: lombaFilter === 'Arab' ? "'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', 'Traditional Arabic', 'Amiri', serif" : 'inherit',
+                                  outline: 'none',
+                                  resize: 'vertical',
+                                  boxSizing: 'border-box',
+                                  whiteSpace: 'pre-wrap'
+                                }}
+                                required={!isOptE}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </form>
+              ) : (
+                /* Tab Live Preview */
+                <div>
+                  <div style={{ marginBottom: '14px', fontSize: '0.85rem', color: '#64748b' }}>
+                    Tampilan berikut memvisualisasikan bagaimana soal akan dilihat oleh siswa saat ujian CBT:
+                  </div>
+
+                  <div style={{ border: '1.5px solid #e2e8f0', borderRadius: '12px', padding: '20px', background: lombaFilter === 'Arab' ? '#fcfffd' : 'white' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px', alignItems: 'center' }}>
+                      <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '1.05rem' }}>
+                        Soal No. {editForm.nomor_soal}
+                      </div>
+                      <span style={{ fontSize: '0.75rem', background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                        Bobot Skor: {editForm.bobot_skor}
+                      </span>
+                    </div>
+
+                    <div 
+                      dir={lombaFilter === 'Arab' ? 'rtl' : 'ltr'}
+                      style={{ 
+                        fontSize: lombaFilter === 'Arab' ? '1.5rem' : '1.05rem', 
+                        color: '#0f172a', 
+                        marginBottom: '18px',
+                        fontFamily: lombaFilter === 'Arab' ? "'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', 'Traditional Arabic', 'Amiri', serif" : 'inherit',
+                        lineHeight: lombaFilter === 'Arab' ? '2.4' : '1.7',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word'
+                      }}
+                    >
+                      {renderMixedText(formatMathSymbols(editForm.pertanyaan), lombaFilter === 'Arab')}
+                    </div>
+
+                    {editForm.gambar_url && !editForm.hapus_gambar && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <img 
+                          src={`/api/proxy-image?url=${encodeURIComponent(editForm.gambar_url)}`} 
+                          alt="Gambar Soal" 
+                          style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', border: '1px solid #e2e8f0' }} 
+                        />
+                      </div>
+                    )}
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                      {(['A', 'B', 'C', 'D', 'E'] as const).map(opt => {
+                        const fieldName = `opsi_${opt.toLowerCase()}` as 'opsi_a' | 'opsi_b' | 'opsi_c' | 'opsi_d' | 'opsi_e';
+                        const opsiVal = editForm[fieldName];
+                        if (!opsiVal && opt === 'E') return null;
+                        const isKey = editForm.kunci_jawaban === opt;
+
+                        return (
+                          <div 
+                            key={opt}
+                            style={{
+                              background: isKey ? '#dcfce7' : '#f8fafc',
+                              border: isKey ? '1.5px solid #86efac' : '1px solid #e2e8f0',
+                              padding: '10px 14px',
+                              borderRadius: '8px',
+                              display: 'flex',
+                              gap: '10px',
+                              alignItems: 'center'
+                            }}
+                          >
+                            <span style={{
+                              fontWeight: 800,
+                              color: isKey ? '#166534' : '#64748b',
+                              minWidth: '24px',
+                              textAlign: 'center',
+                              background: isKey ? '#bbf7d0' : '#e2e8f0',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              fontSize: '0.85rem',
+                              flexShrink: 0
+                            }}>
+                              {opt}
+                            </span>
+                            <span 
+                              dir={lombaFilter === 'Arab' ? 'rtl' : 'ltr'}
+                              style={{
+                                fontFamily: lombaFilter === 'Arab' ? "'KFGQPC Uthman Taha Naskh', 'Uthman Taha Naskh', 'Traditional Arabic', 'Amiri', serif" : 'inherit',
+                                fontSize: lombaFilter === 'Arab' ? '1.35rem' : '0.9rem',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word',
+                                color: '#1e293b',
+                                flex: 1
+                              }}
+                            >
+                              {renderMixedText(formatMathSymbols(opsiVal), lombaFilter === 'Arab')}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div 
+              style={{
+                padding: '14px 24px',
+                borderTop: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: '#f8fafc'
+              }}
+            >
+              <button
+                type="button"
+                onClick={closeEditModal}
+                disabled={isSavingEdit}
+                style={{
+                  padding: '9px 18px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  background: 'white',
+                  color: '#475569',
+                  fontWeight: 600,
+                  fontSize: '0.88rem',
+                  cursor: isSavingEdit ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Batal
+              </button>
+
+              <button
+                type="submit"
+                form="edit-soal-form"
+                disabled={isSavingEdit}
+                onClick={editActiveTab === 'preview' ? () => handleSaveEdit() : undefined}
+                style={{
+                  padding: '9px 24px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: '#2563eb',
+                  color: 'white',
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  cursor: isSavingEdit ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 2px 8px rgba(37, 99, 235, 0.3)'
+                }}
+              >
+                {isSavingEdit ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin"></i> Menyimpan...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-check"></i> Simpan Perubahan
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
