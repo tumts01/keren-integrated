@@ -28,7 +28,8 @@ export async function GET(req: Request) {
     // 1. Ambil data soal untuk mengetahui total soal per cabang lomba
     const { data: soalData, error: errSoal } = await supabase
       .from('cbt_soal')
-      .select('cabang_lomba, nomor_soal');
+      .select('cabang_lomba, nomor_soal')
+      .range(0, 4999);
     if (errSoal) console.warn('Gagal ambil soal:', errSoal);
 
     const soalCountMap: Record<string, number> = {};
@@ -40,7 +41,8 @@ export async function GET(req: Request) {
     // 2. Ambil data sesi CBT
     const { data: sesiData, error: errSesi } = await supabase
       .from('cbt_sesi')
-      .select('*');
+      .select('*')
+      .range(0, 4999);
     if (errSesi && errSesi.code !== '42P01') throw errSesi;
 
     const sesiSeleksiMap: Record<string, any> = {};
@@ -75,7 +77,8 @@ export async function GET(req: Request) {
     // 3. Ambil data peserta akademik dari data_olimpiade_seni
     const { data: pesertaData, error: errPeserta } = await supabase
       .from('data_olimpiade_seni')
-      .select('id, jenis_pendaftaran, metadata');
+      .select('id, jenis_pendaftaran, metadata')
+      .range(0, 4999);
     if (errPeserta) throw errPeserta;
 
     const list: any[] = [];
@@ -281,26 +284,28 @@ export async function POST(req: Request) {
       });
     }
 
-    // 2. Buka Kunci Sesi / Re-open Sesi (Kembalikan dari selesai ke berjalan, jawaban tetap tersimpan)
+    // 2. Buka Kunci Sesi / Re-open Sesi (Kembalikan dari selesai ke berjalan, jawaban tetap tersimpan & reset pelanggaran lama)
     else if (action === 'reopen_sesi') {
-      const { data: sesi, error: errFind } = await supabase
+      const { data: sesiRows, error: errFind } = await supabase
         .from('cbt_sesi')
         .select('*')
         .eq('nomor_peserta', cleanNomor)
-        .single();
+        .order('id', { ascending: true })
+        .limit(1);
 
+      const sesi = sesiRows?.[0] || null;
       if (errFind || !sesi) {
         return NextResponse.json({ success: false, error: 'Sesi peserta tidak ditemukan' }, { status: 404 });
       }
 
-      const startTime = sesi.waktu_mulai ? new Date(sesi.waktu_mulai).getTime() : Date.now();
-      const endTime = startTime + DURASI_MENIT * 60 * 1000;
       const now = Date.now();
-
-      let newStartTime = sesi.waktu_mulai;
-      if (endTime - now < 10 * 60 * 1000) {
-        newStartTime = new Date(now - 60 * 60 * 1000).toISOString(); // 90 - 60 = sisa 30 menit
-      }
+      const startTime = sesi.waktu_mulai ? new Date(sesi.waktu_mulai).getTime() : now;
+      const finishedTime = sesi.waktu_selesai ? new Date(sesi.waktu_selesai).getTime() : now;
+      // Hitung durasi yang benar-benar sudah terpakai sebelum sesi tertutup, dan jamin minimal sisa 30 menit
+      const usedMs = Math.max(0, finishedTime - startTime);
+      const maxUsedMs = (DURASI_MENIT - 30) * 60 * 1000; // maksimal terpakai 60 menit -> sisa minimal 30 menit
+      const adjustedUsedMs = Math.min(usedMs, maxUsedMs);
+      const newStartTime = new Date(now - adjustedUsedMs).toISOString();
 
       const { error } = await supabase
         .from('cbt_sesi')
@@ -309,14 +314,15 @@ export async function POST(req: Request) {
           waktu_selesai: null,
           waktu_mulai: newStartTime,
           nilai_akhir: null,
-          updated_at: new Date().toISOString()
+          log_kecurangan: [],
+          updated_at: new Date(now).toISOString()
         })
-        .eq('nomor_peserta', cleanNomor);
+        .eq('id', sesi.id);
 
       if (error) throw error;
       return NextResponse.json({
         success: true,
-        message: `Sesi ${baseNomor} berhasil dibuka kembali. Jawaban yang tersimpan tetap utuh dan peserta dapat melanjutkan ujian.`
+        message: `Sesi ${baseNomor} berhasil dibuka kembali (pelanggaran direset ke 0 & sisa waktu disesuaikan). Jawaban yang tersimpan tetap utuh dan peserta dapat melanjutkan ujian.`
       });
     }
 
@@ -340,12 +346,14 @@ export async function POST(req: Request) {
     // 4. Tambah Durasi Waktu Ujian (misal +15 menit atau +30 menit karena listrik padam)
     else if (action === 'tambah_waktu') {
       const menitTambahan = Number(body.menit) || 15;
-      const { data: sesi, error: errFind } = await supabase
+      const { data: sesiRows, error: errFind } = await supabase
         .from('cbt_sesi')
         .select('*')
         .eq('nomor_peserta', cleanNomor)
-        .single();
+        .order('id', { ascending: true })
+        .limit(1);
 
+      const sesi = sesiRows?.[0] || null;
       if (errFind || !sesi) {
         return NextResponse.json({ success: false, error: 'Sesi peserta tidak ditemukan' }, { status: 404 });
       }
@@ -359,7 +367,7 @@ export async function POST(req: Request) {
           waktu_mulai: adjustedStartTime,
           updated_at: new Date().toISOString()
         })
-        .eq('nomor_peserta', cleanNomor);
+        .eq('id', sesi.id);
 
       if (error) throw error;
       return NextResponse.json({
@@ -370,12 +378,14 @@ export async function POST(req: Request) {
 
     // 5. Force Submit (Pengawas mengakhiri ujian peserta secara manual)
     else if (action === 'force_submit') {
-      const { data: sesi, error: errFind } = await supabase
+      const { data: sesiRows, error: errFind } = await supabase
         .from('cbt_sesi')
         .select('*')
         .eq('nomor_peserta', cleanNomor)
-        .single();
+        .order('id', { ascending: true })
+        .limit(1);
 
+      const sesi = sesiRows?.[0] || null;
       if (errFind || !sesi) {
         return NextResponse.json({ success: false, error: 'Sesi peserta tidak ditemukan' }, { status: 404 });
       }

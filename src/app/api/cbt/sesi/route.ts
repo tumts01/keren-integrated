@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 export const dynamic = 'force-dynamic';
 
 const MAX_LOLOS_SELEKSI = 30;
+const DURASI_MENIT = 90;
 
 function stripInvisible(val: unknown): string {
   return (val ?? '')
@@ -178,6 +179,9 @@ export async function GET(req: Request) {
     }
 
     const soal = await getSoalForSesi(activeSesi.cabang_lomba);
+    const nowMs = Date.now();
+    const startMs = activeSesi.waktu_mulai ? new Date(activeSesi.waktu_mulai).getTime() : nowMs;
+    const rawSisaDetik = Math.floor((startMs + DURASI_MENIT * 60 * 1000 - nowMs) / 1000);
 
     return NextResponse.json({
       success: true,
@@ -188,6 +192,8 @@ export async function GET(req: Request) {
       cbt_buka: effectiveCbtBuka,
       lolos_seleksi: effectiveLolos,
       is_bypass: isBypass,
+      server_now: new Date(nowMs).toISOString(),
+      raw_sisa_detik: rawSisaDetik,
       soal
     });
   } catch (error: any) {
@@ -355,6 +361,17 @@ export async function POST(req: Request) {
       if (!sesi) return NextResponse.json({ success: false, error: 'Sesi tidak valid' }, { status: 400 });
       if (sesi.status === 'selesai') return NextResponse.json({ success: true, message: 'Sudah pernah disubmit' });
 
+      // Gabungkan jawaban di server dengan jawabanAkhir dari memori/localStorage peserta agar tidak ada jawaban hilang saat sinyal lemah
+      const cleanClientJawaban: Record<string, string> = {};
+      if (body.jawabanAkhir && typeof body.jawabanAkhir === 'object' && !Array.isArray(body.jawabanAkhir)) {
+        for (const [k, v] of Object.entries(body.jawabanAkhir)) {
+          if (typeof v === 'string' && v.trim() !== '') {
+            cleanClientJawaban[k] = v.trim();
+          }
+        }
+      }
+      const finalJawaban = { ...(sesi.jawaban_tersimpan || {}), ...cleanClientJawaban };
+
       // Skoring Olimpiade: Benar +4, Salah -1, Tidak Dijawab 0
       const { data: soalList } = await supabase
         .from('cbt_soal')
@@ -368,7 +385,7 @@ export async function POST(req: Request) {
 
       if (soalList && totalSoal > 0) {
         soalList.forEach(soal => {
-          const jawabanUser = sesi.jawaban_tersimpan?.[soal.nomor_soal.toString()];
+          const jawabanUser = finalJawaban?.[soal.nomor_soal.toString()];
           if (!jawabanUser || jawabanUser === '') {
             totalKosong++;
           } else if (jawabanUser === soal.kunci_jawaban) {
@@ -387,6 +404,7 @@ export async function POST(req: Request) {
       const nilaiAkhir = skorMax > 0 ? (skorMentah / skorMax) * 100 : 0;
 
       const { error } = await supabase.from('cbt_sesi').update({
+        jawaban_tersimpan: finalJawaban,
         status: 'selesai',
         waktu_selesai: new Date().toISOString(),
         nilai_akhir: nilaiAkhir,
@@ -407,27 +425,38 @@ export async function POST(req: Request) {
     }
 
     else if (action === 'log_kecurangan') {
-      const { jenisKecurangan, jumlahPelanggaran } = body;
+      const { jenisKecurangan } = body;
       
       const { data: sesiRows } = await supabase
         .from('cbt_sesi')
-        .select('id, log_kecurangan')
+        .select('id, status, log_kecurangan')
         .eq('nomor_peserta', targetNomorKey)
         .order('id', { ascending: true })
         .limit(1);
 
       const sesiData = sesiRows?.[0] || null;
-      if (!sesiData) return NextResponse.json({ success: true });
+      if (!sesiData || sesiData.status === 'selesai') return NextResponse.json({ success: true });
 
       const existingLog = Array.isArray(sesiData?.log_kecurangan) ? sesiData.log_kecurangan : [];
-      const newEntry = { jenis: jenisKecurangan, waktu: new Date().toISOString(), ke: jumlahPelanggaran };
+      const nowMs = Date.now();
+
+      // Cegah pencatatan ganda beruntun dalam <6 detik untuk 1 kejadian yang sama (misal keluar fullscreen + blur)
+      if (existingLog.length > 0) {
+        const lastWaktu = new Date(existingLog[existingLog.length - 1]?.waktu || 0).getTime();
+        if (lastWaktu > 0 && nowMs - lastWaktu < 6000) {
+          return NextResponse.json({ success: true, deduplicated: true, totalWarnings: existingLog.length });
+        }
+      }
+
+      const nextKe = existingLog.length + 1;
+      const newEntry = { jenis: jenisKecurangan, waktu: new Date(nowMs).toISOString(), ke: nextKe };
       const newLog = [...existingLog, newEntry];
 
       await supabase
         .from('cbt_sesi')
-        .update({ log_kecurangan: newLog, updated_at: new Date().toISOString() })
+        .update({ log_kecurangan: newLog, updated_at: new Date(nowMs).toISOString() })
         .eq('id', sesiData.id);
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true, totalWarnings: newLog.length });
     }
 
     return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 });

@@ -27,16 +27,21 @@ export default function CBTUjianPage() {
   const warningCountRef = useRef(0);
   const userRef = useRef<any>(null);
   const sesiRef = useRef<any>(null);
+  const jawabanRef = useRef<Record<string, string>>({});
+  const soalCountRef = useRef<number>(40);
   const isSubmittingRef = useRef(false);
   const isUnloadingRef = useRef(false);
   const isOfflineRef = useRef(false);
   const hasEnteredFullscreenRef = useRef(false);
   const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialGraceRef = useRef(true);
+  const lastWarningAtRef = useRef<number>(0);
+  const isWarningModalOpenRef = useRef<boolean>(false);
 
   // Constants
   const DURASI_MENIT = 90;
   const MAX_WARNINGS = 3;
+  const WARNING_COOLDOWN_MS = 8000;
 
   const isArabicText = (txt?: string | null): boolean => {
     if (!txt) return false;
@@ -74,11 +79,11 @@ export default function CBTUjianPage() {
     });
   };
 
-  // Grace period 5 detik pertama sejak ujian dibuka (agar pop-up awal Chrome/browser tidak memicu pelanggaran)
+  // Grace period 8 detik pertama sejak ujian dibuka (agar transisi fullscreen / pop-up awal browser tidak memicu pelanggaran)
   useEffect(() => {
     const t = setTimeout(() => {
       initialGraceRef.current = false;
-    }, 5000);
+    }, 8000);
     return () => clearTimeout(t);
   }, []);
 
@@ -277,6 +282,11 @@ export default function CBTUjianPage() {
         hasEnteredFullscreenRef.current = true;
       } else if (!isSubmittingRef.current && !isUnloadingRef.current && !isOfflineRef.current && hasEnteredFullscreenRef.current) {
         hasEnteredFullscreenRef.current = false;
+        // Batalkan timer blur agar keluar fullscreen tidak terhitung 2x (fullscreen_exit + tab_switch)
+        if (blurTimeoutRef.current) {
+          clearTimeout(blurTimeoutRef.current);
+          blurTimeoutRef.current = null;
+        }
         logAndWarn('fullscreen_exit');
       }
     };
@@ -346,6 +356,22 @@ export default function CBTUjianPage() {
   };
 
   const logAndWarn = useCallback(async (jenisKecurangan: string) => {
+    if (
+      isSubmittingRef.current ||
+      isUnloadingRef.current ||
+      isOfflineRef.current ||
+      initialGraceRef.current
+    ) {
+      return;
+    }
+
+    // Cooldown & modal lock: cegah 1 kejadian (keluar fullscreen + blur + notifikasi) terhitung 2-3x beruntun dalam hitungan detik
+    const nowMs = Date.now();
+    if (isWarningModalOpenRef.current || nowMs - lastWarningAtRef.current < WARNING_COOLDOWN_MS) {
+      return;
+    }
+    lastWarningAtRef.current = nowMs;
+
     const newCount = warningCountRef.current + 1;
     warningCountRef.current = newCount;
     setWarningCount(newCount);
@@ -369,6 +395,7 @@ export default function CBTUjianPage() {
     }
 
     if (newCount >= MAX_WARNINGS) {
+      isWarningModalOpenRef.current = true;
       // Auto submit
       await Swal.fire({
         title: '⚠️ Batas Pelanggaran Terlampaui!',
@@ -379,8 +406,10 @@ export default function CBTUjianPage() {
         timer: 5000,
         timerProgressBar: true,
       });
+      isWarningModalOpenRef.current = false;
       submitUjian(userRef.current?.nomorPeserta, true);
     } else {
+      isWarningModalOpenRef.current = true;
       const jenisLabel = jenisKecurangan === 'tab_switch' ? 'Berpindah tab/aplikasi'
         : jenisKecurangan === 'fullscreen_exit' ? 'Keluar dari layar penuh'
         : jenisKecurangan === 'copy_paste' ? 'Copy/Paste'
@@ -392,6 +421,8 @@ export default function CBTUjianPage() {
         confirmButtonText: 'Kembali ke Ujian',
         allowOutsideClick: false,
       }).then(() => {
+        lastWarningAtRef.current = Date.now();
+        isWarningModalOpenRef.current = false;
         // Re-request fullscreen after warning dialog
         if (jenisKecurangan === 'fullscreen_exit') {
           requestFullscreen();
@@ -446,6 +477,7 @@ export default function CBTUjianPage() {
         setSesi(dataSoal.sesi);
         sesiRef.current = dataSoal.sesi;
         setSoalList(dataSoal.soal);
+        soalCountRef.current = dataSoal.soal?.length || 40;
 
         // Gabungkan jawaban dari server dengan backup lokal sesi ini jika ada (misal sempat offline sebelum reload)
         const serverJawaban = dataSoal.sesi.jawaban_tersimpan || {};
@@ -457,34 +489,33 @@ export default function CBTUjianPage() {
           if (savedStr) localBackup = JSON.parse(savedStr);
         } catch {}
         const mergedJawaban = { ...serverJawaban, ...localBackup };
+        jawabanRef.current = mergedJawaban;
         setJawaban(mergedJawaban);
         
         // Restore warning count if any
-        if (dataSoal.sesi.log_kecurangan) {
-          const logs = dataSoal.sesi.log_kecurangan as any[];
-          warningCountRef.current = logs.length;
-          setWarningCount(logs.length);
+        const logs = Array.isArray(dataSoal.sesi.log_kecurangan) ? dataSoal.sesi.log_kecurangan : [];
+        warningCountRef.current = logs.length;
+        setWarningCount(logs.length);
+
+        // Hitung sisa waktu murni memakai jam server (raw_sisa_detik / server_now) agar jam laptop/HP peserta yang tidak akurat tidak memicu auto-submit!
+        const maxSeconds = DURASI_MENIT * 60;
+        let remaining: number;
+        if (typeof dataSoal.raw_sisa_detik === 'number') {
+          remaining = dataSoal.raw_sisa_detik;
+        } else {
+          const startTime = new Date(dataSoal.sesi.waktu_mulai).getTime();
+          const durasiMs = DURASI_MENIT * 60 * 1000;
+          const endTime = startTime + durasiMs;
+          const refNow = dataSoal.server_now ? new Date(dataSoal.server_now).getTime() : Date.now();
+          remaining = Math.floor((endTime - refNow) / 1000);
         }
 
-        // Calculate remaining time — use server timestamp for accuracy
-        const startTime = new Date(dataSoal.sesi.waktu_mulai).getTime();
-        const durasiMs = DURASI_MENIT * 60 * 1000;
-        const endTime = startTime + durasiMs;
-        const now = Date.now();
-        const remaining = Math.floor((endTime - now) / 1000);
-
-        // Safeguard: jika remaining terlalu besar (>DURASI_MENIT menit, kemungkinan error timezone/jam server)
-        // maka gunakan DURASI_MENIT penuh sebagai fallback
-        const maxSeconds = DURASI_MENIT * 60;
         const safeguardedRemaining = Math.min(remaining, maxSeconds);
 
         if (safeguardedRemaining <= 0) {
-          // Waktu sudah habis — tapi jangan auto-submit langsung jika selisih < 5 menit
-          // (bisa terjadi jika jam browser vs jam server beda sedikit)
           if (remaining < -(5 * 60)) {
-            submitUjian(u.nomorPeserta, true); // truly expired
+            submitUjian(u.nomorPeserta, true); // benar-benar sudah lewat durasi 90 menit waktu server
           } else {
-            // Selisih kecil — beri 60 detik sebagai grace period
             setTimeLeft(60);
           }
         } else {
@@ -517,7 +548,8 @@ export default function CBTUjianPage() {
     const noSoal = soalList[currentIndex].nomor_soal.toString();
     
     // Update local state dan simpan backup di localStorage segera (terikat ke ID sesi aktif)
-    const nextJawaban = { ...jawaban, [noSoal]: opsi };
+    const nextJawaban = { ...jawabanRef.current, [noSoal]: opsi };
+    jawabanRef.current = nextJawaban;
     setJawaban(nextJawaban);
     try {
       if (sesi?.id) {
@@ -551,15 +583,44 @@ export default function CBTUjianPage() {
   };
 
   const submitUjian = async (nomorPeserta: string, auto: boolean = false) => {
+    if (isSubmittingRef.current) return;
+
     if (!auto) {
+      const totalSoal = soalCountRef.current || soalList.length || 40;
+      const terjawabCount = Object.values(jawabanRef.current).filter(v => v && String(v).trim() !== '').length;
+      const kosongCount = Math.max(0, totalSoal - terjawabCount);
+
+      isWarningModalOpenRef.current = true;
       const confirmed = await Swal.fire({
-        title: 'Selesai Ujian?',
-        text: "Anda yakin ingin mengakhiri ujian ini? Jawaban tidak bisa diubah lagi.",
+        title: kosongCount > 0 ? '⚠️ Masih Ada Soal Kosong!' : 'Akhiri Seluruh Ujian?',
+        html: kosongCount > 0
+          ? `
+            <div style="text-align: center; font-size: 0.95rem;">
+              <div style="background: #fef2f2; border: 1.5px solid #fca5a5; border-radius: 10px; padding: 12px; margin-bottom: 12px; color: #991b1b;">
+                Anda baru menjawab <b>${terjawabCount} dari ${totalSoal} soal</b>.<br/>
+                Masih ada <b style="font-size: 1.05rem;">${kosongCount} soal BELUM DIJAWAB</b>!
+              </div>
+              <p style="margin: 0 0 8px 0; color: #334155;">Jika dikumpulkan sekarang, ujian akan <b>berakhir permanen</b> dan tidak bisa dibuka lagi.</p>
+              <p style="margin: 0; font-size: 0.82rem; color: #64748b;"><i>Tips: Jawaban setiap nomor sudah tersimpan otomatis. Gunakan tombol <b>Selanjutnya</b> untuk pindah soal.</i></p>
+            </div>
+          `
+          : `
+            <div style="text-align: center; font-size: 0.95rem; color: #334155;">
+              Seluruh <b>${totalSoal} soal</b> telah Anda jawab.<br/>
+              Apakah Anda yakin ingin mengumpulkan dan mengakhiri ujian ini sekarang?
+            </div>
+          `,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: 'Ya, Selesai',
-        cancelButtonText: 'Batal'
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#0284c7',
+        confirmButtonText: 'Ya, Akhiri Seluruh Ujian',
+        cancelButtonText: 'Kembali Mengerjakan',
+        reverseButtons: true,
+        focusCancel: true,
       });
+      lastWarningAtRef.current = Date.now();
+      isWarningModalOpenRef.current = false;
       if (!confirmed.isConfirmed) return;
     }
 
@@ -574,7 +635,11 @@ export default function CBTUjianPage() {
       const res = await fetch('/api/cbt/sesi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'submit', nomorPeserta })
+        body: JSON.stringify({
+          action: 'submit',
+          nomorPeserta,
+          jawabanAkhir: jawabanRef.current
+        })
       });
       const data = await res.json();
 
@@ -654,8 +719,8 @@ export default function CBTUjianPage() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#f1f5f9', userSelect: 'none' }}>
 
-      {/* FULLSCREEN GATE OVERLAY (WAJIB LAYAR PENUH) */}
-      {!isFullscreen && (
+      {/* FULLSCREEN GATE OVERLAY (WAJIB LAYAR PENUH — zIndex 1000 agar popup peringatan SweetAlert z-index 1060 tidak tertutup) */}
+      {!isFullscreen && !isSubmitting && (
         <div style={{
           position: 'fixed',
           top: 0,
@@ -664,7 +729,7 @@ export default function CBTUjianPage() {
           bottom: 0,
           backgroundColor: 'rgba(15, 23, 42, 0.96)',
           backdropFilter: 'blur(8px)',
-          zIndex: 99999,
+          zIndex: 1000,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -1131,12 +1196,15 @@ export default function CBTUjianPage() {
           </div>
         </div>
         
-        <div style={{ padding: '20px', borderTop: '1px solid #e2e8f0' }}>
+        <div style={{ padding: '16px 20px 20px', borderTop: '1px solid #e2e8f0' }}>
+          <div style={{ fontSize: '0.76rem', color: '#16a34a', fontWeight: 600, marginBottom: '10px', textAlign: 'center' }}>
+            ✓ Jawaban setiap soal tersimpan otomatis
+          </div>
           <button 
             onClick={() => submitUjian(user.nomorPeserta)}
-            style={{ width: '100%', padding: '14px', borderRadius: '8px', background: '#ef4444', color: 'white', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: '1rem' }}
+            style={{ width: '100%', padding: '14px', borderRadius: '8px', background: '#ef4444', color: 'white', border: 'none', fontWeight: 700, cursor: 'pointer', fontSize: '0.95rem' }}
           >
-            Kirim Jawaban
+            Akhiri Ujian
           </button>
         </div>
       </div>
