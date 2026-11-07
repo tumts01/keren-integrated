@@ -5,6 +5,46 @@ export const dynamic = 'force-dynamic';
 
 const MAX_LOLOS_SELEKSI = 30;
 
+function stripInvisible(val: unknown): string {
+  return (val ?? '')
+    .toString()
+    .replace(/[\u00A0\u1680\u180E\u2000-\u200F\u2028-\u202F\u205F-\u206F\uFEFF]/g, '')
+    .trim();
+}
+
+// Cari peserta aktif secara aman tanpa .maybeSingle()/.single() agar tidak gagal jika ada duplikat atau gangguan jaringan sesaat
+async function findActivePeserta(baseNomor: string) {
+  const { data: exactRows, error: exactErr } = await supabase
+    .from('data_olimpiade_seni')
+    .select('id, metadata')
+    .in('jenis_pendaftaran', ['individu', 'peserta_kolektif'])
+    .filter('metadata->>NOMOR_PESERTA', 'eq', baseNomor)
+    .order('id', { ascending: true })
+    .limit(1);
+
+  if (exactErr) throw exactErr;
+  if (exactRows && exactRows.length > 0) return exactRows[0];
+
+  const safeNomor = baseNomor.replace(/[%_]/g, '');
+  if (safeNomor) {
+    const { data: ilikeRows, error: ilikeErr } = await supabase
+      .from('data_olimpiade_seni')
+      .select('id, metadata')
+      .in('jenis_pendaftaran', ['individu', 'peserta_kolektif'])
+      .ilike('metadata->>NOMOR_PESERTA', `%${safeNomor}%`)
+      .order('id', { ascending: true })
+      .limit(10);
+
+    if (ilikeErr) throw ilikeErr;
+    const matched = (ilikeRows || []).find(
+      (r: any) => stripInvisible(r.metadata?.NOMOR_PESERTA).toUpperCase() === baseNomor.toUpperCase()
+    );
+    if (matched) return matched;
+  }
+
+  return null;
+}
+
 function normalizeCbtCabang(raw: string): string {
   const clean = (raw || '').trim().replace(/_FINAL$/i, '');
   const l = clean.toLowerCase();
@@ -48,7 +88,8 @@ async function checkLolosSeleksi(baseNomor: string, baseCabang: string, pesertaM
 
   const { data: allSeleksiSesi } = await supabase
     .from('cbt_sesi')
-    .select('nomor_peserta, cabang_lomba, nilai_akhir');
+    .select('nomor_peserta, cabang_lomba, nilai_akhir')
+    .range(0, 4999);
 
   if (!allSeleksiSesi || allSeleksiSesi.length === 0) return false;
 
@@ -83,19 +124,12 @@ export async function GET(req: Request) {
     const rawNomor = searchParams.get('nomorPeserta');
     if (!rawNomor) return NextResponse.json({ success: false, error: 'Parameter nomorPeserta wajib' }, { status: 400 });
 
-    const baseNomor = rawNomor.trim().replace(/_FINAL$/i, '');
+    const requestedNomor = stripInvisible(rawNomor).replace(/_FINAL$/i, '');
 
-    // Validasi apakah peserta masih terdaftar aktif di data_olimpiade_seni
-    const { data: peserta } = await supabase
-      .from('data_olimpiade_seni')
-      .select('id, metadata')
-      .in('jenis_pendaftaran', ['individu', 'peserta_kolektif'])
-      .filter('metadata->>NOMOR_PESERTA', 'eq', baseNomor)
-      .maybeSingle();
+    // Validasi apakah peserta masih terdaftar aktif di data_olimpiade_seni (tanpa menghapus cbt_sesi)
+    const peserta = await findActivePeserta(requestedNomor);
 
     if (!peserta) {
-      // Hapus sesi orphan jika ada
-      await supabase.from('cbt_sesi').delete().in('nomor_peserta', [baseNomor, `${baseNomor}_FINAL`]);
       return NextResponse.json({
         success: false,
         isDeleted: true,
@@ -103,15 +137,16 @@ export async function GET(req: Request) {
       }, { status: 403 });
     }
 
+    const baseNomor = stripInvisible(peserta.metadata?.NOMOR_PESERTA) || requestedNomor;
     const { cbtBuka, tahapCbt } = await getCbtConfig();
     const requestedTahap = searchParams.get('tahap') === 'final' ? 'final' : searchParams.get('tahap') === 'seleksi' ? 'seleksi' : tahapCbt;
-    const activeNomorKey = requestedTahap === 'final' ? `${baseNomor}_FINAL` : baseNomor;
 
     // Ambil sesi seleksi dan sesi final sekaligus
     const { data: bothSesi, error } = await supabase
       .from('cbt_sesi')
       .select('*')
-      .in('nomor_peserta', [baseNomor, `${baseNomor}_FINAL`]);
+      .in('nomor_peserta', [baseNomor, `${baseNomor}_FINAL`])
+      .order('id', { ascending: true });
     
     if (error && error.code !== 'PGRST116') {
       throw error;
@@ -169,19 +204,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Parameter nomorPeserta wajib diisi' }, { status: 400 });
     }
 
-    const baseNomor = nomorPeserta.trim().replace(/_FINAL$/i, '');
+    const requestedNomor = stripInvisible(nomorPeserta).replace(/_FINAL$/i, '');
 
-    // Validasi apakah peserta masih terdaftar aktif di data_olimpiade_seni
-    const { data: peserta } = await supabase
-      .from('data_olimpiade_seni')
-      .select('id, metadata')
-      .in('jenis_pendaftaran', ['individu', 'peserta_kolektif'])
-      .filter('metadata->>NOMOR_PESERTA', 'eq', baseNomor)
-      .maybeSingle();
+    // Validasi apakah peserta masih terdaftar aktif di data_olimpiade_seni (tanpa menghapus cbt_sesi)
+    const peserta = await findActivePeserta(requestedNomor);
 
     if (!peserta) {
-      // Hapus sesi orphan jika ada
-      await supabase.from('cbt_sesi').delete().in('nomor_peserta', [baseNomor, `${baseNomor}_FINAL`]);
       return NextResponse.json({
         success: false,
         isDeleted: true,
@@ -189,6 +217,7 @@ export async function POST(req: Request) {
       }, { status: 403 });
     }
 
+    const baseNomor = stripInvisible(peserta.metadata?.NOMOR_PESERTA) || requestedNomor;
     const isBypass = peserta.metadata?.IS_BYPASS === true || baseNomor.startsWith('BYPASS-');
     const { cbtBuka, tahapCbt } = await getCbtConfig();
     const targetNomorKey = tahapCbt === 'final' ? `${baseNomor}_FINAL` : baseNomor;
@@ -212,11 +241,15 @@ export async function POST(req: Request) {
       }
 
       // Cek apakah sudah ada sesi pada tahap aktif ini
-      const { data: existing } = await supabase
+      const { data: existingRows, error: existErr } = await supabase
         .from('cbt_sesi')
         .select('*')
         .eq('nomor_peserta', targetNomorKey)
-        .maybeSingle();
+        .order('id', { ascending: true })
+        .limit(1);
+
+      if (existErr) throw existErr;
+      const existing = existingRows?.[0] || null;
       
       if (existing) {
         if (existing.status === 'selesai') {
@@ -248,15 +281,28 @@ export async function POST(req: Request) {
       }
 
       // Buat sesi baru
-      const { data: newSesi, error } = await supabase.from('cbt_sesi').insert([{
+      const { data: insertedRows, error: insertErr } = await supabase.from('cbt_sesi').insert([{
         nomor_peserta: targetNomorKey,
         cabang_lomba: targetCabangKey,
         waktu_mulai: new Date().toISOString(),
         status: 'berjalan'
-      }]).select().single();
+      }]).select();
 
-      if (error) throw error;
-      return NextResponse.json({ success: true, sesi: newSesi, tahap_cbt: tahapCbt });
+      if (insertErr) {
+        // Antisipasi race-condition jika peserta klik dua kali bersamaan
+        const { data: retryRows } = await supabase
+          .from('cbt_sesi')
+          .select('*')
+          .eq('nomor_peserta', targetNomorKey)
+          .order('id', { ascending: true })
+          .limit(1);
+        if (retryRows && retryRows.length > 0) {
+          return NextResponse.json({ success: true, sesi: retryRows[0], tahap_cbt: tahapCbt });
+        }
+        throw insertErr;
+      }
+
+      return NextResponse.json({ success: true, sesi: insertedRows?.[0], tahap_cbt: tahapCbt });
     }
 
     else if (action === 'reset') {
@@ -270,11 +316,16 @@ export async function POST(req: Request) {
     else if (action === 'save') {
       const { nomorSoal, jawaban } = body;
       
-      const { data: sesi } = await supabase
+      const { data: sesiRows, error: sesiErr } = await supabase
         .from('cbt_sesi')
-        .select('jawaban_tersimpan, status')
+        .select('id, jawaban_tersimpan, status')
         .eq('nomor_peserta', targetNomorKey)
-        .single();
+        .order('id', { ascending: true })
+        .limit(1);
+
+      if (sesiErr) throw sesiErr;
+      const sesi = sesiRows?.[0] || null;
+
       if (!sesi || sesi.status === 'selesai') {
         return NextResponse.json({ success: false, error: 'Sesi tidak valid atau sudah selesai' }, { status: 403 });
       }
@@ -284,18 +335,23 @@ export async function POST(req: Request) {
       const { error } = await supabase.from('cbt_sesi').update({ 
         jawaban_tersimpan: newJawaban,
         updated_at: new Date().toISOString()
-      }).eq('nomor_peserta', targetNomorKey);
+      }).eq('id', sesi.id);
 
       if (error) throw error;
       return NextResponse.json({ success: true, message: 'Tersimpan' });
     }
 
     else if (action === 'submit') {
-      const { data: sesi } = await supabase
+      const { data: sesiRows, error: sesiErr } = await supabase
         .from('cbt_sesi')
         .select('*')
         .eq('nomor_peserta', targetNomorKey)
-        .single();
+        .order('id', { ascending: true })
+        .limit(1);
+
+      if (sesiErr) throw sesiErr;
+      const sesi = sesiRows?.[0] || null;
+
       if (!sesi) return NextResponse.json({ success: false, error: 'Sesi tidak valid' }, { status: 400 });
       if (sesi.status === 'selesai') return NextResponse.json({ success: true, message: 'Sudah pernah disubmit' });
 
@@ -335,7 +391,7 @@ export async function POST(req: Request) {
         waktu_selesai: new Date().toISOString(),
         nilai_akhir: nilaiAkhir,
         updated_at: new Date().toISOString()
-      }).eq('nomor_peserta', targetNomorKey);
+      }).eq('id', sesi.id);
 
       if (error) throw error;
       return NextResponse.json({ 
@@ -353,11 +409,16 @@ export async function POST(req: Request) {
     else if (action === 'log_kecurangan') {
       const { jenisKecurangan, jumlahPelanggaran } = body;
       
-      const { data: sesiData } = await supabase
+      const { data: sesiRows } = await supabase
         .from('cbt_sesi')
-        .select('log_kecurangan')
+        .select('id, log_kecurangan')
         .eq('nomor_peserta', targetNomorKey)
-        .single();
+        .order('id', { ascending: true })
+        .limit(1);
+
+      const sesiData = sesiRows?.[0] || null;
+      if (!sesiData) return NextResponse.json({ success: true });
+
       const existingLog = Array.isArray(sesiData?.log_kecurangan) ? sesiData.log_kecurangan : [];
       const newEntry = { jenis: jenisKecurangan, waktu: new Date().toISOString(), ke: jumlahPelanggaran };
       const newLog = [...existingLog, newEntry];
@@ -365,7 +426,7 @@ export async function POST(req: Request) {
       await supabase
         .from('cbt_sesi')
         .update({ log_kecurangan: newLog, updated_at: new Date().toISOString() })
-        .eq('nomor_peserta', targetNomorKey);
+        .eq('id', sesiData.id);
       return NextResponse.json({ success: true });
     }
 

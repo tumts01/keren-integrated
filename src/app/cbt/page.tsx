@@ -11,15 +11,28 @@ export default function LoginCBT() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const cleanInput = (val: string) =>
+    (val || '')
+      .replace(/[\u00A0\u1680\u180E\u2000-\u200F\u2028-\u202F\u205F-\u206F\uFEFF]/g, '')
+      .trim();
+
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
+
+    // Ambil juga dari elemen DOM untuk mengantisipasi browser HP / autofill yang tidak memicu event onChange
+    const formEl = e.currentTarget;
+    const domUser = (formEl.elements.namedItem('cbt_user_token') as HTMLInputElement | null)?.value ?? '';
+    const domPass = (formEl.elements.namedItem('cbt_pass_token') as HTMLInputElement | null)?.value ?? '';
+
+    const finalUsername = cleanInput(domUser || username).replace(/\s+/g, '');
+    const finalPassword = cleanInput(domPass || password).replace(/\s+/g, '');
 
     try {
       const res = await fetch('/api/cbt/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username: finalUsername, password: finalPassword })
       });
       const data = await res.json();
 
@@ -65,8 +78,11 @@ export default function LoginCBT() {
               value={username} 
               onChange={e => setUsername(e.target.value)}
               style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', boxSizing: 'border-box' }}
-              placeholder="Masukkan Username CBT"
+              placeholder="Contoh: CBT12345"
             />
+            <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '6px' }}>
+              Huruf besar/kecil tidak berpengaruh (contoh: CBT12345)
+            </div>
           </div>
           <div style={{ marginBottom: '32px' }}>
             <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>Password</label>
