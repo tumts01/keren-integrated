@@ -442,13 +442,13 @@ export default function CBTUjianPage() {
       const data = await res.json();
       
       if (!data.success) {
-        if (data.isDeleted) {
+        if (data.isDeleted || data.isNotQualified) {
           localStorage.removeItem('cbt_user');
           await Swal.fire({
-            icon: 'error',
-            title: 'Akses Ditolak',
-            text: data.error || 'Akun peserta tidak ditemukan atau telah dihapus dari sistem.',
-            confirmButtonColor: '#059669'
+            icon: data.isNotQualified ? 'info' : 'error',
+            title: data.isNotQualified ? 'Khusus Peserta Lolos Final' : 'Akses Ditolak',
+            text: data.error || 'Akun peserta tidak memiliki akses ke ujian ini.',
+            confirmButtonColor: data.isNotQualified ? '#0284c7' : '#059669'
           });
           router.push('/cbt');
           return;
@@ -461,13 +461,13 @@ export default function CBTUjianPage() {
       const resSoal = await fetch(`/api/cbt/sesi?nomorPeserta=${u.nomorPeserta}`);
       const dataSoal = await resSoal.json();
       
-      if (dataSoal.isDeleted) {
+      if (dataSoal.isDeleted || dataSoal.isNotQualified) {
         localStorage.removeItem('cbt_user');
         await Swal.fire({
-          icon: 'error',
-          title: 'Akses Ditolak',
-          text: dataSoal.error || 'Akun peserta tidak ditemukan atau telah dihapus dari sistem.',
-          confirmButtonColor: '#059669'
+          icon: dataSoal.isNotQualified ? 'info' : 'error',
+          title: dataSoal.isNotQualified ? 'Khusus Peserta Lolos Final' : 'Akses Ditolak',
+          text: dataSoal.error || 'Akun peserta tidak memiliki akses ke ujian ini.',
+          confirmButtonColor: dataSoal.isNotQualified ? '#0284c7' : '#059669'
         });
         router.push('/cbt');
         return;

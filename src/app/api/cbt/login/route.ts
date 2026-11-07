@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { isPesertaLolosTop30 } from '@/lib/cbt-lolos';
 
 export const dynamic = 'force-dynamic';
 
@@ -207,6 +208,33 @@ export async function POST(req: Request) {
 
     const nomorPesertaClean = stripInvisible(p.NOMOR_PESERTA);
     const isBypass = p.IS_BYPASS === true || nomorPesertaClean.startsWith('BYPASS-');
+
+    // Cek apakah mode pembatasan akses khusus peserta Lolos Top 30 aktif
+    if (!isBypass) {
+      const { data: configRow } = await supabase
+        .from('profil_lembaga')
+        .select('metadata')
+        .eq('jenis', 'CONFIG_OLIMPIADE')
+        .limit(1)
+        .maybeSingle();
+
+      const cfgMeta = configRow?.metadata || {};
+      const tahapCbt = cfgMeta.tahap_cbt === 'final' ? 'final' : 'seleksi';
+      const loginKhususLolos = typeof cfgMeta.login_khusus_lolos === 'boolean'
+        ? cfgMeta.login_khusus_lolos
+        : tahapCbt === 'final';
+
+      if (loginKhususLolos) {
+        const isLolos = await isPesertaLolosTop30(nomorPesertaClean, p);
+        if (!isLolos) {
+          return NextResponse.json({
+            success: false,
+            notQualified: true,
+            error: 'Mohon maaf, akses Portal CBT saat ini hanya dibuka untuk 30 peserta terbaik per cabang mapel yang dinyatakan LOLOS ke Babak Final. Terima kasih atas partisipasi dan semangat Anda!'
+          }, { status: 403 });
+        }
+      }
+    }
 
     return NextResponse.json({
       success: true,

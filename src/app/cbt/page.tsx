@@ -39,6 +39,14 @@ export default function LoginCBT() {
       if (data.success) {
         localStorage.setItem('cbt_user', JSON.stringify(data.user));
         router.push('/cbt/dashboard');
+      } else if (data.notQualified) {
+        Swal.fire({
+          icon: 'info',
+          title: 'Khusus Peserta Lolos Final',
+          text: data.error,
+          confirmButtonColor: '#0284c7',
+          confirmButtonText: 'Mengerti'
+        });
       } else {
         Swal.fire('Login Gagal', data.error, 'error');
       }

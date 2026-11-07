@@ -64,6 +64,7 @@ export default function CbtMonitoringPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedPesertaLog, setSelectedPesertaLog] = useState<PesertaCBT | null>(null);
   const [cbtBuka, setCbtBuka] = useState(false);
+  const [loginKhususLolos, setLoginKhususLolos] = useState(false);
   const [tahapCbtAktif, setTahapCbtAktif] = useState<'seleksi' | 'final'>('seleksi');
   const [tahapPantau, setTahapPantau] = useState<'seleksi' | 'final'>('seleksi');
   const [isAdmin, setIsAdmin] = useState(false);
@@ -99,6 +100,9 @@ export default function CbtMonitoringPage() {
       const json = await res.json();
       if (json.success) {
         setCbtBuka(json.cbt_buka);
+        if (typeof json.login_khusus_lolos === 'boolean') {
+          setLoginKhususLolos(json.login_khusus_lolos);
+        }
         if (json.tahap_cbt === 'final' || json.tahap_cbt === 'seleksi') {
           setTahapCbtAktif(json.tahap_cbt);
         }
@@ -135,6 +139,9 @@ export default function CbtMonitoringPage() {
       if (resJson.success) {
         setTahapCbtAktif(newTahap);
         setTahapPantau(newTahap);
+        if (typeof resJson.login_khusus_lolos === 'boolean') {
+          setLoginKhususLolos(resJson.login_khusus_lolos);
+        }
         fetchData(false, newTahap);
         Swal.fire('Berhasil', `Tahap ujian CBT aktif berhasil diubah ke ${label}.`, 'success');
       }
@@ -206,6 +213,35 @@ export default function CbtMonitoringPage() {
             ? 'Peserta sekarang dapat login dan mengerjakan soal ujian.'
             : 'Portal ujian CBT telah disembunyikan/dikunci dari siswa.',
           timer: 2000,
+        });
+      }
+    } catch (err: any) {
+      Swal.fire('Error', err.message, 'error');
+    }
+  };
+
+  const handleToggleLoginKhususLolos = async () => {
+    if (!isAdmin) {
+      Swal.fire('Akses Ditolak', 'Pengaturan akses login CBT hanya dapat dilakukan oleh Admin.', 'warning');
+      return;
+    }
+    try {
+      const newVal = !loginKhususLolos;
+      const res = await fetch('/api/olimpiade-seni/config-cbt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ login_khusus_lolos: newVal }),
+      });
+      const resJson = await res.json();
+      if (resJson.success) {
+        setLoginKhususLolos(newVal);
+        Swal.fire({
+          icon: 'success',
+          title: newVal ? 'Login Khusus Peserta Lolos Aktif' : 'Login Dibuka untuk Semua Peserta',
+          text: newVal
+            ? 'Hanya 30 peserta terbaik per cabang mapel (Lolos Final) dan akun Bypass yang dapat masuk ke Portal CBT.'
+            : 'Semua peserta terdaftar kini dapat masuk kembali ke Portal CBT.',
+          timer: 2400,
         });
       }
     } catch (err: any) {
@@ -524,44 +560,87 @@ export default function CbtMonitoringPage() {
           {/* TOGGLE STATUS CBT & CONTROLS */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
             {isAdmin ? (
-              <button
-                onClick={handleToggleCbt}
-                title={cbtBuka ? 'Klik untuk mengunci/menutup CBT' : 'Klik untuk membuka CBT bagi peserta'}
-                style={{
-                  background: cbtBuka ? '#dcfce7' : '#fee2e2',
-                  color: cbtBuka ? '#15803d' : '#b91c1c',
-                  border: `1.5px solid ${cbtBuka ? '#86efac' : '#fca5a5'}`,
-                  padding: '8px 14px',
-                  borderRadius: '8px',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
-              >
-                <i className={`fas ${cbtBuka ? 'fa-lock-open' : 'fa-lock'}`}></i>
-                Portal CBT: {cbtBuka ? 'BUKA' : 'DITUTUP'}
-              </button>
+              <>
+                <button
+                  onClick={handleToggleCbt}
+                  title={cbtBuka ? 'Klik untuk mengunci/menutup CBT' : 'Klik untuk membuka CBT bagi peserta'}
+                  style={{
+                    background: cbtBuka ? '#dcfce7' : '#fee2e2',
+                    color: cbtBuka ? '#15803d' : '#b91c1c',
+                    border: `1.5px solid ${cbtBuka ? '#86efac' : '#fca5a5'}`,
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <i className={`fas ${cbtBuka ? 'fa-lock-open' : 'fa-lock'}`}></i>
+                  Portal CBT: {cbtBuka ? 'BUKA' : 'DITUTUP'}
+                </button>
+                <button
+                  onClick={handleToggleLoginKhususLolos}
+                  title={loginKhususLolos ? 'Saat ini hanya peserta Lolos Top 30 yang bisa login CBT. Klik untuk membuka semua peserta.' : 'Klik untuk membatasi login CBT hanya bagi peserta Lolos Top 30'}
+                  style={{
+                    background: loginKhususLolos ? '#e0f2fe' : '#f1f5f9',
+                    color: loginKhususLolos ? '#0369a1' : '#475569',
+                    border: `1.5px solid ${loginKhususLolos ? '#7dd3fc' : '#cbd5e1'}`,
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <i className={`fas ${loginKhususLolos ? 'fa-user-shield' : 'fa-users'}`}></i>
+                  Login CBT: {loginKhususLolos ? 'KHUSUS LOLOS (TOP 30)' : 'SEMUA PESERTA'}
+                </button>
+              </>
             ) : (
-              <div
-                style={{
-                  background: cbtBuka ? '#dcfce7' : '#f1f5f9',
-                  color: cbtBuka ? '#15803d' : '#64748b',
-                  border: `1.5px solid ${cbtBuka ? '#86efac' : '#cbd5e1'}`,
-                  padding: '8px 14px',
-                  borderRadius: '8px',
-                  fontWeight: 700,
-                  fontSize: '0.85rem',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                }}
-              >
-                <i className={`fas ${cbtBuka ? 'fa-lock-open' : 'fa-lock'}`}></i>
-                Status CBT: {cbtBuka ? 'BUKA' : 'DITUTUP'}
-              </div>
+              <>
+                <div
+                  style={{
+                    background: cbtBuka ? '#dcfce7' : '#f1f5f9',
+                    color: cbtBuka ? '#15803d' : '#64748b',
+                    border: `1.5px solid ${cbtBuka ? '#86efac' : '#cbd5e1'}`,
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <i className={`fas ${cbtBuka ? 'fa-lock-open' : 'fa-lock'}`}></i>
+                  Status CBT: {cbtBuka ? 'BUKA' : 'DITUTUP'}
+                </div>
+                {loginKhususLolos && (
+                  <div
+                    style={{
+                      background: '#e0f2fe',
+                      color: '#0369a1',
+                      border: '1.5px solid #7dd3fc',
+                      padding: '8px 14px',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                    }}
+                  >
+                    <i className="fas fa-user-shield"></i>
+                    Login: KHUSUS LOLOS (TOP 30)
+                  </div>
+                )}
+              </>
             )}
 
             {/* AUTO REFRESH TOGGLE */}

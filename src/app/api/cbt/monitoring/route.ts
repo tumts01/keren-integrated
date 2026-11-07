@@ -58,21 +58,37 @@ export async function GET(req: Request) {
       }
     });
 
-    // Tentukan tepat Top 30 Babak Seleksi per cabang lomba (kecualikan akun BYPASS, tie-breaker durasi tercepat & waktu selesai lebih awal)
+    // 3. Ambil data peserta akademik dari data_olimpiade_seni
+    const { data: pesertaData, error: errPeserta } = await supabase
+      .from('data_olimpiade_seni')
+      .select('id, jenis_pendaftaran, metadata')
+      .range(0, 4999);
+    if (errPeserta) throw errPeserta;
+
+    // Tentukan tepat Top 30 Babak Seleksi per cabang lomba dari peserta aktif (kecualikan akun BYPASS, tie-breaker durasi tercepat & waktu selesai lebih awal)
     const candidatesByCabang: Record<string, Array<{ nomor: string; nilai: number; durasiMs: number; finishMs: number }>> = {};
-    Object.values(sesiSeleksiMap).forEach((s: any) => {
-      const no = (s.nomor_peserta || '').trim();
-      if (!no || no.startsWith('BYPASS-')) return;
-      const c = normalizeCbtCabang(s.cabang_lomba || '');
-      if (s.nilai_akhir !== null && s.nilai_akhir !== undefined && Number(s.nilai_akhir) > 0) {
-        const dur = s.waktu_mulai && s.waktu_selesai
+    (pesertaData || []).forEach((row: any) => {
+      const meta = row.metadata || {};
+      const jenis = (row.jenis_pendaftaran || '').toLowerCase();
+      if (jenis !== 'individu' && jenis !== 'peserta_kolektif') return;
+      const no = (meta.NOMOR_PESERTA || '').toString().trim();
+      if (!no || meta.IS_BYPASS === true || no.startsWith('BYPASS-')) return;
+
+      const rawCabang = (meta.LOMBA_DIPILIH || meta['LOMBA YANG DIPILIH'] || '').toString().trim();
+      const c = normalizeCbtCabang(rawCabang);
+      if (!['Matematika', 'IPAS', 'PAI', 'Inggris', 'Arab'].includes(c)) return;
+
+      const s = sesiSeleksiMap[no];
+      const nilai = s && s.nilai_akhir !== null && s.nilai_akhir !== undefined ? Number(s.nilai_akhir) : 0;
+      if (nilai > 0 || meta.LOLOS_FINAL === true) {
+        const dur = s?.waktu_mulai && s?.waktu_selesai
           ? new Date(s.waktu_selesai).getTime() - new Date(s.waktu_mulai).getTime()
           : Infinity;
-        const fin = s.waktu_selesai ? new Date(s.waktu_selesai).getTime() : Infinity;
+        const fin = s?.waktu_selesai ? new Date(s.waktu_selesai).getTime() : Infinity;
         if (!candidatesByCabang[c]) candidatesByCabang[c] = [];
         candidatesByCabang[c].push({
           nomor: no,
-          nilai: Number(s.nilai_akhir),
+          nilai,
           durasiMs: Number.isFinite(dur) && dur >= 0 ? dur : Infinity,
           finishMs: Number.isFinite(fin) ? fin : Infinity
         });
@@ -89,13 +105,6 @@ export async function GET(req: Request) {
       });
       arr.slice(0, MAX_LOLOS_SELEKSI).forEach(item => top30SeleksiSet.add(item.nomor));
     });
-
-    // 3. Ambil data peserta akademik dari data_olimpiade_seni
-    const { data: pesertaData, error: errPeserta } = await supabase
-      .from('data_olimpiade_seni')
-      .select('id, jenis_pendaftaran, metadata')
-      .range(0, 4999);
-    if (errPeserta) throw errPeserta;
 
     const list: any[] = [];
     const now = Date.now();

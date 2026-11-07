@@ -111,6 +111,18 @@ export default function DashboardCBT() {
         router.push('/cbt');
         return;
       }
+      if (data.isNotQualified) {
+        localStorage.removeItem('cbt_user');
+        await Swal.fire({
+          icon: 'info',
+          title: 'Khusus Peserta Lolos Final',
+          text: data.error || 'Akses Portal CBT saat ini hanya dibuka untuk 30 peserta terbaik per cabang mapel yang dinyatakan LOLOS ke Babak Final.',
+          confirmButtonColor: '#0284c7',
+          confirmButtonText: 'Mengerti'
+        });
+        router.push('/cbt');
+        return;
+      }
       if (data.success) {
         if (data.tahap_cbt === 'final' || data.tahap_cbt === 'seleksi') {
           setTahapCbt(data.tahap_cbt);

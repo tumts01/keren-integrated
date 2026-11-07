@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { isPesertaLolosTop30 } from '@/lib/cbt-lolos';
 
 export const dynamic = 'force-dynamic';
 
-const MAX_LOLOS_SELEKSI = 30;
 const DURASI_MENIT = 90;
 
 function stripInvisible(val: unknown): string {
@@ -69,7 +69,7 @@ async function getSoalForSesi(lombaKey: string) {
   return data;
 }
 
-// Helper: ambil konfigurasi CBT aktif (cbt_buka & tahap_cbt)
+// Helper: ambil konfigurasi CBT aktif (cbt_buka, tahap_cbt & login_khusus_lolos)
 async function getCbtConfig() {
   const { data: config } = await supabase
     .from('profil_lembaga')
@@ -80,54 +80,15 @@ async function getCbtConfig() {
 
   const cbtBuka = config?.metadata?.cbt_buka ?? false;
   const tahapCbt: 'seleksi' | 'final' = config?.metadata?.tahap_cbt === 'final' ? 'final' : 'seleksi';
-  return { cbtBuka, tahapCbt };
+  const loginKhususLolos = typeof config?.metadata?.login_khusus_lolos === 'boolean'
+    ? config.metadata.login_khusus_lolos
+    : tahapCbt === 'final';
+  return { cbtBuka, tahapCbt, loginKhususLolos };
 }
 
-// Helper: cek apakah peserta lolos tepat Top 30 pada Babak Seleksi (tie-breaker: durasi tercepat, waktu selesai lebih awal)
-async function checkLolosSeleksi(baseNomor: string, baseCabang: string, pesertaMeta: any): Promise<boolean> {
-  if (pesertaMeta?.LOLOS_FINAL === true) return true;
-
-  const { data: allSeleksiSesi } = await supabase
-    .from('cbt_sesi')
-    .select('nomor_peserta, cabang_lomba, nilai_akhir, waktu_mulai, waktu_selesai')
-    .range(0, 4999);
-
-  if (!allSeleksiSesi || allSeleksiSesi.length === 0) return false;
-
-  const candidates: Array<{ nomor: string; nilai: number; durasiMs: number; finishMs: number }> = [];
-
-  allSeleksiSesi.forEach((s: any) => {
-    const no = (s.nomor_peserta || '').trim();
-    if (!no || no.endsWith('_FINAL') || no.startsWith('BYPASS-')) return;
-    const c = normalizeCbtCabang(s.cabang_lomba || '');
-    if (c === baseCabang && s.nilai_akhir !== null && s.nilai_akhir !== undefined) {
-      const val = Number(s.nilai_akhir);
-      if (val > 0) {
-        const dur = s.waktu_mulai && s.waktu_selesai
-          ? new Date(s.waktu_selesai).getTime() - new Date(s.waktu_mulai).getTime()
-          : Infinity;
-        const fin = s.waktu_selesai ? new Date(s.waktu_selesai).getTime() : Infinity;
-        candidates.push({
-          nomor: no,
-          nilai: val,
-          durasiMs: Number.isFinite(dur) && dur >= 0 ? dur : Infinity,
-          finishMs: Number.isFinite(fin) ? fin : Infinity
-        });
-      }
-    }
-  });
-
-  if (candidates.length === 0) return false;
-
-  candidates.sort((a, b) => {
-    if (b.nilai !== a.nilai) return b.nilai - a.nilai;
-    if (a.durasiMs !== b.durasiMs) return a.durasiMs - b.durasiMs;
-    if (a.finishMs !== b.finishMs) return a.finishMs - b.finishMs;
-    return a.nomor.localeCompare(b.nomor);
-  });
-
-  const top30Set = new Set(candidates.slice(0, MAX_LOLOS_SELEKSI).map(c => c.nomor));
-  return top30Set.has(baseNomor);
+// Helper: cek apakah peserta lolos tepat Top 30 pada Babak Seleksi (konsisten dengan Live Score & Login CBT)
+async function checkLolosSeleksi(baseNomor: string, _baseCabang: string, pesertaMeta: any): Promise<boolean> {
+  return isPesertaLolosTop30(baseNomor, pesertaMeta);
 }
 
 export async function GET(req: Request) {
@@ -150,8 +111,21 @@ export async function GET(req: Request) {
     }
 
     const baseNomor = stripInvisible(peserta.metadata?.NOMOR_PESERTA) || requestedNomor;
-    const { cbtBuka, tahapCbt } = await getCbtConfig();
+    const { cbtBuka, tahapCbt, loginKhususLolos } = await getCbtConfig();
     const requestedTahap = searchParams.get('tahap') === 'final' ? 'final' : searchParams.get('tahap') === 'seleksi' ? 'seleksi' : tahapCbt;
+
+    const rawCabang = peserta.metadata?.LOMBA_DIPILIH || peserta.metadata?.['LOMBA YANG DIPILIH'] || '';
+    const baseCabang = normalizeCbtCabang(rawCabang);
+    const isBypass = peserta.metadata?.IS_BYPASS === true || baseNomor.startsWith('BYPASS-');
+    const lolosSeleksi = isBypass ? true : await checkLolosSeleksi(baseNomor, baseCabang, peserta.metadata);
+
+    if (!isBypass && loginKhususLolos && !lolosSeleksi) {
+      return NextResponse.json({
+        success: false,
+        isNotQualified: true,
+        error: 'Mohon maaf, akses Portal CBT saat ini hanya dibuka untuk 30 peserta terbaik per cabang mapel yang dinyatakan LOLOS ke Babak Final. Terima kasih atas partisipasi dan semangat Anda!'
+      }, { status: 403 });
+    }
 
     // Ambil sesi seleksi dan sesi final sekaligus
     const { data: bothSesi, error } = await supabase
@@ -168,11 +142,6 @@ export async function GET(req: Request) {
     const sesiFinal = (bothSesi || []).find((s: any) => s.nomor_peserta === `${baseNomor}_FINAL`) || null;
     const activeSesi = requestedTahap === 'final' ? sesiFinal : sesiSeleksi;
 
-    const rawCabang = peserta.metadata?.LOMBA_DIPILIH || peserta.metadata?.['LOMBA YANG DIPILIH'] || '';
-    const baseCabang = normalizeCbtCabang(rawCabang);
-    const lolosSeleksi = await checkLolosSeleksi(baseNomor, baseCabang, peserta.metadata);
-
-    const isBypass = peserta.metadata?.IS_BYPASS === true || baseNomor.startsWith('BYPASS-');
     const effectiveCbtBuka = isBypass ? true : cbtBuka;
     const effectiveLolos = isBypass ? true : lolosSeleksi;
 
@@ -236,25 +205,25 @@ export async function POST(req: Request) {
 
     const baseNomor = stripInvisible(peserta.metadata?.NOMOR_PESERTA) || requestedNomor;
     const isBypass = peserta.metadata?.IS_BYPASS === true || baseNomor.startsWith('BYPASS-');
-    const { cbtBuka, tahapCbt } = await getCbtConfig();
+    const { cbtBuka, tahapCbt, loginKhususLolos } = await getCbtConfig();
     const targetNomorKey = tahapCbt === 'final' ? `${baseNomor}_FINAL` : baseNomor;
     const baseCabang = normalizeCbtCabang(lomba || peserta.metadata?.LOMBA_DIPILIH || peserta.metadata?.['LOMBA YANG DIPILIH'] || '');
     const targetCabangKey = tahapCbt === 'final' ? `${baseCabang}_FINAL` : baseCabang;
 
     if (action === 'start') {
-      if (!cbtBuka && !isBypass) {
-        return NextResponse.json({ success: false, error: 'Ujian CBT saat ini sedang ditutup/disembunyikan oleh panitia.' }, { status: 403 });
-      }
-
-      // Jika tahap aktif adalah FINAL, pastikan peserta lolos seleksi (Top 30)
-      if (tahapCbt === 'final' && !isBypass) {
+      if (!isBypass && (loginKhususLolos || tahapCbt === 'final')) {
         const isFinalist = await checkLolosSeleksi(baseNomor, baseCabang, peserta.metadata);
         if (!isFinalist) {
           return NextResponse.json({
             success: false,
-            error: 'Mohon maaf, hanya peserta yang dinyatakan LOLOS Babak Seleksi (Top 30) yang dapat mengikuti Ujian CBT Babak Final.'
+            isNotQualified: true,
+            error: 'Mohon maaf, akses Portal CBT saat ini hanya dibuka untuk 30 peserta terbaik per cabang mapel yang dinyatakan LOLOS ke Babak Final. Terima kasih atas partisipasi dan semangat Anda!'
           }, { status: 403 });
         }
+      }
+
+      if (!cbtBuka && !isBypass) {
+        return NextResponse.json({ success: false, error: 'Ujian CBT saat ini sedang ditutup/disembunyikan oleh panitia.' }, { status: 403 });
       }
 
       // Cek apakah sudah ada sesi pada tahap aktif ini
