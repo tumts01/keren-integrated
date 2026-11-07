@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
+import * as XLSX from 'xlsx';
 import InlineLoading from '@/components/InlineLoading';
 
 export default function MonitoringOlimpiadePage() {
@@ -330,6 +331,125 @@ export default function MonitoringOlimpiadePage() {
     return pages;
   };
 
+  // Export ke Excel
+  const handleExportExcel = () => {
+    if (!sortedData || sortedData.length === 0) {
+      Swal.fire('Info', 'Tidak ada data peserta untuk di-download.', 'info');
+      return;
+    }
+
+    const rows = sortedData.map((d, i) => {
+      const globalRank = i + 1;
+      const lolos = isLolos(d);
+      const cabangRank = rankInCabangMap[d.id] || null;
+      const displayRank = cabangRank || d.peringkat_seleksi || globalRank;
+      const hasScore = Number(d.rata_rata) > 0;
+
+      const durationText = (() => {
+        if (d.waktu_mulai && d.waktu_selesai) {
+          const start = new Date(d.waktu_mulai).getTime();
+          const end = new Date(d.waktu_selesai).getTime();
+          const diffInSeconds = Math.floor((end - start) / 1000);
+          if (diffInSeconds < 0) return '-';
+          const minutes = Math.floor(diffInSeconds / 60);
+          const seconds = diffInSeconds % 60;
+          return `${minutes}m ${seconds}s`;
+        }
+        return '-';
+      })();
+
+      let predikatStatus = '-';
+      if (tahapView === 'final') {
+        if (!hasScore) {
+          predikatStatus = d.kategori_lomba === 'akademik' ? 'Finalis (Belum Ujian Final)' : 'Belum Dinilai Juri';
+        } else if (cabangRank === 1) {
+          predikatStatus = 'JUARA 1';
+        } else if (cabangRank === 2) {
+          predikatStatus = 'JUARA 2';
+        } else if (cabangRank === 3) {
+          predikatStatus = 'JUARA 3';
+        } else {
+          predikatStatus = `Finalis (#${cabangRank})`;
+        }
+      } else {
+        if (!hasScore) {
+          predikatStatus = 'Belum ada nilai';
+        } else if (lolos) {
+          predikatStatus = `LOLOS FINAL (Top ${MAX_LOLOS})`;
+        } else {
+          predikatStatus = 'TIDAK LOLOS';
+        }
+      }
+
+      const rowObj: Record<string, any> = {
+        'Peringkat': displayRank,
+        'Nomor Peserta': d.nomor_peserta || '-',
+        'Nama Peserta': d.nama || '-',
+        'Asal Sekolah': d.asal_sekolah || '-',
+        'Cabang Lomba': d.cabang_lomba || '-',
+        'Kategori Lomba': d.kategori_lomba === 'akademik' ? 'Olimpiade Akademik' : 'Lomba Seni',
+      };
+
+      if (isAdmin) {
+        rowObj['Penilai'] = d.kategori_lomba === 'akademik'
+          ? (tahapView === 'final' ? 'CBT Final' : 'CBT Seleksi')
+          : `${d.jumlah_juri || 0} Juri`;
+        rowObj['Pelanggaran'] = d.log_kecurangan && d.log_kecurangan.length > 0
+          ? `${d.log_kecurangan.length}x`
+          : '0x (Bersih)';
+      }
+
+      rowObj['Waktu Mengerjakan'] = durationText;
+
+      if (tahapView === 'final') {
+        rowObj['Nilai Final'] = hasScore ? Number(d.rata_rata) : 0;
+        if (d.kategori_lomba === 'akademik') {
+          rowObj['Nilai Seleksi'] = d.nilai_seleksi && Number(d.nilai_seleksi) > 0 ? Number(d.nilai_seleksi) : '-';
+        }
+        rowObj['Predikat / Juara'] = predikatStatus;
+      } else {
+        rowObj['Nilai Seleksi'] = hasScore ? Number(d.rata_rata) : 0;
+        rowObj['Status Kelolosan'] = predikatStatus;
+      }
+
+      return rowObj;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [
+      { wch: 10 },
+      { wch: 18 },
+      { wch: 32 },
+      { wch: 32 },
+      { wch: 20 },
+      { wch: 20 },
+      ...(isAdmin ? [{ wch: 16 }, { wch: 16 }] : []),
+      { wch: 20 },
+      { wch: 14 },
+      ...(tahapView === 'final' ? [{ wch: 14 }] : []),
+      { wch: 26 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const sheetName = tahapView === 'final' ? 'Babak Final' : 'Babak Seleksi';
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const cabangStr = filterCabang !== 'Semua' ? `_${filterCabang.replace(/\s+/g, '_')}` : '_Semua_Cabang';
+    const filename = `Klasemen_LiveScore_${tahapView === 'final' ? 'Final' : 'Seleksi'}${cabangStr}_${dateStr}.xlsx`;
+
+    XLSX.writeFile(wb, filename);
+
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: 'File Excel berhasil di-download!',
+      showConfirmButton: false,
+      timer: 2000,
+    });
+  };
+
   const juaraUmumList = useMemo(() => {
     const activeCabangs = isAdmin ? cabangOptions : displayCabangOptions;
     if (!activeCabangs || activeCabangs.length === 0 || visibleData.length === 0) return [];
@@ -400,19 +520,44 @@ export default function MonitoringOlimpiadePage() {
         </button>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px' }}>
         <div>
           <h2 style={{ margin: '0 0 8px 0', color: '#0f172a' }}>Monitoring Pemenang (Live Score)</h2>
           <p style={{ margin: 0, color: '#64748b' }}>Klasemen nilai peserta Olimpiade & Lomba Seni secara real-time</p>
         </div>
-        {(isAdmin || publishedCabang.length > 0) && (
-          <button 
-            onClick={() => { fetchData(); fetchConfig(); }}
-            style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '10px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 500 }}
-          >
-            <i className={`fas fa-sync ${loading ? 'fa-spin' : ''}`}></i> Refresh
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {(isAdmin || publishedCabang.length > 0) && (
+            <button 
+              onClick={handleExportExcel}
+              title="Download data klasemen pemenang ke file Excel"
+              style={{
+                background: '#16a34a',
+                color: 'white',
+                border: 'none',
+                padding: '10px 18px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 2px 6px rgba(22,163,74,0.3)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <i className="fas fa-file-excel"></i> Download Excel
+            </button>
+          )}
+          {(isAdmin || publishedCabang.length > 0) && (
+            <button 
+              onClick={() => { fetchData(); fetchConfig(); }}
+              style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}
+            >
+              <i className={`fas fa-sync ${loading ? 'fa-spin' : ''}`}></i> Refresh
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Tampilan jika belum ada satupun cabang yang dipublikasikan (khusus non-admin) */}
@@ -684,7 +829,7 @@ export default function MonitoringOlimpiadePage() {
           </div>
 
           <div style={{ background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
-            <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '14px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Filter Cabang Lomba ({tahapView === 'final' ? 'Babak Final' : 'Babak Seleksi'})</label>
                 <select 
@@ -701,18 +846,42 @@ export default function MonitoringOlimpiadePage() {
                   ))}
                 </select>
               </div>
-              <div style={{ fontSize: '0.85rem', color: '#64748b', background: '#f8fafc', padding: '8px 14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                {tahapView === 'final' ? (
-                  <>
-                    <i className="fas fa-award" style={{ color: '#d97706', marginRight: '6px' }}></i>
-                    Penentuan <b>Juara 1, 2, 3</b> ditentukan murni dari perolehan nilai pada Babak Final ini.
-                  </>
-                ) : (
-                  <>
-                    <i className="fas fa-info-circle" style={{ color: '#0284c7', marginRight: '6px' }}></i>
-                    Menampilkan <b>{MAX_LOLOS} peserta yang lolos (Peringkat 1 s.d. {MAX_LOLOS})</b> pada setiap cabang mapel Olimpiade Akademik.
-                  </>
-                )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={handleExportExcel}
+                  title="Download data klasemen ke file Excel"
+                  style={{
+                    background: '#16a34a',
+                    color: 'white',
+                    border: 'none',
+                    padding: '9px 16px',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.86rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    boxShadow: '0 2px 6px rgba(22,163,74,0.25)',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <i className="fas fa-file-excel"></i> Download Excel
+                </button>
+                <div style={{ fontSize: '0.85rem', color: '#64748b', background: '#f8fafc', padding: '8px 14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  {tahapView === 'final' ? (
+                    <>
+                      <i className="fas fa-award" style={{ color: '#d97706', marginRight: '6px' }}></i>
+                      Penentuan <b>Juara 1, 2, 3</b> ditentukan murni dari perolehan nilai pada Babak Final ini.
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-info-circle" style={{ color: '#0284c7', marginRight: '6px' }}></i>
+                      Menampilkan <b>{MAX_LOLOS} peserta yang lolos (Peringkat 1 s.d. {MAX_LOLOS})</b> pada setiap cabang mapel Olimpiade Akademik.
+                    </>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -917,6 +1086,26 @@ export default function MonitoringOlimpiadePage() {
                       <span>
                         Menampilkan <b>{startIndex + 1} - {endIndex}</b> dari total <b>{sortedData.length}</b> data peserta
                       </span>
+                      <button
+                        type="button"
+                        onClick={handleExportExcel}
+                        title="Download seluruh data klasemen ini ke file Excel"
+                        style={{
+                          background: '#f0fdf4',
+                          color: '#15803d',
+                          border: '1px solid #86efac',
+                          padding: '4px 10px',
+                          borderRadius: '6px',
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        <i className="fas fa-file-excel"></i> Download Excel
+                      </button>
                     </div>
 
                     {totalPages > 1 && (
