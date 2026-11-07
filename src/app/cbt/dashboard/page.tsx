@@ -35,7 +35,29 @@ export default function DashboardCBT() {
   const [statusLolos, setStatusLolos] = useState<boolean | null>(null);
   const [cbtBuka, setCbtBuka] = useState(false);
   const [tahapCbt, setTahapCbt] = useState<'seleksi' | 'final'>('seleksi');
+  const [pembayaranFinal, setPembayaranFinal] = useState<{
+    status: string;
+    bukti_url: string;
+    waktu_bayar: string | null;
+  } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const INFO_BANK = {
+    bank: 'BCA',
+    noRek: '3686518888',
+    atasNama: 'MTs Almaarif 01 Singosari'
+  };
+
+  const handleCopyRek = () => {
+    navigator.clipboard.writeText(INFO_BANK.noRek);
+    Swal.fire({
+      icon: 'success',
+      title: 'Nomor Rekening Disalin!',
+      text: `Nomor rekening ${INFO_BANK.bank} ${INFO_BANK.noRek} a.n. ${INFO_BANK.atasNama} berhasil disalin ke clipboard.`,
+      timer: 2000,
+      showConfirmButton: false
+    });
+  };
 
   useEffect(() => {
     const data = localStorage.getItem('cbt_user');
@@ -133,6 +155,9 @@ export default function DashboardCBT() {
         if (typeof data.lolos_seleksi === 'boolean') {
           setStatusLolos(data.lolos_seleksi);
         }
+        if (data.pembayaran_final) {
+          setPembayaranFinal(data.pembayaran_final);
+        }
         setSesi(data.sesi || null);
       }
     } catch (err) {
@@ -202,9 +227,19 @@ export default function DashboardCBT() {
       const data = await res.json();
 
       if (data.success) {
-        Swal.fire('Berhasil!', 'Bukti pembayaran berhasil diunggah. Menunggu verifikasi panitia.', 'success');
+        setPembayaranFinal({
+          status: data.status || 'Menunggu Verifikasi',
+          bukti_url: data.bukti_url || '',
+          waktu_bayar: data.waktu_bayar || new Date().toISOString()
+        });
+        await Swal.fire({
+          icon: 'success',
+          title: 'Bukti Pembayaran Terkirim!',
+          text: 'Bukti transfer daftar ulang Babak Final berhasil diunggah. Menunggu verifikasi dari panitia.',
+          confirmButtonColor: '#0284c7'
+        });
       } else {
-        Swal.fire('Gagal', data.error, 'error');
+        Swal.fire('Gagal', data.error || 'Gagal mengunggah bukti', 'error');
       }
     } catch (err: any) {
       Swal.fire('Error', err.message, 'error');
@@ -310,7 +345,7 @@ export default function DashboardCBT() {
               </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '32px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '28px' }}>
               <div style={{ border: '1px solid #e2e8f0', padding: '16px', borderRadius: '12px' }}>
                 <div style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '4px' }}>Nomor Peserta</div>
                 <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#0f172a' }}>{user.nomorPeserta}</div>
@@ -320,6 +355,242 @@ export default function DashboardCBT() {
                 <div style={{ fontSize: '1.2rem', fontWeight: 700, color: '#0f172a' }}>{user.lomba}</div>
               </div>
             </div>
+
+            {/* CARD UCAPAN SELAMAT & PEMBAYARAN FINALIS (TOP 30) */}
+            {(statusLolos === true || isBypassUser) && (
+              <div style={{
+                background: 'white',
+                borderRadius: '16px',
+                border: '2px solid #86efac',
+                boxShadow: '0 8px 24px rgba(16, 185, 129, 0.12)',
+                overflow: 'hidden',
+                marginBottom: '28px'
+              }}>
+                {/* Header Card */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #065f46, #059669)',
+                  padding: '20px 24px',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px'
+                }}>
+                  <div style={{
+                    fontSize: '2.2rem',
+                    background: 'rgba(255,255,255,0.2)',
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    🎉
+                  </div>
+                  <div>
+                    <h3 style={{ margin: '0 0 4px 0', fontSize: '1.25rem', fontWeight: 800 }}>
+                      SELAMAT! Anda Dinyatakan LOLOS ke Babak Final!
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '0.9rem', opacity: 0.95 }}>
+                      Berdasarkan hasil seleksi CBT, Anda berhasil masuk sebagai <b>Top 30 Peserta Terbaik</b> cabang lomba <b>{user.lomba}</b>.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Body Card */}
+                <div style={{ padding: '24px' }}>
+                  {/* Box Biaya & Himbauan */}
+                  <div style={{
+                    background: '#f0fdf4',
+                    border: '1.5px solid #bbf7d0',
+                    borderRadius: '12px',
+                    padding: '18px 20px',
+                    marginBottom: '20px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#166534', fontWeight: 700, fontSize: '1rem', marginBottom: '8px' }}>
+                      <i className="fas fa-bullhorn"></i> Himbauan Registrasi Ulang Babak Final
+                    </div>
+                    <p style={{ margin: '0 0 12px 0', color: '#15803d', fontSize: '0.92rem', lineHeight: '1.5' }}>
+                      Peserta yang lolos ke Babak Final diwajibkan melakukan registrasi ulang dengan biaya pendaftaran sebesar:
+                    </p>
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'baseline',
+                      gap: '8px',
+                      background: '#dcfce7',
+                      padding: '8px 18px',
+                      borderRadius: '8px',
+                      border: '1px solid #86efac'
+                    }}>
+                      <span style={{ fontSize: '0.85rem', color: '#166534', fontWeight: 700 }}>Biaya Registrasi:</span>
+                      <span style={{ fontSize: '1.4rem', fontWeight: 900, color: '#14532d' }}>Rp 50.000,-</span>
+                    </div>
+                  </div>
+
+                  {/* Box Rekening Bank Transfer */}
+                  <div style={{
+                    background: '#f8fafc',
+                    border: '1.5px solid #e2e8f0',
+                    borderRadius: '12px',
+                    padding: '18px 20px',
+                    marginBottom: '20px'
+                  }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
+                      Rekening Transfer Resmi Madrasah:
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+                      <div>
+                        <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', letterSpacing: '1px' }}>
+                          {INFO_BANK.bank} {INFO_BANK.noRek}
+                        </div>
+                        <div style={{ fontSize: '0.9rem', color: '#475569', fontWeight: 600, marginTop: '2px' }}>
+                          a.n. {INFO_BANK.atasNama}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleCopyRek}
+                        style={{
+                          padding: '10px 18px',
+                          borderRadius: '8px',
+                          background: '#0284c7',
+                          color: 'white',
+                          border: 'none',
+                          fontWeight: 700,
+                          fontSize: '0.88rem',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          boxShadow: '0 2px 6px rgba(2,132,199,0.3)',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <i className="fas fa-copy"></i> Salin No. Rekening
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Status Pembayaran & Upload Bukti */}
+                  <div style={{
+                    background: '#ffffff',
+                    border: '1.5px solid #e2e8f0',
+                    borderRadius: '12px',
+                    padding: '18px 20px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#334155' }}>
+                        Status Pembayaran Babak Final:
+                      </div>
+                      <div>
+                        {pembayaranFinal?.status === 'Valid' ? (
+                          <span style={{ background: '#dcfce7', color: '#15803d', border: '1px solid #86efac', padding: '6px 14px', borderRadius: '20px', fontWeight: 800, fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <i className="fas fa-check-circle"></i> Terverifikasi (LUNAS)
+                          </span>
+                        ) : pembayaranFinal?.status === 'Ditolak' ? (
+                          <span style={{ background: '#fee2e2', color: '#b91c1c', border: '1px solid #fca5a5', padding: '6px 14px', borderRadius: '20px', fontWeight: 800, fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <i className="fas fa-times-circle"></i> Bukti Ditolak
+                          </span>
+                        ) : pembayaranFinal?.bukti_url ? (
+                          <span style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '6px 14px', borderRadius: '20px', fontWeight: 800, fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <i className="fas fa-clock"></i> Menunggu Verifikasi Panitia
+                          </span>
+                        ) : (
+                          <span style={{ background: '#f1f5f9', color: '#64748b', border: '1px solid #cbd5e1', padding: '6px 14px', borderRadius: '20px', fontWeight: 800, fontSize: '0.82rem', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <i className="fas fa-exclamation-circle"></i> Belum Mengunggah Bukti
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {pembayaranFinal?.status === 'Valid' ? (
+                      <div style={{ color: '#166534', fontSize: '0.88rem', lineHeight: '1.5', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                        <div>
+                          Alhamdulillah, pembayaran daftar ulang Babak Final Anda telah <b>divalidasi oleh Panitia</b>. Anda dapat langsung mengerjakan soal Babak Final saat jadwal pelaksanaan dibuka.
+                        </div>
+                        {pembayaranFinal?.bukti_url && (
+                          <a
+                            href={pembayaranFinal.bukti_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              padding: '8px 14px',
+                              borderRadius: '6px',
+                              background: '#f0fdf4',
+                              color: '#166534',
+                              border: '1px solid #86efac',
+                              fontWeight: 700,
+                              fontSize: '0.82rem',
+                              textDecoration: 'none',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            <i className="fas fa-receipt"></i> Bukti Transfer
+                          </a>
+                        )}
+                      </div>
+                    ) : (
+                      <div>
+                        <p style={{ margin: '0 0 14px 0', fontSize: '0.88rem', color: '#475569', lineHeight: '1.5' }}>
+                          Silakan transfer tepat sebesar <b>Rp 50.000,-</b>, kemudian foto / screenshot bukti transfer Anda dan unggah pada tombol di bawah:
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            onClick={() => fileRef.current?.click()}
+                            disabled={uploading}
+                            style={{
+                              padding: '10px 20px',
+                              borderRadius: '8px',
+                              background: '#10b981',
+                              color: 'white',
+                              border: 'none',
+                              fontWeight: 700,
+                              fontSize: '0.9rem',
+                              cursor: uploading ? 'not-allowed' : 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              boxShadow: '0 2px 6px rgba(16,185,129,0.3)'
+                            }}
+                          >
+                            <i className={`fas ${uploading ? 'fa-spinner fa-spin' : 'fa-upload'}`}></i>
+                            {uploading ? 'Mengunggah Bukti...' : pembayaranFinal?.bukti_url ? 'Unggah Ulang Bukti Transfer' : 'Unggah Bukti Transfer (Rp 50.000)'}
+                          </button>
+
+                          {pembayaranFinal?.bukti_url && (
+                            <a
+                              href={pembayaranFinal.bukti_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                padding: '9px 16px',
+                                borderRadius: '8px',
+                                background: '#f8fafc',
+                                color: '#0284c7',
+                                border: '1.5px solid #cbd5e1',
+                                fontWeight: 700,
+                                fontSize: '0.88rem',
+                                textDecoration: 'none',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                              }}
+                            >
+                              <i className="fas fa-receipt"></i> Lihat Bukti Terunggah
+                            </a>
+                          )}
+                        </div>
+                        <input type="file" accept="image/*,application/pdf" ref={fileRef} onChange={handleUploadBukti} style={{ display: 'none' }} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {tahapCbt === 'final' && statusLolos === false ? (
               <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '12px', padding: '24px', textAlign: 'center' }}>

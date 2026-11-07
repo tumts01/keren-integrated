@@ -17,7 +17,7 @@ function stripInvisible(val: unknown): string {
 async function findActivePeserta(baseNomor: string) {
   const { data: exactRows, error: exactErr } = await supabase
     .from('data_olimpiade_seni')
-    .select('id, metadata')
+    .select('id, metadata, bukti_pembayaran_url')
     .in('jenis_pendaftaran', ['individu', 'peserta_kolektif'])
     .filter('metadata->>NOMOR_PESERTA', 'eq', baseNomor)
     .order('id', { ascending: true })
@@ -30,7 +30,7 @@ async function findActivePeserta(baseNomor: string) {
   if (safeNomor) {
     const { data: ilikeRows, error: ilikeErr } = await supabase
       .from('data_olimpiade_seni')
-      .select('id, metadata')
+      .select('id, metadata, bukti_pembayaran_url')
       .in('jenis_pendaftaran', ['individu', 'peserta_kolektif'])
       .ilike('metadata->>NOMOR_PESERTA', `%${safeNomor}%`)
       .order('id', { ascending: true })
@@ -145,6 +145,12 @@ export async function GET(req: Request) {
     const effectiveCbtBuka = isBypass ? true : cbtBuka;
     const effectiveLolos = isBypass ? true : lolosSeleksi;
 
+    const pembayaranFinal = {
+      status: peserta.metadata?.STATUS_BAYAR_FINAL || (peserta.metadata?.BUKTI_BAYAR_FINAL_URL ? 'Menunggu Verifikasi' : 'Belum Bayar'),
+      bukti_url: peserta.metadata?.BUKTI_BAYAR_FINAL_URL || '',
+      waktu_bayar: peserta.metadata?.WAKTU_BAYAR_FINAL || null
+    };
+
     if (!activeSesi) {
       return NextResponse.json({
         success: true,
@@ -154,7 +160,8 @@ export async function GET(req: Request) {
         tahap_cbt: tahapCbt,
         cbt_buka: effectiveCbtBuka,
         lolos_seleksi: effectiveLolos,
-        is_bypass: isBypass
+        is_bypass: isBypass,
+        pembayaran_final: pembayaranFinal
       });
     }
 
@@ -172,6 +179,7 @@ export async function GET(req: Request) {
       cbt_buka: effectiveCbtBuka,
       lolos_seleksi: effectiveLolos,
       is_bypass: isBypass,
+      pembayaran_final: pembayaranFinal,
       server_now: new Date(nowMs).toISOString(),
       raw_sisa_detik: rawSisaDetik,
       soal

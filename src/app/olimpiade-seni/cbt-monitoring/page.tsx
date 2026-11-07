@@ -33,6 +33,9 @@ interface PesertaCBT {
   durasi_menit: number | null;
   log_kecurangan: LogKecurangan[];
   jumlah_pelanggaran: number;
+  status_bayar_final?: string;
+  bukti_bayar_final_url?: string;
+  waktu_bayar_final?: string | null;
 }
 
 interface SummaryStats {
@@ -41,6 +44,9 @@ interface SummaryStats {
   sedang_mengerjakan: number;
   selesai: number;
   ada_pelanggaran: number;
+  bayar_lunas?: number;
+  bayar_menunggu?: number;
+  bayar_belum?: number;
 }
 
 export default function CbtMonitoringPage() {
@@ -334,6 +340,16 @@ export default function CbtMonitoringPage() {
       confirmText = `Sesi ujian akan diakhiri secara manual oleh pengawas sekarang, dan jawaban yang ada akan langsung dinilai.`;
       confirmBtn = 'Ya, Selesaikan';
       confirmColor = '#ea580c';
+    } else if (action === 'validasi_bayar_final') {
+      confirmTitle = `Validasi Lunas: ${p.nama}?`;
+      confirmText = `Tandai pembayaran pendaftaran Babak Final untuk <b>${p.nama}</b> (${p.nomor_peserta}) sebesar <b>Rp 50.000,-</b> sebagai <b>LUNAS</b>?`;
+      confirmBtn = 'Ya, Validasi LUNAS';
+      confirmColor = '#16a34a';
+    } else if (action === 'tolak_bayar_final') {
+      confirmTitle = `Tolak Pembayaran: ${p.nama}?`;
+      confirmText = `Tolak bukti pembayaran Babak Final untuk <b>${p.nama}</b> (${p.nomor_peserta})? Status pendaftaran akan ditandai <b>Ditolak</b>.`;
+      confirmBtn = 'Ya, Tolak';
+      confirmColor = '#dc2626';
     }
 
     if (action !== 'tambah_waktu') {
@@ -392,6 +408,9 @@ export default function CbtMonitoringPage() {
       if (filterStatus === 'selesai' && item.status !== 'selesai') return false;
       if (filterStatus === 'belum_mulai' && item.status !== 'belum_mulai') return false;
       if (filterStatus === 'ada_pelanggaran' && item.jumlah_pelanggaran === 0) return false;
+      if (filterStatus === 'bayar_lunas' && item.status_bayar_final !== 'Valid') return false;
+      if (filterStatus === 'bayar_menunggu' && item.status_bayar_final !== 'Menunggu Verifikasi') return false;
+      if (filterStatus === 'bayar_belum' && item.status_bayar_final !== 'Belum Bayar' && item.status_bayar_final !== 'Ditolak') return false;
 
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
@@ -455,6 +474,10 @@ export default function CbtMonitoringPage() {
         'Terjawab / Total': `${p.terjawab} / ${p.total_soal}`,
         'Nilai Akhir': p.nilai_akhir !== null ? p.nilai_akhir : '-',
         'Jumlah Pelanggaran': p.jumlah_pelanggaran,
+        ...(tahapPantau === 'final' ? {
+          'Daftar Ulang Final (50rb)': p.status_bayar_final || 'Belum Bayar',
+          'Bukti Transfer Final': p.bukti_bayar_final_url || '-'
+        } : {}),
         'Waktu Mulai': p.waktu_mulai ? new Date(p.waktu_mulai).toLocaleString('id-ID') : '-',
         'Waktu Selesai': p.waktu_selesai ? new Date(p.waktu_selesai).toLocaleString('id-ID') : '-',
         'Durasi Pengerjaan': durasiLabel,
@@ -966,6 +989,114 @@ export default function CbtMonitoringPage() {
           </div>
         </div>
 
+        {/* STATISTIK DAFTAR ULANG FINAL (KHUSUS TAHAP FINAL) */}
+        {tahapPantau === 'final' && (
+          <div style={{
+            background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%)',
+            border: '1.5px solid #86efac',
+            borderRadius: '16px',
+            padding: '16px 20px',
+            marginBottom: '24px',
+            boxShadow: '0 4px 12px rgba(16,185,129,0.06)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#16a34a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem' }}>
+                  <i className="fas fa-money-bill-wave"></i>
+                </div>
+                <div>
+                  <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#166534' }}>
+                    Status Registrasi Ulang Finalis (Rp 50.000 / Peserta)
+                  </h4>
+                  <p style={{ margin: 0, fontSize: '0.78rem', color: '#15803d' }}>
+                    Rekening BCA: <b>3686518888</b> a.n. MTs Almaarif 01 Singosari
+                  </p>
+                </div>
+              </div>
+              <div style={{ fontSize: '0.78rem', color: '#475569', fontWeight: 600 }}>
+                Total 150 Finalis (Top 30 per Mapel)
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+              {/* Lunas */}
+              <div
+                onClick={() => setFilterStatus(filterStatus === 'bayar_lunas' ? 'Semua' : 'bayar_lunas')}
+                style={{
+                  background: filterStatus === 'bayar_lunas' ? '#15803d' : 'white',
+                  color: filterStatus === 'bayar_lunas' ? 'white' : '#15803d',
+                  padding: '12px 16px',
+                  borderRadius: '10px',
+                  border: '1.5px solid #86efac',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+                }}
+              >
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.9 }}>
+                  <i className="fas fa-check-circle" style={{ marginRight: '6px' }}></i>Lunas Terverifikasi
+                </div>
+                <div style={{ fontSize: '1.6rem', fontWeight: 900, marginTop: '4px' }}>
+                  {summary.bayar_lunas || 0}
+                </div>
+                <div style={{ fontSize: '0.72rem', marginTop: '2px', opacity: 0.8 }}>
+                  Klik untuk filter LUNAS
+                </div>
+              </div>
+
+              {/* Menunggu Verifikasi */}
+              <div
+                onClick={() => setFilterStatus(filterStatus === 'bayar_menunggu' ? 'Semua' : 'bayar_menunggu')}
+                style={{
+                  background: filterStatus === 'bayar_menunggu' ? '#b45309' : 'white',
+                  color: filterStatus === 'bayar_menunggu' ? 'white' : '#b45309',
+                  padding: '12px 16px',
+                  borderRadius: '10px',
+                  border: '1.5px solid #fde68a',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+                }}
+              >
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.9 }}>
+                  <i className="fas fa-hourglass-half" style={{ marginRight: '6px' }}></i>Menunggu Verifikasi
+                </div>
+                <div style={{ fontSize: '1.6rem', fontWeight: 900, marginTop: '4px' }}>
+                  {summary.bayar_menunggu || 0}
+                </div>
+                <div style={{ fontSize: '0.72rem', marginTop: '2px', opacity: 0.8 }}>
+                  Sudah upload bukti transfer
+                </div>
+              </div>
+
+              {/* Belum Bayar */}
+              <div
+                onClick={() => setFilterStatus(filterStatus === 'bayar_belum' ? 'Semua' : 'bayar_belum')}
+                style={{
+                  background: filterStatus === 'bayar_belum' ? '#475569' : 'white',
+                  color: filterStatus === 'bayar_belum' ? 'white' : '#475569',
+                  padding: '12px 16px',
+                  borderRadius: '10px',
+                  border: '1.5px solid #cbd5e1',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
+                }}
+              >
+                <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', opacity: 0.9 }}>
+                  <i className="fas fa-clock" style={{ marginRight: '6px' }}></i>Belum Upload / Ditolak
+                </div>
+                <div style={{ fontSize: '1.6rem', fontWeight: 900, marginTop: '4px' }}>
+                  {summary.bayar_belum || 0}
+                </div>
+                <div style={{ fontSize: '0.72rem', marginTop: '2px', opacity: 0.8 }}>
+                  Belum mengirimkan bukti
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* FILTER & TOOLBAR */}
         <div style={{ background: 'white', padding: '16px 20px', borderRadius: '14px', border: '1px solid #e2e8f0', marginBottom: '20px', display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', flex: 1, minWidth: '300px' }}>
@@ -1034,6 +1165,13 @@ export default function CbtMonitoringPage() {
                 <option value="selesai">Sudah Selesai</option>
                 <option value="belum_mulai">Belum Mulai</option>
                 <option value="ada_pelanggaran">Ada Peringatan</option>
+                {tahapPantau === 'final' && (
+                  <>
+                    <option value="bayar_lunas">💰 Daftar Ulang: Lunas</option>
+                    <option value="bayar_menunggu">⏳ Daftar Ulang: Menunggu Verifikasi</option>
+                    <option value="bayar_belum">⚠️ Daftar Ulang: Belum Bayar / Ditolak</option>
+                  </>
+                )}
               </select>
             </div>
           </div>
@@ -1088,6 +1226,9 @@ export default function CbtMonitoringPage() {
                     <th style={{ padding: '12px 14px', width: '130px' }}>Waktu / Sisa</th>
                     <th style={{ padding: '12px 14px', width: '110px', textAlign: 'center' }}>Pelanggaran</th>
                     <th style={{ padding: '12px 14px', width: '90px', textAlign: 'right' }}>Nilai</th>
+                    {tahapPantau === 'final' && (
+                      <th style={{ padding: '12px 14px', width: '160px', textAlign: 'center' }}>Daftar Ulang (50rb)</th>
+                    )}
                     <th style={{ padding: '12px 14px', width: '180px', textAlign: 'center' }}>Aksi Kelola Sesi</th>
                   </tr>
                 </thead>
@@ -1256,6 +1397,101 @@ export default function CbtMonitoringPage() {
                             <span style={{ color: '#94a3b8' }}>-</span>
                           )}
                         </td>
+
+                        {/* Daftar Ulang Final (50rb) */}
+                        {tahapPantau === 'final' && (
+                          <td style={{ padding: '14px', textAlign: 'center' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                              {p.status_bayar_final === 'Valid' ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#dcfce7', color: '#15803d', padding: '3px 8px', borderRadius: '12px', fontWeight: 800, fontSize: '0.75rem', border: '1px solid #86efac' }}>
+                                  <i className="fas fa-check-circle"></i> LUNAS
+                                </span>
+                              ) : p.status_bayar_final === 'Menunggu Verifikasi' ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#fef3c7', color: '#b45309', padding: '3px 8px', borderRadius: '12px', fontWeight: 800, fontSize: '0.75rem', border: '1px solid #fde68a' }}>
+                                  <i className="fas fa-hourglass-half"></i> Menunggu
+                                </span>
+                              ) : p.status_bayar_final === 'Ditolak' ? (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#fee2e2', color: '#b91c1c', padding: '3px 8px', borderRadius: '12px', fontWeight: 800, fontSize: '0.75rem', border: '1px solid #fecaca' }}>
+                                  <i className="fas fa-times-circle"></i> Ditolak
+                                </span>
+                              ) : (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#f1f5f9', color: '#64748b', padding: '3px 8px', borderRadius: '12px', fontWeight: 700, fontSize: '0.75rem' }}>
+                                  <i className="fas fa-clock"></i> Belum Bayar
+                                </span>
+                              )}
+
+                              {p.bukti_bayar_final_url && (
+                                <a
+                                  href={p.bukti_bayar_final_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Klik untuk membuka bukti transfer di tab baru"
+                                  style={{
+                                    fontSize: '0.72rem',
+                                    color: '#0284c7',
+                                    textDecoration: 'none',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '3px',
+                                    marginTop: '2px',
+                                    fontWeight: 700
+                                  }}
+                                >
+                                  <i className="fas fa-receipt"></i> Bukti
+                                </a>
+                              )}
+
+                              {isAdmin && (
+                                <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                                  {p.status_bayar_final !== 'Valid' && (
+                                    <button
+                                      onClick={() => handleAction('validasi_bayar_final', p)}
+                                      disabled={actionLoading}
+                                      title="Setujui dan tandai LUNAS"
+                                      style={{
+                                        background: '#16a34a',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        padding: '3px 7px',
+                                        fontSize: '0.7rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px'
+                                      }}
+                                    >
+                                      <i className="fas fa-check"></i> Lunas
+                                    </button>
+                                  )}
+                                  {p.status_bayar_final !== 'Ditolak' && p.status_bayar_final !== 'Belum Bayar' && (
+                                    <button
+                                      onClick={() => handleAction('tolak_bayar_final', p)}
+                                      disabled={actionLoading}
+                                      title="Tolak bukti transfer"
+                                      style={{
+                                        background: '#dc2626',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        padding: '3px 7px',
+                                        fontSize: '0.7rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '3px'
+                                      }}
+                                    >
+                                      <i className="fas fa-times"></i> Tolak
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        )}
 
                         {/* Aksi */}
                         <td style={{ padding: '14px', textAlign: 'center' }}>

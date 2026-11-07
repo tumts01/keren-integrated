@@ -186,7 +186,10 @@ export async function GET(req: Request) {
         sisa_waktu_detik: sisaWaktuDetik,
         durasi_menit: durasiMenitPengerjaan,
         log_kecurangan: logKecurangan,
-        jumlah_pelanggaran: logKecurangan.length
+        jumlah_pelanggaran: logKecurangan.length,
+        status_bayar_final: meta.STATUS_BAYAR_FINAL || (meta.BUKTI_BAYAR_FINAL_URL ? 'Menunggu Verifikasi' : 'Belum Bayar'),
+        bukti_bayar_final_url: meta.BUKTI_BAYAR_FINAL_URL || '',
+        waktu_bayar_final: meta.WAKTU_BAYAR_FINAL || null
       });
     });
 
@@ -205,7 +208,10 @@ export async function GET(req: Request) {
       belum_mulai: list.filter(p => p.status === 'belum_mulai').length,
       sedang_mengerjakan: list.filter(p => p.status === 'sedang_mengerjakan').length,
       selesai: list.filter(p => p.status === 'selesai').length,
-      ada_pelanggaran: list.filter(p => p.jumlah_pelanggaran > 0).length
+      ada_pelanggaran: list.filter(p => p.jumlah_pelanggaran > 0).length,
+      bayar_lunas: list.filter(p => p.status_bayar_final === 'Valid').length,
+      bayar_menunggu: list.filter(p => p.status_bayar_final === 'Menunggu Verifikasi').length,
+      bayar_belum: list.filter(p => p.status_bayar_final === 'Belum Bayar' || p.status_bayar_final === 'Ditolak').length
     };
 
     // Filter jika ada parameter query
@@ -447,6 +453,57 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         message: `Ujian peserta ${baseNomor} berhasil diakhiri secara manual oleh pengawas. Nilai akhir: ${nilaiAkhir.toFixed(1)}`
+      });
+    }
+
+    // 6. Validasi Pembayaran Babak Final (Rp 50.000)
+    else if (action === 'validasi_bayar_final' || action === 'tolak_bayar_final') {
+      const statusTarget = action === 'tolak_bayar_final' ? 'Ditolak' : 'Valid';
+      
+      const { data: rows } = await supabase
+        .from('data_olimpiade_seni')
+        .select('id, metadata')
+        .in('jenis_pendaftaran', ['individu', 'peserta_kolektif'])
+        .filter('metadata->>NOMOR_PESERTA', 'eq', baseNomor)
+        .limit(1);
+
+      let targetRow = rows?.[0];
+      if (!targetRow) {
+        const safeNomor = baseNomor.replace(/[%_]/g, '');
+        if (safeNomor) {
+          const { data: altRows } = await supabase
+            .from('data_olimpiade_seni')
+            .select('id, metadata')
+            .in('jenis_pendaftaran', ['individu', 'peserta_kolektif'])
+            .ilike('metadata->>NOMOR_PESERTA', `%${safeNomor}%`)
+            .limit(10);
+          targetRow = (altRows || []).find((r: any) => ((r.metadata?.NOMOR_PESERTA || '').toString().trim()).toUpperCase() === baseNomor.toUpperCase());
+        }
+      }
+
+      if (!targetRow) {
+        return NextResponse.json({ success: false, error: 'Data peserta tidak ditemukan' }, { status: 404 });
+      }
+
+      const updatedMeta = {
+        ...(targetRow.metadata as object),
+        STATUS_BAYAR_FINAL: statusTarget,
+        VERIFIED_AT_FINAL: new Date().toISOString()
+      };
+
+      const { error: errUpdate } = await supabase
+        .from('data_olimpiade_seni')
+        .update({ metadata: updatedMeta })
+        .eq('id', targetRow.id);
+
+      if (errUpdate) throw errUpdate;
+
+      return NextResponse.json({
+        success: true,
+        message: action === 'tolak_bayar_final'
+          ? `Status pendaftaran ulang ${baseNomor} berhasil ditandai: DITOLAK`
+          : `Pembayaran babak final ${baseNomor} berhasil divalidasi (LUNAS)`,
+        status: statusTarget
       });
     }
 
