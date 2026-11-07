@@ -27,7 +27,8 @@ export default function MonitoringOlimpiadePage() {
     if (sessionStr) {
       try {
         const session = JSON.parse(sessionStr);
-        setIsAdmin(session.role === 'admin' || session.role === 'Admin' || session.role === 'ADMIN');
+        const role = (session.role || '').toLowerCase();
+        setIsAdmin(role === 'admin' || role === 'administrator' || role.includes('admin'));
       } catch (e) {
         setIsAdmin(false);
       }
@@ -729,6 +730,12 @@ export default function MonitoringOlimpiadePage() {
                         <th style={{ padding: '15px' }}>Nama Peserta</th>
                         <th style={{ padding: '15px' }}>Asal Sekolah</th>
                         {filterCabang === 'Semua' && <th style={{ padding: '15px' }}>Cabang Lomba</th>}
+                        {isAdmin && (
+                          <>
+                            <th style={{ padding: '15px', textAlign: 'center' }}>Penilai</th>
+                            <th style={{ padding: '15px', textAlign: 'center' }}>Pelanggaran</th>
+                          </>
+                        )}
                         <th style={{ padding: '15px', textAlign: 'center' }}>Waktu Mengerjakan</th>
                         <th style={{ padding: '15px', textAlign: 'right' }}>{tahapView === 'final' ? 'Nilai Final' : 'Nilai Seleksi'}</th>
                         <th style={{ padding: '15px', textAlign: 'center' }}>{tahapView === 'final' ? 'Predikat / Juara' : `Status (Top ${MAX_LOLOS})`}</th>
@@ -737,7 +744,7 @@ export default function MonitoringOlimpiadePage() {
                     <tbody>
                       {sortedData.length === 0 ? (
                         <tr>
-                          <td colSpan={filterCabang === 'Semua' ? 7 : 6} style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
+                          <td colSpan={6 + (filterCabang === 'Semua' ? 1 : 0) + (isAdmin ? 2 : 0)} style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
                             {tahapView === 'final'
                               ? 'Belum ada data Finalis atau nilai Babak Final untuk kategori ini.'
                               : 'Belum ada data nilai Babak Seleksi untuk kategori ini.'}
@@ -784,6 +791,29 @@ export default function MonitoringOlimpiadePage() {
                               </td>
                               <td style={{ padding: '15px', color: '#64748b' }}>{d.asal_sekolah || '-'}</td>
                               {filterCabang === 'Semua' && <td style={{ padding: '15px', color: '#0ea5e9', fontWeight: 500 }}>{d.cabang_lomba}</td>}
+                              {isAdmin && (
+                                <>
+                                  <td style={{ padding: '15px', textAlign: 'center' }}>
+                                    <span style={{ background: '#e2e8f0', padding: '4px 10px', borderRadius: '20px', fontSize: '0.8rem' }}>
+                                      {d.kategori_lomba === 'akademik' ? (tahapView === 'final' ? 'CBT Final' : 'CBT Seleksi') : `${d.jumlah_juri} Juri`}
+                                    </span>
+                                  </td>
+                                  <td style={{ padding: '15px', textAlign: 'center' }}>
+                                    {d.log_kecurangan && d.log_kecurangan.length > 0 ? (
+                                      <div
+                                        title={d.log_kecurangan.map((l: any) => `${l.ke}. ${l.jenis === 'tab_switch' ? 'Pindah Tab' : l.jenis === 'fullscreen_exit' ? 'Keluar Fullscreen' : l.jenis} (${new Date(l.waktu).toLocaleTimeString('id-ID')})`).join('\n')}
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#fef2f2', color: '#ef4444', borderRadius: '20px', padding: '4px 12px', fontWeight: 700, fontSize: '0.85rem', cursor: 'help', border: '1px solid #fca5a5' }}
+                                      >
+                                        <i className="fas fa-exclamation-triangle"></i> {d.log_kecurangan.length}x
+                                      </div>
+                                    ) : (
+                                      <span style={{ color: '#10b981', fontSize: '0.85rem' }}>
+                                        <i className="fas fa-check-circle"></i> Bersih
+                                      </span>
+                                    )}
+                                  </td>
+                                </>
+                              )}
                               <td style={{ padding: '15px', textAlign: 'center', color: '#64748b', fontSize: '0.9rem', fontWeight: 500 }}>
                                 {durationText !== '-' ? (
                                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#f1f5f9', padding: '4px 10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
