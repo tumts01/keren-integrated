@@ -83,40 +83,51 @@ async function getCbtConfig() {
   return { cbtBuka, tahapCbt };
 }
 
-// Helper: cek apakah peserta lolos Top 30 pada Babak Seleksi
+// Helper: cek apakah peserta lolos tepat Top 30 pada Babak Seleksi (tie-breaker: durasi tercepat, waktu selesai lebih awal)
 async function checkLolosSeleksi(baseNomor: string, baseCabang: string, pesertaMeta: any): Promise<boolean> {
   if (pesertaMeta?.LOLOS_FINAL === true) return true;
 
   const { data: allSeleksiSesi } = await supabase
     .from('cbt_sesi')
-    .select('nomor_peserta, cabang_lomba, nilai_akhir')
+    .select('nomor_peserta, cabang_lomba, nilai_akhir, waktu_mulai, waktu_selesai')
     .range(0, 4999);
 
   if (!allSeleksiSesi || allSeleksiSesi.length === 0) return false;
 
-  const cabangScores: number[] = [];
-  let myScore: number | null = null;
+  const candidates: Array<{ nomor: string; nilai: number; durasiMs: number; finishMs: number }> = [];
 
   allSeleksiSesi.forEach((s: any) => {
     const no = (s.nomor_peserta || '').trim();
-    if (no.endsWith('_FINAL')) return; // Hanya sesi babak seleksi
+    if (!no || no.endsWith('_FINAL') || no.startsWith('BYPASS-')) return;
     const c = normalizeCbtCabang(s.cabang_lomba || '');
     if (c === baseCabang && s.nilai_akhir !== null && s.nilai_akhir !== undefined) {
       const val = Number(s.nilai_akhir);
       if (val > 0) {
-        cabangScores.push(val);
-      }
-      if (no === baseNomor) {
-        myScore = val;
+        const dur = s.waktu_mulai && s.waktu_selesai
+          ? new Date(s.waktu_selesai).getTime() - new Date(s.waktu_mulai).getTime()
+          : Infinity;
+        const fin = s.waktu_selesai ? new Date(s.waktu_selesai).getTime() : Infinity;
+        candidates.push({
+          nomor: no,
+          nilai: val,
+          durasiMs: Number.isFinite(dur) && dur >= 0 ? dur : Infinity,
+          finishMs: Number.isFinite(fin) ? fin : Infinity
+        });
       }
     }
   });
 
-  if (cabangScores.length === 0 || myScore === null || myScore <= 0) return false;
+  if (candidates.length === 0) return false;
 
-  cabangScores.sort((a, b) => b - a);
-  const cutoff = cabangScores[Math.min(MAX_LOLOS_SELEKSI - 1, cabangScores.length - 1)];
-  return myScore >= cutoff;
+  candidates.sort((a, b) => {
+    if (b.nilai !== a.nilai) return b.nilai - a.nilai;
+    if (a.durasiMs !== b.durasiMs) return a.durasiMs - b.durasiMs;
+    if (a.finishMs !== b.finishMs) return a.finishMs - b.finishMs;
+    return a.nomor.localeCompare(b.nomor);
+  });
+
+  const top30Set = new Set(candidates.slice(0, MAX_LOLOS_SELEKSI).map(c => c.nomor));
+  return top30Set.has(baseNomor);
 }
 
 export async function GET(req: Request) {

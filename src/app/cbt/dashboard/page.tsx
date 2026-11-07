@@ -87,20 +87,9 @@ export default function DashboardCBT() {
     try {
       const res = await fetch('/api/olimpiade-seni/monitoring?tahap=seleksi');
       const json = await res.json();
-      if (json.success && json.data) {
+      if (json.success && Array.isArray(json.data)) {
         const pesertaUser = json.data.find((d: any) => d.nomor_peserta === nomorPeserta);
-        if (!pesertaUser) return;
-        
-        const cabang = pesertaUser.cabang_lomba;
-        const pesertaCabang = json.data
-          .filter((d: any) => d.cabang_lomba === cabang && Number(d.rata_rata) > 0)
-          .map((d: any) => Number(d.rata_rata))
-          .sort((a: number, b: number) => b - a);
-
-        if (pesertaCabang.length > 0) {
-          const cutoff = pesertaCabang[Math.min(30 - 1, pesertaCabang.length - 1)];
-          setStatusLolos(Number(pesertaUser.rata_rata) > 0 && Number(pesertaUser.rata_rata) >= cutoff);
-        }
+        setStatusLolos(Boolean(pesertaUser && pesertaUser.lolos_seleksi));
       }
     } catch (err) {
       console.error(err);

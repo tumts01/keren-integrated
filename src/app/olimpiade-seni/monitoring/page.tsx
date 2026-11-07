@@ -59,8 +59,10 @@ export default function MonitoringOlimpiadePage() {
       if (json.success) {
         setData(json.data);
         
-        // Ekstrak cabang lomba unik
-        const cabangs = Array.from(new Set(json.data.map((d: any) => d.cabang_lomba))).filter(Boolean).sort();
+        // Ekstrak cabang lomba unik (gunakan cabang_list dari API agar semua mapel selalu muncul)
+        const fromList = Array.isArray(json.cabang_list) ? json.cabang_list : [];
+        const fromData = json.data.map((d: any) => d.cabang_lomba).filter(Boolean);
+        const cabangs = Array.from(new Set([...fromList, ...fromData])).sort();
         setCabangOptions(cabangs as string[]);
       }
     } catch (err) {
@@ -220,63 +222,43 @@ export default function MonitoringOlimpiadePage() {
     return cabangOptions.filter(c => publishedCabang.includes(c));
   }, [isAdmin, cabangOptions, publishedCabang]);
 
-  // Data yang boleh dilihat (Admin melihat semua, Non-admin hanya melihat cabang yang dipublikasikan)
+  // Data yang boleh dilihat (Admin melihat semua cabang, Non-admin hanya cabang yang dipublikasikan; khusus mapel Akademik hanya Top 30 yang lolos)
   const visibleData = useMemo(() => {
-    if (isAdmin) return data;
-    return data.filter(d => publishedCabang.includes(d.cabang_lomba));
+    const base = isAdmin ? data : data.filter(d => publishedCabang.includes(d.cabang_lomba));
+    const byCabangCount: Record<string, number> = {};
+    const compareRow = (a: any, b: any) => {
+      const diff = Number(b.rata_rata) - Number(a.rata_rata);
+      if (diff !== 0) return diff;
+      const durA = a.waktu_mulai && a.waktu_selesai ? Math.max(0, new Date(a.waktu_selesai).getTime() - new Date(a.waktu_mulai).getTime()) : Infinity;
+      const durB = b.waktu_mulai && b.waktu_selesai ? Math.max(0, new Date(b.waktu_selesai).getTime() - new Date(b.waktu_mulai).getTime()) : Infinity;
+      if (durA !== durB) return durA - durB;
+      const finA = a.waktu_selesai ? new Date(a.waktu_selesai).getTime() : Infinity;
+      const finB = b.waktu_selesai ? new Date(b.waktu_selesai).getTime() : Infinity;
+      if (finA !== finB) return finA - finB;
+      return (a.nomor_peserta || '').localeCompare(b.nomor_peserta || '');
+    };
+
+    const sortedBase = [...base].sort(compareRow);
+    return sortedBase.filter(d => {
+      if (d.kategori_lomba !== 'akademik') return true;
+      if (!d.lolos_seleksi) return false;
+      byCabangCount[d.cabang_lomba] = (byCabangCount[d.cabang_lomba] || 0) + 1;
+      return byCabangCount[d.cabang_lomba] <= MAX_LOLOS;
+    });
   }, [isAdmin, data, publishedCabang]);
 
-  // Hitung ambang batas nilai per cabang lomba untuk top-30 (dengan tie-handling)
-  const getLolosThresholdPerCabang = () => {
-    const thresholdMap: Record<string, number> = {};
-    const cabangs = Array.from(new Set(visibleData.map((d: any) => d.cabang_lomba))).filter(Boolean);
-    cabangs.forEach(cabang => {
-      const pesertaCabang = visibleData
-        .filter((d: any) => d.cabang_lomba === cabang && Number(d.rata_rata) > 0)
-        .map((d: any) => Number(d.rata_rata))
-        .sort((a: number, b: number) => b - a);
-      
-      if (pesertaCabang.length === 0) {
-        thresholdMap[cabang as string] = -Infinity;
-        return;
-      }
-      // Ambil nilai peserta ke-30 (index 29). Semua peserta dengan nilai >= nilai ini dinyatakan lolos.
-      const cutoff = pesertaCabang[Math.min(MAX_LOLOS - 1, pesertaCabang.length - 1)];
-      thresholdMap[cabang as string] = cutoff;
-    });
-    return thresholdMap;
-  };
-
-  const lolosThreshold = getLolosThresholdPerCabang();
-
-  const isLolos = (d: any) => {
-    const threshold = lolosThreshold[d.cabang_lomba];
-    return Number(d.rata_rata) > 0 && threshold !== undefined && Number(d.rata_rata) >= threshold;
-  };
+  const isLolos = (d: any) => Boolean(d.lolos_seleksi);
 
   const filteredData = filterCabang === 'Semua' 
     ? visibleData 
     : visibleData.filter(d => d.cabang_lomba === filterCabang);
 
-  // Re-sort karena gabungan mungkin tidak urut per cabang (tie-breaker: durasi lebih cepat)
-  const sortedData = [...filteredData].sort((a, b) => {
-    const diff = Number(b.rata_rata) - Number(a.rata_rata);
-    if (diff !== 0) return diff;
-    const durA = a.waktu_mulai && a.waktu_selesai
-      ? new Date(a.waktu_selesai).getTime() - new Date(a.waktu_mulai).getTime()
-      : Infinity;
-    const durB = b.waktu_mulai && b.waktu_selesai
-      ? new Date(b.waktu_selesai).getTime() - new Date(b.waktu_mulai).getTime()
-      : Infinity;
-    return durA - durB;
-  });
-
-  // Hitung peringkat di dalam cabang lombanya masing-masing (untuk penentuan Juara 1, 2, 3 pada Babak Final)
+  // Hitung peringkat di dalam cabang lombanya masing-masing (1 s.d. 30 per mapel)
   const rankInCabangMap = useMemo(() => {
     const map: Record<string, number> = {};
     const byCabang: Record<string, any[]> = {};
     visibleData.forEach(d => {
-      if (Number(d.rata_rata) <= 0) return;
+      if (tahapView === 'final' && Number(d.rata_rata) <= 0) return;
       if (!byCabang[d.cabang_lomba]) byCabang[d.cabang_lomba] = [];
       byCabang[d.cabang_lomba].push(d);
     });
@@ -285,19 +267,45 @@ export default function MonitoringOlimpiadePage() {
         const diff = Number(b.rata_rata) - Number(a.rata_rata);
         if (diff !== 0) return diff;
         const durA = a.waktu_mulai && a.waktu_selesai
-          ? new Date(a.waktu_selesai).getTime() - new Date(a.waktu_mulai).getTime()
+          ? Math.max(0, new Date(a.waktu_selesai).getTime() - new Date(a.waktu_mulai).getTime())
           : Infinity;
         const durB = b.waktu_mulai && b.waktu_selesai
-          ? new Date(b.waktu_selesai).getTime() - new Date(b.waktu_mulai).getTime()
+          ? Math.max(0, new Date(b.waktu_selesai).getTime() - new Date(b.waktu_mulai).getTime())
           : Infinity;
-        return durA - durB;
+        if (durA !== durB) return durA - durB;
+        const finA = a.waktu_selesai ? new Date(a.waktu_selesai).getTime() : Infinity;
+        const finB = b.waktu_selesai ? new Date(b.waktu_selesai).getTime() : Infinity;
+        if (finA !== finB) return finA - finB;
+        return (a.nomor_peserta || '').localeCompare(b.nomor_peserta || '');
       });
       list.forEach((item, idx) => {
         map[item.id] = idx + 1;
       });
     });
     return map;
-  }, [visibleData]);
+  }, [visibleData, tahapView]);
+
+  // Urutkan per cabang lalu berdasarkan peringkat nilai tertinggi (tie-breaker: durasi lebih cepat)
+  const sortedData = [...filteredData].sort((a, b) => {
+    if (filterCabang === 'Semua' && a.cabang_lomba !== b.cabang_lomba) {
+      return (a.cabang_lomba || '').localeCompare(b.cabang_lomba || '', 'id');
+    }
+    const diff = Number(b.rata_rata) - Number(a.rata_rata);
+    if (diff !== 0) return diff;
+    const durA = a.waktu_mulai && a.waktu_selesai
+      ? Math.max(0, new Date(a.waktu_selesai).getTime() - new Date(a.waktu_mulai).getTime())
+      : Infinity;
+    const durB = b.waktu_mulai && b.waktu_selesai
+      ? Math.max(0, new Date(b.waktu_selesai).getTime() - new Date(b.waktu_mulai).getTime())
+      : Infinity;
+    if (durA !== durB) return durA - durB;
+    const finA = a.waktu_selesai ? new Date(a.waktu_selesai).getTime() : Infinity;
+    const finB = b.waktu_selesai ? new Date(b.waktu_selesai).getTime() : Infinity;
+    if (finA !== finB) return finA - finB;
+    const selRankDiff = (a.peringkat_seleksi || 999) - (b.peringkat_seleksi || 999);
+    if (selRankDiff !== 0) return selRankDiff;
+    return (a.nomor_peserta || '').localeCompare(b.nomor_peserta || '');
+  });
 
   const totalPages = itemsPerPage === 999999 ? 1 : Math.ceil(sortedData.length / itemsPerPage) || 1;
   const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
@@ -701,7 +709,7 @@ export default function MonitoringOlimpiadePage() {
                 ) : (
                   <>
                     <i className="fas fa-info-circle" style={{ color: '#0284c7', marginRight: '6px' }}></i>
-                    Peserta peringkat <b>1 s.d. {MAX_LOLOS}</b> pada masing-masing cabang Akademik dinyatakan <b>LOLOS</b> ke Babak Final.
+                    Menampilkan <b>{MAX_LOLOS} peserta yang lolos (Peringkat 1 s.d. {MAX_LOLOS})</b> pada setiap cabang mapel Olimpiade Akademik.
                   </>
                 )}
               </div>
@@ -742,7 +750,9 @@ export default function MonitoringOlimpiadePage() {
                           const globalRank = itemsPerPage === 999999 ? i + 1 : startIndex + i + 1;
                           const lolos = isLolos(d);
                           const cabangRank = rankInCabangMap[d.id] || null;
-                          const isJuaraFinal = tahapView === 'final' && cabangRank !== null && cabangRank <= 3 && Number(d.rata_rata) > 0;
+                          const displayRank = cabangRank || d.peringkat_seleksi || globalRank;
+                          const hasScore = Number(d.rata_rata) > 0;
+                          const showMedal = hasScore && displayRank <= 3;
                           const durationText = (() => {
                             if (d.waktu_mulai && d.waktu_selesai) {
                               const start = new Date(d.waktu_mulai).getTime();
@@ -758,15 +768,15 @@ export default function MonitoringOlimpiadePage() {
 
                           const rowBg = tahapView === 'final'
                             ? (cabangRank === 1 ? '#fef9c3' : cabangRank === 2 ? '#f0fdf4' : cabangRank === 3 ? '#fff7ed' : 'white')
-                            : (lolos ? (i === 0 ? '#fef9c3' : i === 1 ? '#f0fdf4' : i === 2 ? '#fff7ed' : '#f0fdf4') : '#fff5f5');
+                            : (lolos ? (displayRank === 1 ? '#fef9c3' : displayRank === 2 ? '#f0fdf4' : displayRank === 3 ? '#fff7ed' : '#f0fdf4') : '#fff5f5');
                           
                           return (
                             <tr key={d.id} style={{ borderBottom: '1px solid #e2e8f0', background: rowBg }}>
-                              <td style={{ padding: '15px', fontWeight: 'bold', color: globalRank === 1 ? '#ca8a04' : globalRank === 2 ? '#64748b' : globalRank === 3 ? '#ea580c' : '#334155' }}>
-                                {globalRank === 1 ? <><i className="fas fa-trophy" style={{color: '#eab308'}}></i> 1</> : 
-                                 globalRank === 2 ? <><i className="fas fa-medal" style={{color: '#94a3b8'}}></i> 2</> : 
-                                 globalRank === 3 ? <><i className="fas fa-medal" style={{color: '#c2410c'}}></i> 3</> : 
-                                 globalRank}
+                              <td style={{ padding: '15px', fontWeight: 'bold', color: showMedal && displayRank === 1 ? '#ca8a04' : showMedal && displayRank === 2 ? '#64748b' : showMedal && displayRank === 3 ? '#ea580c' : '#334155' }}>
+                                {showMedal && displayRank === 1 ? <><i className="fas fa-trophy" style={{color: '#eab308'}}></i> 1</> : 
+                                 showMedal && displayRank === 2 ? <><i className="fas fa-medal" style={{color: '#94a3b8'}}></i> 2</> : 
+                                 showMedal && displayRank === 3 ? <><i className="fas fa-medal" style={{color: '#c2410c'}}></i> 3</> : 
+                                 displayRank}
                               </td>
                               <td style={{ padding: '15px', fontWeight: 600 }}>
                                 <div>{d.nama}</div>
@@ -1085,7 +1095,7 @@ export default function MonitoringOlimpiadePage() {
                           {c}
                         </div>
                         <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                          {count} peserta terdaftar
+                          {tahapView === 'seleksi' ? `${count} peserta lolos` : `${count} peserta finalis`}
                         </div>
                       </div>
                     </div>

@@ -6,6 +6,19 @@ export const dynamic = 'force-dynamic';
 const MAX_LOLOS_SELEKSI = 30;
 
 const CABANG_AKADEMIK = ['Matematika', 'IPAS', 'PAI', 'Bahasa Inggris', 'Bahasa Arab'];
+const CABANG_SENI = ['Singer Solo', 'Al Banjari', 'SMS'];
+
+function getDurationMs(waktuMulai?: string | null, waktuSelesai?: string | null): number {
+  if (!waktuMulai || !waktuSelesai) return Infinity;
+  const diff = new Date(waktuSelesai).getTime() - new Date(waktuMulai).getTime();
+  return Number.isFinite(diff) && diff >= 0 ? diff : Infinity;
+}
+
+function getFinishMs(waktuSelesai?: string | null): number {
+  if (!waktuSelesai) return Infinity;
+  const t = new Date(waktuSelesai).getTime();
+  return Number.isFinite(t) ? t : Infinity;
+}
 
 export async function GET(req: Request) {
   try {
@@ -16,14 +29,16 @@ export async function GET(req: Request) {
     // Ambil data nilai JURI (untuk Cabang Seni yang langsung Final)
     const { data: nilaiData, error: errNilai } = await supabase
       .from('olimpiade_nilai')
-      .select('peserta_id, juri_id, nilai, olimpiade_juri(nama_juri)');
+      .select('peserta_id, juri_id, nilai, olimpiade_juri(nama_juri)')
+      .range(0, 4999);
 
     if (errNilai) throw errNilai;
 
     // Ambil data nilai CBT (termasuk sesi Seleksi dan sesi _FINAL)
     const { data: cbtData, error: errCbt } = await supabase
       .from('cbt_sesi')
-      .select('nomor_peserta, cabang_lomba, nilai_akhir, log_kecurangan, waktu_mulai, waktu_selesai, status');
+      .select('nomor_peserta, cabang_lomba, nilai_akhir, log_kecurangan, waktu_mulai, waktu_selesai, status')
+      .range(0, 4999);
       
     if (errCbt && errCbt.code !== '42P01') {
       console.warn('CBT Table error or missing', errCbt);
@@ -33,7 +48,7 @@ export async function GET(req: Request) {
     const cbtFinalMap: Record<string, any> = {};
     (cbtData || []).forEach((c: any) => {
       const no = (c.nomor_peserta || '').trim();
-      if (!no) return;
+      if (!no || no.startsWith('BYPASS-')) return;
       if (no.endsWith('_FINAL')) {
         const baseNo = no.replace(/_FINAL$/i, '');
         cbtFinalMap[baseNo] = c;
@@ -45,21 +60,26 @@ export async function GET(req: Request) {
     // Ambil data peserta dari data_olimpiade_seni
     const { data: allData, error: errAll } = await supabase
       .from('data_olimpiade_seni')
-      .select('id, jenis_pendaftaran, metadata');
+      .select('id, jenis_pendaftaran, metadata')
+      .range(0, 4999);
 
     if (errAll) throw errAll;
 
-    let pesertaList: any[] = [];
-    allData.forEach(row => {
+    const pesertaList: any[] = [];
+    (allData || []).forEach(row => {
       const meta = row.metadata || {};
+      const nomorPeserta = (meta.NOMOR_PESERTA || '').trim();
+
+      // Kecualikan akun bypass/trial panitia dari klasemen Live Score & kuota Top 30
+      if (meta.IS_BYPASS === true || nomorPeserta.startsWith('BYPASS-')) return;
       
       if (row.jenis_pendaftaran?.toLowerCase() === 'individu' || row.jenis_pendaftaran?.toLowerCase() === 'peserta_kolektif') {
-        let cabang = meta.LOMBA_DIPILIH || meta['LOMBA YANG DIPILIH'] || '';
+        let cabang = (meta.LOMBA_DIPILIH || meta['LOMBA YANG DIPILIH'] || '').toString().trim();
         
         // Normalisasi nama cabang lomba agar tidak ada duplikasi kategori
         const l = cabang.toLowerCase();
         if (l.includes('matematika') || l === 'mtk') cabang = 'Matematika';
-        else if (l.includes('ipas') || l.includes('ipa')) cabang = 'IPAS';
+        else if (l.includes('ipas') || l === 'ipa' || l.includes('ipa')) cabang = 'IPAS';
         else if (l.includes('pai') || l.includes('agama')) cabang = 'PAI';
         else if (l.includes('inggris') || l.includes('english')) cabang = 'Bahasa Inggris';
         else if (l.includes('arab')) cabang = 'Bahasa Arab';
@@ -72,7 +92,7 @@ export async function GET(req: Request) {
         if (!cabangLomba || cabang === cabangLomba || meta.KATEGORI?.includes(cabangLomba)) {
           pesertaList.push({
             id: row.id,
-            nomor_peserta: (meta.NOMOR_PESERTA || '').trim(),
+            nomor_peserta: nomorPeserta,
             nama: meta.NAMA || meta.NAMA_REGU || 'Tanpa Nama',
             asal_sekolah: meta.ASAL_SEKOLAH,
             cabang_lomba: cabang,
@@ -83,21 +103,36 @@ export async function GET(req: Request) {
       }
     });
 
-    // Hitung ambang batas (cutoff) Top 30 Babak Seleksi per cabang Akademik
-    const seleksiScoresByCabang: Record<string, number[]> = {};
+    // Tentukan tepat maksimal 30 peserta terbaik (Lolos Seleksi) per cabang mapel Akademik
+    // Urutan penentu: 1) Nilai Seleksi tertinggi (>0), 2) Durasi pengerjaan tercepat, 3) Waktu selesai lebih awal, 4) Nomor peserta
+    const candidatesByCabang: Record<string, any[]> = {};
     pesertaList.forEach(p => {
       if (p.kategori_lomba !== 'akademik') return;
       const s = cbtSeleksiMap[p.nomor_peserta];
-      if (s && s.nilai_akhir !== null && s.nilai_akhir !== undefined && Number(s.nilai_akhir) > 0) {
-        if (!seleksiScoresByCabang[p.cabang_lomba]) seleksiScoresByCabang[p.cabang_lomba] = [];
-        seleksiScoresByCabang[p.cabang_lomba].push(Number(s.nilai_akhir));
+      const nilai = s && s.nilai_akhir !== null && s.nilai_akhir !== undefined ? Number(s.nilai_akhir) : 0;
+      if (nilai > 0 || p.lolos_manual) {
+        if (!candidatesByCabang[p.cabang_lomba]) candidatesByCabang[p.cabang_lomba] = [];
+        candidatesByCabang[p.cabang_lomba].push({
+          nomor_peserta: p.nomor_peserta,
+          nilai,
+          durasiMs: getDurationMs(s?.waktu_mulai, s?.waktu_selesai),
+          finishMs: getFinishMs(s?.waktu_selesai),
+          lolos_manual: p.lolos_manual
+        });
       }
     });
 
-    const cutoffSeleksiMap: Record<string, number> = {};
-    Object.entries(seleksiScoresByCabang).forEach(([cab, scores]) => {
-      scores.sort((a, b) => b - a);
-      cutoffSeleksiMap[cab] = scores[Math.min(MAX_LOLOS_SELEKSI - 1, scores.length - 1)];
+    const top30RankMap: Record<string, number> = {};
+    Object.values(candidatesByCabang).forEach(arr => {
+      arr.sort((a, b) => {
+        if (b.nilai !== a.nilai) return b.nilai - a.nilai;
+        if (a.durasiMs !== b.durasiMs) return a.durasiMs - b.durasiMs;
+        if (a.finishMs !== b.finishMs) return a.finishMs - b.finishMs;
+        return a.nomor_peserta.localeCompare(b.nomor_peserta);
+      });
+      arr.slice(0, MAX_LOLOS_SELEKSI).forEach((item, idx) => {
+        top30RankMap[item.nomor_peserta] = idx + 1;
+      });
     });
 
     // Gabungkan nilai per peserta sesuai tahapan ('seleksi' vs 'final')
@@ -108,9 +143,9 @@ export async function GET(req: Request) {
       const nilaiSeleksi = sesiSeleksi && sesiSeleksi.nilai_akhir !== null && sesiSeleksi.nilai_akhir !== undefined
         ? Number(sesiSeleksi.nilai_akhir)
         : 0;
-      const cutoff = cutoffSeleksiMap[p.cabang_lomba];
+      const peringkatSeleksi = top30RankMap[p.nomor_peserta] || null;
       const lolosSeleksi = p.kategori_lomba === 'akademik'
-        ? (p.lolos_manual || (nilaiSeleksi > 0 && cutoff !== undefined && nilaiSeleksi >= cutoff))
+        ? peringkatSeleksi !== null
         : true; // Cabang Seni langsung Final
 
       if (p.kategori_lomba === 'akademik') {
@@ -122,6 +157,7 @@ export async function GET(req: Request) {
         return {
           ...p,
           lolos_seleksi: lolosSeleksi,
+          peringkat_seleksi: peringkatSeleksi,
           has_final_sesi: !!sesiFinal,
           nilai_seleksi: nilaiSeleksi > 0 ? nilaiSeleksi.toFixed(2) : 0,
           rata_rata: nilaiTarget,
@@ -146,6 +182,7 @@ export async function GET(req: Request) {
       return {
         ...p,
         lolos_seleksi: true,
+        peringkat_seleksi: null,
         has_final_sesi: count > 0,
         nilai_seleksi: null,
         rata_rata: count > 0 ? (total / count).toFixed(2) : 0,
@@ -157,33 +194,39 @@ export async function GET(req: Request) {
       };
     });
 
-    // Filter peserta berdasarkan tahap:
-    // - Pada tahap 'seleksi': hanya tampilkan cabang Akademik (karena Seni langsung Final)
-    // - Pada tahap 'final': tampilkan cabang Seni + peserta Akademik yang Lolos Seleksi (atau sudah punya sesi Final)
+    // Tampilkan hanya 30 peserta yang lolos di setiap cabang mapel Akademik (baik pada tab Seleksi maupun Final)
     const filteredByStage = rawResult.filter(item => {
       if (tahap === 'seleksi') {
-        return item.kategori_lomba === 'akademik';
+        return item.kategori_lomba === 'akademik' && item.lolos_seleksi;
       } else {
-        // tahap === 'final'
         if (item.kategori_lomba === 'seni') return true;
-        return item.lolos_seleksi || item.has_final_sesi;
+        return item.lolos_seleksi;
       }
     });
 
-    // Urutkan dari tertinggi ke terendah (tie-breaker: durasi pengerjaan lebih cepat)
+    // Urutkan dari tertinggi ke terendah (tie-breaker: durasi pengerjaan lebih cepat, lalu waktu selesai lebih awal)
     filteredByStage.sort((a, b) => {
       const diff = Number(b.rata_rata) - Number(a.rata_rata);
       if (diff !== 0) return diff;
-      const durA = a.waktu_mulai && a.waktu_selesai
-        ? new Date(a.waktu_selesai).getTime() - new Date(a.waktu_mulai).getTime()
-        : Infinity;
-      const durB = b.waktu_mulai && b.waktu_selesai
-        ? new Date(b.waktu_selesai).getTime() - new Date(b.waktu_mulai).getTime()
-        : Infinity;
-      return durA - durB;
+      const durA = getDurationMs(a.waktu_mulai, a.waktu_selesai);
+      const durB = getDurationMs(b.waktu_mulai, b.waktu_selesai);
+      if (durA !== durB) return durA - durB;
+      const finA = getFinishMs(a.waktu_selesai);
+      const finB = getFinishMs(b.waktu_selesai);
+      if (finA !== finB) return finA - finB;
+      return (a.nomor_peserta || '').localeCompare(b.nomor_peserta || '');
     });
 
-    return NextResponse.json({ success: true, tahap, data: filteredByStage });
+    const cabangList = tahap === 'seleksi'
+      ? [...CABANG_AKADEMIK]
+      : [...CABANG_AKADEMIK, ...CABANG_SENI];
+
+    return NextResponse.json({
+      success: true,
+      tahap,
+      cabang_list: cabangList,
+      data: filteredByStage
+    });
   } catch (err: any) {
     console.error('Error GET monitoring:', err);
     return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
