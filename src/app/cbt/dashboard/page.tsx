@@ -33,6 +33,7 @@ export default function DashboardCBT() {
   const [uploading, setUploading] = useState(false);
   const [hasilPublished, setHasilPublished] = useState(false);
   const [statusLolos, setStatusLolos] = useState<boolean | null>(null);
+  const [tampilkanPengumumanLolos, setTampilkanPengumumanLolos] = useState(false);
   const [cbtBuka, setCbtBuka] = useState(false);
   const [tahapCbt, setTahapCbt] = useState<'seleksi' | 'final'>('seleksi');
   const [pembayaranFinal, setPembayaranFinal] = useState<{
@@ -93,13 +94,16 @@ export default function DashboardCBT() {
         const pubCabangs: string[] = Array.isArray(json.published_cabang) ? json.published_cabang : [];
         const targetLomba = userLomba || user?.lomba || '';
         
-        // Cek apakah lomba peserta ini termasuk yang dipublikasikan
+        // Cek apakah lomba peserta ini termasuk yang dipublikasikan oleh admin
         const isMyLombaPublished = pubCabangs.some(c => isCabangMatch(c, targetLomba)) || 
-          (pubCabangs.length === 0 && json.hasil_published);
+          (pubCabangs.length === 0 && Boolean(json.hasil_published));
 
         setHasilPublished(isMyLombaPublished);
         if (isMyLombaPublished) {
           checkLolosStatus(nomorPeserta);
+        } else {
+          setStatusLolos(null);
+          setTampilkanPengumumanLolos(false);
         }
       }
     } catch { /* silent */ }
@@ -111,7 +115,9 @@ export default function DashboardCBT() {
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         const pesertaUser = json.data.find((d: any) => d.nomor_peserta === nomorPeserta);
-        setStatusLolos(Boolean(pesertaUser && pesertaUser.lolos_seleksi));
+        const isLolos = Boolean(pesertaUser && pesertaUser.lolos_seleksi);
+        setStatusLolos(isLolos);
+        setTampilkanPengumumanLolos(isLolos);
       }
     } catch (err) {
       console.error(err);
@@ -152,11 +158,19 @@ export default function DashboardCBT() {
         if (typeof data.cbt_buka === 'boolean') {
           setCbtBuka(data.cbt_buka);
         }
-        if (typeof data.lolos_seleksi === 'boolean') {
+        if (typeof data.hasil_published === 'boolean') {
+          setHasilPublished(data.hasil_published);
+        }
+        if (typeof data.lolos_seleksi === 'boolean' || data.lolos_seleksi === null) {
           setStatusLolos(data.lolos_seleksi);
+        }
+        if (typeof data.tampilkan_pengumuman_lolos === 'boolean') {
+          setTampilkanPengumumanLolos(data.tampilkan_pengumuman_lolos);
         }
         if (data.pembayaran_final) {
           setPembayaranFinal(data.pembayaran_final);
+        } else {
+          setPembayaranFinal(null);
         }
         setSesi(data.sesi || null);
       }
@@ -357,7 +371,8 @@ export default function DashboardCBT() {
             </div>
 
             {/* CARD UCAPAN SELAMAT & PEMBAYARAN FINALIS (TOP 30) */}
-            {(statusLolos === true || isBypassUser) && (
+            {/* Hanya ditampilkan jika admin SUDAH mempublikasikan pemenang/live score dan peserta dinyatakan lolos (atau akun bypass) */}
+            {(isBypassUser || (hasilPublished && (statusLolos === true || tampilkanPengumumanLolos))) && (
               <div style={{
                 background: 'white',
                 borderRadius: '16px',
@@ -622,46 +637,36 @@ export default function DashboardCBT() {
                       Penentuan Juara ditentukan murni dari hasil Babak Final ini. Silakan memantau halaman pengumuman resmi / Live Score dari panitia.
                     </p>
                   </div>
-                ) : hasilPublished ? (
-                  statusLolos === null ? (
-                    <div style={{ padding: '20px', color: '#64748b' }}>
-                      <i className="fas fa-spinner fa-spin" style={{ marginRight: '8px' }}></i> Memuat hasil...
-                    </div>
-                  ) : statusLolos === true ? (
-                    <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '24px', textAlign: 'left' }}>
-                      <h4 style={{ color: '#065f46', fontSize: '1.2rem', margin: '0 0 12px 0' }}>🎉 Selamat, Anda dinyatakan LOLOS ke Babak Final!</h4>
-                      <p style={{ color: '#047857', marginBottom: '16px', lineHeight: '1.5' }}>
-                        Silakan lanjutkan ke tahap berikutnya dengan melakukan pembayaran dan mengunggah bukti pembayaran pada tombol di bawah ini. Saat jadwal Babak Final dimulai, Anda dapat kembali ke halaman ini untuk mengerjakan soal CBT Babak Final.
-                      </p>
-                      <button 
-                        onClick={() => fileRef.current?.click()}
-                        disabled={uploading}
-                        style={{ padding: '12px 24px', borderRadius: '8px', background: '#10b981', color: 'white', border: 'none', fontWeight: 700, cursor: uploading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
-                      >
-                        <i className="fas fa-upload"></i> Unggah Bukti Pembayaran
-                      </button>
-                      <input type="file" accept="image/*" ref={fileRef} onChange={handleUploadBukti} style={{ display: 'none' }} />
-                    </div>
-                  ) : (
-                    <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '12px', padding: '24px' }}>
-                      <p style={{ color: '#92400e', margin: 0, lineHeight: '1.5', fontSize: '1.1rem' }}>
-                        Terima kasih telah berpartisipasi dalam Olimpiade Akademik. Tetap semangat dan terus belajar!
-                      </p>
-                    </div>
-                  )
-                ) : (
+                ) : !hasilPublished && !isBypassUser ? (
                   <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '24px', textAlign: 'left' }}>
                     <h4 style={{ color: '#1d4ed8', fontSize: '1.1rem', margin: '0 0 10px 0' }}>
                       <i className="fas fa-clock" style={{ marginRight: '8px' }}></i>
                       Menunggu Pengumuman Resmi
                     </h4>
                     <p style={{ color: '#1e40af', margin: '0 0 12px 0', lineHeight: '1.6' }}>
-                      Hasil seleksi akan diumumkan secara resmi oleh panitia setelah seluruh peserta menyelesaikan ujian. Mohon bersabar dan pantau pengumuman dari pihak madrasah.
+                      Hasil seleksi akan diumumkan secara resmi oleh panitia setelah seluruh peserta menyelesaikan ujian. Mohon bersabar dan pantau pengumuman dari pihak madrasah atau Live Score.
                     </p>
                     <div style={{ background: 'white', borderRadius: '8px', padding: '12px 16px', display: 'inline-block', border: '1px solid #bfdbfe' }}>
                       <span style={{ color: '#64748b', fontSize: '0.85rem' }}>Mata Uji: </span>
                       <strong style={{ color: '#0f172a' }}>{user.lomba}</strong>
                     </div>
+                  </div>
+                ) : (statusLolos === true || tampilkanPengumumanLolos) ? (
+                  <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '12px', padding: '24px', textAlign: 'left' }}>
+                    <h4 style={{ color: '#065f46', fontSize: '1.2rem', margin: '0 0 8px 0' }}>🎉 Selamat, Anda dinyatakan LOLOS ke Babak Final!</h4>
+                    <p style={{ color: '#047857', margin: 0, lineHeight: '1.5' }}>
+                      Pengumuman resmi Babak Final telah dipublikasikan. Silakan menyelesaikan registrasi ulang dan mengunggah bukti pembayaran pada kartu panduan di atas untuk melanjutkan ke Babak Final CBT.
+                    </p>
+                  </div>
+                ) : statusLolos === false ? (
+                  <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '12px', padding: '24px' }}>
+                    <p style={{ color: '#92400e', margin: 0, lineHeight: '1.5', fontSize: '1.1rem' }}>
+                      Terima kasih telah berpartisipasi dalam Olimpiade Akademik. Tetap semangat dan terus belajar!
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ padding: '20px', color: '#64748b' }}>
+                    <i className="fas fa-spinner fa-spin" style={{ marginRight: '8px' }}></i> Memuat status hasil seleksi...
                   </div>
                 )}
 

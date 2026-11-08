@@ -145,11 +145,38 @@ export async function GET(req: Request) {
     const effectiveCbtBuka = isBypass ? true : cbtBuka;
     const effectiveLolos = isBypass ? true : lolosSeleksi;
 
-    const pembayaranFinal = {
+    // Cek apakah admin sudah mempublikasikan live score / hasil pemenang untuk cabang mapel peserta ini
+    const { data: configPubRow } = await supabase
+      .from('profil_lembaga')
+      .select('metadata')
+      .eq('jenis', 'CONFIG_OLIMPIADE')
+      .limit(1)
+      .maybeSingle();
+
+    const { data: olimpiadeConfigRow } = await supabase
+      .from('olimpiade_config')
+      .select('hasil_published')
+      .order('id', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    const pubMeta = configPubRow?.metadata || {};
+    const publishedCabangArr: string[] = Array.isArray(pubMeta.published_cabang) ? pubMeta.published_cabang : [];
+    const isGlobalPublished = Boolean(olimpiadeConfigRow?.hasil_published || pubMeta.hasil_published);
+
+    const isCabangPublished = publishedCabangArr.some(c => normalizeCbtCabang(c) === baseCabang) ||
+      (publishedCabangArr.length === 0 && isGlobalPublished);
+
+    const hasilPublishedForUser = isBypass ? true : isCabangPublished;
+    // Pengumuman lolos & status lolos hanya boleh dikirim jika admin SUDAH mempublikasikan pemenang/live score, atau akun bypass
+    const visibleLolos = hasilPublishedForUser ? effectiveLolos : null;
+    const tampilkanPengumumanLolos = hasilPublishedForUser && effectiveLolos === true;
+
+    const pembayaranFinal = tampilkanPengumumanLolos ? {
       status: peserta.metadata?.STATUS_BAYAR_FINAL || (peserta.metadata?.BUKTI_BAYAR_FINAL_URL ? 'Menunggu Verifikasi' : 'Belum Bayar'),
       bukti_url: peserta.metadata?.BUKTI_BAYAR_FINAL_URL || '',
       waktu_bayar: peserta.metadata?.WAKTU_BAYAR_FINAL || null
-    };
+    } : null;
 
     if (!activeSesi) {
       return NextResponse.json({
@@ -159,7 +186,9 @@ export async function GET(req: Request) {
         sesi_final: sesiFinal,
         tahap_cbt: tahapCbt,
         cbt_buka: effectiveCbtBuka,
-        lolos_seleksi: effectiveLolos,
+        hasil_published: hasilPublishedForUser,
+        lolos_seleksi: visibleLolos,
+        tampilkan_pengumuman_lolos: tampilkanPengumumanLolos,
         is_bypass: isBypass,
         pembayaran_final: pembayaranFinal
       });
@@ -177,7 +206,9 @@ export async function GET(req: Request) {
       sesi_final: sesiFinal,
       tahap_cbt: tahapCbt,
       cbt_buka: effectiveCbtBuka,
-      lolos_seleksi: effectiveLolos,
+      hasil_published: hasilPublishedForUser,
+      lolos_seleksi: visibleLolos,
+      tampilkan_pengumuman_lolos: tampilkanPengumumanLolos,
       is_bypass: isBypass,
       pembayaran_final: pembayaranFinal,
       server_now: new Date(nowMs).toISOString(),
