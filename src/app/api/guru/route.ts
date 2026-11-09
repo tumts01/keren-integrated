@@ -40,15 +40,26 @@ export async function GET() {
       return url;
     };
 
+    // Urutkan rowsGuru berdasarkan metadata->urutan, jika belum ada gunakan id
+    const sortedRowsGuru = [...(rowsGuru || [])].sort((a: any, b: any) => {
+      const uA = a.metadata?.urutan !== undefined && a.metadata?.urutan !== null ? Number(a.metadata.urutan) : (a.id || 9999);
+      const uB = b.metadata?.urutan !== undefined && b.metadata?.urutan !== null ? Number(b.metadata.urutan) : (b.id || 9999);
+      if (uA !== uB) return uA - uB;
+      return (a.id || 0) - (b.id || 0);
+    });
+
     // Map data to array of objects
-    const data = (rowsGuru || []).map((row, index) => {
+    const data = sortedRowsGuru.map((row, index) => {
       const nama = row.nama || '';
       const rawFoto = userPhotos[nama.trim().toLowerCase()] || '';
       const foto = getImageUrl(rawFoto);
       const isSertifikasi = sertifikasiMap[nama.trim().toLowerCase()] || false;
+      const urutan = row.metadata?.urutan !== undefined && row.metadata?.urutan !== null ? Number(row.metadata.urutan) : (index + 1);
 
       return {
-        id: index,
+        id: row.id,
+        dbId: row.id,
+        urutan,
         nama,
         foto,
         isSertifikasi,
@@ -76,5 +87,44 @@ export async function GET() {
   } catch (error: any) {
     console.error('Fetch Guru Error:', error);
     return NextResponse.json({ success: false, error: 'Gagal mengambil data dari Database' }, { status: 500 });
+  }
+}
+
+export async function PUT(req: Request) {
+  try {
+    const body = await req.json();
+    const { order } = body; // Array of IDs in ordered sequence: [1, 5, 2, ...]
+
+    if (!Array.isArray(order) || order.length === 0) {
+      return NextResponse.json({ success: false, error: 'Format urutan tidak valid' }, { status: 400 });
+    }
+
+    // Ambil data guru yang ada untuk menjaga metadata lainnya
+    const { data: rowsGuru, error: fetchErr } = await supabase.from('data_guru').select('id, metadata');
+    if (fetchErr) throw fetchErr;
+
+    const guruMap = new Map((rowsGuru || []).map(g => [g.id, g.metadata || {}]));
+
+    // Update hanya yang urutannya berubah untuk performa maksimal
+    const updatePromises = order.map((id: number, idx: number) => {
+      const targetUrutan = idx + 1;
+      const currentMeta = guruMap.get(id) || {};
+      if (currentMeta.urutan === targetUrutan) {
+        return Promise.resolve({ error: null });
+      }
+      const newMeta = { ...currentMeta, urutan: targetUrutan };
+      return supabase.from('data_guru').update({ metadata: newMeta }).eq('id', id);
+    });
+
+    const results = await Promise.all(updatePromises);
+    const failed = results.find(r => r.error);
+    if (failed) {
+      throw failed.error;
+    }
+
+    return NextResponse.json({ success: true, message: 'Urutan guru & staf berhasil disimpan' });
+  } catch (error: any) {
+    console.error('Update Guru Urutan Error:', error);
+    return NextResponse.json({ success: false, error: error.message || 'Gagal menyimpan urutan guru' }, { status: 500 });
   }
 }

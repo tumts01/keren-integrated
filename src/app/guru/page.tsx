@@ -1,11 +1,14 @@
 'use client';
 import { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
+import Swal from 'sweetalert2';
 import styles from './Guru.module.css';
 import InlineLoading from '@/components/InlineLoading';
 
 interface Guru {
   id: number;
+  dbId?: number;
+  urutan?: number;
   nama: string;
   foto?: string;
   status: string;
@@ -39,24 +42,149 @@ export default function GuruPage() {
   const [namaKegiatan, setNamaKegiatan] = useState('');
   const [isPrintingAlbum, setIsPrintingAlbum] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await fetch('/api/guru');
-        const result = await res.json();
-        if (result.success) {
-          setData(result.data);
-        } else {
-          setError(result.error);
-        }
-      } catch (err) {
-        setError('Gagal memuat data. Periksa koneksi internet Anda.');
-      } finally {
-        setLoading(false);
+  // States untuk Atur Urutan Guru & Staf
+  const [showUrutanModal, setShowUrutanModal] = useState(false);
+  const [urutanList, setUrutanList] = useState<Guru[]>([]);
+  const [searchUrutan, setSearchUrutan] = useState('');
+  const [savingUrutan, setSavingUrutan] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/guru');
+      const result = await res.json();
+      if (result.success) {
+        setData(result.data);
+      } else {
+        setError(result.error);
       }
-    };
+    } catch (err) {
+      setError('Gagal memuat data. Periksa koneksi internet Anda.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, []);
+
+  const handleOpenUrutanModal = () => {
+    setUrutanList([...data]);
+    setSearchUrutan('');
+    setShowUrutanModal(true);
+  };
+
+  const moveItem = (id: number, direction: 'up' | 'down' | 'top' | 'bottom') => {
+    setUrutanList(prev => {
+      const index = prev.findIndex(item => item.id === id);
+      if (index === -1) return prev;
+      const next = [...prev];
+      if (direction === 'up') {
+        if (index === 0) return prev;
+        const temp = next[index - 1];
+        next[index - 1] = next[index];
+        next[index] = temp;
+      } else if (direction === 'down') {
+        if (index >= next.length - 1) return prev;
+        const temp = next[index + 1];
+        next[index + 1] = next[index];
+        next[index] = temp;
+      } else if (direction === 'top') {
+        if (index === 0) return prev;
+        const [item] = next.splice(index, 1);
+        next.unshift(item);
+      } else if (direction === 'bottom') {
+        if (index === next.length - 1) return prev;
+        const [item] = next.splice(index, 1);
+        next.push(item);
+      }
+      return next;
+    });
+  };
+
+  const moveToPosition = (id: number, targetPos: number) => {
+    setUrutanList(prev => {
+      const fromIndex = prev.findIndex(item => item.id === id);
+      if (fromIndex === -1) return prev;
+      const toIndex = Math.max(0, Math.min(prev.length - 1, targetPos - 1));
+      if (fromIndex === toIndex) return prev;
+      const next = [...prev];
+      const [item] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, item);
+      return next;
+    });
+  };
+
+  const handleSortByJabatan = () => {
+    const getScore = (j: string) => {
+      const low = (j || '').toLowerCase();
+      if (low.includes('kepala madrasah') || low.includes('kamad')) return 1;
+      if (low.includes('waka') || low.includes('wakil')) return 2;
+      if (low.includes('ka. bendahara') || low.includes('ka. tata usaha') || low.includes('ka. tu')) return 3;
+      if (low.includes('guru')) return 4;
+      if (low.includes('perpustakaan')) return 5;
+      if (low.includes('staf') || low.includes('tata usaha') || low.includes('tu') || low.includes('karyawan')) return 6;
+      return 7;
+    };
+    setUrutanList(prev => [...prev].sort((a, b) => {
+      const sA = getScore(a.jabatan);
+      const sB = getScore(b.jabatan);
+      if (sA !== sB) return sA - sB;
+      return a.nama.localeCompare(b.nama);
+    }));
+  };
+
+  const handleSortByName = () => {
+    setUrutanList(prev => [...prev].sort((a, b) => a.nama.localeCompare(b.nama)));
+  };
+
+  const handleResetToCurrent = () => {
+    setUrutanList([...data]);
+  };
+
+  const handleSaveUrutan = async () => {
+    setSavingUrutan(true);
+    try {
+      const order = urutanList.map(g => g.id);
+      const res = await fetch('/api/guru', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order })
+      });
+      const result = await res.json();
+      if (result.success) {
+        const updatedData = urutanList.map((g, idx) => ({
+          ...g,
+          urutan: idx + 1
+        }));
+        setData(updatedData);
+        setShowUrutanModal(false);
+        Swal.fire({
+          icon: 'success',
+          title: 'Berhasil Disimpan!',
+          text: 'Urutan guru dan staf berhasil diperbarui.',
+          timer: 2000,
+          showConfirmButton: false
+        });
+      } else {
+        Swal.fire('Error', result.error || 'Gagal menyimpan urutan', 'error');
+      }
+    } catch (err: any) {
+      Swal.fire('Error', 'Terjadi kesalahan saat menyimpan urutan: ' + err.message, 'error');
+    } finally {
+      setSavingUrutan(false);
+    }
+  };
+
+  const filteredUrutanList = urutanList.filter(g => {
+    if (!searchUrutan.trim()) return true;
+    const q = searchUrutan.toLowerCase().trim();
+    return g.nama.toLowerCase().includes(q) ||
+      g.jabatan.toLowerCase().includes(q) ||
+      g.nip.toLowerCase().includes(q);
+  });
 
   const filteredData = data.filter(g => {
     const matchSearch = g.nama.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -219,6 +347,23 @@ export default function GuruPage() {
             <button onClick={() => handleCetakAlbum()} className="btn btn-primary" style={{ marginRight: '8px', background: 'linear-gradient(135deg,#059669,#047857)', borderColor: '#059669' }}>
               <i className="fas fa-id-card"></i> Cetak Album
             </button>
+            <button 
+              onClick={handleOpenUrutanModal} 
+              className="btn btn-primary" 
+              style={{ 
+                marginRight: '8px', 
+                background: 'linear-gradient(135deg, #0284c7, #0369a1)', 
+                borderColor: '#0284c7',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontWeight: 600,
+                boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)'
+              }}
+              title="Atur Urutan Guru & Staf"
+            >
+              <i className="fas fa-sort-numeric-down"></i> Atur Urutan
+            </button>
             <button className="btn btn-primary">
             <i className="fas fa-plus"></i> Tambah Data
           </button>
@@ -281,6 +426,7 @@ export default function GuruPage() {
             <table className={styles.table}>
               <thead>
                 <tr>
+                  <th style={{ width: '50px', textAlign: 'center' }}>No</th>
                   <th>Profil (Nama)</th>
                   <th>Status</th>
                   <th>Sertifikasi</th>
@@ -303,8 +449,11 @@ export default function GuruPage() {
               </thead>
               <tbody>
                 {currentData.length > 0 ? (
-                  currentData.map(guru => (
+                  currentData.map((guru, index) => (
                     <tr key={guru.id}>
+                      <td style={{ textAlign: 'center', fontWeight: 700, color: '#64748b' }}>
+                        {guru.urutan || (startIndex + index + 1)}
+                      </td>
                       <td style={{ minWidth: '250px' }}>
                         <div className={styles.profileCell}>
                           {guru.foto ? (
@@ -360,7 +509,7 @@ export default function GuruPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={17} style={{ textAlign: 'center', padding: '40px' }}>
+                    <td colSpan={18} style={{ textAlign: 'center', padding: '40px' }}>
                       <i className="fas fa-folder-open" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
                       Tidak ada data guru yang ditemukan. Coba cek isi Excel Anda.
                     </td>
@@ -500,6 +649,549 @@ export default function GuruPage() {
                   }}
                 >
                   <i className="fas fa-print" style={{ marginRight: '6px' }}></i> Cetak Daftar Hadir
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Atur Urutan Guru & Staf */}
+      {showUrutanModal && (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(5px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px'
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !savingUrutan) {
+              setShowUrutanModal(false);
+            }
+          }}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: '20px',
+              width: '100%',
+              maxWidth: '820px',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              overflow: 'hidden',
+              animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+            }}
+          >
+            {/* Header Modal */}
+            <div
+              style={{
+                padding: '20px 24px',
+                background: 'linear-gradient(135deg, #0f172a, #1e293b)',
+                color: 'white',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div
+                  style={{
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '12px',
+                    background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1.2rem',
+                    color: 'white',
+                    boxShadow: '0 4px 10px rgba(2, 132, 199, 0.3)'
+                  }}
+                >
+                  <i className="fas fa-sort-numeric-down"></i>
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#f8fafc' }}>
+                    Atur Urutan Guru &amp; Staf
+                  </h3>
+                  <p style={{ margin: '3px 0 0', fontSize: '0.82rem', color: '#94a3b8' }}>
+                    Geser baris, gunakan tombol panah, atau ketik langsung angka urutan
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => !savingUrutan && setShowUrutanModal(false)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  border: 'none',
+                  color: 'white',
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '50%',
+                  cursor: savingUrutan ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1rem',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)')}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            {/* Quick Presets & Search Bar */}
+            <div
+              style={{
+                padding: '14px 24px',
+                background: '#f8fafc',
+                borderBottom: '1px solid #e2e8f0',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '12px',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}
+            >
+              {/* Search in modal */}
+              <div style={{ position: 'relative', flex: '1 1 240px', maxWidth: '340px' }}>
+                <i
+                  className="fas fa-search"
+                  style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: '0.85rem' }}
+                ></i>
+                <input
+                  type="text"
+                  placeholder="Cari guru di daftar..."
+                  value={searchUrutan}
+                  onChange={(e) => setSearchUrutan(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px 8px 34px',
+                    borderRadius: '10px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.85rem',
+                    outline: 'none',
+                    background: 'white'
+                  }}
+                />
+                {searchUrutan && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchUrutan('')}
+                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: '#94a3b8', cursor: 'pointer', padding: 0 }}
+                  >
+                    <i className="fas fa-times-circle"></i>
+                  </button>
+                )}
+              </div>
+
+              {/* Quick preset buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#64748b' }}>Urutkan Cepat:</span>
+                <button
+                  type="button"
+                  onClick={handleSortByJabatan}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    background: 'white',
+                    color: '#334155',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                  title="Urutkan dari Kepala Madrasah, Waka, Guru, hingga Staf"
+                >
+                  <i className="fas fa-user-tie" style={{ color: '#0284c7' }}></i> Jabatan
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSortByName}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    background: 'white',
+                    color: '#334155',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                  title="Urutkan alfabet A sampai Z"
+                >
+                  <i className="fas fa-sort-alpha-down" style={{ color: '#16a34a' }}></i> Nama A-Z
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetToCurrent}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    background: 'white',
+                    color: '#64748b',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px'
+                  }}
+                  title="Kembalikan ke urutan sebelum diubah di modal ini"
+                >
+                  <i className="fas fa-undo"></i> Reset
+                </button>
+              </div>
+            </div>
+
+            {/* List Body */}
+            <div
+              style={{
+                flex: 1,
+                overflowY: 'auto',
+                padding: '16px 24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}
+            >
+              {searchUrutan && (
+                <div style={{ fontSize: '0.8rem', color: '#0369a1', background: '#e0f2fe', padding: '6px 12px', borderRadius: '8px', marginBottom: '4px' }}>
+                  <i className="fas fa-info-circle" style={{ marginRight: '6px' }}></i>
+                  Menampilkan hasil pencarian untuk &quot;{searchUrutan}&quot;. Posisi nomor urut tetap mengacu pada urutan global.
+                </div>
+              )}
+
+              {filteredUrutanList.map((guru) => {
+                const actualIndex = urutanList.findIndex(item => item.id === guru.id);
+                const isFirst = actualIndex === 0;
+                const isLast = actualIndex === urutanList.length - 1;
+                const isKepala = guru.jabatan.toLowerCase().includes('kepala');
+                const isWaka = guru.jabatan.toLowerCase().includes('waka');
+                const isGuru = guru.jabatan.toLowerCase().includes('guru');
+
+                return (
+                  <div
+                    key={guru.id}
+                    draggable={!searchUrutan.trim()}
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('text/plain', String(actualIndex));
+                      setDraggedIndex(actualIndex);
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const sourceIdxStr = e.dataTransfer.getData('text/plain');
+                      const sourceIdx = parseInt(sourceIdxStr);
+                      if (!isNaN(sourceIdx) && sourceIdx !== actualIndex) {
+                        setUrutanList(prev => {
+                          const next = [...prev];
+                          const [moved] = next.splice(sourceIdx, 1);
+                          next.splice(actualIndex, 0, moved);
+                          return next;
+                        });
+                      }
+                      setDraggedIndex(null);
+                    }}
+                    onDragEnd={() => setDraggedIndex(null)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '10px 14px',
+                      borderRadius: '12px',
+                      background: draggedIndex === actualIndex ? '#e0f2fe' : '#ffffff',
+                      border: draggedIndex === actualIndex ? '2px dashed #0284c7' : '1px solid #e2e8f0',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                      transition: 'background 0.15s ease',
+                      cursor: searchUrutan.trim() ? 'default' : 'grab'
+                    }}
+                  >
+                    {/* Drag Handle */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: '20px',
+                        color: searchUrutan.trim() ? '#cbd5e1' : '#94a3b8',
+                        cursor: searchUrutan.trim() ? 'default' : 'grab'
+                      }}
+                      title={searchUrutan.trim() ? 'Drag dinonaktifkan saat pencarian aktif' : 'Tahan & geser untuk mengubah posisi'}
+                    >
+                      <i className="fas fa-grip-vertical"></i>
+                    </div>
+
+                    {/* Nomor Urut Input Box */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <input
+                        type="number"
+                        min={1}
+                        max={urutanList.length}
+                        value={actualIndex + 1}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value);
+                          if (!isNaN(val) && val >= 1 && val <= urutanList.length) {
+                            moveToPosition(guru.id, val);
+                          }
+                        }}
+                        style={{
+                          width: '46px',
+                          height: '32px',
+                          textAlign: 'center',
+                          fontWeight: 800,
+                          fontSize: '0.88rem',
+                          borderRadius: '8px',
+                          border: '1.5px solid #cbd5e1',
+                          background: '#f8fafc',
+                          color: '#0f172a',
+                          outline: 'none'
+                        }}
+                        title="Ketik nomor untuk langsung melompat ke posisi tersebut"
+                      />
+                    </div>
+
+                    {/* Foto / Avatar */}
+                    {guru.foto ? (
+                      <img
+                        src={guru.foto}
+                        alt=""
+                        style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '2px solid #e2e8f0' }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: '38px',
+                          height: '38px',
+                          borderRadius: '50%',
+                          background: isKepala ? '#f3e8ff' : isWaka ? '#ede9fe' : isGuru ? '#e0f2fe' : '#fef3c7',
+                          color: isKepala ? '#7e22ce' : isWaka ? '#6d28d9' : isGuru ? '#0284c7' : '#b45309',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontWeight: 700,
+                          fontSize: '0.9rem',
+                          flexShrink: 0,
+                          border: '1px solid #cbd5e1'
+                        }}
+                      >
+                        {guru.nama.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+
+                    {/* Detail Nama & Jabatan */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '0.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {guru.nama}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px', flexWrap: 'wrap' }}>
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            padding: '1px 8px',
+                            borderRadius: '6px',
+                            background: isKepala ? '#f3e8ff' : isWaka ? '#ede9fe' : isGuru ? '#e0f2fe' : '#fef3c7',
+                            color: isKepala ? '#7e22ce' : isWaka ? '#6d28d9' : isGuru ? '#0369a1' : '#b45309'
+                          }}
+                        >
+                          {guru.jabatan || 'Guru'}
+                        </span>
+                        {guru.nip && (
+                          <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                            NIP: {guru.nip}
+                          </span>
+                        )}
+                        {guru.isSertifikasi && (
+                          <span style={{ fontSize: '0.7rem', color: '#16a34a', fontWeight: 600 }}>
+                            <i className="fas fa-check-circle"></i> Sertifikasi
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Tombol Panah Aksi */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => moveItem(guru.id, 'top')}
+                        disabled={isFirst}
+                        title="Pindah ke Paling Atas"
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          border: '1px solid #e2e8f0',
+                          background: isFirst ? '#f8fafc' : '#ffffff',
+                          color: isFirst ? '#cbd5e1' : '#475569',
+                          cursor: isFirst ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '11px',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        <i className="fas fa-angle-double-up"></i>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveItem(guru.id, 'up')}
+                        disabled={isFirst}
+                        title="Naik 1 posisi"
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          border: '1px solid #e2e8f0',
+                          background: isFirst ? '#f8fafc' : '#ffffff',
+                          color: isFirst ? '#cbd5e1' : '#475569',
+                          cursor: isFirst ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '11px',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        <i className="fas fa-arrow-up"></i>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveItem(guru.id, 'down')}
+                        disabled={isLast}
+                        title="Turun 1 posisi"
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          border: '1px solid #e2e8f0',
+                          background: isLast ? '#f8fafc' : '#ffffff',
+                          color: isLast ? '#cbd5e1' : '#475569',
+                          cursor: isLast ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '11px',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        <i className="fas fa-arrow-down"></i>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveItem(guru.id, 'bottom')}
+                        disabled={isLast}
+                        title="Pindah ke Paling Bawah"
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '8px',
+                          border: '1px solid #e2e8f0',
+                          background: isLast ? '#f8fafc' : '#ffffff',
+                          color: isLast ? '#cbd5e1' : '#475569',
+                          cursor: isLast ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '11px',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        <i className="fas fa-angle-double-down"></i>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              style={{
+                padding: '16px 24px',
+                background: '#f8fafc',
+                borderTop: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '12px'
+              }}
+            >
+              <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <i className="fas fa-users" style={{ color: '#0284c7' }}></i>
+                Total: <b>{urutanList.length}</b> Guru &amp; Staf
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => !savingUrutan && setShowUrutanModal(false)}
+                  disabled={savingUrutan}
+                  style={{
+                    padding: '10px 18px',
+                    borderRadius: '10px',
+                    border: '1.5px solid #cbd5e1',
+                    background: 'white',
+                    color: '#475569',
+                    fontWeight: 600,
+                    fontSize: '0.88rem',
+                    cursor: savingUrutan ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveUrutan}
+                  disabled={savingUrutan}
+                  style={{
+                    padding: '10px 22px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    background: savingUrutan ? '#94a3b8' : 'linear-gradient(135deg, #0284c7, #0369a1)',
+                    color: 'white',
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    cursor: savingUrutan ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    boxShadow: savingUrutan ? 'none' : '0 4px 12px rgba(2, 132, 199, 0.3)',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  {savingUrutan ? (
+                    <>
+                      <i className="fas fa-spinner fa-spin"></i> Menyimpan...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-save"></i> Simpan Urutan
+                    </>
+                  )}
                 </button>
               </div>
             </div>
