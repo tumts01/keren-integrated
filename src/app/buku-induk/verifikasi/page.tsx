@@ -868,7 +868,7 @@ export default function VerifikasiDataOrtuPage() {
                 <div style={{ textAlign: 'center', width: '200px' }}>
                   Mengetahui,<br/>
                   Kepala Madrasah<br/><br/><br/><br/>
-                  <b>Drs. H. Dedy Dwitagama, M.Pd</b>
+                  <b><u>Dwi Retno Palupi, M.Pd.</u></b>
                 </div>
 
                 <div style={{ textAlign: 'center', width: '220px' }}>
