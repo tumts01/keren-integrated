@@ -81,9 +81,15 @@ export async function POST(request: Request) {
 
     const jamKeText = String(jamKe);
 
-    if (mapel.toLowerCase().includes('program khusus')) {
+    const isProksus = mapel.toLowerCase().includes('program khusus') || mapel.toLowerCase().includes('proksus');
+    if (isProksus) {
       if (jamKeText.trim() !== '1') {
         return NextResponse.json({ success: false, error: 'Mata pelajaran Program Khusus hanya dapat diisi di Jam ke-1.' }, { status: 400 });
+      }
+    } else {
+      const jamList = jamKeText.split(',').map(j => j.trim()).filter(Boolean);
+      if (jamList.length > 3) {
+        return NextResponse.json({ success: false, error: 'Maksimal 3 jam pelajaran per sesi mata pelajaran.' }, { status: 400 });
       }
     }
 
@@ -189,9 +195,15 @@ export async function PUT(request: Request) {
 
     const jamKeText = String(jamKe);
 
-    if (mapel.toLowerCase().includes('program khusus')) {
+    const isProksus = mapel.toLowerCase().includes('program khusus') || mapel.toLowerCase().includes('proksus');
+    if (isProksus) {
       if (jamKeText.trim() !== '1') {
         return NextResponse.json({ success: false, error: 'Mata pelajaran Program Khusus hanya dapat diisi di Jam ke-1.' }, { status: 400 });
+      }
+    } else {
+      const jamList = jamKeText.split(',').map(j => j.trim()).filter(Boolean);
+      if (jamList.length > 3) {
+        return NextResponse.json({ success: false, error: 'Maksimal 3 jam pelajaran per sesi mata pelajaran.' }, { status: 400 });
       }
     }
 

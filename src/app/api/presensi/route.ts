@@ -140,8 +140,23 @@ export async function POST(request: Request) {
         const { error } = await supabase.from('data_presensi_siswa').delete().eq('id', foundRow.id);
         if (error) throw error;
       } else {
+        const targetJam = jamKe || foundRow.metadata?.['JAM KE'];
+        const targetMapel = foundRow.metadata?.['MAPEL'] || '';
+        const isProksus = targetMapel.toLowerCase().includes('program khusus') || targetMapel.toLowerCase().includes('proksus');
+        if (targetJam) {
+          const jamArr = String(targetJam).split(',').map((j: string) => j.trim()).filter(Boolean);
+          if (isProksus) {
+            if (jamArr.length !== 1 || jamArr[0] !== '1') {
+              return NextResponse.json({ success: false, error: 'Mata pelajaran Program Khusus hanya dapat diisi pada Jam ke-1.' }, { status: 400 });
+            }
+          } else if (targetMapel !== 'PIKET') {
+            if (jamArr.length > 3) {
+              return NextResponse.json({ success: false, error: 'Maksimal 3 jam pelajaran per sesi mata pelajaran.' }, { status: 400 });
+            }
+          }
+        }
         const { error } = await supabase.from('data_presensi_siswa').update({
-          metadata: { ...foundRow.metadata, 'KEHADIRAN': cleanStatus, 'JAM KE': jamKe || foundRow.metadata?.['JAM KE'] }
+          metadata: { ...foundRow.metadata, 'KEHADIRAN': cleanStatus, 'JAM KE': targetJam }
         }).eq('id', foundRow.id);
         if (error) throw error;
       }
@@ -189,6 +204,23 @@ export async function POST(request: Request) {
 
     const jamKeText = String(jamKe);
     const submittedJams = jamKeText.split(',').map(j => j.trim()).filter(Boolean);
+
+    const isProksus = (mapel || '').toLowerCase().includes('program khusus') || (mapel || '').toLowerCase().includes('proksus');
+    if (isProksus) {
+      if (submittedJams.length !== 1 || submittedJams[0] !== '1') {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'Mata pelajaran Program Khusus hanya dapat diisi pada Jam ke-1.' 
+        }, { status: 400 });
+      }
+    } else if (mapel !== 'PIKET') {
+      if (submittedJams.length > 3) {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'Mata pelajaran selain Program Khusus maksimal 3 jam pelajaran.' 
+        }, { status: 400 });
+      }
+    }
 
     let existingPresensi: any[] = [];
     if (kelas && kelas !== "MULTIPLE") {

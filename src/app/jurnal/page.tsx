@@ -137,7 +137,8 @@ export default function JurnalPage() {
   }, [activeTab, fetchRekap]);
 
   const toggleJam = (jam: number) => {
-    if (selectedMapel.toLowerCase().includes('program khusus')) {
+    const isProksus = selectedMapel.toLowerCase().includes('program khusus') || selectedMapel.toLowerCase().includes('proksus');
+    if (isProksus) {
       if (jam !== 1) {
         Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Program Khusus hanya bisa diisi di Jam ke-1.' });
         return;
@@ -146,6 +147,15 @@ export default function JurnalPage() {
       return;
     }
     
+    if (!selectedJam.includes(jam) && selectedJam.length >= 3) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Batas Maksimal Jam',
+        text: 'Maksimal 3 jam pelajaran per sesi mata pelajaran.'
+      });
+      return;
+    }
+
     setSelectedJam(prev =>
       prev.includes(jam) ? prev.filter(j => j !== jam) : [...prev, jam].sort((a, b) => a - b)
     );
@@ -154,13 +164,24 @@ export default function JurnalPage() {
   const handleSaveEdit = async () => {
     if (!editingJurnal) return;
     
-    if (editingJurnal.mapel.toLowerCase().includes('program khusus')) {
+    const isProksusEdit = editingJurnal.mapel.toLowerCase().includes('program khusus') || editingJurnal.mapel.toLowerCase().includes('proksus');
+    if (isProksusEdit) {
       const jamStr = editingJurnal.jamKe.trim();
       if (jamStr !== '1') {
         Swal.fire({ 
           icon: 'warning', 
           title: 'Aturan Program Khusus', 
           text: 'Mata pelajaran Program Khusus HANYA DAPAT diisi di Jam ke-1 dan berdurasi 1 Jam.' 
+        });
+        return;
+      }
+    } else {
+      const jamArr = editingJurnal.jamKe.split(',').map((j: string) => j.trim()).filter(Boolean);
+      if (jamArr.length > 3) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Batas Maksimal Jam',
+          text: 'Maksimal 3 jam pelajaran per sesi mata pelajaran.'
         });
         return;
       }
@@ -198,7 +219,8 @@ export default function JurnalPage() {
       return;
     }
     
-    if (selectedMapel.toLowerCase().includes('program khusus')) {
+    const isProksus = selectedMapel.toLowerCase().includes('program khusus') || selectedMapel.toLowerCase().includes('proksus');
+    if (isProksus) {
       if (selectedJam.length > 1 || !selectedJam.includes(1)) {
         Swal.fire({ 
           icon: 'warning', 
@@ -206,6 +228,15 @@ export default function JurnalPage() {
           text: 'Mata pelajaran Program Khusus HANYA DAPAT diisi di Jam ke-1 dan berdurasi maksimal 1 Jam.' 
         });
         setSelectedJam([1]);
+        return;
+      }
+    } else {
+      if (selectedJam.length > 3) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Batas Maksimal Jam',
+          text: 'Maksimal 3 jam pelajaran per sesi mata pelajaran.'
+        });
         return;
       }
     }
@@ -730,8 +761,10 @@ export default function JurnalPage() {
                 onChange={e => {
                   const val = e.target.value;
                   setSelectedMapel(val);
-                  if (val.toLowerCase().includes('program khusus')) {
+                  if (val.toLowerCase().includes('program khusus') || val.toLowerCase().includes('proksus')) {
                     setSelectedJam([1]);
+                  } else if (selectedJam.length > 3) {
+                    setSelectedJam(prev => prev.slice(0, 3));
                   }
                 }} 
                 className={styles.inputField}

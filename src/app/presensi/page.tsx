@@ -1789,6 +1789,31 @@ export default function PresensiPage() {
   };
 
   const toggleJam = (jam: number) => {
+    const isProksus = (selectedMapel || '').toLowerCase().includes('program khusus') || (selectedMapel || '').toLowerCase().includes('proksus');
+    if (isProksus) {
+      if (jam !== 1) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Perhatian',
+          text: 'Mata pelajaran Program Khusus hanya dapat diisi pada Jam ke-1.'
+        });
+        return;
+      }
+      setSelectedJam([1]);
+      return;
+    }
+
+    if (activeTab !== 'piket') {
+      if (!selectedJam.includes(jam) && selectedJam.length >= 3) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Batas Maksimal Jam',
+          text: 'Maksimal 3 jam pelajaran per sesi mata pelajaran.'
+        });
+        return;
+      }
+    }
+
     setSelectedJam(prev => 
       prev.includes(jam) ? prev.filter(j => j !== jam) : [...prev, jam].sort((a,b) => a-b)
     );
@@ -1803,6 +1828,20 @@ export default function PresensiPage() {
     if (selectedJam.length === 0) {
       Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Mohon pilih Jam Ke!' });
       return;
+    }
+
+    const isProksus = (finalMapel || '').toLowerCase().includes('program khusus') || (finalMapel || '').toLowerCase().includes('proksus');
+    if (isProksus) {
+      if (selectedJam.length !== 1 || selectedJam[0] !== 1) {
+        Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Mata pelajaran Program Khusus hanya dapat diisi pada Jam ke-1.' });
+        setSelectedJam([1]);
+        return;
+      }
+    } else if (activeTab !== 'piket') {
+      if (selectedJam.length > 3) {
+        Swal.fire({ icon: 'warning', title: 'Batas Maksimal Jam', text: 'Maksimal 3 jam pelajaran per sesi mata pelajaran.' });
+        return;
+      }
     }
 
     // Piket: validasi minimal 1 baris ada nama siswa
@@ -1911,6 +1950,20 @@ export default function PresensiPage() {
     if (selectedJam.length === 0) {
       Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Mohon pilih Jam Ke!' });
       return;
+    }
+
+    const isProksus = (selectedMapel || '').toLowerCase().includes('program khusus') || (selectedMapel || '').toLowerCase().includes('proksus');
+    if (isProksus) {
+      if (selectedJam.length !== 1 || selectedJam[0] !== 1) {
+        Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Mata pelajaran Program Khusus hanya dapat diisi pada Jam ke-1.' });
+        setSelectedJam([1]);
+        return;
+      }
+    } else {
+      if (selectedJam.length > 3) {
+        Swal.fire({ icon: 'warning', title: 'Batas Maksimal Jam', text: 'Maksimal 3 jam pelajaran per sesi mata pelajaran.' });
+        return;
+      }
     }
     if (!materi.trim()) {
       Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Mohon isi Materi yang diajarkan!' });
@@ -2298,6 +2351,11 @@ export default function PresensiPage() {
                                 onClick={() => {
                                   setSelectedMapel(m);
                                   setIsMapelDropdownOpen(false);
+                                  if (m.toLowerCase().includes('program khusus') || m.toLowerCase().includes('proksus')) {
+                                    setSelectedJam([1]);
+                                  } else if (selectedJam.length > 3) {
+                                    setSelectedJam(prev => prev.slice(0, 3));
+                                  }
                                 }}
                               >
                                 {m}
@@ -2654,6 +2712,11 @@ export default function PresensiPage() {
                               onClick={() => {
                                 setSelectedMapel(m);
                                 setIsMapelDropdownOpen(false);
+                                if (m.toLowerCase().includes('program khusus') || m.toLowerCase().includes('proksus')) {
+                                  setSelectedJam([1]);
+                                } else if (selectedJam.length > 3) {
+                                  setSelectedJam(prev => prev.slice(0, 3));
+                                }
                               }}
                             >
                               {m}
