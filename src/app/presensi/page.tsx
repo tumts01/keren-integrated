@@ -966,12 +966,27 @@ export default function PresensiPage() {
       if (json.success) {
         setRekapJurnalData(json.data);
         // Normalize: trim + collapse multiple spaces, lalu deduplikasi
+        const norm = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        const getGuruIndex = (name: string) => {
+          const target = norm(name);
+          const idx = guruList.findIndex(g => {
+            const gn = norm(g);
+            return gn === target || gn.includes(target) || target.includes(gn);
+          });
+          return idx !== -1 ? idx : 9999;
+        };
+
         const gurus = Array.from(new Set(
           json.data
             .map((r: any) => (r.namaGuru || '').trim().replace(/\s+/g, ' '))
             .filter(Boolean)
         )) as string[];
-        gurus.sort();
+        gurus.sort((a, b) => {
+          const idxA = getGuruIndex(a);
+          const idxB = getGuruIndex(b);
+          if (idxA !== idxB) return idxA - idxB;
+          return a.localeCompare(b, 'id');
+        });
         setGuruListRekap(gurus);
 
         const kelasList = Array.from(new Set(
@@ -985,10 +1000,25 @@ export default function PresensiPage() {
   };
 
   const handleExportRincianGuruModal = async (targetGuruParam?: string) => {
-    const allGurus = Array.from(new Set([...guruListRekap, ...guruList]))
+    const norm = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const getGuruIndex = (name: string) => {
+      const target = norm(name);
+      const idx = guruList.findIndex(g => {
+        const gn = norm(g);
+        return gn === target || gn.includes(target) || target.includes(gn);
+      });
+      return idx !== -1 ? idx : 9999;
+    };
+
+    const allGurus = Array.from(new Set([...guruList, ...guruListRekap]))
       .map(g => (g || '').trim().replace(/\s+/g, ' '))
       .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b, 'id'));
+      .sort((a, b) => {
+        const idxA = getGuruIndex(a);
+        const idxB = getGuruIndex(b);
+        if (idxA !== idxB) return idxA - idxB;
+        return a.localeCompare(b, 'id');
+      });
 
     const defaultGuru = targetGuruParam || (isAdmin ? (filterGuruRekap || '') : currentUsername);
     const now = new Date();
@@ -1528,13 +1558,21 @@ export default function PresensiPage() {
       grouped[nama] = (grouped[nama] || 0) + countJam(r.jamKe || '');
     }
 
+    const norm = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const getGuruIndex = (name: string) => {
+      const target = norm(name);
+      const idx = guruList.findIndex(g => {
+        const gn = norm(g);
+        return gn === target || gn.includes(target) || target.includes(gn);
+      });
+      return idx !== -1 ? idx : 9999;
+    };
+
     const rows = Object.entries(grouped)
       .sort(([a], [b]) => {
-        const idxA = guruList.indexOf(a);
-        const idxB = guruList.indexOf(b);
-        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-        if (idxA !== -1) return -1;
-        if (idxB !== -1) return 1;
+        const idxA = getGuruIndex(a);
+        const idxB = getGuruIndex(b);
+        if (idxA !== idxB) return idxA - idxB;
         return a.localeCompare(b, 'id');
       })
       .map(([nama, jumlah], i) => ([
@@ -1584,13 +1622,21 @@ export default function PresensiPage() {
       grouped[nama] = (grouped[nama] || 0) + countJam(r.jamKe || '');
     }
 
+    const norm = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const getGuruIndex = (name: string) => {
+      const target = norm(name);
+      const idx = guruList.findIndex(g => {
+        const gn = norm(g);
+        return gn === target || gn.includes(target) || target.includes(gn);
+      });
+      return idx !== -1 ? idx : 9999;
+    };
+
     const rows = Object.entries(grouped)
       .sort(([a], [b]) => {
-        const idxA = guruList.indexOf(a);
-        const idxB = guruList.indexOf(b);
-        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-        if (idxA !== -1) return -1;
-        if (idxB !== -1) return 1;
+        const idxA = getGuruIndex(a);
+        const idxB = getGuruIndex(b);
+        if (idxA !== idxB) return idxA - idxB;
         return a.localeCompare(b, 'id');
       })
       .map(([nama, jam], i) => ([

@@ -44,6 +44,7 @@ export default function JurnalPage() {
   const [filterKelas, setFilterKelas] = useState('');
   const [filterMapel, setFilterMapel] = useState('');
   const [guruList, setGuruList] = useState<string[]>([]);
+  const [masterGuruList, setMasterGuruList] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentUsername, setCurrentUsername] = useState('');
 
@@ -64,6 +65,18 @@ export default function JurnalPage() {
         if (role !== 'admin') setFilterGuru(namaGuru);
       } catch {}
     }
+
+    // Load master guru dari database (sudah terurut sesuai urutan resmi)
+    fetch('/api/guru').then(r => r.json()).then(data => {
+      if (data.success && data.data) {
+        const namaGuru = data.data
+          .filter((g: any) => (g.status || '').toLowerCase().trim() === 'aktif')
+          .map((g: any) => g.nama)
+          .filter(Boolean);
+        setMasterGuruList(namaGuru);
+        setGuruList(prev => prev.length > 0 ? prev : namaGuru);
+      }
+    }).catch(console.error);
 
     // Load kelas & mapel
     fetch('/api/kelas').then(r => r.json()).then(data => {
@@ -92,9 +105,24 @@ export default function JurnalPage() {
       const json = await res.json();
       if (json.success) {
         setRekapData(json.data);
-        // Build guru list for admin filter
+        // Build guru list for admin filter sesuai urutan resmi guru
+        const norm = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        const getGuruIndex = (name: string) => {
+          const target = norm(name);
+          const list = masterGuruList.length > 0 ? masterGuruList : guruList;
+          const idx = list.findIndex(g => {
+            const gn = norm(g);
+            return gn === target || gn.includes(target) || target.includes(gn);
+          });
+          return idx !== -1 ? idx : 9999;
+        };
         const gurus = Array.from(new Set(json.data.map((r: JurnalRecord) => r.namaGuru).filter(Boolean))) as string[];
-        gurus.sort();
+        gurus.sort((a, b) => {
+          const idxA = getGuruIndex(a);
+          const idxB = getGuruIndex(b);
+          if (idxA !== idxB) return idxA - idxB;
+          return a.localeCompare(b, 'id');
+        });
         setGuruList(gurus);
       }
     } catch (e) {
@@ -102,7 +130,7 @@ export default function JurnalPage() {
     } finally {
       setRekapLoading(false);
     }
-  }, [filterFrom, filterTo]);
+  }, [filterFrom, filterTo, masterGuruList, guruList]);
 
   useEffect(() => {
     if (activeTab === 'rekap') fetchRekap();
@@ -269,10 +297,26 @@ export default function JurnalPage() {
   }, {});
 
   const handleExportRincianGuruModal = async (targetGuruParam?: string) => {
-    const allGurus = Array.from(new Set(guruList))
+    const norm = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const getGuruIndex = (name: string) => {
+      const target = norm(name);
+      const list = masterGuruList.length > 0 ? masterGuruList : guruList;
+      const idx = list.findIndex(g => {
+        const gn = norm(g);
+        return gn === target || gn.includes(target) || target.includes(gn);
+      });
+      return idx !== -1 ? idx : 9999;
+    };
+
+    const allGurus = Array.from(new Set([...masterGuruList, ...guruList]))
       .map(g => (g || '').trim().replace(/\s+/g, ' '))
       .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b, 'id'));
+      .sort((a, b) => {
+        const idxA = getGuruIndex(a);
+        const idxB = getGuruIndex(b);
+        if (idxA !== idxB) return idxA - idxB;
+        return a.localeCompare(b, 'id');
+      });
 
     const defaultGuru = targetGuruParam || (isAdmin ? (filterGuru || '') : currentUsername);
     const now = new Date();
@@ -542,7 +586,26 @@ export default function JurnalPage() {
       return;
     }
     
-    const excelData = dataProksus.map((r, i) => ({
+    const norm = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const getGuruIndex = (name: string) => {
+      const target = norm(name);
+      const list = masterGuruList.length > 0 ? masterGuruList : guruList;
+      const idx = list.findIndex(g => {
+        const gn = norm(g);
+        return gn === target || gn.includes(target) || target.includes(gn);
+      });
+      return idx !== -1 ? idx : 9999;
+    };
+
+    const sortedProksus = [...dataProksus].sort((a, b) => {
+      const idxA = getGuruIndex(a.namaGuru);
+      const idxB = getGuruIndex(b.namaGuru);
+      if (idxA !== idxB) return idxA - idxB;
+      if (a.tanggal !== b.tanggal) return a.tanggal.localeCompare(b.tanggal);
+      return (parseInt(a.jamKe) || 0) - (parseInt(b.jamKe) || 0);
+    });
+
+    const excelData = sortedProksus.map((r, i) => ({
       'No': i + 1,
       'Tanggal': r.tanggal ? new Date(r.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
       'Nama Guru': r.namaGuru,
@@ -560,6 +623,66 @@ export default function JurnalPage() {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Rekap Proksus');
     XLSX.writeFile(workbook, `Rekap_Jurnal_Program_Khusus.xlsx`);
+  };
+
+  const handleExportExcel = () => {
+    const countJam = (jamKe: string) => {
+      if (!jamKe) return 1;
+      return jamKe.split(',').map(s => s.trim()).filter(Boolean).length;
+    };
+
+    const grouped: Record<string, number> = {};
+    for (const r of filtered) {
+      const mapelStr = (r.mapel || '').toLowerCase();
+      if (mapelStr.includes('program khusus') || mapelStr.includes('proksus')) continue;
+
+      const nama = (r.namaGuru || '').trim().replace(/\s+/g, ' ');
+      if (!nama) continue;
+      grouped[nama] = (grouped[nama] || 0) + countJam(r.jamKe || '');
+    }
+
+    const norm = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const getGuruIndex = (name: string) => {
+      const target = norm(name);
+      const list = masterGuruList.length > 0 ? masterGuruList : guruList;
+      const idx = list.findIndex(g => {
+        const gn = norm(g);
+        return gn === target || gn.includes(target) || target.includes(gn);
+      });
+      return idx !== -1 ? idx : 9999;
+    };
+
+    const rows = Object.entries(grouped)
+      .sort(([a], [b]) => {
+        const idxA = getGuruIndex(a);
+        const idxB = getGuruIndex(b);
+        if (idxA !== idxB) return idxA - idxB;
+        return a.localeCompare(b, 'id');
+      })
+      .map(([nama, jumlah], i) => ([
+        i + 1,
+        nama,
+        jumlah
+      ]));
+
+    const filterText = (filterFrom || filterTo) ? `${filterFrom ? filterFrom : 'Awal'} s.d. ${filterTo ? filterTo : 'Akhir'}` : 'Semua Tanggal';
+    const cetakText = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    const aoa = [
+      ['REKAP JAM MENGAJAR GURU'],
+      [`Periode: ${filterText}`],
+      [`Dicetak: ${cetakText}`],
+      [],
+      ['No', 'Nama Guru', 'Jumlah Jam Mengajar'],
+      ...rows
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{ wch: 5 }, { wch: 40 }, { wch: 22 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Rekap Jam Mengajar');
+    const now = new Date().toLocaleDateString('id-ID').replace(/\//g, '-');
+    XLSX.writeFile(wb, `Rekap_Jam_Mengajar_${now}.xlsx`);
   };
 
   return (
@@ -753,6 +876,13 @@ export default function JurnalPage() {
               </button>
               <button onClick={handleExportProksus} style={{ background: '#ecfdf5', border: '1px solid #10b981', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', color: '#059669', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}>
                 <i className="fas fa-file-excel"></i> Export Proksus
+              </button>
+              <button 
+                onClick={handleExportExcel} 
+                style={{ background: '#16a34a', border: 'none', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, boxShadow: '0 2px 6px rgba(22,163,74,0.25)' }}
+                title="Export rekap total jam mengajar guru ke Excel sesuai urutan resmi"
+              >
+                <i className="fas fa-file-excel"></i> Export Rekap Jam Mengajar
               </button>
               <button onClick={fetchRekap} style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: '0.85rem', color: '#475569', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <i className="fas fa-sync-alt"></i> Refresh
