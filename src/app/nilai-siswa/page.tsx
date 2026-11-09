@@ -32,6 +32,252 @@ export default function NilaiSiswaPage() {
   const [previewData, setPreviewData] = useState<any[]>([]);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<any>(null);
+  const [semester, setSemester] = useState<'Ganjil' | 'Genap'>('Ganjil');
+  const [tanggalCetak, setTanggalCetak] = useState<string>(() => {
+    const d = new Date();
+    const bln = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    return `${d.getDate()} ${bln[d.getMonth()]} ${d.getFullYear()}`;
+  });
+  const [previewStudent, setPreviewStudent] = useState<any | null>(null);
+
+  const mapMinatBakat: Record<string, string> = {
+    '7A': 'SAINS RISET', '7B': 'SAINS RISET',
+    '7C': 'OLAHRAGA SENI', '7D': 'OLAHRAGA SENI',
+    '7E': 'MULTILINGUAL', '7F': 'MULTILINGUAL',
+    '7G': 'KETERAMPILAN KREATIF PRODUKTIF',
+    '7H': 'AGAMA TAHFIDZ', '7I': 'AGAMA TAHFIDZ',
+    '8A': 'OLAHRAGA SENI', '8B': 'MULTILINGUAL',
+    '8C': 'OLAHRAGA SENI', '8D': 'MULTILINGUAL',
+    '8E': 'SAINS RISET', '8F': 'KETERAMPILAN KREATIF PRODUKTIF',
+    '8G': 'SAINS RISET', '8H': 'AGAMA TAHFIDZ', '8I': 'AGAMA TAHFIDZ'
+  };
+
+  const getPredikat = (scoreNum: number) => {
+    if (isNaN(scoreNum) || scoreNum === 0) return { predikat: '-', ket: '-', deskripsi: 'Belum ada nilai' };
+    if (scoreNum >= 90) return { predikat: 'A', ket: 'Sangat Baik', deskripsi: 'Menunjukkan penguasaan kompetensi yang sangat baik dan aktif dalam seluruh capaian pembelajaran.' };
+    if (scoreNum >= 80) return { predikat: 'B', ket: 'Baik', deskripsi: 'Menunjukkan penguasaan kompetensi yang baik dan konsisten dalam capaian pembelajaran.' };
+    if (scoreNum >= 70) return { predikat: 'C', ket: 'Cukup', deskripsi: 'Menunjukkan penguasaan kompetensi yang cukup, perlu peningkatan pemahaman pada beberapa materi.' };
+    return { predikat: 'D', ket: 'Perlu Bimbingan', deskripsi: 'Perlu bimbingan dan pendampingan lebih lanjut untuk mencapai kriteria ketuntasan tujuan pembelajaran.' };
+  };
+
+  const generateRaporHtml = (s: any) => {
+    const scores = s.scores || {};
+    const finalMapel = mapel;
+    const minatBakat = mapMinatBakat[kelas.toUpperCase().trim()] || 'Program Khusus Unggulan';
+    const rataNum = parseFloat(scores.rata || '0');
+    const { predikat, ket, deskripsi } = getPredikat(rataNum);
+    const guruPengajar = profile?.name || profile?.username || 'Guru Pengajar PK';
+
+    const materiRows = [1, 2, 3, 4, 5, 6].map(m => {
+      const s1 = scores[`m${m}s1`] || '';
+      const s2 = scores[`m${m}s2`] || '';
+      const s3 = scores[`m${m}s3`] || '';
+      const validSub = [s1, s2, s3].filter((v: any) => v !== '' && !isNaN(Number(v))).map(Number);
+      const avgM = validSub.length > 0 ? Math.round(validSub.reduce((a: number, b: number) => a + b, 0) / validSub.length) : '';
+      return `
+        <tr>
+          <td style="text-align: center; border: 1px solid #000; padding: 5px;">${m}</td>
+          <td style="border: 1px solid #000; padding: 5px 8px;">Materi / Capaian Pembelajaran ${m}</td>
+          <td style="text-align: center; border: 1px solid #000; padding: 5px;">${s1 || '-'}</td>
+          <td style="text-align: center; border: 1px solid #000; padding: 5px;">${s2 || '-'}</td>
+          <td style="text-align: center; border: 1px solid #000; padding: 5px;">${s3 || '-'}</td>
+          <td style="text-align: center; border: 1px solid #000; padding: 5px; font-weight: bold; background: #fafafa;">${avgM || '-'}</td>
+        </tr>
+      `;
+    }).join('');
+
+    return `
+      <div class="page-break" style="font-family: 'Times New Roman', Times, serif; color: #000; padding: 10px 15px; max-width: 800px; margin: 0 auto; background: white;">
+        <!-- KOP MADRASAH -->
+        <div style="display: flex; align-items: center; border-bottom: 2.5px double #000; padding-bottom: 8px; margin-bottom: 14px;">
+          <img src="/logo.png" alt="Logo" style="width: 70px; height: 70px; margin-right: 15px; object-fit: contain;" />
+          <div style="text-align: center; flex: 1;">
+            <div style="font-size: 11pt; font-weight: bold; text-transform: uppercase;">YAYASAN PENDIDIKAN ALMAARIF SINGOSARI</div>
+            <div style="font-size: 14pt; font-weight: bold; text-transform: uppercase;">MADRASAH TSANAWIYAH ALMAARIF 01 SINGOSARI</div>
+            <div style="font-size: 9.5pt; font-weight: bold; letter-spacing: 0.5px;">STATUS TERAKREDITASI &quot;A&quot; (UNGGUL)</div>
+            <div style="font-size: 8.5pt; color: #333; margin-top: 2px;">
+              NSM: 121235070115 &nbsp;|&nbsp; NPSN: 20581318<br/>
+              Jl. Masjid No. 33 Singosari, Kab. Malang 65153 &nbsp;|&nbsp; Telp. 0341-458355
+            </div>
+          </div>
+        </div>
+
+        <!-- JUDUL -->
+        <div style="text-align: center; margin-bottom: 14px;">
+          <div style="font-size: 12pt; font-weight: bold; text-decoration: underline; text-transform: uppercase; letter-spacing: 0.5px;">
+            LAPORAN HASIL PENILAIAN PROGRAM KHUSUS
+          </div>
+          <div style="font-size: 10pt; font-weight: bold; margin-top: 3px;">
+            SEMESTER ${semester.toUpperCase()} &mdash; TAHUN PELAJARAN ${tahunAjaran}
+          </div>
+        </div>
+
+        <!-- IDENTITAS SISWA -->
+        <table style="width: 100%; font-size: 9.5pt; margin-bottom: 12px; border-collapse: collapse;">
+          <tbody>
+            <tr>
+              <td style="width: 140px; padding: 2px 0;">Nama Peserta Didik</td>
+              <td style="width: 10px;">:</td>
+              <td style="font-weight: bold;">${s.nama}</td>
+              <td style="width: 130px; padding: 2px 0;">Kelas / Rombel</td>
+              <td style="width: 10px;">:</td>
+              <td style="font-weight: bold;">${kelas}</td>
+            </tr>
+            <tr>
+              <td style="padding: 2px 0;">Nomor Induk (NIS)</td>
+              <td>:</td>
+              <td>${s.induk}</td>
+              <td style="padding: 2px 0;">Peminatan / Bidang</td>
+              <td>:</td>
+              <td style="font-weight: bold;">${minatBakat}</td>
+            </tr>
+            <tr>
+              <td style="padding: 2px 0;">Mata Pelajaran PK</td>
+              <td>:</td>
+              <td style="font-weight: bold;">${finalMapel}</td>
+              <td style="padding: 2px 0;">Jenis Kelamin</td>
+              <td>:</td>
+              <td>${s.jk === 'L' ? 'Laki-laki' : s.jk === 'P' ? 'Perempuan' : s.jk || '-'}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- TABEL RINCIAN NILAI -->
+        <table style="width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 14px; border: 1px solid #000;">
+          <thead>
+            <tr style="background: #f1f5f9; text-align: center;">
+              <th rowspan="2" style="border: 1px solid #000; padding: 6px 4px; width: 35px;">No</th>
+              <th rowspan="2" style="border: 1px solid #000; padding: 6px 8px; text-align: left;">Capaian Materi / Pembelajaran</th>
+              <th colspan="3" style="border: 1px solid #000; padding: 4px;">Nilai Sub Materi</th>
+              <th rowspan="2" style="border: 1px solid #000; padding: 6px 4px; width: 85px;">Rata-Rata Harian</th>
+            </tr>
+            <tr style="background: #f8fafc; text-align: center;">
+              <th style="border: 1px solid #000; padding: 4px; width: 60px;">Sub 1</th>
+              <th style="border: 1px solid #000; padding: 4px; width: 60px;">Sub 2</th>
+              <th style="border: 1px solid #000; padding: 4px; width: 60px;">Sub 3</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${materiRows}
+          </tbody>
+        </table>
+
+        <!-- TABEL REKAPITULASI PENILAIAN AKHIR -->
+        <table style="width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-bottom: 14px; border: 1px solid #000;">
+          <thead>
+            <tr style="background: #f1f5f9; text-align: center;">
+              <th style="border: 1px solid #000; padding: 6px; width: 25%;">Rata-Rata Formatif</th>
+              <th style="border: 1px solid #000; padding: 6px; width: 25%;">Nilai STS</th>
+              <th style="border: 1px solid #000; padding: 6px; width: 25%;">Nilai SAS</th>
+              <th style="border: 1px solid #000; padding: 6px; width: 25%;">Nilai Akhir (NA)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="text-align: center; font-size: 11pt; font-weight: bold;">
+              <td style="border: 1px solid #000; padding: 8px;">
+                ${(() => {
+                  const allH = [scores.m1s1, scores.m1s2, scores.m1s3, scores.m2s1, scores.m2s2, scores.m2s3, scores.m3s1, scores.m3s2, scores.m3s3, scores.m4s1, scores.m4s2, scores.m4s3, scores.m5s1, scores.m5s2, scores.m5s3, scores.m6s1, scores.m6s2, scores.m6s3].filter((v: any) => v !== '' && !isNaN(Number(v))).map(Number);
+                  return allH.length > 0 ? Math.round(allH.reduce((a: number, b: number) => a + b, 0) / allH.length) : '-';
+                })()}
+              </td>
+              <td style="border: 1px solid #000; padding: 8px;">${scores.sts || '-'}</td>
+              <td style="border: 1px solid #000; padding: 8px;">${scores.sas || '-'}</td>
+              <td style="border: 1px solid #000; padding: 8px; color: #0284c7; font-size: 13pt;">${scores.rata || '-'}</td>
+            </tr>
+            <tr>
+              <td colspan="4" style="border: 1px solid #000; padding: 6px 10px; background: #fafafa; font-size: 9pt;">
+                <strong>Predikat:</strong> <span style="font-weight: bold; color: #1e293b;">${predikat} (${ket || '-'})</span> &nbsp;|&nbsp;
+                <strong>Deskripsi:</strong> <em>${deskripsi}</em>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- TANDA TANGAN -->
+        <table style="width: 100%; font-size: 9.5pt; margin-top: 25px; text-align: center; border-collapse: collapse;">
+          <tbody>
+            <tr>
+              <td style="width: 33%; vertical-align: top;">
+                Mengetahui,<br/>
+                Orang Tua / Wali Murid<br/><br/><br/><br/><br/>
+                <b>( ........................................ )</b>
+              </td>
+              <td style="width: 34%; vertical-align: top;">
+                Singosari, ${tanggalCetak}<br/>
+                Guru Pembimbing PK<br/><br/><br/><br/><br/>
+                <b><u>${guruPengajar}</u></b>
+              </td>
+              <td style="width: 33%; vertical-align: top;">
+                Mengetahui,<br/>
+                Kepala Madrasah<br/><br/><br/><br/><br/>
+                <b><u>Dwi Retno Palupi, M.Pd.</u></b>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  const doPrint = (contentHtml: string, title: string) => {
+    const fullHtml = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            @page { size: A4 portrait; margin: 12mm 12mm 12mm 15mm; }
+            body { font-family: 'Times New Roman', Times, serif; color: #000; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .page-break { page-break-after: always; break-after: page; }
+            .page-break:last-child { page-break-after: auto; break-after: auto; }
+            table { border-collapse: collapse; }
+          </style>
+        </head>
+        <body>
+          ${contentHtml}
+        </body>
+      </html>
+    `;
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+    const iframeDoc = iframe.contentWindow?.document;
+    if (iframeDoc) {
+      iframeDoc.open();
+      iframeDoc.write(fullHtml);
+      iframeDoc.close();
+      setTimeout(() => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+        }, 1500);
+      }, 500);
+    }
+  };
+
+  const handlePrintAll = () => {
+    if (!rekapStudents || rekapStudents.length === 0) {
+      Swal.fire('Perhatian', 'Belum ada data siswa untuk dicetak. Silakan tampilkan data terlebih dahulu.', 'warning');
+      return;
+    }
+    let allHtml = '';
+    rekapStudents.forEach(s => {
+      allHtml += generateRaporHtml(s);
+    });
+    doPrint(allHtml, `Rapor PK Kelas ${kelas} - ${mapel}`);
+  };
+
+  const handlePrintSingle = (s: any) => {
+    doPrint(generateRaporHtml(s), `Rapor PK - ${s.nama}`);
+  };
   const pkMapelList = [
     'Ilmu Pengetahuan Alam',
     'Ilmu Pengetahuan Sosial',
@@ -362,10 +608,10 @@ export default function NilaiSiswaPage() {
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>
-        <i className="fas fa-award" style={{ color: '#f59e0b', filter: 'drop-shadow(0 2px 4px rgba(245,158,11,0.4))', fontSize: '1.2em' }}></i> Nilai Siswa
+        <i className="fas fa-award" style={{ color: '#f59e0b', filter: 'drop-shadow(0 2px 4px rgba(245,158,11,0.4))', fontSize: '1.2em' }}></i> Program Khusus
       </h1>
       <p className={styles.subtitle}>
-        Input dan kelola nilai siswa madrasah.
+        Input dan kelola nilai Program Khusus siswa madrasah.
       </p>
 
       <div className={styles.tabContainer}>
@@ -383,6 +629,10 @@ export default function NilaiSiswaPage() {
             
             <button className={`${styles.tabBtn} ${subTab === 'rekap' ? styles.activeTab : ''}`} onClick={() => setSubTab('rekap')}>
               <i className="fas fa-table"></i> Cek Nilai (Rekap)
+            </button>
+
+            <button className={`${styles.tabBtn} ${subTab === 'cetak' ? styles.activeTab : ''}`} onClick={() => setSubTab('cetak')}>
+              <i className="fas fa-print"></i> Cetak Rapor PK
             </button>
           </div>
 
@@ -493,7 +743,7 @@ export default function NilaiSiswaPage() {
             </div>
           )}
 
-          {subTab === 'rekap' && (
+          {subTab === 'cetak' && (
             <div>
               <div className={styles.formGrid}>
                 <div className={styles.formGroup}>
@@ -514,105 +764,239 @@ export default function NilaiSiswaPage() {
                   </select>
                 </div>
                 <div className={styles.formGroup}>
-                  <label>Mata Pelajaran</label>
+                  <label>Mata Pelajaran PK</label>
                   <select className={styles.select} value={mapel} onChange={e => setMapel(e.target.value)}>
                     {mapelList.map(m => <option key={m} value={m}>{m}</option>)}
-                    
                   </select>
+                </div>
+                <div className={styles.formGroup}>
+                  <label>Semester</label>
+                  <select className={styles.select} value={semester} onChange={e => setSemester(e.target.value as any)}>
+                    <option value="Ganjil">Semester Ganjil</option>
+                    <option value="Genap">Semester Genap</option>
+                  </select>
+                </div>
+                <div className={styles.formGroup}>
+                  <label>Tanggal Rapor</label>
+                  <input 
+                    type="text" 
+                    className={styles.input} 
+                    value={tanggalCetak} 
+                    onChange={e => setTanggalCetak(e.target.value)} 
+                    placeholder="Contoh: 9 November 2026"
+                  />
                 </div>
                 
                 <div className={styles.formGroup} style={{ justifyContent: 'flex-end' }}>
                   <button className={styles.btnSubmit} onClick={fetchRekap} disabled={loading || !kelas}>
                     {loading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-search"></i>}
-                    Tampilkan Rekap
+                    Tampilkan Data
                   </button>
                 </div>
               </div>
 
               {rekapStudents.length > 0 && (
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '16px', gap: '12px' }}>
-                    {isEditing ? (
-                      <>
-                        <button className={styles.btnSubmit} onClick={saveRekap} disabled={saving}>
-                          {saving ? <><i className="fas fa-spinner fa-spin"></i> Menyimpan...</> : <><i className="fas fa-save"></i> Simpan Perubahan</>}
-                        </button>
-                        <button style={{ background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }} onClick={() => { setIsEditing(false); fetchRekap(); }}>
-                          Batal
-                        </button>
-                      </>
-                    ) : (
-                      <button style={{ background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600 }} onClick={() => setIsEditing(true)}>
-                        <i className="fas fa-edit"></i> Edit Data
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px', background: '#f8fafc', padding: '12px 18px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ background: '#0284c7', color: 'white', padding: '4px 10px', borderRadius: '6px', fontWeight: 700, fontSize: '0.85rem' }}>
+                        Kelas {kelas}
+                      </span>
+                      <span style={{ fontWeight: 600, color: '#334155', fontSize: '0.9rem' }}>
+                        {mapel} &bull; {rekapStudents.length} Siswa Terdaftar
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button 
+                        onClick={handlePrintAll}
+                        style={{ 
+                          background: '#059669', 
+                          color: 'white', 
+                          border: 'none', 
+                          padding: '9px 20px', 
+                          borderRadius: '8px', 
+                          cursor: 'pointer', 
+                          fontWeight: 700, 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '8px',
+                          fontSize: '0.9rem',
+                          boxShadow: '0 2px 4px rgba(5,150,105,0.2)'
+                        }}
+                      >
+                        <i className="fas fa-print"></i> Cetak Semua Rapor (Massal)
                       </button>
-                    )}
+                    </div>
                   </div>
+
                   <div className={styles.tableWrapper}>
-                  <table className={styles.table} style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>
-                    <thead>
-                      <tr>
-                        <th rowSpan={2} style={{width: '40px'}}>No</th>
-                        <th rowSpan={2}>No Induk</th>
-                        <th rowSpan={2} style={{minWidth: '200px'}}>Nama Lengkap</th>
-                        <th rowSpan={2}>L/P</th>
-                        {[1,2,3,4,5,6].map(m => (
-                          <th key={m} colSpan={3} style={{textAlign: 'center', borderLeft: '1px solid #e2e8f0'}}>Materi {m}</th>
-                        ))}
-                        <th rowSpan={2} style={{borderLeft: '1px solid #e2e8f0'}}>STS</th>
-                        <th rowSpan={2}>SAS</th>
-                        <th rowSpan={2}>Rata-Rata</th>
-                      </tr>
-                      <tr>
-                        {[1,2,3,4,5,6].map(m => (
-                          <React.Fragment key={m}>
-                            <th style={{borderLeft: '1px solid #e2e8f0', textAlign: 'center'}}>S1</th>
-                            <th style={{textAlign: 'center'}}>S2</th>
-                            <th style={{textAlign: 'center'}}>S3</th>
-                          </React.Fragment>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rekapStudents.map((s, idx) => (
-                        <tr key={idx}>
-                          <td>{idx + 1}</td>
-                          <td>{s.induk}</td>
-                          <td>{s.nama}</td>
-                          <td style={{textAlign: 'center'}}>{s.jk}</td>
-                          {[1,2,3,4,5,6].map(m => (
-                            <React.Fragment key={m}>
-                              <td style={{borderLeft: '1px solid #e2e8f0', textAlign: 'center'}}>
-                                {isEditing ? (
-                                  <input type="number" style={{width: '45px', textAlign: 'center', padding: '2px', border: '1px solid #cbd5e1', borderRadius: '4px'}} value={s.scores[`m${m}s1`] || ''} onChange={(e) => handleEditRekap(idx, `m${m}s1`, e.target.value)} />
-                                ) : s.scores[`m${m}s1`]}
-                              </td>
-                              <td style={{textAlign: 'center'}}>
-                                {isEditing ? (
-                                  <input type="number" style={{width: '45px', textAlign: 'center', padding: '2px', border: '1px solid #cbd5e1', borderRadius: '4px'}} value={s.scores[`m${m}s2`] || ''} onChange={(e) => handleEditRekap(idx, `m${m}s2`, e.target.value)} />
-                                ) : s.scores[`m${m}s2`]}
-                              </td>
-                              <td style={{textAlign: 'center'}}>
-                                {isEditing ? (
-                                  <input type="number" style={{width: '45px', textAlign: 'center', padding: '2px', border: '1px solid #cbd5e1', borderRadius: '4px'}} value={s.scores[`m${m}s3`] || ''} onChange={(e) => handleEditRekap(idx, `m${m}s3`, e.target.value)} />
-                                ) : s.scores[`m${m}s3`]}
-                              </td>
-                            </React.Fragment>
-                          ))}
-                          <td style={{borderLeft: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 'bold'}}>
-                            {isEditing ? (
-                              <input type="number" style={{width: '45px', textAlign: 'center', padding: '2px', border: '1px solid #cbd5e1', borderRadius: '4px'}} value={s.scores.sts || ''} onChange={(e) => handleEditRekap(idx, 'sts', e.target.value)} />
-                            ) : s.scores.sts}
-                          </td>
-                          <td style={{textAlign: 'center', fontWeight: 'bold'}}>
-                            {isEditing ? (
-                              <input type="number" style={{width: '45px', textAlign: 'center', padding: '2px', border: '1px solid #cbd5e1', borderRadius: '4px'}} value={s.scores.sas || ''} onChange={(e) => handleEditRekap(idx, 'sas', e.target.value)} />
-                            ) : s.scores.sas}
-                          </td>
-                          <td style={{textAlign: 'center', fontWeight: 'bold', color: '#0ea5e9'}}>{s.scores.rata}</td>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th style={{ width: '45px', textAlign: 'center' }}>No</th>
+                          <th style={{ width: '120px' }}>No Induk</th>
+                          <th>Nama Lengkap Siswa</th>
+                          <th style={{ width: '60px', textAlign: 'center' }}>L/P</th>
+                          <th style={{ width: '90px', textAlign: 'center' }}>Nilai Akhir</th>
+                          <th style={{ width: '120px', textAlign: 'center' }}>Predikat</th>
+                          <th style={{ width: '190px', textAlign: 'center' }}>Aksi Cetak</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {rekapStudents.map((s, idx) => {
+                          const rataNum = parseFloat(s.scores?.rata || '0');
+                          const { predikat, ket } = getPredikat(rataNum);
+                          return (
+                            <tr key={idx}>
+                              <td style={{ textAlign: 'center' }}>{idx + 1}</td>
+                              <td>{s.induk}</td>
+                              <td style={{ fontWeight: 600, color: '#1e293b' }}>{s.nama}</td>
+                              <td style={{ textAlign: 'center' }}>{s.jk}</td>
+                              <td style={{ textAlign: 'center', fontWeight: 800, color: '#0284c7' }}>
+                                {s.scores?.rata || '-'}
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                <span style={{ 
+                                  padding: '3px 10px', 
+                                  borderRadius: '6px', 
+                                  fontWeight: 700, 
+                                  fontSize: '0.8rem',
+                                  background: predikat === 'A' ? '#dcfce7' : predikat === 'B' ? '#e0f2fe' : predikat === 'C' ? '#fef3c7' : '#fee2e2',
+                                  color: predikat === 'A' ? '#15803d' : predikat === 'B' ? '#0369a1' : predikat === 'C' ? '#b45309' : '#b91c1c'
+                                }}>
+                                  {predikat} {ket !== '-' ? `(${ket})` : ''}
+                                </span>
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                                  <button
+                                    onClick={() => setPreviewStudent(s)}
+                                    style={{
+                                      background: '#f1f5f9',
+                                      color: '#475569',
+                                      border: '1px solid #cbd5e1',
+                                      padding: '6px 12px',
+                                      borderRadius: '6px',
+                                      cursor: 'pointer',
+                                      fontSize: '0.8rem',
+                                      fontWeight: 600,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '4px'
+                                    }}
+                                    title="Preview Rapor"
+                                  >
+                                    <i className="fas fa-eye"></i> Preview
+                                  </button>
+                                  <button
+                                    onClick={() => handlePrintSingle(s)}
+                                    style={{
+                                      background: '#0284c7',
+                                      color: 'white',
+                                      border: 'none',
+                                      padding: '6px 14px',
+                                      borderRadius: '6px',
+                                      cursor: 'pointer',
+                                      fontSize: '0.8rem',
+                                      fontWeight: 600,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '5px'
+                                    }}
+                                    title="Cetak Rapor Siswa"
+                                  >
+                                    <i className="fas fa-print"></i> Cetak
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Modal Preview Rapor PK */}
+              {previewStudent && (
+                <div style={{
+                  position: 'fixed',
+                  top: 0, left: 0, right: 0, bottom: 0,
+                  background: 'rgba(15, 23, 42, 0.7)',
+                  zIndex: 9999,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '20px',
+                  backdropFilter: 'blur(3px)'
+                }}>
+                  <div style={{
+                    background: 'white',
+                    borderRadius: '12px',
+                    maxWidth: '850px',
+                    width: '100%',
+                    maxHeight: '90vh',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      padding: '12px 20px',
+                      background: '#1e293b',
+                      color: 'white',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <i className="fas fa-certificate" style={{ color: '#38bdf8' }}></i>
+                        Preview Rapor Program Khusus &mdash; {previewStudent.nama}
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => handlePrintSingle(previewStudent)}
+                          style={{
+                            background: '#059669',
+                            color: 'white',
+                            border: 'none',
+                            padding: '6px 14px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                            fontSize: '0.85rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <i className="fas fa-print"></i> Cetak Dokumen
+                        </button>
+                        <button
+                          onClick={() => setPreviewStudent(null)}
+                          style={{
+                            background: '#475569',
+                            color: 'white',
+                            border: 'none',
+                            padding: '6px 12px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                            fontSize: '0.85rem'
+                          }}
+                        >
+                          Tutup
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ padding: '24px', overflowY: 'auto', flex: 1, background: '#f8fafc' }}>
+                      <div 
+                        style={{ background: 'white', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
+                        dangerouslySetInnerHTML={{ __html: generateRaporHtml(previewStudent) }}
+                      />
+                    </div>
                   </div>
                 </div>
               )}
