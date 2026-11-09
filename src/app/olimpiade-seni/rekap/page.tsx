@@ -1,8 +1,9 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Swal from 'sweetalert2';
-import { DAFTAR_CABANG_LOMBA, DAFTAR_ITEM_BUKA_TUTUP } from '@/lib/olimpiade-config';
+import * as XLSX from 'xlsx';
+import { DAFTAR_CABANG_LOMBA, DAFTAR_ITEM_BUKA_TUTUP, isAkademikLomba } from '@/lib/olimpiade-config';
 
 interface OlimpiadeData {
   id: number;
@@ -42,6 +43,28 @@ export default function RekapOlimpiadeSeni() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBuka, setIsBuka] = useState(true);
   const [toggling, setToggling] = useState(false);
+
+  // Export Excel States
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [showExportDropdownFilter, setShowExportDropdownFilter] = useState(false);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
+  const exportDropdownFilterRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(target)) {
+        setShowExportDropdown(false);
+      }
+      if (exportDropdownFilterRef.current && !exportDropdownFilterRef.current.contains(target)) {
+        setShowExportDropdownFilter(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // Modal Edit Peserta
   const [editingPeserta, setEditingPeserta] = useState<OlimpiadeData | null>(null);
@@ -478,6 +501,212 @@ export default function RekapOlimpiadeSeni() {
 
   const totalSemuaPeserta = Object.values(summaryCounts).reduce((a, b) => a + b, 0);
 
+  // Hitung jumlah peserta Olimpiade dan Seni
+  const countOlimpiade = useMemo(() => {
+    return allPesertaList.filter(item => {
+      const meta = item.metadata || {};
+      const rawLomba = meta.CABANG_LOMBA || meta.LOMBA_DIPILIH || meta['LOMBA YANG DIPILIH'] || meta.LOMBA || '';
+      return isAkademikLomba(normalizeLomba(rawLomba));
+    }).length;
+  }, [allPesertaList]);
+
+  const countSeni = useMemo(() => {
+    return allPesertaList.filter(item => {
+      const meta = item.metadata || {};
+      const rawLomba = meta.CABANG_LOMBA || meta.LOMBA_DIPILIH || meta['LOMBA YANG DIPILIH'] || meta.LOMBA || '';
+      return !isAkademikLomba(normalizeLomba(rawLomba));
+    }).length;
+  }, [allPesertaList]);
+
+  const mapPesertaToRow = (item: any, index: number) => {
+    const meta = item.metadata || {};
+    const rawLomba = meta.CABANG_LOMBA || meta.LOMBA_DIPILIH || meta['LOMBA YANG DIPILIH'] || meta.LOMBA || '-';
+    const cabang = normalizeLomba(rawLomba);
+    const kategori = isAkademikLomba(cabang) ? 'Olimpiade Akademik' : 'Lomba Seni';
+    const regu = meta.NAMA_REGU || meta.GRUP || meta.REGU || '-';
+    const jalur = item.jenis_pendaftaran === 'individu' ? 'Individu' : 'Kolektif';
+    const status = meta.STATUS_PEMBAYARAN || 'Menunggu';
+
+    return {
+      'No': index + 1,
+      'Nomor Peserta': meta.NOMOR_PESERTA || item.nomor_peserta || '-',
+      'Nama Peserta': meta.NAMA || meta.NAMA_PESERTA || '-',
+      'Asal Sekolah': meta.ASAL_SEKOLAH || meta['NAMA SD/MI'] || '-',
+      'NISN': meta.NISN ? String(meta.NISN) : '-',
+      'Kelas': meta.KELAS || '-',
+      'Cabang Lomba': cabang,
+      'Kategori': kategori,
+      'Nama Regu / Grup': regu,
+      'Jalur Pendaftaran': jalur,
+      'No. WhatsApp': meta.NO_WA || meta.WHATSAPP || '-',
+      'Username CBT': meta.USERNAME_CBT || meta.CBT_USERNAME || '-',
+      'Password CBT': meta.PASSWORD_CBT || meta.CBT_PASSWORD || '-',
+      'Status Pembayaran': status,
+      'Waktu Pendaftaran': item.created_at ? new Date(item.created_at).toLocaleString('id-ID') : '-',
+      'Bukti Pembayaran': item.bukti_transfer || meta.BUKTI_PEMBAYARAN || '-'
+    };
+  };
+
+  const mapKolektifToRow = (item: any, index: number) => {
+    const meta = item.metadata || {};
+    const status = meta.STATUS_PEMBAYARAN || 'Menunggu';
+    let rincianStr = '-';
+    if (meta.RINCIAN_LOMBA) {
+      if (typeof meta.RINCIAN_LOMBA === 'object') {
+        rincianStr = Object.entries(meta.RINCIAN_LOMBA)
+          .filter(([_, v]) => Number(v) > 0)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(', ');
+      } else {
+        rincianStr = String(meta.RINCIAN_LOMBA);
+      }
+    }
+    const jumlahSiswa = meta.JUMLAH_SISWA || (meta.RINCIAN_LOMBA && typeof meta.RINCIAN_LOMBA === 'object' ? Object.values(meta.RINCIAN_LOMBA).reduce((a: any, b: any) => Number(a) + Number(b), 0) : '-');
+    const totalBiaya = meta.TOTAL_BIAYA ? `Rp ${Number(meta.TOTAL_BIAYA).toLocaleString('id-ID')}` : '-';
+
+    return {
+      'No': index + 1,
+      'Nama Sekolah / Lembaga': meta.ASAL_SEKOLAH || meta['NAMA SD/MI'] || '-',
+      'No. WhatsApp Koordinator': meta.NO_WA || meta.WHATSAPP || '-',
+      'Jumlah Siswa Terdaftar': jumlahSiswa,
+      'Rincian Lomba': rincianStr,
+      'Total Biaya': totalBiaya,
+      'Status Pembayaran': status,
+      'Waktu Pendaftaran': item.created_at ? new Date(item.created_at).toLocaleString('id-ID') : '-',
+      'Bukti Pembayaran': item.bukti_transfer || meta.BUKTI_PEMBAYARAN || '-',
+      'File Excel Pendaftaran': meta.FILE_EXCEL_URL || '-'
+    };
+  };
+
+  const handleExportExcel = (type: 'olimpiade' | 'seni' | 'semua') => {
+    try {
+      setShowExportDropdown(false);
+      setShowExportDropdownFilter(false);
+
+      const wb = XLSX.utils.book_new();
+      const dateStr = new Date().toISOString().slice(0, 10);
+
+      const applyColWidths = (ws: XLSX.WorkSheet, dataRows: any[]) => {
+        if (!dataRows || dataRows.length === 0) return;
+        const colWidths = Object.keys(dataRows[0]).map(key => {
+          let maxLen = key.length;
+          dataRows.forEach(row => {
+            const valStr = row[key] ? String(row[key]) : '';
+            if (valStr.length > maxLen) {
+              maxLen = Math.min(valStr.length, 45);
+            }
+          });
+          return { wch: Math.max(maxLen + 3, 10) };
+        });
+        ws['!cols'] = colWidths;
+      };
+
+      if (type === 'olimpiade') {
+        const olimpiadeList = allPesertaList.filter(item => {
+          const meta = item.metadata || {};
+          const rawLomba = meta.CABANG_LOMBA || meta.LOMBA_DIPILIH || meta['LOMBA YANG DIPILIH'] || meta.LOMBA || '';
+          return isAkademikLomba(normalizeLomba(rawLomba));
+        });
+
+        if (olimpiadeList.length === 0) {
+          Swal.fire('Info', 'Tidak ada data peserta Olimpiade Akademik untuk diexport.', 'info');
+          return;
+        }
+
+        const rows = olimpiadeList.map(mapPesertaToRow);
+        const ws = XLSX.utils.json_to_sheet(rows);
+        applyColWidths(ws, rows);
+        XLSX.utils.book_append_sheet(wb, ws, 'Pendaftar Olimpiade');
+        XLSX.writeFile(wb, `Data_Pendaftar_Olimpiade_${dateStr}.xlsx`);
+        Swal.fire({
+          icon: 'success',
+          title: 'Export Berhasil',
+          text: `Berhasil mengexport ${rows.length} data pendaftar Olimpiade.`,
+          timer: 2000,
+          showConfirmButton: false
+        });
+      } else if (type === 'seni') {
+        const seniList = allPesertaList.filter(item => {
+          const meta = item.metadata || {};
+          const rawLomba = meta.CABANG_LOMBA || meta.LOMBA_DIPILIH || meta['LOMBA YANG DIPILIH'] || meta.LOMBA || '';
+          return !isAkademikLomba(normalizeLomba(rawLomba));
+        });
+
+        if (seniList.length === 0) {
+          Swal.fire('Info', 'Tidak ada data peserta Lomba Seni untuk diexport.', 'info');
+          return;
+        }
+
+        const rows = seniList.map(mapPesertaToRow);
+        const ws = XLSX.utils.json_to_sheet(rows);
+        applyColWidths(ws, rows);
+        XLSX.utils.book_append_sheet(wb, ws, 'Pendaftar Lomba Seni');
+        XLSX.writeFile(wb, `Data_Pendaftar_Lomba_Seni_${dateStr}.xlsx`);
+        Swal.fire({
+          icon: 'success',
+          title: 'Export Berhasil',
+          text: `Berhasil mengexport ${rows.length} data pendaftar Lomba Seni.`,
+          timer: 2000,
+          showConfirmButton: false
+        });
+      } else {
+        // Semua Pendaftar
+        // Sheet 1: Semua Peserta
+        const allRows = allPesertaList.map(mapPesertaToRow);
+        const wsAll = XLSX.utils.json_to_sheet(allRows);
+        applyColWidths(wsAll, allRows);
+        XLSX.utils.book_append_sheet(wb, wsAll, 'Semua Peserta');
+
+        // Sheet 2: Olimpiade Akademik
+        const olimpiadeList = allPesertaList.filter(item => {
+          const meta = item.metadata || {};
+          const rawLomba = meta.CABANG_LOMBA || meta.LOMBA_DIPILIH || meta['LOMBA YANG DIPILIH'] || meta.LOMBA || '';
+          return isAkademikLomba(normalizeLomba(rawLomba));
+        });
+        if (olimpiadeList.length > 0) {
+          const rowsOlimpiade = olimpiadeList.map(mapPesertaToRow);
+          const wsOlimp = XLSX.utils.json_to_sheet(rowsOlimpiade);
+          applyColWidths(wsOlimp, rowsOlimpiade);
+          XLSX.utils.book_append_sheet(wb, wsOlimp, 'Olimpiade Akademik');
+        }
+
+        // Sheet 3: Lomba Seni
+        const seniList = allPesertaList.filter(item => {
+          const meta = item.metadata || {};
+          const rawLomba = meta.CABANG_LOMBA || meta.LOMBA_DIPILIH || meta['LOMBA YANG DIPILIH'] || meta.LOMBA || '';
+          return !isAkademikLomba(normalizeLomba(rawLomba));
+        });
+        if (seniList.length > 0) {
+          const rowsSeni = seniList.map(mapPesertaToRow);
+          const wsSeni = XLSX.utils.json_to_sheet(rowsSeni);
+          applyColWidths(wsSeni, rowsSeni);
+          XLSX.utils.book_append_sheet(wb, wsSeni, 'Lomba Seni');
+        }
+
+        // Sheet 4: Lembaga Kolektif
+        const kolektifList = data.filter(d => d.jenis_pendaftaran === 'kolektif');
+        if (kolektifList.length > 0) {
+          const rowsKolektif = kolektifList.map(mapKolektifToRow);
+          const wsKolektif = XLSX.utils.json_to_sheet(rowsKolektif);
+          applyColWidths(wsKolektif, rowsKolektif);
+          XLSX.utils.book_append_sheet(wb, wsKolektif, 'Lembaga Kolektif');
+        }
+
+        XLSX.writeFile(wb, `Data_Semua_Pendaftar_${dateStr}.xlsx`);
+        Swal.fire({
+          icon: 'success',
+          title: 'Export Berhasil',
+          text: `Berhasil mengexport data semua pendaftar (${allRows.length} peserta).`,
+          timer: 2000,
+          showConfirmButton: false
+        });
+      }
+    } catch (err: any) {
+      console.error('Export Excel Error:', err);
+      Swal.fire('Error', 'Gagal mengexport data ke Excel: ' + (err.message || 'Unknown error'), 'error');
+    }
+  };
+
   const handleCetakKartu = (row: OlimpiadeData) => {
     if (row.jenis_pendaftaran === 'individu') {
       localStorage.setItem('cetak_kartu_data', JSON.stringify(row.metadata));
@@ -733,6 +962,156 @@ export default function RekapOlimpiadeSeni() {
                   : 'Status Pendaftaran (Buka Semua)'}
               </button>
             )}
+            {/* Tombol Export Excel */}
+            <div ref={exportDropdownRef} style={{ position: 'relative' }}>
+              <button 
+                type="button"
+                onClick={() => setShowExportDropdown(prev => !prev)}
+                style={{ 
+                  padding: '8px 16px', 
+                  borderRadius: '8px', 
+                  background: '#047857', 
+                  color: 'white', 
+                  border: 'none', 
+                  cursor: 'pointer', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px', 
+                  fontWeight: 600,
+                  boxShadow: '0 2px 6px rgba(4, 120, 87, 0.25)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <i className="fas fa-file-excel" style={{ fontSize: '1rem' }}></i>
+                <span>Export Excel</span>
+                <i className={`fas fa-chevron-${showExportDropdown ? 'up' : 'down'}`} style={{ fontSize: '0.75rem', opacity: 0.85 }}></i>
+              </button>
+
+              {showExportDropdown && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    right: 0,
+                    width: '290px',
+                    background: 'white',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                    border: '1px solid #e2e8f0',
+                    padding: '8px',
+                    zIndex: 50,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px'
+                  }}
+                >
+                  <div style={{ padding: '6px 10px', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Pilih Kategori Export Excel
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={() => handleExportExcel('olimpiade')}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: 'transparent',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#f0fdf4')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>
+                        <i className="fas fa-graduation-cap"></i>
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '13px' }}>Pendaftar Olimpiade</div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>Matematika, IPAS, PAI, Inggris, Arab</div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '12px', fontWeight: 700, background: '#dcfce7', color: '#16a34a', padding: '2px 8px', borderRadius: '12px', flexShrink: 0 }}>
+                      {countOlimpiade}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleExportExcel('seni')}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: 'transparent',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#fdf4ff')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#f3e8ff', color: '#9333ea', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>
+                        <i className="fas fa-palette"></i>
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '13px' }}>Pendaftar Lomba Seni</div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>Singer, Banjari, Pramuka SMS</div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '12px', fontWeight: 700, background: '#f3e8ff', color: '#9333ea', padding: '2px 8px', borderRadius: '12px', flexShrink: 0 }}>
+                      {countSeni}
+                    </span>
+                  </button>
+
+                  <div style={{ height: '1px', background: '#e2e8f0', margin: '4px 0' }} />
+
+                  <button
+                    type="button"
+                    onClick={() => handleExportExcel('semua')}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: 'transparent',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#eff6ff')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#dbeafe', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>
+                        <i className="fas fa-users"></i>
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '13px' }}>Semua Pendaftar</div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>Seluruh peserta + lembaga kolektif</div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '12px', fontWeight: 700, background: '#dbeafe', color: '#2563eb', padding: '2px 8px', borderRadius: '12px', flexShrink: 0 }}>
+                      {allPesertaList.length}
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
             <button 
               onClick={fetchData}
               style={{ padding: '8px 16px', borderRadius: '8px', background: '#e2e8f0', color: '#475569', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}
@@ -896,6 +1275,157 @@ export default function RekapOlimpiadeSeni() {
                 <i className="fas fa-undo"></i> Reset
               </button>
             )}
+
+            {/* Shortcut Export Excel di Filter Bar */}
+            <div ref={exportDropdownFilterRef} style={{ position: 'relative' }}>
+              <button
+                type="button"
+                onClick={() => setShowExportDropdownFilter(prev => !prev)}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid #bbf7d0',
+                  background: '#f0fdf4',
+                  color: '#16a34a',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  transition: 'all 0.2s'
+                }}
+                title="Export Data ke Excel"
+              >
+                <i className="fas fa-file-excel"></i> Export Excel
+                <i className={`fas fa-chevron-${showExportDropdownFilter ? 'up' : 'down'}`} style={{ fontSize: '10px' }}></i>
+              </button>
+
+              {showExportDropdownFilter && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    right: 0,
+                    width: '290px',
+                    background: 'white',
+                    borderRadius: '12px',
+                    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                    border: '1px solid #e2e8f0',
+                    padding: '8px',
+                    zIndex: 50,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px'
+                  }}
+                >
+                  <div style={{ padding: '6px 10px', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Pilih Kategori Export Excel
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={() => handleExportExcel('olimpiade')}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: 'transparent',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#f0fdf4')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>
+                        <i className="fas fa-graduation-cap"></i>
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '13px' }}>Pendaftar Olimpiade</div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>Matematika, IPAS, PAI, Inggris, Arab</div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '12px', fontWeight: 700, background: '#dcfce7', color: '#16a34a', padding: '2px 8px', borderRadius: '12px', flexShrink: 0 }}>
+                      {countOlimpiade}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleExportExcel('seni')}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: 'transparent',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#fdf4ff')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#f3e8ff', color: '#9333ea', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>
+                        <i className="fas fa-palette"></i>
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '13px' }}>Pendaftar Lomba Seni</div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>Singer, Banjari, Pramuka SMS</div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '12px', fontWeight: 700, background: '#f3e8ff', color: '#9333ea', padding: '2px 8px', borderRadius: '12px', flexShrink: 0 }}>
+                      {countSeni}
+                    </span>
+                  </button>
+
+                  <div style={{ height: '1px', background: '#e2e8f0', margin: '4px 0' }} />
+
+                  <button
+                    type="button"
+                    onClick={() => handleExportExcel('semua')}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      background: 'transparent',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#eff6ff')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#dbeafe', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', flexShrink: 0 }}>
+                        <i className="fas fa-users"></i>
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '13px' }}>Semua Pendaftar</div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>Seluruh peserta + lembaga kolektif</div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: '12px', fontWeight: 700, background: '#dbeafe', color: '#2563eb', padding: '2px 8px', borderRadius: '12px', flexShrink: 0 }}>
+                      {allPesertaList.length}
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
