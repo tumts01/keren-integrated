@@ -140,20 +140,47 @@ export default function PenilaianDiriPage() {
       const clean = (val: any) => String(val || '').trim().replace(/^0+/, '');
       const norm = (r: string) => String(r || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
-      // Locate student in siswaData if possible to obtain canonical rombel
-      const myRecord = siswaData.find(s => 
-        (clean(s.nisn) && clean(s.nisn) === clean(userNisn)) ||
-        (clean(s.nis) && clean(s.nis) === clean(userNisn)) ||
-        (s.nama && userName && s.nama.trim().toLowerCase() === userName.trim().toLowerCase())
-      );
+      const cleanUserNisn = clean(userNisn);
+      const normUserRombel = norm(userRombel);
+      const cleanUserName = String(userName || '').trim().toLowerCase();
+
+      // 1. Prioritaskan pencarian ketat berdasarkan NISN atau NIS terlebih dahulu
+      let myRecord = cleanUserNisn
+        ? siswaData.find(s =>
+            (clean(s.nisn) && clean(s.nisn) === cleanUserNisn) ||
+            (clean(s.nis) && clean(s.nis) === cleanUserNisn)
+          )
+        : undefined;
+
+      // 2. Jika belum ketemu via NISN/NIS, cari berdasarkan Nama + Rombel agar siswa bernama sama di kelas lain tidak tertukar
+      if (!myRecord && cleanUserName && normUserRombel) {
+        myRecord = siswaData.find(s =>
+          s.nama && s.nama.trim().toLowerCase() === cleanUserName &&
+          norm(s.rombel) === normUserRombel
+        );
+      }
+
+      // 3. Fallback terakhir hanya berdasarkan nama jika tidak ada info NISN/NIS maupun Rombel
+      if (!myRecord && cleanUserName) {
+        myRecord = siswaData.find(s =>
+          s.nama && s.nama.trim().toLowerCase() === cleanUserName
+        );
+      }
 
       const targetRombel = (myRecord?.rombel || userRombel || '').trim();
       const targetNorm = norm(targetRombel);
 
       const isMe = (s: any) => {
-        if (clean(s.nisn) && clean(s.nisn) === clean(userNisn)) return true;
-        if (clean(s.nis) && clean(s.nis) === clean(userNisn)) return true;
-        if (s.nama && userName && s.nama.trim().toLowerCase() === userName.trim().toLowerCase()) return true;
+        if (myRecord) {
+          if (clean(myRecord.nisn) && clean(s.nisn) === clean(myRecord.nisn)) return true;
+          if (clean(myRecord.nis) && clean(s.nis) === clean(myRecord.nis)) return true;
+        }
+        if (cleanUserNisn) {
+          if (clean(s.nisn) && clean(s.nisn) === cleanUserNisn) return true;
+          if (clean(s.nis) && clean(s.nis) === cleanUserNisn) return true;
+          return false;
+        }
+        if (s.nama && cleanUserName && s.nama.trim().toLowerCase() === cleanUserName) return true;
         return false;
       };
 

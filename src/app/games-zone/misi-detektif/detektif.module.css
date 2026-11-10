@@ -1,0 +1,591 @@
+.detektifContainer {
+  min-height: calc(100vh - 80px);
+  padding: 24px;
+  background:
+    radial-gradient(circle at 15% 15%, rgba(245, 158, 11, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 85% 25%, rgba(239, 68, 68, 0.07) 0%, transparent 45%),
+    linear-gradient(180deg, #0c0a09 0%, #111827 55%, #090d16 100%);
+  color: #f8fafc;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.theaterOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 99999;
+  padding: 20px;
+  overflow-y: auto;
+  background:
+    radial-gradient(circle at 50% 10%, rgba(180, 83, 9, 0.18) 0%, transparent 60%),
+    linear-gradient(180deg, #0c0a09 0%, #0f172a 100%);
+}
+
+/* Top Detective Command Bar */
+.commandBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(28, 25, 23, 0.85);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  padding: 16px 24px;
+  border-radius: 18px;
+  margin-bottom: 20px;
+  box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.brandLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.badgeEmblem {
+  width: 54px;
+  height: 54px;
+  background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
+  border: 2px solid #fde68a;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  color: #1c1917;
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.45);
+  position: relative;
+}
+
+.hqTitle {
+  font-size: 1.55rem;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  background: linear-gradient(to right, #fef3c7, #fbbf24, #f97316);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.hqSubtitle {
+  font-size: 0.84rem;
+  color: #a8a29e;
+  margin: 3px 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.topControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btnCommand {
+  background: #1c1917;
+  color: #f5f5f4;
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  padding: 9px 15px;
+  border-radius: 11px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.btnCommand:hover {
+  background: #292524;
+  border-color: #fbbf24;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.btnSaveGold {
+  background: linear-gradient(135deg, #d97706 0%, #92400e 100%);
+  border-color: #fbbf24;
+  color: #fffbeb;
+  box-shadow: 0 0 18px rgba(217, 119, 6, 0.35);
+}
+
+.btnSaveGold:hover {
+  background: linear-gradient(135deg, #f59e0b 0%, #b45309 100%);
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.55);
+}
+
+/* Case Selector Tabs */
+.caseTabsBar {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 20px;
+}
+
+.caseTab {
+  background: rgba(28, 25, 23, 0.8);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 12px 18px;
+  min-width: 215px;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  color: #e7e5e4;
+}
+
+.caseTab:hover {
+  border-color: rgba(245, 158, 11, 0.45);
+  transform: translateY(-2px);
+}
+
+.caseTabActive {
+  background: linear-gradient(135deg, rgba(120, 53, 15, 0.65) 0%, rgba(28, 25, 23, 0.95) 100%);
+  border-color: #fbbf24;
+  box-shadow: 0 8px 25px -5px rgba(245, 158, 11, 0.35);
+}
+
+.caseTabIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+/* Master Escape Vault Banner */
+.vaultBanner {
+  background: linear-gradient(135deg, #1c1917 0%, #0f172a 100%);
+  border: 1.5px solid rgba(245, 158, 11, 0.3);
+  border-radius: 20px;
+  padding: 18px 24px;
+  margin-bottom: 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.vaultLocksRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.vaultSeal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  border: 1.5px solid;
+  transition: all 0.3s ease;
+}
+
+.vaultSealLocked {
+  background: rgba(15, 23, 42, 0.8);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: #64748b;
+}
+
+.vaultSealUnlocked {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: #10b981;
+  color: #34d399;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.25);
+}
+
+/* Active Turn & Scanner Action Bar */
+.scannerDeck {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 24px;
+  border-radius: 18px;
+  margin-bottom: 22px;
+  border: 2px solid;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  flex-wrap: wrap;
+}
+
+.btnRadarScan {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #0c0a09;
+  border: 2px solid #fde68a;
+  padding: 14px 26px;
+  border-radius: 14px;
+  font-size: 1.08rem;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.45);
+  transition: all 0.2s ease;
+}
+
+.btnRadarScan:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 0 35px rgba(245, 158, 11, 0.7);
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+}
+
+.btnRadarScan:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 4 Detective Squad Cards */
+.squadsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 1024px) {
+  .squadsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .squadsGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.squadCard {
+  background: rgba(28, 25, 23, 0.88);
+  border-radius: 18px;
+  padding: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  transition: all 0.25s ease;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
+.squadCardActive {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.6);
+}
+
+.gadgetPill {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #e2e8f0;
+  padding: 4px 9px;
+  border-radius: 8px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.gadgetPill:hover {
+  transform: scale(1.05);
+  border-color: #fbbf24;
+}
+
+/* Detective Evidence Corkboard */
+.corkboardWrapper {
+  background:
+    radial-gradient(circle at 50% 30%, rgba(120, 53, 15, 0.18) 0%, transparent 70%),
+    linear-gradient(180deg, #181310 0%, #0f141c 100%);
+  border: 2px solid rgba(217, 119, 6, 0.35);
+  border-radius: 22px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.7), 0 15px 40px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+.corkboardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+  border-bottom: 1px dashed rgba(245, 158, 11, 0.3);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.evidenceGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+  gap: 16px;
+}
+
+.evidenceFolder {
+  background: linear-gradient(145deg, #27221d 0%, #1c1917 100%);
+  border: 1.5px solid rgba(245, 158, 11, 0.28);
+  border-radius: 16px;
+  padding: 16px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 158px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+.evidenceFolder::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 18px;
+  width: 64px;
+  height: 6px;
+  background: #f59e0b;
+  border-radius: 0 0 6px 6px;
+  opacity: 0.8;
+}
+
+.evidenceFolder:hover {
+  transform: translateY(-5px) rotate(-0.5deg);
+  border-color: #fbbf24;
+  box-shadow: 0 14px 30px rgba(245, 158, 11, 0.22);
+}
+
+.evidenceFolderScanning {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 30px rgba(56, 189, 248, 0.7) !important;
+  transform: scale(1.04);
+}
+
+.evidenceFolderSolved {
+  background: linear-gradient(145deg, rgba(6, 78, 59, 0.4) 0%, rgba(15, 23, 42, 0.9) 100%);
+  border-color: rgba(16, 185, 129, 0.45);
+  opacity: 0.82;
+}
+
+.evidenceFolderSolved::before {
+  background: #10b981;
+}
+
+.pinDot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #f87171, #dc2626 70%, #7f1d1d 100%);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.7);
+  position: absolute;
+  top: 10px;
+  right: 12px;
+}
+
+.stampClassified {
+  display: inline-block;
+  border: 1.5px solid;
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+/* Forensic Investigation Modal */
+.forensicModalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(10px);
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.forensicModalCard {
+  background: linear-gradient(180deg, #1c1917 0%, #0f172a 100%);
+  border: 2px solid rgba(245, 158, 11, 0.45);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 920px;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.9);
+  padding: 28px 32px;
+  color: #f8fafc;
+  position: relative;
+}
+
+/* Vintage Parchment / Historical Document Box */
+.parchmentBox {
+  background: linear-gradient(135deg, #292118 0%, #1f1914 100%);
+  border: 1.5px solid rgba(217, 119, 6, 0.45);
+  border-left: 6px solid #f59e0b;
+  border-radius: 16px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  position: relative;
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.45);
+}
+
+.parchmentMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #fbbf24;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed rgba(245, 158, 11, 0.25);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.parchmentContent {
+  font-size: 1.15rem;
+  line-height: 1.65;
+  color: #fef3c7;
+  font-family: Georgia, 'Times New Roman', serif;
+  white-space: pre-line;
+}
+
+/* Cipher Console Box */
+.cipherConsole {
+  background: #090d16;
+  border: 2px solid #38bdf8;
+  border-radius: 16px;
+  padding: 18px 22px;
+  margin-bottom: 20px;
+  box-shadow: 0 0 25px rgba(56, 189, 248, 0.15);
+}
+
+.cipherCodeDisplay {
+  font-family: 'Courier New', monospace;
+  font-size: 1.55rem;
+  font-weight: 900;
+  letter-spacing: 3px;
+  color: #38bdf8;
+  text-align: center;
+  background: rgba(15, 23, 42, 0.9);
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px dashed rgba(56, 189, 248, 0.4);
+  margin: 10px 0;
+}
+
+.alphabetStrip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.alphaCell {
+  background: #1e293b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 3px 6px;
+  text-align: center;
+  min-width: 28px;
+}
+
+/* Progressive Clues Stack */
+.cluesStack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.clueStepCard {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1.5px solid rgba(245, 158, 11, 0.35);
+  border-radius: 14px;
+  padding: 14px 18px;
+  font-size: 1.02rem;
+  line-height: 1.5;
+  color: #f1f5f9;
+}
+
+.clueStepLocked {
+  background: rgba(15, 23, 42, 0.5);
+  border: 1.5px dashed rgba(148, 163, 184, 0.25);
+  color: #94a3b8;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Question Prompt Box */
+.questionPrompt {
+  background: rgba(30, 41, 59, 0.75);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  border-left: 5px solid #38bdf8;
+  border-radius: 16px;
+  padding: 18px 22px;
+  margin-bottom: 20px;
+  font-size: 1.22rem;
+  font-weight: 800;
+  line-height: 1.5;
+  color: #ffffff;
+}
+
+/* UV Light Hidden Clue Box */
+.uvClueBox {
+  background: linear-gradient(135deg, rgba(88, 28, 135, 0.28) 0%, rgba(30, 27, 75, 0.5) 100%);
+  border: 1.5px dashed #c084fc;
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  color: #e9d5ff;
+  font-size: 0.98rem;
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.2);
+}
+
+/* Solution / Forensic Report Box */
+.solutionBox {
+  background: rgba(6, 78, 59, 0.35);
+  border: 2px solid #10b981;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 22px;
+  color: #d1fae5;
+}

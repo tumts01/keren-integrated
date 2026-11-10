@@ -88,7 +88,12 @@ export async function GET(request: Request) {
       } else if (nis && submissionMap.has('ID_' + cleanId(nis))) {
         matchedRecord = submissionMap.get('ID_' + cleanId(nis));
       } else if (nama && submissionMap.has('NAME_' + normName(nama))) {
-        matchedRecord = submissionMap.get('NAME_' + normName(nama));
+        const candidate = submissionMap.get('NAME_' + normName(nama));
+        const candId = cleanId(candidate?.penilai_id);
+        // Hanya cocokkan via nama jika record submission tidak memiliki ID, atau ID-nya bukan milik siswa lain yang berbeda NISN/NIS
+        if (!candId || candId === cleanId(nisn) || candId === cleanId(nis) || normName(String(candidate?.penilai_id || '')) === normName(nama)) {
+          matchedRecord = candidate;
+        }
       }
 
       const sudah = !!matchedRecord;

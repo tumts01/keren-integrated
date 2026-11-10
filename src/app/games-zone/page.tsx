@@ -5,18 +5,25 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styles from './games-zone.module.css';
 import { SaveSlot } from './types';
+import { DetectiveSaveSlot } from './misi-detektif/detektifData';
 import Swal from 'sweetalert2';
 
 export default function GamesZoneLobbyPage() {
   const router = useRouter();
   const [savedSlots, setSavedSlots] = useState<SaveSlot[]>([]);
+  const [detektifSlots, setDetektifSlots] = useState<DetectiveSaveSlot[]>([]);
   const [showLoadModal, setShowLoadModal] = useState(false);
+  const [showDetektifLoadModal, setShowDetektifLoadModal] = useState(false);
 
   useEffect(() => {
     try {
       const slotsStr = localStorage.getItem('gameszone_save_slots');
       if (slotsStr) {
         setSavedSlots(JSON.parse(slotsStr));
+      }
+      const detStr = localStorage.getItem('gameszone_detektif_save_slots');
+      if (detStr) {
+        setDetektifSlots(JSON.parse(detStr));
       }
     } catch (e) {
       console.error(e);
@@ -30,6 +37,36 @@ export default function GamesZoneLobbyPage() {
     } catch (e: any) {
       Swal.fire('Error', 'Gagal memuat sesi: ' + e.message, 'error');
     }
+  };
+
+  const handleOpenDetektifSlot = (slot: DetectiveSaveSlot) => {
+    try {
+      localStorage.setItem('gameszone_detektif_active_session', JSON.stringify(slot.session));
+      router.push('/games-zone/misi-detektif');
+    } catch (e: any) {
+      Swal.fire('Error', 'Gagal memuat sesi detektif: ' + e.message, 'error');
+    }
+  };
+
+  const handleShowDetektifRules = () => {
+    Swal.fire({
+      title: '🕵️ PANDUAN MISI DETEKTIF LITERASI & SEJARAH',
+      html: `
+        <div style="text-align: left; font-size: 0.95rem; line-height: 1.6; color: #334155;">
+          <h4 style="color: #b45309; margin-bottom: 6px;">1. Pembagian 4 Skuad Detektif:</h4>
+          <p style="margin-top: 0;">Bagi kelas menjadi <b>4 Skuad Penyidik</b> (Rajawali Emas, Serigala Siber, Harimau Kencana, Garuda Merah). Tiap skuad dibekali 3 Alat Forensik (Lensa Pembesar, Senter UV +45d, Lencana Emas 2x).</p>
+          
+          <h4 style="color: #b45309; margin-bottom: 6px;">2. 4 Tipe Berkas Investigasi:</h4>
+          <p style="margin-top: 0;">Klik map bukti di Papan Investigasi atau tekan <b>"Pindai Acak Berkas Bukti"</b>: ada <b>Analisis Dokumen</b>, <b>Dekoder Sandi Kriptografi</b>, <b>Deduksi 3 Petunjuk Bertahap</b>, dan <b>Uji Forensik Fakta vs Hoaks</b>.</p>
+          
+          <h4 style="color: #b45309; margin-bottom: 6px;">3. Mode Lempar Rebutan & Bank Bukti Guru:</h4>
+          <p style="margin-top: 0;">Jika skuad utama belum tepat menjawab, aktifkan <b>Mode Rebutan</b> untuk skuad lain! Guru juga dapat menambahkan berkas soal sendiri melalui tombol <b>"+ Bukti Guru"</b>.</p>
+        </div>
+      `,
+      confirmButtonText: 'Siap Menyelidiki!',
+      confirmButtonColor: '#d97706',
+      width: '620px'
+    });
   };
 
   const handleShowRules = () => {
@@ -93,7 +130,7 @@ export default function GamesZoneLobbyPage() {
           PILIH GAME PEMBELAJARAN
         </h2>
         <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
-          Tersedia 1 Game Aktif • 3 Game Dalam Pengembangan
+          Tersedia 2 Game Aktif • 1 Game Dalam Pengembangan
         </span>
       </div>
 
@@ -151,7 +188,73 @@ export default function GamesZoneLobbyPage() {
           </div>
         </div>
 
-        {/* GAME 2: JEOPARDY / CEPAT TANGKAS (COMING SOON) */}
+        {/* GAME 2: MISI DETEKTIF LITERASI & SEJARAH (ACTIVE!) */}
+        <div
+          className={styles.gameCardFeatured}
+          style={{
+            borderColor: '#f59e0b',
+            boxShadow: '0 15px 35px -10px rgba(245, 158, 11, 0.28)'
+          }}
+        >
+          <div style={{ position: 'absolute', top: 18, right: 18, background: 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)', color: '#fffbeb', fontSize: '0.75rem', fontWeight: 900, padding: '4px 12px', borderRadius: 20, letterSpacing: '0.5px', textTransform: 'uppercase', boxShadow: '0 0 15px rgba(245, 158, 11, 0.45)', zIndex: 2 }}>
+            <i className="fas fa-user-secret" style={{ marginRight: 5 }}></i> SIAP DIMAINKAN
+          </div>
+
+          <div>
+            <div className={styles.gameThumbnailBox} style={{ background: 'linear-gradient(135deg, #451a03 0%, #92400e 50%, #78350f 100%)' }}>
+              <i className={`fas fa-user-secret ${styles.gameThumbIcon}`} style={{ color: '#fef3c7' }}></i>
+              <div style={{ position: 'absolute', bottom: 10, left: 14, background: 'rgba(0,0,0,0.65)', padding: '3px 10px', borderRadius: 6, fontSize: '0.75rem', color: '#fde68a', fontWeight: 700 }}>
+                4 Bab Kasus • 20 Berkas Bukti &amp; Sandi
+              </div>
+            </div>
+
+            <h3 className={styles.gameCardTitle}>MISI DETEKTIF LITERASI &amp; SEJARAH</h3>
+            <p className={styles.gameCardDescription}>
+              Petualangan pemecahan sandi kriptografi, deduksi 3 petunjuk bertahap, uji forensik hoaks, dan analisis dokumen sejarah Nusantara &amp; Peradaban Islam dalam format Digital Escape Room kelas.
+            </p>
+
+            <div className={styles.gameTags}>
+              <span className={styles.gameTag}><i className="fas fa-scroll" style={{ color: '#fbbf24', marginRight: 4 }}></i> Analisis Dokumen</span>
+              <span className={styles.gameTag}><i className="fas fa-key" style={{ color: '#38bdf8', marginRight: 4 }}></i> Dekoder Sandi</span>
+              <span className={styles.gameTag}><i className="fas fa-microscope" style={{ color: '#ec4899', marginRight: 4 }}></i> Forensik Hoaks</span>
+              <span className={styles.gameTag}><i className="fas fa-plus-circle" style={{ color: '#34d399', marginRight: 4 }}></i> Bank Bukti Guru</span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <Link
+              href="/games-zone/misi-detektif"
+              className={styles.btnPlayLarge}
+              style={{
+                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                color: '#0c0a09',
+                boxShadow: '0 8px 20px rgba(245, 158, 11, 0.35)'
+              }}
+            >
+              <i className="fas fa-search"></i> MAINKAN SEKARANG (BUKA MARKAS)
+            </Link>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <button 
+                className={styles.btnAction} 
+                onClick={() => setShowDetektifLoadModal(true)}
+                style={{ justifyContent: 'center', fontSize: '0.85rem' }}
+              >
+                <i className="fas fa-folder-open" style={{ color: '#fbbf24' }}></i> Sesi Tersimpan ({detektifSlots.length})
+              </button>
+
+              <button 
+                className={styles.btnAction} 
+                onClick={handleShowDetektifRules}
+                style={{ justifyContent: 'center', fontSize: '0.85rem' }}
+              >
+                <i className="fas fa-book-open" style={{ color: '#38bdf8' }}></i> Aturan Main
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* GAME 3: JEOPARDY / CEPAT TANGKAS (COMING SOON) */}
         <div className={styles.gameCardUpcoming}>
           <div>
             <div className={styles.gameThumbnailBox} style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)' }}>
@@ -170,33 +273,6 @@ export default function GamesZoneLobbyPage() {
               <span className={styles.gameTag}>Semua Mapel</span>
               <span className={styles.gameTag}>Bel Rebutan</span>
               <span className={styles.gameTag}>Matriks Soal</span>
-            </div>
-          </div>
-
-          <button className={styles.btnAction} disabled style={{ width: '100%', justifyContent: 'center', opacity: 0.5 }}>
-            <i className="fas fa-lock"></i> Sedang Disiapkan
-          </button>
-        </div>
-
-        {/* GAME 3: DETEKTIF SEJARAH & LITERASI (COMING SOON) */}
-        <div className={styles.gameCardUpcoming}>
-          <div>
-            <div className={styles.gameThumbnailBox} style={{ background: 'linear-gradient(135deg, #451a03 0%, #78350f 100%)' }}>
-              <i className={`fas fa-search ${styles.gameThumbIcon}`} style={{ opacity: 0.6 }}></i>
-              <div style={{ position: 'absolute', top: 12, right: 12, background: '#334155', color: '#94a3b8', fontSize: '0.7rem', fontWeight: 800, padding: '3px 8px', borderRadius: 6 }}>
-                SEGERA HADIR
-              </div>
-            </div>
-
-            <h3 className={styles.gameCardTitle} style={{ color: '#94a3b8' }}>MISI DETEKTIF LITERASI &amp; SEJARAH</h3>
-            <p className={styles.gameCardDescription}>
-              Petualangan pemecahan sandi teks dan analisis petunjuk dokumen sejarah nusantara dalam format Digital Escape Room kelas.
-            </p>
-
-            <div className={styles.gameTags}>
-              <span className={styles.gameTag}>Literasi Kritis</span>
-              <span className={styles.gameTag}>Escape Room</span>
-              <span className={styles.gameTag}>Analisis Dokumen</span>
             </div>
           </div>
 
@@ -258,6 +334,67 @@ export default function GamesZoneLobbyPage() {
             <div style={{ marginTop: 20, textAlign: 'center' }}>
               <Link href="/games-zone/ekspedisi-pulau-misteri" className={styles.btnPlayLarge}>
                 <i className="fas fa-plus-circle"></i> Mulai Game Baru dari Awal
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SAVED SESSIONS MODAL FOR MISI DETEKTIF */}
+      {showDetektifLoadModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalCard} style={{ maxWidth: 640, borderColor: 'rgba(245, 158, 11, 0.4)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ margin: 0, fontSize: '1.3rem', color: '#fef3c7' }}>
+                <i className="fas fa-user-secret" style={{ color: '#f59e0b', marginRight: 10 }}></i>
+                SESI MISI DETEKTIF TERSIMPAN
+              </h2>
+              <button className={styles.btnAction} onClick={() => setShowDetektifLoadModal(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: 15 }}>
+              Pilih sesi investigasi kelas yang ingin dilanjutkan:
+            </p>
+
+            <div style={{ maxHeight: 300, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {detektifSlots.length > 0 ? (
+                detektifSlots.map(slot => (
+                  <div 
+                    key={slot.id}
+                    style={{ background: '#0f172a', border: '1px solid rgba(245,158,11,0.25)', padding: '14px 18px', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#f1f5f9' }}>{slot.name}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: 4 }}>
+                        Disimpan: {slot.date} • {slot.session.solvedEvidenceIds?.length || 0} Bukti Terpecahkan
+                      </div>
+                    </div>
+                    <button 
+                      className={styles.btnAction}
+                      style={{ background: '#d97706', color: 'white' }}
+                      onClick={() => handleOpenDetektifSlot(slot)}
+                    >
+                      <i className="fas fa-play"></i> Lanjutkan
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>
+                  <i className="fas fa-inbox" style={{ fontSize: '2rem', marginBottom: 10, display: 'block' }}></i>
+                  Belum ada sesi investigasi detektif yang disimpan.
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: 20, textAlign: 'center' }}>
+              <Link
+                href="/games-zone/misi-detektif"
+                className={styles.btnPlayLarge}
+                style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: '#0c0a09' }}
+              >
+                <i className="fas fa-search"></i> Buka Markas Detektif Baru
               </Link>
             </div>
           </div>
