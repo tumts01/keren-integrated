@@ -65,18 +65,124 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [pathname, router]);
 
-  // Popup Pengumuman Baru saat user berhasil login / load
+  const checkAndPromptNamaIbu = async (currentUser: any) => {
+    if (!currentUser || !currentUser.nama) return;
+
+    try {
+      const res = await fetch(`/api/guru/ibu-kandung?nama=${encodeURIComponent(currentUser.nama)}&username=${encodeURIComponent(currentUser.username || '')}`);
+      const data = await res.json();
+
+      if (data.success && data.needUpdate) {
+        const Swal = (await import('sweetalert2')).default;
+
+        await Swal.fire({
+          title: '',
+          html: `
+            <div style="text-align: center; padding: 6px 0;">
+              <div style="width: 64px; height: 64px; border-radius: 50%; background: #fdf2f8; color: #ec4899; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 14px; box-shadow: 0 4px 12px rgba(236, 72, 153, 0.2);">
+                <i class="fas fa-female"></i>
+              </div>
+              <h3 style="margin: 0 0 8px; font-weight: 800; color: #1e293b; font-size: 1.25rem;">
+                Pemutakhiran Data GTK
+              </h3>
+              <p style="margin: 0 0 16px; color: #64748b; font-size: 0.9rem; line-height: 1.5;">
+                Assalamu'alaikum Bpk/Ibu <b>${data.nama || currentUser.nama}</b>.<br/>
+                Mohon masukkan <b>Nama Lengkap Ibu Kandung</b> Anda untuk kelengkapan dan sinkronisasi data EMIS &amp; Simpatika Kemenag.
+              </p>
+              <div style="text-align: left; margin-bottom: 6px;">
+                <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #334155; margin-bottom: 6px;">
+                  Nama Lengkap Ibu Kandung:
+                </label>
+                <input
+                  id="swal-input-nama-ibu"
+                  class="swal2-input"
+                  placeholder="Contoh: Hj. Siti Fatimah"
+                  style="width: 100%; box-sizing: border-box; font-size: 0.95rem; border-radius: 8px; border: 1.5px solid #cbd5e1; padding: 10px 14px; margin: 0; outline: none;"
+                  autocomplete="off"
+                />
+              </div>
+              <div style="text-align: left; font-size: 0.75rem; color: #94a3b8; margin-top: 6px;">
+                *Pastikan ejaan nama sesuai dokumen kependudukan (KTP/KK/Akta).
+              </div>
+            </div>
+          `,
+          confirmButtonText: '<i class="fas fa-paper-plane" style="margin-right: 6px;"></i> Kirim &amp; Simpan Data',
+          confirmButtonColor: '#0284c7',
+          width: '480px',
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          showCancelButton: false,
+          didOpen: () => {
+            const input = document.getElementById('swal-input-nama-ibu') as HTMLInputElement;
+            if (input) {
+              input.focus();
+              input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                  Swal.clickConfirm();
+                }
+              });
+            }
+          },
+          preConfirm: async () => {
+            const input = document.getElementById('swal-input-nama-ibu') as HTMLInputElement;
+            const value = (input?.value || '').trim();
+            if (!value || value.length < 2) {
+              Swal.showValidationMessage('Nama Ibu Kandung wajib diisi minimal 2 karakter!');
+              return false;
+            }
+
+            try {
+              const saveRes = await fetch('/api/guru/ibu-kandung', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  guruId: data.guruId,
+                  nama: data.nama || currentUser.nama,
+                  namaIbuKandung: value
+                })
+              });
+              const saveResult = await saveRes.json();
+              if (!saveResult.success) {
+                Swal.showValidationMessage(saveResult.error || 'Gagal menyimpan ke database');
+                return false;
+              }
+              return value;
+            } catch (err: any) {
+              Swal.showValidationMessage('Terjadi kesalahan jaringan: ' + err.message);
+              return false;
+            }
+          }
+        }).then((result) => {
+          if (result.isConfirmed) {
+            Swal.fire({
+              icon: 'success',
+              title: 'Alhamdulillah, Terima Kasih!',
+              text: 'Data Nama Ibu Kandung Anda telah berhasil tersimpan.',
+              timer: 2500,
+              showConfirmButton: false
+            });
+          }
+        });
+      }
+    } catch (e) {
+      console.error('Error checking nama ibu kandung:', e);
+    }
+  };
+
+  // Popup Pengumuman Baru & Pemutakhiran Data saat user berhasil login / load
   useEffect(() => {
     if (user) {
       fetch('/api/pengumuman')
         .then(r => r.json())
         .then(data => {
+          let hasShownAnn = false;
           if (data.success && data.data && data.data.length > 0) {
             const latest = data.data[0]; // Pengumuman terbaru
             const annId = `${latest.tanggal}_${latest.jam}_${latest.pengirim}`;
             const lastRead = localStorage.getItem('keren_last_read_ann');
             
             if (lastRead !== annId) {
+              hasShownAnn = true;
               import('sweetalert2').then(Swal => {
                 const matchId = latest.lampiran ? (latest.lampiran.match(/\/[d]\/([a-zA-Z0-9_-]+)/) || [])[1] : null;
                 const imgTag = matchId ? `<img src="https://drive.google.com/thumbnail?id=${matchId}&sz=w600" style="width: 100%; border-radius: 8px; margin-bottom: 12px; object-fit: contain; max-height: 350px; display: block;" onerror="this.style.display='none'" />` : '';
@@ -106,12 +212,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   allowOutsideClick: false
                 }).then(() => {
                   localStorage.setItem('keren_last_read_ann', annId);
+                  // Setelah pengumuman ditutup, cek pemutakhiran nama ibu kandung
+                  checkAndPromptNamaIbu(user);
                 });
               });
             }
           }
+          if (!hasShownAnn) {
+            checkAndPromptNamaIbu(user);
+          }
         })
-        .catch(err => console.error('Gagal memuat pengumuman:', err));
+        .catch(err => {
+          console.error('Gagal memuat pengumuman:', err);
+          checkAndPromptNamaIbu(user);
+        });
     }
   }, [user]);
 
