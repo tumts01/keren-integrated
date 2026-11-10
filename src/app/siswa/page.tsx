@@ -794,8 +794,8 @@ function PrintSiswaModal({
     if (mode === 'angkatan') {
       // Export per angkatan: 1 sheet per kelas
       const wb = XLSX.utils.book_new();
-      Object.entries(groupedByKelas).sort(([a], [b]) => a.localeCompare(b)).forEach(([rombel, list]) => {
-        const sortedList = [...list].sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
+      Object.entries(groupedByKelas).sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true })).forEach(([rombel, list]) => {
+        const sortedList = [...list].sort((a, b) => (a.nama || '').localeCompare(b.nama || '', 'id'));
         const rows = sortedList.map((s, i) => ({
           'No': i + 1,
           'Nama Siswa': s.nama,
@@ -1691,7 +1691,13 @@ export default function SiswaPage() {
   }, [searchTerm, selectedTahun, selectedTingkat, selectedMutasi]);
 
   const handleExportExcel = () => {
-    const sortedData = [...filteredData].sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
+    const sortedData = [...filteredData].sort((a, b) => {
+      const rombelA = (a.rombel || '').trim();
+      const rombelB = (b.rombel || '').trim();
+      const rombelComp = rombelA.localeCompare(rombelB, undefined, { numeric: true });
+      if (rombelComp !== 0) return rombelComp;
+      return (a.nama || '').localeCompare(b.nama || '', 'id');
+    });
     const dataToExport = sortedData.map((s, index) => ({
       'No': index + 1,
       'NIS': s.nis,
@@ -1732,7 +1738,10 @@ export default function SiswaPage() {
       { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 40 },
       { wch: 25 }, { wch: 20 }, { wch: 25 }, { wch: 20 }, { wch: 18 }
     ];
-    XLSX.writeFile(workbook, `Data_Siswa_${selectedTahun === 'Semua' ? 'All' : selectedTahun}.xlsx`);
+    const safeTahun = selectedTahun === 'Semua' ? 'All' : selectedTahun.replace(/[/\\?%*:|"<>]/g, '-');
+    const safeTingkat = selectedTingkat !== 'Semua' ? `_Tingkat_${selectedTingkat}` : '';
+    const safeRombel = (selectedRombel && selectedRombel !== 'Semua') ? `_Kelas_${selectedRombel}` : '';
+    XLSX.writeFile(workbook, `Data_Siswa_${safeTahun}${safeTingkat}${safeRombel}.xlsx`);
   };
 
   
