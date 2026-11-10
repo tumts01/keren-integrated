@@ -138,12 +138,11 @@ export default function GamesZoneLobbyPage() {
         
         {/* GAME 1: EKSPEDISI PULAU MISTERI (ACTIVE!) */}
         <div className={styles.gameCardFeatured}>
-          <div style={{ position: 'absolute', top: 18, right: 18, background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', fontSize: '0.75rem', fontWeight: 900, padding: '4px 12px', borderRadius: 20, letterSpacing: '0.5px', textTransform: 'uppercase', boxShadow: '0 0 15px rgba(16, 185, 129, 0.4)' }}>
-            <i className="fas fa-star" style={{ marginRight: 5 }}></i> SIAP DIMAINKAN
-          </div>
-
           <div>
             <div className={styles.gameThumbnailBox} style={{ background: 'linear-gradient(135deg, #065f46 0%, #047857 50%, #0f766e 100%)' }}>
+              <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 5, background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', border: '1px solid #6ee7b7', color: 'white', fontSize: '0.73rem', fontWeight: 900, padding: '5px 12px', borderRadius: 20, letterSpacing: '0.5px', textTransform: 'uppercase', boxShadow: '0 4px 14px rgba(0, 0, 0, 0.45)' }}>
+                <i className="fas fa-star" style={{ marginRight: 5 }}></i> SIAP DIMAINKAN
+              </div>
               <i className={`fas fa-map-marked-alt ${styles.gameThumbIcon}`}></i>
               <div style={{ position: 'absolute', bottom: 10, left: 14, background: 'rgba(0,0,0,0.6)', padding: '3px 10px', borderRadius: 6, fontSize: '0.75rem', color: '#a7f3d0', fontWeight: 700 }}>
                 40 Petak Papan • Sains &amp; Nalar
@@ -196,12 +195,11 @@ export default function GamesZoneLobbyPage() {
             boxShadow: '0 15px 35px -10px rgba(245, 158, 11, 0.28)'
           }}
         >
-          <div style={{ position: 'absolute', top: 18, right: 18, background: 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)', color: '#fffbeb', fontSize: '0.75rem', fontWeight: 900, padding: '4px 12px', borderRadius: 20, letterSpacing: '0.5px', textTransform: 'uppercase', boxShadow: '0 0 15px rgba(245, 158, 11, 0.45)', zIndex: 2 }}>
-            <i className="fas fa-user-secret" style={{ marginRight: 5 }}></i> SIAP DIMAINKAN
-          </div>
-
           <div>
             <div className={styles.gameThumbnailBox} style={{ background: 'linear-gradient(135deg, #451a03 0%, #92400e 50%, #78350f 100%)' }}>
+              <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 5, background: 'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)', border: '1px solid #fde68a', color: '#fffbeb', fontSize: '0.73rem', fontWeight: 900, padding: '5px 12px', borderRadius: 20, letterSpacing: '0.5px', textTransform: 'uppercase', boxShadow: '0 4px 14px rgba(0, 0, 0, 0.45)' }}>
+                <i className="fas fa-user-secret" style={{ marginRight: 5 }}></i> SIAP DIMAINKAN
+              </div>
               <i className={`fas fa-user-secret ${styles.gameThumbIcon}`} style={{ color: '#fef3c7' }}></i>
               <div style={{ position: 'absolute', bottom: 10, left: 14, background: 'rgba(0,0,0,0.65)', padding: '3px 10px', borderRadius: 6, fontSize: '0.75rem', color: '#fde68a', fontWeight: 700 }}>
                 4 Bab Kasus • 20 Berkas Bukti &amp; Sandi
