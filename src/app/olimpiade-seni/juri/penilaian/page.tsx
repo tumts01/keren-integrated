@@ -251,39 +251,123 @@ export default function PenilaianJuriPage() {
             justifyContent: 'space-between',
             alignItems: 'center',
             background: 'white',
-            padding: '20px 24px',
-            borderRadius: '16px',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
+            padding: '22px 26px',
+            borderRadius: '18px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
             marginBottom: '18px',
             flexWrap: 'wrap',
-            gap: '14px'
+            gap: '18px'
           }}
         >
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-              <span
+          <div style={{ display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap', flex: '1 1 540px' }}>
+            {/* Logo Olimpiade */}
+            <div
+              style={{
+                width: '76px',
+                height: '76px',
+                minWidth: '76px',
+                borderRadius: '16px',
+                background: '#f8fafc',
+                border: '1.5px solid #e2e8f0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '6px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+              }}
+            >
+              <img
+                src="/logo_olimpiade_seni.png"
+                alt="Logo Olimpiade & Seni"
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/logo.png';
+                }}
+              />
+            </div>
+
+            {/* Info Dewan Juri & Cabang */}
+            <div style={{ flex: '1 1 360px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5, flexWrap: 'wrap' }}>
+                <span
+                  style={{
+                    background: '#ecfdf5',
+                    color: '#059669',
+                    border: '1px solid #a7f3d0',
+                    padding: '3px 10px',
+                    borderRadius: 20,
+                    fontSize: '0.75rem',
+                    fontWeight: 800,
+                    letterSpacing: '0.03em'
+                  }}
+                >
+                  PORTAL DEWAN JURI RESMI
+                </span>
+                <span
+                  style={{
+                    background: '#f0f9ff',
+                    color: '#0284c7',
+                    border: '1px solid #bae6fd',
+                    padding: '3px 10px',
+                    borderRadius: 20,
+                    fontSize: '0.75rem',
+                    fontWeight: 800
+                  }}
+                >
+                  LOMBA SENI
+                </span>
+                <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>
+                  MTs Almaarif 01 Singosari
+                </span>
+              </div>
+
+              <h2 style={{ margin: '0 0 8px 0', color: '#0f172a', fontSize: '1.45rem', fontWeight: 800 }}>
+                Lembar Penilaian Juri — <span style={{ color: '#0284c7' }}>{juriData.cabang_lomba}</span>
+              </h2>
+
+              {/* Tonjolkan Nama Juri */}
+              <div
                 style={{
-                  background: '#ecfdf5',
-                  color: '#059669',
-                  border: '1px solid #a7f3d0',
-                  padding: '3px 10px',
-                  borderRadius: 20,
-                  fontSize: '0.75rem',
-                  fontWeight: 800
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                  color: 'white',
+                  padding: '7px 16px',
+                  borderRadius: 12,
+                  boxShadow: '0 3px 10px rgba(2, 132, 199, 0.28)',
+                  marginBottom: 6
                 }}
               >
-                PORTAL DEWAN JURI RESMI
-              </span>
-              <span style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 600 }}>
-                MTs Almaarif 01 Singosari
-              </span>
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: '50%',
+                    background: 'rgba(255, 255, 255, 0.22)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '1rem'
+                  }}
+                >
+                  <i className="fas fa-user-tie"></i>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: '#bae6fd', fontWeight: 700 }}>
+                    Dewan Juri
+                  </div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 900, letterSpacing: '-0.01em', lineHeight: 1.15 }}>
+                    {juriData.nama_juri}
+                  </div>
+                </div>
+              </div>
+
+              <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <i className="fas fa-check-circle" style={{ color: '#10b981' }}></i>
+                <span>Nilai tiap aspek otomatis dijumlahkan dan tersimpan saat Anda berpindah kolom input.</span>
+              </p>
             </div>
-            <h2 style={{ margin: '0 0 4px 0', color: '#0f172a', fontSize: '1.45rem', fontWeight: 800 }}>
-              Lembar Penilaian Juri — <span style={{ color: '#0284c7' }}>{juriData.cabang_lomba}</span>
-            </h2>
-            <p style={{ margin: 0, color: '#475569', fontSize: '0.92rem' }}>
-              Selamat bertugas, <strong>{juriData.nama_juri}</strong>. Nilai tiap aspek akan dijumlahkan dan tersimpan otomatis saat Anda berpindah kolom.
-            </p>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>

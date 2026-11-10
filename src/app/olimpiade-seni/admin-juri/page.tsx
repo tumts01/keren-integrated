@@ -591,42 +591,68 @@ export default function AdminJuriOlimpiadePage() {
             gap: '16px'
           }}
         >
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              <Link
-                href="/olimpiade-seni"
-                style={{
-                  color: '#0284c7',
-                  textDecoration: 'none',
-                  fontSize: '0.85rem',
-                  fontWeight: 700,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flex: '1 1 560px' }}>
+            <div
+              style={{
+                width: '74px',
+                height: '74px',
+                minWidth: '74px',
+                borderRadius: '16px',
+                background: '#f8fafc',
+                border: '1.5px solid #e2e8f0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '6px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+              }}
+            >
+              <img
+                src="/logo_olimpiade_seni.png"
+                alt="Logo Olimpiade & Seni"
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/logo.png';
                 }}
-              >
-                <i className="fas fa-arrow-left"></i> Beranda Olimpiade
-              </Link>
-              <span style={{ color: '#cbd5e1' }}>•</span>
-              <span
-                style={{
-                  background: '#fef3c7',
-                  color: '#b45309',
-                  padding: '2px 10px',
-                  borderRadius: 20,
-                  fontSize: '0.75rem',
-                  fontWeight: 800
-                }}
-              >
-                MANAJEMEN DEWAN JURI LOMBA SENI
-              </span>
+              />
             </div>
-            <h1 style={{ margin: 0, fontSize: '1.65rem', fontWeight: 900, color: '#0f172a' }}>
-              Pusat Kendali Juri, Kriteria Penilaian &amp; Rekap Nilai Seni
-            </h1>
-            <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '0.92rem' }}>
-              Kelola akun Dewan Juri, atur kolom kriteria penilaian tiap cabang lomba seni, pantau progres pengisian juri secara *real-time*, dan unduh rekapitulasi Excel.
-            </p>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                <Link
+                  href="/olimpiade-seni"
+                  style={{
+                    color: '#0284c7',
+                    textDecoration: 'none',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6
+                  }}
+                >
+                  <i className="fas fa-arrow-left"></i> Beranda Olimpiade
+                </Link>
+                <span style={{ color: '#cbd5e1' }}>•</span>
+                <span
+                  style={{
+                    background: '#fef3c7',
+                    color: '#b45309',
+                    padding: '2px 10px',
+                    borderRadius: 20,
+                    fontSize: '0.75rem',
+                    fontWeight: 800
+                  }}
+                >
+                  MANAJEMEN DEWAN JURI LOMBA SENI
+                </span>
+              </div>
+              <h1 style={{ margin: 0, fontSize: '1.65rem', fontWeight: 900, color: '#0f172a' }}>
+                Pusat Kendali Juri, Kriteria Penilaian &amp; Rekap Nilai Seni
+              </h1>
+              <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '0.92rem' }}>
+                Kelola akun Dewan Juri, atur kolom kriteria penilaian tiap cabang lomba seni, pantau progres pengisian juri secara <em>real-time</em>, dan unduh rekapitulasi Excel.
+              </p>
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
