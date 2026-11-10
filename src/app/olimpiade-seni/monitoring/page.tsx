@@ -15,6 +15,8 @@ export default function MonitoringOlimpiadePage() {
   const [hasilPublished, setHasilPublished] = useState(false);
   const [publishedCabang, setPublishedCabang] = useState<string[]>([]);
   const [publishedAt, setPublishedAt] = useState<string | null>(null);
+  const [linkSkPengumuman, setLinkSkPengumuman] = useState('');
+  const [tempLinkSk, setTempLinkSk] = useState('');
   const [publishing, setPublishing] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [tempSelectedCabang, setTempSelectedCabang] = useState<string[]>([]);
@@ -46,6 +48,8 @@ export default function MonitoringOlimpiadePage() {
         setHasilPublished(json.hasil_published);
         setPublishedCabang(Array.isArray(json.published_cabang) ? json.published_cabang : []);
         setPublishedAt(json.published_at);
+        setLinkSkPengumuman(json.link_sk_pengumuman || '');
+        setTempLinkSk(json.link_sk_pengumuman || '');
       }
     } catch (err) {
       console.error('Gagal fetch config:', err);
@@ -111,6 +115,7 @@ export default function MonitoringOlimpiadePage() {
   // Buka dialog custom publikasi
   const openPublishModal = () => {
     setTempSelectedCabang([...publishedCabang]);
+    setTempLinkSk(linkSkPengumuman || '');
     setShowPublishModal(true);
   };
 
@@ -121,13 +126,18 @@ export default function MonitoringOlimpiadePage() {
       const res = await fetch('/api/olimpiade-seni/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ published_cabang: tempSelectedCabang }),
+        body: JSON.stringify({ 
+          published_cabang: tempSelectedCabang,
+          link_sk_pengumuman: (tempLinkSk || '').trim()
+        }),
       });
       const json = await res.json();
       if (json.success) {
         setPublishedCabang(json.published_cabang);
         setHasilPublished(json.hasil_published);
         setPublishedAt(json.published_at);
+        setLinkSkPengumuman(json.link_sk_pengumuman || '');
+        setTempLinkSk(json.link_sk_pengumuman || '');
         setShowPublishModal(false);
         Swal.fire('Berhasil!', `Pengaturan publikasi berhasil disimpan (${json.published_cabang.length} lomba dipublikasikan).`, 'success');
       } else {
@@ -137,6 +147,98 @@ export default function MonitoringOlimpiadePage() {
       Swal.fire('Error', 'Gagal menyimpan publikasi lomba', 'error');
     } finally {
       setPublishing(false);
+    }
+  };
+
+  // Aksi Download SK Pengumuman
+  const handleDownloadSK = () => {
+    const isSkReady = publishedCabang.length > 0;
+    if (!isSkReady) {
+      Swal.fire({
+        icon: 'info',
+        title: 'SK Belum Tersedia',
+        text: 'Tombol Download SK Pengumuman masih dinonaktifkan karena panitia belum mempublikasikan hasil lomba.',
+        confirmButtonColor: '#3b82f6',
+        confirmButtonText: 'Mengerti',
+      });
+      return;
+    }
+
+    if (!linkSkPengumuman || !linkSkPengumuman.trim()) {
+      if (isAdmin) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Tautan SK Belum Diatur',
+          text: 'Anda masuk sebagai Admin. Tautan dokumen SK Pengumuman belum diatur. Apakah Anda ingin mengaturnya sekarang?',
+          showCancelButton: true,
+          confirmButtonColor: '#f59e0b',
+          confirmButtonText: 'Atur Link Sekarang',
+          cancelButtonText: 'Nanti',
+        }).then((result) => {
+          if (result.isConfirmed) {
+            handleEditLinkSK();
+          }
+        });
+      } else {
+        Swal.fire({
+          icon: 'info',
+          title: 'Tautan SK Sedang Disiapkan',
+          text: 'Dokumen SK Pengumuman sedang disiapkan oleh panitia. Silakan cek kembali beberapa saat lagi.',
+          confirmButtonColor: '#3b82f6',
+          confirmButtonText: 'Tutup',
+        });
+      }
+      return;
+    }
+
+    window.open(linkSkPengumuman.trim(), '_blank', 'noopener,noreferrer');
+  };
+
+  // Admin: Atur URL Tautan SK Pengumuman langsung via prompt
+  const handleEditLinkSK = async () => {
+    const { value: url } = await Swal.fire({
+      title: 'Atur Link SK Pengumuman',
+      text: 'Masukkan URL dokumen SK Pengumuman resmi (misal: Google Drive, PDF, atau tautan berkas resmi):',
+      input: 'url',
+      inputValue: linkSkPengumuman || '',
+      inputPlaceholder: 'https://drive.google.com/...',
+      showCancelButton: true,
+      confirmButtonText: '<i class="fas fa-save"></i> Simpan Link',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#0284c7',
+      inputValidator: (val) => {
+        if (val && !val.trim().startsWith('http://') && !val.trim().startsWith('https://')) {
+          return 'URL harus diawali dengan http:// atau https://';
+        }
+      }
+    });
+
+    if (url !== undefined) {
+      const cleanUrl = (url || '').trim();
+      try {
+        Swal.showLoading();
+        const res = await fetch('/api/olimpiade-seni/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ link_sk_pengumuman: cleanUrl }),
+        });
+        const json = await res.json();
+        if (json.success) {
+          setLinkSkPengumuman(cleanUrl);
+          setTempLinkSk(cleanUrl);
+          Swal.fire({
+            icon: 'success',
+            title: 'Berhasil Disimpan!',
+            text: cleanUrl ? 'Tautan dokumen SK Pengumuman berhasil disimpan.' : 'Tautan dokumen SK Pengumuman dikosongkan.',
+            timer: 2000,
+            showConfirmButton: false,
+          });
+        } else {
+          Swal.fire('Gagal', json.error || 'Gagal menyimpan tautan SK', 'error');
+        }
+      } catch (e: any) {
+        Swal.fire('Error', e.message, 'error');
+      }
     }
   };
 
@@ -528,6 +630,77 @@ export default function MonitoringOlimpiadePage() {
           <p style={{ margin: 0, color: '#64748b' }}>Klasemen nilai peserta Olimpiade & Lomba Seni secara real-time</p>
         </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Tombol Download SK Pengumuman: Aktif jika hasil lomba dipublis, Mati jika belum */}
+          <button
+            onClick={handleDownloadSK}
+            title={
+              publishedCabang.length === 0
+                ? 'Tombol SK Pengumuman belum aktif karena hasil lomba belum dipublikasikan oleh panitia'
+                : linkSkPengumuman
+                ? 'Klik untuk mengunduh / membuka Dokumen SK Pengumuman Resmi'
+                : 'Dokumen SK Pengumuman (Tautan sedang disiapkan)'
+            }
+            style={{
+              background: publishedCabang.length > 0
+                ? 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'
+                : '#94a3b8',
+              color: 'white',
+              border: 'none',
+              padding: '10px 18px',
+              borderRadius: '8px',
+              cursor: publishedCabang.length > 0 ? 'pointer' : 'not-allowed',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: publishedCabang.length > 0 ? '0 2px 8px rgba(220,38,38,0.35)' : 'none',
+              opacity: publishedCabang.length > 0 ? 1 : 0.65,
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <i className={`fas ${publishedCabang.length > 0 ? 'fa-file-pdf' : 'fa-lock'}`}></i>
+            <span>Download SK Pengumuman</span>
+            {publishedCabang.length === 0 && (
+              <span style={{
+                background: 'rgba(0,0,0,0.22)',
+                padding: '2px 7px',
+                borderRadius: '4px',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                letterSpacing: '0.3px',
+                marginLeft: '2px'
+              }}>
+                Terkunci
+              </span>
+            )}
+          </button>
+
+          {/* Tombol Admin: Atur Link SK */}
+          {isAdmin && (
+            <button
+              onClick={handleEditLinkSK}
+              title="Atur tautan URL dokumen SK Pengumuman"
+              style={{
+                background: '#f59e0b',
+                color: 'white',
+                border: 'none',
+                padding: '10px 14px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 700,
+                fontSize: '0.88rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 2px 6px rgba(245,158,11,0.25)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <i className="fas fa-link"></i> Atur Link SK
+            </button>
+          )}
+
           {(isAdmin || publishedCabang.length > 0) && (
             <button 
               onClick={handleExportExcel}
@@ -567,9 +740,13 @@ export default function MonitoringOlimpiadePage() {
         <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '12px', padding: '60px 20px', textAlign: 'center', marginTop: '40px' }}>
           <i className="fas fa-eye-slash" style={{ fontSize: '4rem', color: '#fcd34d', marginBottom: '20px' }}></i>
           <h3 style={{ margin: '0 0 12px 0', color: '#92400e', fontSize: '1.5rem' }}>Live Score Sedang Disembunyikan</h3>
-          <p style={{ margin: 0, color: '#b45309', fontSize: '1.1rem' }}>
+          <p style={{ margin: '0 0 16px 0', color: '#b45309', fontSize: '1.1rem' }}>
             Hasil ujian belum dipublikasikan oleh panitia. Mohon menunggu pengumuman resmi.
           </p>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#fef3c7', padding: '8px 16px', borderRadius: '8px', color: '#92400e', fontSize: '0.88rem' }}>
+            <i className="fas fa-info-circle"></i>
+            <span>Tombol <b>Download SK Pengumuman</b> di atas akan aktif otomatis setelah hasil lomba resmi diumumkan panitia.</span>
+          </div>
         </div>
       ) : (
         <>
@@ -732,6 +909,48 @@ export default function MonitoringOlimpiadePage() {
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Info & Pengaturan Dokumen SK Pengumuman di Admin Banner */}
+              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
+                  <i className="fas fa-file-pdf" style={{ color: '#dc2626', fontSize: '1rem' }}></i>
+                  <span style={{ fontWeight: 700, color: '#334155' }}>Dokumen SK Pengumuman:</span>
+                  {linkSkPengumuman ? (
+                    <a
+                      href={linkSkPengumuman}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: '#0284c7', textDecoration: 'underline', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <span>{linkSkPengumuman.length > 45 ? `${linkSkPengumuman.slice(0, 45)}...` : linkSkPengumuman}</span>
+                      <i className="fas fa-external-link-alt" style={{ fontSize: '0.75rem' }}></i>
+                    </a>
+                  ) : (
+                    <span style={{ color: '#b45309', fontStyle: 'italic', background: '#fef3c7', padding: '2px 8px', borderRadius: '4px' }}>
+                      Belum diatur (klik tombol di samping untuk mengatur tautan SK)
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleEditLinkSK}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: 'white',
+                    color: '#0f172a',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <i className="fas fa-edit" style={{ color: '#f59e0b' }}></i> Ubah Link SK
+                </button>
               </div>
             </div>
           )}
@@ -1314,6 +1533,53 @@ export default function MonitoringOlimpiadePage() {
                   </label>
                 );
               })}
+            </div>
+
+            {/* Modal Section: Pengaturan Link SK Pengumuman */}
+            <div style={{ padding: '16px 24px', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+              <label style={{ display: 'block', fontSize: '0.86rem', fontWeight: 700, color: '#1e293b', marginBottom: '6px' }}>
+                <i className="fas fa-file-pdf" style={{ color: '#dc2626', marginRight: '6px' }}></i>
+                Link Dokumen SK Pengumuman:
+              </label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="url"
+                  value={tempLinkSk}
+                  onChange={(e) => setTempLinkSk(e.target.value)}
+                  placeholder="https://drive.google.com/... (Google Drive / tautan PDF berkas SK)"
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.85rem'
+                  }}
+                />
+                {tempLinkSk && (
+                  <a
+                    href={tempLinkSk}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      padding: '8px 12px',
+                      background: '#e0f2fe',
+                      color: '#0369a1',
+                      borderRadius: '6px',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <i className="fas fa-external-link-alt"></i> Tes
+                  </a>
+                )}
+              </div>
+              <p style={{ margin: '6px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                Link ini akan dibuka ketika pengunjung mengklik tombol <b>Download SK Pengumuman</b> setelah hasil lomba dipublikasikan.
+              </p>
             </div>
 
             {/* Modal Footer */}

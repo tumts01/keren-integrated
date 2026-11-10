@@ -58,12 +58,14 @@ export async function GET() {
 
     const hasilPublished = publishedCabang.length > 0;
     const publishedAt = meta.published_at || olimpiadeConfig?.published_at || null;
+    const linkSkPengumuman = meta.link_sk_pengumuman || '';
 
     return NextResponse.json({
       success: true,
       hasil_published: hasilPublished,
       published_cabang: publishedCabang,
       published_at: publishedAt,
+      link_sk_pengumuman: linkSkPengumuman,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -74,7 +76,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { publish, published_cabang, toggle_cabang } = body;
+    const { publish, published_cabang, toggle_cabang, link_sk_pengumuman } = body;
 
     const { data: existing } = await supabase
       .from('profil_lembaga')
@@ -124,10 +126,15 @@ export async function POST(req: Request) {
     const nowIso = new Date().toISOString();
     const publishedAt = isPublished ? (currentMeta.published_at || nowIso) : null;
 
+    const nextLinkSk = link_sk_pengumuman !== undefined 
+      ? String(link_sk_pengumuman || '').trim() 
+      : (currentMeta.link_sk_pengumuman || '');
+
     const newMeta = {
       ...currentMeta,
       published_cabang: nextPublishedCabang,
       published_at: publishedAt,
+      link_sk_pengumuman: nextLinkSk,
     };
 
     if (existing) {
@@ -174,6 +181,7 @@ export async function POST(req: Request) {
       hasil_published: isPublished,
       published_cabang: nextPublishedCabang,
       published_at: publishedAt,
+      link_sk_pengumuman: nextLinkSk,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
