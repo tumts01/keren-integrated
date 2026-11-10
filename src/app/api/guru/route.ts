@@ -78,6 +78,7 @@ export async function GET() {
         tempatLahir: (row.metadata?.['Tempat Lahir'] || '') || '',
         tanggalLahir: (row.metadata?.['Tanggal Lahir'] || '') || '',
         nik: (row.metadata?.['NIK'] || '') || '',
+        namaIbuKandung: (row.metadata?.['Nama Ibu Kandung'] || row.metadata?.['NAMA IBU KANDUNG'] || row.metadata?.['Nama Ibu'] || '') || '',
         noHp: (row.metadata?.['No WA'] || '') || '',
         alamat: (row.metadata?.['Alamat'] || '') || '',
         tanggalSk: (row.metadata?.['Tanggal SK Awal'] || '') || '',

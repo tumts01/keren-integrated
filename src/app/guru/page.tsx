@@ -27,6 +27,7 @@ interface Guru {
   tempatLahir: string;
   tanggalLahir: string;
   nik: string;
+  namaIbuKandung?: string;
   noHp: string;
   alamat: string;
   tanggalSk: string;
@@ -249,6 +250,7 @@ export default function GuruPage() {
       'Pendidikan': g.pendidikan,
       'Tempat Lahir': g.tempatLahir,
       'Tanggal Lahir': g.tanggalLahir,
+      'Nama Ibu Kandung': g.namaIbuKandung || g.rawMetadata?.['Nama Ibu Kandung'] || '',
       'NIK': g.nik,
       'No. HP': g.noHp,
       'Alamat': g.alamat,
@@ -319,6 +321,10 @@ export default function GuruPage() {
                 <div className={styles.infoGroup}>
                   <span className={styles.infoLabel}>Tempat, Tgl Lahir</span>
                   <div className={styles.infoValue}>{selectedGuru.tempatLahir || '-'}, {selectedGuru.tanggalLahir || '-'}</div>
+                </div>
+                <div className={styles.infoGroup}>
+                  <span className={styles.infoLabel}>Nama Ibu Kandung</span>
+                  <div className={styles.infoValue}>{selectedGuru.namaIbuKandung || selectedGuru.rawMetadata?.['Nama Ibu Kandung'] || '-'}</div>
                 </div>
                 <div className={styles.infoGroup}>
                   <span className={styles.infoLabel}>Email</span>
@@ -488,6 +494,7 @@ export default function GuruPage() {
                   <th>Jenis Kelamin</th>
                   <th>Tempat Lahir</th>
                   <th>Tanggal Lahir</th>
+                  <th>Nama Ibu Kandung</th>
                   <th>NIK</th>
                   <th>No WA</th>
                   <th>Email</th>
@@ -540,6 +547,7 @@ export default function GuruPage() {
                       <td>{guru.jenisKelamin || '-'}</td>
                       <td>{guru.tempatLahir || '-'}</td>
                       <td>{guru.tanggalLahir || '-'}</td>
+                      <td>{guru.namaIbuKandung || guru.rawMetadata?.['Nama Ibu Kandung'] || '-'}</td>
                       <td>{guru.nik || '-'}</td>
                       <td>{guru.noHp || '-'}</td>
                       <td>{guru.email || '-'}</td>
@@ -583,7 +591,7 @@ export default function GuruPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={19} style={{ textAlign: 'center', padding: '40px' }}>
+                    <td colSpan={20} style={{ textAlign: 'center', padding: '40px' }}>
                       <i className="fas fa-folder-open" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
                       Tidak ada data guru yang ditemukan. Coba cek isi Excel Anda.
                     </td>

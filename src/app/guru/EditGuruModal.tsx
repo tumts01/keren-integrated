@@ -29,6 +29,7 @@ export interface GuruData {
   tanggalSk: string;
   email: string;
   pendidikan: string;
+  namaIbuKandung?: string;
   isSertifikasi?: boolean;
   rawMetadata?: Record<string, any>;
 }
@@ -53,6 +54,7 @@ export default function EditGuruModal({ guru, isOpen, onClose, onSuccess }: Edit
   const [jenisKelamin, setJenisKelamin] = useState('Laki-Laki');
   const [tempatLahir, setTempatLahir] = useState('');
   const [tanggalLahir, setTanggalLahir] = useState('');
+  const [namaIbuKandung, setNamaIbuKandung] = useState('');
 
   const [status, setStatus] = useState('Aktif');
   const [statusGuru, setStatusGuru] = useState('GTY');
@@ -99,6 +101,7 @@ export default function EditGuruModal({ guru, isOpen, onClose, onSuccess }: Edit
       setJenisKelamin(guru.jenisKelamin || 'Laki-Laki');
       setTempatLahir(guru.tempatLahir || '');
       setTanggalLahir(guru.tanggalLahir || '');
+      setNamaIbuKandung(guru.namaIbuKandung || guru.rawMetadata?.['Nama Ibu Kandung'] || guru.rawMetadata?.['NAMA IBU KANDUNG'] || guru.rawMetadata?.['Nama Ibu'] || '');
 
       setStatus(guru.status || 'Aktif');
       setStatusGuru(guru.statusGuru || guru.rawMetadata?.['Status Guru'] || 'GTY');
@@ -138,6 +141,7 @@ export default function EditGuruModal({ guru, isOpen, onClose, onSuccess }: Edit
       setJenisKelamin('Laki-Laki');
       setTempatLahir('');
       setTanggalLahir('');
+      setNamaIbuKandung('');
 
       setStatus('Aktif');
       setStatusGuru('GTY');
@@ -188,6 +192,7 @@ export default function EditGuruModal({ guru, isOpen, onClose, onSuccess }: Edit
         'Jenis Kelamin': jenisKelamin,
         'Tempat Lahir': tempatLahir.trim(),
         'Tanggal Lahir': tanggalLahir.trim(),
+        'Nama Ibu Kandung': namaIbuKandung.trim(),
         'Status': status,
         'Status Guru': statusGuru,
         'Jabatan': jabatan.trim(),
@@ -570,6 +575,30 @@ export default function EditGuruModal({ guru, isOpen, onClose, onSuccess }: Edit
                       }}
                     />
                   </div>
+                </div>
+
+                {/* Nama Ibu Kandung */}
+                <div className={styles.infoGroup}>
+                  <label className={styles.infoLabel}>
+                    <i className="fas fa-female" style={{ color: '#ec4899', marginRight: '5px' }}></i>
+                    Nama Ibu Kandung
+                  </label>
+                  <input
+                    type="text"
+                    value={namaIbuKandung}
+                    onChange={(e) => setNamaIbuKandung(e.target.value)}
+                    placeholder="Contoh: Hj. Siti Aminah (sesuai dokumen kependudukan)"
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.9rem',
+                      color: '#0f172a'
+                    }}
+                  />
+                  <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                    Diperlukan untuk kelengkapan dan sinkronisasi data GTK di EMIS / Simpatika Kemenag.
+                  </span>
                 </div>
 
                 {/* No WA & Email */}
