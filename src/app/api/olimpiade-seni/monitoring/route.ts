@@ -24,7 +24,8 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const cabangLomba = searchParams.get('cabangLomba');
-    const tahap = searchParams.get('tahap') === 'final' ? 'final' : 'seleksi';
+    const tahapParam = (searchParams.get('tahap') || '').toLowerCase();
+    const tahap: 'seleksi' | 'final' | 'seni' = tahapParam === 'seni' ? 'seni' : (tahapParam === 'final' ? 'final' : 'seleksi');
 
     // Ambil data nilai JURI (untuk Cabang Seni yang langsung Final)
     const { data: nilaiData, error: errNilai } = await supabase
@@ -194,13 +195,15 @@ export async function GET(req: Request) {
       };
     });
 
-    // Tampilkan hanya 30 peserta yang lolos di setiap cabang mapel Akademik (baik pada tab Seleksi maupun Final)
+    // Tampilkan data sesuai tahapan:
+    // - 'seleksi': Hanya Top 30 peserta lolos pada mapel Akademik
+    // - 'final': Hanya Top 30 finalis mapel Akademik (fokus murni Akademik)
+    // - 'seni': Seluruh peserta cabang Lomba Seni dinilai oleh Dewan Juri
     const filteredByStage = rawResult.filter(item => {
-      if (tahap === 'seleksi') {
+      if (tahap === 'seleksi' || tahap === 'final') {
         return item.kategori_lomba === 'akademik' && item.lolos_seleksi;
       } else {
-        if (item.kategori_lomba === 'seni') return true;
-        return item.lolos_seleksi;
+        return item.kategori_lomba === 'seni';
       }
     });
 
@@ -217,9 +220,14 @@ export async function GET(req: Request) {
       return (a.nomor_peserta || '').localeCompare(b.nomor_peserta || '');
     });
 
-    const cabangList = tahap === 'seleksi'
-      ? [...CABANG_AKADEMIK]
-      : [...CABANG_AKADEMIK, ...CABANG_SENI];
+    const dynamicCabangSeni = Array.from(new Set(
+      rawResult.filter(r => r.kategori_lomba === 'seni').map(r => r.cabang_lomba).filter(Boolean)
+    ));
+    const finalCabangSeni = Array.from(new Set([...CABANG_SENI, ...dynamicCabangSeni])).sort();
+
+    const cabangList = tahap === 'seni'
+      ? finalCabangSeni
+      : [...CABANG_AKADEMIK];
 
     return NextResponse.json({
       success: true,

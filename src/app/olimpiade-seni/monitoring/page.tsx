@@ -21,7 +21,7 @@ export default function MonitoringOlimpiadePage() {
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [tempSelectedCabang, setTempSelectedCabang] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [tahapView, setTahapView] = useState<'seleksi' | 'final'>('seleksi');
+  const [tahapView, setTahapView] = useState<'seleksi' | 'final' | 'seni'>('seleksi');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(30);
 
@@ -56,7 +56,7 @@ export default function MonitoringOlimpiadePage() {
     }
   };
 
-  const fetchData = async (targetTahap?: 'seleksi' | 'final') => {
+  const fetchData = async (targetTahap?: 'seleksi' | 'final' | 'seni') => {
     const t = targetTahap || tahapView;
     setLoading(true);
     try {
@@ -362,7 +362,7 @@ export default function MonitoringOlimpiadePage() {
     const map: Record<string, number> = {};
     const byCabang: Record<string, any[]> = {};
     visibleData.forEach(d => {
-      if (tahapView === 'final' && Number(d.rata_rata) <= 0) return;
+      if ((tahapView === 'final' || tahapView === 'seni') && Number(d.rata_rata) <= 0) return;
       if (!byCabang[d.cabang_lomba]) byCabang[d.cabang_lomba] = [];
       byCabang[d.cabang_lomba].push(d);
     });
@@ -463,7 +463,7 @@ export default function MonitoringOlimpiadePage() {
       let predikatStatus = '-';
       if (tahapView === 'final') {
         if (!hasScore) {
-          predikatStatus = d.kategori_lomba === 'akademik' ? 'Finalis (Belum Ujian Final)' : 'Belum Dinilai Juri';
+          predikatStatus = 'Finalis (Belum Ujian Final)';
         } else if (cabangRank === 1) {
           predikatStatus = 'JUARA 1';
         } else if (cabangRank === 2) {
@@ -472,6 +472,18 @@ export default function MonitoringOlimpiadePage() {
           predikatStatus = 'JUARA 3';
         } else {
           predikatStatus = `Finalis (#${cabangRank})`;
+        }
+      } else if (tahapView === 'seni') {
+        if (!hasScore) {
+          predikatStatus = 'Belum Dinilai Juri';
+        } else if (cabangRank === 1) {
+          predikatStatus = 'JUARA 1';
+        } else if (cabangRank === 2) {
+          predikatStatus = 'JUARA 2';
+        } else if (cabangRank === 3) {
+          predikatStatus = 'JUARA 3';
+        } else {
+          predikatStatus = `Peserta (#${cabangRank})`;
         }
       } else {
         if (!hasScore) {
@@ -496,21 +508,28 @@ export default function MonitoringOlimpiadePage() {
         rowObj['Penilai'] = d.kategori_lomba === 'akademik'
           ? (tahapView === 'final' ? 'CBT Final' : 'CBT Seleksi')
           : `${d.jumlah_juri || 0} Juri`;
-        rowObj['Pelanggaran'] = d.log_kecurangan && d.log_kecurangan.length > 0
-          ? `${d.log_kecurangan.length}x`
-          : '0x (Bersih)';
+        if (tahapView !== 'seni') {
+          rowObj['Pelanggaran'] = d.log_kecurangan && d.log_kecurangan.length > 0
+            ? `${d.log_kecurangan.length}x`
+            : '0x (Bersih)';
+        }
       }
 
-      rowObj['Waktu Mengerjakan'] = durationText;
+      if (tahapView !== 'seni') {
+        rowObj['Waktu Mengerjakan'] = durationText;
+      }
 
       if (tahapView === 'final') {
-        rowObj['Nilai Final'] = hasScore ? Number(d.rata_rata) : 0;
+        rowObj['Nilai Final CBT'] = hasScore ? Number(d.rata_rata) : 0;
         if (d.kategori_lomba === 'akademik') {
-          rowObj['Nilai Seleksi'] = d.nilai_seleksi && Number(d.nilai_seleksi) > 0 ? Number(d.nilai_seleksi) : '-';
+          rowObj['Nilai Seleksi CBT'] = d.nilai_seleksi && Number(d.nilai_seleksi) > 0 ? Number(d.nilai_seleksi) : '-';
         }
         rowObj['Predikat / Juara'] = predikatStatus;
+      } else if (tahapView === 'seni') {
+        rowObj['Nilai Akhir (Juri)'] = hasScore ? Number(d.rata_rata) : 0;
+        rowObj['Predikat / Juara'] = predikatStatus;
       } else {
-        rowObj['Nilai Seleksi'] = hasScore ? Number(d.rata_rata) : 0;
+        rowObj['Nilai Seleksi CBT'] = hasScore ? Number(d.rata_rata) : 0;
         rowObj['Status Kelolosan'] = predikatStatus;
       }
 
@@ -525,20 +544,24 @@ export default function MonitoringOlimpiadePage() {
       { wch: 32 },
       { wch: 20 },
       { wch: 20 },
-      ...(isAdmin ? [{ wch: 16 }, { wch: 16 }] : []),
-      { wch: 20 },
-      { wch: 14 },
-      ...(tahapView === 'final' ? [{ wch: 14 }] : []),
+      ...(isAdmin ? [{ wch: 16 }, ...(tahapView !== 'seni' ? [{ wch: 16 }] : [])] : []),
+      ...(tahapView !== 'seni' ? [{ wch: 20 }] : []),
+      { wch: 16 },
+      ...(tahapView === 'final' ? [{ wch: 16 }] : []),
       { wch: 26 },
     ];
 
     const wb = XLSX.utils.book_new();
-    const sheetName = tahapView === 'final' ? 'Babak Final' : 'Babak Seleksi';
+    const sheetName = tahapView === 'final' 
+      ? 'Final Akademik' 
+      : tahapView === 'seni' 
+      ? 'Juara Seni' 
+      : 'Seleksi Akademik';
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
 
     const dateStr = new Date().toISOString().slice(0, 10);
     const cabangStr = filterCabang !== 'Semua' ? `_${filterCabang.replace(/\s+/g, '_')}` : '_Semua_Cabang';
-    const filename = `Klasemen_LiveScore_${tahapView === 'final' ? 'Final' : 'Seleksi'}${cabangStr}_${dateStr}.xlsx`;
+    const filename = `Klasemen_LiveScore_${tahapView === 'final' ? 'Final_Akademik' : tahapView === 'seni' ? 'Juara_Seni' : 'Seleksi_Akademik'}${cabangStr}_${dateStr}.xlsx`;
 
     XLSX.writeFile(wb, filename);
 
@@ -981,13 +1004,14 @@ export default function MonitoringOlimpiadePage() {
 
           {/* Klasemen Juara Umum Sekolah sementara dinonaktifkan */}
 
-          {/* TAB TAHAPAN: BABAK SELEKSI VS BABAK FINAL */}
+          {/* TAB TAHAPAN: BABAK SELEKSI vs BABAK FINAL AKADEMIK vs JUARA LOMBA SENI */}
           <div style={{
-            display: 'flex',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
             gap: '12px',
-            marginBottom: '20px',
-            flexWrap: 'wrap'
+            marginBottom: '20px'
           }}>
+            {/* TAB 1: Babak Seleksi Olimpiade Akademik */}
             <button
               type="button"
               onClick={() => {
@@ -997,7 +1021,6 @@ export default function MonitoringOlimpiadePage() {
                 fetchData('seleksi');
               }}
               style={{
-                flex: '1 1 280px',
                 padding: '16px 20px',
                 borderRadius: '12px',
                 border: tahapView === 'seleksi' ? '2px solid #0284c7' : '1.5px solid #cbd5e1',
@@ -1005,19 +1028,20 @@ export default function MonitoringOlimpiadePage() {
                 color: tahapView === 'seleksi' ? '#0369a1' : '#475569',
                 cursor: 'pointer',
                 textAlign: 'left',
-                boxShadow: tahapView === 'seleksi' ? '0 4px 12px rgba(2,132,199,0.12)' : 'none',
+                boxShadow: tahapView === 'seleksi' ? '0 4px 12px rgba(2,132,199,0.15)' : 'none',
                 transition: 'all 0.15s ease'
               }}
             >
-              <div style={{ fontWeight: 800, fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ fontWeight: 800, fontSize: '1.02rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <i className="fas fa-filter" style={{ color: tahapView === 'seleksi' ? '#0284c7' : '#94a3b8' }}></i>
-                1. Babak Seleksi / Penyisihan (Olimpiade Akademik)
+                1. Babak Seleksi (Olimpiade Akademik)
               </div>
-              <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '4px' }}>
+              <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '4px', lineHeight: 1.4 }}>
                 Penyaringan <b>Top {MAX_LOLOS} Peserta Terbaik</b> per cabang lomba Akademik untuk melaju ke Babak Final CBT.
               </div>
             </button>
 
+            {/* TAB 2: Babak Final & Penentuan Juara (Akademik) */}
             <button
               type="button"
               onClick={() => {
@@ -1027,7 +1051,6 @@ export default function MonitoringOlimpiadePage() {
                 fetchData('final');
               }}
               style={{
-                flex: '1 1 280px',
                 padding: '16px 20px',
                 borderRadius: '12px',
                 border: tahapView === 'final' ? '2px solid #d97706' : '1.5px solid #cbd5e1',
@@ -1035,16 +1058,46 @@ export default function MonitoringOlimpiadePage() {
                 color: tahapView === 'final' ? '#92400e' : '#475569',
                 cursor: 'pointer',
                 textAlign: 'left',
-                boxShadow: tahapView === 'final' ? '0 4px 12px rgba(217,119,6,0.12)' : 'none',
+                boxShadow: tahapView === 'final' ? '0 4px 12px rgba(217,119,6,0.15)' : 'none',
                 transition: 'all 0.15s ease'
               }}
             >
-              <div style={{ fontWeight: 800, fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ fontWeight: 800, fontSize: '1.02rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <i className="fas fa-trophy" style={{ color: tahapView === 'final' ? '#d97706' : '#94a3b8' }}></i>
-                2. Babak Final & Penentuan Juara (Akademik & Seni)
+                2. Babak Final & Juara (Akademik)
               </div>
-              <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '4px' }}>
-                <b>Akademik:</b> Murni (100%) dari Nilai CBT Babak Final • <b>Cabang Seni:</b> Langsung Final dinilai oleh Dewan Juri.
+              <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '4px', lineHeight: 1.4 }}>
+                Penentuan <b>Juara 1, 2, 3</b> murni dari perolehan Nilai CBT Babak Final (Top {MAX_LOLOS} Finalis).
+              </div>
+            </button>
+
+            {/* TAB 3: Penentuan Juara (Lomba Seni) */}
+            <button
+              type="button"
+              onClick={() => {
+                setTahapView('seni');
+                setFilterCabang('Semua');
+                setCurrentPage(1);
+                fetchData('seni');
+              }}
+              style={{
+                padding: '16px 20px',
+                borderRadius: '12px',
+                border: tahapView === 'seni' ? '2px solid #7c3aed' : '1.5px solid #cbd5e1',
+                background: tahapView === 'seni' ? '#faf5ff' : 'white',
+                color: tahapView === 'seni' ? '#6d28d9' : '#475569',
+                cursor: 'pointer',
+                textAlign: 'left',
+                boxShadow: tahapView === 'seni' ? '0 4px 12px rgba(124,58,237,0.15)' : 'none',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <div style={{ fontWeight: 800, fontSize: '1.02rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <i className="fas fa-palette" style={{ color: tahapView === 'seni' ? '#7c3aed' : '#94a3b8' }}></i>
+                3. Penentuan Juara (Lomba Seni)
+              </div>
+              <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '4px', lineHeight: 1.4 }}>
+                Penentuan <b>Juara 1, 2, 3</b> murni dari akumulasi & rata-rata penilaian Dewan Juri Seni.
               </div>
             </button>
           </div>
@@ -1052,7 +1105,9 @@ export default function MonitoringOlimpiadePage() {
           <div style={{ background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
             <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '14px' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>Filter Cabang Lomba ({tahapView === 'final' ? 'Babak Final' : 'Babak Seleksi'})</label>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>
+                  Filter Cabang Lomba ({tahapView === 'final' ? 'Babak Final Akademik' : tahapView === 'seni' ? 'Lomba Seni' : 'Babak Seleksi Akademik'})
+                </label>
                 <select 
                   value={filterCabang} 
                   onChange={(e) => {
@@ -1094,7 +1149,12 @@ export default function MonitoringOlimpiadePage() {
                   {tahapView === 'final' ? (
                     <>
                       <i className="fas fa-award" style={{ color: '#d97706', marginRight: '6px' }}></i>
-                      Penentuan <b>Juara 1, 2, 3</b> ditentukan murni dari perolehan nilai pada Babak Final ini.
+                      Penentuan <b>Juara 1, 2, 3</b> Olimpiade Akademik ditentukan murni dari perolehan nilai pada Babak Final CBT.
+                    </>
+                  ) : tahapView === 'seni' ? (
+                    <>
+                      <i className="fas fa-palette" style={{ color: '#7c3aed', marginRight: '6px' }}></i>
+                      Penentuan <b>Juara 1, 2, 3</b> Lomba Seni ditentukan murni dari akumulasi & rata-rata penilaian Dewan Juri.
                     </>
                   ) : (
                     <>
@@ -1123,21 +1183,27 @@ export default function MonitoringOlimpiadePage() {
                         {isAdmin && (
                           <>
                             <th style={{ padding: '15px', textAlign: 'center' }}>Penilai</th>
-                            <th style={{ padding: '15px', textAlign: 'center' }}>Pelanggaran</th>
+                            {tahapView !== 'seni' && <th style={{ padding: '15px', textAlign: 'center' }}>Pelanggaran</th>}
                           </>
                         )}
-                        <th style={{ padding: '15px', textAlign: 'center' }}>Waktu Mengerjakan</th>
-                        <th style={{ padding: '15px', textAlign: 'right' }}>{tahapView === 'final' ? 'Nilai Final' : 'Nilai Seleksi'}</th>
-                        <th style={{ padding: '15px', textAlign: 'center' }}>{tahapView === 'final' ? 'Predikat / Juara' : `Status (Top ${MAX_LOLOS})`}</th>
+                        {tahapView !== 'seni' && <th style={{ padding: '15px', textAlign: 'center' }}>Waktu Mengerjakan</th>}
+                        <th style={{ padding: '15px', textAlign: 'right' }}>
+                          {tahapView === 'final' ? 'Nilai Final CBT' : tahapView === 'seni' ? 'Nilai Akhir (Juri)' : 'Nilai Seleksi CBT'}
+                        </th>
+                        <th style={{ padding: '15px', textAlign: 'center' }}>
+                          {tahapView === 'seleksi' ? `Status (Top ${MAX_LOLOS})` : 'Predikat / Juara'}
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {sortedData.length === 0 ? (
                         <tr>
-                          <td colSpan={6 + (filterCabang === 'Semua' ? 1 : 0) + (isAdmin ? 2 : 0)} style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
+                          <td colSpan={6 + (filterCabang === 'Semua' ? 1 : 0) + (isAdmin ? (tahapView === 'seni' ? 1 : 2) : 0) - (tahapView === 'seni' ? 1 : 0)} style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
                             {tahapView === 'final'
-                              ? 'Belum ada data Finalis atau nilai Babak Final untuk kategori ini.'
-                              : 'Belum ada data nilai Babak Seleksi untuk kategori ini.'}
+                              ? 'Belum ada data Finalis atau nilai Babak Final Olimpiade Akademik.'
+                              : tahapView === 'seni'
+                              ? 'Belum ada data peserta atau penilaian Dewan Juri untuk Lomba Seni.'
+                              : 'Belum ada data nilai Babak Seleksi Olimpiade Akademik.'}
                           </td>
                         </tr>
                       ) : (
@@ -1161,7 +1227,7 @@ export default function MonitoringOlimpiadePage() {
                             return '-';
                           })();
 
-                          const rowBg = tahapView === 'final'
+                          const rowBg = (tahapView === 'final' || tahapView === 'seni')
                             ? (cabangRank === 1 ? '#fef9c3' : cabangRank === 2 ? '#f0fdf4' : cabangRank === 3 ? '#fff7ed' : 'white')
                             : (lolos ? (displayRank === 1 ? '#fef9c3' : displayRank === 2 ? '#f0fdf4' : displayRank === 3 ? '#fff7ed' : '#f0fdf4') : '#fff5f5');
                           
@@ -1188,29 +1254,33 @@ export default function MonitoringOlimpiadePage() {
                                       {d.kategori_lomba === 'akademik' ? (tahapView === 'final' ? 'CBT Final' : 'CBT Seleksi') : `${d.jumlah_juri} Juri`}
                                     </span>
                                   </td>
-                                  <td style={{ padding: '15px', textAlign: 'center' }}>
-                                    {d.log_kecurangan && d.log_kecurangan.length > 0 ? (
-                                      <div
-                                        title={d.log_kecurangan.map((l: any) => `${l.ke}. ${l.jenis === 'tab_switch' ? 'Pindah Tab' : l.jenis === 'fullscreen_exit' ? 'Keluar Fullscreen' : l.jenis} (${new Date(l.waktu).toLocaleTimeString('id-ID')})`).join('\n')}
-                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#fef2f2', color: '#ef4444', borderRadius: '20px', padding: '4px 12px', fontWeight: 700, fontSize: '0.85rem', cursor: 'help', border: '1px solid #fca5a5' }}
-                                      >
-                                        <i className="fas fa-exclamation-triangle"></i> {d.log_kecurangan.length}x
-                                      </div>
-                                    ) : (
-                                      <span style={{ color: '#10b981', fontSize: '0.85rem' }}>
-                                        <i className="fas fa-check-circle"></i> Bersih
-                                      </span>
-                                    )}
-                                  </td>
+                                  {tahapView !== 'seni' && (
+                                    <td style={{ padding: '15px', textAlign: 'center' }}>
+                                      {d.log_kecurangan && d.log_kecurangan.length > 0 ? (
+                                        <div
+                                          title={d.log_kecurangan.map((l: any) => `${l.ke}. ${l.jenis === 'tab_switch' ? 'Pindah Tab' : l.jenis === 'fullscreen_exit' ? 'Keluar Fullscreen' : l.jenis} (${new Date(l.waktu).toLocaleTimeString('id-ID')})`).join('\n')}
+                                          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#fef2f2', color: '#ef4444', borderRadius: '20px', padding: '4px 12px', fontWeight: 700, fontSize: '0.85rem', cursor: 'help', border: '1px solid #fca5a5' }}
+                                        >
+                                          <i className="fas fa-exclamation-triangle"></i> {d.log_kecurangan.length}x
+                                        </div>
+                                      ) : (
+                                        <span style={{ color: '#10b981', fontSize: '0.85rem' }}>
+                                          <i className="fas fa-check-circle"></i> Bersih
+                                        </span>
+                                      )}
+                                    </td>
+                                  )}
                                 </>
                               )}
-                              <td style={{ padding: '15px', textAlign: 'center', color: '#64748b', fontSize: '0.9rem', fontWeight: 500 }}>
-                                {durationText !== '-' ? (
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#f1f5f9', padding: '4px 10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                                    <i className="fas fa-clock" style={{ color: '#94a3b8' }}></i> {durationText}
-                                  </span>
-                                ) : '-'}
-                              </td>
+                              {tahapView !== 'seni' && (
+                                <td style={{ padding: '15px', textAlign: 'center', color: '#64748b', fontSize: '0.9rem', fontWeight: 500 }}>
+                                  {durationText !== '-' ? (
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#f1f5f9', padding: '4px 10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                                      <i className="fas fa-clock" style={{ color: '#94a3b8' }}></i> {durationText}
+                                    </span>
+                                  ) : '-'}
+                                </td>
+                              )}
                               <td style={{ padding: '15px', textAlign: 'right' }}>
                                 <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: Number(d.rata_rata) > 0 ? '#10b981' : '#94a3b8' }}>
                                   {d.rata_rata}
@@ -1222,10 +1292,10 @@ export default function MonitoringOlimpiadePage() {
                                 ) : null}
                               </td>
                               <td style={{ padding: '15px', textAlign: 'center' }}>
-                                {tahapView === 'final' ? (
+                                {tahapView === 'final' || tahapView === 'seni' ? (
                                   Number(d.rata_rata) === 0 ? (
                                     <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>
-                                      {d.kategori_lomba === 'akademik' ? 'Finalis (Belum Ujian Final)' : 'Belum Dinilai Juri'}
+                                      {tahapView === 'final' ? 'Finalis (Belum Ujian Final)' : 'Belum Dinilai Juri'}
                                     </span>
                                   ) : cabangRank === 1 ? (
                                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#fef08a', color: '#854d0e', borderRadius: '20px', padding: '5px 14px', fontWeight: 800, fontSize: '0.85rem', border: '1px solid #facc15' }}>
@@ -1241,7 +1311,7 @@ export default function MonitoringOlimpiadePage() {
                                     </span>
                                   ) : (
                                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#f1f5f9', color: '#475569', borderRadius: '20px', padding: '4px 12px', fontWeight: 600, fontSize: '0.82rem' }}>
-                                      Finalis (#{cabangRank})
+                                      {tahapView === 'final' ? `Finalis (#${cabangRank})` : `Peserta (#${cabangRank})`}
                                     </span>
                                   )
                                 ) : Number(d.rata_rata) === 0 ? (
@@ -1514,7 +1584,7 @@ export default function MonitoringOlimpiadePage() {
                           {c}
                         </div>
                         <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                          {tahapView === 'seleksi' ? `${count} peserta lolos` : `${count} peserta finalis`}
+                          {tahapView === 'seleksi' ? `${count} peserta lolos` : tahapView === 'final' ? `${count} peserta finalis` : `${count} peserta seni`}
                         </div>
                       </div>
                     </div>
