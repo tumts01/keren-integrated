@@ -699,29 +699,52 @@ export default function MonitoringOlimpiadePage() {
             )}
           </button>
 
-          {/* Tombol Admin: Atur Link SK */}
+          {/* Tombol Admin: Atur Link SK & Manajemen Juri */}
           {isAdmin && (
-            <button
-              onClick={handleEditLinkSK}
-              title="Atur tautan URL dokumen SK Pengumuman"
-              style={{
-                background: '#f59e0b',
-                color: 'white',
-                border: 'none',
-                padding: '10px 14px',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: 700,
-                fontSize: '0.88rem',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                boxShadow: '0 2px 6px rgba(245,158,11,0.25)',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <i className="fas fa-link"></i> Atur Link SK
-            </button>
+            <>
+              <button
+                onClick={() => router.push('/olimpiade-seni/admin-juri')}
+                title="Kelola Akun Juri, Tabel Kriteria Penilaian & Monitoring Juri Seni"
+                style={{
+                  background: '#7c3aed',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 6px rgba(124,58,237,0.25)',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <i className="fas fa-gavel"></i> Manajemen Juri Seni
+              </button>
+              <button
+                onClick={handleEditLinkSK}
+                title="Atur tautan URL dokumen SK Pengumuman"
+                style={{
+                  background: '#f59e0b',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 2px 6px rgba(245,158,11,0.25)',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <i className="fas fa-link"></i> Atur Link SK
+              </button>
+            </>
           )}
 
           {(isAdmin || publishedCabang.length > 0) && (

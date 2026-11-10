@@ -8,6 +8,63 @@ export interface CabangLombaConfig {
 }
 
 export const CABANG_AKADEMIK = ['Matematika', 'IPAS', 'PAI', 'Inggris', 'Arab'];
+export const CABANG_SENI_CANONICAL = ['Singer Solo', 'Al Banjari', 'SMS'] as const;
+export type CabangSeniName = (typeof CABANG_SENI_CANONICAL)[number];
+
+export interface KriteriaAspekJuri {
+  id: string;
+  nama: string;
+  bobotMaks: number;
+  keterangan?: string;
+}
+
+export interface TabelPenilaianCabangConfig {
+  cabang: string;
+  modeHitung: 'sum' | 'avg'; // 'sum' = jumlah seluruh aspek, 'avg' = rata-rata aspek
+  tampilkanCatatan: boolean;
+  aspek: KriteriaAspekJuri[];
+}
+
+export const DEFAULT_TABEL_PENILAIAN_SENI: Record<string, TabelPenilaianCabangConfig> = {
+  'Singer Solo': {
+    cabang: 'Singer Solo',
+    modeHitung: 'sum',
+    tampilkanCatatan: true,
+    aspek: [
+      { id: 'vokal', nama: 'Materi Suara / Vokal', bobotMaks: 30, keterangan: 'Kejernihan, warna suara, dan jangkauan nada' },
+      { id: 'teknik', nama: 'Teknik (Intonasi & Artikulasi)', bobotMaks: 40, keterangan: 'Ketepatan nada, pernapasan, dan pelafalan lirik' },
+      { id: 'penampilan', nama: 'Penghayatan & Penampilan', bobotMaks: 30, keterangan: 'Ekspresi, penguasaan panggung, dan adab busana' }
+    ]
+  },
+  'Al Banjari': {
+    cabang: 'Al Banjari',
+    modeHitung: 'sum',
+    tampilkanCatatan: true,
+    aspek: [
+      { id: 'vokal', nama: 'Vokal, Koor & Fashohah', bobotMaks: 40, keterangan: 'Kepaduan suara, makharijul huruf, dan lagu' },
+      { id: 'terbang', nama: 'Irama & Teknik Banjari', bobotMaks: 35, keterangan: 'Ketukan rebana, variasi pukulan, dan tempo' },
+      { id: 'adab', nama: 'Adab & Kekompakan Grup', bobotMaks: 25, keterangan: 'Keserasian kostum, adab tampil, dan durasi' }
+    ]
+  },
+  'SMS': {
+    cabang: 'SMS',
+    modeHitung: 'sum',
+    tampilkanCatatan: true,
+    aspek: [
+      { id: 'sandi', nama: 'Ketepatan Sandi', bobotMaks: 35, keterangan: 'Kebenaran jawaban pemecahan sandi pramuka' },
+      { id: 'morse', nama: 'Ketepatan Morse', bobotMaks: 35, keterangan: 'Ketepatan pengiriman dan penerimaan isyarat morse' },
+      { id: 'semaphore', nama: 'Semaphore & Kecepatan Waktu', bobotMaks: 30, keterangan: 'Ketepatan gerakan bendera semaphore & kecepatan tim' }
+    ]
+  }
+};
+
+export function normalizeCabangSeni(raw: string): string {
+  const l = (raw || '').toLowerCase().trim();
+  if (l.includes('singer') || l.includes('solo') || l.includes('menyanyi')) return 'Singer Solo';
+  if (l.includes('banjari') || l.includes('shalawat') || l.includes('sholawat')) return 'Al Banjari';
+  if (l.includes('sms') || l.includes('sandi') || l.includes('morse') || l.includes('semaphore')) return 'SMS';
+  return raw.trim();
+}
 
 export interface ItemBukaTutupConfig {
   id: string;

@@ -174,6 +174,7 @@ export default function Sidebar() {
           subItems: [
             { name: 'Pendaftaran', path: '/olimpiade-seni' },
             { name: 'Rekap Data', path: '/olimpiade-seni/rekap' },
+            { name: 'Juri Lomba Seni', path: '/olimpiade-seni/admin-juri' },
             { name: 'Monitoring CBT & Sesi', path: '/olimpiade-seni/cbt-monitoring' },
             { name: 'Monitoring Pemenang', path: '/olimpiade-seni/monitoring' },
             { name: 'Bank Soal CBT', path: '/olimpiade-seni/admin-soal' }
