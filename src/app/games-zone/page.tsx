@@ -6,14 +6,17 @@ import { useRouter } from 'next/navigation';
 import styles from './games-zone.module.css';
 import { SaveSlot } from './types';
 import { DetectiveSaveSlot } from './misi-detektif/detektifData';
+import { JeopardySaveSlot } from './arena-cepat-tangkas/jeopardyData';
 import Swal from 'sweetalert2';
 
 export default function GamesZoneLobbyPage() {
   const router = useRouter();
   const [savedSlots, setSavedSlots] = useState<SaveSlot[]>([]);
   const [detektifSlots, setDetektifSlots] = useState<DetectiveSaveSlot[]>([]);
+  const [jeopardySlots, setJeopardySlots] = useState<JeopardySaveSlot[]>([]);
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [showDetektifLoadModal, setShowDetektifLoadModal] = useState(false);
+  const [showJeopardyLoadModal, setShowJeopardyLoadModal] = useState(false);
 
   useEffect(() => {
     try {
@@ -24,6 +27,10 @@ export default function GamesZoneLobbyPage() {
       const detStr = localStorage.getItem('gameszone_detektif_save_slots');
       if (detStr) {
         setDetektifSlots(JSON.parse(detStr));
+      }
+      const jeopStr = localStorage.getItem('gameszone_jeopardy_save_slots');
+      if (jeopStr) {
+        setJeopardySlots(JSON.parse(jeopStr));
       }
     } catch (e) {
       console.error(e);
@@ -46,6 +53,36 @@ export default function GamesZoneLobbyPage() {
     } catch (e: any) {
       Swal.fire('Error', 'Gagal memuat sesi detektif: ' + e.message, 'error');
     }
+  };
+
+  const handleOpenJeopardySlot = (slot: JeopardySaveSlot) => {
+    try {
+      localStorage.setItem('gameszone_jeopardy_active_session', JSON.stringify(slot.session));
+      router.push('/games-zone/arena-cepat-tangkas');
+    } catch (e: any) {
+      Swal.fire('Error', 'Gagal memuat sesi cepat tangkas: ' + e.message, 'error');
+    }
+  };
+
+  const handleShowJeopardyRules = () => {
+    Swal.fire({
+      title: '⚡ PANDUAN ARENA CEPAT TANGKAS (JEOPARDY)',
+      html: `
+        <div style="text-align: left; font-size: 0.95rem; line-height: 1.6; color: #334155;">
+          <h4 style="color: #4f46e5; margin-bottom: 6px;">1. Pilih Paket Soal Kelas 7–9:</h4>
+          <p style="margin-top: 0;">Tersedia <b>3 Paket Papan Matriks 5x5</b> (75 Soal Ceria tingkat SMP/MTs Kelas 7–9): <i>Gebyar Madrasah Ceria</i>, <i>Sains & Matematika</i>, serta <i>PAI, English & Kebangsaan</i>.</p>
+          
+          <h4 style="color: #4f46e5; margin-bottom: 6px;">2. Papan Matriks 100–500 Poin & Bintang Ganda:</h4>
+          <p style="margin-top: 0;">Regu yang bertugas memilih Kategori dan Nilai Poin (100 s.d. 500). Terdapat <b>3 Kotak Bintang Keberuntungan (2x Poin)</b> yang tersembunyi di papan!</p>
+          
+          <h4 style="color: #4f46e5; margin-bottom: 6px;">3. Bel Rebutan & Bantuan Pilihan A-B-C-D:</h4>
+          <p style="margin-top: 0;">Jika soal dirasa menantang, guru dapat menekan tombol <b>"Buka Pilihan A-B-C-D"</b> di layar. Jika regu utama kurang tepat, tekan tombol angka <b>1, 2, 3, 4</b> di keyboard untuk memberikan giliran rebutan ke regu lain!</p>
+        </div>
+      `,
+      confirmButtonText: 'Siap Bertanding!',
+      confirmButtonColor: '#6366f1',
+      width: '620px'
+    });
   };
 
   const handleShowDetektifRules = () => {
@@ -129,8 +166,8 @@ export default function GamesZoneLobbyPage() {
           <i className="fas fa-play-circle" style={{ color: '#10b981' }}></i>
           PILIH GAME PEMBELAJARAN
         </h2>
-        <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
-          Tersedia 2 Game Aktif • 1 Game Dalam Pengembangan
+        <span style={{ fontSize: '0.85rem', color: '#34d399', fontWeight: 700 }}>
+          Tersedia 3 Game Aktif • Siap Dimainkan di Kelas
         </span>
       </div>
 
@@ -252,31 +289,69 @@ export default function GamesZoneLobbyPage() {
           </div>
         </div>
 
-        {/* GAME 3: JEOPARDY / CEPAT TANGKAS (COMING SOON) */}
-        <div className={styles.gameCardUpcoming}>
+        {/* GAME 3: ARENA CEPAT TANGKAS / JEOPARDY (ACTIVE!) */}
+        <div
+          className={styles.gameCardFeatured}
+          style={{
+            borderColor: '#6366f1',
+            boxShadow: '0 15px 35px -10px rgba(99, 102, 241, 0.3)'
+          }}
+        >
           <div>
-            <div className={styles.gameThumbnailBox} style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)' }}>
-              <i className={`fas fa-th-large ${styles.gameThumbIcon}`} style={{ opacity: 0.6 }}></i>
-              <div style={{ position: 'absolute', top: 12, right: 12, background: '#334155', color: '#94a3b8', fontSize: '0.7rem', fontWeight: 800, padding: '3px 8px', borderRadius: 6 }}>
-                SEGERA HADIR
+            <div className={styles.gameThumbnailBox} style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #4338ca 50%, #701a75 100%)' }}>
+              <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 5, background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)', border: '1px solid #c7d2fe', color: '#ffffff', fontSize: '0.73rem', fontWeight: 900, padding: '5px 12px', borderRadius: 20, letterSpacing: '0.5px', textTransform: 'uppercase', boxShadow: '0 4px 14px rgba(0, 0, 0, 0.45)' }}>
+                <i className="fas fa-bolt" style={{ marginRight: 5 }}></i> SIAP DIMAINKAN
+              </div>
+              <i className={`fas fa-th-large ${styles.gameThumbIcon}`} style={{ color: '#fde047' }}></i>
+              <div style={{ position: 'absolute', bottom: 10, left: 14, background: 'rgba(0,0,0,0.65)', padding: '3px 10px', borderRadius: 6, fontSize: '0.75rem', color: '#fde047', fontWeight: 700 }}>
+                3 Paket Soal Kelas 7–9 • Papan 100–500 Poin
               </div>
             </div>
 
-            <h3 className={styles.gameCardTitle} style={{ color: '#94a3b8' }}>ARENA CEPAT TANGKAS (JEOPARDY)</h3>
+            <h3 className={styles.gameCardTitle}>ARENA CEPAT TANGKAS (JEOPARDY)</h3>
             <p className={styles.gameCardDescription}>
-              Papan matriks kuis kategori nilai poin (100–500) gaya turnamen televisi. 4 tim beradu cepat memencet tombol bel virtual untuk menjawab soal evaluasi bab.
+              Papan matriks kuis kategori nilai poin (100–500) gaya turnamen televisi untuk siswa Kelas 7–9. Dilengkapi 3 Paket Mapel Ceria, Kotak Bintang Ganda 2x, Bel Rebutan (Tombol 1–4), dan opsi bantuan Pilihan Ganda A-B-C-D!
             </p>
 
             <div className={styles.gameTags}>
-              <span className={styles.gameTag}>Semua Mapel</span>
-              <span className={styles.gameTag}>Bel Rebutan</span>
-              <span className={styles.gameTag}>Matriks Soal</span>
+              <span className={styles.gameTag}><i className="fas fa-graduation-cap" style={{ color: '#fde047', marginRight: 4 }}></i> Kelas 7–9 Seru</span>
+              <span className={styles.gameTag}><i className="fas fa-bell" style={{ color: '#ec4899', marginRight: 4 }}></i> Bel Rebutan</span>
+              <span className={styles.gameTag}><i className="fas fa-th" style={{ color: '#38bdf8', marginRight: 4 }}></i> Matriks 5x5</span>
+              <span className={styles.gameTag}><i className="fas fa-list-ul" style={{ color: '#34d399', marginRight: 4 }}></i> Opsi A-B-C-D</span>
             </div>
           </div>
 
-          <button className={styles.btnAction} disabled style={{ width: '100%', justifyContent: 'center', opacity: 0.5 }}>
-            <i className="fas fa-lock"></i> Sedang Disiapkan
-          </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <Link
+              href="/games-zone/arena-cepat-tangkas"
+              className={styles.btnPlayLarge}
+              style={{
+                background: 'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)',
+                color: '#ffffff',
+                boxShadow: '0 8px 20px rgba(99, 102, 241, 0.4)'
+              }}
+            >
+              <i className="fas fa-bolt"></i> MAINKAN SEKARANG (BUKA ARENA)
+            </Link>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <button 
+                className={styles.btnAction} 
+                onClick={() => setShowJeopardyLoadModal(true)}
+                style={{ justifyContent: 'center', fontSize: '0.85rem' }}
+              >
+                <i className="fas fa-folder-open" style={{ color: '#a5b4fc' }}></i> Sesi Tersimpan ({jeopardySlots.length})
+              </button>
+
+              <button 
+                className={styles.btnAction} 
+                onClick={handleShowJeopardyRules}
+                style={{ justifyContent: 'center', fontSize: '0.85rem' }}
+              >
+                <i className="fas fa-book-open" style={{ color: '#fde047' }}></i> Aturan Main
+              </button>
+            </div>
+          </div>
         </div>
 
       </div>
@@ -393,6 +468,67 @@ export default function GamesZoneLobbyPage() {
                 style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', color: '#0c0a09' }}
               >
                 <i className="fas fa-search"></i> Buka Markas Detektif Baru
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SAVED SESSIONS MODAL FOR ARENA CEPAT TANGKAS */}
+      {showJeopardyLoadModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalCard} style={{ maxWidth: 640, borderColor: 'rgba(99, 102, 241, 0.45)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ margin: 0, fontSize: '1.3rem', color: '#fde047' }}>
+                <i className="fas fa-bolt" style={{ color: '#6366f1', marginRight: 10 }}></i>
+                SESI ARENA CEPAT TANGKAS TERSIMPAN
+              </h2>
+              <button className={styles.btnAction} onClick={() => setShowJeopardyLoadModal(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: 15 }}>
+              Pilih sesi turnamen Cepat Tangkas yang ingin dilanjutkan:
+            </p>
+
+            <div style={{ maxHeight: 300, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {jeopardySlots.length > 0 ? (
+                jeopardySlots.map(slot => (
+                  <div 
+                    key={slot.id}
+                    style={{ background: '#0f172a', border: '1px solid rgba(99,102,241,0.3)', padding: '14px 18px', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#f1f5f9' }}>{slot.name}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: 4 }}>
+                        Disimpan: {slot.date} • {slot.session.answeredCellIds?.length || 0} Kotak Terjawab
+                      </div>
+                    </div>
+                    <button 
+                      className={styles.btnAction}
+                      style={{ background: '#6366f1', color: 'white' }}
+                      onClick={() => handleOpenJeopardySlot(slot)}
+                    >
+                      <i className="fas fa-play"></i> Lanjutkan
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>
+                  <i className="fas fa-inbox" style={{ fontSize: '2rem', marginBottom: 10, display: 'block' }}></i>
+                  Belum ada sesi Arena Cepat Tangkas yang disimpan.
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: 20, textAlign: 'center' }}>
+              <Link
+                href="/games-zone/arena-cepat-tangkas"
+                className={styles.btnPlayLarge}
+                style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)', color: '#ffffff' }}
+              >
+                <i className="fas fa-bolt"></i> Buka Arena Cepat Tangkas Baru
               </Link>
             </div>
           </div>
