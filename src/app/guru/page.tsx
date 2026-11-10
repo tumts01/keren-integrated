@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 import styles from './Guru.module.css';
 import InlineLoading from '@/components/InlineLoading';
+import EditGuruModal from './EditGuruModal';
 
 interface Guru {
   id: number;
@@ -11,9 +12,14 @@ interface Guru {
   urutan?: number;
   nama: string;
   foto?: string;
+  rawFoto?: string;
   status: string;
+  statusGuru?: string;
   nip: string;
   pegId: string;
+  nuptk?: string;
+  rfidUid?: string;
+  domisili?: string;
   passEmisHijau: string;
   passEmisDev: string;
   jenisKelamin: string;
@@ -27,6 +33,7 @@ interface Guru {
   email: string;
   pendidikan: string;
   isSertifikasi?: boolean;
+  rawMetadata?: Record<string, any>;
 }
 
 export default function GuruPage() {
@@ -48,6 +55,20 @@ export default function GuruPage() {
   const [searchUrutan, setSearchUrutan] = useState('');
   const [savingUrutan, setSavingUrutan] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  // States untuk Edit / Tambah Data Guru
+  const [editingGuru, setEditingGuru] = useState<Guru | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  const handleOpenEditModal = (guru: Guru) => {
+    setEditingGuru(guru);
+    setShowEditModal(true);
+  };
+
+  const handleOpenTambahModal = () => {
+    setEditingGuru(null);
+    setShowEditModal(true);
+  };
 
   const fetchData = async () => {
     try {
@@ -303,6 +324,31 @@ export default function GuruPage() {
                   <span className={styles.infoLabel}>Email</span>
                   <div className={styles.infoValue}>{selectedGuru.email || '-'}</div>
                 </div>
+                <div className={`${styles.infoGroup} ${styles.infoFull}`} style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '8px' }}>
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{
+                      padding: '8px 16px',
+                      background: '#fef3c7',
+                      color: '#b45309',
+                      border: '1px solid #fde68a',
+                      fontWeight: 600,
+                      borderRadius: '8px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => {
+                      const g = selectedGuru;
+                      setSelectedGuru(null);
+                      handleOpenEditModal(g);
+                    }}
+                  >
+                    <i className="fas fa-edit"></i> Edit Data Guru Ini
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -364,9 +410,14 @@ export default function GuruPage() {
             >
               <i className="fas fa-sort-numeric-down"></i> Atur Urutan
             </button>
-            <button className="btn btn-primary">
-            <i className="fas fa-plus"></i> Tambah Data
-          </button>
+            <button 
+              onClick={handleOpenTambahModal} 
+              className="btn btn-primary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              title="Tambah Guru / Staf Baru"
+            >
+              <i className="fas fa-plus"></i> Tambah Data
+            </button>
         </div>
       </div>
 
@@ -444,7 +495,7 @@ export default function GuruPage() {
                   <th>Tanggal SK Awal</th>
                   <th>Pass EMIS Hijau</th>
                   <th>Pass EMIS DEV</th>
-                  <th>Aksi</th>
+                  <th style={{ minWidth: '155px', textAlign: 'center' }}>Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -496,20 +547,43 @@ export default function GuruPage() {
                       <td>{guru.tanggalSk || '-'}</td>
                       <td>{guru.passEmisHijau || '-'}</td>
                       <td>{guru.passEmisDev || '-'}</td>
-                      <td>
-                        <button 
-                          className="btn btn-primary" 
-                          style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                          onClick={() => setSelectedGuru(guru)}
-                        >
-                          Detail
-                        </button>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center', justifyContent: 'center' }}>
+                          <button 
+                            className="btn btn-primary" 
+                            style={{ padding: '6px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                            onClick={() => setSelectedGuru(guru)}
+                            title="Detail Guru"
+                          >
+                            <i className="fas fa-eye"></i> Detail
+                          </button>
+                          <button 
+                            className="btn" 
+                            style={{ 
+                              padding: '6px 10px', 
+                              fontSize: '0.8rem', 
+                              display: 'inline-flex', 
+                              alignItems: 'center', 
+                              gap: '4px',
+                              background: '#fef3c7', 
+                              color: '#b45309', 
+                              border: '1px solid #fde68a',
+                              fontWeight: 600,
+                              borderRadius: '8px',
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => handleOpenEditModal(guru)}
+                            title="Edit Data Guru"
+                          >
+                            <i className="fas fa-edit"></i> Edit
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={18} style={{ textAlign: 'center', padding: '40px' }}>
+                    <td colSpan={19} style={{ textAlign: 'center', padding: '40px' }}>
                       <i className="fas fa-folder-open" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
                       Tidak ada data guru yang ditemukan. Coba cek isi Excel Anda.
                     </td>
@@ -1198,6 +1272,15 @@ export default function GuruPage() {
           </div>
         </div>
       )}
+
+      <EditGuruModal
+        isOpen={showEditModal}
+        guru={editingGuru}
+        onClose={() => setShowEditModal(false)}
+        onSuccess={() => {
+          fetchData();
+        }}
+      />
 
       <style>{`
         @keyframes slideUp { from { opacity: 0; transform: translateY(30px) scale(0.96) } to { opacity: 1; transform: translateY(0) scale(1) } }
