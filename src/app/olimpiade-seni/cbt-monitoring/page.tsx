@@ -64,6 +64,7 @@ export default function CbtMonitoringPage() {
   const [loading, setLoading] = useState(true);
   const [filterCabang, setFilterCabang] = useState('Semua');
   const [filterStatus, setFilterStatus] = useState('Semua');
+  const [sortBy, setSortBy] = useState<'status' | 'mapel_nilai' | 'nilai_desc'>('status');
   const [searchQuery, setSearchQuery] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [countdown, setCountdown] = useState(15);
@@ -400,9 +401,9 @@ export default function CbtMonitoringPage() {
     }
   };
 
-  // Filter Data
+  // Filter & Sort Data
   const filteredData = useMemo(() => {
-    return data.filter((item) => {
+    const list = data.filter((item) => {
       if (filterCabang !== 'Semua' && item.cabang_lomba !== filterCabang) return false;
       if (filterStatus === 'sedang_mengerjakan' && item.status !== 'sedang_mengerjakan') return false;
       if (filterStatus === 'selesai' && item.status !== 'selesai') return false;
@@ -423,7 +424,27 @@ export default function CbtMonitoringPage() {
 
       return true;
     });
-  }, [data, filterCabang, filterStatus, searchQuery]);
+
+    if (sortBy === 'mapel_nilai') {
+      list.sort((a, b) => {
+        const comp = (a.cabang_lomba || '').localeCompare(b.cabang_lomba || '', 'id');
+        if (comp !== 0) return comp;
+        const valA = a.nilai_akhir !== null && a.nilai_akhir !== undefined && a.nilai_akhir !== '-' ? Number(a.nilai_akhir) : -1;
+        const valB = b.nilai_akhir !== null && b.nilai_akhir !== undefined && b.nilai_akhir !== '-' ? Number(b.nilai_akhir) : -1;
+        if (valB !== valA) return valB - valA;
+        return (a.nama || '').localeCompare(b.nama || '', 'id');
+      });
+    } else if (sortBy === 'nilai_desc') {
+      list.sort((a, b) => {
+        const valA = a.nilai_akhir !== null && a.nilai_akhir !== undefined && a.nilai_akhir !== '-' ? Number(a.nilai_akhir) : -1;
+        const valB = b.nilai_akhir !== null && b.nilai_akhir !== undefined && b.nilai_akhir !== '-' ? Number(b.nilai_akhir) : -1;
+        if (valB !== valA) return valB - valA;
+        return (a.nama || '').localeCompare(b.nama || '', 'id');
+      });
+    }
+
+    return list;
+  }, [data, filterCabang, filterStatus, searchQuery, sortBy]);
 
   const totalPages = itemsPerPage === 999999 ? 1 : Math.ceil(filteredData.length / itemsPerPage) || 1;
   const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
@@ -447,14 +468,59 @@ export default function CbtMonitoringPage() {
     return pages;
   };
 
-  // Export to Excel
+  // Export to Excel: Urut Mapel & Nilai Tertinggi
   const handleExportExcel = () => {
     if (filteredData.length === 0) {
       Swal.fire('Info', 'Tidak ada data untuk diexport.', 'info');
       return;
     }
 
-    const rows = filteredData.map((p, idx) => {
+    // Urutkan data untuk export: 1) Urut Mapel (Cabang Lomba), 2) Urut Nilai Tertinggi (descending)
+    const sortedExportData = [...filteredData].sort((a, b) => {
+      // 1. Urut Mapel (Cabang Lomba) secara alfabetis
+      const compCabang = (a.cabang_lomba || '').localeCompare(b.cabang_lomba || '', 'id');
+      if (compCabang !== 0) return compCabang;
+
+      // 2. Di dalam mapel yang sama, urutkan berdasarkan Nilai Tertinggi
+      const valA = a.nilai_akhir !== null && a.nilai_akhir !== undefined && a.nilai_akhir !== '-'
+        ? Number(a.nilai_akhir)
+        : -1;
+      const valB = b.nilai_akhir !== null && b.nilai_akhir !== undefined && b.nilai_akhir !== '-'
+        ? Number(b.nilai_akhir)
+        : -1;
+
+      if (valB !== valA) {
+        return valB - valA;
+      }
+
+      // 3. Jika nilai sama: status selesai lebih didahulukan
+      const statusWeight: Record<string, number> = { selesai: 1, sedang_mengerjakan: 2, belum_mulai: 3 };
+      const statA = statusWeight[a.status] || 99;
+      const statB = statusWeight[b.status] || 99;
+      if (statA !== statB) return statA - statB;
+
+      // 4. Jika nilai & status sama: durasi pengerjaan tercepat
+      const durA = typeof a.durasi_menit === 'number' && a.durasi_menit >= 0 ? a.durasi_menit : Infinity;
+      const durB = typeof b.durasi_menit === 'number' && b.durasi_menit >= 0 ? b.durasi_menit : Infinity;
+      if (durA !== durB) return durA - durB;
+
+      // 5. Nama Peserta (A-Z)
+      return (a.nama || '').localeCompare(b.nama || '', 'id');
+    });
+
+    let lastCabang = '';
+    let rankInMapel = 0;
+
+    const rows = sortedExportData.map((p, idx) => {
+      if (p.cabang_lomba !== lastCabang) {
+        lastCabang = p.cabang_lomba;
+        rankInMapel = 1;
+      } else {
+        rankInMapel++;
+      }
+
+      const hasScore = p.nilai_akhir !== null && p.nilai_akhir !== undefined && p.nilai_akhir !== '-';
+
       let statusLabel = 'Belum Mulai';
       if (p.status === 'sedang_mengerjakan') statusLabel = 'Sedang Mengerjakan';
       else if (p.status === 'selesai') statusLabel = 'Selesai';
@@ -464,20 +530,21 @@ export default function CbtMonitoringPage() {
 
       return {
         No: idx + 1,
+        'Peringkat Mapel': hasScore ? rankInMapel : '-',
+        'Cabang Lomba': p.cabang_lomba,
         'Nomor Peserta': p.nomor_peserta,
         'Nama Peserta': p.nama,
         'Asal Sekolah': p.asal_sekolah,
-        'Cabang Lomba': p.cabang_lomba,
-        'Username CBT': p.username_cbt,
-        'Password CBT': p.password_cbt,
+        'Nilai Akhir': hasScore ? Number(p.nilai_akhir) : '-',
         Status: statusLabel,
         'Terjawab / Total': `${p.terjawab} / ${p.total_soal}`,
-        'Nilai Akhir': p.nilai_akhir !== null ? p.nilai_akhir : '-',
         'Jumlah Pelanggaran': p.jumlah_pelanggaran,
         ...(tahapPantau === 'final' ? {
           'Daftar Ulang Final (50rb)': p.status_bayar_final || 'Belum Bayar',
           'Bukti Transfer Final': p.bukti_bayar_final_url || '-'
         } : {}),
+        'Username CBT': p.username_cbt,
+        'Password CBT': p.password_cbt,
         'Waktu Mulai': p.waktu_mulai ? new Date(p.waktu_mulai).toLocaleString('id-ID') : '-',
         'Waktu Selesai': p.waktu_selesai ? new Date(p.waktu_selesai).toLocaleString('id-ID') : '-',
         'Durasi Pengerjaan': durasiLabel,
@@ -486,26 +553,40 @@ export default function CbtMonitoringPage() {
 
     const ws = XLSX.utils.json_to_sheet(rows);
     ws['!cols'] = [
-      { wch: 5 },
+      { wch: 6 },
+      { wch: 16 },
       { wch: 18 },
+      { wch: 18 },
+      { wch: 32 },
       { wch: 30 },
-      { wch: 25 },
-      { wch: 15 },
       { wch: 14 },
-      { wch: 12 },
       { wch: 20 },
       { wch: 16 },
-      { wch: 12 },
       { wch: 18 },
-      { wch: 20 },
-      { wch: 20 },
+      ...(tahapPantau === 'final' ? [{ wch: 24 }, { wch: 30 }] : []),
+      { wch: 16 },
+      { wch: 14 },
+      { wch: 22 },
+      { wch: 22 },
       { wch: 18 },
     ];
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Monitoring CBT');
+    const sheetName = tahapPantau === 'final' ? 'Rekap CBT Final' : 'Rekap CBT Seleksi';
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
     const nowStr = new Date().toISOString().split('T')[0];
-    XLSX.writeFile(wb, `Monitoring_Pengerjaan_CBT_${nowStr}.xlsx`);
+    const cabangStr = filterCabang !== 'Semua' ? `_${filterCabang}` : '_Semua_Mapel';
+    const filename = `Rekap_Sesi_CBT_${tahapPantau === 'final' ? 'Final' : 'Seleksi'}${cabangStr}_${nowStr}.xlsx`;
+    XLSX.writeFile(wb, filename);
+
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: 'Rekap Sesi CBT berhasil diexport!',
+      showConfirmButton: false,
+      timer: 2000,
+    });
   };
 
   const formatSeconds = (sec: number | null) => {
@@ -1174,13 +1255,30 @@ export default function CbtMonitoringPage() {
                 )}
               </select>
             </div>
+
+            {/* Urutan Tampilan */}
+            <div style={{ minWidth: '190px' }}>
+              <select
+                value={sortBy}
+                onChange={(e) => {
+                  setSortBy(e.target.value as any);
+                  setCurrentPage(1);
+                }}
+                style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', background: 'white' }}
+              >
+                <option value="status">Urut: Status Ujian</option>
+                <option value="mapel_nilai">Urut: Mapel & Nilai Tertinggi</option>
+                <option value="nilai_desc">Urut: Nilai Tertinggi</option>
+              </select>
+            </div>
           </div>
 
-          {(filterCabang !== 'Semua' || filterStatus !== 'Semua' || searchQuery) && (
+          {(filterCabang !== 'Semua' || filterStatus !== 'Semua' || sortBy !== 'status' || searchQuery) && (
             <button
               onClick={() => {
                 setFilterCabang('Semua');
                 setFilterStatus('Semua');
+                setSortBy('status');
                 setSearchQuery('');
                 setCurrentPage(1);
               }}
