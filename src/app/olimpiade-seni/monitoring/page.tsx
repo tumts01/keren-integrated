@@ -512,12 +512,14 @@ export default function MonitoringOlimpiadePage() {
         >
           <i className="fas fa-arrow-left"></i> Kembali ke Beranda Olimpiade
         </button>
-        <button 
-          onClick={() => router.push('/olimpiade-seni/cbt-monitoring')}
-          style={{ background: '#7c3aed', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', boxShadow: '0 2px 6px rgba(124,58,237,0.3)' }}
-        >
-          <i className="fas fa-desktop"></i> Monitoring Pengerjaan CBT & Sesi
-        </button>
+        {isAdmin && (
+          <button 
+            onClick={() => router.push('/olimpiade-seni/cbt-monitoring')}
+            style={{ background: '#7c3aed', color: 'white', border: 'none', padding: '8px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', boxShadow: '0 2px 6px rgba(124,58,237,0.3)' }}
+          >
+            <i className="fas fa-desktop"></i> Monitoring Pengerjaan CBT & Sesi
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '14px' }}>
