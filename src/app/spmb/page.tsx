@@ -285,7 +285,8 @@ export default function SpmbPage() {
       
       // Auto-fill alamat dan NPSN sekolah jika asalSekolah dipilih dari referensi
       if (name === 'asalSekolah') {
-        const selected = sekolahRef.find(s => s.nama === value);
+        const valTrim = value.trim().toLowerCase();
+        const selected = sekolahRef.find(s => s.nama.toLowerCase() === valTrim);
         if (selected) {
           if (selected.alamat) newData.alamatSekolahAsal = selected.alamat;
           if (selected.npsn) newData.npsnSekolahAsal = selected.npsn;
@@ -1235,6 +1236,10 @@ export default function SpmbPage() {
             <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
               <label className={styles.label}>Alamat Sekolah Asal</label>
               <input type="text" name="alamatSekolahAsal" className={styles.input} placeholder="Desa/Kelurahan, Kecamatan, Kota/Kabupaten" value={formData.alamatSekolahAsal} onChange={handleInputChange} />
+              <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <i className="fas fa-lightbulb" style={{ color: '#eab308' }}></i>
+                <span>NPSN dan Alamat otomatis terisi dari referensi sekolah. Anda tetap dapat mengedit atau melengkapinya secara manual jika ada ketidaksesuaian.</span>
+              </div>
             </div>
           </div>
 

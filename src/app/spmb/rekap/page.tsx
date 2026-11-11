@@ -7,6 +7,7 @@ import styles from './Rekap.module.css';
 import ModalAturJalur from '../components/ModalAturJalur';
 import ModalPengumumanSpmb from '../components/ModalPengumumanSpmb';
 import ModalDaftarUlang from '../components/ModalDaftarUlang';
+import ModalMasterSekolah from '../components/ModalMasterSekolah';
 import MonitoringSpmb, { getApplicantLocation, CANONICAL_NPSN_MAP, inferNpsnFromName } from '../components/MonitoringSpmb';
 import LoadingScreen from '@/components/LoadingScreen';
 
@@ -26,6 +27,7 @@ export default function RekapSpmb() {
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showPengumumanModal, setShowPengumumanModal] = useState(false);
   const [showDaftarUlangModal, setShowDaftarUlangModal] = useState(false);
+  const [showMasterSekolahModal, setShowMasterSekolahModal] = useState(false);
   const [selectedForDaftarUlang, setSelectedForDaftarUlang] = useState<any | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -1100,6 +1102,27 @@ export default function RekapSpmb() {
               }}
             >
               <i className="fas fa-sliders-h"></i> Atur Jalur SPMB
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowMasterSekolahModal(true)}
+              style={{
+                background: '#0284c7',
+                color: 'white',
+                border: 'none',
+                padding: '9px 18px',
+                borderRadius: '10px',
+                fontSize: '0.88rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 2px 4px rgba(2, 132, 199, 0.2)'
+              }}
+            >
+              <i className="fas fa-school"></i> Master Asal Sekolah
             </button>
           </div>
         )}
@@ -2461,6 +2484,12 @@ export default function RekapSpmb() {
       <ModalPengumumanSpmb
         isOpen={showPengumumanModal}
         onClose={() => setShowPengumumanModal(false)}
+      />
+
+      {/* Modal Master Asal Sekolah */}
+      <ModalMasterSekolah
+        isOpen={showMasterSekolahModal}
+        onClose={() => setShowMasterSekolahModal(false)}
       />
 
       {/* Modal Validasi & Kelola Daftar Ulang */}
