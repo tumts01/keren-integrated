@@ -358,6 +358,35 @@ export default function SpmbPage() {
 
     setLoading(true);
     try {
+      // 0. Pre-check duplikasi NISN / Nama ke server sebelum upload file
+      const checkParams = new URLSearchParams();
+      if (formData.namaLengkap) checkParams.set('nama', formData.namaLengkap.trim());
+      if (formData.nisn && formData.nisn.trim() !== '-') checkParams.set('nisn', formData.nisn.trim());
+
+      const checkRes = await fetch(`/api/spmb?${checkParams.toString()}`);
+      const checkJson = await checkRes.json();
+      if (checkJson.duplicate) {
+        setLoading(false);
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Pendaftaran Ditolak',
+          html: `
+            <div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.6;">
+              <p style="margin: 0 0 10px 0;"><b>Peringatan Data Ganda:</b></p>
+              <div style="background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 10px; padding: 12px; color: #92400e; margin-bottom: 12px;">
+                ${checkJson.message}
+              </div>
+              <p style="margin: 0; font-size: 13px; color: #64748b;">
+                Sistem tidak mengizinkan pendaftaran dengan NISN atau Nama yang sudah terdaftar. Silakan login ke <b>Portal Calon Siswa</b> untuk mengecek berkas ananda atau hubungi Panitia SPMB jika ada kendala.
+              </p>
+            </div>
+          `,
+          confirmButtonColor: '#059669',
+          confirmButtonText: 'Mengerti'
+        });
+        return;
+      }
+
       // Format nama untuk file: hilangkan spasi ganda, ganti spasi dengan underscore
       const safeName = formData.namaLengkap.trim().replace(/\s+/g, '_');
 
@@ -498,7 +527,13 @@ export default function SpmbPage() {
         if (fileKkRef.current) fileKkRef.current.value = '';
 
       } else {
-        showToast(`Gagal mendaftar: ${result.error}`, 'error');
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Pendaftaran Ditolak',
+          html: `<div style="text-align: left; font-size: 14px; color: #334155; line-height: 1.6;">${result.error}</div>`,
+          confirmButtonColor: '#059669',
+          confirmButtonText: 'Tutup'
+        });
       }
 
     } catch (error: any) {

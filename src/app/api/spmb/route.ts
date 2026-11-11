@@ -25,10 +25,117 @@ const SPMB_HEADERS = [
   'File Akta'
 ];
 
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const nama = (searchParams.get('nama') || '').trim();
+    const nisn = (searchParams.get('nisn') || '').trim();
+
+    if (!nama && !nisn) {
+      return NextResponse.json({ success: true, duplicate: false });
+    }
+
+    const { data: rows, error } = await supabase
+      .from('data_spmb')
+      .select('id, nama, nisn, metadata');
+
+    if (error) throw error;
+
+    const currentYear = new Date().getFullYear();
+
+    // 1. Cek duplikasi NISN (hanya jika NISN diisi dan bukan '-')
+    if (nisn && nisn !== '-') {
+      const cleanNisn = nisn.replace(/\s+/g, '');
+      const matchNisn = (rows || []).find((r: any) => {
+        const rNisn = String(r.nisn || r.metadata?.['NISN'] || '').trim().replace(/\s+/g, '');
+        return rNisn && rNisn !== '-' && rNisn === cleanNisn;
+      });
+      if (matchNisn) {
+        const noReg = matchNisn.metadata?.['Nomor Pendaftaran'] || `MTS01-${currentYear}-${String(matchNisn.id).padStart(4, '0')}`;
+        return NextResponse.json({
+          success: true,
+          duplicate: true,
+          field: 'nisn',
+          message: `Calon siswa dengan NISN "${cleanNisn}" sudah terdaftar sebelumnya atas nama "${matchNisn.nama || matchNisn.metadata?.['Nama Lengkap']}" (Nomor Pendaftaran: ${noReg}).`
+        });
+      }
+    }
+
+    // 2. Cek duplikasi Nama Lengkap (case-insensitive & spasi berlebih dinormalisasi)
+    if (nama) {
+      const normNama = nama.toLowerCase().replace(/\s+/g, ' ');
+      const matchNama = (rows || []).find((r: any) => {
+        const rNama = String(r.nama || r.metadata?.['Nama Lengkap'] || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        return rNama && rNama === normNama;
+      });
+      if (matchNama) {
+        const noReg = matchNama.metadata?.['Nomor Pendaftaran'] || `MTS01-${currentYear}-${String(matchNama.id).padStart(4, '0')}`;
+        return NextResponse.json({
+          success: true,
+          duplicate: true,
+          field: 'nama',
+          message: `Calon siswa dengan nama "${nama}" sudah pernah didaftarkan sebelumnya (Nomor Pendaftaran: ${noReg}).`
+        });
+      }
+    }
+
+    return NextResponse.json({ success: true, duplicate: false });
+  } catch (err: any) {
+    console.error('Check Duplicate SPMB Error:', err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const payload = await req.json();
     const timestamp = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
+    const currentYear = new Date().getFullYear();
+
+    const rawNama = String(payload.namaLengkap || '').trim();
+    const rawNisn = String(payload.nisn || '').trim();
+
+    if (!rawNama) {
+      return NextResponse.json({ success: false, error: 'Nama Lengkap wajib diisi.' }, { status: 400 });
+    }
+
+    // Ambil data yang sudah ada untuk pengecekan duplikasi dan keunikan nomor pendaftaran
+    const { data: existingRows, error: fetchErr } = await supabase
+      .from('data_spmb')
+      .select('id, nama, nisn, metadata');
+
+    if (fetchErr) throw fetchErr;
+
+    // 1. Cek Duplikasi NISN (jika NISN diisi dan bukan '-')
+    if (rawNisn && rawNisn !== '-') {
+      const cleanNisn = rawNisn.replace(/\s+/g, '');
+      const matchNisn = (existingRows || []).find((r: any) => {
+        const rNisn = String(r.nisn || r.metadata?.['NISN'] || '').trim().replace(/\s+/g, '');
+        return rNisn && rNisn !== '-' && rNisn === cleanNisn;
+      });
+      if (matchNisn) {
+        const noReg = matchNisn.metadata?.['Nomor Pendaftaran'] || `MTS01-${currentYear}-${String(matchNisn.id).padStart(4, '0')}`;
+        return NextResponse.json({
+          success: false,
+          error: `Pendaftaran Ditolak: Calon siswa dengan NISN "${cleanNisn}" sudah terdaftar sebelumnya atas nama "${matchNisn.nama || matchNisn.metadata?.['Nama Lengkap']}" (Nomor Pendaftaran: ${noReg}). Silakan gunakan menu Portal Siswa atau hubungi Panitia SPMB.`
+        }, { status: 400 });
+      }
+    }
+
+    // 2. Cek Duplikasi Nama Lengkap (case-insensitive & spasi berlebih dinormalisasi)
+    const normNama = rawNama.toLowerCase().replace(/\s+/g, ' ');
+    const matchNama = (existingRows || []).find((r: any) => {
+      const rNama = String(r.nama || r.metadata?.['Nama Lengkap'] || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      return rNama && rNama === normNama;
+    });
+
+    if (matchNama) {
+      const noReg = matchNama.metadata?.['Nomor Pendaftaran'] || `MTS01-${currentYear}-${String(matchNama.id).padStart(4, '0')}`;
+      return NextResponse.json({
+        success: false,
+        error: `Pendaftaran Ditolak: Calon siswa dengan nama "${rawNama}" sudah pernah didaftarkan sebelumnya (Nomor Pendaftaran: ${noReg}). Silakan gunakan menu Portal Siswa untuk memantau status atau hubungi Panitia SPMB jika terdapat kekeliruan.`
+      }, { status: 400 });
+    }
     
     let fullAlamat = payload.alamatLengkap || '';
     if (payload.desa) fullAlamat += `, Desa/Kel. ${payload.desa}`;
@@ -36,7 +143,6 @@ export async function POST(req: Request) {
     if (payload.kabupaten) fullAlamat += `, ${payload.kabupaten}`;
 
     // Auto-generate Nomor Pendaftaran kombinasi huruf dan angka acak (misal: MTS01-2026-EM5JJ)
-    const currentYear = new Date().getFullYear();
     const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const generateCode = (length = 5) => {
       let code = '';
@@ -50,11 +156,6 @@ export async function POST(req: Request) {
       }
       return code;
     };
-
-    // Ambil semua nomor pendaftaran yang sudah ada untuk memastikan kode selalu unik
-    const { data: existingRows } = await supabase
-      .from('data_spmb')
-      .select('metadata');
 
     const existingNomorSet = new Set(
       (existingRows || [])
