@@ -190,6 +190,18 @@ export default function PembayaranSpmbPage() {
     };
   }, [data]);
 
+  // Opsi Jalur Pendaftaran dinamis dari rekap data pendaftar riil
+  const allJalurOptions = useMemo(() => {
+    const counts: Record<string, number> = {};
+    data.forEach(item => {
+      const j = (item.jalurPendaftaran || 'Reguler').trim();
+      if (j) counts[j] = (counts[j] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'id'))
+      .map(([jalur, count]) => ({ jalur, count }));
+  }, [data]);
+
   // Filtered Data
   const filteredData = useMemo(() => {
     return data.filter(item => {
@@ -207,7 +219,8 @@ export default function PembayaranSpmbPage() {
 
       // Filter Jalur
       if (filterJalur !== 'semua') {
-        if ((item.jalurPendaftaran || '').toLowerCase() !== filterJalur.toLowerCase()) {
+        const itemJalur = (item.jalurPendaftaran || 'Reguler').trim().toLowerCase();
+        if (itemJalur !== filterJalur.trim().toLowerCase()) {
           return false;
         }
       }
@@ -893,20 +906,22 @@ export default function PembayaranSpmbPage() {
                 width: '100%',
                 padding: '8px 12px',
                 borderRadius: '8px',
-                border: '1.5px solid #cbd5e1',
+                border: `1.5px solid ${filterJalur !== 'semua' ? '#86efac' : '#cbd5e1'}`,
+                background: filterJalur !== 'semua' ? '#ecfdf5' : 'white',
+                fontWeight: filterJalur !== 'semua' ? 700 : 500,
+                color: filterJalur !== 'semua' ? '#047857' : '#334155',
                 fontSize: '13px',
                 outline: 'none',
                 cursor: 'pointer',
                 boxSizing: 'border-box'
               }}
             >
-              <option value="semua">Semua Jalur</option>
-              <option value="inden">Inden</option>
-              <option value="reguler">Reguler</option>
-              <option value="terpadu">Terpadu</option>
-              <option value="afirmasi">Afirmasi</option>
-              <option value="prestasi">Prestasi</option>
-              <option value="mandiri">Mandiri</option>
+              <option value="semua">Semua Jalur ({data.length})</option>
+              {allJalurOptions.map(({ jalur, count }) => (
+                <option key={jalur} value={jalur}>
+                  {jalur} ({count})
+                </option>
+              ))}
             </select>
           </div>
 
