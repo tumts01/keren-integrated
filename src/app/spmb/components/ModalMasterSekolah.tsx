@@ -50,7 +50,10 @@ export default function ModalMasterSekolah({
   const fetchSekolah = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/spmb/sekolah?refresh=1');
+      const res = await fetch(`/api/spmb/sekolah?refresh=1&t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+      });
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         setSekolahList(json.data);
@@ -128,7 +131,7 @@ export default function ModalMasterSekolah({
     setFormAlamat('');
   };
 
-  // Simpan Form (Tambah / Update)
+  // Simpan Form (Tambah / Update) dengan Optimistic Update (Nol Delay)
   const handleSaveForm = async (e: React.FormEvent) => {
     e.preventDefault();
     const namaTrim = formNama.trim();
@@ -137,15 +140,57 @@ export default function ModalMasterSekolah({
       return;
     }
 
+    const currentMode = formMode;
+    const targetId = editTargetId;
+    const newNpsn = formNpsn.trim();
+    const newAlamat = formAlamat.trim();
+
+    // 1. Optimistic Update: Langsung perbarui tampilan tabel seketika (0ms delay)
+    const optimisticItem: SekolahItem = {
+      id: targetId || `sch_${Date.now()}`,
+      nama: namaTrim,
+      npsn: newNpsn,
+      alamat: newAlamat,
+      sumber: 'manual_terverifikasi',
+      updated_at: new Date().toISOString()
+    };
+
+    if (currentMode === 'edit') {
+      setSekolahList(prev => prev.map(s => 
+        (targetId && s.id === targetId) || s.nama.toLowerCase() === namaTrim.toLowerCase() 
+          ? { ...s, nama: namaTrim, npsn: newNpsn, alamat: newAlamat, sumber: 'manual_terverifikasi' } 
+          : s
+      ));
+    } else {
+      setSekolahList(prev => [...prev, optimisticItem].sort((a, b) => a.nama.localeCompare(b.nama, 'id')));
+    }
+
+    // Tutup form langsung tanpa jeda
+    handleCancelForm();
+
+    // Tampilkan toast notifikasi cepat (tidak memblokir layar)
+    const Toast = Swal.mixin({
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 1500,
+      timerProgressBar: false
+    });
+    Toast.fire({
+      icon: 'success',
+      title: currentMode === 'add' ? 'Sekolah baru berhasil ditambahkan' : 'Data sekolah berhasil diperbarui'
+    });
+
+    // 2. Simpan ke database Supabase
     setSaving(true);
     try {
       const payload = {
-        action: formMode === 'add' ? 'create' : 'update',
+        action: currentMode === 'add' ? 'create' : 'update',
         item: {
-          id: editTargetId || undefined,
+          id: targetId || undefined,
           nama: namaTrim,
-          npsn: formNpsn.trim(),
-          alamat: formAlamat.trim()
+          npsn: newNpsn,
+          alamat: newAlamat
         }
       };
 
@@ -156,28 +201,22 @@ export default function ModalMasterSekolah({
       });
       const json = await res.json();
 
-      if (json.success) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Berhasil!',
-          text: formMode === 'add' ? 'Sekolah baru berhasil ditambahkan' : 'Data sekolah berhasil diperbarui',
-          timer: 1600,
-          showConfirmButton: false
-        });
+      if (json.success && Array.isArray(json.data)) {
         setSekolahList(json.data);
-        handleCancelForm();
         if (onDataUpdated) onDataUpdated();
       } else {
         Swal.fire('Gagal', json.error || 'Terjadi kesalahan saat menyimpan', 'error');
+        fetchSekolah();
       }
     } catch (err: any) {
       Swal.fire('Error', err.message || 'Koneksi gagal', 'error');
+      fetchSekolah();
     } finally {
       setSaving(false);
     }
   };
 
-  // Hapus Sekolah
+  // Hapus Sekolah (dengan Optimistic Delete)
   const handleDelete = async (item: SekolahItem) => {
     const confirm = await Swal.fire({
       title: 'Hapus Sekolah?',
@@ -191,23 +230,28 @@ export default function ModalMasterSekolah({
     });
 
     if (confirm.isConfirmed) {
+      // Optimistic delete: Hapus seketika dari tabel
+      setSekolahList(prev => prev.filter(s => s.id !== item.id && s.nama.toLowerCase() !== item.nama.toLowerCase()));
+      const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+      Toast.fire({ icon: 'success', title: 'Data sekolah dihapus' });
+
       try {
-        Swal.fire({ title: 'Menghapus...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         const res = await fetch('/api/spmb/sekolah', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'delete', id: item.id, item: { nama: item.nama } })
         });
         const json = await res.json();
-        if (json.success) {
-          Swal.fire({ icon: 'success', title: 'Terhapus', text: 'Data sekolah berhasil dihapus', timer: 1400, showConfirmButton: false });
+        if (json.success && Array.isArray(json.data)) {
           setSekolahList(json.data);
           if (onDataUpdated) onDataUpdated();
         } else {
           Swal.fire('Gagal', json.error || 'Gagal menghapus data', 'error');
+          fetchSekolah();
         }
       } catch (err: any) {
         Swal.fire('Error', err.message, 'error');
+        fetchSekolah();
       }
     }
   };

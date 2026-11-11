@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { unstable_cache, revalidateTag } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +11,10 @@ export interface SekolahItem {
   sumber?: string;
   updated_at?: string;
 }
+
+// In-memory cache server untuk kecepatan maksimal (0ms) & nol delay
+let memoryCache: { list: SekolahItem[]; timestamp: number } | null = null;
+const CACHE_TTL_MS = 60 * 1000; // 1 menit TTL (langsung di-refresh seketika jika ada update)
 
 // Data perbaikan manual untuk sekolah yang kosong di arsip lama
 const KNOWN_FIXES: Record<string, { npsn?: string; alamat?: string }> = {
@@ -30,7 +33,17 @@ const KNOWN_FIXES: Record<string, { npsn?: string; alamat?: string }> = {
   'SDN V TURIREJO': {
     npsn: '20517603',
     alamat: 'Jl. Raya Turirejo No. 05, Turirejo, Kec. Lawang, Kab. Malang, Prov. Jawa Timur'
+  },
+  'SDN PAGENTAN 5': {
+    npsn: '20554101',
+    alamat: 'JL. PANGLIMA SUDIRMAN'
   }
+};
+
+const NO_CACHE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+  'Pragma': 'no-cache',
+  'Expires': '0'
 };
 
 // Algoritma Smart Aggregation (Opsi B) dari data_induk
@@ -66,13 +79,11 @@ async function extractSmartFromDataInduk(): Promise<SekolahItem[]> {
         });
       } else {
         const cur = sekolahMap.get(normKey)!;
-        // Prioritaskan NPSN valid (panjang minimal 8 angka)
         if ((!cur.npsn || cur.npsn.length < 8) && rawNpsn.length >= 8) {
           cur.npsn = rawNpsn;
         } else if (!cur.npsn && rawNpsn) {
           cur.npsn = rawNpsn;
         }
-        // Prioritaskan alamat yang lebih panjang & informatif
         if ((!cur.alamat || cur.alamat.length < rawAlamat.length) && rawAlamat) {
           cur.alamat = rawAlamat;
         }
@@ -83,7 +94,7 @@ async function extractSmartFromDataInduk(): Promise<SekolahItem[]> {
     page++;
   }
 
-  // Terapkan known fixes untuk data yang memang kosong di arsip
+  // Terapkan known fixes
   for (const [normKey, fix] of Object.entries(KNOWN_FIXES)) {
     const found = sekolahMap.get(normKey);
     if (found) {
@@ -96,7 +107,12 @@ async function extractSmartFromDataInduk(): Promise<SekolahItem[]> {
 }
 
 // Fungsi pembaca Master Sekolah dari profil_lembaga
-async function getOrInitMasterSekolah(): Promise<{ rowId?: number; list: SekolahItem[] }> {
+async function getOrInitMasterSekolah(forceFresh = false): Promise<{ rowId?: number; list: SekolahItem[] }> {
+  // Cek in-memory cache jika masih valid
+  if (!forceFresh && memoryCache && Date.now() - memoryCache.timestamp < CACHE_TTL_MS) {
+    return { list: memoryCache.list };
+  }
+
   const { data, error } = await supabase
     .from('profil_lembaga')
     .select('id, metadata')
@@ -107,10 +123,12 @@ async function getOrInitMasterSekolah(): Promise<{ rowId?: number; list: Sekolah
   if (error) throw error;
 
   if (data && data.metadata && Array.isArray(data.metadata.sekolah) && data.metadata.sekolah.length > 0) {
-    return { rowId: data.id, list: data.metadata.sekolah };
+    const list = data.metadata.sekolah;
+    memoryCache = { list, timestamp: Date.now() };
+    return { rowId: data.id, list };
   }
 
-  // Jika belum ada di profil_lembaga, inisialisasi dari Smart Aggregator (Opsi B)
+  // Inisialisasi dari Smart Aggregator jika belum ada
   const initialList = await extractSmartFromDataInduk();
   const newMeta = {
     sekolah: initialList,
@@ -120,6 +138,7 @@ async function getOrInitMasterSekolah(): Promise<{ rowId?: number; list: Sekolah
 
   if (data) {
     await supabase.from('profil_lembaga').update({ metadata: newMeta }).eq('id', data.id);
+    memoryCache = { list: initialList, timestamp: Date.now() };
     return { rowId: data.id, list: initialList };
   } else {
     const { data: inserted, error: insErr } = await supabase.from('profil_lembaga').insert([{
@@ -129,22 +148,14 @@ async function getOrInitMasterSekolah(): Promise<{ rowId?: number; list: Sekolah
     }]).select('id').single();
 
     if (insErr) {
-      console.warn('Gagal insert MASTER_SEKOLAH ke profil_lembaga:', insErr);
+      console.warn('Gagal insert MASTER_SEKOLAH:', insErr);
+      memoryCache = { list: initialList, timestamp: Date.now() };
       return { list: initialList };
     }
+    memoryCache = { list: initialList, timestamp: Date.now() };
     return { rowId: inserted?.id, list: initialList };
   }
 }
-
-// Cached fetching untuk performa tinggi form publik
-const getCachedSekolah = unstable_cache(
-  async () => {
-    const { list } = await getOrInitMasterSekolah();
-    return list;
-  },
-  ['spmb_sekolah'],
-  { revalidate: 86400, tags: ['spmb_sekolah'] }
-);
 
 export async function GET(req: Request) {
   try {
@@ -152,13 +163,8 @@ export async function GET(req: Request) {
     const summary = url.searchParams.get('summary');
     const refresh = url.searchParams.get('refresh');
 
-    let list: SekolahItem[];
-    if (refresh === '1') {
-      const res = await getOrInitMasterSekolah();
-      list = res.list;
-    } else {
-      list = await getCachedSekolah();
-    }
+    // Force fresh jika admin atau refresh diminta
+    const { list } = await getOrInitMasterSekolah(refresh === '1');
 
     if (summary === 'true') {
       const total = list.length;
@@ -176,6 +182,8 @@ export async function GET(req: Request) {
           completeAlamat,
           missingAlamat
         }
+      }, {
+        headers: NO_CACHE_HEADERS
       });
     }
 
@@ -184,7 +192,7 @@ export async function GET(req: Request) {
       data: list,
       total: list.length
     }, {
-      headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400' }
+      headers: NO_CACHE_HEADERS
     });
   } catch (error: any) {
     console.error('API Sekolah error:', error);
@@ -195,9 +203,10 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { action, item, id, filter } = body;
+    const { action, item, id } = body;
 
-    const { rowId, list } = await getOrInitMasterSekolah();
+    // Selalu ambil fresh data dari DB untuk operasi write
+    const { rowId, list } = await getOrInitMasterSekolah(true);
     let updatedList = [...list];
 
     if (action === 'create' || action === 'add') {
@@ -262,7 +271,6 @@ export async function POST(req: Request) {
       }
     } 
     else if (action === 'resync') {
-      // Sinkronisasi cerdas dari data_induk, sambil mempertahankan data yang sudah pernah diedit manual
       const rawExtracted = await extractSmartFromDataInduk();
       const manualEditsMap = new Map<string, SekolahItem>();
       updatedList.forEach(s => {
@@ -271,10 +279,8 @@ export async function POST(req: Request) {
         }
       });
 
-      // Gabungkan
       const mergedMap = new Map<string, SekolahItem>();
       rawExtracted.forEach(s => mergedMap.set(s.nama.toUpperCase(), s));
-      // Terapkan kembali editan manual admin
       manualEditsMap.forEach((val, key) => {
         mergedMap.set(key, val);
       });
@@ -285,7 +291,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Aksi tidak dikenali' }, { status: 400 });
     }
 
-    // Simpan ke profil_lembaga
+    // Update in-memory cache seketika (0ms delay untuk request berikutnya)
+    memoryCache = { list: updatedList, timestamp: Date.now() };
+
+    // Simpan ke profil_lembaga Supabase
     const newMeta = {
       sekolah: updatedList,
       total: updatedList.length,
@@ -309,18 +318,13 @@ export async function POST(req: Request) {
       if (insErr) throw insErr;
     }
 
-    // Revalidasi cache
-    try {
-      revalidateTag('spmb_sekolah', {} as any);
-    } catch (e) {
-      // Ignore cache tag warning in dev
-    }
-
     return NextResponse.json({
       success: true,
       message: 'Data master sekolah berhasil diperbarui',
       total: updatedList.length,
       data: updatedList
+    }, {
+      headers: NO_CACHE_HEADERS
     });
   } catch (error: any) {
     console.error('API Sekolah POST error:', error);

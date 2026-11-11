@@ -86,8 +86,8 @@ export default function SpmbPage() {
       .catch(err => console.error('Gagal memuat konfigurasi jalur SPMB', err))
       .finally(() => setLoadingConfig(false));
 
-    // Load referensi sekolah
-    fetch('/api/spmb/sekolah')
+    // Load referensi sekolah (live no-cache)
+    fetch(`/api/spmb/sekolah?t=${Date.now()}`, { cache: 'no-store' })
       .then(res => res.json())
       .then(data => {
         if (data.success) {

@@ -117,7 +117,7 @@ export default function SpmbEditPage() {
         }
 
         // Fetch sekolah reference
-        fetch('/api/spmb/sekolah')
+        fetch('/api/spmb/sekolah?t=' + Date.now(), { cache: 'no-store' })
           .then(res => res.json())
           .then(data => {
             if (isMounted && data.success) {
