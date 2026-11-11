@@ -111,6 +111,7 @@ export default function EmisPage() {
   const sudahMasuk = statsBase.filter(s => s.masukEMIS).length;
   const sudahValid = statsBase.filter(s => s.emisValid === 'SAMA').length;
   const sudahValidWalkel = statsBase.filter(s => s.validasiWalkel === 'VALID').length;
+  const perluPerbaikanWalkel = statsBase.filter(s => s.validasiWalkel === 'PERBAIKAN').length;
 
   const handleToggle = async (siswa: SiswaEmis, field: 'masukEMIS' | 'emisValid' | 'validasiWalkel') => {
     if (!isAdmin && field !== 'validasiWalkel') {
@@ -212,16 +213,28 @@ export default function EmisPage() {
 
       {/* Stats */}
       <div className={styles.statsGrid}>
-        <div className={styles.statCard}>
+        <div 
+          className={styles.statCard}
+          style={{ cursor: 'pointer' }}
+          onClick={() => { setFilterMasuk(''); setFilterValid(''); setFilterWalkel(''); setCurrentPage(1); }}
+          title="Klik untuk melihat semua siswa"
+        >
           <div className={styles.statIcon} style={{ background: '#eff6ff', color: '#3b82f6' }}>
             <i className="fas fa-users"></i>
           </div>
           <div className={styles.statInfo}>
             <span className={styles.statLabel}>Total Siswa</span>
             <span className={styles.statValue}>{totalSiswa}</span>
+            <span className={styles.statSub}>Semua data</span>
           </div>
         </div>
-        <div className={styles.statCard}>
+
+        <div 
+          className={styles.statCard}
+          style={{ cursor: 'pointer', border: filterMasuk === 'sudah' ? '2px solid #f59e0b' : undefined }}
+          onClick={() => { setFilterMasuk(prev => prev === 'sudah' ? '' : 'sudah'); setCurrentPage(1); }}
+          title="Klik untuk memfilter: Sudah Masuk EMIS"
+        >
           <div className={styles.statIcon} style={{ background: '#fef3c7', color: '#f59e0b' }}>
             <i className="fas fa-upload"></i>
           </div>
@@ -231,7 +244,13 @@ export default function EmisPage() {
             <span className={styles.statSub}>{totalSiswa > 0 ? Math.round(sudahMasuk / totalSiswa * 100) : 0}%</span>
           </div>
         </div>
-        <div className={styles.statCard}>
+
+        <div 
+          className={styles.statCard}
+          style={{ cursor: 'pointer', border: filterValid === 'sudah' ? '2px solid #16a34a' : undefined }}
+          onClick={() => { setFilterValid(prev => prev === 'sudah' ? '' : 'sudah'); setCurrentPage(1); }}
+          title="Klik untuk memfilter: Data EMIS Valid"
+        >
           <div className={styles.statIcon} style={{ background: '#dcfce7', color: '#16a34a' }}>
             <i className="fas fa-check-double"></i>
           </div>
@@ -241,23 +260,52 @@ export default function EmisPage() {
             <span className={styles.statSub}>{totalSiswa > 0 ? Math.round(sudahValid / totalSiswa * 100) : 0}%</span>
           </div>
         </div>
-        <div className={styles.statCard}>
+
+        <div 
+          className={styles.statCard}
+          style={{ cursor: 'pointer', border: filterMasuk === 'belum' ? '2px solid #ef4444' : undefined }}
+          onClick={() => { setFilterMasuk(prev => prev === 'belum' ? '' : 'belum'); setCurrentPage(1); }}
+          title="Klik untuk memfilter: Belum Masuk EMIS"
+        >
           <div className={styles.statIcon} style={{ background: '#fee2e2', color: '#ef4444' }}>
             <i className="fas fa-clock"></i>
           </div>
           <div className={styles.statInfo}>
             <span className={styles.statLabel}>Belum Masuk EMIS</span>
             <span className={styles.statValue} style={{ color: '#ef4444' }}>{totalSiswa - sudahMasuk}</span>
+            <span className={styles.statSub}>{totalSiswa > 0 ? Math.round((totalSiswa - sudahMasuk) / totalSiswa * 100) : 0}%</span>
           </div>
         </div>
-        <div className={styles.statCard}>
+
+        <div 
+          className={styles.statCard}
+          style={{ cursor: 'pointer', border: filterWalkel === 'valid' ? '2px solid #8b5cf6' : undefined }}
+          onClick={() => { setFilterWalkel(prev => prev === 'valid' ? '' : 'valid'); setCurrentPage(1); }}
+          title="Klik untuk memfilter: Validasi Walkel Valid"
+        >
           <div className={styles.statIcon} style={{ background: '#f5f3ff', color: '#8b5cf6' }}>
             <i className="fas fa-user-check"></i>
           </div>
           <div className={styles.statInfo}>
-            <span className={styles.statLabel}>Validasi Walkel</span>
+            <span className={styles.statLabel}>Walkel Valid</span>
             <span className={styles.statValue} style={{ color: '#8b5cf6' }}>{sudahValidWalkel}</span>
             <span className={styles.statSub}>{totalSiswa > 0 ? Math.round(sudahValidWalkel / totalSiswa * 100) : 0}%</span>
+          </div>
+        </div>
+
+        <div 
+          className={styles.statCard}
+          style={{ cursor: 'pointer', border: filterWalkel === 'perbaikan' ? '2px solid #ea580c' : undefined }}
+          onClick={() => { setFilterWalkel(prev => prev === 'perbaikan' ? '' : 'perbaikan'); setCurrentPage(1); }}
+          title="Klik untuk memfilter: Walkel Butuh Perbaikan"
+        >
+          <div className={styles.statIcon} style={{ background: '#ffedd5', color: '#ea580c' }}>
+            <i className="fas fa-exclamation-triangle"></i>
+          </div>
+          <div className={styles.statInfo}>
+            <span className={styles.statLabel}>Walkel Butuh Perbaikan</span>
+            <span className={styles.statValue} style={{ color: '#ea580c' }}>{perluPerbaikanWalkel}</span>
+            <span className={styles.statSub}>{totalSiswa > 0 ? Math.round(perluPerbaikanWalkel / totalSiswa * 100) : 0}%</span>
           </div>
         </div>
       </div>
