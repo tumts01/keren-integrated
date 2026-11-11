@@ -34,6 +34,8 @@ export default function EmisPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [updating, setUpdating] = useState<string>(''); // key saat update
   const [isAdmin, setIsAdmin] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 50;
 
   useEffect(() => {
     // Cek role dari localStorage
@@ -84,6 +86,10 @@ export default function EmisPage() {
     if (searchTerm && !s.nama.toLowerCase().includes(searchTerm.toLowerCase()) && !s.nisn.includes(searchTerm)) return false;
     return true;
   });
+
+  // Pagination (Maksimal 50 baris per halaman)
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+  const paginated = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   // Stats berdasarkan filter TA & kelas saja (bukan filter tombol)
   const statsBase = data.filter(s => {
@@ -254,29 +260,29 @@ export default function EmisPage() {
             type="text"
             placeholder="Cari nama / NISN..."
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
             className={styles.searchInput}
           />
         </div>
-        <select value={filterTA} onChange={e => { setFilterTA(e.target.value); fetchData(e.target.value); }} className={styles.filterSelect}>
+        <select value={filterTA} onChange={e => { setFilterTA(e.target.value); fetchData(e.target.value); setCurrentPage(1); }} className={styles.filterSelect}>
           <option value="">Semua Tahun Ajaran</option>
           {tahunAjaranList.map(ta => <option key={ta} value={ta}>{ta}</option>)}
         </select>
-        <select value={filterKelas} onChange={e => setFilterKelas(e.target.value)} className={styles.filterSelect}>
+        <select value={filterKelas} onChange={e => { setFilterKelas(e.target.value); setCurrentPage(1); }} className={styles.filterSelect}>
           <option value="">Semua Kelas</option>
           {kelasList.map(k => <option key={k} value={k}>{k}</option>)}
         </select>
-        <select value={filterMasuk} onChange={e => setFilterMasuk(e.target.value)} className={styles.filterSelect}>
+        <select value={filterMasuk} onChange={e => { setFilterMasuk(e.target.value); setCurrentPage(1); }} className={styles.filterSelect}>
           <option value="">Masuk EMIS: Semua</option>
           <option value="sudah">✅ Sudah Masuk</option>
           <option value="belum">⏳ Belum Masuk</option>
         </select>
-        <select value={filterValid} onChange={e => setFilterValid(e.target.value)} className={styles.filterSelect}>
+        <select value={filterValid} onChange={e => { setFilterValid(e.target.value); setCurrentPage(1); }} className={styles.filterSelect}>
           <option value="">EMIS Valid: Semua</option>
           <option value="sudah">✅ Sudah Valid</option>
           <option value="belum">❌ Belum Valid</option>
         </select>
-        <select value={filterWalkel} onChange={e => setFilterWalkel(e.target.value)} className={styles.filterSelect}>
+        <select value={filterWalkel} onChange={e => { setFilterWalkel(e.target.value); setCurrentPage(1); }} className={styles.filterSelect}>
           <option value="">Val. Walkel: Semua</option>
           <option value="valid">✅ Valid</option>
           <option value="perbaikan">⚠️ Perbaikan</option>
@@ -316,9 +322,11 @@ export default function EmisPage() {
                       <i className="fas fa-folder-open" style={{ fontSize: '2rem', display: 'block', marginBottom: 8 }}></i>
                       Tidak ada data
                     </td></tr>
-                  ) : filtered.map((s, i) => (
-                    <tr key={s.nisn || i} className={styles.tableRow}>
-                      <td style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>{i + 1}</td>
+                  ) : paginated.map((s, i) => {
+                    const rowNumber = (currentPage - 1) * pageSize + i + 1;
+                    return (
+                    <tr key={s.nisn || rowNumber} className={styles.tableRow}>
+                      <td style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>{rowNumber}</td>
                       <td>
                         <div className={styles.namaCell}>
                           <span className={styles.nama}>{s.nama}</span>
@@ -384,12 +392,103 @@ export default function EmisPage() {
                         </button>
                       </td>
                     </tr>
-                  ))}
+                  );
+                })}
                 </tbody>
               </table>
             </div>
-            <div className={styles.tableFooter}>
-              Menampilkan {filtered.length} dari {totalSiswa} siswa
+            <div className={styles.tableFooter} style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <div>
+                Menampilkan <b>{filtered.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}</b> - <b>{Math.min(currentPage * pageSize, filtered.length)}</b> dari <b>{filtered.length}</b> siswa
+                {filtered.length !== totalSiswa && ` (Total ${totalSiswa} siswa)`}
+                <span style={{ marginLeft: '8px', color: '#64748b', fontSize: '0.78rem' }}>• Maks. 50 baris per halaman</span>
+              </div>
+
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button
+                    type="button"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(1)}
+                    style={{
+                      background: currentPage === 1 ? '#f1f5f9' : 'white',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      padding: '4px 8px',
+                      fontSize: '12px',
+                      cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                      color: currentPage === 1 ? '#94a3b8' : '#334155'
+                    }}
+                    title="Halaman Pertama"
+                  >
+                    <i className="fas fa-angle-double-left"></i>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    style={{
+                      background: currentPage === 1 ? '#f1f5f9' : 'white',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                      color: currentPage === 1 ? '#94a3b8' : '#334155'
+                    }}
+                    title="Sebelumnya"
+                  >
+                    <i className="fas fa-chevron-left"></i> Prev
+                  </button>
+
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#1e293b', padding: '0 6px' }}>
+                    {currentPage} / {totalPages}
+                  </span>
+
+                  <button
+                    type="button"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    style={{
+                      background: currentPage >= totalPages ? '#f1f5f9' : 'white',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      padding: '4px 10px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
+                      color: currentPage >= totalPages ? '#94a3b8' : '#334155'
+                    }}
+                    title="Berikutnya"
+                  >
+                    Next <i className="fas fa-chevron-right"></i>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage(totalPages)}
+                    style={{
+                      background: currentPage >= totalPages ? '#f1f5f9' : 'white',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '6px',
+                      padding: '4px 8px',
+                      fontSize: '12px',
+                      cursor: currentPage >= totalPages ? 'not-allowed' : 'pointer',
+                      color: currentPage >= totalPages ? '#94a3b8' : '#334155'
+                    }}
+                    title="Halaman Terakhir"
+                  >
+                    <i className="fas fa-angle-double-right"></i>
+                  </button>
+                </div>
+              )}
             </div>
           </>
         )}
