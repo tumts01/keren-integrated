@@ -124,6 +124,17 @@ export async function GET(request: Request) {
       return { ...s, ...emis, emisValid: emisValidStatus };
     });
 
+    // Urutkan berdasarkan kelas (7A..9H), lalu alfabet nama siswa
+    data.sort((a, b) => {
+      const kA = (a.kelas || '').trim();
+      const kB = (b.kelas || '').trim();
+      if (!kA && kB) return 1;
+      if (kA && !kB) return -1;
+      const c = kA.localeCompare(kB, 'id', { numeric: true, sensitivity: 'base' });
+      if (c !== 0) return c;
+      return (a.nama || '').localeCompare(b.nama || '', 'id');
+    });
+
     return NextResponse.json({ success: true, data, tahunAjaranList }, {
       headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' }
     });

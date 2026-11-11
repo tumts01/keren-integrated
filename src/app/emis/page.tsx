@@ -70,22 +70,32 @@ export default function EmisPage() {
   // Kelas unik dari data
   const kelasList = Array.from(new Set(data.map(s => s.kelas).filter(Boolean))).sort();
 
-  // Filter
-  const filtered = data.filter(s => {
-    if (filterTA && s.tahunAjaran !== filterTA) return false;
-    if (filterKelas && s.kelas !== filterKelas) return false;
-    if (filterMasuk === 'sudah' && !s.masukEMIS) return false;
-    if (filterMasuk === 'belum' && s.masukEMIS) return false;
-    if (filterValid === 'sudah' && s.emisValid !== 'SAMA') return false;
-    if (filterValid === 'belum' && s.emisValid === 'SAMA') return false;
-    
-    if (filterWalkel === 'valid' && s.validasiWalkel !== 'VALID') return false;
-    if (filterWalkel === 'perbaikan' && s.validasiWalkel !== 'PERBAIKAN') return false;
-    if (filterWalkel === 'belum' && (s.validasiWalkel === 'VALID' || s.validasiWalkel === 'PERBAIKAN')) return false;
+  // Filter & Urutkan berdasarkan Kelas, kemudian Nama Siswa
+  const filtered = data
+    .filter(s => {
+      if (filterTA && s.tahunAjaran !== filterTA) return false;
+      if (filterKelas && s.kelas !== filterKelas) return false;
+      if (filterMasuk === 'sudah' && !s.masukEMIS) return false;
+      if (filterMasuk === 'belum' && s.masukEMIS) return false;
+      if (filterValid === 'sudah' && s.emisValid !== 'SAMA') return false;
+      if (filterValid === 'belum' && s.emisValid === 'SAMA') return false;
+      
+      if (filterWalkel === 'valid' && s.validasiWalkel !== 'VALID') return false;
+      if (filterWalkel === 'perbaikan' && s.validasiWalkel !== 'PERBAIKAN') return false;
+      if (filterWalkel === 'belum' && (s.validasiWalkel === 'VALID' || s.validasiWalkel === 'PERBAIKAN')) return false;
 
-    if (searchTerm && !s.nama.toLowerCase().includes(searchTerm.toLowerCase()) && !s.nisn.includes(searchTerm)) return false;
-    return true;
-  });
+      if (searchTerm && !s.nama.toLowerCase().includes(searchTerm.toLowerCase()) && !s.nisn.includes(searchTerm)) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const kA = (a.kelas || '').trim();
+      const kB = (b.kelas || '').trim();
+      if (!kA && kB) return 1;
+      if (kA && !kB) return -1;
+      const c = kA.localeCompare(kB, 'id', { numeric: true, sensitivity: 'base' });
+      if (c !== 0) return c;
+      return (a.nama || '').localeCompare(b.nama || '', 'id');
+    });
 
   // Pagination (Maksimal 50 baris per halaman)
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
