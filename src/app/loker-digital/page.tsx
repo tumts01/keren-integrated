@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect } from 'react';
-import AppLayout from '@/components/AppLayout';
 import styles from './Loker.module.css';
 import InlineLoading from '@/components/InlineLoading';
 
@@ -12,6 +11,10 @@ export default function LokerDigital() {
   const [searchTerm, setSearchTerm] = useState('');
   const [uploadingFolderId, setUploadingFolderId] = useState<string | null>(null);
   
+  // User & Tab State
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<'saya' | 'semua'>('saya');
+  
   // Custom Toast State
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   
@@ -20,10 +23,20 @@ export default function LokerDigital() {
 
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3500); // Hilang setelah 3.5 detik
+    setTimeout(() => setToast(null), 3500);
   };
 
   useEffect(() => {
+    try {
+      const stored = localStorage.getItem('keren_user_data');
+      if (stored) {
+        setCurrentUser(JSON.parse(stored));
+      } else {
+        const uname = localStorage.getItem('username');
+        if (uname) setCurrentUser({ nama: uname, username: uname });
+      }
+    } catch {}
+
     fetchLokerData();
   }, []);
 
@@ -40,7 +53,7 @@ export default function LokerDigital() {
           setNeedsConfig(true);
         }
       }
-    } catch (err) {
+    } catch {
       setError('Gagal memuat data Loker Digital.');
     } finally {
       setLoading(false);
@@ -48,8 +61,39 @@ export default function LokerDigital() {
   };
 
   const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+    return (name || 'GTK').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
+
+  const cleanStr = (s: string) => (s || '').toLowerCase().replace(/[^a-z]/g, '');
+  const isMatchUser = (name1: string, name2: string) => {
+    const c1 = cleanStr(name1);
+    const c2 = cleanStr(name2);
+    if (!c1 || !c2) return false;
+    if (c1.length > 5 && c2.length > 5) {
+      return c1.includes(c2) || c2.includes(c1);
+    }
+    return c1 === c2;
+  };
+
+  const myLoker = (() => {
+    if (!currentUser) return null;
+    if (currentUser.nama) {
+      const exact = lokerData.find(item => isMatchUser(item.nama, currentUser.nama));
+      if (exact) return exact;
+
+      // Pencocokan per kata (panjang > 3)
+      const words = String(currentUser.nama).split(/\s+/).filter(w => w.length > 3);
+      for (const w of words) {
+        const match = lokerData.find(item => cleanStr(item.nama).includes(cleanStr(w)));
+        if (match) return match;
+      }
+    }
+    if (currentUser.username) {
+      const match = lokerData.find(item => cleanStr(item.nama).includes(cleanStr(currentUser.username)));
+      if (match) return match;
+    }
+    return null;
+  })();
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>, folderId: string) => {
     if (!e.target.files || e.target.files.length === 0) return;
@@ -73,11 +117,10 @@ export default function LokerDigital() {
       } else {
         showToast('Gagal mengunggah: ' + json.error, 'error');
       }
-    } catch (err) {
+    } catch {
       showToast('Terjadi kesalahan sistem saat mengunggah file.', 'error');
     } finally {
       setUploadingFolderId(null);
-      // Reset input
       e.target.value = '';
     }
   };
@@ -119,7 +162,7 @@ export default function LokerDigital() {
                   rel="noopener noreferrer"
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#e0f2fe', color: '#0369a1', borderRadius: '8px', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600, border: '1px solid #bae6fd' }}
                 >
-                  <i className="fas fa-external-link-alt"></i> Buka Langsung di Google Drive
+                  <i className="fab fa-google-drive"></i> Buka Langsung di Google Drive
                 </a>
                 <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '6px 0 0' }}>
                   Jika isi loker di bawah error/tidak muncul (403), klik tombol di atas.
@@ -129,6 +172,7 @@ export default function LokerDigital() {
                 src={`https://drive.google.com/embeddedfolderview?id=${modalFolder.id}#grid`}
                 className={styles.iframe}
                 allow="autoplay"
+                title={`Loker ${modalFolder.name}`}
                 style={{ flex: 1, border: 'none', background: '#f8fafc', borderRadius: '8px' }}
               ></iframe>
             </div>
@@ -136,24 +180,56 @@ export default function LokerDigital() {
         </div>
       )}
 
+      {/* Header */}
       <div className={styles.header}>
         <div className={styles.title}>
           <div className={styles.titleIcon}>
             <i className="fas fa-folder-open"></i>
           </div>
-          Loker Digital GTK
+          <div>
+            <div style={{ lineHeight: 1.2 }}>Loker Digital & Berkas GTK</div>
+            <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 500, marginTop: '2px' }}>
+              Penyimpanan berkas administrasi dan dokumen digital masing-masing akun
+            </div>
+          </div>
         </div>
         
-        <div className={styles.searchBox}>
-          <i className={`fas fa-search ${styles.searchIcon}`}></i>
-          <input 
-            type="text" 
-            placeholder="Cari guru..." 
-            className={styles.searchInput}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+        {activeTab === 'semua' && (
+          <div className={styles.searchBox}>
+            <i className={`fas fa-search ${styles.searchIcon}`}></i>
+            <input 
+              type="text" 
+              placeholder="Cari guru / staf..." 
+              className={styles.searchInput}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Tab Switcher */}
+      <div className={styles.tabNav}>
+        <button
+          type="button"
+          className={`${styles.tabBtn} ${activeTab === 'saya' ? styles.tabBtnActive : ''}`}
+          onClick={() => setActiveTab('saya')}
+        >
+          <i className="fas fa-user-check"></i>
+          <span>Loker Saya</span>
+          {myLoker && (
+            <span className={styles.tabBadge}>Aktif</span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          className={`${styles.tabBtn} ${activeTab === 'semua' ? styles.tabBtnActive : ''}`}
+          onClick={() => setActiveTab('semua')}
+        >
+          <i className="fas fa-users"></i>
+          <span>Semua GTK ({lokerData.length})</span>
+        </button>
       </div>
 
       {loading ? (
@@ -169,7 +245,145 @@ export default function LokerDigital() {
             </p>
           )}
         </div>
+      ) : activeTab === 'saya' ? (
+        /* Tab Loker Saya */
+        myLoker ? (
+          <div className={styles.myLokerWrapper}>
+            <div className={styles.myLokerCard}>
+              <div className={styles.myLokerProfile}>
+                <div className={styles.myLokerAvatar}>
+                  {myLoker.foto ? (
+                    <img src={myLoker.foto} alt={myLoker.nama} className={styles.avatarImg} />
+                  ) : (
+                    getInitials(myLoker.nama)
+                  )}
+                </div>
+                <div className={styles.myLokerDetails}>
+                  <div className={styles.myLokerBadge}>
+                    <i className="fas fa-id-badge"></i> Loker Digital Akun Anda
+                  </div>
+                  <h2 className={styles.myLokerName}>{myLoker.nama}</h2>
+                  <div className={styles.myLokerStatus}>
+                    <span>{myLoker.status || currentUser?.role || 'GTK MTs Almaarif 01'}</span>
+                    {myLoker.lokerFolder ? (
+                      <span className={styles.folderConnected}>
+                        <i className="fas fa-check-circle"></i> Google Drive Terhubung
+                      </span>
+                    ) : (
+                      <span className={styles.folderMissing}>
+                        <i className="fas fa-exclamation-triangle"></i> Folder Belum Ada
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {myLoker.lokerFolder ? (
+                <div className={styles.myLokerActions}>
+                  <a
+                    href={`https://drive.google.com/drive/folders/${myLoker.lokerFolder.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.btnOpenDrive}
+                    title="Buka langsung di aplikasi Google Drive"
+                  >
+                    <i className="fab fa-google-drive"></i>
+                    <span>Buka di Google Drive</span>
+                    <i className="fas fa-external-link-alt" style={{ fontSize: '0.75rem', opacity: 0.8 }}></i>
+                  </a>
+
+                  <input
+                    type="file"
+                    id="my-loker-file-input"
+                    style={{ display: 'none' }}
+                    onChange={(e) => myLoker.lokerFolder && handleUpload(e, myLoker.lokerFolder.id)}
+                    disabled={uploadingFolderId === myLoker.lokerFolder.id}
+                  />
+                  <button
+                    type="button"
+                    className={styles.btnUploadPrimary}
+                    onClick={() => document.getElementById('my-loker-file-input')?.click()}
+                    disabled={uploadingFolderId === myLoker.lokerFolder.id}
+                    title="Unggah berkas / dokumen ke loker digital Anda"
+                  >
+                    {uploadingFolderId === myLoker.lokerFolder.id ? (
+                      <>
+                        <i className="fas fa-spinner fa-spin"></i>
+                        <span>Mengunggah...</span>
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-cloud-upload-alt"></i>
+                        <span>Upload Berkas Baru</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                <div className={styles.noFolderNotice}>
+                  <i className="fas fa-info-circle"></i>
+                  <div>
+                    <b>Folder Google Drive Belum Ditemukan</b>
+                    <p>Folder loker digital atas nama Anda belum tersedia di Google Drive. Silakan hubungi Administrator (Ka. TU) untuk dibuatkan folder.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* In-App Preview / Embedded View */}
+            {myLoker.lokerFolder && (
+              <div className={styles.myLokerEmbedBox}>
+                <div className={styles.myLokerEmbedHeader}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, color: '#1e293b' }}>
+                    <i className="fas fa-folder-open" style={{ color: '#059669' }}></i>
+                    Daftar Dokumen di Loker Anda
+                  </div>
+                  <a
+                    href={`https://drive.google.com/drive/folders/${myLoker.lokerFolder.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: '0.8rem', color: '#059669', fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    Buka Fullscreen <i className="fas fa-external-link-alt" style={{ fontSize: '0.7rem' }}></i>
+                  </a>
+                </div>
+
+                <div className={styles.myLokerIframeWrapper}>
+                  <iframe
+                    src={`https://drive.google.com/embeddedfolderview?id=${myLoker.lokerFolder.id}#grid`}
+                    className={styles.myLokerIframe}
+                    allow="autoplay"
+                    title={`Loker ${myLoker.nama}`}
+                  />
+                </div>
+
+                <div className={styles.myLokerEmbedFooter}>
+                  <i className="fas fa-lightbulb" style={{ color: '#f59e0b' }}></i>
+                  <span>
+                    Jika tampilan berkas di atas tidak muncul karena pembatasan browser HP, klik tombol <b>Buka di Google Drive</b> di atas untuk akses langsung.
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className={styles.myLokerEmpty}>
+            <i className="fas fa-user-slash" style={{ fontSize: '2.5rem', color: '#94a3b8', marginBottom: '12px' }}></i>
+            <h3 style={{ margin: 0, color: '#1e293b', fontSize: '1.1rem' }}>Akun Anda Belum Terdeteksi di Loker</h3>
+            <p style={{ color: '#64748b', fontSize: '0.875rem', maxWidth: '420px', margin: '8px auto 16px' }}>
+              Nama akun Anda ({currentUser?.nama || 'Tamu'}) belum terdaftar atau belum cocok dengan data GTK. Silakan pilih tab <b>Semua GTK</b> untuk mencari manual.
+            </p>
+            <button
+              type="button"
+              className={styles.btnSwitchTab}
+              onClick={() => setActiveTab('semua')}
+            >
+              <i className="fas fa-search"></i> Cari di Semua GTK
+            </button>
+          </div>
+        )
       ) : (
+        /* Tab Semua GTK */
         <div className={styles.grid}>
           {filteredData.map((guru) => (
             <div key={guru.id} className={styles.card}>

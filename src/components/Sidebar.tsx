@@ -578,14 +578,14 @@ export default function Sidebar() {
         {hasNewPengumuman && <span className={styles.bottomNavBadge}></span>}
         <span>Info</span>
       </Link>
-      <button
-        type="button"
-        className={`${styles.bottomNavItem} ${!isPinnedCollapsed ? styles.bottomNavItemActive : ''}`}
-        onClick={() => setIsPinnedCollapsed(prev => !prev)}
+      <Link
+        href="/loker-digital"
+        className={`${styles.bottomNavItem} ${pathname === '/loker-digital' && isPinnedCollapsed ? styles.bottomNavItemActive : ''}`}
+        onClick={() => setIsPinnedCollapsed(true)}
       >
-        <i className={`fas ${!isPinnedCollapsed ? 'fa-times' : 'fa-th-large'}`}></i>
-        <span>Menu Lain</span>
-      </button>
+        <i className="fas fa-folder-open"></i>
+        <span>Berkas</span>
+      </Link>
     </nav>
     </>
   );

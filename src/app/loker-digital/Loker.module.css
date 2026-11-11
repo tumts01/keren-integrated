@@ -395,11 +395,328 @@
   }
 }
 
+/* ===== TAB SWITCHER ===== */
+.tabNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f1f5f9;
+  padding: 5px;
+  border-radius: 14px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.tabBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.tabBtn:hover {
+  color: #1e293b;
+}
+
+.tabBtnActive {
+  background: white;
+  color: #065f46;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.tabBadge {
+  font-size: 0.68rem;
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 700;
+}
+
+/* ===== MY LOKER SECTION ===== */
+.myLokerWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.myLokerCard {
+  background: white;
+  border-radius: 20px;
+  padding: 24px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.myLokerProfile {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.myLokerAvatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 1.8rem;
+  flex-shrink: 0;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+}
+
+.myLokerDetails {
+  flex: 1;
+  min-width: 0;
+}
+
+.myLokerBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #059669;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 3px 10px;
+  border-radius: 20px;
+  margin-bottom: 6px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.myLokerName {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.myLokerStatus {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-top: 6px;
+}
+
+.folderConnected {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #059669;
+  font-weight: 600;
+  font-size: 0.8rem;
+  background: #f0fdf4;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid #bbf7d0;
+}
+
+.folderMissing {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #dc2626;
+  font-weight: 600;
+  font-size: 0.8rem;
+  background: #fef2f2;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid #fecaca;
+}
+
+.myLokerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.btnOpenDrive {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 22px;
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: white;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btnOpenDrive:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.35);
+  background: linear-gradient(135deg, #0369a1, #075985);
+}
+
+.btnUploadPrimary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 22px;
+  background: linear-gradient(135deg, #059669, #047857);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btnUploadPrimary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(5, 150, 105, 0.35);
+}
+
+.btnUploadPrimary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.noFolderNotice {
+  display: flex;
+  gap: 12px;
+  padding: 14px 18px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  color: #991b1b;
+  font-size: 0.88rem;
+  align-items: flex-start;
+}
+
+.noFolderNotice i {
+  font-size: 1.2rem;
+  color: #dc2626;
+  margin-top: 2px;
+}
+
+.noFolderNotice b {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.noFolderNotice p {
+  margin: 0;
+  color: #7f1d1d;
+  font-size: 0.82rem;
+}
+
+/* Embed Box */
+.myLokerEmbedBox {
+  background: white;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.06);
+  display: flex;
+  flex-direction: column;
+}
+
+.myLokerEmbedHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.myLokerIframeWrapper {
+  width: 100%;
+  height: 520px;
+  background: #f8fafc;
+  position: relative;
+}
+
+.myLokerIframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #ffffff;
+}
+
+.myLokerEmbedFooter {
+  padding: 10px 18px;
+  background: #fffbeb;
+  border-top: 1px solid #fef3c7;
+  font-size: 0.78rem;
+  color: #92400e;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.myLokerEmpty {
+  background: white;
+  border-radius: 20px;
+  padding: 40px 20px;
+  text-align: center;
+  border: 1px dashed #cbd5e1;
+}
+
+.btnSwitchTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #059669;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 /* ===== MOBILE RESPONSIVE ===== */
 @media (max-width: 768px) {
   .container { padding: 16px; }
   .header { flex-direction: column; align-items: stretch; gap: 12px; }
   .title { font-size: 1.4rem; }
+  .tabNav { width: 100%; }
+  .tabBtn { flex: 1; justify-content: center; padding: 8px 12px; font-size: 0.8rem; }
+  .myLokerCard { padding: 16px; }
+  .myLokerProfile { flex-direction: column; text-align: center; gap: 12px; }
+  .myLokerAvatar { width: 80px; height: 80px; font-size: 2rem; }
+  .myLokerStatus { justify-content: center; }
+  .myLokerActions { flex-direction: column; width: 100%; }
+  .btnOpenDrive, .btnUploadPrimary { width: 100%; box-sizing: border-box; }
+  .myLokerIframeWrapper { height: 420px; }
   .grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .actions { width: 100%; flex-direction: column; }
   .actions button, .actions a { width: 100%; justify-content: center; box-sizing: border-box; }
