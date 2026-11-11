@@ -131,7 +131,7 @@ export default function ModalMasterSekolah({
     setFormAlamat('');
   };
 
-  // Simpan Form (Tambah / Update) dengan Optimistic Update (Nol Delay)
+  // Simpan Form (Tambah / Update) ke Supabase (Terjamin Tersimpan & Cepat)
   const handleSaveForm = async (e: React.FormEvent) => {
     e.preventDefault();
     const namaTrim = formNama.trim();
@@ -145,43 +145,6 @@ export default function ModalMasterSekolah({
     const newNpsn = formNpsn.trim();
     const newAlamat = formAlamat.trim();
 
-    // 1. Optimistic Update: Langsung perbarui tampilan tabel seketika (0ms delay)
-    const optimisticItem: SekolahItem = {
-      id: targetId || `sch_${Date.now()}`,
-      nama: namaTrim,
-      npsn: newNpsn,
-      alamat: newAlamat,
-      sumber: 'manual_terverifikasi',
-      updated_at: new Date().toISOString()
-    };
-
-    if (currentMode === 'edit') {
-      setSekolahList(prev => prev.map(s => 
-        (targetId && s.id === targetId) || s.nama.toLowerCase() === namaTrim.toLowerCase() 
-          ? { ...s, nama: namaTrim, npsn: newNpsn, alamat: newAlamat, sumber: 'manual_terverifikasi' } 
-          : s
-      ));
-    } else {
-      setSekolahList(prev => [...prev, optimisticItem].sort((a, b) => a.nama.localeCompare(b.nama, 'id')));
-    }
-
-    // Tutup form langsung tanpa jeda
-    handleCancelForm();
-
-    // Tampilkan toast notifikasi cepat (tidak memblokir layar)
-    const Toast = Swal.mixin({
-      toast: true,
-      position: 'top-end',
-      showConfirmButton: false,
-      timer: 1500,
-      timerProgressBar: false
-    });
-    Toast.fire({
-      icon: 'success',
-      title: currentMode === 'add' ? 'Sekolah baru berhasil ditambahkan' : 'Data sekolah berhasil diperbarui'
-    });
-
-    // 2. Simpan ke database Supabase
     setSaving(true);
     try {
       const payload = {
@@ -202,21 +165,35 @@ export default function ModalMasterSekolah({
       const json = await res.json();
 
       if (json.success && Array.isArray(json.data)) {
+        // Data terverifikasi tersimpan 100% di Supabase
         setSekolahList(json.data);
+        handleCancelForm();
+
+        const Toast = Swal.mixin({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 1600,
+          timerProgressBar: false
+        });
+        Toast.fire({
+          icon: 'success',
+          title: currentMode === 'add' ? 'Sekolah baru berhasil disimpan' : 'Data sekolah berhasil diperbarui'
+        });
+
         if (onDataUpdated) onDataUpdated();
       } else {
-        Swal.fire('Gagal', json.error || 'Terjadi kesalahan saat menyimpan', 'error');
-        fetchSekolah();
+        Swal.fire('Gagal', json.error || 'Terjadi kesalahan saat menyimpan ke database', 'error');
       }
     } catch (err: any) {
-      Swal.fire('Error', err.message || 'Koneksi gagal', 'error');
-      fetchSekolah();
+      console.error('Save error:', err);
+      Swal.fire('Error', err.message || 'Koneksi gagal saat menyimpan ke database', 'error');
     } finally {
       setSaving(false);
     }
   };
 
-  // Hapus Sekolah (dengan Optimistic Delete)
+  // Hapus Sekolah
   const handleDelete = async (item: SekolahItem) => {
     const confirm = await Swal.fire({
       title: 'Hapus Sekolah?',
@@ -230,11 +207,6 @@ export default function ModalMasterSekolah({
     });
 
     if (confirm.isConfirmed) {
-      // Optimistic delete: Hapus seketika dari tabel
-      setSekolahList(prev => prev.filter(s => s.id !== item.id && s.nama.toLowerCase() !== item.nama.toLowerCase()));
-      const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
-      Toast.fire({ icon: 'success', title: 'Data sekolah dihapus' });
-
       try {
         const res = await fetch('/api/spmb/sekolah', {
           method: 'POST',
@@ -244,14 +216,14 @@ export default function ModalMasterSekolah({
         const json = await res.json();
         if (json.success && Array.isArray(json.data)) {
           setSekolahList(json.data);
+          const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+          Toast.fire({ icon: 'success', title: 'Data sekolah berhasil dihapus' });
           if (onDataUpdated) onDataUpdated();
         } else {
           Swal.fire('Gagal', json.error || 'Gagal menghapus data', 'error');
-          fetchSekolah();
         }
       } catch (err: any) {
         Swal.fire('Error', err.message, 'error');
-        fetchSekolah();
       }
     }
   };
@@ -559,7 +531,7 @@ export default function ModalMasterSekolah({
                     }}
                   >
                     {saving ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-check"></i>}
-                    {formMode === 'add' ? 'Simpan Sekolah' : 'Perbarui Sekolah'}
+                    {saving ? 'Menyimpan...' : (formMode === 'add' ? 'Simpan Sekolah' : 'Perbarui Sekolah')}
                   </button>
                 </div>
               </form>

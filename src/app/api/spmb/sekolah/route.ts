@@ -215,20 +215,28 @@ export async function POST(req: Request) {
       }
 
       const namaTrim = item.nama.trim();
-      const existing = updatedList.find(s => s.nama.toLowerCase() === namaTrim.toLowerCase());
-      if (existing) {
-        return NextResponse.json({ success: false, error: `Sekolah '${namaTrim}' sudah ada dalam master referensi` }, { status: 400 });
-      }
+      const existingIndex = updatedList.findIndex(s => s.nama.toLowerCase() === namaTrim.toLowerCase());
 
-      const newItem: SekolahItem = {
-        id: item.id || `sch_${Date.now()}`,
-        nama: namaTrim,
-        npsn: (item.npsn || '').toString().trim(),
-        alamat: (item.alamat || '').toString().trim(),
-        sumber: 'manual',
-        updated_at: new Date().toISOString()
-      };
-      updatedList.push(newItem);
+      if (existingIndex !== -1) {
+        // Jika nama sekolah sudah ada, perbarui NPSN dan alamatnya (jangan tolak agar user tidak bingung)
+        updatedList[existingIndex] = {
+          ...updatedList[existingIndex],
+          npsn: (item.npsn !== undefined && item.npsn !== '' ? item.npsn : updatedList[existingIndex].npsn).toString().trim(),
+          alamat: (item.alamat !== undefined && item.alamat !== '' ? item.alamat : updatedList[existingIndex].alamat).toString().trim(),
+          sumber: 'manual_terverifikasi',
+          updated_at: new Date().toISOString()
+        };
+      } else {
+        const newItem: SekolahItem = {
+          id: item.id || `sch_${Date.now()}`,
+          nama: namaTrim,
+          npsn: (item.npsn || '').toString().trim(),
+          alamat: (item.alamat || '').toString().trim(),
+          sumber: 'manual',
+          updated_at: new Date().toISOString()
+        };
+        updatedList.push(newItem);
+      }
       updatedList.sort((a, b) => a.nama.localeCompare(b.nama, 'id'));
     } 
     else if (action === 'update') {
