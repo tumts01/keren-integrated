@@ -154,6 +154,12 @@ export async function GET(req: Request) {
         const nilaiTarget = targetSesi && targetSesi.nilai_akhir !== null && targetSesi.nilai_akhir !== undefined
           ? Number(targetSesi.nilai_akhir).toFixed(2)
           : 0;
+        const skorMentah = targetSesi && targetSesi.nilai_akhir !== null && targetSesi.nilai_akhir !== undefined
+          ? Math.round(Number(targetSesi.nilai_akhir) * 1.6)
+          : null;
+        const skorMentahSeleksi = sesiSeleksi && sesiSeleksi.nilai_akhir !== null && sesiSeleksi.nilai_akhir !== undefined
+          ? Math.round(Number(sesiSeleksi.nilai_akhir) * 1.6)
+          : null;
 
         return {
           ...p,
@@ -161,6 +167,8 @@ export async function GET(req: Request) {
           peringkat_seleksi: peringkatSeleksi,
           has_final_sesi: !!sesiFinal,
           nilai_seleksi: nilaiSeleksi > 0 ? nilaiSeleksi.toFixed(2) : 0,
+          skor_mentah: skorMentah,
+          skor_mentah_seleksi: skorMentahSeleksi,
           rata_rata: nilaiTarget,
           jumlah_juri: 1,
           detail_nilai: targetSesi && targetSesi.nilai_akhir !== null

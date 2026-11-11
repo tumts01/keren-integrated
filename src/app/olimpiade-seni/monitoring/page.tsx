@@ -520,6 +520,10 @@ export default function MonitoringOlimpiadePage() {
       }
 
       if (tahapView === 'final') {
+        if (d.kategori_lomba === 'akademik') {
+          const sm = d.skor_mentah !== null && d.skor_mentah !== undefined ? d.skor_mentah : (hasScore ? Math.round(Number(d.rata_rata) * 1.6) : '-');
+          rowObj['Skor Mentah'] = sm;
+        }
         rowObj['Nilai Final CBT'] = hasScore ? Number(d.rata_rata) : 0;
         if (d.kategori_lomba === 'akademik') {
           rowObj['Nilai Seleksi CBT'] = d.nilai_seleksi && Number(d.nilai_seleksi) > 0 ? Number(d.nilai_seleksi) : '-';
@@ -529,6 +533,10 @@ export default function MonitoringOlimpiadePage() {
         rowObj['Nilai Akhir (Juri)'] = hasScore ? Number(d.rata_rata) : 0;
         rowObj['Predikat / Juara'] = predikatStatus;
       } else {
+        if (d.kategori_lomba === 'akademik') {
+          const sm = d.skor_mentah !== null && d.skor_mentah !== undefined ? d.skor_mentah : (hasScore ? Math.round(Number(d.rata_rata) * 1.6) : '-');
+          rowObj['Skor Mentah'] = sm;
+        }
         rowObj['Nilai Seleksi CBT'] = hasScore ? Number(d.rata_rata) : 0;
         rowObj['Status Kelolosan'] = predikatStatus;
       }
@@ -546,6 +554,7 @@ export default function MonitoringOlimpiadePage() {
       { wch: 20 },
       ...(isAdmin ? [{ wch: 16 }, ...(tahapView !== 'seni' ? [{ wch: 16 }] : [])] : []),
       ...(tahapView !== 'seni' ? [{ wch: 20 }] : []),
+      ...(tahapView !== 'seni' ? [{ wch: 14 }] : []),
       { wch: 16 },
       ...(tahapView === 'final' ? [{ wch: 16 }] : []),
       { wch: 26 },
@@ -1210,7 +1219,10 @@ export default function MonitoringOlimpiadePage() {
                           </>
                         )}
                         {tahapView !== 'seni' && <th style={{ padding: '15px', textAlign: 'center' }}>Waktu Mengerjakan</th>}
-                        <th style={{ padding: '15px', textAlign: 'right' }}>
+                        {tahapView !== 'seni' && (
+                          <th style={{ padding: '15px', textAlign: 'center' }}>Skor Mentah</th>
+                        )}
+                        <th style={{ padding: '15px', textAlign: 'center' }}>
                           {tahapView === 'final' ? 'Nilai Final CBT' : tahapView === 'seni' ? 'Nilai Akhir (Juri)' : 'Nilai Seleksi CBT'}
                         </th>
                         <th style={{ padding: '15px', textAlign: 'center' }}>
@@ -1221,7 +1233,7 @@ export default function MonitoringOlimpiadePage() {
                     <tbody>
                       {sortedData.length === 0 ? (
                         <tr>
-                          <td colSpan={6 + (filterCabang === 'Semua' ? 1 : 0) + (isAdmin ? (tahapView === 'seni' ? 1 : 2) : 0) - (tahapView === 'seni' ? 1 : 0)} style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
+                          <td colSpan={6 + (filterCabang === 'Semua' ? 1 : 0) + (isAdmin ? (tahapView === 'seni' ? 1 : 2) : 0) - (tahapView === 'seni' ? 1 : 0) + (tahapView !== 'seni' ? 1 : 0)} style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
                             {tahapView === 'final'
                               ? 'Belum ada data Finalis atau nilai Babak Final Olimpiade Akademik.'
                               : tahapView === 'seni'
@@ -1304,7 +1316,32 @@ export default function MonitoringOlimpiadePage() {
                                   ) : '-'}
                                 </td>
                               )}
-                              <td style={{ padding: '15px', textAlign: 'right' }}>
+                              {tahapView !== 'seni' && (
+                                <td style={{ padding: '15px', textAlign: 'center' }}>
+                                  {hasScore ? (
+                                    <span style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      background: '#f8fafc',
+                                      color: '#1e293b',
+                                      border: '1.5px solid #cbd5e1',
+                                      fontWeight: 800,
+                                      fontSize: '0.95rem',
+                                      padding: '3px 10px',
+                                      borderRadius: '8px',
+                                      minWidth: '46px'
+                                    }}>
+                                      {d.skor_mentah !== undefined && d.skor_mentah !== null
+                                        ? d.skor_mentah
+                                        : Math.round(Number(d.rata_rata) * 1.6)}
+                                    </span>
+                                  ) : (
+                                    <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>-</span>
+                                  )}
+                                </td>
+                              )}
+                              <td style={{ padding: '15px', textAlign: 'center' }}>
                                 <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: Number(d.rata_rata) > 0 ? '#10b981' : '#94a3b8' }}>
                                   {d.rata_rata}
                                 </div>
