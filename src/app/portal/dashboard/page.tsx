@@ -477,6 +477,7 @@ export default function PortalDashboard() {
     { title: 'Jurnal Kelas', icon: 'fa-book-open', color: '#0284c7', path: '/portal/jurnal' },
     { title: 'Nilai & Rapor', icon: 'fa-file-alt', color: '#3b82f6', path: '/portal/nilai' },
     { title: 'Prestasi Siswa', icon: 'fa-trophy', color: '#f59e0b', path: '/portal/prestasi' },
+    { title: 'Bio (About Me)', icon: 'fa-id-badge', color: '#f43f5e', path: '/portal/bio', badge: '✨ Keren' },
     { title: 'Pengumuman', icon: 'fa-bullhorn', color: '#8b5cf6', path: '/portal/pengumuman' },
     { title: 'Penilaian Karakter', icon: 'fa-star', color: '#ec4899', path: '/portal/penilaian-diri' },
     ...(isKelas7 ? [
@@ -1460,16 +1461,35 @@ export default function PortalDashboard() {
 
         {/* Menu Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          {menus.map((menu, idx) => (
+          {menus.map((menu: any, idx) => (
             <div 
               key={idx} 
               onClick={() => router.push(menu.path)}
               style={{ 
                 background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px', 
                 padding: '20px 16px', textAlign: 'center', cursor: 'pointer',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                position: 'relative',
+                transition: 'transform 0.15s, box-shadow 0.15s'
               }}
             >
+              {menu.badge && (
+                <span style={{
+                  position: 'absolute',
+                  top: '8px',
+                  right: '8px',
+                  background: 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)',
+                  color: 'white',
+                  fontSize: '9px',
+                  fontWeight: 800,
+                  padding: '2px 6px',
+                  borderRadius: '8px',
+                  letterSpacing: '0.2px',
+                  boxShadow: '0 2px 6px rgba(244, 63, 94, 0.3)'
+                }}>
+                  {menu.badge}
+                </span>
+              )}
               <div style={{ 
                 width: '48px', height: '48px', borderRadius: '12px', 
                 background: `${menu.color}20`, color: menu.color,

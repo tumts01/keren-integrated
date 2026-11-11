@@ -65,6 +65,7 @@ export async function POST(req: Request) {
           nik: row.metadata?.['NIK'] || '',
           nism: row.metadata?.['NISM'] || '',
           verifikasiIjazah: row.metadata?.['VERIFIKASI_IJAZAH'] || null,
+          bio: row.metadata?.['BIO_SISWA'] || null,
         };
         break;
       }
