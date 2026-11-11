@@ -304,7 +304,7 @@ export default function EmisPage() {
                 <thead>
                   <tr>
                     <th style={{ width: 40 }}>No</th>
-                    <th>Nama Siswa</th>
+                    <th style={{ width: 180, maxWidth: 220 }}>Nama Siswa</th>
                     <th style={{ width: 90 }}>Kelas</th>
                     <th style={{ width: 230 }}>TTL</th>
                     <th style={{ width: 140 }}>NISN</th>
@@ -327,9 +327,9 @@ export default function EmisPage() {
                     return (
                     <tr key={s.nisn || rowNumber} className={styles.tableRow}>
                       <td style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>{rowNumber}</td>
-                      <td>
+                      <td style={{ maxWidth: 220 }}>
                         <div className={styles.namaCell}>
-                          <span className={styles.nama}>{s.nama}</span>
+                          <span className={styles.nama} style={{ whiteSpace: 'normal', wordBreak: 'break-word', lineHeight: 1.35 }}>{s.nama}</span>
                           {s.kelas && <span className={styles.kelasBadge}>{s.kelas}</span>}
                         </div>
                       </td>
