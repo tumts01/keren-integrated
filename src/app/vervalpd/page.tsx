@@ -8,6 +8,7 @@ import styles from './VervalPD.module.css';
 import InlineLoading from '@/components/InlineLoading';
 
 interface InternalStudent {
+  supabaseId?: number | string;
   idSiswa: string;
   nisn: string;
   nik: string;
@@ -194,6 +195,137 @@ export default function VervalPDPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 50;
+
+  // Modal Update & Sinkronisasi Siswa
+  const [editingItem, setEditingItem] = useState<ComparisonRecord | null>(null);
+  const [editForm, setEditForm] = useState({
+    nama: '',
+    nisn: '',
+    nik: '',
+    tempatLahir: '',
+    tanggalLahir: '',
+    ibuKandung: '',
+    jenisKelamin: ''
+  });
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
+  const handleOpenEditModal = (item: ComparisonRecord) => {
+    if (!item.internal) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Bukan Siswa Internal',
+        text: 'Siswa ini hanya ada di file VervalPD dan belum terdaftar di database internal madrasah.'
+      });
+      return;
+    }
+
+    setEditingItem(item);
+    setEditForm({
+      nama: item.internal.nama || '',
+      nisn: item.internal.nisn || '',
+      nik: item.internal.nik || '',
+      tempatLahir: item.internal.tempatLahir || '',
+      tanggalLahir: item.internal.tanggalLahir || '',
+      ibuKandung: item.internal.ibuKandung || '',
+      jenisKelamin: item.internal.jenisKelamin || ''
+    });
+  };
+
+  const handleCopyFieldFromVerval = (field: 'nama' | 'nisn' | 'nik' | 'tempatLahir' | 'tanggalLahir' | 'ibuKandung' | 'jenisKelamin') => {
+    if (!editingItem?.verval) return;
+    const vervalVal = editingItem.verval[field];
+    if (vervalVal !== undefined) {
+      setEditForm(prev => ({
+        ...prev,
+        [field]: vervalVal
+      }));
+    }
+  };
+
+  const handleApplyAllVerval = () => {
+    if (!editingItem?.verval) return;
+    const v = editingItem.verval;
+    setEditForm({
+      nama: v.nama || '',
+      nisn: v.nisn || '',
+      nik: v.nik || '',
+      tempatLahir: v.tempatLahir || '',
+      tanggalLahir: v.tanggalLahir || '',
+      ibuKandung: v.ibuKandung || '',
+      jenisKelamin: v.jenisKelamin || ''
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem?.internal?.supabaseId) {
+      Swal.fire({
+        icon: 'error',
+        title: 'ID Database Tidak Ditemukan',
+        text: 'Data siswa ini tidak memiliki ID internal yang valid untuk diperbarui.'
+      });
+      return;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      const res = await fetch('/api/vervalpd', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          supabaseId: editingItem.internal.supabaseId,
+          fields: {
+            nama: editForm.nama,
+            nisn: editForm.nisn,
+            nik: editForm.nik,
+            tempatLahir: editForm.tempatLahir,
+            tanggalLahir: editForm.tanggalLahir,
+            ibuKandung: editForm.ibuKandung,
+            jenisKelamin: editForm.jenisKelamin
+          }
+        })
+      });
+
+      const result = await res.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Gagal menyimpan perubahan');
+      }
+
+      // Update state internalData secara langsung di memori sehingga rekonsiliasi seketika terupdate!
+      setInternalData(prev => prev.map(s => {
+        if (s.supabaseId === editingItem.internal?.supabaseId) {
+          return {
+            ...s,
+            nama: editForm.nama.trim().toUpperCase(),
+            nisn: editForm.nisn.trim(),
+            nik: editForm.nik.trim(),
+            tempatLahir: editForm.tempatLahir.trim().toUpperCase(),
+            tanggalLahir: editForm.tanggalLahir.trim(),
+            ibuKandung: editForm.ibuKandung.trim().toUpperCase(),
+            jenisKelamin: editForm.jenisKelamin.trim()
+          };
+        }
+        return s;
+      }));
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Berhasil Disimpan!',
+        text: `Data siswa ${editForm.nama} berhasil diperbarui langsung ke database siswa.`,
+        timer: 2000,
+        showConfirmButton: false
+      });
+
+      setEditingItem(null);
+    } catch (err: any) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal Menyimpan',
+        text: err.message || 'Terjadi kesalahan saat menyimpan data ke database.'
+      });
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
 
   // 1. Fetch Internal Student Data
   const fetchInternal = useCallback(async (ta?: string) => {
@@ -1178,6 +1310,7 @@ export default function VervalPDPage() {
                     <th style={{ minWidth: '120px' }}>Tgl Lahir</th>
                     <th style={{ minWidth: '160px' }}>Ibu Kandung</th>
                     <th style={{ width: '60px', textAlign: 'center' }}>JK</th>
+                    <th style={{ width: '110px', textAlign: 'center' }}>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1339,6 +1472,24 @@ export default function VervalPDPage() {
                             </span>
                           )}
                         </td>
+
+                        {/* Aksi */}
+                        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          {item.internal ? (
+                            <button
+                              type="button"
+                              className={styles.btnActionEdit}
+                              onClick={() => handleOpenEditModal(item)}
+                              title={`Update data ${item.internal.nama}`}
+                            >
+                              <i className="fas fa-edit"></i> Update Data
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>
+                              Belum di DB
+                            </span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
@@ -1436,6 +1587,286 @@ export default function VervalPDPage() {
           </>
         )}
       </div>
+
+      {/* Modal Update Data Siswa */}
+      {editingItem && editingItem.internal && (
+        <div className={styles.modalOverlay} onClick={() => !isSavingEdit && setEditingItem(null)}>
+          <div className={styles.modalContainer} onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className={styles.modalHeader}>
+              <div>
+                <h3 className={styles.modalTitle}>
+                  <i className="fas fa-user-edit" style={{ color: '#059669' }}></i>
+                  Update Data Siswa ke Database
+                </h3>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '2px' }}>
+                  Sesuaikan data siswa internal dengan data valid VervalPD
+                </div>
+              </div>
+              <button
+                type="button"
+                className={styles.modalCloseBtn}
+                onClick={() => !isSavingEdit && setEditingItem(null)}
+                disabled={isSavingEdit}
+                title="Tutup"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className={styles.modalBody}>
+              {/* Student Identity Badge */}
+              <div className={styles.modalStudentInfo}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '0.95rem', color: '#065f46' }}>
+                    {editingItem.internal.nama}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#047857', marginTop: '2px' }}>
+                    Kelas: <b>{editingItem.kelas}</b> • NIS: <b>{editingItem.internal.idSiswa || '-'}</b>
+                  </div>
+                </div>
+                <div>
+                  {editingItem.status === 'BEDA_DATA' && (
+                    <span className={`${styles.badge} ${styles.badgeDiff}`}>
+                      <i className="fas fa-exclamation-triangle"></i> Ada Perbedaan ({editingItem.diffFields.length} Atribut)
+                    </span>
+                  )}
+                  {editingItem.status === 'COCOK_SEMPURNA' && (
+                    <span className={`${styles.badge} ${styles.badgeMatch}`}>
+                      <i className="fas fa-check-circle"></i> Cocok Sempurna
+                    </span>
+                  )}
+                  {editingItem.status === 'HANYA_INTERNAL' && (
+                    <span className={`${styles.badge} ${styles.badgeMissingInVerval}`}>
+                      <i className="fas fa-times-circle"></i> Belum di VervalPD
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Quick Sync Banner if VervalPD data exists */}
+              {editingItem.verval && (
+                <div className={styles.modalQuickSyncBanner}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.85rem', color: '#1e40af' }}>
+                      <i className="fas fa-bolt" style={{ color: '#f59e0b', marginRight: '6px' }}></i>
+                      Sinkronisasi 1-Klik dari VervalPD
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: '#3b82f6', marginTop: '2px' }}>
+                      Salin seluruh data yang terbaca dari file VervalPD langsung ke formulir di bawah.
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className={styles.btnQuickSyncAll}
+                    onClick={handleApplyAllVerval}
+                    title="Salin seluruh 7 atribut dari VervalPD"
+                  >
+                    <i className="fas fa-magic"></i> Terapkan Semua Data VervalPD
+                  </button>
+                </div>
+              )}
+
+              {/* Form Grid */}
+              <div className={styles.formGrid}>
+                {/* 1. Nama Siswa */}
+                <div className={`${styles.formGroup} ${styles.formGroupFull}`}>
+                  <div className={styles.formLabelRow}>
+                    <label className={styles.formLabel}>Nama Lengkap Siswa</label>
+                    {editingItem.verval?.nama && editingItem.verval.nama !== editForm.nama && (
+                      <button
+                        type="button"
+                        className={styles.btnCopyField}
+                        onClick={() => handleCopyFieldFromVerval('nama')}
+                      >
+                        <i className="fas fa-copy"></i> Salin dari Verval: &quot;{editingItem.verval.nama}&quot;
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={editForm.nama}
+                    onChange={(e) => setEditForm({ ...editForm, nama: e.target.value })}
+                    className={styles.formInput}
+                    placeholder="Nama lengkap siswa..."
+                  />
+                </div>
+
+                {/* 2. NISN */}
+                <div className={styles.formGroup}>
+                  <div className={styles.formLabelRow}>
+                    <label className={styles.formLabel}>NISN</label>
+                    {editingItem.verval?.nisn && editingItem.verval.nisn !== editForm.nisn && (
+                      <button
+                        type="button"
+                        className={styles.btnCopyField}
+                        onClick={() => handleCopyFieldFromVerval('nisn')}
+                      >
+                        <i className="fas fa-copy"></i> Salin: {editingItem.verval.nisn}
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    maxLength={10}
+                    value={editForm.nisn}
+                    onChange={(e) => setEditForm({ ...editForm, nisn: e.target.value })}
+                    className={styles.formInput}
+                    placeholder="NISN 10 digit..."
+                  />
+                </div>
+
+                {/* 3. NIK */}
+                <div className={styles.formGroup}>
+                  <div className={styles.formLabelRow}>
+                    <label className={styles.formLabel}>NIK</label>
+                    {editingItem.verval?.nik && editingItem.verval.nik !== editForm.nik && (
+                      <button
+                        type="button"
+                        className={styles.btnCopyField}
+                        onClick={() => handleCopyFieldFromVerval('nik')}
+                      >
+                        <i className="fas fa-copy"></i> Salin: {editingItem.verval.nik}
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    maxLength={16}
+                    value={editForm.nik}
+                    onChange={(e) => setEditForm({ ...editForm, nik: e.target.value })}
+                    className={styles.formInput}
+                    placeholder="NIK 16 digit..."
+                  />
+                </div>
+
+                {/* 4. Tempat Lahir */}
+                <div className={styles.formGroup}>
+                  <div className={styles.formLabelRow}>
+                    <label className={styles.formLabel}>Tempat Lahir</label>
+                    {editingItem.verval?.tempatLahir && editingItem.verval.tempatLahir !== editForm.tempatLahir && (
+                      <button
+                        type="button"
+                        className={styles.btnCopyField}
+                        onClick={() => handleCopyFieldFromVerval('tempatLahir')}
+                      >
+                        <i className="fas fa-copy"></i> Salin: {editingItem.verval.tempatLahir}
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={editForm.tempatLahir}
+                    onChange={(e) => setEditForm({ ...editForm, tempatLahir: e.target.value })}
+                    className={styles.formInput}
+                    placeholder="Tempat lahir..."
+                  />
+                </div>
+
+                {/* 5. Tanggal Lahir */}
+                <div className={styles.formGroup}>
+                  <div className={styles.formLabelRow}>
+                    <label className={styles.formLabel}>Tanggal Lahir</label>
+                    {editingItem.verval?.tanggalLahir && editingItem.verval.tanggalLahir !== editForm.tanggalLahir && (
+                      <button
+                        type="button"
+                        className={styles.btnCopyField}
+                        onClick={() => handleCopyFieldFromVerval('tanggalLahir')}
+                      >
+                        <i className="fas fa-copy"></i> Salin: {editingItem.verval.tanggalLahir}
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={editForm.tanggalLahir}
+                    onChange={(e) => setEditForm({ ...editForm, tanggalLahir: e.target.value })}
+                    className={styles.formInput}
+                    placeholder="Contoh: 2013-08-30 atau 30 Agustus 2013..."
+                  />
+                </div>
+
+                {/* 6. Ibu Kandung */}
+                <div className={styles.formGroup}>
+                  <div className={styles.formLabelRow}>
+                    <label className={styles.formLabel}>Nama Ibu Kandung</label>
+                    {editingItem.verval?.ibuKandung && editingItem.verval.ibuKandung !== editForm.ibuKandung && (
+                      <button
+                        type="button"
+                        className={styles.btnCopyField}
+                        onClick={() => handleCopyFieldFromVerval('ibuKandung')}
+                      >
+                        <i className="fas fa-copy"></i> Salin: {editingItem.verval.ibuKandung}
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    value={editForm.ibuKandung}
+                    onChange={(e) => setEditForm({ ...editForm, ibuKandung: e.target.value })}
+                    className={styles.formInput}
+                    placeholder="Nama ibu kandung..."
+                  />
+                </div>
+
+                {/* 7. Jenis Kelamin */}
+                <div className={styles.formGroup}>
+                  <div className={styles.formLabelRow}>
+                    <label className={styles.formLabel}>Jenis Kelamin</label>
+                    {editingItem.verval?.jenisKelamin && editingItem.verval.jenisKelamin !== editForm.jenisKelamin && (
+                      <button
+                        type="button"
+                        className={styles.btnCopyField}
+                        onClick={() => handleCopyFieldFromVerval('jenisKelamin')}
+                      >
+                        <i className="fas fa-copy"></i> Salin: {editingItem.verval.jenisKelamin}
+                      </button>
+                    )}
+                  </div>
+                  <select
+                    value={editForm.jenisKelamin}
+                    onChange={(e) => setEditForm({ ...editForm, jenisKelamin: e.target.value })}
+                    className={styles.formInput}
+                  >
+                    <option value="">-- Pilih Jenis Kelamin --</option>
+                    <option value="LAKI-LAKI">LAKI-LAKI</option>
+                    <option value="PEREMPUAN">PEREMPUAN</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className={styles.modalFooter}>
+              <button
+                type="button"
+                className={styles.btnCancelModal}
+                onClick={() => setEditingItem(null)}
+                disabled={isSavingEdit}
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                className={styles.btnSaveModal}
+                onClick={handleSaveEdit}
+                disabled={isSavingEdit}
+              >
+                {isSavingEdit ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin"></i> Menyimpan...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-save"></i> Simpan ke Database Siswa
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

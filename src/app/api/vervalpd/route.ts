@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { getAllCachedDataInduk } from '@/lib/data-induk';
+import { revalidateTag } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +37,7 @@ export async function GET(request: Request) {
       }
 
       const base = {
+        supabaseId: row.id,
         idSiswa: (getVal('ID SISWA') || '').trim(),
         nisn: (getVal('NISN') || '').trim(),
         nik: (getVal('NIK') || '').trim(),
@@ -166,5 +168,104 @@ export async function DELETE() {
   } catch (error: any) {
     console.error('Delete VervalPD Error:', error);
     return NextResponse.json({ success: false, error: error.message || 'Gagal menghapus data dari server' }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { supabaseId, fields } = body;
+
+    if (!supabaseId) {
+      return NextResponse.json({ success: false, error: 'ID Supabase tidak ditemukan' }, { status: 400 });
+    }
+    if (!fields || typeof fields !== 'object') {
+      return NextResponse.json({ success: false, error: 'Data perubahan tidak valid' }, { status: 400 });
+    }
+
+    // 1. Ambil data siswa saat ini dari data_induk
+    const { data: existingRow, error: fetchErr } = await supabase
+      .from('data_induk')
+      .select('id, nama, id_siswa, metadata')
+      .eq('id', supabaseId)
+      .single();
+
+    if (fetchErr || !existingRow) {
+      return NextResponse.json({ success: false, error: 'Data siswa tidak ditemukan di database' }, { status: 404 });
+    }
+
+    const metadata = existingRow.metadata ? { ...existingRow.metadata } : {};
+
+    // 2. Terapkan perubahan pada atribut terkait
+    if (fields.nama !== undefined && fields.nama !== null) {
+      metadata['NAMA'] = String(fields.nama).trim().toUpperCase();
+    }
+    if (fields.nisn !== undefined && fields.nisn !== null) {
+      metadata['NISN'] = String(fields.nisn).trim();
+    }
+    if (fields.nik !== undefined && fields.nik !== null) {
+      metadata['NIK'] = String(fields.nik).trim();
+    }
+    if (fields.tempatLahir !== undefined && fields.tempatLahir !== null) {
+      metadata['TEMPAT LAHIR'] = String(fields.tempatLahir).trim().toUpperCase();
+    }
+    if (fields.tanggalLahir !== undefined && fields.tanggalLahir !== null) {
+      metadata['TANGGAL LAHIR'] = String(fields.tanggalLahir).trim();
+    }
+
+    // Sinkronisasi kolom gabungan TEMPAT, TANGGAL LAHIR
+    const curTempat = metadata['TEMPAT LAHIR'] || '';
+    const curTgl = metadata['TANGGAL LAHIR'] || '';
+    if (curTempat || curTgl) {
+      metadata['TEMPAT, TANGGAL LAHIR'] = `${curTempat}, ${curTgl}`.replace(/^,\s*|,\s*$/g, '');
+    }
+
+    if (fields.ibuKandung !== undefined && fields.ibuKandung !== null) {
+      metadata['NAMA IBU KANDUNG'] = String(fields.ibuKandung).trim().toUpperCase();
+    }
+    if (fields.jenisKelamin !== undefined && fields.jenisKelamin !== null) {
+      const rawJK = String(fields.jenisKelamin).trim().toUpperCase();
+      const normJK = (rawJK === 'L' || rawJK === 'LAKI-LAKI') ? 'LAKI-LAKI' : (rawJK === 'P' || rawJK === 'PEREMPUAN') ? 'PEREMPUAN' : rawJK;
+      metadata['JENIS KELAMIN'] = normJK;
+    }
+
+    const newNama = metadata['NAMA'] || existingRow.nama;
+
+    // 3. Simpan perubahan ke Supabase
+    const { error: updateErr } = await supabase
+      .from('data_induk')
+      .update({
+        nama: newNama,
+        metadata
+      })
+      .eq('id', supabaseId);
+
+    if (updateErr) throw updateErr;
+
+    // 4. Revalidasi cache data induk & siswa
+    try {
+      revalidateTag('data_induk', {});
+      revalidateTag('siswa', {});
+    } catch (e) {
+      console.warn('Revalidation warning:', e);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Data siswa berhasil diperbarui langsung ke database',
+      updatedData: {
+        supabaseId,
+        nama: newNama,
+        nisn: metadata['NISN'] || '',
+        nik: metadata['NIK'] || '',
+        tempatLahir: metadata['TEMPAT LAHIR'] || '',
+        tanggalLahir: metadata['TANGGAL LAHIR'] || '',
+        ibuKandung: metadata['NAMA IBU KANDUNG'] || '',
+        jenisKelamin: metadata['JENIS KELAMIN'] || ''
+      }
+    });
+  } catch (error: any) {
+    console.error('Update Siswa VervalPD Error:', error);
+    return NextResponse.json({ success: false, error: error.message || 'Gagal menyimpan perubahan ke database' }, { status: 500 });
   }
 }
