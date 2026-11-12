@@ -161,8 +161,8 @@ function normalizeText(raw: any): string {
 function normalizeGender(raw: any): string {
   if (!raw) return '';
   const s = String(raw).trim().toUpperCase();
-  if (s === 'L' || s.startsWith('LAKI') || s === 'PRIA' || s === 'M' || s === 'MALE') return 'L';
-  if (s === 'P' || s.startsWith('PEREMPUAN') || s === 'WANITA' || s === 'F' || s === 'FEMALE') return 'P';
+  if (s === 'L' || s.startsWith('LAKI') || s === 'PRIA' || s === 'M' || s === 'MALE' || s === 'LK') return 'LAKI-LAKI';
+  if (s === 'P' || s.startsWith('PEREMPUAN') || s === 'WANITA' || s === 'F' || s === 'FEMALE' || s === 'PR') return 'PEREMPUAN';
   return s;
 }
 
@@ -227,7 +227,7 @@ export default function VervalPDPage() {
       tempatLahir: item.internal.tempatLahir || '',
       tanggalLahir: item.internal.tanggalLahir || '',
       ibuKandung: item.internal.ibuKandung || '',
-      jenisKelamin: item.internal.jenisKelamin || ''
+      jenisKelamin: normalizeGender(item.internal.jenisKelamin || '')
     });
   };
 
@@ -237,7 +237,7 @@ export default function VervalPDPage() {
     if (vervalVal !== undefined) {
       setEditForm(prev => ({
         ...prev,
-        [field]: vervalVal
+        [field]: field === 'jenisKelamin' ? normalizeGender(vervalVal) : vervalVal
       }));
     }
   };
@@ -252,7 +252,7 @@ export default function VervalPDPage() {
       tempatLahir: v.tempatLahir || '',
       tanggalLahir: v.tanggalLahir || '',
       ibuKandung: v.ibuKandung || '',
-      jenisKelamin: v.jenisKelamin || ''
+      jenisKelamin: normalizeGender(v.jenisKelamin || '')
     });
   };
 
@@ -335,14 +335,22 @@ export default function VervalPDPage() {
       const res = await fetch(url);
       const json = await res.json();
       if (json.success) {
-        setInternalData(json.data || []);
+        const normalizedInternal = (json.data || []).map((s: InternalStudent) => ({
+          ...s,
+          jenisKelamin: normalizeGender(s.jenisKelamin)
+        }));
+        setInternalData(normalizedInternal);
         setTahunAjaranList(json.tahunAjaranList || []);
         if (!selectedTA && json.activeTahunAjaran) {
           setSelectedTA(json.activeTahunAjaran);
         }
         // Load server-saved VervalPD data if available
         if (json.savedVerval && Array.isArray(json.savedVerval.data) && json.savedVerval.data.length > 0) {
-          setVervalData(json.savedVerval.data);
+          const normalizedVerval = json.savedVerval.data.map((d: VervalRow) => ({
+            ...d,
+            jenisKelamin: normalizeGender(d.jenisKelamin)
+          }));
+          setVervalData(normalizedVerval);
           setFileName(json.savedVerval.fileName || 'Data_VervalPD.xlsx');
         }
       } else {
@@ -448,7 +456,7 @@ export default function VervalPDPage() {
           const tempatLahir = colMap.tempatLahir !== undefined ? String(row[colMap.tempatLahir] ?? '').trim() : '';
           const tanggalLahir = colMap.tanggalLahir !== undefined ? normalizeDate(row[colMap.tanggalLahir]) : '';
           const ibuKandung = colMap.ibuKandung !== undefined ? String(row[colMap.ibuKandung] ?? '').trim() : '';
-          const jenisKelamin = colMap.jenisKelamin !== undefined ? String(row[colMap.jenisKelamin] ?? '').trim() : '';
+          const jenisKelamin = colMap.jenisKelamin !== undefined ? normalizeGender(row[colMap.jenisKelamin]) : '';
 
           // Only add if at least name or NISN is present
           if (nama || nisn) {
@@ -808,7 +816,7 @@ export default function VervalPDPage() {
         r.internal?.tempatLahir || '', r.verval?.tempatLahir || '',
         r.internal?.tanggalLahir || '', r.verval?.tanggalLahir || '',
         r.internal?.ibuKandung || '', r.verval?.ibuKandung || '',
-        r.internal?.jenisKelamin || '', r.verval?.jenisKelamin || '',
+        normalizeGender(r.internal?.jenisKelamin) || '', normalizeGender(r.verval?.jenisKelamin) || '',
         r.diffFields.join(', ')
       ];
     });
@@ -827,7 +835,7 @@ export default function VervalPDPage() {
         r.internal?.tempatLahir || '',
         r.internal?.tanggalLahir || '',
         r.internal?.ibuKandung || '',
-        r.internal?.jenisKelamin || ''
+        normalizeGender(r.internal?.jenisKelamin) || ''
       ]);
     const wsMissing = XLSX.utils.aoa_to_sheet([
       ['Kelas', 'NISN', 'NIK', 'Nama Lengkap', 'Tempat Lahir', 'Tanggal Lahir', 'Ibu Kandung', 'Jenis Kelamin'],
@@ -1309,7 +1317,7 @@ export default function VervalPDPage() {
                     <th style={{ minWidth: '160px' }}>Tempat Lahir</th>
                     <th style={{ minWidth: '120px' }}>Tgl Lahir</th>
                     <th style={{ minWidth: '160px' }}>Ibu Kandung</th>
-                    <th style={{ width: '60px', textAlign: 'center' }}>JK</th>
+                    <th style={{ width: '110px', textAlign: 'center' }}>Jenis Kelamin</th>
                     <th style={{ width: '110px', textAlign: 'center' }}>Aksi</th>
                   </tr>
                 </thead>
@@ -1460,15 +1468,23 @@ export default function VervalPDPage() {
                         </td>
 
                         {/* Jenis Kelamin */}
-                        <td style={{ textAlign: 'center' }}>
+                        <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                           {isDiff && item.diffFields.includes('jenisKelamin') ? (
                             <div className={styles.compCell} style={{ alignItems: 'center' }}>
-                              <span className={styles.valInternal}>{item.internal?.jenisKelamin || '-'}</span>
-                              <span className={`${styles.valVerval} ${styles.valDiff}`}>{item.verval?.jenisKelamin || '-'}</span>
+                              <span className={styles.valInternal}>
+                                <span className={`${styles.valTag} ${styles.tagInternal}`}>Int</span> {normalizeGender(item.internal?.jenisKelamin) || '-'}
+                              </span>
+                              <span className={`${styles.valVerval} ${styles.valDiff}`}>
+                                <span className={`${styles.valTag} ${styles.tagVerval}`}>Vpd</span> {normalizeGender(item.verval?.jenisKelamin) || '-'}
+                              </span>
                             </div>
                           ) : (
-                            <span style={{ fontWeight: 700, color: (item.internal?.jenisKelamin || item.verval?.jenisKelamin) === 'P' ? '#ec4899' : '#2563eb' }}>
-                              {normalizeGender(item.internal?.jenisKelamin || item.verval?.jenisKelamin)}
+                            <span style={{
+                              fontWeight: 600,
+                              fontSize: '0.8rem',
+                              color: normalizeGender(item.internal?.jenisKelamin || item.verval?.jenisKelamin) === 'PEREMPUAN' ? '#db2777' : '#2563eb'
+                            }}>
+                              {normalizeGender(item.internal?.jenisKelamin || item.verval?.jenisKelamin) || '-'}
                             </span>
                           )}
                         </td>
@@ -1814,13 +1830,13 @@ export default function VervalPDPage() {
                 <div className={styles.formGroup}>
                   <div className={styles.formLabelRow}>
                     <label className={styles.formLabel}>Jenis Kelamin</label>
-                    {editingItem.verval?.jenisKelamin && editingItem.verval.jenisKelamin !== editForm.jenisKelamin && (
+                    {editingItem.verval?.jenisKelamin && normalizeGender(editingItem.verval.jenisKelamin) !== editForm.jenisKelamin && (
                       <button
                         type="button"
                         className={styles.btnCopyField}
                         onClick={() => handleCopyFieldFromVerval('jenisKelamin')}
                       >
-                        <i className="fas fa-copy"></i> Salin: {editingItem.verval.jenisKelamin}
+                        <i className="fas fa-copy"></i> Salin: {normalizeGender(editingItem.verval.jenisKelamin)}
                       </button>
                     )}
                   </div>

@@ -5,6 +5,14 @@ import { revalidateTag } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
+function normalizeGender(raw: any): string {
+  if (!raw) return '';
+  const s = String(raw).trim().toUpperCase();
+  if (s === 'L' || s.startsWith('LAKI') || s === 'PRIA' || s === 'M' || s === 'MALE' || s === 'LK') return 'LAKI-LAKI';
+  if (s === 'P' || s.startsWith('PEREMPUAN') || s === 'WANITA' || s === 'F' || s === 'FEMALE' || s === 'PR') return 'PEREMPUAN';
+  return s;
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -45,7 +53,7 @@ export async function GET(request: Request) {
         tempatLahir,
         tanggalLahir,
         ibuKandung: (getVal('NAMA IBU KANDUNG') || '').trim(),
-        jenisKelamin: (getVal('JENIS KELAMIN') || '').trim(),
+        jenisKelamin: normalizeGender(getVal('JENIS KELAMIN')),
         status: getVal('STATUS SISWA') || '',
       };
 
@@ -97,6 +105,12 @@ export async function GET(request: Request) {
     if (configRow && configRow.value) {
       try {
         savedVerval = JSON.parse(configRow.value);
+        if (savedVerval && Array.isArray(savedVerval.data)) {
+          savedVerval.data = savedVerval.data.map((d: any) => ({
+            ...d,
+            jenisKelamin: normalizeGender(d.jenisKelamin)
+          }));
+        }
       } catch (e) {
         console.error('Error parsing saved VervalPD data:', e);
       }
@@ -127,12 +141,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Data VervalPD kosong' }, { status: 400 });
     }
 
+    const cleanedData = data.map((d: any) => ({
+      ...d,
+      jenisKelamin: normalizeGender(d.jenisKelamin)
+    }));
+
     const payload = {
       key: 'vervalpd_uploaded_data',
       value: JSON.stringify({
         fileName: fileName || 'Data_VervalPD.xlsx',
         uploadedAt: new Date().toISOString(),
-        data
+        data: cleanedData
       })
     };
 
