@@ -65,51 +65,83 @@ interface ComparisonRecord {
   verval?: VervalRow;
 }
 
-const INDO_MONTH_MAP: Record<string, string> = {
-  jan: '01', januari: '01',
-  feb: '02', februari: '02',
-  mar: '03', maret: '03',
+const MONTH_MAP: Record<string, string> = {
+  jan: '01', januari: '01', january: '01',
+  feb: '02', februari: '02', february: '02',
+  mar: '03', maret: '03', march: '03',
   apr: '04', april: '04',
   mei: '05', may: '05',
-  jun: '06', juni: '06',
-  jul: '07', juli: '07',
-  agu: '08', agustus: '08', aug: '08',
-  sep: '09', september: '09',
-  okt: '10', oktober: '10', oct: '10',
+  jun: '06', juni: '06', june: '06',
+  jul: '07', juli: '07', july: '07',
+  agu: '08', agustus: '08', aug: '08', august: '08',
+  sep: '09', september: '09', sept: '09',
+  okt: '10', oktober: '10', oct: '10', october: '10',
   nov: '11', november: '11',
-  des: '12', desember: '12', dec: '12'
+  des: '12', desember: '12', dec: '12', december: '12'
 };
 
 function normalizeDate(raw: any): string {
   if (!raw) return '';
   if (raw instanceof Date && !isNaN(raw.getTime())) {
-    return raw.toISOString().slice(0, 10);
+    const y = raw.getFullYear();
+    const m = String(raw.getMonth() + 1).padStart(2, '0');
+    const d = String(raw.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   }
   if (typeof raw === 'number') {
     const date = new Date(Math.round((raw - 25569) * 86400 * 1000));
-    return isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
+    if (isNaN(date.getTime())) return '';
+    const y = date.getUTCFullYear();
+    const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const d = String(date.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   }
-  const str = String(raw).trim().toLowerCase();
 
-  // YYYY-MM-DD
+  const str = String(raw).trim().toLowerCase().replace(/[,.]/g, '');
+
+  // 1. YYYY-MM-DD or YYYY/MM/DD
   const mIso = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
   if (mIso) {
     return `${mIso[1]}-${mIso[2].padStart(2, '0')}-${mIso[3].padStart(2, '0')}`;
   }
 
-  // DD-MM-YYYY or DD/MM/YYYY
+  // 2. DD-MM-YYYY or DD/MM/YYYY
   const mDmy = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
   if (mDmy) {
     return `${mDmy[3]}-${mDmy[2].padStart(2, '0')}-${mDmy[1].padStart(2, '0')}`;
   }
 
-  // 12 MARET 2013 or 6 DESEMBER 2012
-  const mWord = str.match(/^(\d{1,2})\s+([a-z]+)\s+(\d{4})$/);
+  // 3. DD Month YYYY (e.g. "10 Aug 2013", "13 Dec 2013", "10-Aug-2013", "12 MARET 2013")
+  const mWord = str.match(/^(\d{1,2})[\s\-_]+([a-z]+)[\s\-_]+(\d{2,4})$/);
   if (mWord) {
     const day = mWord[1].padStart(2, '0');
-    const month = INDO_MONTH_MAP[mWord[2]] || '01';
-    const year = mWord[3];
+    const month = MONTH_MAP[mWord[2]] || '01';
+    let year = mWord[3];
+    if (year.length === 2) {
+      year = parseInt(year, 10) > 40 ? `19${year}` : `20${year}`;
+    }
     return `${year}-${month}-${day}`;
+  }
+
+  // 4. Month DD YYYY (e.g. "Aug 10 2013")
+  const mMonthFirst = str.match(/^([a-z]+)[\s\-_]+(\d{1,2})[\s\-_]+(\d{2,4})$/);
+  if (mMonthFirst) {
+    const month = MONTH_MAP[mMonthFirst[1]] || '01';
+    const day = mMonthFirst[2].padStart(2, '0');
+    let year = mMonthFirst[3];
+    if (year.length === 2) {
+      year = parseInt(year, 10) > 40 ? `19${year}` : `20${year}`;
+    }
+    return `${year}-${month}-${day}`;
+  }
+
+  // 5. Fallback native Date.parse
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+    const d = String(parsed.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   }
 
   return str;
