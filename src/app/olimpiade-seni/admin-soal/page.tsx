@@ -20,6 +20,7 @@ export default function AdminSoalCBT() {
   const [cbtBuka, setCbtBuka] = useState(false);
   const [tahapCbtAktif, setTahapCbtAktif] = useState<'seleksi' | 'final'>('seleksi');
   const [soalCounts, setSoalCounts] = useState<Record<string, number>>({});
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // State untuk modal edit soal langsung
   const [editingSoal, setEditingSoal] = useState<any | null>(null);
@@ -88,6 +89,28 @@ export default function AdminSoalCBT() {
 
   useEffect(() => {
     fetchConfig();
+
+    // Deteksi hak akses Admin
+    try {
+      const sessionStr = localStorage.getItem('keren_user_data');
+      if (sessionStr) {
+        const session = JSON.parse(sessionStr);
+        const role = String(session.role || '').toLowerCase().trim();
+        const username = String(session.username || '').toLowerCase().trim();
+        setIsAdmin(
+          role === 'admin' ||
+          role === 'administrator' ||
+          role.includes('admin') ||
+          role === 'pimpinan' ||
+          username === 'admin'
+        );
+      } else {
+        const fallbackRole = String(localStorage.getItem('role') || localStorage.getItem('user_role') || '').toLowerCase();
+        setIsAdmin(fallbackRole === 'admin' || fallbackRole === 'administrator');
+      }
+    } catch {
+      setIsAdmin(false);
+    }
   }, []);
 
   const fetchConfig = async () => {
@@ -106,6 +129,15 @@ export default function AdminSoalCBT() {
   };
 
   const handleToggleCbt = async () => {
+    if (!isAdmin) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Akses Dibatasi',
+        text: 'Hanya administrator yang berhak membuka atau menutup akses ujian CBT.'
+      });
+      return;
+    }
+
     try {
       const newVal = !cbtBuka;
       const res = await fetch('/api/olimpiade-seni/config-cbt', {
@@ -124,6 +156,15 @@ export default function AdminSoalCBT() {
   };
 
   const handleChangeTahapAktif = async (newTahap: 'seleksi' | 'final') => {
+    if (!isAdmin) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Akses Dibatasi',
+        text: 'Hanya administrator yang berhak mengubah tahap ujian CBT aktif.'
+      });
+      return;
+    }
+
     if (newTahap === tahapCbtAktif) return;
     const label = newTahap === 'final' ? 'Babak Final' : 'Babak Seleksi (Penyisihan)';
     const confirm = await Swal.fire({
@@ -226,6 +267,15 @@ export default function AdminSoalCBT() {
   };
 
   const handleDeleteAll = async () => {
+    if (!isAdmin) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Akses Dibatasi',
+        text: 'Hanya administrator yang berhak mengosongkan bank soal.'
+      });
+      return;
+    }
+
     const labelTahap = tahapSoal === 'final' ? 'Babak Final' : 'Babak Seleksi';
     if (!confirm(`Yakin ingin menghapus semua soal ${lombaFilter} untuk ${labelTahap}?`)) return;
     
@@ -378,7 +428,18 @@ export default function AdminSoalCBT() {
       <div style={{ maxWidth: '1200px', margin: '0 auto', background: 'white', padding: '32px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '16px' }}>
           <div>
-            <h1 style={{ fontSize: '1.8rem', color: '#0f172a', margin: 0 }}>Bank Soal CBT Olimpiade</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <h1 style={{ fontSize: '1.8rem', color: '#0f172a', margin: 0 }}>Bank Soal CBT Olimpiade</h1>
+              {isAdmin ? (
+                <span style={{ fontSize: '0.75rem', background: '#ecfdf5', color: '#047857', padding: '3px 8px', borderRadius: '6px', fontWeight: 700, border: '1px solid #a7f3d0' }}>
+                  <i className="fas fa-user-shield" style={{ marginRight: '4px' }}></i> Admin
+                </span>
+              ) : (
+                <span style={{ fontSize: '0.75rem', background: '#f8fafc', color: '#64748b', padding: '3px 8px', borderRadius: '6px', fontWeight: 600, border: '1px solid #cbd5e1' }}>
+                  <i className="fas fa-user" style={{ marginRight: '4px' }}></i> Non-Admin
+                </span>
+              )}
+            </div>
             <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '0.9rem' }}>
               Kelola paket soal terpisah untuk <b>Babak Seleksi (Penyisihan)</b> dan <b>Babak Final</b>
             </p>
@@ -404,20 +465,23 @@ export default function AdminSoalCBT() {
             </button>
             <button 
               onClick={handleToggleCbt}
+              disabled={!isAdmin}
+              title={!isAdmin ? 'Akses Terkunci: Hanya Administrator yang berhak membuka/menutup ujian CBT' : (cbtBuka ? 'Tutup CBT (Sembunyikan)' : 'Buka CBT (Tampilkan)')}
               style={{ 
                 padding: '10px 20px', 
                 borderRadius: '8px', 
-                background: cbtBuka ? '#ef4444' : '#10b981', 
+                background: !isAdmin ? '#94a3b8' : (cbtBuka ? '#ef4444' : '#10b981'), 
                 color: 'white', 
                 border: 'none', 
-                cursor: 'pointer', 
+                cursor: !isAdmin ? 'not-allowed' : 'pointer', 
                 fontWeight: 600,
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '8px',
+                opacity: !isAdmin ? 0.65 : 1
               }}
             >
-              <i className={`fas ${cbtBuka ? 'fa-eye-slash' : 'fa-eye'}`}></i> 
+              <i className={`fas ${!isAdmin ? 'fa-lock' : (cbtBuka ? 'fa-eye-slash' : 'fa-eye')}`}></i> 
               {cbtBuka ? 'Tutup CBT (Sembunyikan)' : 'Buka CBT (Tampilkan)'}
             </button>
           </div>
@@ -447,19 +511,27 @@ export default function AdminSoalCBT() {
                 : 'Siswa yang login ke CBT saat ini akan mengerjakan Paket Soal Babak Seleksi.'}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {!isAdmin && (
+              <span style={{ fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic', marginRight: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <i className="fas fa-lock" style={{ fontSize: '0.72rem' }}></i> Hanya Admin
+              </span>
+            )}
             <button
               type="button"
               onClick={() => handleChangeTahapAktif('seleksi')}
+              disabled={!isAdmin}
+              title={!isAdmin ? 'Akses Terkunci: Hanya Administrator yang berhak mengubah tahap aktif CBT' : 'Set Aktif: Babak Seleksi'}
               style={{
                 padding: '8px 14px',
                 borderRadius: '8px',
                 border: tahapCbtAktif === 'seleksi' ? 'none' : '1px solid #cbd5e1',
-                background: tahapCbtAktif === 'seleksi' ? '#0284c7' : 'white',
-                color: tahapCbtAktif === 'seleksi' ? 'white' : '#475569',
+                background: tahapCbtAktif === 'seleksi' ? (!isAdmin ? '#64748b' : '#0284c7') : (!isAdmin ? '#f1f5f9' : 'white'),
+                color: tahapCbtAktif === 'seleksi' ? 'white' : (!isAdmin ? '#94a3b8' : '#475569'),
                 fontWeight: 700,
                 fontSize: '0.85rem',
-                cursor: 'pointer'
+                cursor: !isAdmin ? 'not-allowed' : 'pointer',
+                opacity: !isAdmin ? (tahapCbtAktif === 'seleksi' ? 0.85 : 0.6) : 1
               }}
             >
               Set Aktif: Babak Seleksi
@@ -467,15 +539,18 @@ export default function AdminSoalCBT() {
             <button
               type="button"
               onClick={() => handleChangeTahapAktif('final')}
+              disabled={!isAdmin}
+              title={!isAdmin ? 'Akses Terkunci: Hanya Administrator yang berhak mengubah tahap aktif CBT' : 'Set Aktif: Babak Final'}
               style={{
                 padding: '8px 14px',
                 borderRadius: '8px',
                 border: tahapCbtAktif === 'final' ? 'none' : '1px solid #cbd5e1',
-                background: tahapCbtAktif === 'final' ? '#d97706' : 'white',
-                color: tahapCbtAktif === 'final' ? 'white' : '#475569',
+                background: tahapCbtAktif === 'final' ? (!isAdmin ? '#64748b' : '#d97706') : (!isAdmin ? '#f1f5f9' : 'white'),
+                color: tahapCbtAktif === 'final' ? 'white' : (!isAdmin ? '#94a3b8' : '#475569'),
                 fontWeight: 700,
                 fontSize: '0.85rem',
-                cursor: 'pointer'
+                cursor: !isAdmin ? 'not-allowed' : 'pointer',
+                opacity: !isAdmin ? (tahapCbtAktif === 'final' ? 0.85 : 0.6) : 1
               }}
             >
               <i className="fas fa-trophy" style={{ marginRight: '6px' }}></i>
@@ -583,9 +658,25 @@ export default function AdminSoalCBT() {
 
           <button 
             onClick={handleDeleteAll}
-            style={{ padding: '10px 20px', borderRadius: '8px', background: '#ef4444', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 600, marginLeft: 'auto' }}
+            disabled={!isAdmin}
+            title={!isAdmin ? 'Akses Terkunci: Hanya Administrator yang berhak mengosongkan bank soal' : `Hapus semua soal ${lombaFilter} (${tahapSoal === 'final' ? 'Final' : 'Seleksi'})`}
+            style={{ 
+              padding: '10px 20px', 
+              borderRadius: '8px', 
+              background: !isAdmin ? '#cbd5e1' : '#ef4444', 
+              color: !isAdmin ? '#64748b' : 'white', 
+              border: 'none', 
+              cursor: !isAdmin ? 'not-allowed' : 'pointer', 
+              fontWeight: 600, 
+              marginLeft: 'auto',
+              opacity: !isAdmin ? 0.65 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
           >
-            <i className="fas fa-trash" style={{ marginRight: '8px' }}></i> Kosongkan Soal {lombaFilter} ({tahapSoal === 'final' ? 'Final' : 'Seleksi'})
+            <i className={`fas ${!isAdmin ? 'fa-lock' : 'fa-trash'}`}></i> 
+            Kosongkan Soal {lombaFilter} ({tahapSoal === 'final' ? 'Final' : 'Seleksi'})
           </button>
         </div>
 
