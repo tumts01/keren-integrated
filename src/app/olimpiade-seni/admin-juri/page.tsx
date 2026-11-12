@@ -47,9 +47,32 @@ export default function AdminJuriOlimpiadePage() {
   const [inputAspekValues, setInputAspekValues] = useState<Record<string, string>>({});
   const [inputCatatan, setInputCatatan] = useState('');
   const [savingNilaiAdmin, setSavingNilaiAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     fetchAllData();
+
+    // Deteksi hak akses Admin
+    try {
+      const sessionStr = localStorage.getItem('keren_user_data');
+      if (sessionStr) {
+        const session = JSON.parse(sessionStr);
+        const role = String(session.role || '').toLowerCase().trim();
+        const username = String(session.username || '').toLowerCase().trim();
+        setIsAdmin(
+          role === 'admin' ||
+          role === 'administrator' ||
+          role.includes('admin') ||
+          role === 'pimpinan' ||
+          username === 'admin'
+        );
+      } else {
+        const fallbackRole = String(localStorage.getItem('role') || localStorage.getItem('user_role') || '').toLowerCase();
+        setIsAdmin(fallbackRole === 'admin' || fallbackRole === 'administrator');
+      }
+    } catch {
+      setIsAdmin(false);
+    }
   }, []);
 
   const fetchAllData = async () => {
@@ -151,6 +174,10 @@ export default function AdminJuriOlimpiadePage() {
 
   // ==================== HANDLERS: AKUN JURI ====================
   const openCreateJuriModal = () => {
+    if (!isAdmin) {
+      Swal.fire('Akses Dibatasi', 'Hanya administrator yang berhak membuat akun juri baru.', 'warning');
+      return;
+    }
     setEditingJuri(null);
     setFormNamaJuri('');
     setFormCabangJuri(selectedCabang);
@@ -161,6 +188,10 @@ export default function AdminJuriOlimpiadePage() {
   };
 
   const openEditJuriModal = (juri: any) => {
+    if (!isAdmin) {
+      Swal.fire('Akses Dibatasi', 'Hanya administrator yang berhak mengedit akun juri.', 'warning');
+      return;
+    }
     setEditingJuri(juri);
     setFormNamaJuri(juri.nama_juri);
     setFormCabangJuri(juri.cabang_lomba);
@@ -171,6 +202,10 @@ export default function AdminJuriOlimpiadePage() {
 
   const handleSaveJuriAccount = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) {
+      Swal.fire('Akses Dibatasi', 'Hanya administrator yang berhak menyimpan akun juri.', 'warning');
+      return;
+    }
     setSavingJuri(true);
     try {
       const payload = editingJuri
@@ -217,6 +252,10 @@ export default function AdminJuriOlimpiadePage() {
   };
 
   const handleDeleteJuri = async (juri: any) => {
+    if (!isAdmin) {
+      Swal.fire('Akses Dibatasi', 'Hanya administrator yang berhak menghapus akun juri.', 'warning');
+      return;
+    }
     const confirm = await Swal.fire({
       title: `Hapus Akun Juri "${juri.nama_juri}"?`,
       text: `Data nilai yang telah diinput oleh juri ini (${juri.sudah_dinilai} peserta) juga akan ikut terhapus.`,
@@ -275,6 +314,7 @@ export default function AdminJuriOlimpiadePage() {
   const currentEditingConfig = tabelConfigMap[configCabangTab] || DEFAULT_TABEL_PENILAIAN_SENI[configCabangTab];
 
   const handleUpdateAspekField = (idx: number, field: keyof KriteriaAspekJuri, value: any) => {
+    if (!isAdmin) return;
     setTabelConfigMap(prev => {
       const cur = prev[configCabangTab] || DEFAULT_TABEL_PENILAIAN_SENI[configCabangTab];
       const nextAspek = cur.aspek.map((item, i) => (i === idx ? { ...item, [field]: value } : item));
@@ -289,6 +329,10 @@ export default function AdminJuriOlimpiadePage() {
   };
 
   const handleAddAspekColumn = () => {
+    if (!isAdmin) {
+      Swal.fire('Akses Dibatasi', 'Hanya administrator yang berhak menambah kolom aspek penilaian.', 'warning');
+      return;
+    }
     setTabelConfigMap(prev => {
       const cur = prev[configCabangTab] || DEFAULT_TABEL_PENILAIAN_SENI[configCabangTab];
       const nextNum = cur.aspek.length + 1;
@@ -309,6 +353,10 @@ export default function AdminJuriOlimpiadePage() {
   };
 
   const handleRemoveAspekColumn = (idx: number) => {
+    if (!isAdmin) {
+      Swal.fire('Akses Dibatasi', 'Hanya administrator yang berhak menghapus kolom aspek penilaian.', 'warning');
+      return;
+    }
     if (currentEditingConfig.aspek.length <= 1) {
       Swal.fire('Minimal 1 Kolom', 'Tabel penilaian harus memiliki minimal 1 kolom aspek kriteria.', 'warning');
       return;
@@ -326,6 +374,10 @@ export default function AdminJuriOlimpiadePage() {
   };
 
   const handleSaveTabelConfig = async () => {
+    if (!isAdmin) {
+      Swal.fire('Akses Dibatasi', 'Hanya administrator yang berhak menyimpan konfigurasi tabel penilaian.', 'warning');
+      return;
+    }
     setSavingConfig(true);
     try {
       const res = await fetch('/api/olimpiade-seni/juri/admin', {
@@ -357,6 +409,10 @@ export default function AdminJuriOlimpiadePage() {
   };
 
   const handleResetDefaultConfig = () => {
+    if (!isAdmin) {
+      Swal.fire('Akses Dibatasi', 'Hanya administrator yang berhak mereset konfigurasi tabel penilaian.', 'warning');
+      return;
+    }
     setTabelConfigMap(prev => ({
       ...prev,
       [configCabangTab]: JSON.parse(JSON.stringify(DEFAULT_TABEL_PENILAIAN_SENI[configCabangTab]))
@@ -365,6 +421,10 @@ export default function AdminJuriOlimpiadePage() {
 
   // ==================== HANDLERS: INPUT / EDIT NILAI DARI MONITORING ====================
   const openAdminInputNilai = (peserta: any, juri: any) => {
+    if (!isAdmin) {
+      Swal.fire('Akses Dibatasi', 'Hanya administrator yang berhak menginput atau mengedit nilai peserta.', 'warning');
+      return;
+    }
     setInputModalPeserta(peserta);
     setInputModalJuri(juri);
     const existing = peserta.nilai_per_juri?.[juri.id];
@@ -385,6 +445,10 @@ export default function AdminJuriOlimpiadePage() {
 
   const handleSaveNilaiFromAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) {
+      Swal.fire('Akses Dibatasi', 'Hanya administrator yang berhak menyimpan nilai peserta.', 'warning');
+      return;
+    }
     if (!inputModalPeserta || !inputModalJuri) return;
 
     const cfg =
@@ -646,9 +710,20 @@ export default function AdminJuriOlimpiadePage() {
                   MANAJEMEN DEWAN JURI LOMBA SENI
                 </span>
               </div>
-              <h1 style={{ margin: 0, fontSize: '1.65rem', fontWeight: 900, color: '#0f172a' }}>
-                Pusat Kendali Juri, Kriteria Penilaian &amp; Rekap Nilai Seni
-              </h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                <h1 style={{ margin: 0, fontSize: '1.65rem', fontWeight: 900, color: '#0f172a' }}>
+                  Pusat Kendali Juri, Kriteria Penilaian &amp; Rekap Nilai Seni
+                </h1>
+                {isAdmin ? (
+                  <span style={{ fontSize: '0.75rem', background: '#ecfdf5', color: '#047857', padding: '3px 8px', borderRadius: '6px', fontWeight: 700, border: '1px solid #a7f3d0' }}>
+                    <i className="fas fa-user-shield" style={{ marginRight: '4px' }}></i> Admin
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '0.75rem', background: '#f8fafc', color: '#64748b', padding: '3px 8px', borderRadius: '6px', fontWeight: 600, border: '1px solid #cbd5e1' }}>
+                    <i className="fas fa-eye" style={{ marginRight: '4px' }}></i> Mode Lihat &amp; Export Saja
+                  </span>
+                )}
+              </div>
               <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '0.92rem' }}>
                 Kelola akun Dewan Juri, atur kolom kriteria penilaian tiap cabang lomba seni, pantau progres pengisian juri secara <em>real-time</em>, dan unduh rekapitulasi Excel.
               </p>
@@ -1332,22 +1407,24 @@ export default function AdminJuriOlimpiadePage() {
                                               &ldquo;{nj.catatan}&rdquo;
                                             </div>
                                           )}
-                                          <button
-                                            onClick={() => openAdminInputNilai(p, j)}
-                                            style={{
-                                              marginTop: 4,
-                                              background: 'transparent',
-                                              border: '1px solid #cbd5e1',
-                                              color: '#475569',
-                                              borderRadius: 6,
-                                              padding: '2px 8px',
-                                              fontSize: '0.7rem',
-                                              fontWeight: 700,
-                                              cursor: 'pointer'
-                                            }}
-                                          >
-                                            <i className="fas fa-edit"></i> Edit
-                                          </button>
+                                          {isAdmin && (
+                                            <button
+                                              onClick={() => openAdminInputNilai(p, j)}
+                                              style={{
+                                                marginTop: 4,
+                                                background: 'transparent',
+                                                border: '1px solid #cbd5e1',
+                                                color: '#475569',
+                                                borderRadius: 6,
+                                                padding: '2px 8px',
+                                                fontSize: '0.7rem',
+                                                fontWeight: 700,
+                                                cursor: 'pointer'
+                                              }}
+                                            >
+                                              <i className="fas fa-edit"></i> Edit
+                                            </button>
+                                          )}
                                         </div>
                                       ) : (
                                         <div>
@@ -1361,23 +1438,25 @@ export default function AdminJuriOlimpiadePage() {
                                           >
                                             Belum Dinilai
                                           </span>
-                                          <div>
-                                            <button
-                                              onClick={() => openAdminInputNilai(p, j)}
-                                              style={{
-                                                background: '#eff6ff',
-                                                border: '1px solid #bfdbfe',
-                                                color: '#0284c7',
-                                                borderRadius: 6,
-                                                padding: '4px 10px',
-                                                fontSize: '0.74rem',
-                                                fontWeight: 800,
-                                                cursor: 'pointer'
-                                              }}
-                                            >
-                                              + Input Nilai
-                                            </button>
-                                          </div>
+                                          {isAdmin && (
+                                            <div>
+                                              <button
+                                                onClick={() => openAdminInputNilai(p, j)}
+                                                style={{
+                                                  background: '#eff6ff',
+                                                  border: '1px solid #bfdbfe',
+                                                  color: '#0284c7',
+                                                  borderRadius: 6,
+                                                  padding: '4px 10px',
+                                                  fontSize: '0.74rem',
+                                                  fontWeight: 800,
+                                                  cursor: 'pointer'
+                                                }}
+                                              >
+                                                + Input Nilai
+                                              </button>
+                                            </div>
+                                          )}
                                         </div>
                                       )}
                                     </td>
@@ -1463,22 +1542,25 @@ export default function AdminJuriOlimpiadePage() {
 
                   <button
                     onClick={openCreateJuriModal}
+                    disabled={!isAdmin}
+                    title={!isAdmin ? 'Akses Terkunci: Hanya Administrator yang berhak membuat akun juri' : 'Buat Akun Juri Baru'}
                     style={{
-                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                      color: 'white',
+                      background: !isAdmin ? '#cbd5e1' : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      color: !isAdmin ? '#64748b' : 'white',
                       border: 'none',
                       padding: '11px 20px',
                       borderRadius: '11px',
                       fontWeight: 800,
                       fontSize: '0.9rem',
-                      cursor: 'pointer',
+                      cursor: !isAdmin ? 'not-allowed' : 'pointer',
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 8,
-                      boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                      opacity: !isAdmin ? 0.7 : 1,
+                      boxShadow: !isAdmin ? 'none' : '0 4px 12px rgba(16, 185, 129, 0.3)'
                     }}
                   >
-                    <i className="fas fa-user-plus"></i> + Buat Akun Juri Baru
+                    <i className={`fas ${!isAdmin ? 'fa-lock' : 'fa-user-plus'}`}></i> + Buat Akun Juri Baru
                   </button>
                 </div>
 
@@ -1568,37 +1650,41 @@ export default function AdminJuriOlimpiadePage() {
                                   <i className="fab fa-whatsapp"></i> Salin WA
                                 </button>
 
-                                <button
-                                  onClick={() => openEditJuriModal(j)}
-                                  style={{
-                                    background: '#eff6ff',
-                                    color: '#0284c7',
-                                    border: '1px solid #bfdbfe',
-                                    padding: '6px 12px',
-                                    borderRadius: 8,
-                                    fontWeight: 800,
-                                    fontSize: '0.78rem',
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  <i className="fas fa-edit"></i> Edit
-                                </button>
+                                {isAdmin && (
+                                  <>
+                                    <button
+                                      onClick={() => openEditJuriModal(j)}
+                                      style={{
+                                        background: '#eff6ff',
+                                        color: '#0284c7',
+                                        border: '1px solid #bfdbfe',
+                                        padding: '6px 12px',
+                                        borderRadius: 8,
+                                        fontWeight: 800,
+                                        fontSize: '0.78rem',
+                                        cursor: 'pointer'
+                                      }}
+                                    >
+                                      <i className="fas fa-edit"></i> Edit
+                                    </button>
 
-                                <button
-                                  onClick={() => handleDeleteJuri(j)}
-                                  style={{
-                                    background: '#fef2f2',
-                                    color: '#ef4444',
-                                    border: '1px solid #fecaca',
-                                    padding: '6px 12px',
-                                    borderRadius: 8,
-                                    fontWeight: 800,
-                                    fontSize: '0.78rem',
-                                    cursor: 'pointer'
-                                  }}
-                                >
-                                  <i className="fas fa-trash"></i>
-                                </button>
+                                    <button
+                                      onClick={() => handleDeleteJuri(j)}
+                                      style={{
+                                        background: '#fef2f2',
+                                        color: '#ef4444',
+                                        border: '1px solid #fecaca',
+                                        padding: '6px 12px',
+                                        borderRadius: 8,
+                                        fontWeight: 800,
+                                        fontSize: '0.78rem',
+                                        cursor: 'pointer'
+                                      }}
+                                    >
+                                      <i className="fas fa-trash"></i>
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -1623,6 +1709,30 @@ export default function AdminJuriOlimpiadePage() {
                   boxShadow: '0 4px 15px rgba(0,0,0,0.03)'
                 }}
               >
+                {!isAdmin && (
+                  <div
+                    style={{
+                      background: '#fffbeb',
+                      border: '1.5px solid #fde68a',
+                      borderRadius: '14px',
+                      padding: '14px 20px',
+                      marginBottom: '20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      color: '#92400e',
+                      fontSize: '0.88rem'
+                    }}
+                  >
+                    <i className="fas fa-lock" style={{ fontSize: '1.25rem', color: '#d97706' }}></i>
+                    <div>
+                      <div style={{ fontWeight: 800 }}>Mode Lihat Saja (Pengaturan Terkunci)</div>
+                      <div style={{ fontSize: '0.8rem', color: '#b45309', marginTop: 2 }}>
+                        Pengaturan format kolom, rumus, dan bobot penilaian Dewan Juri hanya dapat diubah oleh Administrator.
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div
                   style={{
                     display: 'flex',
@@ -1686,6 +1796,7 @@ export default function AdminJuriOlimpiadePage() {
                       </label>
                       <select
                         value={currentEditingConfig.modeHitung}
+                        disabled={!isAdmin}
                         onChange={e =>
                           setTabelConfigMap(prev => ({
                             ...prev,
@@ -1700,7 +1811,9 @@ export default function AdminJuriOlimpiadePage() {
                           borderRadius: 8,
                           border: '1px solid #cbd5e1',
                           fontWeight: 700,
-                          color: '#0f172a'
+                          color: !isAdmin ? '#64748b' : '#0f172a',
+                          background: !isAdmin ? '#f1f5f9' : 'white',
+                          cursor: !isAdmin ? 'not-allowed' : 'pointer'
                         }}
                       >
                         <option value="sum">Jumlahkan Seluruh Kolom Aspek (Total = Aspek 1 + Aspek 2 + ...)</option>
@@ -1711,6 +1824,7 @@ export default function AdminJuriOlimpiadePage() {
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 700, color: '#334155', marginTop: 18 }}>
                       <input
                         type="checkbox"
+                        disabled={!isAdmin}
                         checked={currentEditingConfig.tampilkanCatatan}
                         onChange={e =>
                           setTabelConfigMap(prev => ({
@@ -1721,7 +1835,7 @@ export default function AdminJuriOlimpiadePage() {
                             }
                           }))
                         }
-                        style={{ width: 18, height: 18 }}
+                        style={{ width: 18, height: 18, cursor: !isAdmin ? 'not-allowed' : 'pointer' }}
                       />
                       <span>Tampilkan Kolom &quot;Catatan / Komentar Juri&quot;</span>
                     </label>
@@ -1730,18 +1844,21 @@ export default function AdminJuriOlimpiadePage() {
                   <button
                     type="button"
                     onClick={handleAddAspekColumn}
+                    disabled={!isAdmin}
+                    title={!isAdmin ? 'Hanya Admin yang dapat menambah aspek penilaian' : 'Tambah Kolom Aspek'}
                     style={{
-                      background: '#0284c7',
-                      color: 'white',
+                      background: !isAdmin ? '#cbd5e1' : '#0284c7',
+                      color: !isAdmin ? '#64748b' : 'white',
                       border: 'none',
                       padding: '9px 16px',
                       borderRadius: '10px',
                       fontWeight: 800,
                       fontSize: '0.85rem',
-                      cursor: 'pointer'
+                      cursor: !isAdmin ? 'not-allowed' : 'pointer',
+                      opacity: !isAdmin ? 0.7 : 1
                     }}
                   >
-                    <i className="fas fa-plus-circle"></i> + Tambah Kolom Aspek Penilaian
+                    <i className={`fas ${!isAdmin ? 'fa-lock' : 'fa-plus-circle'}`}></i> + Tambah Kolom Aspek Penilaian
                   </button>
                 </div>
 
@@ -1783,6 +1900,7 @@ export default function AdminJuriOlimpiadePage() {
                         </label>
                         <input
                           type="text"
+                          disabled={!isAdmin}
                           value={aspek.nama}
                           onChange={e => handleUpdateAspekField(idx, 'nama', e.target.value)}
                           placeholder="Contoh: Materi Suara / Vokal"
@@ -1792,7 +1910,9 @@ export default function AdminJuriOlimpiadePage() {
                             borderRadius: 8,
                             border: '1px solid #cbd5e1',
                             fontWeight: 800,
-                            color: '#0f172a',
+                            color: !isAdmin ? '#64748b' : '#0f172a',
+                            background: !isAdmin ? '#f8fafc' : 'white',
+                            cursor: !isAdmin ? 'not-allowed' : undefined,
                             marginTop: 3
                           }}
                         />
@@ -1806,15 +1926,18 @@ export default function AdminJuriOlimpiadePage() {
                           type="number"
                           min={1}
                           max={1000}
+                          disabled={!isAdmin}
                           value={aspek.bobotMaks}
                           onChange={e => handleUpdateAspekField(idx, 'bobotMaks', Number(e.target.value))}
                           style={{
                             width: '100%',
                             padding: '8px 12px',
                             borderRadius: 8,
-                            border: '1px solid #0284c7',
+                            border: !isAdmin ? '1px solid #cbd5e1' : '1px solid #0284c7',
                             fontWeight: 900,
-                            color: '#0284c7',
+                            color: !isAdmin ? '#64748b' : '#0284c7',
+                            background: !isAdmin ? '#f8fafc' : 'white',
+                            cursor: !isAdmin ? 'not-allowed' : undefined,
                             marginTop: 3
                           }}
                         />
@@ -1826,6 +1949,7 @@ export default function AdminJuriOlimpiadePage() {
                         </label>
                         <input
                           type="text"
+                          disabled={!isAdmin}
                           value={aspek.keterangan || ''}
                           onChange={e => handleUpdateAspekField(idx, 'keterangan', e.target.value)}
                           placeholder="Penjelasan singkat indikator penilaian..."
@@ -1834,28 +1958,32 @@ export default function AdminJuriOlimpiadePage() {
                             padding: '8px 12px',
                             borderRadius: 8,
                             border: '1px solid #cbd5e1',
-                            color: '#334155',
+                            color: !isAdmin ? '#94a3b8' : '#334155',
+                            background: !isAdmin ? '#f8fafc' : 'white',
+                            cursor: !isAdmin ? 'not-allowed' : undefined,
                             marginTop: 3
                           }}
                         />
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveAspekColumn(idx)}
-                        style={{
-                          marginTop: 18,
-                          background: '#fef2f2',
-                          color: '#ef4444',
-                          border: '1px solid #fecaca',
-                          padding: '8px 12px',
-                          borderRadius: 8,
-                          cursor: 'pointer'
-                        }}
-                        title="Hapus Kolom Ini"
-                      >
-                        <i className="fas fa-trash"></i>
-                      </button>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAspekColumn(idx)}
+                          style={{
+                            marginTop: 18,
+                            background: '#fef2f2',
+                            color: '#ef4444',
+                            border: '1px solid #fecaca',
+                            padding: '8px 12px',
+                            borderRadius: 8,
+                            cursor: 'pointer'
+                          }}
+                          title="Hapus Kolom Ini"
+                        >
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -1895,15 +2023,17 @@ export default function AdminJuriOlimpiadePage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <button
                     type="button"
+                    disabled={!isAdmin}
                     onClick={handleResetDefaultConfig}
                     style={{
                       background: '#f1f5f9',
-                      color: '#475569',
+                      color: !isAdmin ? '#94a3b8' : '#475569',
                       border: '1px solid #cbd5e1',
                       padding: '10px 16px',
                       borderRadius: '10px',
                       fontWeight: 700,
-                      cursor: 'pointer'
+                      cursor: !isAdmin ? 'not-allowed' : 'pointer',
+                      opacity: !isAdmin ? 0.5 : 1
                     }}
                   >
                     Kembalikan ke Default {configCabangTab}
@@ -1911,21 +2041,23 @@ export default function AdminJuriOlimpiadePage() {
 
                   <button
                     type="button"
-                    disabled={savingConfig}
+                    disabled={!isAdmin || savingConfig}
                     onClick={handleSaveTabelConfig}
+                    title={!isAdmin ? 'Hanya Admin yang dapat menyimpan pengaturan tabel' : 'Simpan Pengaturan'}
                     style={{
-                      background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
-                      color: 'white',
+                      background: !isAdmin ? '#cbd5e1' : 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+                      color: !isAdmin ? '#64748b' : 'white',
                       border: 'none',
                       padding: '12px 24px',
                       borderRadius: '11px',
                       fontWeight: 900,
                       fontSize: '0.95rem',
-                      cursor: 'pointer',
-                      boxShadow: '0 4px 15px rgba(217, 119, 6, 0.35)'
+                      cursor: !isAdmin ? 'not-allowed' : 'pointer',
+                      opacity: !isAdmin ? 0.65 : 1,
+                      boxShadow: !isAdmin ? 'none' : '0 4px 15px rgba(217, 119, 6, 0.35)'
                     }}
                   >
-                    <i className="fas fa-save" style={{ marginRight: 8 }}></i>
+                    <i className={`fas ${!isAdmin ? 'fa-lock' : 'fa-save'}`} style={{ marginRight: 8 }}></i>
                     {savingConfig ? 'Menyimpan...' : `Simpan Pengaturan Tabel ${configCabangTab}`}
                   </button>
                 </div>
