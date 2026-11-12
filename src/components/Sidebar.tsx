@@ -111,7 +111,15 @@ export default function Sidebar() {
         { name: 'Pengembalian Rapor', path: '/pengembalian-rapor', icon: 'fa-file-signature' },
         { name: 'Kendaraan Siswa', path: '/kendaraan-siswa', icon: 'fa-motorcycle' },
         { name: "Game's Zone", path: '/games-zone', icon: 'fa-gamepad' },
-        { name: 'EMIS', path: '/emis', icon: 'fa-database' },
+        { 
+          name: 'EMIS & VervalPD', 
+          path: '/emis-parent', 
+          icon: 'fa-database',
+          subItems: [
+            { name: 'EMIS', path: '/emis' },
+            { name: 'VervalPD', path: '/vervalpd' }
+          ]
+        },
         { 
           name: 'Perangkat Ujian', 
           path: '/perangkat-ujian-parent', 
@@ -196,7 +204,7 @@ export default function Sidebar() {
   ];
 
   const [openCategories, setOpenCategories] = useState<string[]>(['Utama', 'Akademik & KBM', 'Administrasi', 'Event Madrasah', 'Keuangan']);
-  const [openSubmenus, setOpenSubmenus] = useState<string[]>(['SPMB']); // For submenus like SPMB
+  const [openSubmenus, setOpenSubmenus] = useState<string[]>(['SPMB', 'EMIS & VervalPD']); // For submenus like SPMB & EMIS
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {

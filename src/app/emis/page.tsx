@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import Swal from 'sweetalert2';
 import styles from './Emis.module.css';
 import InlineLoading from '@/components/InlineLoading';
@@ -208,6 +209,27 @@ export default function EmisPage() {
             <h1 className={styles.title}>Pendataan EMIS</h1>
             <p className={styles.subtitle}>Tracking status data siswa di Education Management Information System</p>
           </div>
+        </div>
+        <div>
+          <Link
+            href="/vervalpd"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '9px 16px',
+              background: '#ecfdf5',
+              color: '#059669',
+              border: '1px solid #a7f3d0',
+              borderRadius: '10px',
+              fontWeight: 600,
+              fontSize: '0.85rem',
+              textDecoration: 'none'
+            }}
+            title="Buka menu matching & rekonsiliasi VervalPD"
+          >
+            <i className="fas fa-clipboard-check"></i> Buka VervalPD
+          </Link>
         </div>
       </header>
 
