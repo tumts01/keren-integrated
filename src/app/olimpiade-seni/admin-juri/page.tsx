@@ -287,6 +287,15 @@ export default function AdminJuriOlimpiadePage() {
   };
 
   const handleCopyCredentialsWA = (juri: any) => {
+    if (!isAdmin) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Akses Dibatasi',
+        text: 'Hanya Administrator yang berhak menyalin format kredensial login juri.',
+        confirmButtonColor: '#059669'
+      });
+      return;
+    }
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const linkPortal = `${origin}/olimpiade-seni/juri`;
     const textWA =
@@ -1608,22 +1617,33 @@ export default function AdminJuriOlimpiadePage() {
                             </td>
                             <td style={{ padding: '14px 12px', fontFamily: 'monospace' }}>
                               <span style={{ fontWeight: 700, color: '#334155', marginRight: 8 }}>
-                                {showPasswords[j.id] ? j.password : '••••••••'}
+                                {isAdmin && showPasswords[j.id] ? j.password : '••••••••'}
                               </span>
                               <button
                                 type="button"
-                                onClick={() =>
-                                  setShowPasswords(prev => ({ ...prev, [j.id]: !prev[j.id] }))
-                                }
+                                disabled={!isAdmin}
+                                onClick={() => {
+                                  if (!isAdmin) {
+                                    Swal.fire({
+                                      icon: 'warning',
+                                      title: 'Akses Dibatasi',
+                                      text: 'Hanya Administrator yang berhak melihat password juri.',
+                                      confirmButtonColor: '#059669'
+                                    });
+                                    return;
+                                  }
+                                  setShowPasswords(prev => ({ ...prev, [j.id]: !prev[j.id] }));
+                                }}
                                 style={{
                                   background: 'none',
                                   border: 'none',
-                                  color: '#64748b',
-                                  cursor: 'pointer'
+                                  color: !isAdmin ? '#cbd5e1' : '#64748b',
+                                  cursor: !isAdmin ? 'not-allowed' : 'pointer',
+                                  opacity: !isAdmin ? 0.45 : 1
                                 }}
-                                title="Tampilkan / Sembunyikan Password"
+                                title={!isAdmin ? 'Hanya Administrator yang dapat melihat password' : (showPasswords[j.id] ? 'Sembunyikan Password' : 'Lihat Password')}
                               >
-                                <i className={`fas ${showPasswords[j.id] ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                <i className={`fas ${isAdmin && showPasswords[j.id] ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                               </button>
                             </td>
                             <td style={{ padding: '14px 12px' }}>
@@ -1634,20 +1654,23 @@ export default function AdminJuriOlimpiadePage() {
                             <td style={{ padding: '14px 12px', textAlign: 'right' }}>
                               <div style={{ display: 'inline-flex', gap: 8 }}>
                                 <button
+                                  type="button"
+                                  disabled={!isAdmin}
                                   onClick={() => handleCopyCredentialsWA(j)}
                                   style={{
-                                    background: '#f0fdf4',
-                                    color: '#16a34a',
-                                    border: '1px solid #bbf7d0',
+                                    background: !isAdmin ? '#f8fafc' : '#f0fdf4',
+                                    color: !isAdmin ? '#94a3b8' : '#16a34a',
+                                    border: !isAdmin ? '1px solid #e2e8f0' : '1px solid #bbf7d0',
                                     padding: '6px 12px',
                                     borderRadius: 8,
                                     fontWeight: 800,
                                     fontSize: '0.78rem',
-                                    cursor: 'pointer'
+                                    cursor: !isAdmin ? 'not-allowed' : 'pointer',
+                                    opacity: !isAdmin ? 0.6 : 1
                                   }}
-                                  title="Salin Kredensial & Link untuk dikirim ke WhatsApp Juri"
+                                  title={!isAdmin ? 'Hanya Administrator yang dapat menyalin kredensial juri' : 'Salin Kredensial & Link untuk dikirim ke WhatsApp Juri'}
                                 >
-                                  <i className="fab fa-whatsapp"></i> Salin WA
+                                  <i className={!isAdmin ? 'fas fa-lock' : 'fab fa-whatsapp'}></i> Salin WA
                                 </button>
 
                                 {isAdmin && (
