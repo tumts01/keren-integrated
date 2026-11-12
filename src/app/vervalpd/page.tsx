@@ -208,6 +208,11 @@ export default function VervalPDPage() {
         if (!selectedTA && json.activeTahunAjaran) {
           setSelectedTA(json.activeTahunAjaran);
         }
+        // Load server-saved VervalPD data if available
+        if (json.savedVerval && Array.isArray(json.savedVerval.data) && json.savedVerval.data.length > 0) {
+          setVervalData(json.savedVerval.data);
+          setFileName(json.savedVerval.fileName || 'Data_VervalPD.xlsx');
+        }
       } else {
         Swal.fire('Gagal', json.error || 'Gagal memuat data internal', 'error');
       }
@@ -220,18 +225,6 @@ export default function VervalPDPage() {
 
   useEffect(() => {
     fetchInternal();
-
-    // Check cached uploaded file in sessionStorage
-    try {
-      const cached = sessionStorage.getItem('vervalpd_file_cache');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed.data && parsed.fileName) {
-          setVervalData(parsed.data);
-          setFileName(parsed.fileName);
-        }
-      }
-    } catch {}
   }, [fetchInternal]);
 
   // 2. Parse Excel File
@@ -245,7 +238,7 @@ export default function VervalPDPage() {
     }
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const buffer = e.target?.result as ArrayBuffer;
         const wb = XLSX.read(new Uint8Array(buffer), { type: 'array', cellDates: true });
@@ -344,18 +337,18 @@ export default function VervalPDPage() {
         setFileName(file.name);
         setCurrentPage(1);
 
-        try {
-          sessionStorage.setItem('vervalpd_file_cache', JSON.stringify({
-            data: parsedRows,
-            fileName: file.name
-          }));
-        } catch {}
+        // Simpan ke database server agar aktif dan tersinkronisasi di semua PC
+        fetch('/api/vervalpd', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fileName: file.name, data: parsedRows })
+        }).catch(err => console.error('Gagal simpan ke server:', err));
 
         Swal.fire({
           icon: 'success',
-          title: 'Berhasil Membaca File',
-          text: `Berhasil memproses ${parsedRows.length} data siswa dari file ${file.name}.`,
-          timer: 2000,
+          title: 'Berhasil Membaca & Menyimpan File',
+          text: `Berhasil memproses ${parsedRows.length} data siswa dari file ${file.name}. Data otomatis tersimpan di server.`,
+          timer: 2500,
           showConfirmButton: false
         });
       } catch (err: any) {
@@ -369,7 +362,7 @@ export default function VervalPDPage() {
   const handleClearFile = () => {
     Swal.fire({
       title: 'Hapus File VervalPD?',
-      text: 'Data hasil matching akan direset. Anda dapat mengunggah file kembali kapan saja.',
+      text: 'Data hasil matching akan direset dari server untuk semua pengguna. Anda dapat mengunggah file kembali kapan saja.',
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'Ya, Reset',
@@ -378,9 +371,7 @@ export default function VervalPDPage() {
       if (res.isConfirmed) {
         setVervalData([]);
         setFileName('');
-        try {
-          sessionStorage.removeItem('vervalpd_file_cache');
-        } catch {}
+        fetch('/api/vervalpd', { method: 'DELETE' }).catch(() => {});
       }
     });
   };
@@ -772,6 +763,9 @@ export default function VervalPDPage() {
                 <div className={styles.fileName}>{fileName}</div>
                 <div className={styles.fileMeta}>
                   <i className="fas fa-check-circle"></i> Berhasil dimuat • <b>{vervalData.length} baris data siswa VervalPD</b>
+                  <span style={{ marginLeft: '10px', padding: '2px 8px', borderRadius: '4px', background: '#dcfce7', color: '#15803d', fontSize: '11px', fontWeight: 600 }}>
+                    <i className="fas fa-cloud-check"></i> Tersimpan di Server (Aktif untuk Semua PC)
+                  </span>
                 </div>
               </div>
             </div>
@@ -869,8 +863,22 @@ export default function VervalPDPage() {
 
         <div
           className={styles.statCard}
-          title={stats.selisih === 0 ? 'Jumlah siswa persis sama' : `Terdapat selisih ${Math.abs(stats.selisih)} siswa antara Internal & VervalPD`}
-          style={{ borderColor: stats.selisih !== 0 ? '#fca5a5' : undefined }}
+          onClick={() => {
+            if (stats.selisih < 0 || stats.hanyaInternal > 0) {
+              setTabFilter('hanya_internal');
+            } else if (stats.selisih > 0) {
+              setTabFilter('hanya_vervalpd');
+            } else {
+              setTabFilter('all');
+            }
+            setCurrentPage(1);
+          }}
+          title={stats.selisih === 0 ? 'Jumlah siswa persis sama' : `Terdapat selisih ${Math.abs(stats.selisih)} siswa. Klik untuk melihat rincian selisih.`}
+          style={{
+            cursor: 'pointer',
+            borderColor: tabFilter === 'hanya_internal' ? '#e11d48' : stats.selisih !== 0 ? '#fca5a5' : undefined,
+            background: tabFilter === 'hanya_internal' ? '#fff1f2' : undefined
+          }}
         >
           <div
             className={styles.statIcon}
@@ -1110,6 +1118,52 @@ export default function VervalPDPage() {
           </div>
         ) : (
           <>
+            {tabFilter === 'hanya_internal' && (
+              <div style={{
+                margin: '14px 16px',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                background: '#fff1f2',
+                border: '1px solid #fecdd3',
+                color: '#9f1239',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                fontSize: '13px'
+              }}>
+                <i className="fas fa-exclamation-circle" style={{ fontSize: '18px', color: '#e11d48' }}></i>
+                <div>
+                  <strong>Menampilkan Siswa yang Belum Ada di VervalPD ({filteredRecords.length} Siswa)</strong>
+                  <div style={{ color: '#be123c', marginTop: '2px' }}>
+                    Siswa di bawah terdaftar aktif di database internal MTs ({selectedTA}), namun tidak ditemukan pada file Excel VervalPD yang diunggah (Inilah rincian selisih {stats.selisih} siswa).
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {tabFilter === 'beda_data' && (
+              <div style={{
+                margin: '14px 16px',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                background: '#fffbeb',
+                border: '1px solid #fef3c7',
+                color: '#92400e',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                fontSize: '13px'
+              }}>
+                <i className="fas fa-info-circle" style={{ fontSize: '18px', color: '#d97706' }}></i>
+                <div>
+                  <strong>Menampilkan Siswa dengan Perbedaan Atribut ({filteredRecords.length} Siswa)</strong>
+                  <div style={{ color: '#b45309', marginTop: '2px' }}>
+                    Baris atas (putih) adalah data database internal, baris bawah (oranye muda) adalah data dari VervalPD. Nilai yang berbeda ditandai dengan warna merah.
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className={styles.tableWrapper}>
               <table className={styles.table}>
                 <thead>

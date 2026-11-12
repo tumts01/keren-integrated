@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase';
 import { getAllCachedDataInduk } from '@/lib/data-induk';
 
 export const dynamic = 'force-dynamic';
@@ -8,6 +9,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const tahunAjaranParam = searchParams.get('tahunAjaran') || '';
 
+    // 1. Ambil data induk internal
     const sbRows = await getAllCachedDataInduk();
 
     const allRecords = sbRows.flatMap((row: any) => {
@@ -82,17 +84,87 @@ export async function GET(request: Request) {
       s.isLatest && (!activeTA || s.tahunAjaran === activeTA)
     );
 
+    // 2. Ambil data VervalPD yang tersimpan di database server (jika ada)
+    let savedVerval: { fileName: string; uploadedAt: string; data: any[] } | null = null;
+    const { data: configRow } = await supabase
+      .from('rapor_config')
+      .select('value')
+      .eq('key', 'vervalpd_uploaded_data')
+      .maybeSingle();
+
+    if (configRow && configRow.value) {
+      try {
+        savedVerval = JSON.parse(configRow.value);
+      } catch (e) {
+        console.error('Error parsing saved VervalPD data:', e);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       tahunAjaranList,
       activeTahunAjaran: activeTA,
       totalSiswa: siswaAktif.length,
-      data: siswaAktif
+      data: siswaAktif,
+      savedVerval
     }, {
-      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' }
+      headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
     });
   } catch (error: any) {
     console.error('Fetch VervalPD Internal Error:', error);
     return NextResponse.json({ success: false, error: error.message || 'Gagal memuat data internal' }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { fileName, data } = body;
+
+    if (!Array.isArray(data) || data.length === 0) {
+      return NextResponse.json({ success: false, error: 'Data VervalPD kosong' }, { status: 400 });
+    }
+
+    const payload = {
+      key: 'vervalpd_uploaded_data',
+      value: JSON.stringify({
+        fileName: fileName || 'Data_VervalPD.xlsx',
+        uploadedAt: new Date().toISOString(),
+        data
+      })
+    };
+
+    const { error } = await supabase
+      .from('rapor_config')
+      .upsert(payload, { onConflict: 'key' });
+
+    if (error) throw error;
+
+    return NextResponse.json({
+      success: true,
+      message: 'Data VervalPD berhasil disimpan ke database server'
+    });
+  } catch (error: any) {
+    console.error('Save VervalPD Error:', error);
+    return NextResponse.json({ success: false, error: error.message || 'Gagal menyimpan data ke server' }, { status: 500 });
+  }
+}
+
+export async function DELETE() {
+  try {
+    const { error } = await supabase
+      .from('rapor_config')
+      .delete()
+      .eq('key', 'vervalpd_uploaded_data');
+
+    if (error) throw error;
+
+    return NextResponse.json({
+      success: true,
+      message: 'Data VervalPD berhasil direset dari server'
+    });
+  } catch (error: any) {
+    console.error('Delete VervalPD Error:', error);
+    return NextResponse.json({ success: false, error: error.message || 'Gagal menghapus data dari server' }, { status: 500 });
   }
 }
