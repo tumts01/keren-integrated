@@ -17,6 +17,43 @@ function normalizeCbtCabang(raw: string): string {
   return clean;
 }
 
+function clearLoginMetadata(meta: Record<string, any>, resetTimestamp: string) {
+  return {
+    ...(meta || {}),
+    CBT_SESSION_TOKEN: null,
+    CBT_DEVICE_ID: null,
+    CBT_LOGIN_AT: null,
+    CBT_DEVICE_INFO: null,
+    CBT_LOGIN_RESET_AT: resetTimestamp,
+  };
+}
+
+async function findPesertaRowByNomor(baseNomor: string) {
+  const { data: rows } = await supabase
+    .from('data_olimpiade_seni')
+    .select('id, metadata')
+    .in('jenis_pendaftaran', ['individu', 'peserta_kolektif'])
+    .filter('metadata->>NOMOR_PESERTA', 'eq', baseNomor)
+    .limit(1);
+
+  let targetRow = rows?.[0];
+  if (!targetRow) {
+    const safeNomor = baseNomor.replace(/[%_]/g, '');
+    if (safeNomor) {
+      const { data: altRows } = await supabase
+        .from('data_olimpiade_seni')
+        .select('id, metadata')
+        .in('jenis_pendaftaran', ['individu', 'peserta_kolektif'])
+        .ilike('metadata->>NOMOR_PESERTA', `%${safeNomor}%`)
+        .limit(10);
+      targetRow = (altRows || []).find(
+        (r: any) => ((r.metadata?.NOMOR_PESERTA || '').toString().trim()).toUpperCase() === baseNomor.toUpperCase()
+      );
+    }
+  }
+  return targetRow || null;
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -187,6 +224,10 @@ export async function GET(req: Request) {
         durasi_menit: durasiMenitPengerjaan,
         log_kecurangan: logKecurangan,
         jumlah_pelanggaran: logKecurangan.length,
+        is_login_aktif: Boolean(meta.CBT_SESSION_TOKEN),
+        login_at: meta.CBT_LOGIN_AT || null,
+        device_info: meta.CBT_DEVICE_INFO || '',
+        login_reset_at: meta.CBT_LOGIN_RESET_AT || null,
         status_bayar_final: meta.STATUS_BAYAR_FINAL || (meta.BUKTI_BAYAR_FINAL_URL ? 'Menunggu Verifikasi' : 'Belum Bayar'),
         bukti_bayar_final_url: meta.BUKTI_BAYAR_FINAL_URL || '',
         waktu_bayar_final: meta.WAKTU_BAYAR_FINAL || null
@@ -209,6 +250,7 @@ export async function GET(req: Request) {
       sedang_mengerjakan: list.filter(p => p.status === 'sedang_mengerjakan').length,
       selesai: list.filter(p => p.status === 'selesai').length,
       ada_pelanggaran: list.filter(p => p.jumlah_pelanggaran > 0).length,
+      login_aktif: list.filter(p => p.is_login_aktif).length,
       bayar_lunas: list.filter(p => p.status_bayar_final === 'Valid').length,
       bayar_menunggu: list.filter(p => p.status_bayar_final === 'Menunggu Verifikasi').length,
       bayar_belum: list.filter(p => p.status_bayar_final === 'Belum Bayar' || p.status_bayar_final === 'Ditolak').length
@@ -285,6 +327,45 @@ export async function POST(req: Request) {
         success: true,
         deletedCount: idsToDelete.length,
         message: `${idsToDelete.length} sesi pengerjaan CBT (${labelTahap}${labelCabang}) berhasil dihapus/direset.`
+      });
+    }
+
+    // 0b. Reset Massal Kunci Login Perangkat (Agar semua peserta bisa login ulang di device manapun tanpa menghapus jawaban)
+    if (action === 'reset_all_login') {
+      const { data: activeRows, error: errFetch } = await supabase
+        .from('data_olimpiade_seni')
+        .select('id, metadata')
+        .in('jenis_pendaftaran', ['individu', 'peserta_kolektif'])
+        .not('metadata->>CBT_SESSION_TOKEN', 'is', null)
+        .range(0, 4999);
+
+      if (errFetch) throw errFetch;
+
+      const resetTs = new Date().toISOString();
+      const targetRows = (activeRows || []).filter((r: any) => {
+        const meta = r.metadata || {};
+        if (!meta.CBT_SESSION_TOKEN) return false;
+        if (cabang && cabang !== 'Semua') {
+          const normCabang = normalizeCbtCabang(meta.LOMBA_DIPILIH || meta['LOMBA YANG DIPILIH'] || '');
+          if (normCabang !== cabang) return false;
+        }
+        return true;
+      });
+
+      await Promise.all(
+        targetRows.map((r: any) =>
+          supabase
+            .from('data_olimpiade_seni')
+            .update({ metadata: clearLoginMetadata(r.metadata, resetTs) })
+            .eq('id', r.id)
+        )
+      );
+
+      const labelCabang = cabang && cabang !== 'Semua' ? ` cabang ${cabang}` : '';
+      return NextResponse.json({
+        success: true,
+        resetCount: targetRows.length,
+        message: `${targetRows.length} kunci login perangkat peserta${labelCabang} berhasil direset.`
       });
     }
 
@@ -456,30 +537,31 @@ export async function POST(req: Request) {
       });
     }
 
-    // 6. Validasi Pembayaran Babak Final (Rp 50.000)
+    // 6. Reset Login Perangkat (Hapus kunci 1 device agar peserta bisa login di perangkat lain; jawaban & waktu tetap utuh)
+    else if (action === 'reset_login') {
+      const targetRow = await findPesertaRowByNomor(baseNomor);
+      if (!targetRow) {
+        return NextResponse.json({ success: false, error: 'Data peserta tidak ditemukan' }, { status: 404 });
+      }
+
+      const updatedMeta = clearLoginMetadata(targetRow.metadata || {}, new Date().toISOString());
+      const { error: errUpdate } = await supabase
+        .from('data_olimpiade_seni')
+        .update({ metadata: updatedMeta })
+        .eq('id', targetRow.id);
+
+      if (errUpdate) throw errUpdate;
+
+      return NextResponse.json({
+        success: true,
+        message: `Kunci login perangkat untuk ${baseNomor} berhasil direset. Peserta sekarang dapat login kembali dari perangkat baru dan melanjutkan ujian.`
+      });
+    }
+
+    // 7. Validasi Pembayaran Babak Final (Rp 50.000)
     else if (action === 'validasi_bayar_final' || action === 'tolak_bayar_final') {
       const statusTarget = action === 'tolak_bayar_final' ? 'Ditolak' : 'Valid';
-      
-      const { data: rows } = await supabase
-        .from('data_olimpiade_seni')
-        .select('id, metadata')
-        .in('jenis_pendaftaran', ['individu', 'peserta_kolektif'])
-        .filter('metadata->>NOMOR_PESERTA', 'eq', baseNomor)
-        .limit(1);
-
-      let targetRow = rows?.[0];
-      if (!targetRow) {
-        const safeNomor = baseNomor.replace(/[%_]/g, '');
-        if (safeNomor) {
-          const { data: altRows } = await supabase
-            .from('data_olimpiade_seni')
-            .select('id, metadata')
-            .in('jenis_pendaftaran', ['individu', 'peserta_kolektif'])
-            .ilike('metadata->>NOMOR_PESERTA', `%${safeNomor}%`)
-            .limit(10);
-          targetRow = (altRows || []).find((r: any) => ((r.metadata?.NOMOR_PESERTA || '').toString().trim()).toUpperCase() === baseNomor.toUpperCase());
-        }
-      }
+      const targetRow = await findPesertaRowByNomor(baseNomor);
 
       if (!targetRow) {
         return NextResponse.json({ success: false, error: 'Data peserta tidak ditemukan' }, { status: 404 });

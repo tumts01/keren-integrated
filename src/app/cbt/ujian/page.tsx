@@ -117,7 +117,13 @@ export default function CBTUjianPage() {
               fetch('/api/cbt/sesi', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'save', nomorPeserta: userRef.current.nomorPeserta, nomorSoal: noSoal, jawaban: ans })
+                body: JSON.stringify({
+                  action: 'save',
+                  nomorPeserta: userRef.current.nomorPeserta,
+                  sessionToken: userRef.current.sessionToken,
+                  nomorSoal: noSoal,
+                  jawaban: ans
+                })
               }).catch(() => {});
             }
           }
@@ -386,6 +392,7 @@ export default function CBTUjianPage() {
         body: JSON.stringify({
           action: 'log_kecurangan',
           nomorPeserta: userRef.current?.nomorPeserta,
+          sessionToken: userRef.current?.sessionToken,
           jenisKecurangan,
           jumlahPelanggaran: newCount
         })
@@ -431,17 +438,62 @@ export default function CBTUjianPage() {
     }
   }, []);
 
+  const handleRevokedSession = useCallback(async (errMsg?: string) => {
+    if (isSubmittingRef.current) return;
+    isUnloadingRef.current = true;
+    localStorage.removeItem('cbt_user');
+    try { if (document.fullscreenElement) await document.exitFullscreen(); } catch {}
+    await Swal.fire({
+      icon: 'warning',
+      title: 'Sesi Login Berakhir',
+      text: errMsg || 'Sesi login Anda telah direset oleh Panitia / Pengawas atau akun aktif di perangkat lain.',
+      confirmButtonColor: '#0284c7',
+      allowOutsideClick: false,
+    });
+    router.push('/cbt');
+  }, [router]);
+
+  // Pantau kunci 1 perangkat secara berkala (jika Admin Reset Login atau akun diambil alih, keluarkan otomatis)
+  useEffect(() => {
+    if (!user || !user.sessionToken || user.isBypass) return;
+    const interval = setInterval(async () => {
+      if (isSubmittingRef.current || isOfflineRef.current) return;
+      try {
+        const res = await fetch(
+          `/api/cbt/sesi?nomorPeserta=${encodeURIComponent(user.nomorPeserta)}&sessionToken=${encodeURIComponent(user.sessionToken)}&checkOnly=1`
+        );
+        const json = await res.json();
+        if (json.sessionRevoked) {
+          clearInterval(interval);
+          handleRevokedSession(json.error);
+        }
+      } catch {
+        // abaikan gangguan jaringan sementara
+      }
+    }, 25000);
+    return () => clearInterval(interval);
+  }, [user, handleRevokedSession]);
+
   const initSesi = async (u: any) => {
     try {
       // Start or Resume
       const res = await fetch('/api/cbt/sesi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'start', nomorPeserta: u.nomorPeserta, lomba: u.lomba })
+        body: JSON.stringify({
+          action: 'start',
+          nomorPeserta: u.nomorPeserta,
+          lomba: u.lomba,
+          sessionToken: u.sessionToken
+        })
       });
       const data = await res.json();
       
       if (!data.success) {
+        if (data.sessionRevoked) {
+          handleRevokedSession(data.error);
+          return;
+        }
         if (data.isDeleted || data.isNotQualified) {
           localStorage.removeItem('cbt_user');
           await Swal.fire({
@@ -458,9 +510,14 @@ export default function CBTUjianPage() {
       }
 
       // Fetch questions
-      const resSoal = await fetch(`/api/cbt/sesi?nomorPeserta=${u.nomorPeserta}`);
+      const tokenParam = u.sessionToken ? `&sessionToken=${encodeURIComponent(u.sessionToken)}` : '';
+      const resSoal = await fetch(`/api/cbt/sesi?nomorPeserta=${encodeURIComponent(u.nomorPeserta)}${tokenParam}`);
       const dataSoal = await resSoal.json();
       
+      if (dataSoal.sessionRevoked) {
+        handleRevokedSession(dataSoal.error);
+        return;
+      }
       if (dataSoal.isDeleted || dataSoal.isNotQualified) {
         localStorage.removeItem('cbt_user');
         await Swal.fire({
@@ -564,9 +621,19 @@ export default function CBTUjianPage() {
       const res = await fetch('/api/cbt/sesi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'save', nomorPeserta: user.nomorPeserta, nomorSoal: noSoal, jawaban: opsi })
+        body: JSON.stringify({
+          action: 'save',
+          nomorPeserta: user.nomorPeserta,
+          sessionToken: userRef.current?.sessionToken,
+          nomorSoal: noSoal,
+          jawaban: opsi
+        })
       });
       const data = await res.json();
+      if (data.sessionRevoked) {
+        handleRevokedSession(data.error);
+        return;
+      }
       if (data.isDeleted) {
         localStorage.removeItem('cbt_user');
         await Swal.fire({
@@ -638,10 +705,18 @@ export default function CBTUjianPage() {
         body: JSON.stringify({
           action: 'submit',
           nomorPeserta,
+          sessionToken: userRef.current?.sessionToken,
           jawabanAkhir: jawabanRef.current
         })
       });
       const data = await res.json();
+
+      if (data.sessionRevoked) {
+        isSubmittingRef.current = false;
+        setIsSubmitting(false);
+        handleRevokedSession(data.error);
+        return;
+      }
 
       if (data.isDeleted) {
         localStorage.removeItem('cbt_user');

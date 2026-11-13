@@ -1,8 +1,32 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { isPesertaLolosTop30 } from '@/lib/cbt-lolos';
+import { randomUUID } from 'crypto';
 
 export const dynamic = 'force-dynamic';
+
+function summarizeUserAgent(ua: string | null): string {
+  const raw = (ua || '').trim();
+  if (!raw) return 'Perangkat Tidak Dikenal';
+
+  let os = 'Desktop';
+  if (/android/i.test(raw)) os = 'Android';
+  else if (/iphone/i.test(raw)) os = 'iPhone';
+  else if (/ipad/i.test(raw)) os = 'iPad';
+  else if (/windows/i.test(raw)) os = 'Windows';
+  else if (/macintosh|mac os/i.test(raw)) os = 'Mac';
+  else if (/linux/i.test(raw)) os = 'Linux';
+
+  let browser = 'Browser';
+  if (/edg\//i.test(raw)) browser = 'Edge';
+  else if (/opr\/|opera/i.test(raw)) browser = 'Opera';
+  else if (/samsungbrowser/i.test(raw)) browser = 'Samsung Browser';
+  else if (/chrome|crios/i.test(raw)) browser = 'Chrome';
+  else if (/firefox|fxios/i.test(raw)) browser = 'Firefox';
+  else if (/safari/i.test(raw)) browser = 'Safari';
+
+  return `${browser} • ${os}`;
+}
 
 // Bersihkan karakter tak terlihat (Zero-Width Space, LTR/RTL mark dari copy-paste WA/PDF/Excel, NBSP)
 function stripInvisible(val: unknown): string {
@@ -50,7 +74,9 @@ function isPasswordMatch(dbRawPass: unknown, rawInputPass: unknown): boolean {
 
 export async function POST(req: Request) {
   try {
-    const { username, password } = await req.json();
+    const { username, password, deviceId } = await req.json();
+    const cleanDeviceId = stripInvisible(deviceId);
+    const deviceInfo = summarizeUserAgent(req.headers.get('user-agent'));
 
     const rawCleanUser = stripInvisible(username)
       .replace(/\s+/g, '')
@@ -236,6 +262,45 @@ export async function POST(req: Request) {
       }
     }
 
+    // Kunci Login 1 Akun = 1 Perangkat (kecuali akun bypass/uji coba)
+    let sessionToken = stripInvisible(p.CBT_SESSION_TOKEN);
+    if (!isBypass) {
+      const existingToken = stripInvisible(p.CBT_SESSION_TOKEN);
+      const existingDeviceId = stripInvisible(p.CBT_DEVICE_ID);
+      const isSameDevice = Boolean(existingDeviceId && cleanDeviceId && existingDeviceId === cleanDeviceId);
+
+      if (existingToken && !isSameDevice) {
+        const waktuStr = p.CBT_LOGIN_AT
+          ? new Date(p.CBT_LOGIN_AT).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+          : '';
+        const infoPerangkat = p.CBT_DEVICE_INFO ? `${p.CBT_DEVICE_INFO}${waktuStr ? ` (${waktuStr})` : ''}` : 'perangkat lain';
+        return NextResponse.json({
+          success: false,
+          alreadyLoggedIn: true,
+          deviceInfo: p.CBT_DEVICE_INFO || '',
+          loginAt: p.CBT_LOGIN_AT || null,
+          error: `Akun ini sedang aktif login di ${infoPerangkat}. Demi menjaga kejujuran ujian, 1 akun hanya bisa login di 1 perangkat. Jika ingin pindah perangkat, silakan hubungi Panitia / Pengawas untuk Reset Login.`
+        }, { status: 403 });
+      }
+
+      sessionToken = randomUUID();
+      const updatedMeta = {
+        ...p,
+        CBT_SESSION_TOKEN: sessionToken,
+        CBT_DEVICE_ID: cleanDeviceId || existingDeviceId || randomUUID(),
+        CBT_LOGIN_AT: new Date().toISOString(),
+        CBT_DEVICE_INFO: deviceInfo,
+        CBT_LOGIN_RESET_AT: null,
+      };
+
+      const { error: lockErr } = await supabase
+        .from('data_olimpiade_seni')
+        .update({ metadata: updatedMeta })
+        .eq('id', matchedRow.id);
+
+      if (lockErr) throw lockErr;
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Login Berhasil',
@@ -245,7 +310,8 @@ export async function POST(req: Request) {
         nama: stripInvisible(namaStr),
         lomba: cabang,
         asalSekolah: stripInvisible(p.ASAL_SEKOLAH),
-        isBypass
+        isBypass,
+        sessionToken: isBypass ? 'BYPASS' : sessionToken
       }
     });
 

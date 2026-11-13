@@ -28,17 +28,36 @@ export default function LoginCBT() {
     const finalUsername = cleanInput(domUser || username).replace(/\s+/g, '');
     const finalPassword = cleanInput(domPass || password).replace(/\s+/g, '');
 
+    let deviceId = '';
+    try {
+      deviceId = localStorage.getItem('cbt_device_id') || '';
+      if (!deviceId) {
+        deviceId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `dev-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        localStorage.setItem('cbt_device_id', deviceId);
+      }
+    } catch {}
+
     try {
       const res = await fetch('/api/cbt/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: finalUsername, password: finalPassword })
+        body: JSON.stringify({ username: finalUsername, password: finalPassword, deviceId })
       });
       const data = await res.json();
 
       if (data.success) {
         localStorage.setItem('cbt_user', JSON.stringify(data.user));
         router.push('/cbt/dashboard');
+      } else if (data.alreadyLoggedIn) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Akun Aktif di Perangkat Lain',
+          text: data.error,
+          confirmButtonColor: '#0284c7',
+          confirmButtonText: 'Mengerti'
+        });
       } else if (data.notQualified) {
         Swal.fire({
           icon: 'info',
@@ -120,6 +139,11 @@ export default function LoginCBT() {
               </button>
             </div>
           </div>
+          <div style={{ background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', borderRadius: '8px', padding: '10px 12px', fontSize: '0.8rem', marginBottom: '16px', lineHeight: 1.45 }}>
+            <i className="fas fa-shield-alt" style={{ marginRight: '6px' }}></i>
+            <b>Keamanan Ujian:</b> 1 akun hanya dapat login pada <b>1 perangkat aktif</b>. Gunakan perangkat yang akan dipakai hingga ujian selesai.
+          </div>
+
           <button 
             type="submit" 
             disabled={loading}

@@ -68,7 +68,7 @@ export default function DashboardCBT() {
     }
     const parsed = JSON.parse(data);
     setUser(parsed);
-    fetchSesi(parsed.nomorPeserta);
+    fetchSesi(parsed.nomorPeserta, parsed.sessionToken);
     fetchConfig(parsed.nomorPeserta, parsed.lomba);
     fetchCbtConfig();
   }, [router]);
@@ -124,10 +124,22 @@ export default function DashboardCBT() {
     }
   };
 
-  const fetchSesi = async (nomorPeserta: string) => {
+  const fetchSesi = async (nomorPeserta: string, sessionToken?: string) => {
     try {
-      const res = await fetch(`/api/cbt/sesi?nomorPeserta=${nomorPeserta}`);
+      const tokenParam = sessionToken ? `&sessionToken=${encodeURIComponent(sessionToken)}` : '';
+      const res = await fetch(`/api/cbt/sesi?nomorPeserta=${encodeURIComponent(nomorPeserta)}${tokenParam}`);
       const data = await res.json();
+      if (data.sessionRevoked) {
+        localStorage.removeItem('cbt_user');
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Sesi Login Berakhir',
+          text: data.error || 'Sesi login Anda telah direset oleh Panitia / Pengawas atau aktif di perangkat lain.',
+          confirmButtonColor: '#0284c7'
+        });
+        router.push('/cbt');
+        return;
+      }
       if (data.isDeleted) {
         localStorage.removeItem('cbt_user');
         await Swal.fire({
@@ -279,13 +291,13 @@ export default function DashboardCBT() {
         const res = await fetch('/api/cbt/sesi', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'reset', nomorPeserta: user.nomorPeserta })
+          body: JSON.stringify({ action: 'reset', nomorPeserta: user.nomorPeserta, sessionToken: user.sessionToken })
         });
         const data = await res.json();
         if (data.success) {
           await Swal.fire('Berhasil', 'Sesi ujian telah direset. Anda dapat memulai kembali.', 'success');
           setSesi(null);
-          await fetchSesi(user.nomorPeserta);
+          await fetchSesi(user.nomorPeserta, user.sessionToken);
         } else {
           Swal.fire('Gagal', data.error || 'Gagal reset sesi', 'error');
         }
@@ -700,7 +712,8 @@ export default function DashboardCBT() {
                     <li>Waktu ujian adalah <strong>90 menit</strong>.</li>
                     <li>Pilih jawaban yang paling tepat. Jawaban otomatis tersimpan.</li>
                     <li>Jangan menutup jendela *browser* sebelum mengklik tombol <strong>Selesai</strong> di akhir ujian.</li>
-                    <li>Jika terjadi gangguan koneksi, Anda bisa masuk kembali ke sistem dan melanjutkan ujian dari soal terakhir.</li>
+                    <li>Jika terjadi gangguan koneksi, Anda bisa masuk kembali ke sistem menggunakan perangkat yang sama dan melanjutkan ujian dari soal terakhir.</li>
+                    <li><strong>1 Akun = 1 Perangkat:</strong> Akun hanya dapat login di 1 perangkat aktif. Jika perlu berpindah perangkat, hubungi Panitia / Pengawas untuk <b>Reset Login</b>.</li>
                     <li><strong>Sistem Anti-Curang Aktif:</strong> Segala bentuk pelanggaran (berpindah tab, meminimalkan layar, keluar dari layar penuh, atau copy-paste) akan direkam oleh sistem. <strong>3x Pelanggaran = Ujian dikumpulkan otomatis.</strong></li>
                   </ul>
                 </div>

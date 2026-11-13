@@ -91,10 +91,39 @@ async function checkLolosSeleksi(baseNomor: string, _baseCabang: string, peserta
   return isPesertaLolosTop30(baseNomor, pesertaMeta);
 }
 
+function validateDeviceSession(
+  pesertaMeta: any,
+  rawClientToken: string | null | undefined,
+  isBypass: boolean
+): { valid: boolean; error?: string } {
+  if (isBypass) return { valid: true };
+  const dbToken = stripInvisible(pesertaMeta?.CBT_SESSION_TOKEN);
+  const clientToken = stripInvisible(rawClientToken);
+  const resetAt = stripInvisible(pesertaMeta?.CBT_LOGIN_RESET_AT);
+
+  if (!dbToken && (clientToken || resetAt)) {
+    return {
+      valid: false,
+      error: 'Sesi login Anda telah direset oleh Panitia / Pengawas. Silakan login kembali.'
+    };
+  }
+
+  if (dbToken && clientToken !== dbToken) {
+    return {
+      valid: false,
+      error: 'Akun Anda tidak aktif pada perangkat ini karena sedang login di perangkat lain atau telah direset oleh Panitia.'
+    };
+  }
+
+  return { valid: true };
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const rawNomor = searchParams.get('nomorPeserta');
+    const clientToken = searchParams.get('sessionToken');
+    const checkOnly = searchParams.get('checkOnly') === '1';
     if (!rawNomor) return NextResponse.json({ success: false, error: 'Parameter nomorPeserta wajib' }, { status: 400 });
 
     const requestedNomor = stripInvisible(rawNomor).replace(/_FINAL$/i, '');
@@ -111,12 +140,25 @@ export async function GET(req: Request) {
     }
 
     const baseNomor = stripInvisible(peserta.metadata?.NOMOR_PESERTA) || requestedNomor;
+    const isBypass = peserta.metadata?.IS_BYPASS === true || baseNomor.startsWith('BYPASS-');
+    const sessionCheck = validateDeviceSession(peserta.metadata, clientToken, isBypass);
+    if (!sessionCheck.valid) {
+      return NextResponse.json({
+        success: false,
+        sessionRevoked: true,
+        error: sessionCheck.error
+      }, { status: 401 });
+    }
+
+    if (checkOnly) {
+      return NextResponse.json({ success: true });
+    }
+
     const { cbtBuka, tahapCbt, loginKhususLolos } = await getCbtConfig();
     const requestedTahap = searchParams.get('tahap') === 'final' ? 'final' : searchParams.get('tahap') === 'seleksi' ? 'seleksi' : tahapCbt;
 
     const rawCabang = peserta.metadata?.LOMBA_DIPILIH || peserta.metadata?.['LOMBA YANG DIPILIH'] || '';
     const baseCabang = normalizeCbtCabang(rawCabang);
-    const isBypass = peserta.metadata?.IS_BYPASS === true || baseNomor.startsWith('BYPASS-');
     const lolosSeleksi = isBypass ? true : await checkLolosSeleksi(baseNomor, baseCabang, peserta.metadata);
 
     if (!isBypass && loginKhususLolos && !lolosSeleksi) {
@@ -244,6 +286,14 @@ export async function POST(req: Request) {
 
     const baseNomor = stripInvisible(peserta.metadata?.NOMOR_PESERTA) || requestedNomor;
     const isBypass = peserta.metadata?.IS_BYPASS === true || baseNomor.startsWith('BYPASS-');
+    const sessionCheck = validateDeviceSession(peserta.metadata, body.sessionToken, isBypass);
+    if (!sessionCheck.valid) {
+      return NextResponse.json({
+        success: false,
+        sessionRevoked: true,
+        error: sessionCheck.error
+      }, { status: 401 });
+    }
     const { cbtBuka, tahapCbt, loginKhususLolos } = await getCbtConfig();
     const targetNomorKey = tahapCbt === 'final' ? `${baseNomor}_FINAL` : baseNomor;
     const baseCabang = normalizeCbtCabang(lomba || peserta.metadata?.LOMBA_DIPILIH || peserta.metadata?.['LOMBA YANG DIPILIH'] || '');

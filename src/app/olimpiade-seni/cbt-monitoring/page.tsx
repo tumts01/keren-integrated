@@ -33,6 +33,10 @@ interface PesertaCBT {
   durasi_menit: number | null;
   log_kecurangan: LogKecurangan[];
   jumlah_pelanggaran: number;
+  is_login_aktif?: boolean;
+  login_at?: string | null;
+  device_info?: string;
+  login_reset_at?: string | null;
   status_bayar_final?: string;
   bukti_bayar_final_url?: string;
   waktu_bayar_final?: string | null;
@@ -44,6 +48,7 @@ interface SummaryStats {
   sedang_mengerjakan: number;
   selesai: number;
   ada_pelanggaran: number;
+  login_aktif?: number;
   bayar_lunas?: number;
   bayar_menunggu?: number;
   bayar_belum?: number;
@@ -154,6 +159,45 @@ export default function CbtMonitoringPage() {
       }
     } catch (err: any) {
       Swal.fire('Error', err.message, 'error');
+    }
+  };
+
+  const handleResetAllLogin = async () => {
+    if (!isAdmin) return;
+    const labelCabang = filterCabang !== 'Semua' ? `Cabang ${filterCabang}` : 'SEMUA Cabang Lomba';
+    const confirm = await Swal.fire({
+      title: 'Reset Massal Kunci Login Perangkat?',
+      html: `Fitur ini akan membuka kunci login 1 perangkat untuk seluruh peserta aktif (<b>${labelCabang}</b>).<br/><br/><b>Jawaban dan sisa waktu ujian peserta TIDAK akan terhapus</b>, namun peserta yang sedang login diwajibkan login ulang.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d97706',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Ya, Reset Semua Kunci Login',
+      cancelButtonText: 'Batal',
+    });
+    if (!confirm.isConfirmed) return;
+
+    setActionLoading(true);
+    try {
+      const res = await fetch('/api/cbt/monitoring', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reset_all_login',
+          cabang: filterCabang,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        Swal.fire('Berhasil!', json.message, 'success');
+        await fetchData(false, tahapPantau);
+      } else {
+        Swal.fire('Gagal', json.error || 'Gagal mereset login', 'error');
+      }
+    } catch (err: any) {
+      Swal.fire('Error', err.message, 'error');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -341,6 +385,11 @@ export default function CbtMonitoringPage() {
       confirmText = `Sesi ujian akan diakhiri secara manual oleh pengawas sekarang, dan jawaban yang ada akan langsung dinilai.`;
       confirmBtn = 'Ya, Selesaikan';
       confirmColor = '#ea580c';
+    } else if (action === 'reset_login') {
+      confirmTitle = `Reset Login Perangkat: ${p.nama}?`;
+      confirmText = `Kunci login 1 perangkat untuk <b>${p.nama}</b> (${p.device_info || 'perangkat aktif'}) akan dibuka agar peserta dapat login ulang di perangkat baru.<br/><br/><i>Jawaban dan sisa waktu ujian tetap aman dan tidak dihapus.</i>`;
+      confirmBtn = 'Ya, Reset Login';
+      confirmColor = '#d97706';
     } else if (action === 'validasi_bayar_final') {
       confirmTitle = `Validasi Lunas: ${p.nama}?`;
       confirmText = `Tandai pembayaran pendaftaran Babak Final untuk <b>${p.nama}</b> (${p.nomor_peserta}) sebesar <b>Rp 50.000,-</b> sebagai <b>LUNAS</b>?`;
@@ -409,6 +458,7 @@ export default function CbtMonitoringPage() {
       if (filterStatus === 'selesai' && item.status !== 'selesai') return false;
       if (filterStatus === 'belum_mulai' && item.status !== 'belum_mulai') return false;
       if (filterStatus === 'ada_pelanggaran' && item.jumlah_pelanggaran === 0) return false;
+      if (filterStatus === 'login_aktif' && !item.is_login_aktif) return false;
       if (filterStatus === 'bayar_lunas' && item.status_bayar_final !== 'Valid') return false;
       if (filterStatus === 'bayar_menunggu' && item.status_bayar_final !== 'Menunggu Verifikasi') return false;
       if (filterStatus === 'bayar_belum' && item.status_bayar_final !== 'Belum Bayar' && item.status_bayar_final !== 'Ditolak') return false;
@@ -815,6 +865,26 @@ export default function CbtMonitoringPage() {
             {isAdmin && (
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <button
+                  onClick={handleResetAllLogin}
+                  disabled={actionLoading}
+                  title="Buka kunci 1 device untuk semua peserta aktif (jawaban tetap aman)"
+                  style={{
+                    background: '#fef3c7',
+                    color: '#b45309',
+                    border: '1.5px solid #fcd34d',
+                    padding: '10px 16px',
+                    borderRadius: '10px',
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <i className="fas fa-unlock-alt"></i> Reset Semua Login ({summary.login_aktif || 0})
+                </button>
+                <button
                   onClick={handleResetAllSesi}
                   disabled={actionLoading}
                   style={{
@@ -1068,6 +1138,30 @@ export default function CbtMonitoringPage() {
             </div>
             <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '4px', fontWeight: 600 }}>Terdeteksi pindah tab / keluar layar</div>
           </div>
+
+          {/* Login Aktif (Kunci 1 Device) */}
+          <div
+            onClick={() => setFilterStatus(filterStatus === 'login_aktif' ? 'Semua' : 'login_aktif')}
+            style={{
+              background: filterStatus === 'login_aktif' ? '#fffbeb' : 'white',
+              padding: '18px 20px',
+              borderRadius: '14px',
+              border: `2px solid ${filterStatus === 'login_aktif' ? '#d97706' : '#fde68a'}`,
+              boxShadow: '0 2px 8px rgba(217,119,6,0.08)',
+              cursor: 'pointer',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#b45309', textTransform: 'uppercase' }}>Login Aktif (1 Device)</span>
+              <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <i className="fas fa-mobile-alt"></i>
+              </div>
+            </div>
+            <div style={{ fontSize: '2rem', fontWeight: 900, color: '#92400e', marginTop: '8px' }}>
+              {summary.login_aktif || 0}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#b45309', marginTop: '4px', fontWeight: 600 }}>Perangkat terkunci saat ini</div>
+          </div>
         </div>
 
         {/* STATISTIK DAFTAR ULANG FINAL (KHUSUS TAHAP FINAL) */}
@@ -1246,6 +1340,7 @@ export default function CbtMonitoringPage() {
                 <option value="selesai">Sudah Selesai</option>
                 <option value="belum_mulai">Belum Mulai</option>
                 <option value="ada_pelanggaran">Ada Peringatan</option>
+                <option value="login_aktif">🔒 Login Aktif (1 Device)</option>
                 {tahapPantau === 'final' && (
                   <>
                     <option value="bayar_lunas">💰 Daftar Ulang: Lunas</option>
@@ -1404,6 +1499,15 @@ export default function CbtMonitoringPage() {
                               <i className="fas fa-minus-circle"></i> Belum Mulai
                             </span>
                           )}
+                          {p.is_login_aktif ? (
+                            <div
+                              title={`Login pukul ${p.login_at ? new Date(p.login_at).toLocaleString('id-ID') : '-'}`}
+                              style={{ marginTop: '6px', fontSize: '0.72rem', color: '#b45309', background: '#fffbeb', border: '1px solid #fde68a', padding: '2px 7px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 700 }}
+                            >
+                              <i className="fas fa-lock"></i>
+                              <span>{p.device_info || '1 Device Aktif'}</span>
+                            </div>
+                          ) : null}
                         </td>
 
                         {/* Progres Soal */}
@@ -1599,6 +1703,30 @@ export default function CbtMonitoringPage() {
                             </span>
                           ) : (
                           <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                            {/* Tombol Reset Login Perangkat jika sedang terkunci di 1 device */}
+                            {p.is_login_aktif && (
+                              <button
+                                onClick={() => handleAction('reset_login', p)}
+                                disabled={actionLoading}
+                                title={`Reset kunci login 1 perangkat (${p.device_info || 'device aktif'}) tanpa menghapus jawaban`}
+                                style={{
+                                  background: '#fef3c7',
+                                  color: '#b45309',
+                                  border: '1px solid #fcd34d',
+                                  padding: '5px 9px',
+                                  borderRadius: '6px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                }}
+                              >
+                                <i className="fas fa-unlock-alt"></i> Reset Login
+                              </button>
+                            )}
+
                             {/* Tombol Buka Kunci (Reopen) jika sudah selesai */}
                             {isSelesai && (
                               <button
