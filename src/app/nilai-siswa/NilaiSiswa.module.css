@@ -1,6 +1,6 @@
 .container {
-  padding: 2rem;
-  max-width: 1200px;
+  padding: 1.5rem 2rem;
+  max-width: 1440px;
   margin: 0 auto;
 }
 
@@ -159,4 +159,286 @@
 .inputScore:focus {
   border-color: #3b82f6;
   outline: none;
+}
+
+.matrixToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  margin-bottom: 10px;
+}
+
+.mapelPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.mapelPill {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mapelPill:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.mapelPillActive {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #ffffff;
+}
+
+.mapelPillActive:hover {
+  background: #1e40af;
+}
+
+.saveStatusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.saveStatusIdle {
+  background: #f8fafc;
+  color: #64748b;
+  border-color: #e2e8f0;
+}
+
+.saveStatusSaving {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.saveStatusSaved {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
+.saveStatusError {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.matrixWrapper {
+  position: relative;
+  overflow: auto;
+  max-height: 70vh;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.matrixTable {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.82rem;
+}
+
+.matrixTable th,
+.matrixTable td {
+  border-right: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  padding: 6px 6px;
+  white-space: nowrap;
+}
+
+.matrixTable thead th {
+  position: sticky;
+  z-index: 20;
+  text-align: center;
+  font-weight: 700;
+}
+
+.matrixTable thead tr:first-child th {
+  top: 0;
+  z-index: 25;
+}
+
+.matrixTable thead tr:nth-child(2) th {
+  top: 37px;
+  z-index: 24;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #334155;
+  padding: 5px 4px;
+}
+
+.stickyCol {
+  position: sticky;
+  background: #ffffff;
+  z-index: 10;
+}
+
+.matrixTable thead th.stickyCol {
+  z-index: 35;
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.matrixTable tbody tr:hover td {
+  background-color: #f8fafc;
+}
+
+.matrixTable tbody tr:hover td.stickyCol {
+  background-color: #f1f5f9;
+}
+
+.stickyNo {
+  left: 0;
+  width: 42px;
+  min-width: 42px;
+  text-align: center !important;
+}
+
+.stickyNis {
+  left: 42px;
+  width: 78px;
+  min-width: 78px;
+  text-align: center !important;
+}
+
+.stickyNama {
+  left: 120px;
+  min-width: 210px;
+  max-width: 240px;
+  text-align: left !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stickyJk {
+  left: 330px;
+  width: 44px;
+  min-width: 44px;
+  text-align: center !important;
+  box-shadow: 3px 0 6px -3px rgba(15, 23, 42, 0.14);
+}
+
+.groupHeader0 {
+  background: #eff6ff !important;
+  color: #1e3a8a !important;
+  border-top: 3px solid #3b82f6;
+}
+
+.groupHeader1 {
+  background: #f0fdf4 !important;
+  color: #14532d !important;
+  border-top: 3px solid #22c55e;
+}
+
+.groupHeader2 {
+  background: #fefce8 !important;
+  color: #713f12 !important;
+  border-top: 3px solid #eab308;
+}
+
+.groupHeader3 {
+  background: #faf5ff !important;
+  color: #581c87 !important;
+  border-top: 3px solid #a855f7;
+}
+
+.subHeaderCell {
+  background: #f8fafc;
+}
+
+.subHeaderAvg {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+}
+
+.scoreCell {
+  padding: 3px 4px !important;
+  text-align: center !important;
+}
+
+.cellInput {
+  width: 50px;
+  padding: 5px 3px;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #0f172a;
+  background: #ffffff;
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+}
+
+.cellInput:hover {
+  border-color: #94a3b8;
+}
+
+.cellInput:focus {
+  outline: none;
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18);
+}
+
+.cellInputDirty {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.cellInputJustSaved {
+  border-color: #10b981;
+  background: #ecfdf5;
+}
+
+.avgCell {
+  text-align: center !important;
+  font-weight: 700;
+  background: #f8fafc;
+  color: #1e293b;
+  min-width: 46px;
+  border-right: 2px solid #cbd5e1 !important;
+}
+
+.matrixTable thead th.groupEndCol {
+  border-right: 2px solid #cbd5e1 !important;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+  .stickyNis,
+  .stickyJk {
+    position: static;
+    box-shadow: none;
+  }
+  .stickyNo {
+    position: static;
+  }
+  .stickyNama {
+    left: 0;
+    min-width: 150px;
+    box-shadow: 3px 0 6px -3px rgba(15, 23, 42, 0.14);
+  }
 }

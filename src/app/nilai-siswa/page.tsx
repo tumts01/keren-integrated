@@ -1,1012 +1,1146 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Swal from 'sweetalert2';
-import * as XLSX from 'xlsx';
 import styles from './NilaiSiswa.module.css';
+import {
+  PK_CATEGORIES,
+  PK_CATEGORY_MAP,
+  PK_SCORE_FIELDS,
+  MAP_MINAT_BAKAT,
+  PKCategoryKey,
+  PKScoreField,
+  PKSemester,
+  PKMapelScores,
+  computeMapelAverage,
+} from '@/lib/prosus-config';
+
+interface PKStudentRow {
+  induk: string;
+  nama: string;
+  jk: string;
+  nisn?: string;
+  scoresByMapel: Record<string, PKMapelScores>;
+}
+
+interface PKMapelHeader {
+  name: string;
+  shortName: string;
+}
+
+const KELAS_OPTIONS = [
+  '7A', '7B', '7C', '7D', '7E', '7F', '7G', '7H', '7I',
+  '8A', '8B', '8C', '8D', '8E', '8F', '8G', '8H', '8I',
+  '9A', '9B', '9C', '9D', '9E', '9F', '9G', '9H', '9I',
+];
+
+const getPredikat = (scoreNum: number) => {
+  if (scoreNum >= 90) {
+    return { predikat: 'A', ket: 'Sangat Baik', deskripsi: 'Menunjukkan penguasaan materi dan keterampilan Program Khusus yang sangat baik dan melampaui capaian.' };
+  }
+  if (scoreNum >= 80) {
+    return { predikat: 'B', ket: 'Baik', deskripsi: 'Menunjukkan penguasaan materi dan keterampilan Program Khusus yang baik sesuai target pembelajaran.' };
+  }
+  if (scoreNum >= 70) {
+    return { predikat: 'C', ket: 'Cukup', deskripsi: 'Menunjukkan penguasaan materi Program Khusus yang cukup baik, perlu peningkatan latihan mandiri.' };
+  }
+  if (scoreNum > 0) {
+    return { predikat: 'D', ket: 'Perlu Bimbingan', deskripsi: 'Memerlukan bimbingan lebih lanjut dalam memahami dan mempraktikkan materi Program Khusus.' };
+  }
+  return { predikat: '-', ket: '-', deskripsi: '-' };
+};
 
 export default function NilaiSiswaPage() {
-  const [mainTab, setMainTab] = useState<'pk'>('pk');
-  const [subTab, setSubTab] = useState<'input'|'cetak'|'rekap'>('input');
-  
-  // PK States
-  const [kelas, setKelas] = useState('');
-  const [mapel, setMapel] = useState('BTQ');
-  const [mapelLain, setMapelLain] = useState('');
-  const [tipe, setTipe] = useState<'materi_harian'|'sts'|'sas'>('materi_harian');
-  const [materi, setMateri] = useState('Materi 1');
-  const [subMateri, setSubMateri] = useState('S1');
-  
   const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth();
+  const currentMonth = new Date().getMonth(); // 0 = Jan, 6 = Jul
   const defaultTA = currentMonth >= 6 ? `${currentYear}/${currentYear + 1}` : `${currentYear - 1}/${currentYear}`;
-  const [tahunAjaran, setTahunAjaran] = useState(defaultTA);
-  
-  const [students, setStudents] = useState<any[]>([]);
-  const [rekapStudents, setRekapStudents] = useState<any[]>([]);
-  const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  
-  // States for Bulk Upload
-  const [headers, setHeaders] = useState<string[]>([]);
-  const [previewData, setPreviewData] = useState<any[]>([]);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const taOptions = Array.from(new Set([
+    '2025/2026',
+    '2026/2027',
+    defaultTA,
+    `${currentYear}/${currentYear + 1}`,
+    `${currentYear + 1}/${currentYear + 2}`,
+  ])).sort();
+
+  const [subTab, setSubTab] = useState<'input' | 'cetak'>('input');
+
+  // Shared Filter States
+  const [tahunAjaran, setTahunAjaran] = useState<string>(defaultTA);
+  const [semester, setSemester] = useState<PKSemester>('Ganjil');
+  const [kelas, setKelas] = useState<string>('');
+  const [kategori, setKategori] = useState<PKCategoryKey>('SAINS RISET');
+  const [focusedMapel, setFocusedMapel] = useState<string>('ALL');
+
+  // Loaded Data States
+  const [students, setStudents] = useState<PKStudentRow[]>([]);
+  const [mapels, setMapels] = useState<PKMapelHeader[]>(PK_CATEGORY_MAP['SAINS RISET'].mapels);
+  const [waliKelas, setWaliKelas] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
+
+  // Auto-save Tracking
+  const [savingCount, setSavingCount] = useState<number>(0);
+  const [lastSavedAt, setLastSavedAt] = useState<string>('');
+  const [saveError, setSaveError] = useState<string>('');
+  const [dirtyCells, setDirtyCells] = useState<Record<string, boolean>>({});
+  const [justSavedCells, setJustSavedCells] = useState<Record<string, boolean>>({});
+
+  // Refs for race-free auto-save on quick row/column movement
+  const studentsRef = useRef<PKStudentRow[]>([]);
+  const lastSavedSnapshotRef = useRef<Record<string, string>>({});
+  const saveQueuesRef = useRef<Record<string, Promise<void>>>({});
+  const filterMetaRef = useRef({ tahunAjaran, semester, kelas, kategori });
+
+  useEffect(() => {
+    filterMetaRef.current = { tahunAjaran, semester, kelas, kategori };
+  }, [tahunAjaran, semester, kelas, kategori]);
+
+  // User & Cetak States
   const [profile, setProfile] = useState<any>(null);
-  const [semester, setSemester] = useState<'Ganjil' | 'Genap'>('Ganjil');
   const [tanggalCetak, setTanggalCetak] = useState<string>(() => {
-    const d = new Date();
-    const bln = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-    return `${d.getDate()} ${bln[d.getMonth()]} ${d.getFullYear()}`;
+    return new Date().toLocaleDateString('id-ID', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
   });
-  const [previewStudent, setPreviewStudent] = useState<any | null>(null);
+  const [previewStudent, setPreviewStudent] = useState<PKStudentRow | null>(null);
 
-  const mapMinatBakat: Record<string, string> = {
-    '7A': 'SAINS RISET', '7B': 'SAINS RISET',
-    '7C': 'OLAHRAGA SENI', '7D': 'OLAHRAGA SENI',
-    '7E': 'MULTILINGUAL', '7F': 'MULTILINGUAL',
-    '7G': 'KETERAMPILAN KREATIF PRODUKTIF',
-    '7H': 'AGAMA TAHFIDZ', '7I': 'AGAMA TAHFIDZ',
-    '8A': 'OLAHRAGA SENI', '8B': 'MULTILINGUAL',
-    '8C': 'OLAHRAGA SENI', '8D': 'MULTILINGUAL',
-    '8E': 'SAINS RISET', '8F': 'KETERAMPILAN KREATIF PRODUKTIF',
-    '8G': 'SAINS RISET', '8H': 'AGAMA TAHFIDZ', '8I': 'AGAMA TAHFIDZ'
+  useEffect(() => {
+    try {
+      const userStr = localStorage.getItem('keren_user_data');
+      if (userStr) {
+        setProfile(JSON.parse(userStr));
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+
+  const handleKelasChange = (newKelas: string) => {
+    setKelas(newKelas);
+    const autoKat = MAP_MINAT_BAKAT[newKelas.toUpperCase()];
+    if (autoKat) {
+      setKategori(autoKat);
+    }
+    setFocusedMapel('ALL');
   };
 
-  const getPredikat = (scoreNum: number) => {
-    if (isNaN(scoreNum) || scoreNum === 0) return { predikat: '-', ket: '-', deskripsi: 'Belum ada nilai' };
-    if (scoreNum >= 90) return { predikat: 'A', ket: 'Sangat Baik', deskripsi: 'Menunjukkan penguasaan kompetensi yang sangat baik dan aktif dalam seluruh capaian pembelajaran.' };
-    if (scoreNum >= 80) return { predikat: 'B', ket: 'Baik', deskripsi: 'Menunjukkan penguasaan kompetensi yang baik dan konsisten dalam capaian pembelajaran.' };
-    if (scoreNum >= 70) return { predikat: 'C', ket: 'Cukup', deskripsi: 'Menunjukkan penguasaan kompetensi yang cukup, perlu peningkatan pemahaman pada beberapa materi.' };
-    return { predikat: 'D', ket: 'Perlu Bimbingan', deskripsi: 'Perlu bimbingan dan pendampingan lebih lanjut untuk mencapai kriteria ketuntasan tujuan pembelajaran.' };
+  const handleKategoriChange = (newKat: PKCategoryKey) => {
+    setKategori(newKat);
+    setFocusedMapel('ALL');
   };
 
-  const generateRaporHtml = (s: any) => {
-    const scores = s.scores || {};
-    const finalMapel = mapel;
-    const minatBakat = mapMinatBakat[kelas.toUpperCase().trim()] || 'Program Khusus Unggulan';
-    const rataNum = parseFloat(scores.rata || '0');
-    const { predikat, ket, deskripsi } = getPredikat(rataNum);
-    const guruPengajar = profile?.name || profile?.username || 'Guru Pengajar PK';
+  const loadKategoriData = useCallback(async () => {
+    if (!kelas) {
+      setStudents([]);
+      studentsRef.current = [];
+      lastSavedSnapshotRef.current = {};
+      setMapels(PK_CATEGORY_MAP[kategori].mapels);
+      setDirtyCells({});
+      setSaveError('');
+      return;
+    }
 
-    const materiRows = [1, 2, 3, 4, 5, 6].map(m => {
-      const s1 = scores[`m${m}s1`] || '';
-      const s2 = scores[`m${m}s2`] || '';
-      const s3 = scores[`m${m}s3`] || '';
-      const validSub = [s1, s2, s3].filter((v: any) => v !== '' && !isNaN(Number(v))).map(Number);
-      const avgM = validSub.length > 0 ? Math.round(validSub.reduce((a: number, b: number) => a + b, 0) / validSub.length) : '';
-      return `
-        <tr>
-          <td style="text-align: center; border: 1px solid #000; padding: 5px;">${m}</td>
-          <td style="border: 1px solid #000; padding: 5px 8px;">Materi / Capaian Pembelajaran ${m}</td>
-          <td style="text-align: center; border: 1px solid #000; padding: 5px;">${s1 || '-'}</td>
-          <td style="text-align: center; border: 1px solid #000; padding: 5px;">${s2 || '-'}</td>
-          <td style="text-align: center; border: 1px solid #000; padding: 5px;">${s3 || '-'}</td>
-          <td style="text-align: center; border: 1px solid #000; padding: 5px; font-weight: bold; background: #fafafa;">${avgM || '-'}</td>
-        </tr>
-      `;
-    }).join('');
+    setLoading(true);
+    setSaveError('');
+    try {
+      const params = new URLSearchParams({
+        tahunAjaran,
+        semester,
+        kelas,
+        kategori,
+      });
+      const res = await fetch(`/api/nilai-siswa/pk/kategori?${params.toString()}`);
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'Gagal memuat data nilai Program Khusus');
+      }
+
+      const loadedStudents: PKStudentRow[] = json.students || [];
+      const loadedMapels: PKMapelHeader[] = json.mapels || PK_CATEGORY_MAP[kategori].mapels;
+
+      const snapshot: Record<string, string> = {};
+      for (const st of loadedStudents) {
+        for (const m of loadedMapels) {
+          const sc = st.scoresByMapel[m.name];
+          for (const f of PK_SCORE_FIELDS) {
+            snapshot[`${st.induk}::${m.name}::${f.key}`] = String(sc?.[f.key] ?? '');
+          }
+        }
+      }
+
+      lastSavedSnapshotRef.current = snapshot;
+      studentsRef.current = loadedStudents;
+      setStudents(loadedStudents);
+      setMapels(loadedMapels);
+      setWaliKelas(json.waliKelas || '');
+      setDirtyCells({});
+      setJustSavedCells({});
+    } catch (err: any) {
+      Swal.fire('Gagal Memuat Data', err?.message || 'Terjadi kesalahan saat mengambil data.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [tahunAjaran, semester, kelas, kategori]);
+
+  useEffect(() => {
+    loadKategoriData();
+  }, [loadKategoriData]);
+
+  // Enqueue a column save so fast sequential edits on the same column never overtake each other
+  const persistColumnField = useCallback((mapelName: string, field: PKScoreField, triggerInduk?: string) => {
+    const meta = filterMetaRef.current;
+    if (!meta.kelas) return;
+
+    const currentRows = studentsRef.current;
+    if (currentRows.length === 0) return;
+
+    // Check whether at least one cell in this column changed vs last saved snapshot
+    let hasColumnDiff = false;
+    const changedInduks: string[] = [];
+    for (const st of currentRows) {
+      const key = `${st.induk}::${mapelName}::${field}`;
+      const curVal = String(st.scoresByMapel[mapelName]?.[field] ?? '').trim();
+      const prevVal = String(lastSavedSnapshotRef.current[key] ?? '').trim();
+      if (curVal !== prevVal) {
+        hasColumnDiff = true;
+        changedInduks.push(st.induk);
+      }
+    }
+
+    if (!hasColumnDiff) {
+      if (triggerInduk) {
+        const key = `${triggerInduk}::${mapelName}::${field}`;
+        setDirtyCells((prev) => {
+          if (!prev[key]) return prev;
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+      }
+      return;
+    }
+
+    const queueKey = `${meta.tahunAjaran}::${meta.semester}::${meta.kelas}::${mapelName}::${field}`;
+    const prevQueue = saveQueuesRef.current[queueKey] || Promise.resolve();
+
+    const nextTask = prevQueue
+      .catch(() => undefined)
+      .then(async () => {
+        // Re-read the latest values from ref at execution time
+        const latestRows = studentsRef.current;
+        const payloadNilai = latestRows.map((st) => ({
+          induk: st.induk,
+          nama: st.nama,
+          jk: st.jk,
+          nilai: String(st.scoresByMapel[mapelName]?.[field] ?? '').trim(),
+        }));
+
+        const snapshotCandidate: Record<string, string> = {};
+        for (const item of payloadNilai) {
+          snapshotCandidate[`${item.induk}::${mapelName}::${field}`] = item.nilai;
+        }
+
+        setSavingCount((c) => c + 1);
+        setSaveError('');
+
+        try {
+          const res = await fetch('/api/nilai-siswa/pk/kategori', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              tahunAjaran: meta.tahunAjaran,
+              semester: meta.semester,
+              kelas: meta.kelas,
+              kategori: meta.kategori,
+              mapel: mapelName,
+              field,
+              dataNilai: payloadNilai,
+              guru: profile?.nama || profile?.username || 'Guru PK',
+            }),
+          });
+          const json = await res.json();
+          if (!res.ok || !json.success) {
+            throw new Error(json.error || 'Gagal menyimpan');
+          }
+
+          Object.assign(lastSavedSnapshotRef.current, snapshotCandidate);
+
+          setDirtyCells((prev) => {
+            const next = { ...prev };
+            for (const key of Object.keys(snapshotCandidate)) {
+              const latestVal = String(
+                studentsRef.current.find((s) => `${s.induk}::${mapelName}::${field}` === key)?.scoresByMapel[mapelName]?.[field] ?? ''
+              ).trim();
+              if (latestVal === snapshotCandidate[key]) {
+                delete next[key];
+              }
+            }
+            return next;
+          });
+
+          if (changedInduks.length > 0) {
+            const flashKeys = changedInduks.map((ind) => `${ind}::${mapelName}::${field}`);
+            setJustSavedCells((prev) => {
+              const next = { ...prev };
+              for (const k of flashKeys) next[k] = true;
+              return next;
+            });
+            setTimeout(() => {
+              setJustSavedCells((prev) => {
+                const next = { ...prev };
+                for (const k of flashKeys) delete next[k];
+                return next;
+              });
+            }, 1400);
+          }
+
+          setLastSavedAt(
+            new Date().toLocaleTimeString('id-ID', {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+            })
+          );
+        } catch (err: any) {
+          setSaveError(err?.message || 'Gagal auto-save');
+        } finally {
+          setSavingCount((c) => Math.max(0, c - 1));
+        }
+      });
+
+    saveQueuesRef.current[queueKey] = nextTask;
+  }, [profile]);
+
+  const handleCellChange = (rowIdx: number, mapelName: string, field: PKScoreField, rawValue: string) => {
+    // Allow digits, one dot/comma, up to 100
+    const cleaned = rawValue.replace(',', '.').replace(/[^0-9.]/g, '');
+    const parts = cleaned.split('.');
+    let normalized = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : cleaned;
+
+    if (normalized !== '') {
+      const num = Number(normalized);
+      if (!Number.isNaN(num) && num > 100) {
+        normalized = '100';
+      }
+    }
+
+    const updated = [...studentsRef.current];
+    const targetStudent = updated[rowIdx];
+    if (!targetStudent) return;
+
+    const prevMapelScores = targetStudent.scoresByMapel[mapelName] || {
+      m1: '', m2: '', m3: '', sts: '', sas: '', rata: null,
+    };
+    const nextMapelScores: PKMapelScores = {
+      ...prevMapelScores,
+      [field]: normalized,
+    };
+    nextMapelScores.rata = computeMapelAverage(nextMapelScores);
+
+    updated[rowIdx] = {
+      ...targetStudent,
+      scoresByMapel: {
+        ...targetStudent.scoresByMapel,
+        [mapelName]: nextMapelScores,
+      },
+    };
+
+    studentsRef.current = updated;
+    setStudents(updated);
+
+    const cellKey = `${targetStudent.induk}::${mapelName}::${field}`;
+    const savedVal = String(lastSavedSnapshotRef.current[cellKey] ?? '').trim();
+    const isNowDirty = normalized.trim() !== savedVal;
+    setDirtyCells((prev) => {
+      if (Boolean(prev[cellKey]) === isNowDirty) return prev;
+      const next = { ...prev };
+      if (isNowDirty) next[cellKey] = true;
+      else delete next[cellKey];
+      return next;
+    });
+  };
+
+  const handleCellBlur = (rowIdx: number, mapelName: string, field: PKScoreField) => {
+    const st = studentsRef.current[rowIdx];
+    if (!st) return;
+
+    // Trim trailing dot (e.g., "85." -> "85") before persisting
+    const curVal = String(st.scoresByMapel[mapelName]?.[field] ?? '').trim();
+    if (curVal.endsWith('.')) {
+      handleCellChange(rowIdx, mapelName, field, curVal.slice(0, -1));
+    }
+
+    persistColumnField(mapelName, field, st.induk);
+  };
+
+  const visibleMapels = focusedMapel === 'ALL'
+    ? mapels
+    : mapels.filter((m) => m.name === focusedMapel);
+
+  const handleCellKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    rowIdx: number,
+    flatColIdx: number,
+    totalCols: number
+  ) => {
+    let nextRow = rowIdx;
+    let nextCol = flatColIdx;
+
+    if (e.key === 'Enter' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      nextRow = rowIdx + 1;
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      nextRow = rowIdx - 1;
+    } else if (e.key === 'ArrowRight') {
+      const input = e.currentTarget;
+      const atEnd =
+        input.selectionStart === input.value.length &&
+        input.selectionEnd === input.value.length;
+      if (!atEnd && input.selectionStart !== 0) return;
+      if (input.selectionEnd !== input.value.length && input.value !== '') return;
+      e.preventDefault();
+      nextCol = flatColIdx + 1;
+    } else if (e.key === 'ArrowLeft') {
+      const input = e.currentTarget;
+      const atStart = input.selectionStart === 0 && input.selectionEnd === 0;
+      if (!atStart && input.value !== '') return;
+      e.preventDefault();
+      nextCol = flatColIdx - 1;
+    } else {
+      return;
+    }
+
+    if (nextRow < 0 || nextRow >= students.length || nextCol < 0 || nextCol >= totalCols) {
+      return;
+    }
+
+    const nextInput = document.querySelector<HTMLInputElement>(
+      `input[data-cell-coord="${nextRow}-${nextCol}"]`
+    );
+    if (nextInput) {
+      nextInput.focus();
+      nextInput.select();
+    }
+  };
+
+  const retryPendingSaves = () => {
+    const dirtyKeys = Object.keys(dirtyCells).filter((k) => dirtyCells[k]);
+    const uniqueSlots = new Set<string>();
+    for (const k of dirtyKeys) {
+      const parts = k.split('::');
+      if (parts.length === 3) {
+        uniqueSlots.add(`${parts[1]}::${parts[2]}`);
+      }
+    }
+    uniqueSlots.forEach((slot) => {
+      const [mName, f] = slot.split('::') as [string, PKScoreField];
+      persistColumnField(mName, f);
+    });
+  };
+
+  // --- CETAK RAPOR PK LOGIC ---
+  const computeStudentOverallAverage = (st: PKStudentRow): number => {
+    const avgs = mapels
+      .map((m) => st.scoresByMapel[m.name]?.rata)
+      .filter((v): v is number => v !== null && v !== undefined);
+    if (avgs.length === 0) return 0;
+    return Math.round(avgs.reduce((a, b) => a + b, 0) / avgs.length);
+  };
+
+  const generateRaporHtml = (s: PKStudentRow) => {
+    const katDef = PK_CATEGORY_MAP[kategori];
+    const overallAvg = computeStudentOverallAverage(s);
+    const { predikat, ket, deskripsi } = getPredikat(overallAvg);
+    const walasName = waliKelas || profile?.nama || '........................................';
+
+    const mapelRowsHtml = mapels
+      .map((m, idx) => {
+        const sc = s.scoresByMapel[m.name] || { m1: '', m2: '', m3: '', sts: '', sas: '', rata: null };
+        const rataNum = sc.rata ?? 0;
+        const mapelPred = getPredikat(rataNum);
+        return `
+          <tr>
+            <td style="border: 1px solid #000; padding: 6px; text-align: center;">${idx + 1}</td>
+            <td style="border: 1px solid #000; padding: 6px; text-align: left; font-weight: 600;">${m.name}</td>
+            <td style="border: 1px solid #000; padding: 6px; text-align: center;">${sc.m1 || '-'}</td>
+            <td style="border: 1px solid #000; padding: 6px; text-align: center;">${sc.m2 || '-'}</td>
+            <td style="border: 1px solid #000; padding: 6px; text-align: center;">${sc.m3 || '-'}</td>
+            <td style="border: 1px solid #000; padding: 6px; text-align: center;">${sc.sts || '-'}</td>
+            <td style="border: 1px solid #000; padding: 6px; text-align: center;">${sc.sas || '-'}</td>
+            <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; background: #f8fafc;">${sc.rata !== null ? sc.rata : '-'}</td>
+            <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${mapelPred.predikat}</td>
+          </tr>
+        `;
+      })
+      .join('');
 
     return `
-      <div class="page-break" style="font-family: 'Times New Roman', Times, serif; color: #000; padding: 10px 15px; max-width: 800px; margin: 0 auto; background: white;">
+      <div class="rapor-page" style="font-family: 'Times New Roman', Times, serif; padding: 15px 25px; color: #000; page-break-after: always; max-width: 820px; margin: 0 auto; background: #fff;">
         <!-- KOP MADRASAH -->
-        <div style="display: flex; align-items: center; border-bottom: 2.5px double #000; padding-bottom: 8px; margin-bottom: 14px;">
-          <img src="/logo.png" alt="Logo" style="width: 70px; height: 70px; margin-right: 15px; object-fit: contain;" />
-          <div style="text-align: center; flex: 1;">
-            <div style="font-size: 11pt; font-weight: bold; text-transform: uppercase;">YAYASAN PENDIDIKAN ALMAARIF SINGOSARI</div>
-            <div style="font-size: 14pt; font-weight: bold; text-transform: uppercase;">MADRASAH TSANAWIYAH ALMAARIF 01 SINGOSARI</div>
-            <div style="font-size: 9.5pt; font-weight: bold; letter-spacing: 0.5px;">STATUS TERAKREDITASI &quot;A&quot; (UNGGUL)</div>
-            <div style="font-size: 8.5pt; color: #333; margin-top: 2px;">
-              NSM: 121235070115 &nbsp;|&nbsp; NPSN: 20581318<br/>
-              Jl. Masjid No. 33 Singosari, Kab. Malang 65153 &nbsp;|&nbsp; Telp. 0341-458355
-            </div>
-          </div>
-        </div>
+        <table style="width: 100%; border-bottom: 3px solid #000; margin-bottom: 12px; padding-bottom: 8px;">
+          <tr>
+            <td style="width: 75px; text-align: center; vertical-align: middle;">
+              <img src="/logo.png" alt="Logo" style="width: 65px; height: 65px; object-fit: contain;" onerror="this.style.display='none'" />
+            </td>
+            <td style="text-align: center; vertical-align: middle;">
+              <div style="font-size: 14pt; font-weight: bold; text-transform: uppercase;">MADRASAH TSANAWIYAH ALMAARIF 01 SINGOSARI</div>
+              <div style="font-size: 11pt; font-weight: bold; margin: 2px 0;">PROGRAM KHUSUS (UNGGULAN &amp; MINAT BAKAT)</div>
+              <div style="font-size: 9pt; color: #222;">
+                Jl. Masjid No. 33 Singosari, Kab. Malang 65153 &nbsp;|&nbsp; Telp. 0341-458355
+              </div>
+            </td>
+          </tr>
+        </table>
 
-        <!-- JUDUL -->
-        <div style="text-align: center; margin-bottom: 14px;">
-          <div style="font-size: 12pt; font-weight: bold; text-decoration: underline; text-transform: uppercase; letter-spacing: 0.5px;">
-            LAPORAN HASIL PENILAIAN PROGRAM KHUSUS
-          </div>
-          <div style="font-size: 10pt; font-weight: bold; margin-top: 3px;">
-            SEMESTER ${semester.toUpperCase()} &mdash; TAHUN PELAJARAN ${tahunAjaran}
-          </div>
+        <div style="text-align: center; font-size: 12pt; font-weight: bold; margin-bottom: 14px; text-decoration: underline;">
+          LAPORAN HASIL CAPAIAN BELAJAR PROGRAM KHUSUS
         </div>
 
         <!-- IDENTITAS SISWA -->
-        <table style="width: 100%; font-size: 9.5pt; margin-bottom: 12px; border-collapse: collapse;">
-          <tbody>
-            <tr>
-              <td style="width: 140px; padding: 2px 0;">Nama Peserta Didik</td>
-              <td style="width: 10px;">:</td>
-              <td style="font-weight: bold;">${s.nama}</td>
-              <td style="width: 130px; padding: 2px 0;">Kelas / Rombel</td>
-              <td style="width: 10px;">:</td>
-              <td style="font-weight: bold;">${kelas}</td>
-            </tr>
-            <tr>
-              <td style="padding: 2px 0;">Nomor Induk (NIS)</td>
-              <td>:</td>
-              <td>${s.induk}</td>
-              <td style="padding: 2px 0;">Peminatan / Bidang</td>
-              <td>:</td>
-              <td style="font-weight: bold;">${minatBakat}</td>
-            </tr>
-            <tr>
-              <td style="padding: 2px 0;">Mata Pelajaran PK</td>
-              <td>:</td>
-              <td style="font-weight: bold;">${finalMapel}</td>
-              <td style="padding: 2px 0;">Jenis Kelamin</td>
-              <td>:</td>
-              <td>${s.jk === 'L' ? 'Laki-laki' : s.jk === 'P' ? 'Perempuan' : s.jk || '-'}</td>
-            </tr>
-          </tbody>
+        <table style="width: 100%; font-size: 10.5pt; margin-bottom: 14px; border-collapse: collapse;">
+          <tr>
+            <td style="width: 18%; padding: 3px 0;">Nama Peserta Didik</td>
+            <td style="width: 2%;">:</td>
+            <td style="width: 35%; font-weight: bold;">${s.nama}</td>
+            <td style="width: 18%;">Kelas</td>
+            <td style="width: 2%;">:</td>
+            <td style="width: 25%; font-weight: bold;">${kelas}</td>
+          </tr>
+          <tr>
+            <td style="padding: 3px 0;">Nomor Induk</td>
+            <td>:</td>
+            <td>${s.induk || '-'}</td>
+            <td>Semester</td>
+            <td>:</td>
+            <td>${semester}</td>
+          </tr>
+          <tr>
+            <td style="padding: 3px 0;">Kategori Program</td>
+            <td>:</td>
+            <td style="font-weight: bold;">${katDef?.label || kategori} (${kategori})</td>
+            <td>Tahun Ajaran</td>
+            <td>:</td>
+            <td>${tahunAjaran}</td>
+          </tr>
         </table>
 
-        <!-- TABEL RINCIAN NILAI -->
-        <table style="width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 14px; border: 1px solid #000;">
+        <!-- TABEL RINCIAN NILAI MAPEL -->
+        <table style="width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 14px;">
           <thead>
-            <tr style="background: #f1f5f9; text-align: center;">
-              <th rowspan="2" style="border: 1px solid #000; padding: 6px 4px; width: 35px;">No</th>
-              <th rowspan="2" style="border: 1px solid #000; padding: 6px 8px; text-align: left;">Capaian Materi / Pembelajaran</th>
-              <th colspan="3" style="border: 1px solid #000; padding: 4px;">Nilai Sub Materi</th>
-              <th rowspan="2" style="border: 1px solid #000; padding: 6px 4px; width: 85px;">Rata-Rata Harian</th>
-            </tr>
-            <tr style="background: #f8fafc; text-align: center;">
-              <th style="border: 1px solid #000; padding: 4px; width: 60px;">Sub 1</th>
-              <th style="border: 1px solid #000; padding: 4px; width: 60px;">Sub 2</th>
-              <th style="border: 1px solid #000; padding: 4px; width: 60px;">Sub 3</th>
+            <tr style="background-color: #f1f5f9;">
+              <th style="border: 1px solid #000; padding: 6px; width: 32px; text-align: center;">No</th>
+              <th style="border: 1px solid #000; padding: 6px; text-align: left;">Mata Pelajaran</th>
+              <th style="border: 1px solid #000; padding: 6px; width: 58px; text-align: center;">Materi 1</th>
+              <th style="border: 1px solid #000; padding: 6px; width: 58px; text-align: center;">Materi 2</th>
+              <th style="border: 1px solid #000; padding: 6px; width: 58px; text-align: center;">Materi 3</th>
+              <th style="border: 1px solid #000; padding: 6px; width: 52px; text-align: center;">STS</th>
+              <th style="border: 1px solid #000; padding: 6px; width: 52px; text-align: center;">SAS</th>
+              <th style="border: 1px solid #000; padding: 6px; width: 64px; text-align: center;">Rata-Rata</th>
+              <th style="border: 1px solid #000; padding: 6px; width: 56px; text-align: center;">Predikat</th>
             </tr>
           </thead>
           <tbody>
-            ${materiRows}
+            ${mapelRowsHtml}
           </tbody>
         </table>
 
-        <!-- TABEL REKAPITULASI PENILAIAN AKHIR -->
-        <table style="width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-bottom: 14px; border: 1px solid #000;">
-          <thead>
-            <tr style="background: #f1f5f9; text-align: center;">
-              <th style="border: 1px solid #000; padding: 6px; width: 25%;">Rata-Rata Formatif</th>
-              <th style="border: 1px solid #000; padding: 6px; width: 25%;">Nilai STS</th>
-              <th style="border: 1px solid #000; padding: 6px; width: 25%;">Nilai SAS</th>
-              <th style="border: 1px solid #000; padding: 6px; width: 25%;">Nilai Akhir (NA)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr style="text-align: center; font-size: 11pt; font-weight: bold;">
-              <td style="border: 1px solid #000; padding: 8px;">
-                ${(() => {
-                  const allH = [scores.m1s1, scores.m1s2, scores.m1s3, scores.m2s1, scores.m2s2, scores.m2s3, scores.m3s1, scores.m3s2, scores.m3s3, scores.m4s1, scores.m4s2, scores.m4s3, scores.m5s1, scores.m5s2, scores.m5s3, scores.m6s1, scores.m6s2, scores.m6s3].filter((v: any) => v !== '' && !isNaN(Number(v))).map(Number);
-                  return allH.length > 0 ? Math.round(allH.reduce((a: number, b: number) => a + b, 0) / allH.length) : '-';
-                })()}
-              </td>
-              <td style="border: 1px solid #000; padding: 8px;">${scores.sts || '-'}</td>
-              <td style="border: 1px solid #000; padding: 8px;">${scores.sas || '-'}</td>
-              <td style="border: 1px solid #000; padding: 8px; color: #0284c7; font-size: 13pt;">${scores.rata || '-'}</td>
-            </tr>
-            <tr>
-              <td colspan="4" style="border: 1px solid #000; padding: 6px 10px; background: #fafafa; font-size: 9pt;">
-                <strong>Predikat:</strong> <span style="font-weight: bold; color: #1e293b;">${predikat} (${ket || '-'})</span> &nbsp;|&nbsp;
-                <strong>Deskripsi:</strong> <em>${deskripsi}</em>
-              </td>
-            </tr>
-          </tbody>
+        <!-- REKAP KESELURUHAN -->
+        <table style="width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 14px;">
+          <tr style="background-color: #f8fafc; font-weight: bold;">
+            <td style="border: 1px solid #000; padding: 7px; width: 40%;">Nilai Akhir Keseluruhan Kategori</td>
+            <td style="border: 1px solid #000; padding: 7px; text-align: center; font-size: 11pt;">${overallAvg > 0 ? overallAvg : '-'}</td>
+            <td style="border: 1px solid #000; padding: 7px; text-align: center;">Predikat: ${predikat} (${ket})</td>
+          </tr>
         </table>
+
+        <!-- DESKRIPSI CAPAIAN -->
+        <div style="border: 1px solid #000; padding: 8px 10px; font-size: 10pt; margin-bottom: 22px;">
+          <b>Deskripsi Capaian Program Khusus:</b><br/>
+          <span style="display: inline-block; margin-top: 4px; line-height: 1.4;">${deskripsi}</span>
+        </div>
 
         <!-- TANDA TANGAN -->
-        <table style="width: 100%; font-size: 9.5pt; margin-top: 25px; text-align: center; border-collapse: collapse;">
-          <tbody>
-            <tr>
-              <td style="width: 33%; vertical-align: top;">
-                Mengetahui,<br/>
-                Orang Tua / Wali Murid<br/><br/><br/><br/><br/>
-                <b>( ........................................ )</b>
-              </td>
-              <td style="width: 34%; vertical-align: top;">
-                Singosari, ${tanggalCetak}<br/>
-                Guru Pembimbing PK<br/><br/><br/><br/><br/>
-                <b><u>${guruPengajar}</u></b>
-              </td>
-              <td style="width: 33%; vertical-align: top;">
-                Mengetahui,<br/>
-                Kepala Madrasah<br/><br/><br/><br/><br/>
-                <b><u>Dwi Retno Palupi, M.Pd.</u></b>
-              </td>
-            </tr>
-          </tbody>
+        <table style="width: 100%; font-size: 10pt; text-align: center; margin-top: 10px;">
+          <tr>
+            <td style="width: 33%; vertical-align: top;">
+              Mengetahui,<br/>
+              Orang Tua / Wali Murid<br/><br/><br/><br/><br/>
+              <b>( ........................................ )</b>
+            </td>
+            <td style="width: 33%; vertical-align: top;">
+              Singosari, ${tanggalCetak}<br/>
+              Wali Kelas ${kelas}<br/><br/><br/><br/><br/>
+              <b><u>${walasName}</u></b>
+            </td>
+            <td style="width: 33%; vertical-align: top;">
+              Mengetahui,<br/>
+              Kepala Madrasah<br/><br/><br/><br/><br/>
+              <b><u>Dwi Retno Palupi, M.Pd.</u></b>
+            </td>
+          </tr>
         </table>
       </div>
     `;
   };
 
   const doPrint = (contentHtml: string, title: string) => {
-    const fullHtml = `
+    const printWin = window.open('', '_blank', 'width=920,height=720');
+    if (!printWin) {
+      Swal.fire('Pop-up Diblokir', 'Izinkan pop-up browser untuk mencetak rapor.', 'warning');
+      return;
+    }
+    printWin.document.write(`
       <!DOCTYPE html>
       <html>
         <head>
           <title>${title}</title>
           <style>
-            @page { size: A4 portrait; margin: 12mm 12mm 12mm 15mm; }
-            body { font-family: 'Times New Roman', Times, serif; color: #000; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .page-break { page-break-after: always; break-after: page; }
-            .page-break:last-child { page-break-after: auto; break-after: auto; }
-            table { border-collapse: collapse; }
+            @page { size: A4 portrait; margin: 12mm; }
+            body { margin: 0; padding: 0; background: #fff; }
+            @media print {
+              .rapor-page { page-break-after: always; }
+              .rapor-page:last-child { page-break-after: auto; }
+            }
           </style>
         </head>
-        <body>
-          ${contentHtml}
-        </body>
+        <body>${contentHtml}</body>
       </html>
-    `;
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = 'none';
-    document.body.appendChild(iframe);
-    const iframeDoc = iframe.contentWindow?.document;
-    if (iframeDoc) {
-      iframeDoc.open();
-      iframeDoc.write(fullHtml);
-      iframeDoc.close();
-      setTimeout(() => {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-        setTimeout(() => {
-          if (document.body.contains(iframe)) {
-            document.body.removeChild(iframe);
-          }
-        }, 1500);
-      }, 500);
-    }
+    `);
+    printWin.document.close();
+    printWin.focus();
+    setTimeout(() => {
+      printWin.print();
+    }, 350);
   };
 
   const handlePrintAll = () => {
-    if (!rekapStudents || rekapStudents.length === 0) {
-      Swal.fire('Perhatian', 'Belum ada data siswa untuk dicetak. Silakan tampilkan data terlebih dahulu.', 'warning');
-      return;
-    }
-    let allHtml = '';
-    rekapStudents.forEach(s => {
-      allHtml += generateRaporHtml(s);
-    });
-    doPrint(allHtml, `Rapor PK Kelas ${kelas} - ${mapel}`);
+    if (students.length === 0) return;
+    const allHtml = students.map((s) => generateRaporHtml(s)).join('');
+    doPrint(allHtml, `Rapor PK ${kelas} - ${kategori} (${semester} ${tahunAjaran})`);
   };
 
-  const handlePrintSingle = (s: any) => {
+  const handlePrintSingle = (s: PKStudentRow) => {
     doPrint(generateRaporHtml(s), `Rapor PK - ${s.nama}`);
   };
-  const pkMapelList = [
-    'Ilmu Pengetahuan Alam',
-    'Ilmu Pengetahuan Sosial',
-    'Matematika',
-    'Bahasa Indonesia',
-    'Pendidikan Jasmani, Olah Raga dan Kesehatan',
-    'Seni Budaya',
-    'Bahasa Inggris',
-    'Bahasa Arab',
-    'Keterampilan Kreatif Produktif',
-    'Pendidikan Agama Islam',
-    'Tahfidh'
-  ];
 
-  const [mapelList, setMapelList] = useState<string[]>(pkMapelList);
-
-  useEffect(() => {
-    const userStr = localStorage.getItem('keren_user_data');
-    if (userStr) {
-      try {
-        setProfile(JSON.parse(userStr));
-      } catch (e) {}
-    }
-    
-    // Set initial mapel correctly since we removed API fetch
-    setMapel(prevMapel => {
-      if (!pkMapelList.includes(prevMapel) && pkMapelList.length > 0) {
-        return pkMapelList[0];
-      }
-      return prevMapel;
-    });
-  }, []);
-
-  const fetchRekap = async () => {
-    if (!kelas || !tahunAjaran) {
-      Swal.fire('Peringatan', 'Silakan pilih Kelas dan Tahun Ajaran terlebih dahulu', 'warning');
-      return;
-    }
-    setLoading(true);
-    setIsEditing(false);
-    const finalMapel = mapel;
-    try {
-      const res = await fetch(`/api/nilai-siswa/pk/rekap?kelas=${encodeURIComponent(kelas)}&mapel=${encodeURIComponent(finalMapel)}&tahunAjaran=${encodeURIComponent(tahunAjaran)}`);
-      const result = await res.json();
-      if (result.success) {
-        setRekapStudents(result.data);
-      } else {
-        Swal.fire('Gagal', result.error || 'Gagal mengambil rekap', 'error');
-      }
-    } catch (err: any) {
-      Swal.fire('Error', err.message, 'error');
-    }
-    setLoading(false);
-  };
-
-  const handleEditRekap = (idx: number, field: string, value: string) => {
-    const updated = [...rekapStudents];
-    updated[idx].scores[field] = value;
-    
-    const s = updated[idx].scores;
-    const allHarian = [s.m1s1, s.m1s2, s.m1s3, s.m2s1, s.m2s2, s.m2s3, s.m3s1, s.m3s2, s.m3s3, s.m4s1, s.m4s2, s.m4s3, s.m5s1, s.m5s2, s.m5s3, s.m6s1, s.m6s2, s.m6s3];
-    const validHarian = allHarian.filter(v => v !== '' && v !== undefined && !isNaN(Number(v))).map(Number);
-    const avgHarian = validHarian.length > 0 ? validHarian.reduce((a,b)=>a+b,0) / validHarian.length : 0;
-    
-    let bobotHarian = 0.6;
-    let bobotSts = 0;
-    let bobotSas = 0;
-    let denom = 0;
-    
-    if (validHarian.length > 0) denom += bobotHarian;
-    if (s.sts && !isNaN(Number(s.sts))) { bobotSts = 0.2; denom += bobotSts; }
-    if (s.sas && !isNaN(Number(s.sas))) { bobotSas = 0.2; denom += bobotSas; }
-    
-    if (denom > 0) {
-      const rata = ((avgHarian * bobotHarian) + (Number(s.sts||0) * bobotSts) + (Number(s.sas||0) * bobotSas)) / denom;
-      s.rata = Math.round(rata);
-    } else {
-      s.rata = '';
-    }
-    
-    setRekapStudents(updated);
-  };
-
-  const saveRekap = async () => {
-    setSaving(true);
-    const finalMapel = mapel;
-    
-    const dataNilai = rekapStudents.map(s => {
-      const obj: any = { induk: s.induk, nama: s.nama, jk: s.jk };
-      obj['MATERI 1 S1'] = s.scores.m1s1; obj['MATERI 1 S2'] = s.scores.m1s2; obj['MATERI 1 S3'] = s.scores.m1s3;
-      obj['MATERI 2 S1'] = s.scores.m2s1; obj['MATERI 2 S2'] = s.scores.m2s2; obj['MATERI 2 S3'] = s.scores.m2s3;
-      obj['MATERI 3 S1'] = s.scores.m3s1; obj['MATERI 3 S2'] = s.scores.m3s2; obj['MATERI 3 S3'] = s.scores.m3s3;
-      obj['MATERI 4 S1'] = s.scores.m4s1; obj['MATERI 4 S2'] = s.scores.m4s2; obj['MATERI 4 S3'] = s.scores.m4s3;
-      obj['MATERI 5 S1'] = s.scores.m5s1; obj['MATERI 5 S2'] = s.scores.m5s2; obj['MATERI 5 S3'] = s.scores.m5s3;
-      obj['MATERI 6 S1'] = s.scores.m6s1; obj['MATERI 6 S2'] = s.scores.m6s2; obj['MATERI 6 S3'] = s.scores.m6s3;
-      obj['STS'] = s.scores.sts;
-      obj['SAS'] = s.scores.sas;
-      return obj;
-    });
-
-    try {
-      const res = await fetch('/api/nilai-siswa/pk/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          kelas,
-          mapel: finalMapel,
-          tahunAjaran,
-          dataNilai,
-          guru: profile?.nama || ''
-        })
-      });
-      const result = await res.json();
-      if (result.success) {
-        Swal.fire('Berhasil', 'Nilai berhasil diupdate', 'success');
-        setIsEditing(false);
-      } else {
-        Swal.fire('Gagal', result.error, 'error');
-      }
-    } catch (err: any) {
-      Swal.fire('Error', err.message, 'error');
-    }
-    setSaving(false);
-  };
-
-  const fetchStudents = async () => {
-    if (!kelas || !tahunAjaran) {
-      Swal.fire('Peringatan', 'Silakan pilih Kelas dan Tahun Ajaran terlebih dahulu', 'warning');
-      return;
-    }
-    setLoading(true);
-    const finalMapel = mapel;
-    try {
-      const res = await fetch(`/api/nilai-siswa/pk?kelas=${encodeURIComponent(kelas)}&mapel=${encodeURIComponent(finalMapel)}&tipe=${tipe}&materi=${encodeURIComponent(materi)}&sub=${encodeURIComponent(subMateri)}&tahunAjaran=${encodeURIComponent(tahunAjaran)}`);
-      const result = await res.json();
-      if (result.success) {
-        setStudents(result.data);
-      } else {
-        Swal.fire('Gagal', result.error || 'Gagal mengambil data', 'error');
-      }
-    } catch (err: any) {
-      Swal.fire('Error', err.message, 'error');
-    }
-    setLoading(false);
-  };
-
-  const handleDownloadTemplate = async () => {
-    if (!kelas || !tahunAjaran) {
-      Swal.fire('Peringatan', 'Silakan pilih Kelas dan Tahun Ajaran terlebih dahulu', 'warning');
-      return;
-    }
-    setLoading(true);
-    const finalMapel = mapel;
-    try {
-      // Just fetch students for the class (omit tipe so it returns empty scores)
-      const res = await fetch(`/api/nilai-siswa/pk?kelas=${encodeURIComponent(kelas)}&mapel=${encodeURIComponent(finalMapel)}&tahunAjaran=${encodeURIComponent(tahunAjaran)}`);
-      const result = await res.json();
-      if (result.success) {
-        const siswaKelas = result.data.sort((a: any, b: any) => a.nama.localeCompare(b.nama));
-        
-        if (siswaKelas.length === 0) {
-          Swal.fire('Kosong', 'Tidak ada siswa di kelas ini pada tahun ajaran tersebut', 'info');
-          setLoading(false);
-          return;
-        }
-
-        const headerRow = [
-          'NO', 'NISN', 'NAMA SISWA', 'L/P', 
-          'MATERI 1 S1', 'MATERI 1 S2', 'MATERI 1 S3',
-          'MATERI 2 S1', 'MATERI 2 S2', 'MATERI 2 S3',
-          'MATERI 3 S1', 'MATERI 3 S2', 'MATERI 3 S3',
-          'MATERI 4 S1', 'MATERI 4 S2', 'MATERI 4 S3',
-          'MATERI 5 S1', 'MATERI 5 S2', 'MATERI 5 S3',
-          'MATERI 6 S1', 'MATERI 6 S2', 'MATERI 6 S3',
-          'STS', 'SAS'
-        ];
-
-        const dataRows = siswaKelas.map((s: any, i: number) => [
-          i + 1,
-          s.induk,
-          s.nama.toUpperCase(),
-          (s.jk || '').toLowerCase().includes('l') ? 'L' : 'P',
-          ...Array(20).fill('')
-        ]);
-
-        const wsData = [headerRow, ...dataRows];
-        const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-        ws['!cols'] = [
-          { wch: 5 }, { wch: 15 }, { wch: 35 }, { wch: 5 },
-          ...Array(20).fill({ wch: 12 })
-        ];
-
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Input Nilai PK');
-        XLSX.writeFile(wb, `Template_Nilai_PK_${kelas}_${finalMapel.replace(/[^a-zA-Z0-9]/g, '_')}.xlsx`);
-      } else {
-        Swal.fire('Gagal', result.error || 'Gagal mengambil data siswa', 'error');
-      }
-    } catch (err: any) {
-      Swal.fire('Error', err.message, 'error');
-    }
-    setLoading(false);
-  };
-
-  const processUpload = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        
-        const rawData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
-        if (rawData.length < 2) throw new Error("Format file tidak valid.");
-
-        const headerArr = rawData[0] || [];
-        setHeaders(headerArr.map(String));
-
-        const parsedData = [];
-        for (let i = 1; i < rawData.length; i++) {
-          const row = rawData[i];
-          if (!row || row.length === 0 || !row[1]) continue;
-
-          const rowObj: any = {};
-          headerArr.forEach((h: any, j: number) => {
-            rowObj[h] = row[j] ?? '';
-          });
-          
-          rowObj.induk = rowObj['NISN'];
-          rowObj.nama = rowObj['NAMA SISWA'];
-          rowObj.jk = rowObj['L/P'];
-          
-          parsedData.push(rowObj);
-        }
-
-        setPreviewData(parsedData);
-      } catch (err: any) {
-        Swal.fire('Error', 'Gagal membaca file Excel: ' + err.message, 'error');
-      }
-    };
-    reader.readAsBinaryString(file);
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const finalMapel = mapel;
-    const fileNameUpper = file.name.toUpperCase();
-    
-    // Check if filename contains the mapel words and kelas
-    const mapelWords = finalMapel.toUpperCase().replace(/[^A-Z0-9]/g, ' ').trim().split(/\s+/).filter(Boolean);
-    const isMapelMatch = mapelWords.length > 0 && mapelWords.some((word: string) => fileNameUpper.includes(word));
-    const isKelasMatch = kelas && fileNameUpper.includes(kelas.toUpperCase());
-
-    if (!isMapelMatch || !isKelasMatch) {
-      Swal.fire({
-        title: 'Upload Ditolak',
-        html: `File yang Anda upload: <b>${file.name}</b><br><br>Sepertinya tidak cocok dengan dropdown terpilih:<br>Kelas: <b>${kelas}</b><br>Mapel Program Khusus: <b>${finalMapel}</b><br><br><b>Silakan upload file yang benar agar nilai tidak tertukar!</b>`,
-        icon: 'error',
-        confirmButtonColor: '#ef4444',
-        confirmButtonText: 'Tutup'
-      }).then(() => {
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      });
-      return;
-    } else {
-      processUpload(file);
-    }
-  };
-
-  const saveBulkScores = async () => {
-    if (previewData.length === 0) return;
-    
-    const confirm = await Swal.fire({
-      title: 'Simpan Nilai?',
-      text: `Anda akan menyimpan nilai untuk ${previewData.length} siswa. Data sebelumnya akan ditimpa.`,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonColor: '#3b82f6',
-      cancelButtonColor: '#94a3b8',
-      confirmButtonText: '<i class="fas fa-save"></i> Ya, Simpan',
-      cancelButtonText: 'Batal',
-      reverseButtons: true
-    });
-
-    if (!confirm.isConfirmed) return;
-
-    setSaving(true);
-    const finalMapel = mapel;
-    try {
-      const res = await fetch('/api/nilai-siswa/pk/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          kelas,
-          mapel: finalMapel,
-          dataNilai: previewData,
-          guru: profile?.nama || '',
-          tahunAjaran
-        })
-      });
-      const result = await res.json();
-      if (result.success) {
-        Swal.fire({
-          title: 'Mantap Keren!',
-          text: 'Nilai berhasil disimpan ke sistem.',
-          icon: 'success',
-          timer: 2500,
-          showConfirmButton: false
-        });
-        setPreviewData([]);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      } else {
-        Swal.fire('Gagal', result.error || 'Gagal menyimpan nilai', 'error');
-      }
-    } catch (err: any) {
-      Swal.fire('Error', err.message, 'error');
-    }
-    setSaving(false);
-  };
-
-
-  const kelasOptions = ['7A','7B','7C','7D','7E','7F','7G','7H','7I','8A','8B','8C','8D','8E','8F','8G','8H','8I','9A','9B','9C','9D','9E','9F','9G','9H','9I'];
+  const totalPendingDirty = Object.values(dirtyCells).filter(Boolean).length;
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>
-        <i className="fas fa-award" style={{ color: '#f59e0b', filter: 'drop-shadow(0 2px 4px rgba(245,158,11,0.4))', fontSize: '1.2em' }}></i> Program Khusus
-      </h1>
+      <h1 className={styles.title}>Nilai Siswa Program Khusus</h1>
       <p className={styles.subtitle}>
-        Input dan kelola nilai Program Khusus siswa madrasah.
+        Input langsung dan kelola nilai Program Khusus berdasarkan 5 kategori terpadu (Materi 1–3, STS, SAS) dengan auto-save.
       </p>
 
+      {/* Main Sub-Tabs */}
       <div className={styles.tabContainer}>
-        <button className={`${styles.tabBtn} ${mainTab === 'pk' ? styles.activeTab : ''}`} onClick={() => setMainTab('pk')}>
-          <i className="fas fa-book-open"></i> Nilai Program Khusus
+        <button
+          className={`${styles.tabBtn} ${subTab === 'input' ? styles.activeTab : ''}`}
+          onClick={() => setSubTab('input')}
+        >
+          <span>📝</span> Input &amp; Kelola Nilai
+        </button>
+        <button
+          className={`${styles.tabBtn} ${subTab === 'cetak' ? styles.activeTab : ''}`}
+          onClick={() => setSubTab('cetak')}
+        >
+          <span>🖨️</span> Cetak Rapor PK
         </button>
       </div>
 
-      {mainTab === 'pk' && (
-        <>
-          <div className={styles.tabContainer} style={{ marginTop: '-10px', transform: 'scale(0.9)', transformOrigin: 'left' }}>
-            <button className={`${styles.tabBtn} ${subTab === 'input' ? styles.activeTab : ''}`} onClick={() => setSubTab('input')}>
-              <i className="fas fa-edit"></i> Input Nilai
-            </button>
-            
-            <button className={`${styles.tabBtn} ${subTab === 'rekap' ? styles.activeTab : ''}`} onClick={() => setSubTab('rekap')}>
-              <i className="fas fa-table"></i> Cek Nilai (Rekap)
-            </button>
+      {/* Shared Filter Bar */}
+      <div className={styles.formGrid} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))' }}>
+        <div className={styles.formGroup}>
+          <label>Tahun Ajaran</label>
+          <select
+            className={styles.select}
+            value={tahunAjaran}
+            onChange={(e) => setTahunAjaran(e.target.value)}
+          >
+            {taOptions.map((ta) => (
+              <option key={ta} value={ta}>{ta}</option>
+            ))}
+          </select>
+        </div>
 
-            <button className={`${styles.tabBtn} ${subTab === 'cetak' ? styles.activeTab : ''}`} onClick={() => setSubTab('cetak')}>
-              <i className="fas fa-print"></i> Cetak Rapor PK
-            </button>
+        <div className={styles.formGroup}>
+          <label>Semester</label>
+          <select
+            className={styles.select}
+            value={semester}
+            onChange={(e) => setSemester(e.target.value as PKSemester)}
+          >
+            <option value="Ganjil">Ganjil</option>
+            <option value="Genap">Genap</option>
+          </select>
+        </div>
+
+        <div className={styles.formGroup}>
+          <label>Kelas</label>
+          <select
+            className={styles.select}
+            value={kelas}
+            onChange={(e) => handleKelasChange(e.target.value)}
+          >
+            <option value="">-- Pilih Kelas --</option>
+            {KELAS_OPTIONS.map((k) => (
+              <option key={k} value={k}>
+                {k}{MAP_MINAT_BAKAT[k] ? ` (${PK_CATEGORY_MAP[MAP_MINAT_BAKAT[k]].label})` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className={styles.formGroup} style={{ gridColumn: 'span 1' }}>
+          <label>Kategori Program Khusus</label>
+          <select
+            className={styles.select}
+            value={kategori}
+            onChange={(e) => handleKategoriChange(e.target.value as PKCategoryKey)}
+          >
+            {PK_CATEGORIES.map((cat) => (
+              <option key={cat.key} value={cat.key}>
+                {cat.label} ({cat.mapels.length} Mapel)
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {subTab === 'cetak' && (
+          <div className={styles.formGroup}>
+            <label>Tanggal Cetak Rapor</label>
+            <input
+              type="text"
+              className={styles.input}
+              value={tanggalCetak}
+              onChange={(e) => setTanggalCetak(e.target.value)}
+              placeholder="Contoh: 20 Desember 2026"
+            />
           </div>
+        )}
+      </div>
 
-          {subTab === 'input' && (
-            <div>
-              <div className={styles.formGrid}>
-                <div className={styles.formGroup}>
-                  <label>Tahun Ajaran</label>
-                  <select className={styles.select} value={tahunAjaran} onChange={e => setTahunAjaran(e.target.value)}>
-                    <option value="2023/2024">2023/2024</option>
-                    <option value="2024/2025">2024/2025</option>
-                    <option value="2025/2026">2025/2026</option>
-                    <option value="2026/2027">2026/2027</option>
-                    <option value="2027/2028">2027/2028</option>
-                  </select>
-                </div>
-
-                <div className={styles.formGroup}>
-                  <label>Kelas</label>
-                  <select className={styles.select} value={kelas} onChange={e => setKelas(e.target.value)}>
-                    <option value="">-- Pilih Kelas --</option>
-                    {kelasOptions.map(k => <option key={k} value={k}>{k}</option>)}
-                  </select>
-                </div>
-                
-                <div className={styles.formGroup}>
-                  <label>Mata Pelajaran</label>
-                  <select className={styles.select} value={mapel} onChange={e => setMapel(e.target.value)}>
-                    {mapelList.map(m => <option key={m} value={m}>{m}</option>)}
-                    
-                  </select>
-                </div>
-
-                
+      {/* TAB 1: DIRECT INPUT & KELOLA NILAI */}
+      {subTab === 'input' && (
+        <div>
+          {!kelas ? (
+            <div
+              style={{
+                padding: '48px 24px',
+                textAlign: 'center',
+                background: '#f8fafc',
+                borderRadius: '12px',
+                border: '1px dashed #cbd5e1',
+                color: '#475569',
+              }}
+            >
+              <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b', marginBottom: '6px' }}>
+                Pilih Kelas untuk Mulai Mengisi Nilai
               </div>
-
-              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '12px', padding: '16px 20px', marginBottom: '24px', display: 'flex', gap: '16px', alignItems: 'center' }}>
-                <i className="fas fa-info-circle fa-2x" style={{ color: '#3b82f6' }}></i>
-                <div>
-                  <strong style={{ display: 'block', marginBottom: '4px', color: '#1e3a8a' }}>Langkah Input Nilai PK:</strong>
-                  <div style={{ fontSize: '0.9rem', color: '#1e40af', lineHeight: 1.5 }}>
-                    1. Pastikan Filter Kelas dan Mata Pelajaran sudah benar.<br/>
-                    2. Klik <b>Download Template Excel</b> (Otomatis berisi daftar siswa di kelas tersebut berurut abjad).<br/>
-                    3. Isi nilai siswa secara offline di Excel.<br/>
-                    4. Klik <b>Upload File Excel</b> yang sudah diisi.<br/>
-                    5. Cek preview tabel di bawah, lalu klik <b>Simpan ke Database</b>.
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '16px', marginBottom: '32px', flexWrap: 'wrap' }}>
-                <button 
-                  style={{ background: 'white', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}
-                  onClick={handleDownloadTemplate}
-                  disabled={loading}
-                >
-                  {loading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-file-excel" style={{ color: '#10b981' }}></i>}
-                  Download Template Excel
-                </button>
-                
-                <div style={{ position: 'relative' }}>
-                  <button style={{ background: 'white', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <i className="fas fa-upload" style={{ color: '#3b82f6' }}></i> Upload File Excel
+              <p style={{ margin: 0, fontSize: '0.92rem' }}>
+                Kategori Program Khusus akan dipilih otomatis sesuai kelas (tetap bisa diganti manual).
+                Nilai lama tahun ajaran <b>2026/2027</b> otomatis tampil di semester <b>Ganjil</b>.
+              </p>
+            </div>
+          ) : loading ? (
+            <div
+              style={{
+                padding: '48px 24px',
+                textAlign: 'center',
+                background: '#ffffff',
+                borderRadius: '12px',
+                border: '1px solid #e2e8f0',
+                color: '#64748b',
+                fontWeight: 600,
+              }}
+            >
+              Memuat daftar siswa dan rincian nilai {PK_CATEGORY_MAP[kategori].label} kelas {kelas}...
+            </div>
+          ) : students.length === 0 ? (
+            <div
+              style={{
+                padding: '40px 24px',
+                textAlign: 'center',
+                background: '#fffbeb',
+                borderRadius: '12px',
+                border: '1px solid #fde68a',
+                color: '#92400e',
+              }}
+            >
+              Tidak ditemukan data siswa aktif untuk kelas <b>{kelas}</b> pada Tahun Ajaran <b>{tahunAjaran}</b>.
+            </div>
+          ) : (
+            <>
+              {/* Toolbar: Mapel Focus Pills + Auto-save Status */}
+              <div className={styles.matrixToolbar}>
+                <div className={styles.mapelPills}>
+                  <button
+                    type="button"
+                    className={`${styles.mapelPill} ${focusedMapel === 'ALL' ? styles.mapelPillActive : ''}`}
+                    onClick={() => setFocusedMapel('ALL')}
+                  >
+                    Semua Mapel ({mapels.length})
                   </button>
-                  <input 
-                    type="file" 
-                    accept=".xlsx, .xls"
-                    onChange={handleFileUpload}
-                    ref={fileInputRef}
-                    style={{ position: 'absolute', left: 0, top: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
-                  />
-                </div>
-              </div>
-
-              {previewData.length > 0 && (
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Preview Data ({previewData.length} baris)</h3>
-                    <button 
-                      className={styles.btnSubmit} 
-                      onClick={saveBulkScores}
-                      disabled={saving}
+                  {mapels.map((m) => (
+                    <button
+                      key={m.name}
+                      type="button"
+                      className={`${styles.mapelPill} ${focusedMapel === m.name ? styles.mapelPillActive : ''}`}
+                      onClick={() => setFocusedMapel(m.name)}
                     >
-                      {saving ? <><i className="fas fa-spinner fa-spin"></i> Menyimpan...</> : <><i className="fas fa-save"></i> Simpan ke Database</>}
+                      {m.name}
                     </button>
-                  </div>
-                  
-                  <div className={styles.tableWrapper} style={{ maxHeight: '500px', overflowY: 'auto' }}>
-                    <table className={styles.table}>
-                      <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
-                        <tr>
-                          {headers.map((h, i) => <th key={i}>{h}</th>)}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {previewData.map((row, i) => (
-                          <tr key={i}>
-                            {headers.map((h, j) => (
-                              <td key={j}>{row[h]}</td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  ))}
                 </div>
-              )}
-            </div>
-          )}
 
-          {subTab === 'cetak' && (
-            <div>
-              <div className={styles.formGrid}>
-                <div className={styles.formGroup}>
-                  <label>Tahun Ajaran</label>
-                  <select className={styles.select} value={tahunAjaran} onChange={e => setTahunAjaran(e.target.value)}>
-                    <option value="2023/2024">2023/2024</option>
-                    <option value="2024/2025">2024/2025</option>
-                    <option value="2025/2026">2025/2026</option>
-                    <option value="2026/2027">2026/2027</option>
-                    <option value="2027/2028">2027/2028</option>
-                  </select>
-                </div>
-                <div className={styles.formGroup}>
-                  <label>Kelas</label>
-                  <select className={styles.select} value={kelas} onChange={e => setKelas(e.target.value)}>
-                    <option value="">-- Pilih Kelas --</option>
-                    {kelasOptions.map(k => <option key={k} value={k}>{k}</option>)}
-                  </select>
-                </div>
-                <div className={styles.formGroup}>
-                  <label>Mata Pelajaran PK</label>
-                  <select className={styles.select} value={mapel} onChange={e => setMapel(e.target.value)}>
-                    {mapelList.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                </div>
-                <div className={styles.formGroup}>
-                  <label>Semester</label>
-                  <select className={styles.select} value={semester} onChange={e => setSemester(e.target.value as any)}>
-                    <option value="Ganjil">Semester Ganjil</option>
-                    <option value="Genap">Semester Genap</option>
-                  </select>
-                </div>
-                <div className={styles.formGroup}>
-                  <label>Tanggal Rapor</label>
-                  <input 
-                    type="text" 
-                    className={styles.input} 
-                    value={tanggalCetak} 
-                    onChange={e => setTanggalCetak(e.target.value)} 
-                    placeholder="Contoh: 9 November 2026"
-                  />
-                </div>
-                
-                <div className={styles.formGroup} style={{ justifyContent: 'flex-end' }}>
-                  <button className={styles.btnSubmit} onClick={fetchRekap} disabled={loading || !kelas}>
-                    {loading ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-search"></i>}
-                    Tampilkan Data
-                  </button>
+                <div>
+                  {savingCount > 0 ? (
+                    <span className={`${styles.saveStatusBadge} ${styles.saveStatusSaving}`}>
+                      ⏳ Menyimpan otomatis...
+                    </span>
+                  ) : saveError ? (
+                    <button
+                      type="button"
+                      onClick={retryPendingSaves}
+                      className={`${styles.saveStatusBadge} ${styles.saveStatusError}`}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      ⚠️ {saveError} (Klik untuk coba lagi)
+                    </button>
+                  ) : totalPendingDirty > 0 ? (
+                    <button
+                      type="button"
+                      onClick={retryPendingSaves}
+                      className={`${styles.saveStatusBadge} ${styles.saveStatusSaving}`}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      ✏️ {totalPendingDirty} perubahan menunggu pindah sel...
+                    </button>
+                  ) : lastSavedAt ? (
+                    <span className={`${styles.saveStatusBadge} ${styles.saveStatusSaved}`}>
+                      ✓ Tersimpan otomatis pukul {lastSavedAt}
+                    </span>
+                  ) : (
+                    <span className={`${styles.saveStatusBadge} ${styles.saveStatusIdle}`}>
+                      💾 Auto-save aktif (simpan saat pindah baris/kolom)
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {rekapStudents.length > 0 && (
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px', background: '#f8fafc', padding: '12px 18px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{ background: '#0284c7', color: 'white', padding: '4px 10px', borderRadius: '6px', fontWeight: 700, fontSize: '0.85rem' }}>
-                        Kelas {kelas}
-                      </span>
-                      <span style={{ fontWeight: 600, color: '#334155', fontSize: '0.9rem' }}>
-                        {mapel} &bull; {rekapStudents.length} Siswa Terdaftar
-                      </span>
-                    </div>
+              {/* Spreadsheet-style Matrix Table */}
+              <div className={styles.matrixWrapper}>
+                <table className={styles.matrixTable}>
+                  <thead>
+                    <tr>
+                      <th rowSpan={2} className={`${styles.stickyCol} ${styles.stickyNo}`}>No</th>
+                      <th rowSpan={2} className={`${styles.stickyCol} ${styles.stickyNis}`}>NIS</th>
+                      <th rowSpan={2} className={`${styles.stickyCol} ${styles.stickyNama}`}>Nama Siswa</th>
+                      <th rowSpan={2} className={`${styles.stickyCol} ${styles.stickyJk}`}>L/P</th>
+                      {visibleMapels.map((m, mIdx) => {
+                        const headerTint = styles[`groupHeader${mIdx % 4}` as keyof typeof styles] || styles.groupHeader0;
+                        return (
+                          <th
+                            key={m.name}
+                            colSpan={6}
+                            className={`${headerTint} ${styles.groupEndCol}`}
+                            title={m.name}
+                          >
+                            {m.name}
+                          </th>
+                        );
+                      })}
+                    </tr>
+                    <tr>
+                      {visibleMapels.map((m) => (
+                        <React.Fragment key={`${m.name}-sub`}>
+                          {PK_SCORE_FIELDS.map((f) => (
+                            <th
+                              key={`${m.name}-${f.key}`}
+                              className={styles.subHeaderCell}
+                              title={f.label}
+                            >
+                              {f.label}
+                            </th>
+                          ))}
+                          <th className={`${styles.subHeaderAvg} ${styles.groupEndCol}`} title="Rata-rata / Nilai Akhir">
+                            NA
+                          </th>
+                        </React.Fragment>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {students.map((st, rowIdx) => {
+                      const totalCols = visibleMapels.length * PK_SCORE_FIELDS.length;
+                      return (
+                        <tr key={st.induk || `${rowIdx}-${st.nama}`}>
+                          <td className={`${styles.stickyCol} ${styles.stickyNo}`}>{rowIdx + 1}</td>
+                          <td className={`${styles.stickyCol} ${styles.stickyNis}`} style={{ color: '#64748b' }}>
+                            {st.induk || '-'}
+                          </td>
+                          <td className={`${styles.stickyCol} ${styles.stickyNama}`} style={{ fontWeight: 600, color: '#0f172a' }} title={st.nama}>
+                            {st.nama}
+                          </td>
+                          <td className={`${styles.stickyCol} ${styles.stickyJk}`}>{st.jk}</td>
 
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <button 
-                        onClick={handlePrintAll}
-                        style={{ 
-                          background: '#059669', 
-                          color: 'white', 
-                          border: 'none', 
-                          padding: '9px 20px', 
-                          borderRadius: '8px', 
-                          cursor: 'pointer', 
-                          fontWeight: 700, 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: '8px',
-                          fontSize: '0.9rem',
-                          boxShadow: '0 2px 4px rgba(5,150,105,0.2)'
-                        }}
-                      >
-                        <i className="fas fa-print"></i> Cetak Semua Rapor (Massal)
-                      </button>
-                    </div>
-                  </div>
+                          {visibleMapels.map((m, visMapelIdx) => {
+                            const mScores = st.scoresByMapel[m.name] || {
+                              m1: '', m2: '', m3: '', sts: '', sas: '', rata: null,
+                            };
+                            return (
+                              <React.Fragment key={`${st.induk}-${m.name}`}>
+                                {PK_SCORE_FIELDS.map((f, fIdx) => {
+                                  const flatColIdx = visMapelIdx * PK_SCORE_FIELDS.length + fIdx;
+                                  const cellKey = `${st.induk}::${m.name}::${f.key}`;
+                                  const isDirty = Boolean(dirtyCells[cellKey]);
+                                  const isJustSaved = Boolean(justSavedCells[cellKey]);
 
-                  <div className={styles.tableWrapper}>
-                    <table className={styles.table}>
-                      <thead>
-                        <tr>
-                          <th style={{ width: '45px', textAlign: 'center' }}>No</th>
-                          <th style={{ width: '120px' }}>No Induk</th>
-                          <th>Nama Lengkap Siswa</th>
-                          <th style={{ width: '60px', textAlign: 'center' }}>L/P</th>
-                          <th style={{ width: '90px', textAlign: 'center' }}>Nilai Akhir</th>
-                          <th style={{ width: '120px', textAlign: 'center' }}>Predikat</th>
-                          <th style={{ width: '190px', textAlign: 'center' }}>Aksi Cetak</th>
+                                  return (
+                                    <td key={cellKey} className={styles.scoreCell}>
+                                      <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        data-cell-coord={`${rowIdx}-${flatColIdx}`}
+                                        className={`${styles.cellInput} ${
+                                          isDirty
+                                            ? styles.cellInputDirty
+                                            : isJustSaved
+                                            ? styles.cellInputJustSaved
+                                            : ''
+                                        }`}
+                                        value={mScores[f.key] ?? ''}
+                                        onChange={(e) => handleCellChange(rowIdx, m.name, f.key, e.target.value)}
+                                        onBlur={() => handleCellBlur(rowIdx, m.name, f.key)}
+                                        onKeyDown={(e) => handleCellKeyDown(e, rowIdx, flatColIdx, totalCols)}
+                                        onFocus={(e) => e.currentTarget.select()}
+                                        aria-label={`${st.nama} ${m.name} ${f.label}`}
+                                      />
+                                    </td>
+                                  );
+                                })}
+                                <td className={styles.avgCell}>
+                                  {mScores.rata !== null ? mScores.rata : '-'}
+                                </td>
+                              </React.Fragment>
+                            );
+                          })}
                         </tr>
-                      </thead>
-                      <tbody>
-                        {rekapStudents.map((s, idx) => {
-                          const rataNum = parseFloat(s.scores?.rata || '0');
-                          const { predikat, ket } = getPredikat(rataNum);
-                          return (
-                            <tr key={idx}>
-                              <td style={{ textAlign: 'center' }}>{idx + 1}</td>
-                              <td>{s.induk}</td>
-                              <td style={{ fontWeight: 600, color: '#1e293b' }}>{s.nama}</td>
-                              <td style={{ textAlign: 'center' }}>{s.jk}</td>
-                              <td style={{ textAlign: 'center', fontWeight: 800, color: '#0284c7' }}>
-                                {s.scores?.rata || '-'}
-                              </td>
-                              <td style={{ textAlign: 'center' }}>
-                                <span style={{ 
-                                  padding: '3px 10px', 
-                                  borderRadius: '6px', 
-                                  fontWeight: 700, 
-                                  fontSize: '0.8rem',
-                                  background: predikat === 'A' ? '#dcfce7' : predikat === 'B' ? '#e0f2fe' : predikat === 'C' ? '#fef3c7' : '#fee2e2',
-                                  color: predikat === 'A' ? '#15803d' : predikat === 'B' ? '#0369a1' : predikat === 'C' ? '#b45309' : '#b91c1c'
-                                }}>
-                                  {predikat} {ket !== '-' ? `(${ket})` : ''}
-                                </span>
-                              </td>
-                              <td style={{ textAlign: 'center' }}>
-                                <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                                  <button
-                                    onClick={() => setPreviewStudent(s)}
-                                    style={{
-                                      background: '#f1f5f9',
-                                      color: '#475569',
-                                      border: '1px solid #cbd5e1',
-                                      padding: '6px 12px',
-                                      borderRadius: '6px',
-                                      cursor: 'pointer',
-                                      fontSize: '0.8rem',
-                                      fontWeight: 600,
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '4px'
-                                    }}
-                                    title="Preview Rapor"
-                                  >
-                                    <i className="fas fa-eye"></i> Preview
-                                  </button>
-                                  <button
-                                    onClick={() => handlePrintSingle(s)}
-                                    style={{
-                                      background: '#0284c7',
-                                      color: 'white',
-                                      border: 'none',
-                                      padding: '6px 14px',
-                                      borderRadius: '6px',
-                                      cursor: 'pointer',
-                                      fontSize: '0.8rem',
-                                      fontWeight: 600,
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '5px'
-                                    }}
-                                    title="Cetak Rapor Siswa"
-                                  >
-                                    <i className="fas fa-print"></i> Cetak
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
-              {/* Modal Preview Rapor PK */}
-              {previewStudent && (
-                <div style={{
-                  position: 'fixed',
-                  top: 0, left: 0, right: 0, bottom: 0,
-                  background: 'rgba(15, 23, 42, 0.7)',
-                  zIndex: 9999,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '20px',
-                  backdropFilter: 'blur(3px)'
-                }}>
-                  <div style={{
-                    background: 'white',
-                    borderRadius: '12px',
-                    maxWidth: '850px',
-                    width: '100%',
-                    maxHeight: '90vh',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    boxShadow: '0 20px 25px -5px rgba(0,0,0,0.3)',
-                    overflow: 'hidden'
-                  }}>
-                    <div style={{
-                      padding: '12px 20px',
-                      background: '#1e293b',
-                      color: 'white',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <i className="fas fa-certificate" style={{ color: '#38bdf8' }}></i>
-                        Preview Rapor Program Khusus &mdash; {previewStudent.nama}
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          onClick={() => handlePrintSingle(previewStudent)}
-                          style={{
-                            background: '#059669',
-                            color: 'white',
-                            border: 'none',
-                            padding: '6px 14px',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontWeight: 600,
-                            fontSize: '0.85rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                          }}
-                        >
-                          <i className="fas fa-print"></i> Cetak Dokumen
-                        </button>
-                        <button
-                          onClick={() => setPreviewStudent(null)}
-                          style={{
-                            background: '#475569',
-                            color: 'white',
-                            border: 'none',
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontWeight: 600,
-                            fontSize: '0.85rem'
-                          }}
-                        >
-                          Tutup
-                        </button>
-                      </div>
-                    </div>
-                    <div style={{ padding: '24px', overflowY: 'auto', flex: 1, background: '#f8fafc' }}>
-                      <div 
-                        style={{ background: 'white', padding: '24px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}
-                        dangerouslySetInnerHTML={{ __html: generateRaporHtml(previewStudent) }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+              <div style={{ marginTop: '10px', fontSize: '0.82rem', color: '#64748b', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                <span>
+                  Menampilkan <b>{students.length}</b> siswa · Kelas <b>{kelas}</b> · Semester <b>{semester}</b> · Tahun Ajaran <b>{tahunAjaran}</b>
+                </span>
+                <span>
+                  Tips: Gunakan tombol <b>Tab</b>, <b>Enter</b>, atau <b>Panah</b> untuk berpindah kolom/baris — nilai langsung tersimpan otomatis.
+                </span>
+              </div>
+            </>
           )}
-
-          
-        </>
+        </div>
       )}
 
+      {/* TAB 2: CETAK RAPOR PK */}
+      {subTab === 'cetak' && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
+            <div style={{ fontSize: '0.92rem', color: '#475569' }}>
+              {kelas ? (
+                <>
+                  Rapor Kategori <b>{PK_CATEGORY_MAP[kategori].label}</b> — Kelas <b>{kelas}</b> ({semester} {tahunAjaran})
+                </>
+              ) : (
+                'Pilih kelas pada filter di atas untuk melihat daftar rapor Program Khusus.'
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                className={styles.btnSubmit}
+                onClick={loadKategoriData}
+                disabled={loading || !kelas}
+                style={{ backgroundColor: '#475569' }}
+              >
+                🔄 Muat Ulang
+              </button>
+              <button
+                type="button"
+                className={styles.btnSubmit}
+                onClick={handlePrintAll}
+                disabled={loading || students.length === 0}
+              >
+                🖨️ Cetak Semua Rapor ({students.length})
+              </button>
+            </div>
+          </div>
+
+          {!kelas ? null : loading ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+              Memuat data rapor...
+            </div>
+          ) : (
+            <div className={styles.tableWrapper}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={{ width: '45px', textAlign: 'center' }}>No</th>
+                    <th style={{ width: '110px' }}>No Induk</th>
+                    <th>Nama Siswa</th>
+                    <th style={{ width: '55px', textAlign: 'center' }}>L/P</th>
+                    {mapels.map((m) => (
+                      <th key={m.name} style={{ textAlign: 'center' }} title={m.name}>
+                        {m.shortName}
+                      </th>
+                    ))}
+                    <th style={{ width: '95px', textAlign: 'center' }}>Rata-rata</th>
+                    <th style={{ width: '110px', textAlign: 'center' }}>Predikat</th>
+                    <th style={{ width: '190px', textAlign: 'center' }}>Aksi Cetak</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.length === 0 ? (
+                    <tr>
+                      <td colSpan={7 + mapels.length} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                        Tidak ada siswa aktif di kelas ini.
+                      </td>
+                    </tr>
+                  ) : (
+                    students.map((st, idx) => {
+                      const avg = computeStudentOverallAverage(st);
+                      const { predikat, ket } = getPredikat(avg);
+                      return (
+                        <tr key={st.induk || idx}>
+                          <td style={{ textAlign: 'center' }}>{idx + 1}</td>
+                          <td>{st.induk || '-'}</td>
+                          <td style={{ fontWeight: 600 }}>{st.nama}</td>
+                          <td style={{ textAlign: 'center' }}>{st.jk}</td>
+                          {mapels.map((m) => {
+                            const r = st.scoresByMapel[m.name]?.rata;
+                            return (
+                              <td key={m.name} style={{ textAlign: 'center', fontWeight: 600 }}>
+                                {r !== null && r !== undefined ? r : '-'}
+                              </td>
+                            );
+                          })}
+                          <td style={{ textAlign: 'center', fontWeight: 700, color: '#1d4ed8' }}>
+                            {avg > 0 ? avg : '-'}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            {predikat} ({ket})
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: '6px' }}>
+                              <button
+                                type="button"
+                                onClick={() => setPreviewStudent(st)}
+                                style={{
+                                  padding: '6px 10px',
+                                  borderRadius: '6px',
+                                  border: '1px solid #cbd5e1',
+                                  background: '#fff',
+                                  cursor: 'pointer',
+                                  fontSize: '0.82rem',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                👁️ Preview
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handlePrintSingle(st)}
+                                style={{
+                                  padding: '6px 10px',
+                                  borderRadius: '6px',
+                                  border: 'none',
+                                  background: '#2563eb',
+                                  color: '#fff',
+                                  cursor: 'pointer',
+                                  fontSize: '0.82rem',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                🖨️ Cetak
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Print Preview Modal */}
+      {previewStudent && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}
+          onClick={() => setPreviewStudent(null)}
+        >
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '12px',
+              maxWidth: '900px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              padding: '20px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid #e2e8f0', paddingBottom: '10px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#0f172a' }}>
+                Preview Rapor PK — {previewStudent.nama}
+              </h3>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  className={styles.btnSubmit}
+                  onClick={() => handlePrintSingle(previewStudent)}
+                >
+                  🖨️ Cetak
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewStudent(null)}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                  }}
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+            <div dangerouslySetInnerHTML={{ __html: generateRaporHtml(previewStudent) }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
