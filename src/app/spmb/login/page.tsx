@@ -187,14 +187,20 @@ export default function SpmbLogin() {
             <Link 
               href="/spmb"
               style={{
-                fontSize: '13px',
-                color: '#059669',
-                fontWeight: 600,
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: '11px 16px',
+                borderRadius: '12px',
+                background: '#f0fdf4',
+                border: '1.5px solid #86efac',
+                fontSize: '13.5px',
+                color: '#15803d',
+                fontWeight: 700,
                 textDecoration: 'none',
-                display: 'inline-flex',
+                display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '6px'
+                gap: '8px'
               }}
             >
               <i className="fas fa-user-plus"></i> Belum Mendaftar? Isi Formulir SPMB
@@ -206,16 +212,26 @@ export default function SpmbLogin() {
                 try { localStorage.setItem('keren_app_preference', 'guru'); } catch {}
               }}
               style={{ 
-                fontSize: '12.5px', 
-                color: '#94a3b8', 
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: '12px 16px',
+                borderRadius: '12px',
+                background: '#f0f9ff',
+                border: '1.5px solid #7dd3fc',
+                fontSize: '14px',
+                fontWeight: 700,
+                color: '#0369a1',
                 textDecoration: 'none',
-                display: 'inline-flex',
+                display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '6px'
+                gap: '8px',
+                boxShadow: '0 2px 6px rgba(3, 105, 161, 0.08)'
               }}
             >
-              <i className="fas fa-chalkboard-teacher"></i> Masuk sebagai Guru / Staf Madrasah
+              <i className="fas fa-chalkboard-teacher" style={{ fontSize: '15px' }}></i>
+              <span>Masuk sebagai Guru / Staf Madrasah</span>
+              <i className="fas fa-arrow-right" style={{ fontSize: '12px', opacity: 0.85 }}></i>
             </Link>
           </div>
         </div>
