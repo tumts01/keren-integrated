@@ -2205,8 +2205,8 @@ export default function PersuratanPage() {
               </>
             ) : generateJenis === 'Surat Permohonan Izin' ? (
               <>
-                <div style={{ fontSize: '12pt', marginTop: '10px' }}>
-                  <table style={{ border: 'none', borderCollapse: 'collapse', width: '100%', marginBottom: '15px' }}>
+                <div style={{ fontSize: '12pt', marginTop: '6px', lineHeight: '1.3' }}>
+                  <table style={{ border: 'none', borderCollapse: 'collapse', width: '100%', marginBottom: '10px' }}>
                     <tbody>
                       <tr><td style={{ width: '70px', padding: 0 }}>Nomor</td><td style={{ width: '15px', padding: 0 }}>:</td><td style={{ padding: 0 }}>{generateNomor}</td></tr>
                       <tr><td style={{ padding: 0 }}>Lamp</td><td style={{ padding: 0 }}>:</td><td style={{ padding: 0 }}>-</td></tr>
@@ -2214,43 +2214,43 @@ export default function PersuratanPage() {
                     </tbody>
                   </table>
 
-                  <p style={{ margin: '0 0 5px 0' }}>Kepada Yth. Bapak/Ibu:</p>
-                  <div style={{ fontWeight: 'bold', marginBottom: '20px', lineHeight: '1.2' }}>
+                  <p style={{ margin: '0 0 3px 0' }}>Kepada Yth. Bapak/Ibu:</p>
+                  <div style={{ fontWeight: 'bold', marginBottom: '10px', lineHeight: '1.25' }}>
                     {generateTujuan.split('\n').map((baris, i) => (
                       <div key={i}>{baris}</div>
                     ))}
                   </div>
                   
-                  <p style={{ marginBottom: '15px' }}>di tempat</p>
+                  <p style={{ margin: '0 0 10px 0' }}>di tempat</p>
                   
-                  <p style={{ fontStyle: 'italic', marginBottom: '15px' }}>Assalamu'alaikum Wr. Wb.</p>
+                  <p style={{ fontStyle: 'italic', margin: '0 0 10px 0' }}>Assalamu'alaikum Wr. Wb.</p>
                   
-                  <p style={{ marginBottom: '15px', textAlign: 'justify', lineHeight: '1.3' }}>
+                  <p style={{ margin: '0 0 10px 0', textAlign: 'justify', lineHeight: '1.3' }}>
                     Salam silaturrahim teriring doa semoga rahmat, hidayah serta inayah Allah selalu menyertai kita dalam beraktifitas sehari-hari, amin.
                   </p>
                   
-                  <p style={{ marginBottom: '15px', textAlign: 'justify', lineHeight: '1.3' }}>
+                  <p style={{ margin: '0 0 8px 0', textAlign: 'justify', lineHeight: '1.3' }}>
                     Kami sampaikan sehubungan dengan adanya kegiatan {generateKonteks || 'MATAMUDA Tahun Ajaran 2026/2027'}, kami memohon izin agar nama-nama berikut:
                   </p>
 
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '15px', border: 'none' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '8px', border: 'none' }}>
                     <tbody>
                       {generateSiswaList.map((siswa, i) => (
                         <tr key={i}>
-                          <td style={{ width: '30px', verticalAlign: 'top', padding: '2px 0' }}>{i + 1}.</td>
-                          <td style={{ verticalAlign: 'top', padding: '2px 0' }}>{siswa.nama}</td>
-                          <td style={{ width: '60px', verticalAlign: 'top', padding: '2px 0', textAlign: 'center' }}>{siswa.id === 'terlampir' ? '' : siswa.rombel}</td>
-                          <td style={{ verticalAlign: 'top', padding: '2px 0' }}>{siswa.id === 'terlampir' ? '' : (siswa.domisili ? `(${siswa.domisili})` : '')}</td>
+                          <td style={{ width: '30px', verticalAlign: 'top', padding: '1px 0' }}>{i + 1}.</td>
+                          <td style={{ verticalAlign: 'top', padding: '1px 0' }}>{siswa.nama}</td>
+                          <td style={{ width: '60px', verticalAlign: 'top', padding: '1px 0', textAlign: 'center' }}>{siswa.id === 'terlampir' ? '' : siswa.rombel}</td>
+                          <td style={{ verticalAlign: 'top', padding: '1px 0' }}>{siswa.id === 'terlampir' ? '' : (siswa.domisili ? `(${siswa.domisili})` : '')}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
 
-                  <p style={{ marginBottom: '15px', textAlign: 'justify', lineHeight: '1.3' }}>
+                  <p style={{ margin: '0 0 8px 0', textAlign: 'justify', lineHeight: '1.3' }}>
                     diberikan izin untuk mengikuti {generateKegiatan} dengan jadwal sebagai berikut:
                   </p>
 
-                  <table style={{ border: 'none', borderCollapse: 'collapse', width: '100%', marginBottom: '15px', marginLeft: '20px' }}>
+                  <table style={{ border: 'none', borderCollapse: 'collapse', width: '100%', marginBottom: '10px', marginLeft: '20px' }}>
                     <tbody>
                       <tr><td style={{ width: '100px', padding: '2px 0' }}>Hari, Tanggal</td><td style={{ width: '15px', padding: '2px 0' }}>:</td><td style={{ padding: '2px 0' }}>{generateHariTanggal}</td></tr>
                       <tr><td style={{ padding: '2px 0' }}>Waktu</td><td style={{ padding: '2px 0' }}>:</td><td style={{ padding: '2px 0' }}>{generateWaktu}</td></tr>
@@ -2258,11 +2258,11 @@ export default function PersuratanPage() {
                     </tbody>
                   </table>
 
-                  <p style={{ marginBottom: '20px', textAlign: 'justify', lineHeight: '1.3' }}>
+                  <p style={{ margin: '0 0 10px 0', textAlign: 'justify', lineHeight: '1.3' }}>
                     Demikian permohonan ini kami sampaikan. Besar harapan kami agar murid tersebut dapat diberikan izin untuk mengikuti kegiatan dimaksud. Atas perhatian, kebijaksanaan, dan kerja sama Bapak/Ibu Pengasuh, kami ucapkan terima kasih.
                   </p>
 
-                  <p style={{ fontStyle: 'italic', marginBottom: '20px' }}>Wassalamu'alaikum Wr. Wb.</p>
+                  <p style={{ fontStyle: 'italic', margin: '0 0 10px 0' }}>Wassalamu'alaikum Wr. Wb.</p>
                 </div>
               </>
             ) : generateJenis === 'Surat Undangan GTK' ? (
@@ -2373,9 +2373,19 @@ export default function PersuratanPage() {
             )}
 
             {generateJenis !== 'Surat Undangan GTK' && (
-              <div style={{ marginTop: '20px', marginLeft: 'auto', width: '300px', textAlign: 'left', fontSize: '12pt', fontFamily: 'Arial, sans-serif', position: 'relative' }}>
+              <div style={{
+                marginTop: generateJenis === 'Surat Permohonan Izin' ? '10px' : '20px',
+                marginLeft: 'auto',
+                width: '300px',
+                textAlign: 'left',
+                fontSize: '12pt',
+                fontFamily: 'Arial, sans-serif',
+                position: 'relative',
+                breakInside: 'avoid',
+                pageBreakInside: 'avoid'
+              }}>
                 <p style={{ margin: '0 0 5px 0' }}>Singosari, {generateTanggal}</p>
-                <p style={{ margin: '0 0 90px 0' }}>Kepala Madrasah,</p>
+                <p style={{ margin: generateJenis === 'Surat Permohonan Izin' ? '0 0 65px 0' : '0 0 90px 0' }}>Kepala Madrasah,</p>
                 
                 {generateJenis === 'Surat Keterangan Aktif Siswa' && (
                   <img 
