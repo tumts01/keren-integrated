@@ -647,8 +647,8 @@ export default function CbtMonitoringPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '24px 20px 60px' }}>
-      <div style={{ maxWidth: '1300px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '24px 28px 60px' }}>
+      <div style={{ width: '100%', maxWidth: '1680px', margin: '0 auto' }}>
 
         {/* TOP BAR / NAVIGATION */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
@@ -1028,7 +1028,7 @@ export default function CbtMonitoringPage() {
         </div>
 
         {/* STATISTIK RINGKASAN */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '14px', marginBottom: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(185px, 1fr))', gap: '14px', marginBottom: '24px' }}>
           {/* Total Peserta */}
           <div style={{ background: 'white', padding: '18px 20px', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
