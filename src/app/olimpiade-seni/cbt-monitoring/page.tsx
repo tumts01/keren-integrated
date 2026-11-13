@@ -71,7 +71,7 @@ export default function CbtMonitoringPage() {
   const [filterStatus, setFilterStatus] = useState('Semua');
   const [sortBy, setSortBy] = useState<'status' | 'mapel_nilai' | 'nilai_desc'>('status');
   const [searchQuery, setSearchQuery] = useState('');
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(false);
   const [countdown, setCountdown] = useState(15);
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedPesertaLog, setSelectedPesertaLog] = useState<PesertaCBT | null>(null);
@@ -111,7 +111,12 @@ export default function CbtMonitoringPage() {
       const res = await fetch('/api/olimpiade-seni/config-cbt');
       const json = await res.json();
       if (json.success) {
-        setCbtBuka(json.cbt_buka);
+        const isCbtOpen = Boolean(json.cbt_buka);
+        setCbtBuka(isCbtOpen);
+        setAutoRefresh(isCbtOpen);
+        if (isCbtOpen) {
+          setCountdown(REFRESH_INTERVAL);
+        }
         if (typeof json.login_khusus_lolos === 'boolean') {
           setLoginKhususLolos(json.login_khusus_lolos);
         }
@@ -257,6 +262,10 @@ export default function CbtMonitoringPage() {
       const resJson = await res.json();
       if (resJson.success) {
         setCbtBuka(newVal);
+        setAutoRefresh(newVal);
+        if (newVal) {
+          setCountdown(REFRESH_INTERVAL);
+        }
         Swal.fire({
           icon: 'success',
           title: newVal ? 'Ujian CBT Dibuka' : 'Ujian CBT Ditutup',
@@ -314,9 +323,9 @@ export default function CbtMonitoringPage() {
     fetchCbtConfig();
   }, []);
 
-  // Auto-refresh interval
+  // Auto-refresh interval (hanya aktif ketika Portal CBT dibuka)
   useEffect(() => {
-    if (!autoRefresh) return;
+    if (!cbtBuka || !autoRefresh) return;
 
     const timer = setInterval(() => {
       setCountdown((prev) => {
@@ -329,7 +338,7 @@ export default function CbtMonitoringPage() {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [autoRefresh, tahapPantau]);
+  }, [cbtBuka, autoRefresh, tahapPantau]);
 
   // Aksi Kelola Sesi
   const handleAction = async (action: string, p: PesertaCBT, extraBody: any = {}) => {
@@ -797,27 +806,38 @@ export default function CbtMonitoringPage() {
               </>
             )}
 
-            {/* AUTO REFRESH TOGGLE */}
-            <div
-              onClick={() => setAutoRefresh(!autoRefresh)}
+            {/* AUTO REFRESH TOGGLE (Aktif hanya saat Portal CBT BUKA) */}
+            <button
+              type="button"
+              onClick={() => {
+                if (!cbtBuka) return;
+                setAutoRefresh(!autoRefresh);
+              }}
+              disabled={!cbtBuka}
+              title={
+                cbtBuka
+                  ? (autoRefresh ? 'Klik untuk jeda auto-refresh' : 'Klik untuk aktifkan auto-refresh')
+                  : 'Auto-refresh hanya aktif ketika Portal CBT dibuka'
+              }
               style={{
-                background: autoRefresh ? '#eff6ff' : '#f1f5f9',
-                color: autoRefresh ? '#1d4ed8' : '#64748b',
-                border: `1.5px solid ${autoRefresh ? '#bfdbfe' : '#cbd5e1'}`,
+                background: cbtBuka && autoRefresh ? '#eff6ff' : '#f1f5f9',
+                color: cbtBuka && autoRefresh ? '#1d4ed8' : '#64748b',
+                border: `1.5px solid ${cbtBuka && autoRefresh ? '#bfdbfe' : '#cbd5e1'}`,
                 padding: '8px 12px',
                 borderRadius: '8px',
                 fontWeight: 600,
                 fontSize: '0.85rem',
-                cursor: 'pointer',
+                cursor: cbtBuka ? 'pointer' : 'not-allowed',
+                opacity: cbtBuka ? 1 : 0.75,
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
                 userSelect: 'none',
               }}
             >
-              <i className={`fas fa-sync ${autoRefresh ? 'fa-spin' : ''}`} style={{ color: autoRefresh ? '#2563eb' : '#94a3b8' }}></i>
-              <span>{autoRefresh ? `Auto: ${countdown}s` : 'Auto: OFF'}</span>
-            </div>
+              <i className={`fas fa-sync ${cbtBuka && autoRefresh ? 'fa-spin' : ''}`} style={{ color: cbtBuka && autoRefresh ? '#2563eb' : '#94a3b8' }}></i>
+              <span>{!cbtBuka ? 'Auto: OFF (CBT Tutup)' : autoRefresh ? `Auto: ${countdown}s` : 'Auto: OFF'}</span>
+            </button>
 
             <button
               onClick={() => fetchData(false)}
