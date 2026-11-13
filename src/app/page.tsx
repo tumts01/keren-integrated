@@ -386,7 +386,25 @@ export default function Home() {
       <div className={styles.container} style={{ alignItems: 'center', justifyContent: 'center', minHeight: '60vh', textAlign: 'center' }}>
         <img src="/logo.png" alt="Logo" style={{ width: '100px', marginBottom: '20px' }} />
         <h1 style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px' }}>KEREN Dashboard</h1>
-        <p style={{ color: 'var(--text-muted)' }}>Selamat datang, {user?.nama || 'Pengguna'}! Akun Anda aktif namun tidak tertaut ke Database GTK.</p>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '20px' }}>Selamat datang, {user?.nama || 'Pengguna'}! Akun Anda aktif namun tidak tertaut ke Database GTK.</p>
+        <Link
+          href="/olimpiade-seni"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 18px',
+            background: '#fffbeb',
+            color: '#b45309',
+            border: '1px solid #fde68a',
+            borderRadius: '10px',
+            fontSize: '0.9rem',
+            fontWeight: 700,
+            textDecoration: 'none'
+          }}
+        >
+          <i className="fas fa-trophy"></i> Dasbor Olimpiade &amp; Seni
+        </Link>
       </div>
     );
   }
@@ -1033,11 +1051,33 @@ export default function Home() {
       )}
 
       {/* Kartu Sambutan */}
-      <div className={styles.welcomeCard}>
+      <div className={styles.welcomeCard} style={{ flexWrap: 'wrap', gap: '16px' }}>
         <div className={styles.welcomeContent}>
           <h1 className={styles.welcomeTitle}>Awali harimu dengan Bismillah <i className="fas fa-praying-hands" style={{ marginLeft: '4px' }}></i></h1>
           <p className={styles.welcomeSubtitle}>Selamat datang kembali di KEREN. Semoga harimu menyenangkan!</p>
         </div>
+        <Link
+          href="/olimpiade-seni"
+          style={{
+            position: 'relative',
+            zIndex: 2,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 18px',
+            background: 'rgba(255, 255, 255, 0.16)',
+            backdropFilter: 'blur(6px)',
+            color: 'white',
+            border: '1px solid rgba(255, 255, 255, 0.35)',
+            borderRadius: '12px',
+            fontSize: '0.88rem',
+            fontWeight: 700,
+            textDecoration: 'none',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          <i className="fas fa-trophy" style={{ color: '#fde047' }}></i> Dasbor Olimpiade &amp; Seni
+        </Link>
         <i className="fas fa-sun" style={{ fontSize: '8rem', color: 'rgba(255,255,255,0.2)', position: 'absolute', right: '-20px', bottom: '-20px' }}></i>
       </div>
 

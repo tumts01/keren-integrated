@@ -443,6 +443,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               >
                 <i className="fas fa-id-card"></i> Masuk ke Portal Calon Siswa (SPMB)
               </Link>
+
+              <Link 
+                href="/olimpiade-seni"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  padding: '9px 14px',
+                  background: '#fffbeb',
+                  color: '#b45309',
+                  border: '1px solid #fde68a',
+                  borderRadius: '10px',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  textDecoration: 'none'
+                }}
+              >
+                <i className="fas fa-trophy"></i> Dasbor Olimpiade &amp; Seni
+              </Link>
             </div>
             
             <div className={styles.footer}>
