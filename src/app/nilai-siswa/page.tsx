@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Swal from 'sweetalert2';
 import styles from './NilaiSiswa.module.css';
 import {
-  PK_CATEGORIES,
   PK_CATEGORY_MAP,
   PK_SCORE_FIELDS,
   MAP_MINAT_BAKAT,
@@ -31,7 +30,6 @@ interface PKMapelHeader {
 const KELAS_OPTIONS = [
   '7A', '7B', '7C', '7D', '7E', '7F', '7G', '7H', '7I',
   '8A', '8B', '8C', '8D', '8E', '8F', '8G', '8H', '8I',
-  '9A', '9B', '9C', '9D', '9E', '9F', '9G', '9H', '9I',
 ];
 
 const getPredikat = (scoreNum: number) => {
@@ -122,11 +120,6 @@ export default function NilaiSiswaPage() {
     if (autoKat) {
       setKategori(autoKat);
     }
-    setFocusedMapel('ALL');
-  };
-
-  const handleKategoriChange = (newKat: PKCategoryKey) => {
-    setKategori(newKat);
     setFocusedMapel('ALL');
   };
 
@@ -693,19 +686,44 @@ export default function NilaiSiswaPage() {
           </select>
         </div>
 
-        <div className={styles.formGroup} style={{ gridColumn: 'span 1' }}>
+        <div className={styles.formGroup}>
           <label>Kategori Program Khusus</label>
-          <select
-            className={styles.select}
-            value={kategori}
-            onChange={(e) => handleKategoriChange(e.target.value as PKCategoryKey)}
+          <div
+            style={{
+              padding: '9px 12px',
+              borderRadius: '8px',
+              border: '1px solid #cbd5e1',
+              background: kelas ? '#eff6ff' : '#f1f5f9',
+              color: kelas ? '#1e40af' : '#64748b',
+              fontWeight: 600,
+              fontSize: '0.9rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '8px',
+              minHeight: '41px',
+            }}
           >
-            {PK_CATEGORIES.map((cat) => (
-              <option key={cat.key} value={cat.key}>
-                {cat.label} ({cat.mapels.length} Mapel)
-              </option>
-            ))}
-          </select>
+            {kelas ? (
+              <>
+                <span>{PK_CATEGORY_MAP[kategori].label}</span>
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    background: '#dbeafe',
+                    color: '#1d4ed8',
+                    padding: '2px 8px',
+                    borderRadius: '9999px',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {PK_CATEGORY_MAP[kategori].mapels.length} Mapel
+                </span>
+              </>
+            ) : (
+              <span>Otomatis mengikuti kelas</span>
+            )}
+          </div>
         </div>
 
         {subTab === 'cetak' && (
@@ -740,7 +758,7 @@ export default function NilaiSiswaPage() {
                 Pilih Kelas untuk Mulai Mengisi Nilai
               </div>
               <p style={{ margin: 0, fontSize: '0.92rem' }}>
-                Kategori Program Khusus akan dipilih otomatis sesuai kelas (tetap bisa diganti manual).
+                Kategori dan rincian mata pelajaran Program Khusus otomatis mengikuti kelas yang dipilih.
                 Nilai lama tahun ajaran <b>2026/2027</b> otomatis tampil di semester <b>Ganjil</b>.
               </p>
             </div>
