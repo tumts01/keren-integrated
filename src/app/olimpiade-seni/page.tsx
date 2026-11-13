@@ -31,6 +31,33 @@ export default function OlimpiadeSeniPage() {
         <div style={{ position: 'absolute', top: '-50px', left: '-50px', width: '200px', height: '200px', background: 'radial-gradient(circle, rgba(234,179,8,0.15) 0%, transparent 70%)', borderRadius: '50%' }}></div>
         <div style={{ position: 'absolute', bottom: '-50px', right: '-50px', width: '250px', height: '250px', background: 'radial-gradient(circle, rgba(14,165,233,0.1) 0%, transparent 70%)', borderRadius: '50%' }}></div>
 
+        {/* Tombol Kembali ke Pilihan Portal */}
+        <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '12px', position: 'relative', zIndex: 10 }}>
+          <button
+            type="button"
+            onClick={() => router.push('/')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '9px 15px',
+              borderRadius: '10px',
+              background: '#f8fafc',
+              border: '1.5px solid #cbd5e1',
+              color: '#334155',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.borderColor = '#94a3b8'; }}
+            onMouseOut={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+          >
+            <i className="fas fa-arrow-left" style={{ fontSize: '0.8rem' }}></i>
+            <span>Kembali ke Pilihan Portal</span>
+          </button>
+        </div>
+
         {/* Logo */}
         <img 
           src="/logo_olimpiade_seni.png" 
