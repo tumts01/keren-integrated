@@ -10,6 +10,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [usernameInput, setUsernameInput] = useState('');
+  const [loginMode, setLoginMode] = useState<'select' | 'guru'>('select');
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showLupaPassword, setShowLupaPassword] = useState(false);
@@ -24,7 +25,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const storedUser = localStorage.getItem('keren_user_data');
     const portalSession = localStorage.getItem('portal_session');
     const spmbSession = localStorage.getItem('spmb_session');
-    const appPref = localStorage.getItem('keren_app_preference');
+    const loginParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('login') : null;
 
     if (storedUser) {
       try {
@@ -51,17 +52,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     } else if (spmbSession && pathname === '/') {
       router.replace('/spmb/portal');
       return;
-    } else if (appPref === 'spmb' && pathname === '/') {
-      router.replace('/spmb/login');
-      return;
     } else if (portalSession && pathname === '/') {
       // User is logged into student/wali murid portal!
       router.replace('/portal/dashboard');
       return;
-    } else if (appPref === 'portal' && pathname === '/') {
-      // User preferred student portal
-      router.replace('/portal/login');
-      return;
+    } else if (loginParam === 'guru') {
+      setLoginMode('guru');
+    } else {
+      setLoginMode('select');
     }
   }, [pathname, router]);
 
@@ -374,96 +372,153 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b', marginBottom: '4px' }}>
               MTS ALMAARIF 01 SINGOSARI
             </h3>
-            <p style={{ fontSize: '0.82rem', color: '#94a3b8', marginBottom: '20px' }}>
+            <p style={{ fontSize: '0.82rem', color: '#94a3b8', marginBottom: '18px' }}>
               Sistem Informasi Administrasi Digital
             </p>
 
-            <form onSubmit={handleLogin} className={styles.form}>
-              <div style={{ textAlign: 'left', marginBottom: '16px' }}>
-                <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '6px' }}>
-                  Username
-                </label>
-                <div className={styles.inputGroup}>
-                  <input 
-                    type="text" 
-                    placeholder="Masukkan username anda" 
-                    value={usernameInput}
-                    onChange={(e) => setUsernameInput(e.target.value)}
-                    required 
-                  />
+            {loginMode === 'select' ? (
+              <>
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 12px',
+                  borderRadius: '999px',
+                  background: '#f1f5f9',
+                  color: '#475569',
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  marginBottom: '4px'
+                }}>
+                  <i className="fas fa-compass" style={{ color: '#059669' }}></i>
+                  <span>Pilih Portal / Tujuan Masuk</span>
                 </div>
-              </div>
 
-              <button type="submit" className={styles.loginBtn} disabled={loading}>
-                {loading ? <><i className="fas fa-spinner fa-spin"></i> Memproses...</> : <><i className="fas fa-sign-in-alt"></i> Masuk</>}
-              </button>
-            </form>
+                <div className={styles.portalList}>
+                  <button
+                    type="button"
+                    className={styles.portalOption}
+                    onClick={() => setLoginMode('guru')}
+                    style={{ borderColor: '#bbf7d0', background: 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)' }}
+                  >
+                    <div className={styles.portalOptionIcon} style={{ background: '#dcfce7', color: '#059669' }}>
+                      <i className="fas fa-chalkboard-teacher"></i>
+                    </div>
+                    <div className={styles.portalOptionBody}>
+                      <div className={styles.portalOptionTitle}>Guru &amp; Staf Madrasah</div>
+                      <div className={styles.portalOptionDesc}>Masuk dengan username untuk administrasi, presensi, jurnal &amp; nilai</div>
+                    </div>
+                    <i className={`fas fa-chevron-right ${styles.portalOptionArrow}`}></i>
+                  </button>
 
-            {/* Switch to Portal Siswa & Wali Murid & SPMB */}
-            <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px dashed #e2e8f0', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <p style={{ margin: '0 0 4px 0', fontSize: '0.8rem', color: '#64748b' }}>
-                Wali Murid atau Calon Siswa?
-              </p>
-              <Link 
-                href="/portal/login"
-                style={{
-                  display: 'flex',
+                  <Link
+                    href="/portal/login"
+                    className={styles.portalOption}
+                    style={{ borderColor: '#bae6fd', background: 'linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)' }}
+                  >
+                    <div className={styles.portalOptionIcon} style={{ background: '#e0f2fe', color: '#0284c7' }}>
+                      <i className="fas fa-user-graduate"></i>
+                    </div>
+                    <div className={styles.portalOptionBody}>
+                      <div className={styles.portalOptionTitle}>Portal Siswa &amp; Wali Murid</div>
+                      <div className={styles.portalOptionDesc}>Masuk dengan NISN untuk pantau presensi, rapor, jurnal &amp; pengumuman</div>
+                    </div>
+                    <i className={`fas fa-chevron-right ${styles.portalOptionArrow}`}></i>
+                  </Link>
+
+                  <Link
+                    href="/spmb/login"
+                    className={styles.portalOption}
+                    style={{ borderColor: '#a7f3d0', background: 'linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%)' }}
+                  >
+                    <div className={styles.portalOptionIcon} style={{ background: '#d1fae5', color: '#047857' }}>
+                      <i className="fas fa-id-card"></i>
+                    </div>
+                    <div className={styles.portalOptionBody}>
+                      <div className={styles.portalOptionTitle}>Portal Calon Siswa (SPMB)</div>
+                      <div className={styles.portalOptionDesc}>Masuk dengan Nomor Pendaftaran untuk cek status &amp; kartu peserta</div>
+                    </div>
+                    <i className={`fas fa-chevron-right ${styles.portalOptionArrow}`}></i>
+                  </Link>
+
+                  <Link
+                    href="/olimpiade-seni"
+                    className={styles.portalOption}
+                    style={{ borderColor: '#fde68a', background: 'linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)' }}
+                  >
+                    <div className={styles.portalOptionIcon} style={{ background: '#fef3c7', color: '#b45309' }}>
+                      <i className="fas fa-trophy"></i>
+                    </div>
+                    <div className={styles.portalOptionBody}>
+                      <div className={styles.portalOptionTitle}>Dasbor Olimpiade &amp; Seni</div>
+                      <div className={styles.portalOptionDesc}>Pendaftaran peserta, login ujian CBT &amp; live score pemenang</div>
+                    </div>
+                    <i className={`fas fa-chevron-right ${styles.portalOptionArrow}`}></i>
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  padding: '9px 14px',
-                  background: '#f0f9ff',
-                  color: '#0284c7',
-                  border: '1px solid #bae6fd',
-                  borderRadius: '10px',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  textDecoration: 'none'
-                }}
-              >
-                <i className="fas fa-user-graduate"></i> Masuk ke Portal Siswa & Wali Murid
-              </Link>
+                  gap: '6px',
+                  padding: '5px 12px',
+                  borderRadius: '999px',
+                  background: '#ecfdf5',
+                  color: '#047857',
+                  border: '1px solid #a7f3d0',
+                  fontSize: '0.78rem',
+                  fontWeight: 700
+                }}>
+                  <i className="fas fa-chalkboard-teacher"></i>
+                  <span>Login Guru &amp; Staf Madrasah</span>
+                </div>
 
-              <Link 
-                href="/spmb/login"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  padding: '9px 14px',
-                  background: '#f0fdf4',
-                  color: '#15803d',
-                  border: '1px solid #bbf7d0',
-                  borderRadius: '10px',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  textDecoration: 'none'
-                }}
-              >
-                <i className="fas fa-id-card"></i> Masuk ke Portal Calon Siswa (SPMB)
-              </Link>
+                <form onSubmit={handleLogin} className={styles.form}>
+                  <div style={{ textAlign: 'left', marginBottom: '16px' }}>
+                    <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '6px' }}>
+                      Username
+                    </label>
+                    <div className={styles.inputGroup}>
+                      <input 
+                        type="text" 
+                        placeholder="Masukkan username anda" 
+                        value={usernameInput}
+                        onChange={(e) => setUsernameInput(e.target.value)}
+                        autoFocus
+                        required 
+                      />
+                    </div>
+                  </div>
 
-              <Link 
-                href="/olimpiade-seni"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  padding: '9px 14px',
-                  background: '#fffbeb',
-                  color: '#b45309',
-                  border: '1px solid #fde68a',
-                  borderRadius: '10px',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  textDecoration: 'none'
-                }}
-              >
-                <i className="fas fa-trophy"></i> Dasbor Olimpiade &amp; Seni
-              </Link>
-            </div>
+                  <button type="submit" className={styles.loginBtn} disabled={loading}>
+                    {loading ? <><i className="fas fa-spinner fa-spin"></i> Memproses...</> : <><i className="fas fa-sign-in-alt"></i> Masuk</>}
+                  </button>
+                </form>
+
+                <button
+                  type="button"
+                  className={styles.forgotBtn}
+                  onClick={() => setShowLupaPassword(true)}
+                >
+                  Lupa username atau butuh bantuan akses?
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.backSelectBtn}
+                  onClick={() => {
+                    setLoginMode('select');
+                    if (pathname === '/' && typeof window !== 'undefined' && window.location.search.includes('login=guru')) {
+                      router.replace('/');
+                    }
+                  }}
+                >
+                  <i className="fas fa-arrow-left"></i> Kembali ke Pilihan Portal
+                </button>
+              </>
+            )}
             
             <div className={styles.footer}>
               &copy; {new Date().getFullYear()} KEREN Integrated from Aa' Icoll
@@ -582,6 +637,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             onConfirm: () => {
               localStorage.removeItem('keren_user_data');
               setUser(null);
+              setLoginMode('select');
+              if (pathname === '/' && typeof window !== 'undefined' && window.location.search.includes('login=guru')) {
+                router.replace('/');
+              }
             }
           });
         }} />

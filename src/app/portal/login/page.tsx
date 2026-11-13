@@ -105,9 +105,9 @@ export default function PortalLogin() {
           </button>
         </form>
 
-        <div style={{ marginTop: '20px', textAlign: 'center' }}>
+        <div style={{ marginTop: '20px', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <a 
-            href="/"
+            href="/?login=guru"
             onClick={() => {
               try { localStorage.setItem('keren_app_preference', 'guru'); } catch {}
             }}
@@ -132,6 +132,29 @@ export default function PortalLogin() {
             <i className="fas fa-chalkboard-teacher" style={{ fontSize: '15px' }}></i>
             <span>Masuk sebagai Guru / Staf Madrasah</span>
             <i className="fas fa-arrow-right" style={{ fontSize: '12px', opacity: 0.85 }}></i>
+          </a>
+
+          <a
+            href="/"
+            style={{
+              width: '100%',
+              boxSizing: 'border-box',
+              padding: '10px 14px',
+              borderRadius: '12px',
+              background: '#f8fafc',
+              border: '1.5px solid #e2e8f0',
+              fontSize: '13px',
+              fontWeight: 700,
+              color: '#475569',
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+          >
+            <i className="fas fa-arrow-left" style={{ fontSize: '12px' }}></i>
+            <span>Kembali ke Pilihan Portal</span>
           </a>
 
           {/* Social Links */}
