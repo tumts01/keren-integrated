@@ -106,16 +106,16 @@ export default function AdminJuriOlimpiadePage() {
   const processedPesertaCabang = useMemo(() => {
     const raw = pesertaList.filter(p => p.cabang_lomba === selectedCabang);
 
-    // Hitung peringkat berdasarkan rata_rata tertinggi terlebih dahulu
+    // Hitung peringkat berdasarkan Total Akumulasi tertinggi terlebih dahulu
     const sortedByScore = [...raw].sort((a, b) => {
-      if (b.rata_rata !== a.rata_rata) return b.rata_rata - a.rata_rata;
       if (b.total_nilai !== a.total_nilai) return b.total_nilai - a.total_nilai;
+      if (b.rata_rata !== a.rata_rata) return b.rata_rata - a.rata_rata;
       return String(a.nomor_peserta).localeCompare(String(b.nomor_peserta), undefined, { numeric: true });
     });
 
     const rankMap: Record<number, number> = {};
     sortedByScore.forEach((item, idx) => {
-      if (item.jumlah_juri_menilai > 0 && item.rata_rata > 0) {
+      if (item.jumlah_juri_menilai > 0 && item.total_nilai > 0) {
         rankMap[item.id] = idx + 1;
       }
     });
@@ -148,8 +148,8 @@ export default function AdminJuriOlimpiadePage() {
 
     if (sortMode === 'nilai') {
       filtered.sort((a, b) => {
-        if (b.rata_rata !== a.rata_rata) return b.rata_rata - a.rata_rata;
         if (b.total_nilai !== a.total_nilai) return b.total_nilai - a.total_nilai;
+        if (b.rata_rata !== a.rata_rata) return b.rata_rata - a.rata_rata;
         return String(a.nomor_peserta).localeCompare(String(b.nomor_peserta), undefined, { numeric: true });
       });
     } else {
@@ -533,13 +533,13 @@ export default function AdminJuriOlimpiadePage() {
     const pesertas = pesertaList
       .filter(p => p.cabang_lomba === cabangName)
       .sort((a, b) => {
-        if (b.rata_rata !== a.rata_rata) return b.rata_rata - a.rata_rata;
         if (b.total_nilai !== a.total_nilai) return b.total_nilai - a.total_nilai;
+        if (b.rata_rata !== a.rata_rata) return b.rata_rata - a.rata_rata;
         return String(a.nomor_peserta).localeCompare(String(b.nomor_peserta), undefined, { numeric: true });
       });
 
     return pesertas.map((p, idx) => {
-      const rank = p.jumlah_juri_menilai > 0 && p.rata_rata > 0 ? idx + 1 : null;
+      const rank = p.jumlah_juri_menilai > 0 && p.total_nilai > 0 ? idx + 1 : null;
       const predikat = getPredikatBadge(rank)?.label.replace(/^[^\s]+\s/, '') || '-';
       const row: Record<string, any> = {
         Peringkat: rank || '-',
@@ -564,7 +564,6 @@ export default function AdminJuriOlimpiadePage() {
 
       row['Jumlah Juri Menilai'] = `${p.jumlah_juri_menilai} / ${juris.length}`;
       row['Total Akumulasi Nilai'] = p.total_nilai;
-      row['Rata-Rata Nilai Akhir'] = p.rata_rata;
       row['Predikat Juara'] = predikat;
       return row;
     });
@@ -1326,11 +1325,8 @@ export default function AdminJuriOlimpiadePage() {
                               <div style={{ fontWeight: 800, color: '#ffffff' }}>{j.nama_juri}</div>
                             </th>
                           ))}
-                          <th style={{ padding: '13px 12px', width: 110, textAlign: 'center', background: '#334155' }}>
+                          <th style={{ padding: '13px 12px', width: 135, textAlign: 'center', background: '#065f46' }}>
                             Total Akumulasi
-                          </th>
-                          <th style={{ padding: '13px 12px', width: 125, textAlign: 'center', background: '#065f46' }}>
-                            Rata-Rata Akhir
                           </th>
                           <th style={{ padding: '13px 12px', width: 135, textAlign: 'center' }}>Predikat</th>
                         </tr>
@@ -1339,7 +1335,7 @@ export default function AdminJuriOlimpiadePage() {
                         {processedPesertaCabang.length === 0 ? (
                           <tr>
                             <td
-                              colSpan={7 + juriInSelectedCabang.length}
+                              colSpan={6 + juriInSelectedCabang.length}
                               style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}
                             >
                               Tidak ada data peserta yang sesuai dengan filter.
@@ -1472,19 +1468,16 @@ export default function AdminJuriOlimpiadePage() {
                                   );
                                 })}
 
-                                <td style={{ padding: '12px', textAlign: 'center', fontWeight: 800, color: '#334155' }}>
-                                  {p.total_nilai > 0 ? p.total_nilai : '-'}
-                                </td>
                                 <td
                                   style={{
                                     padding: '12px',
                                     textAlign: 'center',
                                     fontWeight: 900,
                                     fontSize: '1.1rem',
-                                    color: p.rata_rata > 0 ? '#047857' : '#94a3b8'
+                                    color: p.total_nilai > 0 ? '#047857' : '#94a3b8'
                                   }}
                                 >
-                                  {p.rata_rata > 0 ? p.rata_rata : '-'}
+                                  {p.total_nilai > 0 ? p.total_nilai : '-'}
                                 </td>
                                 <td style={{ padding: '12px', textAlign: 'center' }}>
                                   {predikat ? (
