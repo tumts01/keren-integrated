@@ -204,21 +204,23 @@ export async function GET(req: Request) {
         };
       }
 
-      // Cabang Seni (langsung Final dinilai oleh Juri)
-      const pNilai = (nilaiData || []).filter(n => n.peserta_id === p.id);
+      // Cabang Seni (langsung Final dinilai oleh Juri — menggunakan Total Akumulasi nilai semua juri agar konsisten dengan rekap juri)
+      const pNilai = (nilaiData || []).filter(n => n.peserta_id === p.id && n.nilai !== null && n.nilai !== undefined);
       let total = 0;
       let count = 0;
       pNilai.forEach(n => {
-        total += n.nilai;
+        total += Number(n.nilai) || 0;
         count++;
       });
+      const totalAkumulasi = count > 0 ? Number(total.toFixed(2)) : 0;
       return {
         ...p,
         lolos_seleksi: true,
         peringkat_seleksi: null,
         has_final_sesi: count > 0,
         nilai_seleksi: null,
-        rata_rata: count > 0 ? (total / count).toFixed(2) : 0,
+        total_nilai: totalAkumulasi,
+        rata_rata: totalAkumulasi,
         jumlah_juri: count,
         detail_nilai: pNilai,
         log_kecurangan: [],

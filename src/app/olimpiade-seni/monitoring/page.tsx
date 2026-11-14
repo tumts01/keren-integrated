@@ -1269,7 +1269,7 @@ export default function MonitoringOlimpiadePage() {
                 </span>
               </div>
               <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '4px', lineHeight: 1.4 }}>
-                Penentuan <b>Juara 1–3 &amp; Harapan 1–3</b> tiap cabang murni dari akumulasi &amp; rata-rata penilaian Dewan Juri Seni.
+                Penentuan <b>Juara 1–3 &amp; Harapan 1–3</b> tiap cabang murni dari <b>Total Akumulasi</b> penilaian Dewan Juri Seni.
               </div>
             </button>
           </div>
