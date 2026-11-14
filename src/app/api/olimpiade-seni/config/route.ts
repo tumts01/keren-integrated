@@ -3,6 +3,8 @@ import { supabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
+type TahapPublikasi = 'seleksi' | 'final' | 'seni';
+
 // Helper normalisasi nama cabang lomba
 function normalizeCabang(raw: string): string {
   const l = (raw || '').toLowerCase();
@@ -17,10 +19,74 @@ function normalizeCabang(raw: string): string {
   return raw.trim();
 }
 
-// GET: Ambil status publikasi hasil dan daftar cabang lomba yang dipublikasikan
-export async function GET() {
+function isSeniCabang(cabang: string): boolean {
+  const l = (cabang || '').toLowerCase();
+  return (
+    l.includes('singer') ||
+    l.includes('solo') ||
+    l.includes('banjari') ||
+    l.includes('sandi') ||
+    l.includes('morse') ||
+    l.includes('sms') ||
+    l.includes('tahfidz') ||
+    l.includes('kaligrafi')
+  );
+}
+
+function parseTahap(raw: string | null | undefined): TahapPublikasi | null {
+  if (raw === 'seleksi' || raw === 'final' || raw === 'seni') return raw;
+  return null;
+}
+
+async function fetchAllCabangsByTahap(tahap: TahapPublikasi): Promise<string[]> {
+  const { data: allData } = await supabase
+    .from('data_olimpiade_seni')
+    .select('metadata')
+    .in('jenis_pendaftaran', ['individu', 'peserta_kolektif']);
+
+  const cabangs = new Set<string>();
+  (allData || []).forEach(d => {
+    const c = d.metadata?.LOMBA_DIPILIH || d.metadata?.['LOMBA YANG DIPILIH'] || '';
+    const norm = normalizeCabang(c);
+    if (!norm) return;
+    if (tahap === 'seni' && isSeniCabang(norm)) {
+      cabangs.add(norm);
+    } else if ((tahap === 'seleksi' || tahap === 'final') && !isSeniCabang(norm)) {
+      cabangs.add(norm);
+    }
+  });
+  return Array.from(cabangs).sort();
+}
+
+function resolvePublishedByTahap(meta: any, legacyGlobalPublished: boolean, fallbackAllCabangs?: string[]) {
+  const legacyList: string[] = Array.isArray(meta.published_cabang)
+    ? Array.from(new Set(meta.published_cabang.map((c: string) => normalizeCabang(c)).filter(Boolean)))
+    : legacyGlobalPublished && Array.isArray(fallbackAllCabangs)
+      ? fallbackAllCabangs
+      : [];
+
+  const seleksi: string[] = Array.isArray(meta.published_cabang_seleksi)
+    ? Array.from(new Set(meta.published_cabang_seleksi.map((c: string) => normalizeCabang(c)).filter(Boolean)))
+    : legacyList.filter(c => !isSeniCabang(c));
+
+  const finalList: string[] = Array.isArray(meta.published_cabang_final)
+    ? Array.from(new Set(meta.published_cabang_final.map((c: string) => normalizeCabang(c)).filter(Boolean)))
+    : [];
+
+  const seni: string[] = Array.isArray(meta.published_cabang_seni)
+    ? Array.from(new Set(meta.published_cabang_seni.map((c: string) => normalizeCabang(c)).filter(Boolean)))
+    : legacyList.filter(c => isSeniCabang(c));
+
+  return { seleksi, final: finalList, seni };
+}
+
+// GET: Ambil status publikasi hasil terpisah per tahap (seleksi, final, seni)
+export async function GET(req: Request) {
   try {
-    // 1. Ambil config dari profil_lembaga (menyimpan array cabang di metadata.published_cabang)
+    const { searchParams } = new URL(req.url);
+    const requestedTahap = parseTahap(searchParams.get('tahap'));
+
+    // 1. Ambil config dari profil_lembaga
     const { data: configRow } = await supabase
       .from('profil_lembaga')
       .select('metadata')
@@ -37,46 +103,71 @@ export async function GET() {
       .maybeSingle();
 
     const meta = configRow?.metadata || {};
-    let publishedCabang: string[] = Array.isArray(meta.published_cabang) ? meta.published_cabang : [];
+    const hasNoLegacyCabang = !Array.isArray(meta.published_cabang) || meta.published_cabang.length === 0;
+    const needsFallbackFetch =
+      !Array.isArray(meta.published_cabang_seleksi) &&
+      hasNoLegacyCabang &&
+      Boolean(olimpiadeConfig?.hasil_published);
 
-    // Jika di profil_lembaga belum ada setting cabang tapi di olimpiade_config hasil_published = true,
-    // ambil semua cabang lomba unik sebagai default terpublikasi
-    if (publishedCabang.length === 0 && olimpiadeConfig?.hasil_published) {
+    let fallbackAll: string[] | undefined;
+    if (needsFallbackFetch) {
       const { data: allData } = await supabase
         .from('data_olimpiade_seni')
         .select('metadata')
         .in('jenis_pendaftaran', ['individu', 'peserta_kolektif']);
-      
       const cabangs = new Set<string>();
       (allData || []).forEach(d => {
         const c = d.metadata?.LOMBA_DIPILIH || d.metadata?.['LOMBA YANG DIPILIH'] || '';
         const norm = normalizeCabang(c);
         if (norm) cabangs.add(norm);
       });
-      publishedCabang = Array.from(cabangs).sort();
+      fallbackAll = Array.from(cabangs).sort();
     }
 
-    const hasilPublished = publishedCabang.length > 0;
-    const publishedAt = meta.published_at || olimpiadeConfig?.published_at || null;
-    const linkSkPengumuman = meta.link_sk_pengumuman || '';
+    const byTahap = resolvePublishedByTahap(meta, Boolean(olimpiadeConfig?.hasil_published), fallbackAll);
+    const unionCabang = Array.from(new Set([...byTahap.seleksi, ...byTahap.final, ...byTahap.seni]));
+    const activeCabang = requestedTahap ? byTahap[requestedTahap] : unionCabang;
+
+    const legacyLink = meta.link_sk_pengumuman || '';
+    const linkByTahap = {
+      seleksi: meta.link_sk_pengumuman_seleksi ?? legacyLink,
+      final: meta.link_sk_pengumuman_final ?? '',
+      seni: meta.link_sk_pengumuman_seni ?? legacyLink,
+    };
+
+    const legacyPublishedAt = meta.published_at || olimpiadeConfig?.published_at || null;
+    const publishedAtByTahap = {
+      seleksi: meta.published_at_seleksi !== undefined ? meta.published_at_seleksi : (byTahap.seleksi.length > 0 ? legacyPublishedAt : null),
+      final: meta.published_at_final !== undefined ? meta.published_at_final : null,
+      seni: meta.published_at_seni !== undefined ? meta.published_at_seni : (byTahap.seni.length > 0 ? legacyPublishedAt : null),
+    };
 
     return NextResponse.json({
       success: true,
-      hasil_published: hasilPublished,
-      published_cabang: publishedCabang,
-      published_at: publishedAt,
-      link_sk_pengumuman: linkSkPengumuman,
+      hasil_published: activeCabang.length > 0,
+      hasil_published_seleksi: byTahap.seleksi.length > 0,
+      hasil_published_final: byTahap.final.length > 0,
+      hasil_published_seni: byTahap.seni.length > 0,
+      published_cabang: activeCabang,
+      published_cabang_seleksi: byTahap.seleksi,
+      published_cabang_final: byTahap.final,
+      published_cabang_seni: byTahap.seni,
+      published_at: requestedTahap ? publishedAtByTahap[requestedTahap] : legacyPublishedAt,
+      published_at_by_tahap: publishedAtByTahap,
+      link_sk_pengumuman: requestedTahap ? linkByTahap[requestedTahap] : legacyLink,
+      link_sk_pengumuman_by_tahap: linkByTahap,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
-// POST: Update publikasi hasil (bisa custom per cabang lomba atau global)
+// POST: Update publikasi hasil per tahap (seleksi, final, seni) atau per cabang lomba
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { publish, published_cabang, toggle_cabang, link_sk_pengumuman } = body;
+    const targetTahap: TahapPublikasi = parseTahap(body.tahap) || 'seleksi';
 
     const { data: existing } = await supabase
       .from('profil_lembaga')
@@ -86,55 +177,73 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     const currentMeta = existing?.metadata || {};
-    let nextPublishedCabang: string[] = Array.isArray(currentMeta.published_cabang)
-      ? [...currentMeta.published_cabang]
-      : [];
+    const currentByTahap = resolvePublishedByTahap(currentMeta, false);
+    const nextByTahap = {
+      seleksi: [...currentByTahap.seleksi],
+      final: [...currentByTahap.final],
+      seni: [...currentByTahap.seni],
+    };
 
     if (Array.isArray(published_cabang)) {
-      // Set langsung daftar cabang yang dipilih
-      nextPublishedCabang = Array.from(new Set(published_cabang.map(c => normalizeCabang(c)))).filter(Boolean);
+      nextByTahap[targetTahap] = Array.from(
+        new Set(published_cabang.map((c: string) => normalizeCabang(c)))
+      ).filter(Boolean);
     } else if (toggle_cabang) {
-      // Toggle satu cabang tertentu
       const target = normalizeCabang(toggle_cabang);
-      if (nextPublishedCabang.includes(target)) {
-        nextPublishedCabang = nextPublishedCabang.filter(c => c !== target);
+      if (nextByTahap[targetTahap].includes(target)) {
+        nextByTahap[targetTahap] = nextByTahap[targetTahap].filter(c => c !== target);
       } else {
-        nextPublishedCabang.push(target);
+        nextByTahap[targetTahap].push(target);
       }
     } else if (typeof publish === 'boolean') {
       if (!publish) {
-        // Batalkan semua publikasi
-        nextPublishedCabang = [];
+        nextByTahap[targetTahap] = [];
       } else {
-        // Publikasikan semua cabang yang ada
-        const { data: allData } = await supabase
-          .from('data_olimpiade_seni')
-          .select('metadata')
-          .in('jenis_pendaftaran', ['individu', 'peserta_kolektif']);
-        
-        const cabangs = new Set<string>();
-        (allData || []).forEach(d => {
-          const c = d.metadata?.LOMBA_DIPILIH || d.metadata?.['LOMBA YANG DIPILIH'] || '';
-          const norm = normalizeCabang(c);
-          if (norm) cabangs.add(norm);
-        });
-        nextPublishedCabang = Array.from(cabangs).sort();
+        nextByTahap[targetTahap] = await fetchAllCabangsByTahap(targetTahap);
       }
     }
 
-    const isPublished = nextPublishedCabang.length > 0;
     const nowIso = new Date().toISOString();
-    const publishedAt = isPublished ? (currentMeta.published_at || nowIso) : null;
+    const legacyPublishedAt = currentMeta.published_at || null;
+    const nextPublishedAtByTahap = {
+      seleksi: currentMeta.published_at_seleksi !== undefined ? currentMeta.published_at_seleksi : (currentByTahap.seleksi.length > 0 ? legacyPublishedAt : null),
+      final: currentMeta.published_at_final !== undefined ? currentMeta.published_at_final : null,
+      seni: currentMeta.published_at_seni !== undefined ? currentMeta.published_at_seni : (currentByTahap.seni.length > 0 ? legacyPublishedAt : null),
+    };
+    nextPublishedAtByTahap[targetTahap] = nextByTahap[targetTahap].length > 0
+      ? (nextPublishedAtByTahap[targetTahap] || nowIso)
+      : null;
 
-    const nextLinkSk = link_sk_pengumuman !== undefined 
-      ? String(link_sk_pengumuman || '').trim() 
-      : (currentMeta.link_sk_pengumuman || '');
+    const legacyLink = currentMeta.link_sk_pengumuman || '';
+    const nextLinkByTahap = {
+      seleksi: currentMeta.link_sk_pengumuman_seleksi ?? legacyLink,
+      final: currentMeta.link_sk_pengumuman_final ?? '',
+      seni: currentMeta.link_sk_pengumuman_seni ?? legacyLink,
+    };
+    if (link_sk_pengumuman !== undefined) {
+      nextLinkByTahap[targetTahap] = String(link_sk_pengumuman || '').trim();
+    }
+
+    const unionCabang = Array.from(
+      new Set([...nextByTahap.seleksi, ...nextByTahap.final, ...nextByTahap.seni])
+    );
+    const isAnyPublished = unionCabang.length > 0;
+    const activeCabang = nextByTahap[targetTahap];
 
     const newMeta = {
       ...currentMeta,
-      published_cabang: nextPublishedCabang,
-      published_at: publishedAt,
-      link_sk_pengumuman: nextLinkSk,
+      published_cabang: unionCabang,
+      published_cabang_seleksi: nextByTahap.seleksi,
+      published_cabang_final: nextByTahap.final,
+      published_cabang_seni: nextByTahap.seni,
+      published_at: isAnyPublished ? (currentMeta.published_at || nowIso) : null,
+      published_at_seleksi: nextPublishedAtByTahap.seleksi,
+      published_at_final: nextPublishedAtByTahap.final,
+      published_at_seni: nextPublishedAtByTahap.seni,
+      link_sk_pengumuman: nextLinkByTahap.seleksi || nextLinkByTahap.final || nextLinkByTahap.seni || legacyLink,
+      link_sk_pengumuman_seleksi: nextLinkByTahap.seleksi,
+      link_sk_pengumuman_final: nextLinkByTahap.final,
+      link_sk_pengumuman_seni: nextLinkByTahap.seni,
     };
 
     if (existing) {
@@ -161,8 +270,8 @@ export async function POST(req: Request) {
       await supabase
         .from('olimpiade_config')
         .update({
-          hasil_published: isPublished,
-          published_at: publishedAt,
+          hasil_published: isAnyPublished,
+          published_at: newMeta.published_at,
           updated_at: nowIso,
         })
         .eq('id', exOlimpiadeConfig.id);
@@ -170,18 +279,27 @@ export async function POST(req: Request) {
       await supabase
         .from('olimpiade_config')
         .insert([{
-          hasil_published: isPublished,
-          published_at: publishedAt,
+          hasil_published: isAnyPublished,
+          published_at: newMeta.published_at,
           updated_at: nowIso,
         }]);
     }
 
     return NextResponse.json({
       success: true,
-      hasil_published: isPublished,
-      published_cabang: nextPublishedCabang,
-      published_at: publishedAt,
-      link_sk_pengumuman: nextLinkSk,
+      tahap: targetTahap,
+      hasil_published: activeCabang.length > 0,
+      hasil_published_seleksi: nextByTahap.seleksi.length > 0,
+      hasil_published_final: nextByTahap.final.length > 0,
+      hasil_published_seni: nextByTahap.seni.length > 0,
+      published_cabang: activeCabang,
+      published_cabang_seleksi: nextByTahap.seleksi,
+      published_cabang_final: nextByTahap.final,
+      published_cabang_seni: nextByTahap.seni,
+      published_at: nextPublishedAtByTahap[targetTahap],
+      published_at_by_tahap: nextPublishedAtByTahap,
+      link_sk_pengumuman: nextLinkByTahap[targetTahap],
+      link_sk_pengumuman_by_tahap: nextLinkByTahap,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

@@ -12,10 +12,21 @@ export default function MonitoringOlimpiadePage() {
   const [loading, setLoading] = useState(true);
   const [filterCabang, setFilterCabang] = useState('Semua');
   const [cabangOptions, setCabangOptions] = useState<string[]>([]);
-  const [hasilPublished, setHasilPublished] = useState(false);
-  const [publishedCabang, setPublishedCabang] = useState<string[]>([]);
-  const [publishedAt, setPublishedAt] = useState<string | null>(null);
-  const [linkSkPengumuman, setLinkSkPengumuman] = useState('');
+  const [publishedByTahap, setPublishedByTahap] = useState<{
+    seleksi: string[];
+    final: string[];
+    seni: string[];
+  }>({ seleksi: [], final: [], seni: [] });
+  const [publishedAtByTahap, setPublishedAtByTahap] = useState<{
+    seleksi: string | null;
+    final: string | null;
+    seni: string | null;
+  }>({ seleksi: null, final: null, seni: null });
+  const [linkSkByTahap, setLinkSkByTahap] = useState<{
+    seleksi: string;
+    final: string;
+    seni: string;
+  }>({ seleksi: '', final: '', seni: '' });
   const [tempLinkSk, setTempLinkSk] = useState('');
   const [publishing, setPublishing] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
@@ -24,6 +35,42 @@ export default function MonitoringOlimpiadePage() {
   const [tahapView, setTahapView] = useState<'seleksi' | 'final' | 'seni'>('seleksi');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(30);
+
+  const publishedCabang = publishedByTahap[tahapView] || [];
+  const publishedAt = publishedAtByTahap[tahapView] || null;
+  const linkSkPengumuman = linkSkByTahap[tahapView] || '';
+  const anyStagePublished =
+    publishedByTahap.seleksi.length > 0 ||
+    publishedByTahap.final.length > 0 ||
+    publishedByTahap.seni.length > 0;
+  const tahapLabel =
+    tahapView === 'final'
+      ? 'Babak Final (Akademik)'
+      : tahapView === 'seni'
+      ? 'Lomba Seni'
+      : 'Babak Seleksi (Akademik)';
+
+  const applyConfigResponse = (json: any) => {
+    const seleksiList = Array.isArray(json.published_cabang_seleksi) ? json.published_cabang_seleksi : [];
+    const finalList = Array.isArray(json.published_cabang_final) ? json.published_cabang_final : [];
+    const seniList = Array.isArray(json.published_cabang_seni) ? json.published_cabang_seni : [];
+    setPublishedByTahap({ seleksi: seleksiList, final: finalList, seni: seniList });
+
+    if (json.published_at_by_tahap) {
+      setPublishedAtByTahap({
+        seleksi: json.published_at_by_tahap.seleksi || null,
+        final: json.published_at_by_tahap.final || null,
+        seni: json.published_at_by_tahap.seni || null,
+      });
+    }
+    if (json.link_sk_pengumuman_by_tahap) {
+      setLinkSkByTahap({
+        seleksi: json.link_sk_pengumuman_by_tahap.seleksi || '',
+        final: json.link_sk_pengumuman_by_tahap.final || '',
+        seni: json.link_sk_pengumuman_by_tahap.seni || '',
+      });
+    }
+  };
 
   useEffect(() => {
     const sessionStr = localStorage.getItem('keren_user_data');
@@ -45,11 +92,7 @@ export default function MonitoringOlimpiadePage() {
       const res = await fetch('/api/olimpiade-seni/config');
       const json = await res.json();
       if (json.success) {
-        setHasilPublished(json.hasil_published);
-        setPublishedCabang(Array.isArray(json.published_cabang) ? json.published_cabang : []);
-        setPublishedAt(json.published_at);
-        setLinkSkPengumuman(json.link_sk_pengumuman || '');
-        setTempLinkSk(json.link_sk_pengumuman || '');
+        applyConfigResponse(json);
       }
     } catch (err) {
       console.error('Gagal fetch config:', err);
@@ -79,7 +122,7 @@ export default function MonitoringOlimpiadePage() {
     }
   };
 
-  // Toggle publikasi cabang tertentu (1-klik dari banner quick toggle)
+  // Toggle publikasi cabang tertentu untuk tahap aktif (1-klik dari banner quick toggle)
   const handleToggleCabang = async (cabangName: string) => {
     setPublishing(true);
     try {
@@ -87,18 +130,16 @@ export default function MonitoringOlimpiadePage() {
       const res = await fetch('/api/olimpiade-seni/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ toggle_cabang: cabangName }),
+        body: JSON.stringify({ toggle_cabang: cabangName, tahap: tahapView }),
       });
       const json = await res.json();
       if (json.success) {
-        setPublishedCabang(json.published_cabang);
-        setHasilPublished(json.hasil_published);
-        setPublishedAt(json.published_at);
+        applyConfigResponse(json);
         Swal.fire({
           toast: true,
           position: 'top-end',
           icon: isCurrentlyPub ? 'info' : 'success',
-          title: isCurrentlyPub ? `${cabangName} disembunyikan` : `${cabangName} dipublikasikan!`,
+          title: isCurrentlyPub ? `[${tahapLabel}] ${cabangName} disembunyikan` : `[${tahapLabel}] ${cabangName} dipublikasikan!`,
           showConfirmButton: false,
           timer: 2000,
         });
@@ -114,32 +155,29 @@ export default function MonitoringOlimpiadePage() {
 
   // Buka dialog custom publikasi
   const openPublishModal = () => {
-    setTempSelectedCabang([...publishedCabang]);
+    setTempSelectedCabang(publishedCabang.filter(c => cabangOptions.includes(c)));
     setTempLinkSk(linkSkPengumuman || '');
     setShowPublishModal(true);
   };
 
-  // Simpan perubahan dari modal custom publikasi
+  // Simpan perubahan dari modal custom publikasi untuk tahap aktif
   const handleSaveModal = async () => {
     setPublishing(true);
     try {
       const res = await fetch('/api/olimpiade-seni/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
+          tahap: tahapView,
           published_cabang: tempSelectedCabang,
           link_sk_pengumuman: (tempLinkSk || '').trim()
         }),
       });
       const json = await res.json();
       if (json.success) {
-        setPublishedCabang(json.published_cabang);
-        setHasilPublished(json.hasil_published);
-        setPublishedAt(json.published_at);
-        setLinkSkPengumuman(json.link_sk_pengumuman || '');
-        setTempLinkSk(json.link_sk_pengumuman || '');
+        applyConfigResponse(json);
         setShowPublishModal(false);
-        Swal.fire('Berhasil!', `Pengaturan publikasi berhasil disimpan (${json.published_cabang.length} lomba dipublikasikan).`, 'success');
+        Swal.fire('Berhasil!', `Pengaturan publikasi ${tahapLabel} berhasil disimpan (${(json.published_cabang || []).length} lomba dipublikasikan).`, 'success');
       } else {
         Swal.fire('Gagal', json.error, 'error');
       }
@@ -194,11 +232,11 @@ export default function MonitoringOlimpiadePage() {
     window.open(linkSkPengumuman.trim(), '_blank', 'noopener,noreferrer');
   };
 
-  // Admin: Atur URL Tautan SK Pengumuman langsung via prompt
+  // Admin: Atur URL Tautan SK Pengumuman untuk tahap aktif
   const handleEditLinkSK = async () => {
     const { value: url } = await Swal.fire({
-      title: 'Atur Link SK Pengumuman',
-      text: 'Masukkan URL dokumen SK Pengumuman resmi (misal: Google Drive, PDF, atau tautan berkas resmi):',
+      title: `Atur Link SK (${tahapLabel})`,
+      text: `Masukkan URL dokumen SK Pengumuman resmi untuk ${tahapLabel}:`,
       input: 'url',
       inputValue: linkSkPengumuman || '',
       inputPlaceholder: 'https://drive.google.com/...',
@@ -220,16 +258,15 @@ export default function MonitoringOlimpiadePage() {
         const res = await fetch('/api/olimpiade-seni/config', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ link_sk_pengumuman: cleanUrl }),
+          body: JSON.stringify({ link_sk_pengumuman: cleanUrl, tahap: tahapView }),
         });
         const json = await res.json();
         if (json.success) {
-          setLinkSkPengumuman(cleanUrl);
-          setTempLinkSk(cleanUrl);
+          applyConfigResponse(json);
           Swal.fire({
             icon: 'success',
             title: 'Berhasil Disimpan!',
-            text: cleanUrl ? 'Tautan dokumen SK Pengumuman berhasil disimpan.' : 'Tautan dokumen SK Pengumuman dikosongkan.',
+            text: cleanUrl ? `Tautan dokumen SK ${tahapLabel} berhasil disimpan.` : `Tautan dokumen SK ${tahapLabel} dikosongkan.`,
             timer: 2000,
             showConfirmButton: false,
           });
@@ -242,16 +279,16 @@ export default function MonitoringOlimpiadePage() {
     }
   };
 
-  // Sembunyikan semua cabang sekaligus
+  // Sembunyikan semua cabang pada tahap aktif
   const handleUnpublishAll = async () => {
     const result = await Swal.fire({
-      title: 'Sembunyikan Semua Hasil?',
-      text: 'Semua nilai cabang lomba akan disembunyikan kembali dari publik dan peserta. Lanjutkan?',
+      title: `Sembunyikan Semua Hasil ${tahapLabel}?`,
+      text: `Semua nilai cabang lomba pada ${tahapLabel} akan disembunyikan kembali dari publik dan peserta (tahap lain tidak terpengaruh). Lanjutkan?`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
       cancelButtonColor: '#64748b',
-      confirmButtonText: 'Ya, Sembunyikan Semua',
+      confirmButtonText: 'Ya, Sembunyikan Tahap Ini',
       cancelButtonText: 'Batal',
     });
 
@@ -262,14 +299,12 @@ export default function MonitoringOlimpiadePage() {
       const res = await fetch('/api/olimpiade-seni/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ publish: false }),
+        body: JSON.stringify({ publish: false, tahap: tahapView }),
       });
       const json = await res.json();
       if (json.success) {
-        setHasilPublished(false);
-        setPublishedCabang([]);
-        setPublishedAt(null);
-        Swal.fire('Berhasil!', 'Semua hasil cabang lomba telah disembunyikan.', 'success');
+        applyConfigResponse(json);
+        Swal.fire('Berhasil!', `Semua hasil ${tahapLabel} telah disembunyikan.`, 'success');
       } else {
         Swal.fire('Gagal', json.error, 'error');
       }
@@ -280,16 +315,16 @@ export default function MonitoringOlimpiadePage() {
     }
   };
 
-  // Publikasikan semua cabang sekaligus
+  // Publikasikan semua cabang pada tahap aktif
   const handlePublishAll = async () => {
     const result = await Swal.fire({
-      title: 'Publikasikan Semua Lomba?',
-      text: `Seluruh (${cabangOptions.length}) cabang lomba akan dipublikasikan ke peserta dan publik. Lanjutkan?`,
+      title: `Publikasikan Semua ${tahapLabel}?`,
+      text: `Seluruh (${cabangOptions.length}) cabang lomba pada ${tahapLabel} akan dipublikasikan ke peserta dan publik (tahap lain tetap terpisah). Lanjutkan?`,
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#10b981',
       cancelButtonColor: '#64748b',
-      confirmButtonText: 'Ya, Publikasikan Semua',
+      confirmButtonText: 'Ya, Publikasikan Tahap Ini',
       cancelButtonText: 'Batal',
     });
 
@@ -300,14 +335,12 @@ export default function MonitoringOlimpiadePage() {
       const res = await fetch('/api/olimpiade-seni/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ publish: true }),
+        body: JSON.stringify({ publish: true, published_cabang: cabangOptions, tahap: tahapView }),
       });
       const json = await res.json();
       if (json.success) {
-        setHasilPublished(true);
-        setPublishedCabang(json.published_cabang);
-        setPublishedAt(json.published_at);
-        Swal.fire('Berhasil!', 'Semua cabang lomba berhasil dipublikasikan!', 'success');
+        applyConfigResponse(json);
+        Swal.fire('Berhasil!', `Semua cabang pada ${tahapLabel} berhasil dipublikasikan!`, 'success');
       } else {
         Swal.fire('Gagal', json.error, 'error');
       }
@@ -640,8 +673,9 @@ export default function MonitoringOlimpiadePage() {
       .sort((a, b) => b.totalPoints - a.totalPoints || b.j1 - a.j1 || b.j2 - a.j2 || b.j3 - a.j3 || a.sekolah.localeCompare(b.sekolah));
   }, [visibleData, cabangOptions, displayCabangOptions, isAdmin]);
 
-  const isAllPublished = cabangOptions.length > 0 && publishedCabang.length === cabangOptions.length;
-  const isPartiallyPublished = publishedCabang.length > 0 && !isAllPublished;
+  const publishedCountInView = cabangOptions.filter(c => publishedCabang.includes(c)).length;
+  const isAllPublished = cabangOptions.length > 0 && publishedCountInView === cabangOptions.length;
+  const isPartiallyPublished = publishedCountInView > 0 && !isAllPublished;
 
   return (
     <div style={{ padding: '20px' }}>
@@ -740,7 +774,7 @@ export default function MonitoringOlimpiadePage() {
               </button>
               <button
                 onClick={handleEditLinkSK}
-                title="Atur tautan URL dokumen SK Pengumuman"
+                title={`Atur tautan URL dokumen SK Pengumuman (${tahapLabel})`}
                 style={{
                   background: '#f59e0b',
                   color: 'white',
@@ -757,7 +791,7 @@ export default function MonitoringOlimpiadePage() {
                   transition: 'all 0.15s ease'
                 }}
               >
-                <i className="fas fa-link"></i> Atur Link SK
+                <i className="fas fa-link"></i> Atur Link SK ({tahapView === 'seleksi' ? 'Seleksi' : tahapView === 'final' ? 'Final' : 'Seni'})
               </button>
             </>
           )}
@@ -785,7 +819,7 @@ export default function MonitoringOlimpiadePage() {
               <i className="fas fa-file-excel"></i> Download Excel
             </button>
           )}
-          {(isAdmin || publishedCabang.length > 0) && (
+          {(isAdmin || anyStagePublished) && (
             <button 
               onClick={() => { fetchData(); fetchConfig(); }}
               style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}
@@ -796,8 +830,8 @@ export default function MonitoringOlimpiadePage() {
         </div>
       </div>
 
-      {/* Tampilan jika belum ada satupun cabang yang dipublikasikan (khusus non-admin) */}
-      {!isAdmin && publishedCabang.length === 0 ? (
+      {/* Tampilan jika belum ada satupun tahap & cabang yang dipublikasikan (khusus non-admin) */}
+      {!isAdmin && !anyStagePublished ? (
         <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '12px', padding: '60px 20px', textAlign: 'center', marginTop: '40px' }}>
           <i className="fas fa-eye-slash" style={{ fontSize: '4rem', color: '#fcd34d', marginBottom: '20px' }}></i>
           <h3 style={{ margin: '0 0 12px 0', color: '#92400e', fontSize: '1.5rem' }}>Live Score Sedang Disembunyikan</h3>
@@ -832,17 +866,55 @@ export default function MonitoringOlimpiadePage() {
                     <i className={`fas ${publishedCabang.length > 0 ? 'fa-bullhorn' : 'fa-eye-slash'}`}></i>
                   </div>
                   <div>
-                    <div style={{ fontWeight: 800, fontSize: '1.05rem', color: isAllPublished ? '#15803d' : isPartiallyPublished ? '#0369a1' : '#92400e' }}>
-                      {isAllPublished
-                        ? 'Semua Cabang Lomba Telah Dipublikasikan'
-                        : isPartiallyPublished
-                        ? `Publikasi Kustom Aktif (${publishedCabang.length} dari ${cabangOptions.length} Lomba)`
-                        : 'Seluruh Hasil Masih Disembunyikan'}
+                    <div style={{ fontWeight: 800, fontSize: '1.05rem', color: isAllPublished ? '#15803d' : isPartiallyPublished ? '#0369a1' : '#92400e', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{
+                        padding: '2px 9px',
+                        borderRadius: '6px',
+                        fontSize: '0.74rem',
+                        fontWeight: 800,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.4px',
+                        background: tahapView === 'final' ? '#fef3c7' : tahapView === 'seni' ? '#f3e8ff' : '#e0f2fe',
+                        color: tahapView === 'final' ? '#92400e' : tahapView === 'seni' ? '#6d28d9' : '#0369a1',
+                        border: `1px solid ${tahapView === 'final' ? '#fcd34d' : tahapView === 'seni' ? '#d8b4fe' : '#7dd3fc'}`
+                      }}>
+                        {tahapLabel}
+                      </span>
+                      <span>
+                        {isAllPublished
+                          ? 'Semua Cabang Lomba Telah Dipublikasikan'
+                          : isPartiallyPublished
+                          ? `Publikasi Kustom Aktif (${publishedCountInView} dari ${cabangOptions.length} Lomba)`
+                          : `Hasil ${tahapLabel} Masih Disembunyikan`}
+                      </span>
                     </div>
-                    <div style={{ fontSize: '0.82rem', color: isAllPublished ? '#16a34a' : isPartiallyPublished ? '#0284c7' : '#b45309', marginTop: '3px' }}>
+                    <div style={{ fontSize: '0.82rem', color: isAllPublished ? '#16a34a' : isPartiallyPublished ? '#0284c7' : '#b45309', marginTop: '4px' }}>
                       {publishedCabang.length > 0
-                        ? `Peserta & publik hanya dapat melihat nilai lomba yang dicentang (${publishedCabang.join(', ')}).`
-                        : 'Peserta dan publik saat ini belum bisa melihat klasemen Live Score.'}
+                        ? `Peserta & publik hanya dapat melihat nilai ${tahapLabel} untuk lomba yang dicentang (${publishedCabang.join(', ')}).`
+                        : `Peserta dan publik saat ini belum bisa melihat klasemen ${tahapLabel}.`}
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
+                      {(['seleksi', 'final', 'seni'] as const).map((t) => {
+                        const cnt = publishedByTahap[t].length;
+                        const label = t === 'seleksi' ? 'Seleksi' : t === 'final' ? 'Final' : 'Seni';
+                        const active = tahapView === t;
+                        return (
+                          <span
+                            key={t}
+                            style={{
+                              fontSize: '0.73rem',
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: '999px',
+                              background: cnt > 0 ? '#dcfce7' : '#f1f5f9',
+                              color: cnt > 0 ? '#15803d' : '#64748b',
+                              border: `1px solid ${active ? '#0284c7' : cnt > 0 ? '#86efac' : '#cbd5e1'}`
+                            }}
+                          >
+                            {label}: {cnt > 0 ? `${cnt} Publik` : 'Tertutup'}
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -919,10 +991,10 @@ export default function MonitoringOlimpiadePage() {
               <div style={{ borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '6px' }}>
                   <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Quick Toggle (Klik nama lomba untuk publikasi / sembunyikan langsung):
+                    Quick Toggle {tahapLabel} (Klik nama lomba untuk publikasi / sembunyikan langsung):
                   </span>
                   <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
-                    Terbit: <b style={{ color: '#16a34a' }}>{publishedCabang.length}</b> | Tertutup: <b style={{ color: '#dc2626' }}>{Math.max(0, cabangOptions.length - publishedCabang.length)}</b>
+                    Terbit: <b style={{ color: '#16a34a' }}>{publishedCountInView}</b> | Tertutup: <b style={{ color: '#dc2626' }}>{Math.max(0, cabangOptions.length - publishedCountInView)}</b>
                   </span>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -1016,8 +1088,8 @@ export default function MonitoringOlimpiadePage() {
             </div>
           )}
 
-          {/* Banner Informasi untuk Publik/Peserta jika ada cabang yang belum dipublikasikan */}
-          {!isAdmin && (
+          {/* Banner Informasi untuk Publik/Peserta jika tahap ini dipublikasikan */}
+          {!isAdmin && publishedCabang.length > 0 && (
             <div style={{
               background: '#eff6ff',
               border: '1px solid #bfdbfe',
@@ -1032,9 +1104,9 @@ export default function MonitoringOlimpiadePage() {
             }}>
               <i className="fas fa-bullhorn" style={{ color: '#2563eb', fontSize: '1.1rem' }}></i>
               <div>
-                <span>Cabang lomba yang telah dipublikasikan ({publishedCabang.length}): <b>{publishedCabang.join(', ')}</b>.</span>
-                {cabangOptions.length > publishedCabang.length && (
-                  <span style={{ color: '#64748b', marginLeft: '6px' }}>(Cabang lainnya masih dalam tahap penilaian juri)</span>
+                <span>Cabang lomba {tahapLabel} yang telah dipublikasikan ({publishedCabang.length}): <b>{publishedCabang.join(', ')}</b>.</span>
+                {cabangOptions.length > publishedCountInView && (
+                  <span style={{ color: '#64748b', marginLeft: '6px' }}>(Cabang lainnya masih dalam tahap penilaian / belum dipublikasikan)</span>
                 )}
               </div>
             </div>
@@ -1070,9 +1142,22 @@ export default function MonitoringOlimpiadePage() {
                 transition: 'all 0.15s ease'
               }}
             >
-              <div style={{ fontWeight: 800, fontSize: '1.02rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <i className="fas fa-filter" style={{ color: tahapView === 'seleksi' ? '#0284c7' : '#94a3b8' }}></i>
-                1. Babak Seleksi (Olimpiade Akademik)
+              <div style={{ fontWeight: 800, fontSize: '1.02rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fas fa-filter" style={{ color: tahapView === 'seleksi' ? '#0284c7' : '#94a3b8' }}></i>
+                  1. Babak Seleksi (Olimpiade Akademik)
+                </span>
+                <span style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: '999px',
+                  background: publishedByTahap.seleksi.length > 0 ? '#dcfce7' : '#f1f5f9',
+                  color: publishedByTahap.seleksi.length > 0 ? '#15803d' : '#64748b',
+                  border: `1px solid ${publishedByTahap.seleksi.length > 0 ? '#86efac' : '#cbd5e1'}`
+                }}>
+                  {publishedByTahap.seleksi.length > 0 ? `${publishedByTahap.seleksi.length} Publik` : 'Disembunyikan'}
+                </span>
               </div>
               <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '4px', lineHeight: 1.4 }}>
                 Penyaringan <b>Top {MAX_LOLOS} Peserta Terbaik</b> per cabang lomba Akademik untuk melaju ke Babak Final CBT.
@@ -1100,9 +1185,22 @@ export default function MonitoringOlimpiadePage() {
                 transition: 'all 0.15s ease'
               }}
             >
-              <div style={{ fontWeight: 800, fontSize: '1.02rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <i className="fas fa-trophy" style={{ color: tahapView === 'final' ? '#d97706' : '#94a3b8' }}></i>
-                2. Babak Final &amp; Medali (Akademik)
+              <div style={{ fontWeight: 800, fontSize: '1.02rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fas fa-trophy" style={{ color: tahapView === 'final' ? '#d97706' : '#94a3b8' }}></i>
+                  2. Babak Final &amp; Medali (Akademik)
+                </span>
+                <span style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: '999px',
+                  background: publishedByTahap.final.length > 0 ? '#dcfce7' : '#f1f5f9',
+                  color: publishedByTahap.final.length > 0 ? '#15803d' : '#64748b',
+                  border: `1px solid ${publishedByTahap.final.length > 0 ? '#86efac' : '#cbd5e1'}`
+                }}>
+                  {publishedByTahap.final.length > 0 ? `${publishedByTahap.final.length} Publik` : 'Disembunyikan'}
+                </span>
               </div>
               <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '4px', lineHeight: 1.4 }}>
                 Penentuan <b>Medali Emas (1–3), Perak (4–6), Perunggu (7–9)</b> &amp; Peringkat 10–30 dari Nilai CBT Final.
@@ -1130,9 +1228,22 @@ export default function MonitoringOlimpiadePage() {
                 transition: 'all 0.15s ease'
               }}
             >
-              <div style={{ fontWeight: 800, fontSize: '1.02rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <i className="fas fa-palette" style={{ color: tahapView === 'seni' ? '#7c3aed' : '#94a3b8' }}></i>
-                3. Penentuan Juara (Lomba Seni)
+              <div style={{ fontWeight: 800, fontSize: '1.02rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fas fa-palette" style={{ color: tahapView === 'seni' ? '#7c3aed' : '#94a3b8' }}></i>
+                  3. Penentuan Juara (Lomba Seni)
+                </span>
+                <span style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: '999px',
+                  background: publishedByTahap.seni.length > 0 ? '#dcfce7' : '#f1f5f9',
+                  color: publishedByTahap.seni.length > 0 ? '#15803d' : '#64748b',
+                  border: `1px solid ${publishedByTahap.seni.length > 0 ? '#86efac' : '#cbd5e1'}`
+                }}>
+                  {publishedByTahap.seni.length > 0 ? `${publishedByTahap.seni.length} Publik` : 'Disembunyikan'}
+                </span>
               </div>
               <div style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '4px', lineHeight: 1.4 }}>
                 Penentuan <b>Juara 1–3 &amp; Harapan 1–3</b> tiap cabang murni dari akumulasi &amp; rata-rata penilaian Dewan Juri Seni.
@@ -1141,6 +1252,18 @@ export default function MonitoringOlimpiadePage() {
           </div>
 
           <div style={{ background: 'white', borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
+            {!isAdmin && publishedCabang.length === 0 ? (
+              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', padding: '48px 20px', textAlign: 'center' }}>
+                <i className="fas fa-eye-slash" style={{ fontSize: '3rem', color: '#fcd34d', marginBottom: '14px' }}></i>
+                <h3 style={{ margin: '0 0 8px 0', color: '#92400e', fontSize: '1.25rem' }}>
+                  Hasil {tahapLabel} Belum Dipublikasikan
+                </h3>
+                <p style={{ margin: 0, color: '#b45309', fontSize: '0.96rem' }}>
+                  Panitia belum mempublikasikan klasemen untuk tahap ini. Anda tetap dapat melihat tahap lain yang bertanda <b>Publik</b> pada tab di atas.
+                </p>
+              </div>
+            ) : (
+              <>
             <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '14px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>
@@ -1592,6 +1715,8 @@ export default function MonitoringOlimpiadePage() {
                 )}
               </>
             )}
+              </>
+            )}
           </div>
         </>
       )}
@@ -1623,11 +1748,11 @@ export default function MonitoringOlimpiadePage() {
             {/* Modal Header */}
             <div style={{ padding: '20px 24px', background: '#0284c7', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <i className="fas fa-sliders-h"></i> Atur Publikasi Cabang Lomba
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <i className="fas fa-sliders-h"></i> Publikasi {tahapLabel}
                 </h3>
                 <p style={{ margin: '4px 0 0 0', fontSize: '0.82rem', opacity: 0.9 }}>
-                  Pilih cabang lomba mana saja yang ingin dipublikasikan ke peserta & umum
+                  Pilih cabang lomba pada <b>{tahapLabel}</b> yang ingin dipublikasikan ke peserta & umum
                 </p>
               </div>
               <button
@@ -1724,7 +1849,7 @@ export default function MonitoringOlimpiadePage() {
             <div style={{ padding: '16px 24px', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
               <label style={{ display: 'block', fontSize: '0.86rem', fontWeight: 700, color: '#1e293b', marginBottom: '6px' }}>
                 <i className="fas fa-file-pdf" style={{ color: '#dc2626', marginRight: '6px' }}></i>
-                Link Dokumen SK Pengumuman:
+                Link Dokumen SK Pengumuman ({tahapLabel}):
               </label>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input

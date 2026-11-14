@@ -88,15 +88,20 @@ export default function DashboardCBT() {
 
   const fetchConfig = async (nomorPeserta: string, userLomba?: string) => {
     try {
-      const res = await fetch('/api/olimpiade-seni/config');
+      const res = await fetch('/api/olimpiade-seni/config?tahap=seleksi');
       const json = await res.json();
       if (json.success) {
-        const pubCabangs: string[] = Array.isArray(json.published_cabang) ? json.published_cabang : [];
+        const pubCabangs: string[] = Array.isArray(json.published_cabang_seleksi)
+          ? json.published_cabang_seleksi
+          : (Array.isArray(json.published_cabang) ? json.published_cabang : []);
         const targetLomba = userLomba || user?.lomba || '';
+        const isSeleksiPublished = typeof json.hasil_published_seleksi === 'boolean'
+          ? json.hasil_published_seleksi
+          : Boolean(json.hasil_published);
         
-        // Cek apakah lomba peserta ini termasuk yang dipublikasikan oleh admin
+        // Cek apakah hasil Babak Seleksi cabang lomba peserta ini sudah dipublikasikan
         const isMyLombaPublished = pubCabangs.some(c => isCabangMatch(c, targetLomba)) || 
-          (pubCabangs.length === 0 && Boolean(json.hasil_published));
+          (pubCabangs.length === 0 && isSeleksiPublished);
 
         setHasilPublished(isMyLombaPublished);
         if (isMyLombaPublished) {

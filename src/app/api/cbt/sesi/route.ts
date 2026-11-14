@@ -203,11 +203,14 @@ export async function GET(req: Request) {
       .maybeSingle();
 
     const pubMeta = configPubRow?.metadata || {};
-    const publishedCabangArr: string[] = Array.isArray(pubMeta.published_cabang) ? pubMeta.published_cabang : [];
+    const hasSeparateSeleksi = Array.isArray(pubMeta.published_cabang_seleksi);
+    const publishedCabangArr: string[] = hasSeparateSeleksi
+      ? pubMeta.published_cabang_seleksi
+      : (Array.isArray(pubMeta.published_cabang) ? pubMeta.published_cabang : []);
     const isGlobalPublished = Boolean(olimpiadeConfigRow?.hasil_published || pubMeta.hasil_published);
 
     const isCabangPublished = publishedCabangArr.some(c => normalizeCbtCabang(c) === baseCabang) ||
-      (publishedCabangArr.length === 0 && isGlobalPublished);
+      (!hasSeparateSeleksi && publishedCabangArr.length === 0 && isGlobalPublished);
 
     const hasilPublishedForUser = isBypass ? true : isCabangPublished;
     // Pengumuman lolos & status lolos hanya boleh dikirim jika admin SUDAH mempublikasikan pemenang/live score, atau akun bypass
