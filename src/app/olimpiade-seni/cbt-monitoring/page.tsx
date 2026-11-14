@@ -814,6 +814,18 @@ export default function CbtMonitoringPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '24px 28px 60px' }}>
+      <style>{`
+        @keyframes cbtLiveBlink {
+          0%, 100% {
+            opacity: 1;
+            box-shadow: 0 0 10px rgba(34, 197, 94, 0.55);
+          }
+          50% {
+            opacity: 0.35;
+            box-shadow: 0 0 2px rgba(34, 197, 94, 0.1);
+          }
+        }
+      `}</style>
       <div style={{ width: '100%', maxWidth: '1680px', margin: '0 auto' }}>
 
         {/* TOP BAR / NAVIGATION */}
@@ -1234,8 +1246,20 @@ export default function CbtMonitoringPage() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#16a34a', textTransform: 'uppercase' }}>Sedang Ujian (Live)</span>
-              <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <i className="fas fa-laptop-code fa-pulse"></i>
+              <div
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  background: '#dcfce7',
+                  color: '#16a34a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  animation: 'cbtLiveBlink 1.6s ease-in-out infinite',
+                }}
+              >
+                <i className="fas fa-laptop-code"></i>
               </div>
             </div>
             <div style={{ fontSize: '2rem', fontWeight: 900, color: '#15803d', marginTop: '8px' }}>
