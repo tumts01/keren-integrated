@@ -560,12 +560,18 @@ export default function MonitoringOlimpiadePage() {
 
       if (tahapView === 'final') {
         if (d.kategori_lomba === 'akademik') {
-          const sm = d.skor_mentah !== null && d.skor_mentah !== undefined ? d.skor_mentah : (hasScore ? Math.round(Number(d.rata_rata) * 1.6) : '-');
-          rowObj['Skor Mentah'] = sm;
+          const smFinal = d.skor_mentah_final !== null && d.skor_mentah_final !== undefined
+            ? d.skor_mentah_final
+            : (d.skor_mentah !== null && d.skor_mentah !== undefined ? d.skor_mentah : (hasScore ? Math.round(Number(d.rata_rata) * 1.2) : '-'));
+          rowObj['Skor Mentah Final'] = smFinal;
         }
         rowObj['Nilai Final CBT'] = hasScore ? Number(d.rata_rata) : 0;
         if (d.kategori_lomba === 'akademik') {
-          rowObj['Nilai Seleksi CBT'] = d.nilai_seleksi && Number(d.nilai_seleksi) > 0 ? Number(d.nilai_seleksi) : '-';
+          const smSeleksi = d.skor_mentah_seleksi !== null && d.skor_mentah_seleksi !== undefined
+            ? d.skor_mentah_seleksi
+            : (d.nilai_seleksi && Number(d.nilai_seleksi) > 0 ? Math.round(Number(d.nilai_seleksi) * 1.6) : '-');
+          rowObj['Skor Mentah Penyisihan'] = smSeleksi;
+          rowObj['Nilai Penyisihan CBT'] = d.nilai_seleksi && Number(d.nilai_seleksi) > 0 ? Number(d.nilai_seleksi) : '-';
         }
         rowObj['Predikat / Medali'] = predikatStatus;
       } else if (tahapView === 'seni') {
@@ -573,10 +579,19 @@ export default function MonitoringOlimpiadePage() {
         rowObj['Predikat / Juara'] = predikatStatus;
       } else {
         if (d.kategori_lomba === 'akademik') {
-          const sm = d.skor_mentah !== null && d.skor_mentah !== undefined ? d.skor_mentah : (hasScore ? Math.round(Number(d.rata_rata) * 1.6) : '-');
-          rowObj['Skor Mentah'] = sm;
+          const smSeleksi = d.skor_mentah_seleksi !== null && d.skor_mentah_seleksi !== undefined
+            ? d.skor_mentah_seleksi
+            : (d.skor_mentah !== null && d.skor_mentah !== undefined ? d.skor_mentah : (hasScore ? Math.round(Number(d.rata_rata) * 1.6) : '-'));
+          rowObj['Skor Mentah Penyisihan'] = smSeleksi;
         }
-        rowObj['Nilai Seleksi CBT'] = hasScore ? Number(d.rata_rata) : 0;
+        rowObj['Nilai Penyisihan CBT'] = hasScore ? Number(d.rata_rata) : 0;
+        if (d.kategori_lomba === 'akademik') {
+          const smFinal = d.skor_mentah_final !== null && d.skor_mentah_final !== undefined
+            ? d.skor_mentah_final
+            : (d.nilai_final && Number(d.nilai_final) > 0 ? Math.round(Number(d.nilai_final) * 1.2) : '-');
+          rowObj['Skor Mentah Final'] = smFinal;
+          rowObj['Nilai Final CBT'] = d.nilai_final && Number(d.nilai_final) > 0 ? Number(d.nilai_final) : '-';
+        }
         rowObj['Status Kelolosan'] = predikatStatus;
       }
 
@@ -593,9 +608,9 @@ export default function MonitoringOlimpiadePage() {
       { wch: 20 },
       ...(isAdmin ? [{ wch: 16 }, ...(tahapView !== 'seni' ? [{ wch: 16 }] : [])] : []),
       ...(tahapView !== 'seni' ? [{ wch: 20 }] : []),
-      ...(tahapView !== 'seni' ? [{ wch: 14 }] : []),
-      { wch: 16 },
-      ...(tahapView === 'final' ? [{ wch: 16 }] : []),
+      ...(tahapView !== 'seni' ? [{ wch: 22 }] : []),
+      { wch: 20 },
+      ...(tahapView !== 'seni' ? [{ wch: 22 }, { wch: 20 }] : []),
       { wch: 26 },
     ];
 
@@ -1478,11 +1493,16 @@ export default function MonitoringOlimpiadePage() {
                                     }}>
                                       {d.skor_mentah !== undefined && d.skor_mentah !== null
                                         ? d.skor_mentah
-                                        : Math.round(Number(d.rata_rata) * 1.6)}
+                                        : Math.round(Number(d.rata_rata) * (tahapView === 'final' ? 1.2 : 1.6))}
                                     </span>
                                   ) : (
                                     <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>-</span>
                                   )}
+                                  {tahapView === 'final' && d.kategori_lomba === 'akademik' && d.skor_mentah_seleksi !== null && d.skor_mentah_seleksi !== undefined ? (
+                                    <div style={{ fontSize: '0.73rem', color: '#64748b', marginTop: '3px' }}>
+                                      Penyisihan: {d.skor_mentah_seleksi}
+                                    </div>
+                                  ) : null}
                                 </td>
                               )}
                               <td style={{ padding: '15px', textAlign: 'center' }}>

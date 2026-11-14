@@ -20,6 +20,14 @@ function getFinishMs(waktuSelesai?: string | null): number {
   return Number.isFinite(t) ? t : Infinity;
 }
 
+function calcSkorMentah(sesi: any, soalCountMap: Record<string, number>, fallbackTotal: number): number | null {
+  if (!sesi || sesi.nilai_akhir === null || sesi.nilai_akhir === undefined) return null;
+  const cabangKey = (sesi.cabang_lomba || '').trim();
+  const totalSoal = soalCountMap[cabangKey] || fallbackTotal;
+  const skorMax = totalSoal * 4;
+  return Math.round((Number(sesi.nilai_akhir) / 100) * skorMax);
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -34,6 +42,20 @@ export async function GET(req: Request) {
       .range(0, 4999);
 
     if (errNilai) throw errNilai;
+
+    // Ambil jumlah soal CBT per cabang & tahap agar skor mentah Final (30 soal -> maks 120) & Seleksi (40 soal -> maks 160) akurat
+    const { data: soalData, error: errSoal } = await supabase
+      .from('cbt_soal')
+      .select('cabang_lomba')
+      .range(0, 4999);
+    if (errSoal && errSoal.code !== '42P01') {
+      console.warn('CBT Soal query error', errSoal);
+    }
+    const soalCountMap: Record<string, number> = {};
+    (soalData || []).forEach((s: any) => {
+      const key = (s.cabang_lomba || '').trim();
+      if (key) soalCountMap[key] = (soalCountMap[key] || 0) + 1;
+    });
 
     // Ambil data nilai CBT (termasuk sesi Seleksi dan sesi _FINAL)
     const { data: cbtData, error: errCbt } = await supabase
@@ -154,12 +176,12 @@ export async function GET(req: Request) {
         const nilaiTarget = targetSesi && targetSesi.nilai_akhir !== null && targetSesi.nilai_akhir !== undefined
           ? Number(targetSesi.nilai_akhir).toFixed(2)
           : 0;
-        const skorMentah = targetSesi && targetSesi.nilai_akhir !== null && targetSesi.nilai_akhir !== undefined
-          ? Math.round(Number(targetSesi.nilai_akhir) * 1.6)
-          : null;
-        const skorMentahSeleksi = sesiSeleksi && sesiSeleksi.nilai_akhir !== null && sesiSeleksi.nilai_akhir !== undefined
-          ? Math.round(Number(sesiSeleksi.nilai_akhir) * 1.6)
-          : null;
+        const nilaiFinal = sesiFinal && sesiFinal.nilai_akhir !== null && sesiFinal.nilai_akhir !== undefined
+          ? Number(sesiFinal.nilai_akhir)
+          : 0;
+        const skorMentahSeleksi = calcSkorMentah(sesiSeleksi, soalCountMap, 40);
+        const skorMentahFinal = calcSkorMentah(sesiFinal, soalCountMap, 30);
+        const skorMentah = tahap === 'final' ? skorMentahFinal : skorMentahSeleksi;
 
         return {
           ...p,
@@ -167,8 +189,10 @@ export async function GET(req: Request) {
           peringkat_seleksi: peringkatSeleksi,
           has_final_sesi: !!sesiFinal,
           nilai_seleksi: nilaiSeleksi > 0 ? nilaiSeleksi.toFixed(2) : 0,
+          nilai_final: nilaiFinal > 0 ? nilaiFinal.toFixed(2) : 0,
           skor_mentah: skorMentah,
           skor_mentah_seleksi: skorMentahSeleksi,
+          skor_mentah_final: skorMentahFinal,
           rata_rata: nilaiTarget,
           jumlah_juri: 1,
           detail_nilai: targetSesi && targetSesi.nilai_akhir !== null
