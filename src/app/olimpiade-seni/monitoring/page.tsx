@@ -352,6 +352,7 @@ export default function MonitoringOlimpiadePage() {
   };
 
   const MAX_LOLOS = 30;
+  const MAX_SENI_SMS_WINNERS = 6; // Juara 1-3 & Harapan 1-3
 
   // Filter cabang yang dapat ditampilkan di dropdown
   const displayCabangOptions = useMemo(() => {
@@ -359,7 +360,7 @@ export default function MonitoringOlimpiadePage() {
     return cabangOptions.filter(c => publishedCabang.includes(c));
   }, [isAdmin, cabangOptions, publishedCabang]);
 
-  // Data yang boleh dilihat (Admin melihat semua cabang, Non-admin hanya cabang yang dipublikasikan; khusus mapel Akademik hanya Top 30 yang lolos)
+  // Data yang boleh dilihat (Admin melihat semua cabang, Non-admin hanya cabang yang dipublikasikan; Akademik max Top 30; khusus SMS hanya Juara 1-3 & Harapan 1-3)
   const visibleData = useMemo(() => {
     const base = isAdmin ? data : data.filter(d => publishedCabang.includes(d.cabang_lomba));
     const byCabangCount: Record<string, number> = {};
@@ -377,10 +378,17 @@ export default function MonitoringOlimpiadePage() {
 
     const sortedBase = [...base].sort(compareRow);
     return sortedBase.filter(d => {
-      if (d.kategori_lomba !== 'akademik') return true;
-      if (!d.lolos_seleksi) return false;
-      byCabangCount[d.cabang_lomba] = (byCabangCount[d.cabang_lomba] || 0) + 1;
-      return byCabangCount[d.cabang_lomba] <= MAX_LOLOS;
+      if (d.kategori_lomba === 'akademik') {
+        if (!d.lolos_seleksi) return false;
+        byCabangCount[d.cabang_lomba] = (byCabangCount[d.cabang_lomba] || 0) + 1;
+        return byCabangCount[d.cabang_lomba] <= MAX_LOLOS;
+      }
+      if ((d.cabang_lomba || '').trim().toUpperCase() === 'SMS') {
+        if (Number(d.rata_rata) <= 0) return false;
+        byCabangCount[d.cabang_lomba] = (byCabangCount[d.cabang_lomba] || 0) + 1;
+        return byCabangCount[d.cabang_lomba] <= MAX_SENI_SMS_WINNERS;
+      }
+      return true;
     });
   }, [isAdmin, data, publishedCabang]);
 
@@ -1330,7 +1338,10 @@ export default function MonitoringOlimpiadePage() {
                   ) : tahapView === 'seni' ? (
                     <>
                       <i className="fas fa-palette" style={{ color: '#7c3aed', marginRight: '6px' }}></i>
-                      Penentuan <b>Juara 1–3 &amp; Harapan 1–3</b> tiap cabang Lomba Seni ditentukan murni dari akumulasi &amp; rata-rata penilaian Dewan Juri.
+                      Penentuan <b>Juara 1–3 &amp; Harapan 1–3</b> tiap cabang Lomba Seni ditentukan murni dari penilaian Dewan Juri
+                      {(filterCabang === 'Semua' || filterCabang === 'SMS') && (
+                        <> (khusus cabang <b>SMS</b> hanya menampilkan peraih Juara 1–3 &amp; Harapan 1–3)</>
+                      )}.
                     </>
                   ) : (
                     <>
