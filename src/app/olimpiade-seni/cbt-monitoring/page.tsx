@@ -54,6 +54,29 @@ interface SummaryStats {
   bayar_belum?: number;
 }
 
+type SortOption =
+  | 'status'
+  | 'mapel_nilai'
+  | 'nilai_desc'
+  | 'nilai_asc'
+  | 'nama_asc'
+  | 'nama_desc'
+  | 'progres_desc'
+  | 'progres_asc'
+  | 'waktu_asc'
+  | 'waktu_desc'
+  | 'pelanggaran_desc';
+
+type HeaderFilterKey =
+  | 'peserta'
+  | 'cabang'
+  | 'status'
+  | 'progres'
+  | 'waktu'
+  | 'pelanggaran'
+  | 'nilai'
+  | 'daftar_ulang';
+
 export default function CbtMonitoringPage() {
   const router = useRouter();
 
@@ -69,8 +92,12 @@ export default function CbtMonitoringPage() {
   const [loading, setLoading] = useState(true);
   const [filterCabang, setFilterCabang] = useState('Semua');
   const [filterStatus, setFilterStatus] = useState('Semua');
-  const [sortBy, setSortBy] = useState<'status' | 'mapel_nilai' | 'nilai_desc'>('status');
+  const [filterProgres, setFilterProgres] = useState<'Semua' | 'terjawab' | 'lengkap' | 'nol'>('Semua');
+  const [filterPelanggaranCol, setFilterPelanggaranCol] = useState<'Semua' | 'ada' | 'bersih'>('Semua');
+  const [filterBayarCol, setFilterBayarCol] = useState<'Semua' | 'lunas' | 'menunggu' | 'belum'>('Semua');
+  const [sortBy, setSortBy] = useState<SortOption>('status');
   const [searchQuery, setSearchQuery] = useState('');
+  const [openColFilter, setOpenColFilter] = useState<{ key: HeaderFilterKey; top: number; left: number } | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [countdown, setCountdown] = useState(15);
   const [actionLoading, setActionLoading] = useState(false);
@@ -340,6 +367,63 @@ export default function CbtMonitoringPage() {
     return () => clearInterval(timer);
   }, [cbtBuka, autoRefresh, tahapPantau]);
 
+  // Tutup popover filter header saat klik di luar atau tekan Escape
+  useEffect(() => {
+    if (!openColFilter) return;
+    const handleMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('[data-col-filter-popover="true"]') || target?.closest('[data-col-filter-trigger="true"]')) {
+        return;
+      }
+      setOpenColFilter(null);
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpenColFilter(null);
+    };
+    document.addEventListener('mousedown', handleMouseDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [openColFilter]);
+
+  const toggleColFilter = (key: HeaderFilterKey, e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (openColFilter?.key === key) {
+      setOpenColFilter(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const popoverWidth = 252;
+    const maxLeft = typeof window !== 'undefined' ? window.innerWidth - popoverWidth - 12 : rect.left;
+    const left = Math.max(12, Math.min(rect.left - 80, maxLeft));
+    const maxTop = typeof window !== 'undefined' ? window.innerHeight - 320 : rect.bottom + 6;
+    const top = Math.max(12, Math.min(rect.bottom + 6, maxTop));
+    setOpenColFilter({ key, top, left });
+  };
+
+  const resetAllFilters = () => {
+    setFilterCabang('Semua');
+    setFilterStatus('Semua');
+    setFilterProgres('Semua');
+    setFilterPelanggaranCol('Semua');
+    setFilterBayarCol('Semua');
+    setSortBy('status');
+    setSearchQuery('');
+    setCurrentPage(1);
+    setOpenColFilter(null);
+  };
+
+  const hasAnyFilterOrSort =
+    filterCabang !== 'Semua' ||
+    filterStatus !== 'Semua' ||
+    filterProgres !== 'Semua' ||
+    filterPelanggaranCol !== 'Semua' ||
+    filterBayarCol !== 'Semua' ||
+    sortBy !== 'status' ||
+    Boolean(searchQuery);
+
   // Aksi Kelola Sesi
   const handleAction = async (action: string, p: PesertaCBT, extraBody: any = {}) => {
     if (!isAdmin) {
@@ -472,6 +556,17 @@ export default function CbtMonitoringPage() {
       if (filterStatus === 'bayar_menunggu' && item.status_bayar_final !== 'Menunggu Verifikasi') return false;
       if (filterStatus === 'bayar_belum' && item.status_bayar_final !== 'Belum Bayar' && item.status_bayar_final !== 'Ditolak') return false;
 
+      if (filterProgres === 'terjawab' && item.terjawab <= 0) return false;
+      if (filterProgres === 'lengkap' && !(item.total_soal > 0 && item.terjawab >= item.total_soal)) return false;
+      if (filterProgres === 'nol' && item.terjawab !== 0) return false;
+
+      if (filterPelanggaranCol === 'ada' && item.jumlah_pelanggaran === 0) return false;
+      if (filterPelanggaranCol === 'bersih' && item.jumlah_pelanggaran > 0) return false;
+
+      if (filterBayarCol === 'lunas' && item.status_bayar_final !== 'Valid') return false;
+      if (filterBayarCol === 'menunggu' && item.status_bayar_final !== 'Menunggu Verifikasi') return false;
+      if (filterBayarCol === 'belum' && item.status_bayar_final !== 'Belum Bayar' && item.status_bayar_final !== 'Ditolak') return false;
+
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
         const matchNama = item.nama.toLowerCase().includes(q);
@@ -484,26 +579,88 @@ export default function CbtMonitoringPage() {
       return true;
     });
 
+    const parseNilai = (val: string | null) =>
+      val !== null && val !== undefined && val !== '-' && val !== '' ? Number(val) : null;
+
+    const getProgresRatio = (p: PesertaCBT) => (p.total_soal > 0 ? p.terjawab / p.total_soal : 0);
+
+    const getWaktuVal = (p: PesertaCBT) => {
+      if (typeof p.sisa_waktu_detik === 'number') return p.sisa_waktu_detik;
+      if (typeof p.durasi_menit === 'number') return p.durasi_menit * 60;
+      return null;
+    };
+
     if (sortBy === 'mapel_nilai') {
       list.sort((a, b) => {
         const comp = (a.cabang_lomba || '').localeCompare(b.cabang_lomba || '', 'id');
         if (comp !== 0) return comp;
-        const valA = a.nilai_akhir !== null && a.nilai_akhir !== undefined && a.nilai_akhir !== '-' ? Number(a.nilai_akhir) : -1;
-        const valB = b.nilai_akhir !== null && b.nilai_akhir !== undefined && b.nilai_akhir !== '-' ? Number(b.nilai_akhir) : -1;
+        const valA = parseNilai(a.nilai_akhir) ?? -1;
+        const valB = parseNilai(b.nilai_akhir) ?? -1;
         if (valB !== valA) return valB - valA;
         return (a.nama || '').localeCompare(b.nama || '', 'id');
       });
     } else if (sortBy === 'nilai_desc') {
       list.sort((a, b) => {
-        const valA = a.nilai_akhir !== null && a.nilai_akhir !== undefined && a.nilai_akhir !== '-' ? Number(a.nilai_akhir) : -1;
-        const valB = b.nilai_akhir !== null && b.nilai_akhir !== undefined && b.nilai_akhir !== '-' ? Number(b.nilai_akhir) : -1;
+        const valA = parseNilai(a.nilai_akhir) ?? -1;
+        const valB = parseNilai(b.nilai_akhir) ?? -1;
         if (valB !== valA) return valB - valA;
+        return (a.nama || '').localeCompare(b.nama || '', 'id');
+      });
+    } else if (sortBy === 'nilai_asc') {
+      list.sort((a, b) => {
+        const valA = parseNilai(a.nilai_akhir);
+        const valB = parseNilai(b.nilai_akhir);
+        if (valA === null && valB === null) return (a.nama || '').localeCompare(b.nama || '', 'id');
+        if (valA === null) return 1;
+        if (valB === null) return -1;
+        if (valA !== valB) return valA - valB;
+        return (a.nama || '').localeCompare(b.nama || '', 'id');
+      });
+    } else if (sortBy === 'nama_asc') {
+      list.sort((a, b) => (a.nama || '').localeCompare(b.nama || '', 'id'));
+    } else if (sortBy === 'nama_desc') {
+      list.sort((a, b) => (b.nama || '').localeCompare(a.nama || '', 'id'));
+    } else if (sortBy === 'progres_desc') {
+      list.sort((a, b) => {
+        const diff = getProgresRatio(b) - getProgresRatio(a);
+        if (diff !== 0) return diff;
+        if (b.terjawab !== a.terjawab) return b.terjawab - a.terjawab;
+        return (a.nama || '').localeCompare(b.nama || '', 'id');
+      });
+    } else if (sortBy === 'progres_asc') {
+      list.sort((a, b) => {
+        const diff = getProgresRatio(a) - getProgresRatio(b);
+        if (diff !== 0) return diff;
+        if (a.terjawab !== b.terjawab) return a.terjawab - b.terjawab;
+        return (a.nama || '').localeCompare(b.nama || '', 'id');
+      });
+    } else if (sortBy === 'waktu_asc') {
+      list.sort((a, b) => {
+        const valA = getWaktuVal(a);
+        const valB = getWaktuVal(b);
+        if (valA === null && valB === null) return (a.nama || '').localeCompare(b.nama || '', 'id');
+        if (valA === null) return 1;
+        if (valB === null) return -1;
+        return valA - valB;
+      });
+    } else if (sortBy === 'waktu_desc') {
+      list.sort((a, b) => {
+        const valA = getWaktuVal(a);
+        const valB = getWaktuVal(b);
+        if (valA === null && valB === null) return (a.nama || '').localeCompare(b.nama || '', 'id');
+        if (valA === null) return 1;
+        if (valB === null) return -1;
+        return valB - valA;
+      });
+    } else if (sortBy === 'pelanggaran_desc') {
+      list.sort((a, b) => {
+        if (b.jumlah_pelanggaran !== a.jumlah_pelanggaran) return b.jumlah_pelanggaran - a.jumlah_pelanggaran;
         return (a.nama || '').localeCompare(b.nama || '', 'id');
       });
     }
 
     return list;
-  }, [data, filterCabang, filterStatus, searchQuery, sortBy]);
+  }, [data, filterCabang, filterStatus, filterProgres, filterPelanggaranCol, filterBayarCol, searchQuery, sortBy]);
 
   const totalPages = itemsPerPage === 999999 ? 1 : Math.ceil(filteredData.length / itemsPerPage) || 1;
   const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
@@ -1376,7 +1533,7 @@ export default function CbtMonitoringPage() {
               <select
                 value={sortBy}
                 onChange={(e) => {
-                  setSortBy(e.target.value as any);
+                  setSortBy(e.target.value as SortOption);
                   setCurrentPage(1);
                 }}
                 style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1', fontSize: '0.88rem', background: 'white' }}
@@ -1384,19 +1541,21 @@ export default function CbtMonitoringPage() {
                 <option value="status">Urut: Status Ujian</option>
                 <option value="mapel_nilai">Urut: Mapel & Nilai Tertinggi</option>
                 <option value="nilai_desc">Urut: Nilai Tertinggi</option>
+                <option value="nilai_asc">Urut: Nilai Terendah</option>
+                <option value="nama_asc">Urut: Nama Peserta (A-Z)</option>
+                <option value="nama_desc">Urut: Nama Peserta (Z-A)</option>
+                <option value="progres_desc">Urut: Progres Terbanyak</option>
+                <option value="progres_asc">Urut: Progres Tersedikit</option>
+                <option value="waktu_asc">Urut: Waktu Tersisa / Tercepat</option>
+                <option value="waktu_desc">Urut: Waktu Terlama</option>
+                <option value="pelanggaran_desc">Urut: Pelanggaran Terbanyak</option>
               </select>
             </div>
           </div>
 
-          {(filterCabang !== 'Semua' || filterStatus !== 'Semua' || sortBy !== 'status' || searchQuery) && (
+          {hasAnyFilterOrSort && (
             <button
-              onClick={() => {
-                setFilterCabang('Semua');
-                setFilterStatus('Semua');
-                setSortBy('status');
-                setSearchQuery('');
-                setCurrentPage(1);
-              }}
+              onClick={resetAllFilters}
               style={{
                 background: '#fee2e2',
                 color: '#ef4444',
@@ -1423,7 +1582,25 @@ export default function CbtMonitoringPage() {
             <div style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8' }}>
               <i className="fas fa-inbox" style={{ fontSize: '3rem', marginBottom: '12px', color: '#cbd5e1' }}></i>
               <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#64748b' }}>Tidak ada peserta yang cocok dengan filter</div>
-              <p style={{ margin: '6px 0 0', fontSize: '0.85rem' }}>Coba ubah kata kunci pencarian atau reset filter.</p>
+              <p style={{ margin: '6px 0 16px', fontSize: '0.85rem' }}>Coba ubah kata kunci pencarian atau reset filter.</p>
+              {hasAnyFilterOrSort && (
+                <button
+                  type="button"
+                  onClick={resetAllFilters}
+                  style={{
+                    background: '#fee2e2',
+                    color: '#dc2626',
+                    border: '1px solid #fecaca',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <i className="fas fa-undo" style={{ marginRight: '6px' }}></i> Reset Semua Filter
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -1432,16 +1609,119 @@ export default function CbtMonitoringPage() {
                 <thead>
                   <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569', textAlign: 'left' }}>
                     <th style={{ padding: '12px 14px', width: '50px' }}>No</th>
-                    <th style={{ padding: '12px 14px' }}>Peserta</th>
-                    <th style={{ padding: '12px 14px', width: '130px' }}>Cabang</th>
-                    <th style={{ padding: '12px 14px', width: '150px' }}>Status</th>
-                    <th style={{ padding: '12px 14px', width: '160px' }}>Progres Soal</th>
-                    <th style={{ padding: '12px 14px', width: '130px' }}>Waktu / Sisa</th>
-                    <th style={{ padding: '12px 14px', width: '110px', textAlign: 'center' }}>Pelanggaran</th>
-                    <th style={{ padding: '12px 14px', width: '90px', textAlign: 'right' }}>Nilai</th>
-                    {tahapPantau === 'final' && (
-                      <th style={{ padding: '12px 14px', width: '160px', textAlign: 'center' }}>Daftar Ulang (50rb)</th>
-                    )}
+                    {(
+                      [
+                        {
+                          key: 'peserta' as HeaderFilterKey,
+                          label: 'Peserta',
+                          align: 'left' as const,
+                          active: Boolean(searchQuery) || sortBy === 'nama_asc' || sortBy === 'nama_desc',
+                        },
+                        {
+                          key: 'cabang' as HeaderFilterKey,
+                          label: 'Cabang',
+                          align: 'left' as const,
+                          width: '145px',
+                          active: filterCabang !== 'Semua' || sortBy === 'mapel_nilai',
+                        },
+                        {
+                          key: 'status' as HeaderFilterKey,
+                          label: 'Status',
+                          align: 'left' as const,
+                          width: '160px',
+                          active: ['sedang_mengerjakan', 'selesai', 'belum_mulai', 'login_aktif'].includes(filterStatus),
+                        },
+                        {
+                          key: 'progres' as HeaderFilterKey,
+                          label: 'Progres Soal',
+                          align: 'left' as const,
+                          width: '170px',
+                          active: filterProgres !== 'Semua' || sortBy === 'progres_desc' || sortBy === 'progres_asc',
+                        },
+                        {
+                          key: 'waktu' as HeaderFilterKey,
+                          label: 'Waktu / Sisa',
+                          align: 'left' as const,
+                          width: '145px',
+                          active: sortBy === 'waktu_asc' || sortBy === 'waktu_desc',
+                        },
+                        {
+                          key: 'pelanggaran' as HeaderFilterKey,
+                          label: 'Pelanggaran',
+                          align: 'center' as const,
+                          width: '130px',
+                          active: filterPelanggaranCol !== 'Semua' || filterStatus === 'ada_pelanggaran' || sortBy === 'pelanggaran_desc',
+                        },
+                        {
+                          key: 'nilai' as HeaderFilterKey,
+                          label: 'Nilai',
+                          align: 'right' as const,
+                          width: '105px',
+                          active: sortBy === 'nilai_desc' || sortBy === 'nilai_asc' || sortBy === 'mapel_nilai',
+                        },
+                        ...(tahapPantau === 'final'
+                          ? [{
+                              key: 'daftar_ulang' as HeaderFilterKey,
+                              label: 'Daftar Ulang (50rb)',
+                              align: 'center' as const,
+                              width: '175px',
+                              active: filterBayarCol !== 'Semua' || ['bayar_lunas', 'bayar_menunggu', 'bayar_belum'].includes(filterStatus),
+                            }]
+                          : []),
+                      ]
+                    ).map((col) => {
+                      const isOpen = openColFilter?.key === col.key;
+                      return (
+                        <th
+                          key={col.key}
+                          style={{
+                            padding: '12px 14px',
+                            width: col.width,
+                            textAlign: col.align,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              justifyContent:
+                                col.align === 'right'
+                                  ? 'flex-end'
+                                  : col.align === 'center'
+                                    ? 'center'
+                                    : 'flex-start',
+                            }}
+                          >
+                            <span>{col.label}</span>
+                            <button
+                              type="button"
+                              data-col-filter-trigger="true"
+                              onClick={(e) => toggleColFilter(col.key, e)}
+                              title={`Filter & Urutkan ${col.label}`}
+                              style={{
+                                width: '24px',
+                                height: '24px',
+                                borderRadius: '6px',
+                                border: `1px solid ${col.active || isOpen ? '#0284c7' : '#cbd5e1'}`,
+                                background: col.active || isOpen ? '#e0f2fe' : 'white',
+                                color: col.active || isOpen ? '#0284c7' : '#64748b',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '0.7rem',
+                                padding: 0,
+                                transition: 'all 0.15s',
+                              }}
+                            >
+                              <i className="fas fa-filter"></i>
+                            </button>
+                          </div>
+                        </th>
+                      );
+                    })}
                     <th style={{ padding: '12px 14px', width: '180px', textAlign: 'center' }}>Aksi Kelola Sesi</th>
                   </tr>
                 </thead>
@@ -2125,6 +2405,317 @@ export default function CbtMonitoringPage() {
             </div>
           </div>
         )}
+
+        {/* POPOVER FILTER & SORT HEADER KOLOM TABEL */}
+        {openColFilter && (() => {
+          const optBtnStyle = (active: boolean): React.CSSProperties => ({
+            width: '100%',
+            padding: '7px 10px',
+            borderRadius: '7px',
+            border: `1px solid ${active ? '#0284c7' : 'transparent'}`,
+            background: active ? '#e0f2fe' : '#f8fafc',
+            color: active ? '#0369a1' : '#334155',
+            fontSize: '0.8rem',
+            fontWeight: active ? 700 : 600,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            textAlign: 'left',
+          });
+
+          const applySort = (next: SortOption) => {
+            setSortBy(next);
+            setCurrentPage(1);
+            setOpenColFilter(null);
+          };
+
+          return (
+            <div
+              data-col-filter-popover="true"
+              style={{
+                position: 'fixed',
+                top: `${openColFilter.top}px`,
+                left: `${openColFilter.left}px`,
+                width: '252px',
+                background: 'white',
+                borderRadius: '12px',
+                border: '1.5px solid #cbd5e1',
+                boxShadow: '0 14px 32px rgba(15, 23, 42, 0.16)',
+                padding: '12px',
+                zIndex: 9990,
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', paddingBottom: '8px', borderBottom: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase' }}>
+                  Filter &amp; Urutkan Kolom
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setOpenColFilter(null)}
+                  style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px 4px' }}
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+
+              {openColFilter.key === 'peserta' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="Cari nama / nomor / sekolah..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    autoFocus
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: '8px',
+                      border: '1.5px solid #cbd5e1',
+                      fontSize: '0.82rem',
+                      boxSizing: 'border-box',
+                      outline: 'none',
+                    }}
+                  />
+                  <button type="button" style={optBtnStyle(sortBy === 'nama_asc')} onClick={() => applySort('nama_asc')}>
+                    <span><i className="fas fa-sort-alpha-down" style={{ marginRight: '6px' }}></i>Urutkan Nama (A - Z)</span>
+                    {sortBy === 'nama_asc' && <i className="fas fa-check"></i>}
+                  </button>
+                  <button type="button" style={optBtnStyle(sortBy === 'nama_desc')} onClick={() => applySort('nama_desc')}>
+                    <span><i className="fas fa-sort-alpha-up" style={{ marginRight: '6px' }}></i>Urutkan Nama (Z - A)</span>
+                    {sortBy === 'nama_desc' && <i className="fas fa-check"></i>}
+                  </button>
+                  {(searchQuery || sortBy === 'nama_asc' || sortBy === 'nama_desc') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        if (sortBy === 'nama_asc' || sortBy === 'nama_desc') setSortBy('status');
+                        setCurrentPage(1);
+                        setOpenColFilter(null);
+                      }}
+                      style={{ ...optBtnStyle(false), background: '#fef2f2', color: '#dc2626', justifyContent: 'center' }}
+                    >
+                      <i className="fas fa-undo" style={{ marginRight: '6px' }}></i>Reset Kolom Peserta
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {openColFilter.key === 'cabang' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {[
+                    { val: 'Semua', label: 'Semua Cabang' },
+                    { val: 'Matematika', label: 'Matematika' },
+                    { val: 'IPAS', label: 'IPAS' },
+                    { val: 'PAI', label: 'PAI' },
+                    { val: 'Inggris', label: 'Bahasa Inggris' },
+                    { val: 'Arab', label: 'Bahasa Arab' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.val}
+                      type="button"
+                      style={optBtnStyle(filterCabang === opt.val)}
+                      onClick={() => {
+                        setFilterCabang(opt.val);
+                        setCurrentPage(1);
+                        setOpenColFilter(null);
+                      }}
+                    >
+                      <span>{opt.label}</span>
+                      {filterCabang === opt.val && <i className="fas fa-check"></i>}
+                    </button>
+                  ))}
+                  <div style={{ borderTop: '1px solid #e2e8f0', marginTop: '4px', paddingTop: '6px' }}>
+                    <button type="button" style={optBtnStyle(sortBy === 'mapel_nilai')} onClick={() => applySort('mapel_nilai')}>
+                      <span><i className="fas fa-sort-amount-down" style={{ marginRight: '6px' }}></i>Urutkan per Mapel &amp; Nilai</span>
+                      {sortBy === 'mapel_nilai' && <i className="fas fa-check"></i>}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {openColFilter.key === 'status' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {[
+                    { val: 'Semua', label: 'Semua Status' },
+                    { val: 'sedang_mengerjakan', label: 'Sedang Mengerjakan' },
+                    { val: 'selesai', label: 'Sudah Selesai' },
+                    { val: 'belum_mulai', label: 'Belum Mulai' },
+                    { val: 'login_aktif', label: '🔒 Login Aktif (1 Device)' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.val}
+                      type="button"
+                      style={optBtnStyle(filterStatus === opt.val)}
+                      onClick={() => {
+                        setFilterStatus(opt.val);
+                        setCurrentPage(1);
+                        setOpenColFilter(null);
+                      }}
+                    >
+                      <span>{opt.label}</span>
+                      {filterStatus === opt.val && <i className="fas fa-check"></i>}
+                    </button>
+                  ))}
+                  <div style={{ borderTop: '1px solid #e2e8f0', marginTop: '4px', paddingTop: '6px' }}>
+                    <button type="button" style={optBtnStyle(sortBy === 'status')} onClick={() => applySort('status')}>
+                      <span><i className="fas fa-sort" style={{ marginRight: '6px' }}></i>Urutkan Default Status</span>
+                      {sortBy === 'status' && <i className="fas fa-check"></i>}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {openColFilter.key === 'progres' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {[
+                    { val: 'Semua' as const, label: 'Semua Progres' },
+                    { val: 'terjawab' as const, label: 'Sudah Menjawab (> 0)' },
+                    { val: 'lengkap' as const, label: 'Terjawab Lengkap (100%)' },
+                    { val: 'nol' as const, label: 'Belum Menjawab (0)' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.val}
+                      type="button"
+                      style={optBtnStyle(filterProgres === opt.val)}
+                      onClick={() => {
+                        setFilterProgres(opt.val);
+                        setCurrentPage(1);
+                        setOpenColFilter(null);
+                      }}
+                    >
+                      <span>{opt.label}</span>
+                      {filterProgres === opt.val && <i className="fas fa-check"></i>}
+                    </button>
+                  ))}
+                  <div style={{ borderTop: '1px solid #e2e8f0', marginTop: '4px', paddingTop: '6px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <button type="button" style={optBtnStyle(sortBy === 'progres_desc')} onClick={() => applySort('progres_desc')}>
+                      <span><i className="fas fa-sort-amount-down" style={{ marginRight: '6px' }}></i>Urutkan Terbanyak</span>
+                      {sortBy === 'progres_desc' && <i className="fas fa-check"></i>}
+                    </button>
+                    <button type="button" style={optBtnStyle(sortBy === 'progres_asc')} onClick={() => applySort('progres_asc')}>
+                      <span><i className="fas fa-sort-amount-up" style={{ marginRight: '6px' }}></i>Urutkan Tersedikit</span>
+                      {sortBy === 'progres_asc' && <i className="fas fa-check"></i>}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {openColFilter.key === 'waktu' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <button type="button" style={optBtnStyle(sortBy === 'waktu_asc')} onClick={() => applySort('waktu_asc')}>
+                    <span><i className="fas fa-stopwatch" style={{ marginRight: '6px' }}></i>Sisa Waktu / Durasi Tercepat</span>
+                    {sortBy === 'waktu_asc' && <i className="fas fa-check"></i>}
+                  </button>
+                  <button type="button" style={optBtnStyle(sortBy === 'waktu_desc')} onClick={() => applySort('waktu_desc')}>
+                    <span><i className="fas fa-hourglass-half" style={{ marginRight: '6px' }}></i>Sisa Waktu / Durasi Terlama</span>
+                    {sortBy === 'waktu_desc' && <i className="fas fa-check"></i>}
+                  </button>
+                  {(sortBy === 'waktu_asc' || sortBy === 'waktu_desc') && (
+                    <button
+                      type="button"
+                      onClick={() => applySort('status')}
+                      style={{ ...optBtnStyle(false), background: '#fef2f2', color: '#dc2626', justifyContent: 'center' }}
+                    >
+                      <i className="fas fa-undo" style={{ marginRight: '6px' }}></i>Reset Urutan Waktu
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {openColFilter.key === 'pelanggaran' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {[
+                    { val: 'Semua' as const, label: 'Semua Peserta' },
+                    { val: 'ada' as const, label: 'Ada Peringatan (> 0x)' },
+                    { val: 'bersih' as const, label: 'Bersih (0x)' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.val}
+                      type="button"
+                      style={optBtnStyle(filterPelanggaranCol === opt.val)}
+                      onClick={() => {
+                        setFilterPelanggaranCol(opt.val);
+                        if (opt.val === 'Semua' && filterStatus === 'ada_pelanggaran') {
+                          setFilterStatus('Semua');
+                        }
+                        setCurrentPage(1);
+                        setOpenColFilter(null);
+                      }}
+                    >
+                      <span>{opt.label}</span>
+                      {filterPelanggaranCol === opt.val && <i className="fas fa-check"></i>}
+                    </button>
+                  ))}
+                  <div style={{ borderTop: '1px solid #e2e8f0', marginTop: '4px', paddingTop: '6px' }}>
+                    <button type="button" style={optBtnStyle(sortBy === 'pelanggaran_desc')} onClick={() => applySort('pelanggaran_desc')}>
+                      <span><i className="fas fa-sort-amount-down" style={{ marginRight: '6px' }}></i>Urutkan Terbanyak</span>
+                      {sortBy === 'pelanggaran_desc' && <i className="fas fa-check"></i>}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {openColFilter.key === 'nilai' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <button type="button" style={optBtnStyle(sortBy === 'nilai_desc')} onClick={() => applySort('nilai_desc')}>
+                    <span><i className="fas fa-sort-numeric-down-alt" style={{ marginRight: '6px' }}></i>Nilai Tertinggi</span>
+                    {sortBy === 'nilai_desc' && <i className="fas fa-check"></i>}
+                  </button>
+                  <button type="button" style={optBtnStyle(sortBy === 'nilai_asc')} onClick={() => applySort('nilai_asc')}>
+                    <span><i className="fas fa-sort-numeric-up" style={{ marginRight: '6px' }}></i>Nilai Terendah</span>
+                    {sortBy === 'nilai_asc' && <i className="fas fa-check"></i>}
+                  </button>
+                  <button type="button" style={optBtnStyle(sortBy === 'mapel_nilai')} onClick={() => applySort('mapel_nilai')}>
+                    <span><i className="fas fa-trophy" style={{ marginRight: '6px' }}></i>Mapel &amp; Nilai Tertinggi</span>
+                    {sortBy === 'mapel_nilai' && <i className="fas fa-check"></i>}
+                  </button>
+                  {(sortBy === 'nilai_desc' || sortBy === 'nilai_asc' || sortBy === 'mapel_nilai') && (
+                    <button
+                      type="button"
+                      onClick={() => applySort('status')}
+                      style={{ ...optBtnStyle(false), background: '#fef2f2', color: '#dc2626', justifyContent: 'center' }}
+                    >
+                      <i className="fas fa-undo" style={{ marginRight: '6px' }}></i>Reset Urutan Nilai
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {openColFilter.key === 'daftar_ulang' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {[
+                    { val: 'Semua' as const, label: 'Semua Status Daftar Ulang' },
+                    { val: 'lunas' as const, label: '💰 Lunas Terverifikasi' },
+                    { val: 'menunggu' as const, label: '⏳ Menunggu Verifikasi' },
+                    { val: 'belum' as const, label: '⚠️ Belum Bayar / Ditolak' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.val}
+                      type="button"
+                      style={optBtnStyle(filterBayarCol === opt.val)}
+                      onClick={() => {
+                        setFilterBayarCol(opt.val);
+                        if (opt.val === 'Semua' && ['bayar_lunas', 'bayar_menunggu', 'bayar_belum'].includes(filterStatus)) {
+                          setFilterStatus('Semua');
+                        }
+                        setCurrentPage(1);
+                        setOpenColFilter(null);
+                      }}
+                    >
+                      <span>{opt.label}</span>
+                      {filterBayarCol === opt.val && <i className="fas fa-check"></i>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
       </div>
     </div>
