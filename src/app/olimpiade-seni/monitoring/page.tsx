@@ -394,7 +394,7 @@ export default function MonitoringOlimpiadePage() {
 
   const isLolos = (d: any) => Boolean(d.lolos_seleksi);
 
-  const filteredData = filterCabang === 'Semua' 
+  const filteredData = (tahapView === 'seni' || filterCabang === 'Semua')
     ? visibleData 
     : visibleData.filter(d => d.cabang_lomba === filterCabang);
 
@@ -474,14 +474,9 @@ export default function MonitoringOlimpiadePage() {
     return pages;
   };
 
-  // Export ke Excel
-  const handleExportExcel = () => {
-    if (!sortedData || sortedData.length === 0) {
-      Swal.fire('Info', 'Tidak ada data peserta untuk di-download.', 'info');
-      return;
-    }
-
-    const rows = sortedData.map((d, i) => {
+  // Export ke Excel (mendukung export 1 cabang khusus atau multi-sheet per cabang pada Lomba Seni)
+  const buildExcelRows = (list: any[]) =>
+    list.map((d, i) => {
       const globalRank = i + 1;
       const lolos = isLolos(d);
       const cabangRank = rankInCabangMap[d.id] || null;
@@ -606,32 +601,58 @@ export default function MonitoringOlimpiadePage() {
       return rowObj;
     });
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [
-      { wch: 10 },
-      { wch: 18 },
-      { wch: 32 },
-      { wch: 32 },
-      { wch: 20 },
-      { wch: 20 },
-      ...(isAdmin ? [{ wch: 16 }, ...(tahapView !== 'seni' ? [{ wch: 16 }] : [])] : []),
-      ...(tahapView !== 'seni' ? [{ wch: 20 }] : []),
-      ...(tahapView !== 'seni' ? [{ wch: 22 }] : []),
-      { wch: 20 },
-      ...(tahapView !== 'seni' ? [{ wch: 22 }, { wch: 20 }] : []),
-      { wch: 26 },
-    ];
+  const getExcelColWidths = () => [
+    { wch: 10 },
+    { wch: 18 },
+    { wch: 32 },
+    { wch: 32 },
+    { wch: 20 },
+    { wch: 20 },
+    ...(isAdmin ? [{ wch: 16 }, ...(tahapView !== 'seni' ? [{ wch: 16 }] : [])] : []),
+    ...(tahapView !== 'seni' ? [{ wch: 20 }] : []),
+    ...(tahapView !== 'seni' ? [{ wch: 22 }] : []),
+    { wch: 20 },
+    ...(tahapView !== 'seni' ? [{ wch: 22 }, { wch: 20 }] : []),
+    { wch: 26 },
+  ];
+
+  const handleExportExcel = (targetCabang?: string) => {
+    const cabangTarget = typeof targetCabang === 'string' ? targetCabang : undefined;
+    const baseList = cabangTarget ? sortedData.filter(d => d.cabang_lomba === cabangTarget) : sortedData;
+
+    if (!baseList || baseList.length === 0) {
+      Swal.fire('Info', 'Tidak ada data peserta untuk di-download.', 'info');
+      return;
+    }
 
     const wb = XLSX.utils.book_new();
-    const sheetName = tahapView === 'final' 
-      ? 'Final Akademik' 
-      : tahapView === 'seni' 
-      ? 'Juara Seni' 
-      : 'Seleksi Akademik';
-    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    const colWidths = getExcelColWidths();
+
+    if (tahapView === 'seni' && !cabangTarget) {
+      displayCabangOptions.forEach(cab => {
+        const listCab = baseList.filter(d => d.cabang_lomba === cab);
+        if (listCab.length > 0) {
+          const ws = XLSX.utils.json_to_sheet(buildExcelRows(listCab));
+          ws['!cols'] = colWidths;
+          XLSX.utils.book_append_sheet(wb, ws, cab.slice(0, 31));
+        }
+      });
+    } else {
+      const ws = XLSX.utils.json_to_sheet(buildExcelRows(baseList));
+      ws['!cols'] = colWidths;
+      const sheetName = cabangTarget
+        ? cabangTarget.slice(0, 31)
+        : tahapView === 'final'
+        ? 'Final Akademik'
+        : tahapView === 'seni'
+        ? 'Juara Seni'
+        : 'Seleksi Akademik';
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    }
 
     const dateStr = new Date().toISOString().slice(0, 10);
-    const cabangStr = filterCabang !== 'Semua' ? `_${filterCabang.replace(/\s+/g, '_')}` : '_Semua_Cabang';
+    const activeFilterName = cabangTarget || (tahapView !== 'seni' && filterCabang !== 'Semua' ? filterCabang : '');
+    const cabangStr = activeFilterName ? `_${activeFilterName.replace(/\s+/g, '_')}` : '_Semua_Cabang';
     const filename = `Klasemen_LiveScore_${tahapView === 'final' ? 'Final_Akademik' : tahapView === 'seni' ? 'Juara_Seni' : 'Seleksi_Akademik'}${cabangStr}_${dateStr}.xlsx`;
 
     XLSX.writeFile(wb, filename);
@@ -821,7 +842,7 @@ export default function MonitoringOlimpiadePage() {
 
           {(isAdmin || publishedCabang.length > 0) && (
             <button 
-              onClick={handleExportExcel}
+              onClick={() => handleExportExcel()}
               title="Download data klasemen pemenang ke file Excel"
               style={{
                 background: '#16a34a',
@@ -1288,29 +1309,41 @@ export default function MonitoringOlimpiadePage() {
             ) : (
               <>
             <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '14px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>
-                  Filter Cabang Lomba ({tahapView === 'final' ? 'Babak Final Akademik' : tahapView === 'seni' ? 'Lomba Seni' : 'Babak Seleksi Akademik'})
-                </label>
-                <select 
-                  value={filterCabang} 
-                  onChange={(e) => {
-                    setFilterCabang(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  style={{ padding: '10px 15px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', minWidth: '300px' }}
-                >
-                  <option value="Semua">Semua Cabang Lomba</option>
-                  {displayCabangOptions.map(c => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
+              {tahapView !== 'seni' ? (
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#334155' }}>
+                    Filter Cabang Lomba ({tahapView === 'final' ? 'Babak Final Akademik' : 'Babak Seleksi Akademik'})
+                  </label>
+                  <select 
+                    value={filterCabang} 
+                    onChange={(e) => {
+                      setFilterCabang(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    style={{ padding: '10px 15px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', minWidth: '300px' }}
+                  >
+                    <option value="Semua">Semua Cabang Lomba</option>
+                    {displayCabangOptions.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div>
+                  <h3 style={{ margin: '0 0 4px 0', color: '#4c1d95', fontSize: '1.1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <i className="fas fa-award" style={{ color: '#7c3aed' }}></i>
+                    Klasemen Terpisah Per Cabang Lomba Seni
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.84rem', color: '#64748b' }}>
+                    Setiap cabang lomba seni ditampilkan pada tabel masing-masing tanpa perlu filter dropdown.
+                  </p>
+                </div>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                 <button
                   type="button"
-                  onClick={handleExportExcel}
-                  title="Download data klasemen ke file Excel"
+                  onClick={() => handleExportExcel()}
+                  title={tahapView === 'seni' ? 'Download seluruh cabang Lomba Seni (terpisah per sheet Excel)' : 'Download data klasemen ke file Excel'}
                   style={{
                     background: '#16a34a',
                     color: 'white',
@@ -1327,7 +1360,7 @@ export default function MonitoringOlimpiadePage() {
                     transition: 'all 0.15s ease'
                   }}
                 >
-                  <i className="fas fa-file-excel"></i> Download Excel
+                  <i className="fas fa-file-excel"></i> {tahapView === 'seni' ? 'Download Excel Semua Cabang' : 'Download Excel'}
                 </button>
                 <div style={{ fontSize: '0.85rem', color: '#64748b', background: '#f8fafc', padding: '8px 14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                   {tahapView === 'final' ? (
@@ -1339,7 +1372,7 @@ export default function MonitoringOlimpiadePage() {
                     <>
                       <i className="fas fa-palette" style={{ color: '#7c3aed', marginRight: '6px' }}></i>
                       Penentuan <b>Juara 1–3 &amp; Harapan 1–3</b> tiap cabang Lomba Seni ditentukan murni dari penilaian Dewan Juri
-                      {(filterCabang === 'Semua' || filterCabang === 'SMS') && (
+                      {displayCabangOptions.includes('SMS') && (
                         <> (khusus cabang <b>SMS</b> hanya menampilkan peraih Juara 1–3 &amp; Harapan 1–3)</>
                       )}.
                     </>
@@ -1357,6 +1390,195 @@ export default function MonitoringOlimpiadePage() {
               <div style={{ padding: '40px 0', textAlign: 'center' }}>
                 <InlineLoading message="Menghitung klasemen..." />
               </div>
+            ) : tahapView === 'seni' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {displayCabangOptions.length === 0 ? (
+                  <div style={{ padding: '30px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                    Belum ada cabang Lomba Seni yang ditampilkan.
+                  </div>
+                ) : (
+                  displayCabangOptions.map((cabangName) => {
+                    const cabangRows = sortedData.filter(d => d.cabang_lomba === cabangName);
+                    const isPub = publishedCabang.includes(cabangName);
+                    const isSms = cabangName.trim().toUpperCase() === 'SMS';
+                    const accent = isSms
+                      ? { bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8', icon: 'fa-flag' }
+                      : cabangName === 'Al Banjari'
+                      ? { bg: '#ecfdf5', border: '#a7f3d0', text: '#047857', icon: 'fa-drum' }
+                      : { bg: '#faf5ff', border: '#ddd6fe', text: '#6d28d9', icon: 'fa-microphone' };
+
+                    return (
+                      <div key={cabangName} style={{ border: `1.5px solid ${accent.border}`, borderRadius: '12px', overflow: 'hidden', background: 'white' }}>
+                        <div style={{
+                          padding: '14px 18px',
+                          background: accent.bg,
+                          borderBottom: `1px solid ${accent.border}`,
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          gap: '10px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                            <span style={{
+                              width: '34px', height: '34px', borderRadius: '9px',
+                              background: 'white', color: accent.text, border: `1px solid ${accent.border}`,
+                              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem'
+                            }}>
+                              <i className={`fas ${accent.icon}`}></i>
+                            </span>
+                            <div>
+                              <div style={{ fontWeight: 800, fontSize: '1.08rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                <span>{cabangName}</span>
+                                <span style={{
+                                  fontSize: '0.74rem', fontWeight: 700, padding: '2px 9px', borderRadius: '999px',
+                                  background: 'white', color: accent.text, border: `1px solid ${accent.border}`
+                                }}>
+                                  {cabangRows.length} Peserta
+                                </span>
+                                {isSms && (
+                                  <span style={{
+                                    fontSize: '0.74rem', fontWeight: 700, padding: '2px 9px', borderRadius: '999px',
+                                    background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d'
+                                  }}>
+                                    Juara 1–3 &amp; Harapan 1–3
+                                  </span>
+                                )}
+                                {isAdmin && (
+                                  <span style={{
+                                    fontSize: '0.73rem', fontWeight: 700, padding: '2px 9px', borderRadius: '999px',
+                                    background: isPub ? '#dcfce7' : '#f1f5f9',
+                                    color: isPub ? '#15803d' : '#64748b',
+                                    border: `1px solid ${isPub ? '#86efac' : '#cbd5e1'}`
+                                  }}>
+                                    {isPub ? 'Publik' : 'Disembunyikan'}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleExportExcel(cabangName)}
+                            style={{
+                              background: 'white',
+                              color: '#15803d',
+                              border: '1px solid #86efac',
+                              padding: '6px 12px',
+                              borderRadius: '8px',
+                              fontSize: '0.8rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            <i className="fas fa-file-excel"></i> Excel {cabangName}
+                          </button>
+                        </div>
+
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.94rem' }}>
+                            <thead>
+                              <tr style={{ background: '#f8fafc', color: '#334155', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>
+                                <th style={{ padding: '13px 15px', width: '110px' }}>Peringkat</th>
+                                <th style={{ padding: '13px 15px' }}>Nama Peserta</th>
+                                <th style={{ padding: '13px 15px' }}>Asal Sekolah</th>
+                                {isAdmin && <th style={{ padding: '13px 15px', textAlign: 'center' }}>Penilai</th>}
+                                <th style={{ padding: '13px 15px', textAlign: 'center' }}>Nilai Akhir (Juri)</th>
+                                <th style={{ padding: '13px 15px', textAlign: 'center' }}>Predikat / Juara</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {cabangRows.length === 0 ? (
+                                <tr>
+                                  <td colSpan={isAdmin ? 6 : 5} style={{ padding: '26px', textAlign: 'center', color: '#64748b' }}>
+                                    {isSms
+                                      ? 'Belum ada data peraih Juara / Harapan yang dinilai pada cabang SMS.'
+                                      : `Belum ada data peserta atau penilaian Dewan Juri untuk cabang ${cabangName}.`}
+                                  </td>
+                                </tr>
+                              ) : (
+                                cabangRows.map((d, idx) => {
+                                  const cabangRank = rankInCabangMap[d.id] || idx + 1;
+                                  const hasScore = Number(d.rata_rata) > 0;
+                                  const showMedal = hasScore && cabangRank <= 6;
+                                  const rowBg = cabangRank === 1 ? '#fef9c3' : cabangRank === 2 ? '#f1f5f9' : cabangRank === 3 ? '#fff7ed' : (cabangRank <= 6 && hasScore ? '#faf5ff' : 'white');
+                                  return (
+                                    <tr key={d.id} style={{ borderBottom: '1px solid #e2e8f0', background: rowBg }}>
+                                      <td style={{ padding: '13px 15px', fontWeight: 'bold', color: showMedal ? (cabangRank === 1 ? '#ca8a04' : cabangRank === 2 ? '#64748b' : cabangRank === 3 ? '#ea580c' : '#7c3aed') : '#334155' }}>
+                                        {showMedal && cabangRank === 1 ? <><i className="fas fa-trophy" style={{ color: '#eab308' }}></i> 1</> :
+                                         showMedal && cabangRank === 2 ? <><i className="fas fa-medal" style={{ color: '#94a3b8' }}></i> 2</> :
+                                         showMedal && cabangRank === 3 ? <><i className="fas fa-medal" style={{ color: '#c2410c' }}></i> 3</> :
+                                         showMedal && cabangRank <= 6 ? <><i className="fas fa-award" style={{ color: '#7c3aed' }}></i> {cabangRank}</> :
+                                         (hasScore ? cabangRank : idx + 1)}
+                                      </td>
+                                      <td style={{ padding: '13px 15px', fontWeight: 600 }}>
+                                        <div>{d.nama}</div>
+                                        {d.nomor_peserta && (
+                                          <div style={{ fontSize: '0.76rem', color: '#94a3b8', fontWeight: 500 }}>{d.nomor_peserta}</div>
+                                        )}
+                                      </td>
+                                      <td style={{ padding: '13px 15px', color: '#64748b' }}>{d.asal_sekolah || '-'}</td>
+                                      {isAdmin && (
+                                        <td style={{ padding: '13px 15px', textAlign: 'center' }}>
+                                          <span style={{ background: '#e2e8f0', padding: '4px 10px', borderRadius: '20px', fontSize: '0.8rem' }}>
+                                            {d.jumlah_juri} Juri
+                                          </span>
+                                        </td>
+                                      )}
+                                      <td style={{ padding: '13px 15px', textAlign: 'center' }}>
+                                        <div style={{ fontWeight: 'bold', fontSize: '1.08rem', color: hasScore ? '#10b981' : '#94a3b8' }}>
+                                          {d.rata_rata}
+                                        </div>
+                                      </td>
+                                      <td style={{ padding: '13px 15px', textAlign: 'center' }}>
+                                        {!hasScore ? (
+                                          <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>Belum Dinilai Juri</span>
+                                        ) : cabangRank === 1 ? (
+                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#fef08a', color: '#854d0e', borderRadius: '20px', padding: '5px 14px', fontWeight: 800, fontSize: '0.85rem', border: '1px solid #facc15' }}>
+                                            <i className="fas fa-trophy" style={{ color: '#ca8a04' }}></i> JUARA 1
+                                          </span>
+                                        ) : cabangRank === 2 ? (
+                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#e2e8f0', color: '#334155', borderRadius: '20px', padding: '5px 14px', fontWeight: 800, fontSize: '0.85rem', border: '1px solid #cbd5e1' }}>
+                                            <i className="fas fa-medal" style={{ color: '#64748b' }}></i> JUARA 2
+                                          </span>
+                                        ) : cabangRank === 3 ? (
+                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#ffedd5', color: '#9a3412', borderRadius: '20px', padding: '5px 14px', fontWeight: 800, fontSize: '0.85rem', border: '1px solid #fdba74' }}>
+                                            <i className="fas fa-medal" style={{ color: '#ea580c' }}></i> JUARA 3
+                                          </span>
+                                        ) : cabangRank === 4 ? (
+                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#ede9fe', color: '#5b21b6', borderRadius: '20px', padding: '5px 14px', fontWeight: 800, fontSize: '0.85rem', border: '1px solid #c4b5fd' }}>
+                                            <i className="fas fa-award" style={{ color: '#7c3aed' }}></i> HARAPAN 1
+                                          </span>
+                                        ) : cabangRank === 5 ? (
+                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#ede9fe', color: '#5b21b6', borderRadius: '20px', padding: '5px 14px', fontWeight: 800, fontSize: '0.85rem', border: '1px solid #c4b5fd' }}>
+                                            <i className="fas fa-award" style={{ color: '#7c3aed' }}></i> HARAPAN 2
+                                          </span>
+                                        ) : cabangRank === 6 ? (
+                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#ede9fe', color: '#5b21b6', borderRadius: '20px', padding: '5px 14px', fontWeight: 800, fontSize: '0.85rem', border: '1px solid #c4b5fd' }}>
+                                            <i className="fas fa-award" style={{ color: '#7c3aed' }}></i> HARAPAN 3
+                                          </span>
+                                        ) : (
+                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#f1f5f9', color: '#475569', borderRadius: '20px', padding: '4px 12px', fontWeight: 600, fontSize: '0.82rem' }}>
+                                            Peserta (#{cabangRank})
+                                          </span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             ) : (
               <>
                 <div style={{ overflowX: 'auto' }}>
@@ -1370,29 +1592,25 @@ export default function MonitoringOlimpiadePage() {
                         {isAdmin && (
                           <>
                             <th style={{ padding: '15px', textAlign: 'center' }}>Penilai</th>
-                            {tahapView !== 'seni' && <th style={{ padding: '15px', textAlign: 'center' }}>Pelanggaran</th>}
+                            <th style={{ padding: '15px', textAlign: 'center' }}>Pelanggaran</th>
                           </>
                         )}
-                        {tahapView !== 'seni' && <th style={{ padding: '15px', textAlign: 'center' }}>Waktu Mengerjakan</th>}
-                        {tahapView !== 'seni' && (
-                          <th style={{ padding: '15px', textAlign: 'center' }}>Skor Mentah</th>
-                        )}
+                        <th style={{ padding: '15px', textAlign: 'center' }}>Waktu Mengerjakan</th>
+                        <th style={{ padding: '15px', textAlign: 'center' }}>Skor Mentah</th>
                         <th style={{ padding: '15px', textAlign: 'center' }}>
-                          {tahapView === 'final' ? 'Nilai Final CBT' : tahapView === 'seni' ? 'Nilai Akhir (Juri)' : 'Nilai Seleksi CBT'}
+                          {tahapView === 'final' ? 'Nilai Final CBT' : 'Nilai Seleksi CBT'}
                         </th>
                         <th style={{ padding: '15px', textAlign: 'center' }}>
-                          {tahapView === 'seleksi' ? `Status (Top ${MAX_LOLOS})` : tahapView === 'final' ? 'Predikat / Medali' : 'Predikat / Juara'}
+                          {tahapView === 'seleksi' ? `Status (Top ${MAX_LOLOS})` : 'Predikat / Medali'}
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       {sortedData.length === 0 ? (
                         <tr>
-                          <td colSpan={6 + (filterCabang === 'Semua' ? 1 : 0) + (isAdmin ? (tahapView === 'seni' ? 1 : 2) : 0) - (tahapView === 'seni' ? 1 : 0) + (tahapView !== 'seni' ? 1 : 0)} style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
+                          <td colSpan={6 + (filterCabang === 'Semua' ? 1 : 0) + (isAdmin ? 2 : 0) + 1} style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
                             {tahapView === 'final'
                               ? 'Belum ada data Finalis atau nilai Babak Final Olimpiade Akademik.'
-                              : tahapView === 'seni'
-                              ? 'Belum ada data peserta atau penilaian Dewan Juri untuk Lomba Seni.'
                               : 'Belum ada data nilai Babak Seleksi Olimpiade Akademik.'}
                           </td>
                         </tr>
@@ -1403,7 +1621,7 @@ export default function MonitoringOlimpiadePage() {
                           const cabangRank = rankInCabangMap[d.id] || null;
                           const displayRank = cabangRank || d.peringkat_seleksi || globalRank;
                           const hasScore = Number(d.rata_rata) > 0;
-                          const showMedal = hasScore && (tahapView === 'final' ? displayRank <= 9 : tahapView === 'seni' ? displayRank <= 6 : displayRank <= 3);
+                          const showMedal = hasScore && (tahapView === 'final' ? displayRank <= 9 : displayRank <= 3);
                           const durationText = (() => {
                             if (d.waktu_mulai && d.waktu_selesai) {
                               const start = new Date(d.waktu_mulai).getTime();
@@ -1419,23 +1637,15 @@ export default function MonitoringOlimpiadePage() {
 
                           const rowBg = tahapView === 'final'
                             ? (cabangRank && cabangRank <= 3 ? '#fef9c3' : cabangRank && cabangRank <= 6 ? '#f1f5f9' : cabangRank && cabangRank <= 9 ? '#fff7ed' : 'white')
-                            : tahapView === 'seni'
-                            ? (cabangRank === 1 ? '#fef9c3' : cabangRank === 2 ? '#f1f5f9' : cabangRank === 3 ? '#fff7ed' : (cabangRank && cabangRank <= 6 ? '#faf5ff' : 'white'))
                             : (lolos ? (displayRank === 1 ? '#fef9c3' : displayRank === 2 ? '#f0fdf4' : displayRank === 3 ? '#fff7ed' : '#f0fdf4') : '#fff5f5');
                           
                           return (
                             <tr key={d.id} style={{ borderBottom: '1px solid #e2e8f0', background: rowBg }}>
-                              <td style={{ padding: '15px', fontWeight: 'bold', color: showMedal ? (tahapView === 'final' ? (displayRank <= 3 ? '#ca8a04' : displayRank <= 6 ? '#475569' : '#ea580c') : tahapView === 'seni' ? (displayRank === 1 ? '#ca8a04' : displayRank === 2 ? '#64748b' : displayRank === 3 ? '#ea580c' : '#7c3aed') : (displayRank === 1 ? '#ca8a04' : displayRank === 2 ? '#64748b' : '#ea580c')) : '#334155' }}>
+                              <td style={{ padding: '15px', fontWeight: 'bold', color: showMedal ? (tahapView === 'final' ? (displayRank <= 3 ? '#ca8a04' : displayRank <= 6 ? '#475569' : '#ea580c') : (displayRank === 1 ? '#ca8a04' : displayRank === 2 ? '#64748b' : '#ea580c')) : '#334155' }}>
                                 {tahapView === 'final' ? (
                                   showMedal && displayRank <= 3 ? <><i className="fas fa-medal" style={{color: '#eab308'}}></i> {displayRank}</> :
                                   showMedal && displayRank <= 6 ? <><i className="fas fa-medal" style={{color: '#94a3b8'}}></i> {displayRank}</> :
                                   showMedal && displayRank <= 9 ? <><i className="fas fa-medal" style={{color: '#c2410c'}}></i> {displayRank}</> :
-                                  displayRank
-                                ) : tahapView === 'seni' ? (
-                                  showMedal && displayRank === 1 ? <><i className="fas fa-trophy" style={{color: '#eab308'}}></i> 1</> :
-                                  showMedal && displayRank === 2 ? <><i className="fas fa-medal" style={{color: '#94a3b8'}}></i> 2</> :
-                                  showMedal && displayRank === 3 ? <><i className="fas fa-medal" style={{color: '#c2410c'}}></i> 3</> :
-                                  showMedal && displayRank <= 6 ? <><i className="fas fa-award" style={{color: '#7c3aed'}}></i> {displayRank}</> :
                                   displayRank
                                 ) : (
                                   showMedal && displayRank === 1 ? <><i className="fas fa-trophy" style={{color: '#eab308'}}></i> 1</> : 
@@ -1459,63 +1669,57 @@ export default function MonitoringOlimpiadePage() {
                                       {d.kategori_lomba === 'akademik' ? (tahapView === 'final' ? 'CBT Final' : 'CBT Seleksi') : `${d.jumlah_juri} Juri`}
                                     </span>
                                   </td>
-                                  {tahapView !== 'seni' && (
-                                    <td style={{ padding: '15px', textAlign: 'center' }}>
-                                      {d.log_kecurangan && d.log_kecurangan.length > 0 ? (
-                                        <div
-                                          title={d.log_kecurangan.map((l: any) => `${l.ke}. ${l.jenis === 'tab_switch' ? 'Pindah Tab' : l.jenis === 'fullscreen_exit' ? 'Keluar Fullscreen' : l.jenis} (${new Date(l.waktu).toLocaleTimeString('id-ID')})`).join('\n')}
-                                          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#fef2f2', color: '#ef4444', borderRadius: '20px', padding: '4px 12px', fontWeight: 700, fontSize: '0.85rem', cursor: 'help', border: '1px solid #fca5a5' }}
-                                        >
-                                          <i className="fas fa-exclamation-triangle"></i> {d.log_kecurangan.length}x
-                                        </div>
-                                      ) : (
-                                        <span style={{ color: '#10b981', fontSize: '0.85rem' }}>
-                                          <i className="fas fa-check-circle"></i> Bersih
-                                        </span>
-                                      )}
-                                    </td>
-                                  )}
+                                  <td style={{ padding: '15px', textAlign: 'center' }}>
+                                    {d.log_kecurangan && d.log_kecurangan.length > 0 ? (
+                                      <div
+                                        title={d.log_kecurangan.map((l: any) => `${l.ke}. ${l.jenis === 'tab_switch' ? 'Pindah Tab' : l.jenis === 'fullscreen_exit' ? 'Keluar Fullscreen' : l.jenis} (${new Date(l.waktu).toLocaleTimeString('id-ID')})`).join('\n')}
+                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#fef2f2', color: '#ef4444', borderRadius: '20px', padding: '4px 12px', fontWeight: 700, fontSize: '0.85rem', cursor: 'help', border: '1px solid #fca5a5' }}
+                                      >
+                                        <i className="fas fa-exclamation-triangle"></i> {d.log_kecurangan.length}x
+                                      </div>
+                                    ) : (
+                                      <span style={{ color: '#10b981', fontSize: '0.85rem' }}>
+                                        <i className="fas fa-check-circle"></i> Bersih
+                                      </span>
+                                    )}
+                                  </td>
                                 </>
                               )}
-                              {tahapView !== 'seni' && (
-                                <td style={{ padding: '15px', textAlign: 'center', color: '#64748b', fontSize: '0.9rem', fontWeight: 500 }}>
-                                  {durationText !== '-' ? (
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#f1f5f9', padding: '4px 10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                                      <i className="fas fa-clock" style={{ color: '#94a3b8' }}></i> {durationText}
-                                    </span>
-                                  ) : '-'}
-                                </td>
-                              )}
-                              {tahapView !== 'seni' && (
-                                <td style={{ padding: '15px', textAlign: 'center' }}>
-                                  {hasScore ? (
-                                    <span style={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      background: '#f8fafc',
-                                      color: '#1e293b',
-                                      border: '1.5px solid #cbd5e1',
-                                      fontWeight: 800,
-                                      fontSize: '0.95rem',
-                                      padding: '3px 10px',
-                                      borderRadius: '8px',
-                                      minWidth: '46px'
-                                    }}>
-                                      {d.skor_mentah !== undefined && d.skor_mentah !== null
-                                        ? d.skor_mentah
-                                        : Math.round(Number(d.rata_rata) * (tahapView === 'final' ? 1.2 : 1.6))}
-                                    </span>
-                                  ) : (
-                                    <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>-</span>
-                                  )}
-                                  {tahapView === 'final' && d.kategori_lomba === 'akademik' && d.skor_mentah_seleksi !== null && d.skor_mentah_seleksi !== undefined ? (
-                                    <div style={{ fontSize: '0.73rem', color: '#64748b', marginTop: '3px' }}>
-                                      Penyisihan: {d.skor_mentah_seleksi}
-                                    </div>
-                                  ) : null}
-                                </td>
-                              )}
+                              <td style={{ padding: '15px', textAlign: 'center', color: '#64748b', fontSize: '0.9rem', fontWeight: 500 }}>
+                                {durationText !== '-' ? (
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#f1f5f9', padding: '4px 10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                                    <i className="fas fa-clock" style={{ color: '#94a3b8' }}></i> {durationText}
+                                  </span>
+                                ) : '-'}
+                              </td>
+                              <td style={{ padding: '15px', textAlign: 'center' }}>
+                                {hasScore ? (
+                                  <span style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    background: '#f8fafc',
+                                    color: '#1e293b',
+                                    border: '1.5px solid #cbd5e1',
+                                    fontWeight: 800,
+                                    fontSize: '0.95rem',
+                                    padding: '3px 10px',
+                                    borderRadius: '8px',
+                                    minWidth: '46px'
+                                  }}>
+                                    {d.skor_mentah !== undefined && d.skor_mentah !== null
+                                      ? d.skor_mentah
+                                      : Math.round(Number(d.rata_rata) * (tahapView === 'final' ? 1.2 : 1.6))}
+                                  </span>
+                                ) : (
+                                  <span style={{ color: '#94a3b8', fontSize: '0.9rem' }}>-</span>
+                                )}
+                                {tahapView === 'final' && d.kategori_lomba === 'akademik' && d.skor_mentah_seleksi !== null && d.skor_mentah_seleksi !== undefined ? (
+                                  <div style={{ fontSize: '0.73rem', color: '#64748b', marginTop: '3px' }}>
+                                    Penyisihan: {d.skor_mentah_seleksi}
+                                  </div>
+                                ) : null}
+                              </td>
                               <td style={{ padding: '15px', textAlign: 'center' }}>
                                 <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: Number(d.rata_rata) > 0 ? '#10b981' : '#94a3b8' }}>
                                   {d.rata_rata}
@@ -1547,40 +1751,6 @@ export default function MonitoringOlimpiadePage() {
                                   ) : (
                                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#f1f5f9', color: '#475569', borderRadius: '20px', padding: '4px 12px', fontWeight: 600, fontSize: '0.82rem' }}>
                                       Finalis (#{cabangRank})
-                                    </span>
-                                  )
-                                ) : tahapView === 'seni' ? (
-                                  Number(d.rata_rata) === 0 ? (
-                                    <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>
-                                      Belum Dinilai Juri
-                                    </span>
-                                  ) : cabangRank === 1 ? (
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#fef08a', color: '#854d0e', borderRadius: '20px', padding: '5px 14px', fontWeight: 800, fontSize: '0.85rem', border: '1px solid #facc15' }}>
-                                      <i className="fas fa-trophy" style={{ color: '#ca8a04' }}></i> JUARA 1
-                                    </span>
-                                  ) : cabangRank === 2 ? (
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#e2e8f0', color: '#334155', borderRadius: '20px', padding: '5px 14px', fontWeight: 800, fontSize: '0.85rem', border: '1px solid #cbd5e1' }}>
-                                      <i className="fas fa-medal" style={{ color: '#64748b' }}></i> JUARA 2
-                                    </span>
-                                  ) : cabangRank === 3 ? (
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#ffedd5', color: '#9a3412', borderRadius: '20px', padding: '5px 14px', fontWeight: 800, fontSize: '0.85rem', border: '1px solid #fdba74' }}>
-                                      <i className="fas fa-medal" style={{ color: '#ea580c' }}></i> JUARA 3
-                                    </span>
-                                  ) : cabangRank === 4 ? (
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#ede9fe', color: '#5b21b6', borderRadius: '20px', padding: '5px 14px', fontWeight: 800, fontSize: '0.85rem', border: '1px solid #c4b5fd' }}>
-                                      <i className="fas fa-award" style={{ color: '#7c3aed' }}></i> HARAPAN 1
-                                    </span>
-                                  ) : cabangRank === 5 ? (
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#ede9fe', color: '#5b21b6', borderRadius: '20px', padding: '5px 14px', fontWeight: 800, fontSize: '0.85rem', border: '1px solid #c4b5fd' }}>
-                                      <i className="fas fa-award" style={{ color: '#7c3aed' }}></i> HARAPAN 2
-                                    </span>
-                                  ) : cabangRank === 6 ? (
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#ede9fe', color: '#5b21b6', borderRadius: '20px', padding: '5px 14px', fontWeight: 800, fontSize: '0.85rem', border: '1px solid #c4b5fd' }}>
-                                      <i className="fas fa-award" style={{ color: '#7c3aed' }}></i> HARAPAN 3
-                                    </span>
-                                  ) : (
-                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#f1f5f9', color: '#475569', borderRadius: '20px', padding: '4px 12px', fontWeight: 600, fontSize: '0.82rem' }}>
-                                      Peserta (#{cabangRank})
                                     </span>
                                   )
                                 ) : Number(d.rata_rata) === 0 ? (
@@ -1648,7 +1818,7 @@ export default function MonitoringOlimpiadePage() {
                       </span>
                       <button
                         type="button"
-                        onClick={handleExportExcel}
+                        onClick={() => handleExportExcel()}
                         title="Download seluruh data klasemen ini ke file Excel"
                         style={{
                           background: '#f0fdf4',
