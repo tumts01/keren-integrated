@@ -53,11 +53,9 @@ export default function SurveyMadrasahPage() {
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
-        const role = (user.role || user.role || '').toLowerCase();
+        const role = (user.role || '').toLowerCase();
         if (role === 'admin') {
           setIsAdmin(true);
-        } else {
-          setActiveTab('isi');
         }
       } catch (e) {}
     }
@@ -349,23 +347,21 @@ export default function SurveyMadrasahPage() {
 
       {mainTab === 'humas' && (
         <>
-          {isAdmin && (
-            <div className={styles.tabContainer} style={{ marginTop: '-10px', transform: 'scale(0.9)', flexWrap: 'wrap', gap: '8px' }}>
-              <button className={`${styles.tabBtn} ${activeTab === 'analisis' ? styles.activeTab : ''}`} onClick={() => setActiveTab('analisis')}>
-                <i className="fas fa-chart-pie"></i> Dasbor Evaluasi & Prosentase
-              </button>
-              <button className={`${styles.tabBtn} ${activeTab === 'monitor' ? styles.activeTab : ''}`} onClick={() => setActiveTab('monitor')}>
-                <i className="fas fa-list-check"></i> Monitoring Responden
-              </button>
-              <button className={`${styles.tabBtn} ${activeTab === 'isi' ? styles.activeTab : ''}`} onClick={() => { setActiveTab('isi'); setActiveSurvey(null); }}>
-                <i className="fas fa-edit"></i> Isi Angket
-              </button>
-            </div>
-          )}
+          <div className={styles.tabContainer} style={{ marginTop: '-10px', transform: 'scale(0.9)', flexWrap: 'wrap', gap: '8px' }}>
+            <button className={`${styles.tabBtn} ${activeTab === 'analisis' ? styles.activeTab : ''}`} onClick={() => setActiveTab('analisis')}>
+              <i className="fas fa-chart-pie"></i> Dasbor Evaluasi & Prosentase
+            </button>
+            <button className={`${styles.tabBtn} ${activeTab === 'monitor' ? styles.activeTab : ''}`} onClick={() => setActiveTab('monitor')}>
+              <i className="fas fa-list-check"></i> Monitoring Responden
+            </button>
+            <button className={`${styles.tabBtn} ${activeTab === 'isi' ? styles.activeTab : ''}`} onClick={() => { setActiveTab('isi'); setActiveSurvey(null); }}>
+              <i className="fas fa-edit"></i> Isi Angket
+            </button>
+          </div>
 
-      {isAdmin && activeTab === 'analisis' ? (
+      {activeTab === 'analisis' ? (
         <SurveyAnalisisDashboard analytics={analytics} loading={loadingRekap} onRefresh={() => fetchRekap(false)} />
-      ) : isAdmin && activeTab === 'monitor' ? (
+      ) : activeTab === 'monitor' ? (
         <div className={styles.monitorContainer}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
