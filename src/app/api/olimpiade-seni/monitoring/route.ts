@@ -89,6 +89,7 @@ export async function GET(req: Request) {
     if (errAll) throw errAll;
 
     const pesertaList: any[] = [];
+    const rincianByPesertaId: Record<number, Record<string, any>> = {};
     (allData || []).forEach(row => {
       const meta = row.metadata || {};
       const nomorPeserta = (meta.NOMOR_PESERTA || '').trim();
@@ -113,6 +114,9 @@ export async function GET(req: Request) {
         const isAkademik = CABANG_AKADEMIK.includes(cabang);
 
         if (!cabangLomba || cabang === cabangLomba || meta.KATEGORI?.includes(cabangLomba)) {
+          if (!isAkademik && meta.PENILAIAN_JURI && typeof meta.PENILAIAN_JURI === 'object') {
+            rincianByPesertaId[row.id] = meta.PENILAIAN_JURI;
+          }
           pesertaList.push({
             id: row.id,
             nomor_peserta: nomorPeserta,
@@ -206,12 +210,37 @@ export async function GET(req: Request) {
 
       // Cabang Seni (langsung Final dinilai oleh Juri — menggunakan Total Akumulasi nilai semua juri agar konsisten dengan rekap juri)
       const pNilai = (nilaiData || []).filter(n => n.peserta_id === p.id && n.nilai !== null && n.nilai !== undefined);
+      const rincianJuriMap = rincianByPesertaId[p.id] || {};
+      const seenJuriCatatan = new Set<string>();
+      const catatanJuri: { juri_id: string; nama_juri: string; catatan: string }[] = [];
       let total = 0;
       let count = 0;
-      pNilai.forEach(n => {
+      const detailWithCatatan = pNilai.map(n => {
         total += Number(n.nilai) || 0;
         count++;
+        const jKey = String(n.juri_id);
+        const rawCatatan = String(rincianJuriMap[jKey]?.catatan || '').trim();
+        const juriObj: any = (n as any).olimpiade_juri;
+        const namaJuri = (Array.isArray(juriObj) ? juriObj[0]?.nama_juri : juriObj?.nama_juri) || `Juri ${count}`;
+        if (rawCatatan && !seenJuriCatatan.has(jKey)) {
+          seenJuriCatatan.add(jKey);
+          catatanJuri.push({ juri_id: jKey, nama_juri: namaJuri, catatan: rawCatatan });
+        }
+        return {
+          ...n,
+          catatan: rawCatatan
+        };
       });
+
+      Object.entries(rincianJuriMap).forEach(([jKey, info]: [string, any]) => {
+        if (seenJuriCatatan.has(jKey)) return;
+        const rawCatatan = String(info?.catatan || '').trim();
+        if (rawCatatan) {
+          seenJuriCatatan.add(jKey);
+          catatanJuri.push({ juri_id: jKey, nama_juri: 'Juri', catatan: rawCatatan });
+        }
+      });
+
       const totalAkumulasi = count > 0 ? Number(total.toFixed(2)) : 0;
       return {
         ...p,
@@ -222,7 +251,8 @@ export async function GET(req: Request) {
         total_nilai: totalAkumulasi,
         rata_rata: totalAkumulasi,
         jumlah_juri: count,
-        detail_nilai: pNilai,
+        detail_nilai: detailWithCatatan,
+        catatan_juri: catatanJuri,
         log_kecurangan: [],
         waktu_mulai: null,
         waktu_selesai: null

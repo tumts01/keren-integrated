@@ -580,6 +580,12 @@ export default function MonitoringOlimpiadePage() {
       } else if (tahapView === 'seni') {
         rowObj['Nilai Akhir (Juri)'] = hasScore ? Number(d.rata_rata) : 0;
         rowObj['Predikat / Juara'] = predikatStatus;
+        if (d.cabang_lomba === 'Singer Solo') {
+          const catatanList = Array.isArray(d.catatan_juri) ? d.catatan_juri : [];
+          rowObj['Catatan Juri'] = catatanList.length > 0
+            ? catatanList.map((c: any) => `${c.nama_juri}: ${c.catatan}`).join(' | ')
+            : '-';
+        }
       } else {
         if (d.kategori_lomba === 'akademik') {
           const smSeleksi = d.skor_mentah_seleksi !== null && d.skor_mentah_seleksi !== undefined
@@ -601,7 +607,7 @@ export default function MonitoringOlimpiadePage() {
       return rowObj;
     });
 
-  const getExcelColWidths = () => [
+  const getExcelColWidths = (hasCatatanJuri = false) => [
     { wch: 10 },
     { wch: 18 },
     { wch: 32 },
@@ -614,6 +620,7 @@ export default function MonitoringOlimpiadePage() {
     { wch: 20 },
     ...(tahapView !== 'seni' ? [{ wch: 22 }, { wch: 20 }] : []),
     { wch: 26 },
+    ...(hasCatatanJuri ? [{ wch: 46 }] : []),
   ];
 
   const handleExportExcel = (targetCabang?: string) => {
@@ -626,20 +633,19 @@ export default function MonitoringOlimpiadePage() {
     }
 
     const wb = XLSX.utils.book_new();
-    const colWidths = getExcelColWidths();
 
     if (tahapView === 'seni' && !cabangTarget) {
       displayCabangOptions.forEach(cab => {
         const listCab = baseList.filter(d => d.cabang_lomba === cab);
         if (listCab.length > 0) {
           const ws = XLSX.utils.json_to_sheet(buildExcelRows(listCab));
-          ws['!cols'] = colWidths;
+          ws['!cols'] = getExcelColWidths(cab === 'Singer Solo');
           XLSX.utils.book_append_sheet(wb, ws, cab.slice(0, 31));
         }
       });
     } else {
       const ws = XLSX.utils.json_to_sheet(buildExcelRows(baseList));
-      ws['!cols'] = colWidths;
+      ws['!cols'] = getExcelColWidths(tahapView === 'seni' && cabangTarget === 'Singer Solo');
       const sheetName = cabangTarget
         ? cabangTarget.slice(0, 31)
         : tahapView === 'final'
@@ -1401,6 +1407,7 @@ export default function MonitoringOlimpiadePage() {
                     const cabangRows = sortedData.filter(d => d.cabang_lomba === cabangName);
                     const isPub = publishedCabang.includes(cabangName);
                     const isSms = cabangName.trim().toUpperCase() === 'SMS';
+                    const showCatatanJuri = cabangName === 'Singer Solo';
                     const accent = isSms
                       ? { bg: '#eff6ff', border: '#bfdbfe', text: '#1d4ed8', icon: 'fa-flag' }
                       : cabangName === 'Al Banjari'
@@ -1489,12 +1496,13 @@ export default function MonitoringOlimpiadePage() {
                                 {isAdmin && <th style={{ padding: '13px 15px', textAlign: 'center' }}>Penilai</th>}
                                 <th style={{ padding: '13px 15px', textAlign: 'center' }}>Nilai Akhir (Juri)</th>
                                 <th style={{ padding: '13px 15px', textAlign: 'center' }}>Predikat / Juara</th>
+                                {showCatatanJuri && <th style={{ padding: '13px 15px', minWidth: '240px' }}>Catatan Juri</th>}
                               </tr>
                             </thead>
                             <tbody>
                               {cabangRows.length === 0 ? (
                                 <tr>
-                                  <td colSpan={isAdmin ? 6 : 5} style={{ padding: '26px', textAlign: 'center', color: '#64748b' }}>
+                                  <td colSpan={(isAdmin ? 6 : 5) + (showCatatanJuri ? 1 : 0)} style={{ padding: '26px', textAlign: 'center', color: '#64748b' }}>
                                     {isSms
                                       ? 'Belum ada data peraih Juara / Harapan yang dinilai pada cabang SMS.'
                                       : `Belum ada data peserta atau penilaian Dewan Juri untuk cabang ${cabangName}.`}
@@ -1506,6 +1514,7 @@ export default function MonitoringOlimpiadePage() {
                                   const hasScore = Number(d.rata_rata) > 0;
                                   const showMedal = hasScore && cabangRank <= 6;
                                   const rowBg = cabangRank === 1 ? '#fef9c3' : cabangRank === 2 ? '#f1f5f9' : cabangRank === 3 ? '#fff7ed' : (cabangRank <= 6 && hasScore ? '#faf5ff' : 'white');
+                                  const catatanList: { juri_id: string; nama_juri: string; catatan: string }[] = Array.isArray(d.catatan_juri) ? d.catatan_juri : [];
                                   return (
                                     <tr key={d.id} style={{ borderBottom: '1px solid #e2e8f0', background: rowBg }}>
                                       <td style={{ padding: '13px 15px', fontWeight: 'bold', color: showMedal ? (cabangRank === 1 ? '#ca8a04' : cabangRank === 2 ? '#64748b' : cabangRank === 3 ? '#ea580c' : '#7c3aed') : '#334155' }}>
@@ -1567,6 +1576,36 @@ export default function MonitoringOlimpiadePage() {
                                           </span>
                                         )}
                                       </td>
+                                      {showCatatanJuri && (
+                                        <td style={{ padding: '13px 15px', fontSize: '0.84rem', color: '#334155', verticalAlign: 'top' }}>
+                                          {catatanList.length === 0 ? (
+                                            <span style={{ color: '#94a3b8' }}>-</span>
+                                          ) : (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                              {catatanList.map((c, cIdx) => (
+                                                <div
+                                                  key={c.juri_id || cIdx}
+                                                  style={{
+                                                    background: '#f8fafc',
+                                                    border: '1px solid #e2e8f0',
+                                                    borderLeft: '3px solid #8b5cf6',
+                                                    borderRadius: '6px',
+                                                    padding: '6px 9px',
+                                                    lineHeight: 1.4
+                                                  }}
+                                                >
+                                                  <div style={{ fontSize: '0.73rem', fontWeight: 700, color: '#6d28d9', marginBottom: '2px' }}>
+                                                    {c.nama_juri}
+                                                  </div>
+                                                  <div style={{ fontStyle: 'italic', color: '#334155' }}>
+                                                    &ldquo;{c.catatan}&rdquo;
+                                                  </div>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          )}
+                                        </td>
+                                      )}
                                     </tr>
                                   );
                                 })
