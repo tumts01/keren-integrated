@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 import { supabase } from '@/lib/supabase';
@@ -106,6 +106,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
   const [rawStudents, setRawStudents] = useState<RawStudent[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [savingConfig, setSavingConfig] = useState(false);
+  const hasLoadedInitialRef = useRef(false);
 
   // Configuration state
   const [tahunAjaranFilter, setTahunAjaranFilter] = useState<string>('SEMUA');
@@ -191,12 +192,33 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       } catch (e) {
         console.error('Error loading Konfigurasi Ruang:', e);
       } finally {
+        hasLoadedInitialRef.current = true;
         setLoadingStudents(false);
       }
     };
 
     loadInitial();
   }, []);
+
+  // Auto-simpan draft konfigurasi ke localStorage setiap kali input ruang/quota diubah
+  useEffect(() => {
+    if (!hasLoadedInitialRef.current) return;
+    try {
+      const draft = {
+        jumlahRuang,
+        quotaPerRuang,
+        customRoomQuotas,
+        sortMode,
+        noUjianPrefix,
+        tahunAjaranFilter,
+        examTitle,
+        assignments,
+        unassigned,
+        updatedAt: lastUpdatedInfo
+      };
+      localStorage.setItem(CONFIG_KEY, JSON.stringify(draft));
+    } catch {}
+  }, [jumlahRuang, quotaPerRuang, customRoomQuotas, sortMode, noUjianPrefix, tahunAjaranFilter]);
 
   const tahunAjaranOptions = useMemo(() => {
     return Array.from(
@@ -673,29 +695,27 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
               Terakhir diperbarui: {lastUpdatedInfo}
             </span>
           )}
-          {assignments.length > 0 && (
-            <button
-              type="button"
-              onClick={() => persistConfiguration(assignments, unassigned, true)}
-              disabled={savingConfig}
-              style={{
-                background: '#0f766e',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '8px 14px',
-                fontWeight: 700,
-                fontSize: '13px',
-                cursor: savingConfig ? 'not-allowed' : 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-            >
-              <i className={savingConfig ? 'fas fa-spinner fa-spin' : 'fas fa-save'}></i>
-              Simpan Global
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => persistConfiguration(assignments, unassigned, true)}
+            disabled={savingConfig}
+            style={{
+              background: '#0f766e',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              padding: '8px 14px',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: savingConfig ? 'not-allowed' : 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <i className={savingConfig ? 'fas fa-spinner fa-spin' : 'fas fa-save'}></i>
+            Simpan Konfigurasi
+          </button>
         </div>
       </div>
 
@@ -871,34 +891,61 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
           </button>
 
           {showCustomQuotas && (
-            <div style={{ marginTop: '10px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '8px', background: 'white', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              {Array.from({ length: jumlahRuang }, (_, i) => i + 1).map(rNum => {
-                const isOdd = rNum % 2 === 1;
-                return (
-                  <div key={rNum} style={{ border: `1px solid ${isOdd ? '#bfdbfe' : '#fbcfe8'}`, borderRadius: '6px', padding: '6px 8px', background: isOdd ? '#eff6ff' : '#fdf2f8' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: isOdd ? '#1d4ed8' : '#be185d', marginBottom: '3px' }}>
-                      Ruang {rNum} ({isOdd ? 'L' : 'P'})
+            <div style={{ marginTop: '10px', background: 'white', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '8px' }}>
+                {Array.from({ length: jumlahRuang }, (_, i) => i + 1).map(rNum => {
+                  const isOdd = rNum % 2 === 1;
+                  return (
+                    <div key={rNum} style={{ border: `1px solid ${isOdd ? '#bfdbfe' : '#fbcfe8'}`, borderRadius: '6px', padding: '6px 8px', background: isOdd ? '#eff6ff' : '#fdf2f8' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: isOdd ? '#1d4ed8' : '#be185d', marginBottom: '3px' }}>
+                        Ruang {rNum} ({isOdd ? 'L' : 'P'})
+                      </div>
+                      <input
+                        type="number"
+                        min={1}
+                        max={100}
+                        placeholder={String(quotaPerRuang)}
+                        value={customRoomQuotas[rNum] ?? ''}
+                        onChange={e => {
+                          const raw = e.target.value;
+                          setCustomRoomQuotas(prev => {
+                            const next = { ...prev };
+                            if (!raw) delete next[rNum];
+                            else next[rNum] = Math.max(1, parseInt(raw, 10) || quotaPerRuang);
+                            return next;
+                          });
+                        }}
+                        style={{ width: '100%', padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }}
+                      />
                     </div>
-                    <input
-                      type="number"
-                      min={1}
-                      max={100}
-                      placeholder={String(quotaPerRuang)}
-                      value={customRoomQuotas[rNum] ?? ''}
-                      onChange={e => {
-                        const raw = e.target.value;
-                        setCustomRoomQuotas(prev => {
-                          const next = { ...prev };
-                          if (!raw) delete next[rNum];
-                          else next[rNum] = Math.max(1, parseInt(raw, 10) || quotaPerRuang);
-                          return next;
-                        });
-                      }}
-                      style={{ width: '100%', padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }}
-                    />
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+              <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <span style={{ fontSize: '11.5px', color: '#64748b' }}>
+                  Kosongkan kolom untuk mengikuti quota default (<b>{quotaPerRuang}</b>). Perubahan otomatis tersimpan lokal, klik <b>Simpan Quota Ruang</b> atau <b>Bagi Ruang Otomatis</b> untuk simpan ke server.
+                </span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {Object.keys(customRoomQuotas).length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomRoomQuotas({})}
+                      style={{ background: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Reset ke Default
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => persistConfiguration(assignments, unassigned, true)}
+                    disabled={savingConfig}
+                    style={{ background: '#0f766e', color: 'white', border: 'none', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 700, cursor: savingConfig ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <i className={savingConfig ? 'fas fa-spinner fa-spin' : 'fas fa-save'}></i>
+                    Simpan Quota Ruang
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
