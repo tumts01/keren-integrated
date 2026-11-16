@@ -43,22 +43,34 @@ export default function Sidebar() {
       }
     }
 
+    if (pathname === '/pengumuman') {
+      setHasNewPengumuman(false);
+    }
+  }, [pathname]);
+
+  useEffect(() => {
     const checkPengumuman = async () => {
       try {
-        const res = await fetch('/api/pengumuman');
+        const cacheRaw = sessionStorage.getItem('keren_pengumuman_badge_cache');
+        if (cacheRaw) {
+          const parsed = JSON.parse(cacheRaw);
+          if (parsed && Date.now() - parsed.ts < 180000) {
+            const lastCount = localStorage.getItem('keren_last_pengumuman_count') || '0';
+            setHasNewPengumuman(Number(parsed.total || 0) > parseInt(lastCount));
+            return;
+          }
+        }
+        const res = await fetch('/api/pengumuman?limit=5');
         const data = await res.json();
         if (data.success) {
+          sessionStorage.setItem('keren_pengumuman_badge_cache', JSON.stringify({ ts: Date.now(), total: data.total || 0 }));
           const lastCount = localStorage.getItem('keren_last_pengumuman_count') || '0';
-          if (data.total > parseInt(lastCount)) {
-            setHasNewPengumuman(true);
-          } else {
-            setHasNewPengumuman(false);
-          }
+          setHasNewPengumuman(data.total > parseInt(lastCount));
         }
       } catch(e) {}
     };
     checkPengumuman();
-  }, [pathname]);
+  }, []);
 
   const isAdmin = userRole.toLowerCase() === 'admin' || userRole.toLowerCase() === 'pimpinan';
   const isIzzatul = userName.toLowerCase().includes('izzatul ulfa');
@@ -398,6 +410,7 @@ export default function Sidebar() {
                     <div key={item.path} className={styles.menuItemWrapper}>
                       <Link 
                         href={hasSub ? '#' : item.path}
+                        prefetch={false}
                         className={`${styles.menuItem} ${isParentActive && !hasSub ? styles.active : ''} ${isParentActive && hasSub ? styles.parentActive : ''} ${hasSub ? styles.hasSubmenu : ''}`}
                         title={isCollapsed ? item.name : ''}
                         onClick={(e) => {
@@ -447,6 +460,7 @@ export default function Sidebar() {
                                 <div key={sub.path || sub.name} style={{ display: 'flex', flexDirection: 'column' }}>
                                   <Link 
                                     href={hasSubSub ? '#' : sub.path}
+                                    prefetch={false}
                                     className={styles.subMenuItem}
                                     onClick={(e) => {
                                       if (hasSubSub) {
@@ -495,6 +509,7 @@ export default function Sidebar() {
                                           <Link 
                                             key={ss.path} 
                                             href={ss.path}
+                                            prefetch={false}
                                             onClick={() => {
                                               if (window.innerWidth <= 768) setIsPinnedCollapsed(true);
                                             }}
@@ -537,6 +552,7 @@ export default function Sidebar() {
       <div style={{ padding: '8px 12px 16px', borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: 'auto' }}>
         <Link
           href="/panduan"
+          prefetch={false}
           className={`${styles.menuItem} ${pathname === '/panduan' ? styles.active : ''}`}
           title={isCollapsed ? 'Panduan' : ''}
           onClick={() => { if (window.innerWidth <= 768) setIsPinnedCollapsed(true); }}
@@ -555,6 +571,7 @@ export default function Sidebar() {
     <nav className={styles.mobileBottomNav} aria-label="Navigasi Cepat Mobile">
       <Link
         href="/"
+        prefetch={false}
         className={`${styles.bottomNavItem} ${pathname === '/' && isPinnedCollapsed ? styles.bottomNavItemActive : ''}`}
         onClick={() => setIsPinnedCollapsed(true)}
       >
@@ -563,6 +580,7 @@ export default function Sidebar() {
       </Link>
       <Link
         href="/presensi"
+        prefetch={false}
         className={`${styles.bottomNavItem} ${pathname === '/presensi' && isPinnedCollapsed ? styles.bottomNavItemActive : ''}`}
         onClick={() => setIsPinnedCollapsed(true)}
       >
@@ -571,6 +589,7 @@ export default function Sidebar() {
       </Link>
       <Link
         href="/absensi-gtk"
+        prefetch={false}
         className={`${styles.bottomNavItem} ${pathname === '/absensi-gtk' && isPinnedCollapsed ? styles.bottomNavItemActive : ''}`}
         onClick={() => setIsPinnedCollapsed(true)}
       >
@@ -579,6 +598,7 @@ export default function Sidebar() {
       </Link>
       <Link
         href="/pengumuman"
+        prefetch={false}
         className={`${styles.bottomNavItem} ${pathname === '/pengumuman' && isPinnedCollapsed ? styles.bottomNavItemActive : ''}`}
         onClick={() => setIsPinnedCollapsed(true)}
       >
@@ -588,6 +608,7 @@ export default function Sidebar() {
       </Link>
       <Link
         href="/loker-digital"
+        prefetch={false}
         className={`${styles.bottomNavItem} ${pathname === '/loker-digital' && isPinnedCollapsed ? styles.bottomNavItemActive : ''}`}
         onClick={() => setIsPinnedCollapsed(true)}
       >

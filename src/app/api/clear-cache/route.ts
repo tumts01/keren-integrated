@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
+import { clearDataIndukMemoryCache } from '@/lib/data-induk';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const tag = searchParams.get('tag') || 'data_induk';
-    
+
+    if (tag === 'data_induk' || tag === 'siswa') {
+      clearDataIndukMemoryCache();
+    }
+
     // @ts-ignore
     revalidateTag(tag);
     

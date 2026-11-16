@@ -152,7 +152,7 @@ export default function Header({ user, onLogout }: HeaderProps) {
           <div className={styles.searchResults}>
             {filteredMenus.length > 0 ? (
               filteredMenus.map((menu, index) => (
-                <Link href={menu.path} key={index} className={styles.searchResultItem} onClick={handleMenuClick}>
+                <Link href={menu.path} prefetch={false} key={index} className={styles.searchResultItem} onClick={handleMenuClick}>
                   <div className={styles.searchResultIcon}>
                     <i className={`fas ${menu.icon}`}></i>
                   </div>

@@ -210,8 +210,13 @@ export async function GET(request: Request) {
       };
     });
 
+    const isFresh = searchParams.get('fresh') === '1';
     return NextResponse.json({ success: true, data, total: data.length }, {
-      headers: { 'Cache-Control': 'no-store, max-age=0' }
+      headers: {
+        'Cache-Control': isFresh
+          ? 'no-store, max-age=0'
+          : 'public, s-maxage=30, stale-while-revalidate=60'
+      }
     });
   } catch (error: any) {
     console.error('GET Pengumuman error:', error);

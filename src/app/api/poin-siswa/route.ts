@@ -1,41 +1,44 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import crypto from 'crypto';
-import { unstable_cache, revalidateTag } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
-const getCachedPoin = unstable_cache(
-  async () => {
-    // Ambil data yang memiliki TIPE (Apresiasi/Pelanggaran)
-    const { data, error } = await supabase
-      .from('data_dispo_siswa')
-      .select('*')
-      .order('created_at', { ascending: false });
+let cachedPoin: any[] | null = null;
+let cachedPoinAt = 0;
 
-    if (error) {
-      console.error('Error fetching poin:', error);
-      return [];
-    }
+async function getCachedPoin() {
+  if (cachedPoin && Date.now() - cachedPoinAt < 30000) {
+    return cachedPoin;
+  }
+  // Ambil data yang memiliki TIPE (Apresiasi/Pelanggaran)
+  const { data, error } = await supabase
+    .from('data_dispo_siswa')
+    .select('*')
+    .order('created_at', { ascending: false });
 
-    return (data || [])
-      .filter(r => r.metadata && r.metadata['TIPE'])
-      .map(r => ({
-        id: r.metadata['ID'] || r.id.toString(),
-        tanggal: r.tanggal,
-        timestamp: r.metadata['TIMESTAMP'] || '',
-        namaSiswa: r.metadata['NAMA SISWA'] || '',
-        kelas: r.metadata['KELAS'] || '',
-        tipe: r.metadata['TIPE'] || '',
-        keterangan: r.metadata['KETERANGAN'] || '',
-        poin: parseInt(r.metadata['POIN'] || '0', 10),
-        petugas: r.metadata['PETUGAS'] || '',
-        dbId: r.id
-      }));
-  },
-  ['poin-siswa-all'],
-  { tags: ['poin-siswa'], revalidate: 60 }
-);
+  if (error) {
+    console.error('Error fetching poin:', error);
+    return [];
+  }
+
+  cachedPoin = (data || [])
+    .filter(r => r.metadata && r.metadata['TIPE'])
+    .map(r => ({
+      id: r.metadata['ID'] || r.id.toString(),
+      tanggal: r.tanggal,
+      timestamp: r.metadata['TIMESTAMP'] || '',
+      namaSiswa: r.metadata['NAMA SISWA'] || '',
+      kelas: r.metadata['KELAS'] || '',
+      tipe: r.metadata['TIPE'] || '',
+      keterangan: r.metadata['KETERANGAN'] || '',
+      poin: parseInt(r.metadata['POIN'] || '0', 10),
+      petugas: r.metadata['PETUGAS'] || '',
+      dbId: r.id
+    }));
+  cachedPoinAt = Date.now();
+  return cachedPoin;
+}
 
 export async function GET() {
   try {
@@ -73,7 +76,8 @@ export async function POST(request: Request) {
     const { error } = await supabase.from('data_dispo_siswa').insert([{ tanggal, metadata }]);
     if (error) throw error;
 
-    revalidateTag('poin-siswa', {});
+    cachedPoin = null;
+    cachedPoinAt = 0;
     return NextResponse.json({ success: true, id });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -97,7 +101,8 @@ export async function DELETE(request: Request) {
       if (error) throw error;
     }
 
-    revalidateTag('poin-siswa', {});
+    cachedPoin = null;
+    cachedPoinAt = 0;
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

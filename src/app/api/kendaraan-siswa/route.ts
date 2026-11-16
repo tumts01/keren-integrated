@@ -1,26 +1,29 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { unstable_cache, revalidateTag } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
-const getCachedKendaraanAll = unstable_cache(
-  async () => {
-    const { data, error } = await supabase
-      .from('kendaraan_siswa')
-      .select('*')
-      .order('kelas', { ascending: true })
-      .order('nama', { ascending: true });
+let cachedKendaraanAll: any[] | null = null;
+let cachedKendaraanAt = 0;
 
-    if (error) {
-      console.error('Error fetch kendaraan_siswa:', error);
-      return [];
-    }
-    return data || [];
-  },
-  ['kendaraan-siswa-all'],
-  { tags: ['kendaraan_siswa'], revalidate: 3600 }
-);
+async function getCachedKendaraanAll() {
+  if (cachedKendaraanAll && Date.now() - cachedKendaraanAt < 30000) {
+    return cachedKendaraanAll;
+  }
+  const { data, error } = await supabase
+    .from('kendaraan_siswa')
+    .select('*')
+    .order('kelas', { ascending: true })
+    .order('nama', { ascending: true });
+
+  if (error) {
+    console.error('Error fetch kendaraan_siswa:', error);
+    return [];
+  }
+  cachedKendaraanAll = data || [];
+  cachedKendaraanAt = Date.now();
+  return cachedKendaraanAll;
+}
 
 export async function GET(request: Request) {
   try {
@@ -108,7 +111,8 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
-    revalidateTag('kendaraan_siswa', {});
+    cachedKendaraanAll = null;
+    cachedKendaraanAt = 0;
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('POST kendaraan error:', error);
@@ -132,7 +136,8 @@ export async function DELETE(request: Request) {
 
     if (error) throw error;
 
-    revalidateTag('kendaraan_siswa', {});
+    cachedKendaraanAll = null;
+    cachedKendaraanAt = 0;
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('DELETE kendaraan error:', error);

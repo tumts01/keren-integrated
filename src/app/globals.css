@@ -293,22 +293,9 @@ a {
 }
 
 
-/* --- Custom Cursor --- */
-body, html {
-  cursor: url('/kursor-biasa.png'), auto !important;
-}
-
-a, button, [role="button"], input[type="submit"], input[type="button"], input[type="reset"], select, label {
-  cursor: url('/kursor-jari.png'), pointer !important;
-}
-
-/* Ensure disabled buttons still use the default cursor or blocked cursor */
+/* Ensure disabled buttons still use the blocked cursor */
 button:disabled, input:disabled, a.disabled {
   cursor: not-allowed !important;
-}
-
-input[type="text"], input[type="password"], input[type="number"], input[type="email"], input[type="search"], textarea, .searchInput {
-  cursor: url('/kursor-ngetik.png'), text !important;
 }
 
 /* Ensure SweetAlert2 is always on top of any modal, overlay or dialog */

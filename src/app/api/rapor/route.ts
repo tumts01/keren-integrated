@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { unstable_cache, revalidateTag } from 'next/cache';
+
 import { supabase } from '@/lib/supabase';
 import { getAllCachedDataInduk } from '@/lib/data-induk';
 
 export const dynamic = 'force-dynamic';
 
-const getCachedRaporData = unstable_cache(async () => {
+async function getRaporData() {
     let rawSiswa = await getAllCachedDataInduk();
     
     const activeStudents = (rawSiswa || []).map((row: any) => {
@@ -95,11 +95,11 @@ const getCachedRaporData = unstable_cache(async () => {
     })).sort((a, b) => a.kelas.localeCompare(b.kelas));
 
     return { startDate, endDate, rekap: rekapArray, missingList: missingStudents, allActive: activeStudents };
-}, ['rapor-data-all'], { tags: ['rapor'], revalidate: 3600 });
+}
 
 export async function GET() {
   try {
-    const data = await getCachedRaporData();
+    const data = await getRaporData();
     return NextResponse.json({ success: true, ...data });
 
   } catch (error: any) {
@@ -119,7 +119,6 @@ export async function POST(request: Request) {
     const { error } = await supabase.from('rapor_pengembalian').insert([{ scan_data, waktu }]);
     if (error) throw error;
 
-    revalidateTag('rapor', {});
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -139,7 +138,6 @@ export async function PUT(request: Request) {
       if (error) throw error;
     }
 
-    revalidateTag('rapor', {});
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

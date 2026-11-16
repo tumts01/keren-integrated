@@ -170,7 +170,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   // Popup Pengumuman Baru & Pemutakhiran Data saat user berhasil login / load
   useEffect(() => {
     if (user) {
-      fetch('/api/pengumuman')
+      fetch('/api/pengumuman?limit=5')
         .then(r => r.json())
         .then(data => {
           let hasShownAnn = false;
@@ -413,6 +413,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
                   <Link
                     href="/portal/login"
+                    prefetch={false}
                     className={styles.portalOption}
                     style={{ borderColor: '#bae6fd', background: 'linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%)' }}
                   >
@@ -428,6 +429,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
                   <Link
                     href="/spmb/login"
+                    prefetch={false}
                     className={styles.portalOption}
                     style={{ borderColor: '#a7f3d0', background: 'linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%)' }}
                   >
@@ -443,6 +445,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
                   <Link
                     href="/olimpiade-seni"
+                    prefetch={false}
                     className={styles.portalOption}
                     style={{ borderColor: '#fde68a', background: 'linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)' }}
                   >

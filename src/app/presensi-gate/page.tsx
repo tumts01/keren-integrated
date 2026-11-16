@@ -220,8 +220,20 @@ export default function PresensiGatePage() {
   useEffect(() => {
     fetchGateData();
     preloadDirectory();
-    const timer = setInterval(fetchGateData, 10000); // refresh feed every 10s
-    return () => clearInterval(timer);
+    const timer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+      fetchGateData();
+    }, 30000); // refresh feed setiap 30 detik hanya saat tab aktif
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchGateData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, []);
 
   // Keep input focused constantly in Kiosk mode (skip if SweetAlert or modal is active)

@@ -194,7 +194,7 @@ export default function PengumumanPage() {
 
   const fetchHistory = async () => {
     try {
-      const res = await fetch('/api/pengumuman');
+      const res = await fetch('/api/pengumuman?fresh=1');
       const data = await res.json();
       if (data.success) {
         setHistory(data.data);
