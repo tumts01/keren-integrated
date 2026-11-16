@@ -6,6 +6,7 @@ import { saveAs } from 'file-saver';
 import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
 import { jsPDF } from 'jspdf';
+import KonfigurasiRuangTab from './components/KonfigurasiRuangTab';
 
 interface Participant {
   nisn: string;
@@ -184,7 +185,7 @@ function CetakSampulTab() {
 }
 
 export default function PerangkatUjianPage() {
-  const [activeTab, setActiveTab] = useState<'nopes' | 'nobang' | 'identitas' | 'sampul' | 'mapping-foto'>('nopes');
+  const [activeTab, setActiveTab] = useState<'konfigurasi-ruang' | 'nopes' | 'nobang' | 'identitas' | 'sampul' | 'mapping-foto'>('konfigurasi-ruang');
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -710,7 +711,7 @@ export default function PerangkatUjianPage() {
           Perangkat Ujian
         </h1>
         <p style={{ color: '#64748b' }}>
-          Generate Nomor Peserta (Nopes) dan Nomor Bangku (Nobang) untuk Ujian.
+          Konfigurasi Ruang, Daftar Hadir, Generate Nomor Peserta (Nopes), dan Nomor Bangku (Nobang) untuk Ujian.
         </p>
       </div>
 
@@ -799,39 +800,54 @@ export default function PerangkatUjianPage() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #e2e8f0', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', borderBottom: '1px solid #e2e8f0', marginBottom: '20px' }}>
+        <button
+          onClick={() => setActiveTab('konfigurasi-ruang')}
+          style={{ padding: '12px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'konfigurasi-ruang' ? '3px solid #0ea5e9' : '3px solid transparent', color: activeTab === 'konfigurasi-ruang' ? '#0ea5e9' : '#64748b', fontWeight: activeTab === 'konfigurasi-ruang' ? 'bold' : 'normal', cursor: 'pointer', fontSize: '15px' }}
+        >
+          <i className="fas fa-door-open" style={{ marginRight: '8px' }}></i>
+          1. Konfigurasi Ruang
+        </button>
         <button
           onClick={() => setActiveTab('nopes')}
           style={{ padding: '12px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'nopes' ? '3px solid #0ea5e9' : '3px solid transparent', color: activeTab === 'nopes' ? '#0ea5e9' : '#64748b', fontWeight: activeTab === 'nopes' ? 'bold' : 'normal', cursor: 'pointer', fontSize: '15px' }}
         >
           <i className="fas fa-id-badge" style={{ marginRight: '8px' }}></i>
-          Generate Nopes
+          2. Generate Nopes
         </button>
         <button
           onClick={() => setActiveTab('nobang')}
           style={{ padding: '12px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'nobang' ? '3px solid #0ea5e9' : '3px solid transparent', color: activeTab === 'nobang' ? '#0ea5e9' : '#64748b', fontWeight: activeTab === 'nobang' ? 'bold' : 'normal', cursor: 'pointer', fontSize: '15px' }}
         >
           <i className="fas fa-chair" style={{ marginRight: '8px' }}></i>
-          Generate Nobang
+          3. Generate Nobang
         </button>
         <button
           onClick={() => setActiveTab('identitas')}
           style={{ padding: '12px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'identitas' ? '3px solid #0ea5e9' : '3px solid transparent', color: activeTab === 'identitas' ? '#0ea5e9' : '#64748b', fontWeight: activeTab === 'identitas' ? 'bold' : 'normal', cursor: 'pointer', fontSize: '15px' }}
         >
           <i className="fas fa-id-card" style={{ marginRight: '8px' }}></i>
-          Cetak Identitas Rapor
+          4. Cetak Identitas Rapor
         </button>
         <button
           onClick={() => setActiveTab('sampul')}
           style={{ padding: '12px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'sampul' ? '3px solid #0ea5e9' : '3px solid transparent', color: activeTab === 'sampul' ? '#0ea5e9' : '#64748b', fontWeight: activeTab === 'sampul' ? 'bold' : 'normal', cursor: 'pointer', fontSize: '15px' }}
         >
           <i className="fas fa-book" style={{ marginRight: '8px' }}></i>
-          Cetak Sampul Rapor
+          5. Cetak Sampul Rapor
         </button>
       </div>
 
       {/* Tab Content */}
       <div style={{ background: 'white', padding: '24px', borderRadius: '8px', border: '1px solid #e2e8f0', minHeight: '400px' }}>
+        {activeTab === 'konfigurasi-ruang' && (
+          <KonfigurasiRuangTab
+            onApplyToGenerator={(mapped, targetTab) => {
+              setParticipants(mapped);
+              setActiveTab(targetTab || 'nopes');
+            }}
+          />
+        )}
         {activeTab === 'nopes' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>

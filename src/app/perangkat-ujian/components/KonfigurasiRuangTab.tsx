@@ -1,0 +1,1390 @@
+'use client';
+import { useEffect, useMemo, useState } from 'react';
+import * as XLSX from 'xlsx';
+import Swal from 'sweetalert2';
+import { supabase } from '@/lib/supabase';
+import {
+  AssignedParticipant,
+  PrintPaperMode,
+  RoomGroupPrintData,
+  buildDaftarHadirHtml
+} from './daftarHadirPrint';
+
+interface RawStudent {
+  id: number;
+  nis: string;
+  nisn: string;
+  nama: string;
+  foto: string;
+  jenisKelamin: string;
+  status: string;
+  rombel: string;
+  tahunAjaran: string;
+  isLatest: boolean;
+  rawMetadata?: Record<string, string>;
+}
+
+interface GeneratorParticipant {
+  nisn: string;
+  noUjian: string;
+  ruang: string;
+  kelas?: string;
+  nama?: string;
+  foto?: string;
+}
+
+interface KonfigurasiRuangTabProps {
+  onApplyToGenerator?: (
+    participants: GeneratorParticipant[],
+    targetTab?: 'nopes' | 'nobang'
+  ) => void;
+}
+
+const CONFIG_KEY = 'konfigurasi_ruang_ujian';
+
+function normalizeGender(jk?: string): 'L' | 'P' | 'UNKNOWN' {
+  const v = (jk || '').toLowerCase().trim();
+  if (!v) return 'UNKNOWN';
+  if (
+    v === 'l' ||
+    v === 'lk' ||
+    v === 'l.' ||
+    v === 'm' ||
+    v.includes('laki') ||
+    v.includes('ikhwan') ||
+    v.includes('putra')
+  ) {
+    return 'L';
+  }
+  if (
+    v === 'p' ||
+    v === 'pr' ||
+    v === 'p.' ||
+    v === 'f' ||
+    v.includes('perempuan') ||
+    v.includes('wanita') ||
+    v.includes('akhwat') ||
+    v.includes('putri')
+  ) {
+    return 'P';
+  }
+  return 'UNKNOWN';
+}
+
+function parseKelasOrder(rombel?: string): { tingkat: number; huruf: string; clean: string } {
+  const clean = (rombel || '')
+    .toUpperCase()
+    .replace(/\s+/g, '')
+    .replace(/[.-]/g, '');
+  const match = clean.match(/^(\d+)([A-Z]+)$/);
+  if (match) {
+    return {
+      tingkat: parseInt(match[1], 10),
+      huruf: match[2],
+      clean
+    };
+  }
+  return {
+    tingkat: 99,
+    huruf: clean || 'ZZZ',
+    clean: rombel || '-'
+  };
+}
+
+function summarizeClasses(students: AssignedParticipant[]): string {
+  const counts: Record<string, number> = {};
+  students.forEach(s => {
+    const k = s.rombel || '-';
+    counts[k] = (counts[k] || 0) + 1;
+  });
+  return Object.entries(counts)
+    .map(([k, n]) => `${k} (${n})`)
+    .join(', ');
+}
+
+export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiRuangTabProps) {
+  const [rawStudents, setRawStudents] = useState<RawStudent[]>([]);
+  const [loadingStudents, setLoadingStudents] = useState(true);
+  const [savingConfig, setSavingConfig] = useState(false);
+
+  // Configuration state
+  const [tahunAjaranFilter, setTahunAjaranFilter] = useState<string>('SEMUA');
+  const [jumlahRuang, setJumlahRuang] = useState<number>(20);
+  const [quotaPerRuang, setQuotaPerRuang] = useState<number>(30);
+  const [customRoomQuotas, setCustomRoomQuotas] = useState<Record<number, number>>({});
+  const [showCustomQuotas, setShowCustomQuotas] = useState<boolean>(false);
+  const [sortMode, setSortMode] = useState<'tingkat-huruf' | 'huruf-tingkat'>('tingkat-huruf');
+  const [noUjianPrefix, setNoUjianPrefix] = useState<string>('');
+
+  // Result state
+  const [assignments, setAssignments] = useState<AssignedParticipant[]>([]);
+  const [unassigned, setUnassigned] = useState<
+    { nisn: string; nama: string; rombel: string; jenisKelamin: string; reason: string }[]
+  >([]);
+  const [lastUpdatedInfo, setLastUpdatedInfo] = useState<string>('');
+
+  // Table Filters
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [filterRuang, setFilterRuang] = useState<string>('ALL');
+  const [filterGender, setFilterGender] = useState<'ALL' | 'L' | 'P'>('ALL');
+  const [filterTingkat, setFilterTingkat] = useState<string>('ALL');
+  const [filterKelas, setFilterKelas] = useState<string>('ALL');
+
+  // Print Daftar Hadir Modal State
+  const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
+  const [printTargetRoom, setPrintTargetRoom] = useState<string>('ALL');
+  const [printPaperMode, setPrintPaperMode] = useState<PrintPaperMode>('f4-landscape-2up');
+  const [examTitle, setExamTitle] = useState<string>('ASESMEN MADRASAH');
+  const [printTahunAjaran, setPrintTahunAjaran] = useState<string>('2026/2027');
+  const [printMapel, setPrintMapel] = useState<string>('');
+  const [printHariTanggal, setPrintHariTanggal] = useState<string>('');
+  const [printWaktu, setPrintWaktu] = useState<string>('');
+  const [duplicateSingleOn2Up, setDuplicateSingleOn2Up] = useState<boolean>(false);
+
+  // Load students + saved room configuration on mount
+  useEffect(() => {
+    const loadInitial = async () => {
+      setLoadingStudents(true);
+      try {
+        const [siswaRes, cfgRes] = await Promise.all([
+          fetch('/api/siswa').then(r => r.json()).catch(() => null),
+          supabase.from('rapor_config').select('*').eq('key', CONFIG_KEY).maybeSingle()
+        ]);
+
+        if (siswaRes?.success && Array.isArray(siswaRes.data)) {
+          const activeList: RawStudent[] = siswaRes.data.filter((s: RawStudent) => {
+            const isAktif = (s.status || '').toLowerCase().trim() === 'aktif';
+            return s.isLatest && isAktif;
+          });
+          setRawStudents(activeList);
+
+          const taSet = Array.from(
+            new Set(activeList.map(s => (s.tahunAjaran || '').trim()).filter(Boolean))
+          ).sort();
+          if (taSet.length > 0) {
+            setPrintTahunAjaran(taSet[taSet.length - 1]);
+          }
+        }
+
+        let savedRaw: string | null = null;
+        if (!cfgRes.error && cfgRes.data?.value) {
+          savedRaw = cfgRes.data.value;
+        } else {
+          savedRaw = localStorage.getItem(CONFIG_KEY);
+        }
+
+        if (savedRaw) {
+          try {
+            const parsed = JSON.parse(savedRaw);
+            if (typeof parsed.jumlahRuang === 'number') setJumlahRuang(parsed.jumlahRuang);
+            if (typeof parsed.quotaPerRuang === 'number') setQuotaPerRuang(parsed.quotaPerRuang);
+            if (parsed.customRoomQuotas) setCustomRoomQuotas(parsed.customRoomQuotas);
+            if (parsed.sortMode) setSortMode(parsed.sortMode);
+            if (typeof parsed.noUjianPrefix === 'string') setNoUjianPrefix(parsed.noUjianPrefix);
+            if (typeof parsed.tahunAjaranFilter === 'string') setTahunAjaranFilter(parsed.tahunAjaranFilter);
+            if (Array.isArray(parsed.assignments)) setAssignments(parsed.assignments);
+            if (Array.isArray(parsed.unassigned)) setUnassigned(parsed.unassigned);
+            if (parsed.examTitle) setExamTitle(parsed.examTitle);
+            if (parsed.updatedAt) setLastUpdatedInfo(parsed.updatedAt);
+          } catch {}
+        }
+      } catch (e) {
+        console.error('Error loading Konfigurasi Ruang:', e);
+      } finally {
+        setLoadingStudents(false);
+      }
+    };
+
+    loadInitial();
+  }, []);
+
+  const tahunAjaranOptions = useMemo(() => {
+    return Array.from(
+      new Set(rawStudents.map(s => (s.tahunAjaran || '').trim()).filter(Boolean))
+    ).sort();
+  }, [rawStudents]);
+
+  const activeStudentsPool = useMemo(() => {
+    return rawStudents.filter(s => {
+      if (tahunAjaranFilter !== 'SEMUA' && (s.tahunAjaran || '').trim() !== tahunAjaranFilter) {
+        return false;
+      }
+      return true;
+    });
+  }, [rawStudents, tahunAjaranFilter]);
+
+  const genderStats = useMemo(() => {
+    let laki = 0;
+    let perempuan = 0;
+    let unknown = 0;
+    activeStudentsPool.forEach(s => {
+      const g = normalizeGender(s.jenisKelamin);
+      if (g === 'L') laki++;
+      else if (g === 'P') perempuan++;
+      else unknown++;
+    });
+    return { total: activeStudentsPool.length, laki, perempuan, unknown };
+  }, [activeStudentsPool]);
+
+  const getRoomQuota = (roomNumber: number) => {
+    const custom = customRoomQuotas[roomNumber];
+    if (typeof custom === 'number' && custom > 0) return custom;
+    return Math.max(1, Number(quotaPerRuang) || 1);
+  };
+
+  const capacityStats = useMemo(() => {
+    const count = Math.max(1, Math.min(100, Number(jumlahRuang) || 1));
+    let oddRooms = 0;
+    let evenRooms = 0;
+    let capL = 0;
+    let capP = 0;
+    for (let r = 1; r <= count; r++) {
+      const q = getRoomQuota(r);
+      if (r % 2 === 1) {
+        oddRooms++;
+        capL += q;
+      } else {
+        evenRooms++;
+        capP += q;
+      }
+    }
+    return { count, oddRooms, evenRooms, capL, capP };
+  }, [jumlahRuang, quotaPerRuang, customRoomQuotas]);
+
+  const persistConfiguration = async (
+    nextAssignments: AssignedParticipant[],
+    nextUnassigned: { nisn: string; nama: string; rombel: string; jenisKelamin: string; reason: string }[],
+    showToast = false
+  ) => {
+    const updatedAt = new Date().toLocaleString('id-ID');
+    const payload = {
+      jumlahRuang,
+      quotaPerRuang,
+      customRoomQuotas,
+      sortMode,
+      noUjianPrefix,
+      tahunAjaranFilter,
+      examTitle,
+      assignments: nextAssignments,
+      unassigned: nextUnassigned,
+      updatedAt
+    };
+    const serialized = JSON.stringify(payload);
+    localStorage.setItem(CONFIG_KEY, serialized);
+    setLastUpdatedInfo(updatedAt);
+
+    try {
+      setSavingConfig(true);
+      const { error } = await supabase
+        .from('rapor_config')
+        .upsert({ key: CONFIG_KEY, value: serialized }, { onConflict: 'key' });
+      if (error) throw error;
+      if (showToast) {
+        Swal.fire({
+          toast: true,
+          position: 'top-end',
+          icon: 'success',
+          title: 'Konfigurasi & pembagian ruang disimpan secara global.',
+          showConfirmButton: false,
+          timer: 2500
+        });
+      }
+    } catch (err: any) {
+      if (showToast) {
+        Swal.fire(
+          'Tersimpan Lokal',
+          'Konfigurasi tersimpan di browser ini, namun gagal sinkron ke server: ' +
+            (err?.message || 'Unknown error'),
+          'warning'
+        );
+      }
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const handleAutoAssign = async () => {
+    if (activeStudentsPool.length === 0) {
+      Swal.fire('Oops', 'Data siswa aktif belum tersedia.', 'warning');
+      return;
+    }
+
+    const totalRooms = Math.max(1, Math.min(100, Number(jumlahRuang) || 1));
+
+    const compareStudent = (a: RawStudent, b: RawStudent) => {
+      const ka = parseKelasOrder(a.rombel);
+      const kb = parseKelasOrder(b.rombel);
+      if (sortMode === 'tingkat-huruf') {
+        if (ka.tingkat !== kb.tingkat) return ka.tingkat - kb.tingkat;
+        const hCmp = ka.huruf.localeCompare(kb.huruf, 'id');
+        if (hCmp !== 0) return hCmp;
+      } else {
+        const hCmp = ka.huruf.localeCompare(kb.huruf, 'id');
+        if (hCmp !== 0) return hCmp;
+        if (ka.tingkat !== kb.tingkat) return ka.tingkat - kb.tingkat;
+      }
+      return (a.nama || '').localeCompare(b.nama || '', 'id');
+    };
+
+    const maleStudents: RawStudent[] = [];
+    const femaleStudents: RawStudent[] = [];
+    const unknownStudents: RawStudent[] = [];
+
+    activeStudentsPool.forEach(s => {
+      const g = normalizeGender(s.jenisKelamin);
+      if (g === 'L') maleStudents.push(s);
+      else if (g === 'P') femaleStudents.push(s);
+      else unknownStudents.push(s);
+    });
+
+    maleStudents.sort(compareStudent);
+    femaleStudents.sort(compareStudent);
+
+    const oddRoomNums: number[] = [];
+    const evenRoomNums: number[] = [];
+    for (let r = 1; r <= totalRooms; r++) {
+      if (r % 2 === 1) oddRoomNums.push(r);
+      else evenRoomNums.push(r);
+    }
+
+    const prefixClean = noUjianPrefix.trim();
+    const assignedList: AssignedParticipant[] = [];
+    const overflowList: {
+      nisn: string;
+      nama: string;
+      rombel: string;
+      jenisKelamin: string;
+      reason: string;
+    }[] = [];
+
+    const assignByGender = (
+      students: RawStudent[],
+      roomNumbers: number[],
+      genderCode: 'L' | 'P',
+      labelIfOverflow: string
+    ) => {
+      let idx = 0;
+      for (const rNum of roomNumbers) {
+        const quota = getRoomQuota(rNum);
+        for (let seat = 1; seat <= quota && idx < students.length; seat++) {
+          const s = students[idx++];
+          const parsedKelas = parseKelasOrder(s.rombel);
+          const roomPad = String(rNum).padStart(2, '0');
+          const seatPad = String(seat).padStart(2, '0');
+          const noUjian = prefixClean ? `${prefixClean}-${roomPad}-${seatPad}` : `${roomPad}-${seatPad}`;
+          const rawFoto =
+            s.rawMetadata?.['LINK FOTO TERBARU'] ||
+            s.rawMetadata?.['LINK URL FOTO 1'] ||
+            s.foto ||
+            '';
+
+          assignedList.push({
+            nis: s.nis || '',
+            nisn: s.nisn || s.nis || '',
+            nama: s.nama || 'TANPA NAMA',
+            jenisKelamin: genderCode,
+            rombel: s.rombel || '-',
+            tingkat: parsedKelas.tingkat,
+            hurufKelas: parsedKelas.huruf,
+            ruangNumber: rNum,
+            ruang: `Ruang ${rNum}`,
+            noKursi: seat,
+            noUjian,
+            foto: rawFoto
+          });
+        }
+      }
+      while (idx < students.length) {
+        const s = students[idx++];
+        overflowList.push({
+          nisn: s.nisn || s.nis || '-',
+          nama: s.nama || '-',
+          rombel: s.rombel || '-',
+          jenisKelamin: s.jenisKelamin || '-',
+          reason: labelIfOverflow
+        });
+      }
+    };
+
+    assignByGender(maleStudents, oddRoomNums, 'L', 'Melebihi kapasitas ruang ganjil (L)');
+    assignByGender(femaleStudents, evenRoomNums, 'P', 'Melebihi kapasitas ruang genap (P)');
+    unknownStudents.forEach(s => {
+      overflowList.push({
+        nisn: s.nisn || s.nis || '-',
+        nama: s.nama || '-',
+        rombel: s.rombel || '-',
+        jenisKelamin: s.jenisKelamin || '-',
+        reason: 'Jenis kelamin kosong/tidak dikenali'
+      });
+    });
+
+    assignedList.sort((a, b) => {
+      if (a.ruangNumber !== b.ruangNumber) return a.ruangNumber - b.ruangNumber;
+      return a.noKursi - b.noKursi;
+    });
+
+    setAssignments(assignedList);
+    setUnassigned(overflowList);
+    setFilterRuang('ALL');
+    setFilterGender('ALL');
+    setFilterTingkat('ALL');
+    setFilterKelas('ALL');
+    setSearchQuery('');
+
+    await persistConfiguration(assignedList, overflowList, false);
+
+    if (overflowList.length > 0) {
+      Swal.fire(
+        'Pembagian Selesai dengan Catatan',
+        `Berhasil membagi <b>${assignedList.length}</b> siswa ke ruang ujian, namun terdapat <b>${overflowList.length}</b> siswa belum mendapat ruang (cek kotak peringatan di bawah).`,
+        'warning'
+      );
+    } else {
+      Swal.fire(
+        'Berhasil!',
+        `Sebanyak ${assignedList.length} siswa aktif telah dibagi otomatis ke ${totalRooms} ruang (Ganjil = Laki-laki, Genap = Perempuan, urut A–I).`,
+        'success'
+      );
+    }
+  };
+
+  // Room summaries
+  const roomSummaries = useMemo<RoomGroupPrintData[]>(() => {
+    const totalRooms = Math.max(
+      jumlahRuang,
+      assignments.reduce((max, a) => Math.max(max, a.ruangNumber), 0)
+    );
+    const byRoom: Record<number, AssignedParticipant[]> = {};
+    assignments.forEach(a => {
+      if (!byRoom[a.ruangNumber]) byRoom[a.ruangNumber] = [];
+      byRoom[a.ruangNumber].push(a);
+    });
+
+    const list: RoomGroupPrintData[] = [];
+    for (let r = 1; r <= totalRooms; r++) {
+      const students = (byRoom[r] || []).slice().sort((a, b) => a.noKursi - b.noKursi);
+      const isOdd = r % 2 === 1;
+      list.push({
+        ruangNumber: r,
+        ruangName: `Ruang ${r}`,
+        gender: isOdd ? 'L' : 'P',
+        genderLabel: isOdd ? 'Laki-laki' : 'Perempuan',
+        quota: getRoomQuota(r),
+        students
+      });
+    }
+    return list;
+  }, [assignments, jumlahRuang, quotaPerRuang, customRoomQuotas]);
+
+  const availableKelasOptions = useMemo(() => {
+    return Array.from(new Set(assignments.map(a => a.rombel).filter(Boolean))).sort((a, b) => {
+      const pa = parseKelasOrder(a);
+      const pb = parseKelasOrder(b);
+      if (pa.tingkat !== pb.tingkat) return pa.tingkat - pb.tingkat;
+      return pa.huruf.localeCompare(pb.huruf, 'id');
+    });
+  }, [assignments]);
+
+  const filteredAssignments = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return assignments.filter(a => {
+      if (filterRuang !== 'ALL' && String(a.ruangNumber) !== filterRuang) return false;
+      if (filterGender !== 'ALL' && a.jenisKelamin !== filterGender) return false;
+      if (filterTingkat !== 'ALL' && String(a.tingkat) !== filterTingkat) return false;
+      if (filterKelas !== 'ALL' && a.rombel !== filterKelas) return false;
+      if (q) {
+        const hit =
+          (a.nama || '').toLowerCase().includes(q) ||
+          (a.nisn || '').toLowerCase().includes(q) ||
+          (a.noUjian || '').toLowerCase().includes(q) ||
+          (a.rombel || '').toLowerCase().includes(q);
+        if (!hit) return false;
+      }
+      return true;
+    });
+  }, [assignments, filterRuang, filterGender, filterTingkat, filterKelas, searchQuery]);
+
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setFilterRuang('ALL');
+    setFilterGender('ALL');
+    setFilterTingkat('ALL');
+    setFilterKelas('ALL');
+  };
+
+  const handleExportExcel = () => {
+    if (filteredAssignments.length === 0) {
+      Swal.fire('Info', 'Tidak ada data peserta yang dapat di-export.', 'info');
+      return;
+    }
+
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Daftar Peserta (kolom NISN, KELAS, NO UJIAN, RUANG kompatibel dengan Generate Nopes & Nobang)
+    const pesertaRows = filteredAssignments.map((p, idx) => ({
+      NO: idx + 1,
+      NISN: p.nisn,
+      NIS: p.nis || '-',
+      NAMA: p.nama,
+      KELAS: p.rombel,
+      JK: p.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan',
+      RUANG: p.ruang,
+      'NO KURSI': p.noKursi,
+      'NO UJIAN': p.noUjian
+    }));
+    const wsPeserta = XLSX.utils.json_to_sheet(pesertaRows);
+    wsPeserta['!cols'] = [
+      { wch: 6 },
+      { wch: 15 },
+      { wch: 12 },
+      { wch: 32 },
+      { wch: 10 },
+      { wch: 13 },
+      { wch: 12 },
+      { wch: 10 },
+      { wch: 14 }
+    ];
+    XLSX.utils.book_append_sheet(wb, wsPeserta, 'Daftar Peserta');
+
+    // Sheet 2: Rekap Per Ruang
+    const rekapRows = roomSummaries.map(r => ({
+      'NO RUANG': r.ruangNumber,
+      'NAMA RUANG': r.ruangName,
+      JENIS: r.genderLabel,
+      QUOTA: r.quota,
+      TERISI: r.students.length,
+      'SISA KURSI': Math.max(0, r.quota - r.students.length),
+      'SEBARAN KELAS': summarizeClasses(r.students) || '-'
+    }));
+    const wsRekap = XLSX.utils.json_to_sheet(rekapRows);
+    wsRekap['!cols'] = [
+      { wch: 10 },
+      { wch: 14 },
+      { wch: 14 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 12 },
+      { wch: 42 }
+    ];
+    XLSX.utils.book_append_sheet(wb, wsRekap, 'Rekap Ruang');
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const suffix = filterRuang !== 'ALL' ? `_Ruang_${filterRuang}` : '_Semua_Ruang';
+    XLSX.writeFile(wb, `Konfigurasi_Ruang_Ujian${suffix}_${dateStr}.xlsx`);
+  };
+
+  const openPrintModal = (roomNumber?: number) => {
+    if (assignments.length === 0) {
+      Swal.fire('Oops', 'Silakan klik "Bagi Ruang Otomatis" terlebih dahulu.', 'warning');
+      return;
+    }
+    if (typeof roomNumber === 'number') {
+      setPrintTargetRoom(String(roomNumber));
+    } else if (filterRuang !== 'ALL') {
+      setPrintTargetRoom(filterRuang);
+    } else {
+      setPrintTargetRoom('ALL');
+    }
+    setShowPrintModal(true);
+  };
+
+  const handleLaunchPrint = () => {
+    const selectedRooms =
+      printTargetRoom === 'ALL'
+        ? roomSummaries.filter(r => r.students.length > 0)
+        : roomSummaries.filter(r => String(r.ruangNumber) === printTargetRoom && r.students.length > 0);
+
+    if (selectedRooms.length === 0) {
+      Swal.fire('Info', 'Ruang yang dipilih belum memiliki peserta.', 'info');
+      return;
+    }
+
+    const html = buildDaftarHadirHtml(
+      selectedRooms,
+      {
+        examTitle,
+        tahunAjaran: printTahunAjaran,
+        mataPelajaran: printMapel,
+        hariTanggal: printHariTanggal,
+        waktuUjian: printWaktu,
+        paperMode: printPaperMode,
+        duplicateSingleOn2Up
+      },
+      window.location.origin
+    );
+
+    const win = window.open('', '_blank', 'width=1120,height=780');
+    if (!win) {
+      Swal.fire(
+        'Pop-up Diblokir',
+        'Izinkan pop-up browser agar jendela preview cetak Daftar Hadir dapat dibuka.',
+        'warning'
+      );
+      return;
+    }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  };
+
+  const handleApplyToGenerator = (targetTab: 'nopes' | 'nobang') => {
+    if (assignments.length === 0) {
+      Swal.fire('Oops', 'Silakan bagi ruang terlebih dahulu.', 'warning');
+      return;
+    }
+    const sourceList = filteredAssignments.length > 0 ? filteredAssignments : assignments;
+    const mapped: GeneratorParticipant[] = sourceList.map(a => ({
+      nisn: a.nisn,
+      noUjian: a.noUjian,
+      ruang: a.ruang,
+      kelas: a.rombel,
+      nama: a.nama,
+      foto: a.foto
+    }));
+    onApplyToGenerator?.(mapped, targetTab);
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: `${mapped.length} peserta dikirim ke ${targetTab === 'nopes' ? 'Generate Nopes' : 'Generate Nobang'}`,
+      showConfirmButton: false,
+      timer: 2200
+    });
+  };
+
+  return (
+    <div>
+      {/* Header & Status Info */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
+        <div>
+          <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e293b', margin: '0 0 4px 0' }}>
+            <i className="fas fa-door-open" style={{ color: '#0ea5e9', marginRight: '8px' }}></i>
+            Konfigurasi & Pembagian Ruang Ujian
+          </h2>
+          <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
+            Tentukan jumlah ruang dan quota kursi untuk membagi siswa aktif otomatis sesuai aturan ruang Ganjil/Genap dan urutan kelas A–I.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {lastUpdatedInfo && (
+            <span style={{ fontSize: '12px', color: '#64748b', background: '#f8fafc', border: '1px solid #e2e8f0', padding: '6px 10px', borderRadius: '6px' }}>
+              <i className="fas fa-clock" style={{ marginRight: '5px' }}></i>
+              Terakhir diperbarui: {lastUpdatedInfo}
+            </span>
+          )}
+          {assignments.length > 0 && (
+            <button
+              type="button"
+              onClick={() => persistConfiguration(assignments, unassigned, true)}
+              disabled={savingConfig}
+              style={{
+                background: '#0f766e',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '8px 14px',
+                fontWeight: 700,
+                fontSize: '13px',
+                cursor: savingConfig ? 'not-allowed' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <i className={savingConfig ? 'fas fa-spinner fa-spin' : 'fas fa-save'}></i>
+              Simpan Global
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Ringkasan Aturan & Data Siswa Aktif */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', marginBottom: '18px' }}>
+        <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px 14px' }}>
+          <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>Total Siswa Aktif</div>
+          <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
+            {loadingStudents ? 'Memuat...' : `${genderStats.total} Siswa`}
+          </div>
+          <div style={{ fontSize: '12px', color: '#475569', marginTop: '4px' }}>
+            L: <b>{genderStats.laki}</b> &bull; P: <b>{genderStats.perempuan}</b>
+            {genderStats.unknown > 0 && <span style={{ color: '#dc2626' }}> &bull; Lainnya: {genderStats.unknown}</span>}
+          </div>
+        </div>
+
+        <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '12px 14px' }}>
+          <div style={{ fontSize: '12px', color: '#1d4ed8', fontWeight: 700 }}>
+            <i className="fas fa-mars" style={{ marginRight: '5px' }}></i>
+            Ruang Ganjil (1, 3, 5, ...) — Laki-laki
+          </div>
+          <div style={{ fontSize: '20px', fontWeight: 800, color: '#1e3a8a', marginTop: '2px' }}>
+            {capacityStats.oddRooms} Ruang &rarr; {capacityStats.capL} Kursi
+          </div>
+          <div style={{ fontSize: '12px', marginTop: '4px', fontWeight: 600, color: capacityStats.capL >= genderStats.laki ? '#15803d' : '#dc2626' }}>
+            {capacityStats.capL >= genderStats.laki
+              ? `Kapasitas cukup (sisa ${capacityStats.capL - genderStats.laki} kursi)`
+              : `Kurang ${genderStats.laki - capacityStats.capL} kursi!`}
+          </div>
+        </div>
+
+        <div style={{ background: '#fdf2f8', border: '1px solid #fbcfe8', borderRadius: '8px', padding: '12px 14px' }}>
+          <div style={{ fontSize: '12px', color: '#be185d', fontWeight: 700 }}>
+            <i className="fas fa-venus" style={{ marginRight: '5px' }}></i>
+            Ruang Genap (2, 4, 6, ...) — Perempuan
+          </div>
+          <div style={{ fontSize: '20px', fontWeight: 800, color: '#831843', marginTop: '2px' }}>
+            {capacityStats.evenRooms} Ruang &rarr; {capacityStats.capP} Kursi
+          </div>
+          <div style={{ fontSize: '12px', marginTop: '4px', fontWeight: 600, color: capacityStats.capP >= genderStats.perempuan ? '#15803d' : '#dc2626' }}>
+            {capacityStats.capP >= genderStats.perempuan
+              ? `Kapasitas cukup (sisa ${capacityStats.capP - genderStats.perempuan} kursi)`
+              : `Kurang ${genderStats.perempuan - capacityStats.capP} kursi!`}
+          </div>
+        </div>
+
+        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '12px 14px' }}>
+          <div style={{ fontSize: '12px', color: '#15803d', fontWeight: 700 }}>
+            <i className="fas fa-sort-alpha-down" style={{ marginRight: '5px' }}></i>
+            Aturan Penentuan Ruang
+          </div>
+          <ul style={{ margin: '6px 0 0 0', paddingLeft: '16px', fontSize: '12px', color: '#166534', lineHeight: 1.45 }}>
+            <li>Ruang ganjil khusus siswa laki-laki</li>
+            <li>Ruang genap khusus siswa perempuan</li>
+            <li>Penentuan ruang urut mulai kelas A–I</li>
+          </ul>
+        </div>
+      </div>
+
+      {/* Form Pengaturan Jumlah Ruang & Quota */}
+      <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '16px', marginBottom: '18px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: '12px', alignItems: 'end' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+              Jumlah Ruang Ujian
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={jumlahRuang}
+              onChange={e => setJumlahRuang(Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 1)))}
+              style={{ width: '100%', padding: '9px 11px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 700, fontSize: '14px' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+              Quota Tempat Duduk / Ruang
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={quotaPerRuang}
+              onChange={e => setQuotaPerRuang(Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 1)))}
+              style={{ width: '100%', padding: '9px 11px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 700, fontSize: '14px' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+              Urutan Kelas (A–I)
+            </label>
+            <select
+              value={sortMode}
+              onChange={e => setSortMode(e.target.value as 'tingkat-huruf' | 'huruf-tingkat')}
+              style={{ width: '100%', padding: '9px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
+            >
+              <option value="tingkat-huruf">Tingkat lalu Kelas (7A–7I, 8A–8I, 9A–9I)</option>
+              <option value="huruf-tingkat">Huruf A–I dulu (7A, 8A, 9A, 7B, 8B...)</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+              Awalan No. Ujian (Opsional)
+            </label>
+            <input
+              type="text"
+              value={noUjianPrefix}
+              onChange={e => setNoUjianPrefix(e.target.value)}
+              placeholder="Contoh: U / PTS (kosong = 01-01)"
+              style={{ width: '100%', padding: '9px 11px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+            />
+          </div>
+
+          {tahunAjaranOptions.length > 1 && (
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
+                Tahun Ajaran Siswa
+              </label>
+              <select
+                value={tahunAjaranFilter}
+                onChange={e => setTahunAjaranFilter(e.target.value)}
+                style={{ width: '100%', padding: '9px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
+              >
+                <option value="SEMUA">Semua Siswa Aktif</option>
+                {tahunAjaranOptions.map(ta => (
+                  <option key={ta} value={ta}>TA {ta}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div>
+            <button
+              type="button"
+              onClick={handleAutoAssign}
+              disabled={loadingStudents}
+              style={{
+                width: '100%',
+                background: loadingStudents ? '#94a3b8' : 'linear-gradient(135deg, #0284c7, #0ea5e9)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '10px 16px',
+                fontWeight: 800,
+                fontSize: '14px',
+                cursor: loadingStudents ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxShadow: '0 2px 6px rgba(14,165,233,0.28)'
+              }}
+            >
+              <i className="fas fa-magic"></i>
+              Bagi Ruang Otomatis
+            </button>
+          </div>
+        </div>
+
+        {/* Toggle Quota Khusus Per Ruang */}
+        <div style={{ marginTop: '12px' }}>
+          <button
+            type="button"
+            onClick={() => setShowCustomQuotas(prev => !prev)}
+            style={{ background: 'none', border: 'none', padding: 0, color: '#0284c7', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}
+          >
+            <i className={`fas fa-chevron-${showCustomQuotas ? 'up' : 'down'}`} style={{ marginRight: '6px' }}></i>
+            {showCustomQuotas ? 'Tutup' : 'Atur'} Quota Berbeda Per Ruang (Opsional)
+          </button>
+
+          {showCustomQuotas && (
+            <div style={{ marginTop: '10px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '8px', background: 'white', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              {Array.from({ length: jumlahRuang }, (_, i) => i + 1).map(rNum => {
+                const isOdd = rNum % 2 === 1;
+                return (
+                  <div key={rNum} style={{ border: `1px solid ${isOdd ? '#bfdbfe' : '#fbcfe8'}`, borderRadius: '6px', padding: '6px 8px', background: isOdd ? '#eff6ff' : '#fdf2f8' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: isOdd ? '#1d4ed8' : '#be185d', marginBottom: '3px' }}>
+                      Ruang {rNum} ({isOdd ? 'L' : 'P'})
+                    </div>
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      placeholder={String(quotaPerRuang)}
+                      value={customRoomQuotas[rNum] ?? ''}
+                      onChange={e => {
+                        const raw = e.target.value;
+                        setCustomRoomQuotas(prev => {
+                          const next = { ...prev };
+                          if (!raw) delete next[rNum];
+                          else next[rNum] = Math.max(1, parseInt(raw, 10) || quotaPerRuang);
+                          return next;
+                        });
+                      }}
+                      style={{ width: '100%', padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Peringatan Overflow / Belum Dapat Ruang */}
+      {unassigned.length > 0 && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '8px', padding: '14px', marginBottom: '18px' }}>
+          <div style={{ fontWeight: 800, color: '#b91c1c', fontSize: '14px', marginBottom: '6px' }}>
+            <i className="fas fa-exclamation-triangle" style={{ marginRight: '6px' }}></i>
+            {unassigned.length} Siswa Belum Terbagi ke Ruang (Silakan tambah jumlah ruang atau perbesar quota)
+          </div>
+          <div style={{ maxHeight: '140px', overflowY: 'auto', fontSize: '12.5px', color: '#7f1d1d' }}>
+            {unassigned.map((u, i) => (
+              <div key={i} style={{ padding: '2px 0' }}>
+                {i + 1}. <b>{u.nama}</b> ({u.rombel} • {u.jenisKelamin}) — {u.reason}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Hasil Pembagian Ruang */}
+      {assignments.length === 0 ? (
+        <div style={{ padding: '42px 20px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+          <i className="fas fa-door-open" style={{ fontSize: '42px', color: '#cbd5e1', marginBottom: '12px', display: 'block' }}></i>
+          <div style={{ fontWeight: 700, fontSize: '15px', color: '#334155', marginBottom: '4px' }}>
+            Belum Ada Pembagian Ruang
+          </div>
+          <div style={{ fontSize: '13px' }}>
+            Atur jumlah ruang dan quota kursi di atas, lalu klik <b>Bagi Ruang Otomatis</b>.
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Ringkasan Card Per Ruang (Klik untuk filter ruang / cetak F5 langsung) */}
+          <div style={{ marginBottom: '18px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ fontWeight: 700, fontSize: '14px', color: '#334155' }}>
+                Ringkasan Sebaran Per Ruang ({roomSummaries.filter(r => r.students.length > 0).length} Ruang Terisi)
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={handleExportExcel}
+                  style={{ background: '#16a34a', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 14px', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <i className="fas fa-file-excel"></i> Export Excel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openPrintModal()}
+                  style={{ background: '#7c3aed', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 14px', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <i className="fas fa-print"></i> Cetak Daftar Hadir (F5)
+                </button>
+                {onApplyToGenerator && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyToGenerator('nopes')}
+                      style={{ background: '#0284c7', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 14px', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <i className="fas fa-id-badge"></i> Kirim ke Generate Nopes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyToGenerator('nobang')}
+                      style={{ background: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 14px', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <i className="fas fa-chair"></i> Kirim ke Generate Nobang
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '10px' }}>
+              {roomSummaries.map(r => {
+                const isSelected = filterRuang === String(r.ruangNumber);
+                const isOdd = r.gender === 'L';
+                const accentBorder = isSelected
+                  ? '#0284c7'
+                  : isOdd
+                  ? '#bfdbfe'
+                  : '#fbcfe8';
+                const accentBg = isSelected
+                  ? '#e0f2fe'
+                  : r.students.length === 0
+                  ? '#f8fafc'
+                  : isOdd
+                  ? '#eff6ff'
+                  : '#fdf2f8';
+
+                return (
+                  <div
+                    key={r.ruangNumber}
+                    onClick={() =>
+                      setFilterRuang(prev =>
+                        prev === String(r.ruangNumber) ? 'ALL' : String(r.ruangNumber)
+                      )
+                    }
+                    style={{
+                      border: `1.5px solid ${accentBorder}`,
+                      background: accentBg,
+                      borderRadius: '8px',
+                      padding: '10px 12px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontWeight: 800, fontSize: '14px', color: '#0f172a' }}>
+                        {r.ruangName}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: '999px',
+                          background: isOdd ? '#dbeafe' : '#fce7f3',
+                          color: isOdd ? '#1d4ed8' : '#be185d'
+                        }}
+                      >
+                        {r.genderLabel}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#334155', marginBottom: '4px' }}>
+                      <span>
+                        Terisi: <b>{r.students.length}</b> / {r.quota}
+                      </span>
+                      {r.students.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation();
+                            openPrintModal(r.ruangNumber);
+                          }}
+                          title={`Cetak Daftar Hadir F5 ${r.ruangName}`}
+                          style={{
+                            background: 'white',
+                            color: '#6d28d9',
+                            border: '1px solid #ddd6fe',
+                            borderRadius: '5px',
+                            padding: '2px 7px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <i className="fas fa-print" style={{ marginRight: '3px' }}></i>
+                          F5
+                        </button>
+                      )}
+                    </div>
+
+                    <div style={{ fontSize: '11px', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {r.students.length > 0 ? summarizeClasses(r.students) : 'Kosong'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Filter Bar */}
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', marginBottom: '14px', display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+            <div style={{ flex: '1 1 210px' }}>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Cari nama, NISN, atau no. ujian..."
+                style={{ width: '100%', padding: '8px 11px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
+              />
+            </div>
+
+            <select
+              value={filterRuang}
+              onChange={e => setFilterRuang(e.target.value)}
+              style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
+            >
+              <option value="ALL">Semua Ruang</option>
+              {roomSummaries
+                .filter(r => r.students.length > 0)
+                .map(r => (
+                  <option key={r.ruangNumber} value={String(r.ruangNumber)}>
+                    {r.ruangName} ({r.genderLabel} • {r.students.length})
+                  </option>
+                ))}
+            </select>
+
+            <select
+              value={filterGender}
+              onChange={e => setFilterGender(e.target.value as 'ALL' | 'L' | 'P')}
+              style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
+            >
+              <option value="ALL">Semua Gender</option>
+              <option value="L">Laki-laki (Ruang Ganjil)</option>
+              <option value="P">Perempuan (Ruang Genap)</option>
+            </select>
+
+            <select
+              value={filterTingkat}
+              onChange={e => setFilterTingkat(e.target.value)}
+              style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
+            >
+              <option value="ALL">Semua Tingkat</option>
+              <option value="7">Kelas 7</option>
+              <option value="8">Kelas 8</option>
+              <option value="9">Kelas 9</option>
+            </select>
+
+            <select
+              value={filterKelas}
+              onChange={e => setFilterKelas(e.target.value)}
+              style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
+            >
+              <option value="ALL">Semua Rombel</option>
+              {availableKelasOptions.map(k => (
+                <option key={k} value={k}>Kelas {k}</option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', background: 'white', color: '#475569', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}
+            >
+              <i className="fas fa-undo" style={{ marginRight: '5px' }}></i>
+              Reset
+            </button>
+
+            <div style={{ marginLeft: 'auto', fontSize: '12.5px', color: '#475569', fontWeight: 600 }}>
+              Menampilkan <b>{filteredAssignments.length}</b> / {assignments.length} peserta
+            </div>
+          </div>
+
+          {/* Tabel Peserta Terbagi */}
+          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13.5px' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#334155', textAlign: 'left' }}>
+                  <th style={{ padding: '11px 12px', width: '56px', textAlign: 'center' }}>No</th>
+                  <th style={{ padding: '11px 12px' }}>Ruang</th>
+                  <th style={{ padding: '11px 12px', textAlign: 'center' }}>Kursi</th>
+                  <th style={{ padding: '11px 12px' }}>No. Ujian</th>
+                  <th style={{ padding: '11px 12px' }}>NISN</th>
+                  <th style={{ padding: '11px 12px' }}>Nama Siswa</th>
+                  <th style={{ padding: '11px 12px', textAlign: 'center' }}>Kelas</th>
+                  <th style={{ padding: '11px 12px', textAlign: 'center' }}>JK</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAssignments.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} style={{ padding: '28px', textAlign: 'center', color: '#64748b' }}>
+                      Tidak ada peserta yang sesuai dengan filter.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredAssignments.map((p, idx) => {
+                    const isOdd = p.jenisKelamin === 'L';
+                    return (
+                      <tr key={`${p.nisn}-${p.ruangNumber}-${p.noKursi}`} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '9px 12px', textAlign: 'center', color: '#64748b' }}>{idx + 1}</td>
+                        <td style={{ padding: '9px 12px' }}>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '3px 9px',
+                              borderRadius: '6px',
+                              fontWeight: 700,
+                              fontSize: '12px',
+                              background: isOdd ? '#dbeafe' : '#fce7f3',
+                              color: isOdd ? '#1e40af' : '#9d174d'
+                            }}
+                          >
+                            {p.ruang}
+                          </span>
+                        </td>
+                        <td style={{ padding: '9px 12px', textAlign: 'center', fontWeight: 700, color: '#334155' }}>
+                          {p.noKursi}
+                        </td>
+                        <td style={{ padding: '9px 12px' }}>
+                          <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '3px 8px', borderRadius: '4px', fontWeight: 700, fontSize: '12px' }}>
+                            {p.noUjian}
+                          </span>
+                        </td>
+                        <td style={{ padding: '9px 12px', color: '#475569' }}>{p.nisn}</td>
+                        <td style={{ padding: '9px 12px', fontWeight: 600, color: '#0f172a' }}>{p.nama}</td>
+                        <td style={{ padding: '9px 12px', textAlign: 'center', fontWeight: 700, color: '#334155' }}>{p.rombel}</td>
+                        <td style={{ padding: '9px 12px', textAlign: 'center' }}>
+                          <span
+                            style={{
+                              fontSize: '11.5px',
+                              fontWeight: 700,
+                              color: isOdd ? '#2563eb' : '#db2777'
+                            }}
+                          >
+                            {p.jenisKelamin}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+
+      {/* Modal Pengaturan Cetak Daftar Hadir F5 di Kertas F4 */}
+      {showPrintModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.55)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px'
+          }}
+        >
+          <div style={{ background: 'white', borderRadius: '12px', width: '100%', maxWidth: '540px', boxShadow: '0 20px 40px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+            <div style={{ background: '#6d28d9', color: 'white', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontWeight: 800, fontSize: '15px' }}>
+                <i className="fas fa-print" style={{ marginRight: '8px' }}></i>
+                Cetak Daftar Hadir Per Ruang (Ukuran F5)
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPrintModal(false)}
+                style={{ background: 'none', border: 'none', color: 'white', fontSize: '18px', cursor: 'pointer' }}
+              >
+                &times;
+              </button>
+            </div>
+
+            <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Pilih Ruang yang Dicetak
+                </label>
+                <select
+                  value={printTargetRoom}
+                  onChange={e => setPrintTargetRoom(e.target.value)}
+                  style={{ width: '100%', padding: '9px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13.5px' }}
+                >
+                  <option value="ALL">
+                    Semua Ruang Terisi ({roomSummaries.filter(r => r.students.length > 0).length} Ruang)
+                  </option>
+                  {roomSummaries
+                    .filter(r => r.students.length > 0)
+                    .map(r => (
+                      <option key={r.ruangNumber} value={String(r.ruangNumber)}>
+                        {r.ruangName} ({r.genderLabel} • {r.students.length} siswa)
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Mode Kertas Cetak (F5 di Kertas F4)
+                </label>
+                <select
+                  value={printPaperMode}
+                  onChange={e => setPrintPaperMode(e.target.value as PrintPaperMode)}
+                  style={{ width: '100%', padding: '9px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                >
+                  <option value="f4-landscape-2up">
+                    Langsung Kertas F4 Landscape (330×215 mm) — 2 Halaman F5 Portrait Kiri &amp; Kanan (Rekomendasi)
+                  </option>
+                  <option value="f4-portrait-2up">
+                    Langsung Kertas F4 Portrait (215×330 mm) — 2 Halaman F5 Landscape Atas &amp; Bawah
+                  </option>
+                  <option value="f5-single">
+                    Ukuran F5 Portrait Murni (165×215 mm) — 1 Halaman per Sheet
+                  </option>
+                </select>
+                <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '4px' }}>
+                  Dalam mode 2-halaman di kertas F4, satu lembar F4 memuat 2 lembar Daftar Hadir F5 dengan garis potong tengah dan kolom TTD Pengawas.
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Judul Ujian
+                  </label>
+                  <input
+                    type="text"
+                    value={examTitle}
+                    onChange={e => setExamTitle(e.target.value)}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Tahun Ajaran
+                  </label>
+                  <input
+                    type="text"
+                    value={printTahunAjaran}
+                    onChange={e => setPrintTahunAjaran(e.target.value)}
+                    style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#475569', marginBottom: '3px' }}>
+                    Mapel (Opsional)
+                  </label>
+                  <input
+                    type="text"
+                    value={printMapel}
+                    onChange={e => setPrintMapel(e.target.value)}
+                    placeholder="Kosong = titik-titik"
+                    style={{ width: '100%', padding: '7px 9px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#475569', marginBottom: '3px' }}>
+                    Hari / Tgl (Opsional)
+                  </label>
+                  <input
+                    type="text"
+                    value={printHariTanggal}
+                    onChange={e => setPrintHariTanggal(e.target.value)}
+                    placeholder="Kosong = titik-titik"
+                    style={{ width: '100%', padding: '7px 9px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 600, color: '#475569', marginBottom: '3px' }}>
+                    Waktu (Opsional)
+                  </label>
+                  <input
+                    type="text"
+                    value={printWaktu}
+                    onChange={e => setPrintWaktu(e.target.value)}
+                    placeholder="Kosong = titik-titik"
+                    style={{ width: '100%', padding: '7px 9px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px' }}
+                  />
+                </div>
+              </div>
+
+              {printTargetRoom !== 'ALL' && printPaperMode !== 'f5-single' && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: '#334155', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={duplicateSingleOn2Up}
+                    onChange={e => setDuplicateSingleOn2Up(e.target.checked)}
+                  />
+                  Gandakan ruang yang sama ke sisi kedua kertas F4 (hemat potong)
+                </label>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '6px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowPrintModal(false)}
+                  style={{ padding: '9px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', background: 'white', color: '#475569', fontWeight: 600, cursor: 'pointer', fontSize: '13px' }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLaunchPrint}
+                  style={{ padding: '9px 18px', borderRadius: '6px', border: 'none', background: '#6d28d9', color: 'white', fontWeight: 700, cursor: 'pointer', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '7px' }}
+                >
+                  <i className="fas fa-print"></i> Buka Preview &amp; Cetak
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
