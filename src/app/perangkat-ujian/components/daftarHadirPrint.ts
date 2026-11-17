@@ -19,6 +19,7 @@ export interface RoomGroupPrintData {
   ruangName: string;
   sesi: 'Pagi' | 'Siang';
   sesiLabel: string;
+  tingkat?: number;
   gender: 'L' | 'P' | 'CAMPUR';
   genderLabel: string;
   quota: number;
@@ -167,7 +168,7 @@ function renderSingleF5Card(
       <div style="margin-top:auto;padding-top:4px;display:flex;justify-content:space-between;align-items:flex-end;gap:8px;">
         <table style="border-collapse:collapse;font-size:7.4pt;width:54%;">
           <tr>
-            <td style="border:1px solid #334155;padding:2px 5px;background:#f8fafc;font-weight:bold;" colspan="2">Rekap Kehadiran (${escapeHtml(room.ruangName)} • Sesi ${escapeHtml(room.sesi)})</td>
+            <td style="border:1px solid #334155;padding:2px 5px;background:#f8fafc;font-weight:bold;" colspan="2">Rekap Kehadiran (${escapeHtml(room.ruangName)} • Sesi ${escapeHtml(room.sesi)}${room.tingkat && room.tingkat >= 7 && room.tingkat <= 9 ? ` • Kls ${room.tingkat}` : ''})</td>
           </tr>
           <tr>
             <td style="border:1px solid #334155;padding:2px 5px;">Jumlah Peserta Seharusnya</td>

@@ -153,6 +153,7 @@ export default function KonfigurasiRuangTab() {
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
   const [printTargetRoom, setPrintTargetRoom] = useState<string>('ALL');
   const [printTargetSesi, setPrintTargetSesi] = useState<'ALL' | 'Pagi' | 'Siang'>('ALL');
+  const [printTargetTingkat, setPrintTargetTingkat] = useState<'ALL' | '7' | '8' | '9'>('ALL');
   const [printPaperMode, setPrintPaperMode] = useState<PrintPaperMode>('f4-landscape-2up');
   const [examTitle, setExamTitle] = useState<string>('ASESMEN MADRASAH');
   const [printTahunAjaran, setPrintTahunAjaran] = useState<string>('2026/2027');
@@ -956,31 +957,36 @@ export default function KonfigurasiRuangTab() {
 
   const roomSummaries = useMemo<RoomGroupPrintData[]>(() => {
     const list: RoomGroupPrintData[] = [];
+    // Daftar Hadir dipisah sendiri per angkatan (Kelas 7, Kelas 8, Kelas 9) di tiap ruang & sesi
+    const pushSplitByGrade = (
+      r: typeof roomOverviews[number],
+      sesi: ExamSesi,
+      students: AssignedParticipant[],
+      quota: number
+    ) => {
+      if (students.length === 0) return;
+      const gradesPresent = Array.from(new Set(students.map(s => s.tingkat))).sort((a, b) => a - b);
+      gradesPresent.forEach(t => {
+        const gradeStudents = students.filter(s => s.tingkat === t);
+        if (gradeStudents.length === 0) return;
+        const gradeText = t >= 7 && t <= 9 ? `Kelas ${t}` : 'Lainnya';
+        list.push({
+          ruangNumber: r.ruangNumber,
+          ruangName: r.ruangName,
+          sesi,
+          sesiLabel: `Sesi ${sesi} • ${gradeText}`,
+          tingkat: t,
+          gender: r.gender,
+          genderLabel: r.genderLabel,
+          quota,
+          students: gradeStudents
+        });
+      });
+    };
+
     roomOverviews.forEach(r => {
-      if (r.pagiStudents.length > 0) {
-        list.push({
-          ruangNumber: r.ruangNumber,
-          ruangName: r.ruangName,
-          sesi: 'Pagi',
-          sesiLabel: `Sesi Pagi (${pagiGradesLabel})`,
-          gender: r.gender,
-          genderLabel: r.genderLabel,
-          quota: r.quotaPagi,
-          students: r.pagiStudents
-        });
-      }
-      if (r.siangStudents.length > 0) {
-        list.push({
-          ruangNumber: r.ruangNumber,
-          ruangName: r.ruangName,
-          sesi: 'Siang',
-          sesiLabel: `Sesi Siang (${siangGradesLabel})`,
-          gender: r.gender,
-          genderLabel: r.genderLabel,
-          quota: r.quotaSiang,
-          students: r.siangStudents
-        });
-      }
+      pushSplitByGrade(r, 'Pagi', r.pagiStudents, r.quotaPagi);
+      pushSplitByGrade(r, 'Siang', r.siangStudents, r.quotaSiang);
     });
     return list;
   }, [roomOverviews]);
@@ -1122,6 +1128,11 @@ export default function KonfigurasiRuangTab() {
     } else {
       setPrintTargetSesi('ALL');
     }
+    if (!roomNumber && (filterTingkat === '7' || filterTingkat === '8' || filterTingkat === '9')) {
+      setPrintTargetTingkat(filterTingkat);
+    } else {
+      setPrintTargetTingkat('ALL');
+    }
     setShowPrintModal(true);
   };
 
@@ -1130,11 +1141,12 @@ export default function KonfigurasiRuangTab() {
       if (r.students.length === 0) return false;
       if (printTargetRoom !== 'ALL' && String(r.ruangNumber) !== printTargetRoom) return false;
       if (printTargetSesi !== 'ALL' && r.sesi !== printTargetSesi) return false;
+      if (printTargetTingkat !== 'ALL' && String(r.tingkat ?? '') !== printTargetTingkat) return false;
       return true;
     });
 
     if (selectedRooms.length === 0) {
-      Swal.fire('Info', 'Ruang / sesi yang dipilih belum memiliki peserta.', 'info');
+      Swal.fire('Info', 'Ruang / sesi / angkatan yang dipilih belum memiliki peserta.', 'info');
       return;
     }
 
@@ -2068,6 +2080,22 @@ export default function KonfigurasiRuangTab() {
                     <option value="Siang">Sesi Siang ({siangGradesLong})</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                  Pilih Angkatan (Tiap Angkatan Dicetak Terpisah)
+                </label>
+                <select
+                  value={printTargetTingkat}
+                  onChange={e => setPrintTargetTingkat(e.target.value as 'ALL' | '7' | '8' | '9')}
+                  style={{ width: '100%', padding: '9px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13.5px' }}
+                >
+                  <option value="ALL">Semua Angkatan (Kelas 7, 8, 9 Sendiri-sendiri)</option>
+                  <option value="7">Khusus Kelas 7</option>
+                  <option value="8">Khusus Kelas 8</option>
+                  <option value="9">Khusus Kelas 9</option>
+                </select>
               </div>
 
               <div>
