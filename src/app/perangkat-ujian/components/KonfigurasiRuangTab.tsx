@@ -1364,7 +1364,20 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
               {Object.keys(customRoomGenders).length > 0 && (
                 <button
                   type="button"
-                  onClick={() => setCustomRoomGenders({})}
+                  onClick={async () => {
+                    const res = await Swal.fire({
+                      title: 'Reset Jenis Ruang (L/P)?',
+                      text: 'Semua pengaturan custom L / P / Campur akan dikembalikan ke default (Ganjil = L, Genap = P).',
+                      icon: 'warning',
+                      showCancelButton: true,
+                      confirmButtonText: 'Ya, Reset L/P',
+                      cancelButtonText: 'Batal',
+                      confirmButtonColor: '#dc2626'
+                    });
+                    if (res.isConfirmed) {
+                      setCustomRoomGenders({});
+                    }
+                  }}
                   style={{ background: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Reset L/P Default
@@ -1373,7 +1386,20 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
               {Object.keys(customRoomQuotas).length > 0 && (
                 <button
                   type="button"
-                  onClick={() => setCustomRoomQuotas({})}
+                  onClick={async () => {
+                    const res = await Swal.fire({
+                      title: 'Kosongkan Semua Quota Ruang?',
+                      text: 'Semua angka quota kursi yang sudah diisi di tiap ruang akan dihapus.',
+                      icon: 'warning',
+                      showCancelButton: true,
+                      confirmButtonText: 'Ya, Kosongkan',
+                      cancelButtonText: 'Batal',
+                      confirmButtonColor: '#dc2626'
+                    });
+                    if (res.isConfirmed) {
+                      setCustomRoomQuotas({});
+                    }
+                  }}
                   style={{ background: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Kosongkan Quota
