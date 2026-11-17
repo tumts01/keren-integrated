@@ -317,6 +317,12 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
     return typeof custom === 'number' && custom >= 0 ? custom : 0;
   };
 
+  // 1 bangku = 2 kursi -> Pagi (Kelas 9) duduk 1 siswa per bangku; Siang (Kelas 7&8) berjejer 2 kursi per bangku
+  const getRoomQuotaPagi = (roomNumber: number) => {
+    const kursi = getRoomQuota(roomNumber);
+    return kursi <= 0 ? 0 : Math.ceil(kursi / 2);
+  };
+
   const getRoomGenderMode = (roomNumber: number): RoomGenderMode => {
     const custom = customRoomGenders[roomNumber];
     if (custom === 'L' || custom === 'P' || custom === 'CAMPUR') return custom;
@@ -334,24 +340,47 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
     let lRooms = 0;
     let pRooms = 0;
     let campurRooms = 0;
-    let capL = 0;
-    let capP = 0;
-    let capCampur = 0;
+    let capPagiL = 0;
+    let capPagiP = 0;
+    let capPagiCampur = 0;
+    let capSiangL = 0;
+    let capSiangP = 0;
+    let capSiangCampur = 0;
+
     for (let r = 1; r <= count; r++) {
-      const q = getRoomQuota(r);
+      const qSiang = getRoomQuota(r);
+      const qPagi = qSiang <= 0 ? 0 : Math.ceil(qSiang / 2);
       const mode = getRoomGenderMode(r);
       if (mode === 'L') {
         lRooms++;
-        capL += q;
+        capPagiL += qPagi;
+        capSiangL += qSiang;
       } else if (mode === 'P') {
         pRooms++;
-        capP += q;
+        capPagiP += qPagi;
+        capSiangP += qSiang;
       } else {
         campurRooms++;
-        capCampur += q;
+        capPagiCampur += qPagi;
+        capSiangCampur += qSiang;
       }
     }
-    return { count, lRooms, pRooms, campurRooms, capL, capP, capCampur, capTotal: capL + capP + capCampur };
+
+    return {
+      count,
+      lRooms,
+      pRooms,
+      campurRooms,
+      capPagiL,
+      capPagiP,
+      capPagiCampur,
+      capPagiTotal: capPagiL + capPagiP + capPagiCampur,
+      capSiangL,
+      capSiangP,
+      capSiangCampur,
+      capSiangTotal: capSiangL + capSiangP + capSiangCampur,
+      capTotal: capSiangL + capSiangP + capSiangCampur
+    };
   }, [jumlahRuang, customRoomQuotas, customRoomGenders]);
 
   const persistConfiguration = async (
@@ -532,8 +561,9 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
     ): RawStudent[] => {
       let idx = 0;
       for (const rNum of roomNumbers) {
-        const quota = getRoomQuota(rNum);
-        for (let seat = 1; seat <= quota && idx < students.length; seat++) {
+        // Sesi Pagi (Kelas 9): duduk sendiri 1 siswa per bangku (quotaKursi / 2)
+        const quotaPagi = getRoomQuotaPagi(rNum);
+        for (let seat = 1; seat <= quotaPagi && idx < students.length; seat++) {
           pushAssigned(students[idx++], rNum, seat, 'Pagi');
         }
       }
@@ -686,19 +716,23 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       ruangName: string;
       gender: RoomGenderMode;
       genderLabel: string;
-      quota: number;
+      quotaKursi: number;
+      quotaPagi: number;
       pagiStudents: AssignedParticipant[];
       siangStudents: AssignedParticipant[];
     }[] = [];
 
     for (let r = 1; r <= totalRooms; r++) {
       const mode = getRoomGenderMode(r);
+      const quotaKursi = getRoomQuota(r);
+      const quotaPagi = getRoomQuotaPagi(r);
       list.push({
         ruangNumber: r,
         ruangName: `Ruang ${r}`,
         gender: mode,
         genderLabel: getRoomGenderLabel(mode),
-        quota: getRoomQuota(r),
+        quotaKursi,
+        quotaPagi,
         pagiStudents: (pagiByRoom[r] || []).slice().sort((a, b) => a.noKursi - b.noKursi),
         siangStudents: (siangByRoom[r] || []).slice().sort((a, b) => a.noKursi - b.noKursi)
       });
@@ -717,7 +751,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
           sesiLabel: 'Sesi Pagi (Kls 9)',
           gender: r.gender,
           genderLabel: r.genderLabel,
-          quota: r.quota,
+          quota: r.quotaPagi,
           students: r.pagiStudents
         });
       }
@@ -729,7 +763,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
           sesiLabel: 'Sesi Siang (Kls 7 & 8)',
           gender: r.gender,
           genderLabel: r.genderLabel,
-          quota: r.quota,
+          quota: r.quotaKursi,
           students: r.siangStudents
         });
       }
@@ -816,9 +850,10 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       'NO RUANG': r.ruangNumber,
       'NAMA RUANG': r.ruangName,
       JENIS: r.genderLabel,
-      'QUOTA / SESI': r.quota,
+      'BANGKU (PAGI)': r.quotaPagi,
       'PAGI (KLS 9)': r.pagiStudents.length,
       'KELAS PAGI': summarizeClasses(r.pagiStudents) || '-',
+      'KURSI (SIANG)': r.quotaKursi,
       'SIANG (KLS 7&8)': r.siangStudents.length,
       'KELAS SIANG': summarizeClasses(r.siangStudents) || '-'
     }));
@@ -827,9 +862,10 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       { wch: 10 },
       { wch: 14 },
       { wch: 14 },
-      { wch: 13 },
+      { wch: 15 },
       { wch: 14 },
       { wch: 28 },
+      { wch: 15 },
       { wch: 16 },
       { wch: 36 }
     ];
@@ -994,23 +1030,23 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
         <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '12px 14px' }}>
           <div style={{ fontSize: '12px', color: '#1d4ed8', fontWeight: 700 }}>
             <i className="fas fa-mars" style={{ marginRight: '5px' }}></i>
-            Ruang Laki-laki (L)
+            Ruang Laki-laki (L) — {capacityStats.lRooms} Ruang
           </div>
-          <div style={{ fontSize: '19px', fontWeight: 800, color: '#1e3a8a', marginTop: '2px' }}>
-            {capacityStats.lRooms} Ruang &rarr; {capacityStats.capL} Kursi / Sesi
+          <div style={{ fontSize: '15.5px', fontWeight: 800, color: '#1e3a8a', marginTop: '3px' }}>
+            Pagi: {capacityStats.capPagiL} Bku &bull; Siang: {capacityStats.capSiangL} Krs
           </div>
-          <div style={{ fontSize: '11.5px', marginTop: '4px', fontWeight: 600, lineHeight: 1.45 }}>
-            <div style={{ color: capacityStats.capL + capacityStats.capCampur >= genderStats.pagiL ? '#15803d' : '#dc2626' }}>
-              Pagi (Kls 9): {genderStats.pagiL}/{capacityStats.capL}
-              {capacityStats.capL >= genderStats.pagiL
-                ? ` (sisa ${capacityStats.capL - genderStats.pagiL})`
-                : ` (kurang ${genderStats.pagiL - capacityStats.capL}${capacityStats.campurRooms > 0 ? ', pakai Campur' : '!'})`}
+          <div style={{ fontSize: '11.5px', marginTop: '5px', fontWeight: 600, lineHeight: 1.45 }}>
+            <div style={{ color: capacityStats.capPagiL + capacityStats.capPagiCampur >= genderStats.pagiL ? '#15803d' : '#dc2626' }}>
+              Pagi (Kls 9): {genderStats.pagiL}/{capacityStats.capPagiL}
+              {capacityStats.capPagiL >= genderStats.pagiL
+                ? ` (sisa ${capacityStats.capPagiL - genderStats.pagiL})`
+                : ` (kurang ${genderStats.pagiL - capacityStats.capPagiL}${capacityStats.campurRooms > 0 ? ', pakai Campur' : '!'})`}
             </div>
-            <div style={{ color: capacityStats.capL + capacityStats.capCampur >= genderStats.siangL ? '#15803d' : '#dc2626' }}>
-              Siang (Kls 7&amp;8): {genderStats.siangL}/{capacityStats.capL}
-              {capacityStats.capL >= genderStats.siangL
-                ? ` (sisa ${capacityStats.capL - genderStats.siangL})`
-                : ` (kurang ${genderStats.siangL - capacityStats.capL}${capacityStats.campurRooms > 0 ? ', pakai Campur' : '!'})`}
+            <div style={{ color: capacityStats.capSiangL + capacityStats.capSiangCampur >= genderStats.siangL ? '#15803d' : '#dc2626' }}>
+              Siang (Kls 7&amp;8): {genderStats.siangL}/{capacityStats.capSiangL}
+              {capacityStats.capSiangL >= genderStats.siangL
+                ? ` (sisa ${capacityStats.capSiangL - genderStats.siangL})`
+                : ` (kurang ${genderStats.siangL - capacityStats.capSiangL}${capacityStats.campurRooms > 0 ? ', pakai Campur' : '!'})`}
             </div>
           </div>
         </div>
@@ -1018,23 +1054,23 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
         <div style={{ background: '#fdf2f8', border: '1px solid #fbcfe8', borderRadius: '8px', padding: '12px 14px' }}>
           <div style={{ fontSize: '12px', color: '#be185d', fontWeight: 700 }}>
             <i className="fas fa-venus" style={{ marginRight: '5px' }}></i>
-            Ruang Perempuan (P)
+            Ruang Perempuan (P) — {capacityStats.pRooms} Ruang
           </div>
-          <div style={{ fontSize: '19px', fontWeight: 800, color: '#831843', marginTop: '2px' }}>
-            {capacityStats.pRooms} Ruang &rarr; {capacityStats.capP} Kursi / Sesi
+          <div style={{ fontSize: '15.5px', fontWeight: 800, color: '#831843', marginTop: '3px' }}>
+            Pagi: {capacityStats.capPagiP} Bku &bull; Siang: {capacityStats.capSiangP} Krs
           </div>
-          <div style={{ fontSize: '11.5px', marginTop: '4px', fontWeight: 600, lineHeight: 1.45 }}>
-            <div style={{ color: capacityStats.capP + capacityStats.capCampur >= genderStats.pagiP ? '#15803d' : '#dc2626' }}>
-              Pagi (Kls 9): {genderStats.pagiP}/{capacityStats.capP}
-              {capacityStats.capP >= genderStats.pagiP
-                ? ` (sisa ${capacityStats.capP - genderStats.pagiP})`
-                : ` (kurang ${genderStats.pagiP - capacityStats.capP}${capacityStats.campurRooms > 0 ? ', pakai Campur' : '!'})`}
+          <div style={{ fontSize: '11.5px', marginTop: '5px', fontWeight: 600, lineHeight: 1.45 }}>
+            <div style={{ color: capacityStats.capPagiP + capacityStats.capPagiCampur >= genderStats.pagiP ? '#15803d' : '#dc2626' }}>
+              Pagi (Kls 9): {genderStats.pagiP}/{capacityStats.capPagiP}
+              {capacityStats.capPagiP >= genderStats.pagiP
+                ? ` (sisa ${capacityStats.capPagiP - genderStats.pagiP})`
+                : ` (kurang ${genderStats.pagiP - capacityStats.capPagiP}${capacityStats.campurRooms > 0 ? ', pakai Campur' : '!'})`}
             </div>
-            <div style={{ color: capacityStats.capP + capacityStats.capCampur >= genderStats.siangP ? '#15803d' : '#dc2626' }}>
-              Siang (Kls 7&amp;8): {genderStats.siangP}/{capacityStats.capP}
-              {capacityStats.capP >= genderStats.siangP
-                ? ` (sisa ${capacityStats.capP - genderStats.siangP})`
-                : ` (kurang ${genderStats.siangP - capacityStats.capP}${capacityStats.campurRooms > 0 ? ', pakai Campur' : '!'})`}
+            <div style={{ color: capacityStats.capSiangP + capacityStats.capSiangCampur >= genderStats.siangP ? '#15803d' : '#dc2626' }}>
+              Siang (Kls 7&amp;8): {genderStats.siangP}/{capacityStats.capSiangP}
+              {capacityStats.capSiangP >= genderStats.siangP
+                ? ` (sisa ${capacityStats.capSiangP - genderStats.siangP})`
+                : ` (kurang ${genderStats.siangP - capacityStats.capSiangP}${capacityStats.campurRooms > 0 ? ', pakai Campur' : '!'})`}
             </div>
           </div>
         </div>
@@ -1042,17 +1078,17 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
         <div style={{ background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: '8px', padding: '12px 14px' }}>
           <div style={{ fontSize: '12px', color: '#6d28d9', fontWeight: 700 }}>
             <i className="fas fa-users" style={{ marginRight: '5px' }}></i>
-            {capacityStats.campurRooms > 0 ? `Ruang Campur (${capacityStats.campurRooms} Ruang • ${capacityStats.capCampur} Kursi)` : 'Aturan Penentuan Ruang'}
+            {capacityStats.campurRooms > 0
+              ? `Campur (${capacityStats.campurRooms} R: Pagi ${capacityStats.capPagiCampur} Bku • Siang ${capacityStats.capSiangCampur} Krs)`
+              : 'Aturan Bangku & Ruang'}
           </div>
-          {capacityStats.campurRooms > 0 && (
-            <div style={{ fontSize: '11.5px', fontWeight: 700, color: capacityStats.capTotal >= Math.max(genderStats.pagiTotal, genderStats.siangTotal) ? '#15803d' : '#dc2626', marginTop: '3px' }}>
-              Total Semua: Pagi {genderStats.pagiTotal}/{capacityStats.capTotal} &bull; Siang {genderStats.siangTotal}/{capacityStats.capTotal}
-            </div>
-          )}
-          <ul style={{ margin: '5px 0 0 0', paddingLeft: '16px', fontSize: '11.5px', color: '#4c1d95', lineHeight: 1.42 }}>
-            <li>Default: Ganjil = L, Genap = P (bisa ubah per ruang ke L / P / Campur)</li>
-            <li><b>Pagi:</b> Kls 9 sendiri &bull; <b>Siang:</b> Kls 7 &amp; 8 bersebelahan</li>
-            <li>Penentuan ruang urut mulai kelas A–I</li>
+          <div style={{ fontSize: '11.5px', fontWeight: 700, color: capacityStats.capPagiTotal >= genderStats.pagiTotal && capacityStats.capSiangTotal >= genderStats.siangTotal ? '#15803d' : '#b45309', marginTop: '3px' }}>
+            Total: Pagi {genderStats.pagiTotal}/{capacityStats.capPagiTotal} Bku &bull; Siang {genderStats.siangTotal}/{capacityStats.capSiangTotal} Krs
+          </div>
+          <ul style={{ margin: '4px 0 0 0', paddingLeft: '16px', fontSize: '11px', color: '#4c1d95', lineHeight: 1.4 }}>
+            <li>Input quota = jumlah <b>kursi</b> (1 bangku = 2 kursi)</li>
+            <li><b>Pagi (Kls 9):</b> 1 siswa/bangku &bull; <b>Siang (7&amp;8):</b> 2 siswa/bangku</li>
+            <li>Default Ganjil L / Genap P, urut kelas A–I</li>
           </ul>
         </div>
       </div>
@@ -1152,17 +1188,20 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
             <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#0f172a' }}>
               <i className="fas fa-chair" style={{ color: '#0284c7', marginRight: '6px' }}></i>
-              Quota &amp; Jenis Ruang Per Ruang (Manual — per sesi Pagi / Siang)
+              Quota Kursi &amp; Jenis Ruang Per Ruang (1 Bangku = 2 Kursi)
             </div>
             <div style={{ fontSize: '11.5px', color: '#64748b' }}>
-              Total Kursi / Sesi: <b style={{ color: '#1d4ed8' }}>L = {capacityStats.capL}</b> &bull; <b style={{ color: '#be185d' }}>P = {capacityStats.capP}</b>
-              {capacityStats.capCampur > 0 && <> &bull; <b style={{ color: '#6d28d9' }}>Campur = {capacityStats.capCampur}</b></>}
+              Pagi (Bangku): <b style={{ color: '#b45309' }}>{capacityStats.capPagiTotal}</b> &bull; Siang (Kursi):{' '}
+              <b style={{ color: '#1d4ed8' }}>L={capacityStats.capSiangL}</b>, <b style={{ color: '#be185d' }}>P={capacityStats.capSiangP}</b>
+              {capacityStats.capSiangCampur > 0 && <>, <b style={{ color: '#6d28d9' }}>Campur={capacityStats.capSiangCampur}</b></>}
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '8px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(158px, 1fr))', gap: '8px' }}>
             {Array.from({ length: jumlahRuang }, (_, i) => i + 1).map(rNum => {
               const mode = getRoomGenderMode(rNum);
+              const kursi = getRoomQuota(rNum);
+              const bangku = getRoomQuotaPagi(rNum);
               const tileStyle =
                 mode === 'L'
                   ? { border: '#bfdbfe', bg: '#eff6ff', title: '#1d4ed8' }
@@ -1231,6 +1270,9 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
                     }}
                     style={{ width: '100%', padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12.5px', fontWeight: 700, background: 'white' }}
                   />
+                  <div style={{ fontSize: '10px', color: '#475569', marginTop: '3px', fontWeight: 600 }}>
+                    {kursi > 0 ? `${bangku} bangku • Pagi ${bangku} / Siang ${kursi}` : 'Kosong / dilewati'}
+                  </div>
                 </div>
               );
             })}
@@ -1389,14 +1431,14 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
                           color: modeStyle.badgeText
                         }}
                       >
-                        {r.genderLabel} • {r.quota} Kursi
+                        {r.genderLabel} • {r.quotaKursi} Krs ({r.quotaPagi} Bku)
                       </span>
                     </div>
 
                     <div style={{ fontSize: '11.5px', color: '#334155', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px' }}>
                         <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          <b style={{ color: '#b45309' }}>Pagi (Kls 9):</b> {r.pagiStudents.length}/{r.quota}{' '}
+                          <b style={{ color: '#b45309' }}>Pagi (Kls 9):</b> {r.pagiStudents.length}/{r.quotaPagi}{' '}
                           <span style={{ color: '#64748b', fontSize: '10.5px' }}>
                             {r.pagiStudents.length > 0 ? `(${summarizeClasses(r.pagiStudents)})` : '(Kosong)'}
                           </span>
@@ -1418,7 +1460,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px' }}>
                         <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          <b style={{ color: '#4338ca' }}>Siang (7&amp;8):</b> {r.siangStudents.length}/{r.quota}{' '}
+                          <b style={{ color: '#4338ca' }}>Siang (7&amp;8):</b> {r.siangStudents.length}/{r.quotaKursi}{' '}
                           <span style={{ color: '#64748b', fontSize: '10.5px' }}>
                             {r.siangStudents.length > 0 ? `(${summarizeClasses(r.siangStudents)})` : '(Kosong)'}
                           </span>
