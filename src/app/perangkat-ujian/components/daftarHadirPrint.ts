@@ -19,7 +19,7 @@ export interface RoomGroupPrintData {
   ruangName: string;
   sesi: 'Pagi' | 'Siang';
   sesiLabel: string;
-  gender: 'L' | 'P';
+  gender: 'L' | 'P' | 'CAMPUR';
   genderLabel: string;
   quota: number;
   students: AssignedParticipant[];

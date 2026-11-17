@@ -40,6 +40,8 @@ interface KonfigurasiRuangTabProps {
   ) => void;
 }
 
+type RoomGenderMode = 'L' | 'P' | 'CAMPUR';
+
 const CONFIG_KEY = 'konfigurasi_ruang_ujian';
 
 function normalizeGender(jk?: string): 'L' | 'P' | 'UNKNOWN' {
@@ -112,6 +114,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
   const [tahunAjaranFilter, setTahunAjaranFilter] = useState<string>('SEMUA');
   const [jumlahRuang, setJumlahRuang] = useState<number>(20);
   const [customRoomQuotas, setCustomRoomQuotas] = useState<Record<number, number>>({});
+  const [customRoomGenders, setCustomRoomGenders] = useState<Record<number, RoomGenderMode>>({});
   const [sortMode, setSortMode] = useState<'tingkat-huruf' | 'huruf-tingkat'>('tingkat-huruf');
   const [noUjianPrefix, setNoUjianPrefix] = useState<string>('');
 
@@ -179,6 +182,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
             const parsed = JSON.parse(savedRaw);
             if (typeof parsed.jumlahRuang === 'number') setJumlahRuang(parsed.jumlahRuang);
             if (parsed.customRoomQuotas) setCustomRoomQuotas(parsed.customRoomQuotas);
+            if (parsed.customRoomGenders) setCustomRoomGenders(parsed.customRoomGenders);
             if (parsed.sortMode) setSortMode(parsed.sortMode);
             if (typeof parsed.noUjianPrefix === 'string') setNoUjianPrefix(parsed.noUjianPrefix);
             if (typeof parsed.tahunAjaranFilter === 'string') setTahunAjaranFilter(parsed.tahunAjaranFilter);
@@ -213,6 +217,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       const draft = {
         jumlahRuang,
         customRoomQuotas,
+        customRoomGenders,
         sortMode,
         noUjianPrefix,
         tahunAjaranFilter,
@@ -223,7 +228,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       };
       localStorage.setItem(CONFIG_KEY, JSON.stringify(draft));
     } catch {}
-  }, [jumlahRuang, customRoomQuotas, sortMode, noUjianPrefix, tahunAjaranFilter]);
+  }, [jumlahRuang, customRoomQuotas, customRoomGenders, sortMode, noUjianPrefix, tahunAjaranFilter]);
 
   const tahunAjaranOptions = useMemo(() => {
     return Array.from(
@@ -312,24 +317,42 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
     return typeof custom === 'number' && custom >= 0 ? custom : 0;
   };
 
+  const getRoomGenderMode = (roomNumber: number): RoomGenderMode => {
+    const custom = customRoomGenders[roomNumber];
+    if (custom === 'L' || custom === 'P' || custom === 'CAMPUR') return custom;
+    return roomNumber % 2 === 1 ? 'L' : 'P';
+  };
+
+  const getRoomGenderLabel = (mode: RoomGenderMode) => {
+    if (mode === 'L') return 'Laki-laki';
+    if (mode === 'P') return 'Perempuan';
+    return 'Campur (L/P)';
+  };
+
   const capacityStats = useMemo(() => {
     const count = Math.max(1, Math.min(100, Number(jumlahRuang) || 1));
-    let oddRooms = 0;
-    let evenRooms = 0;
+    let lRooms = 0;
+    let pRooms = 0;
+    let campurRooms = 0;
     let capL = 0;
     let capP = 0;
+    let capCampur = 0;
     for (let r = 1; r <= count; r++) {
       const q = getRoomQuota(r);
-      if (r % 2 === 1) {
-        oddRooms++;
+      const mode = getRoomGenderMode(r);
+      if (mode === 'L') {
+        lRooms++;
         capL += q;
-      } else {
-        evenRooms++;
+      } else if (mode === 'P') {
+        pRooms++;
         capP += q;
+      } else {
+        campurRooms++;
+        capCampur += q;
       }
     }
-    return { count, oddRooms, evenRooms, capL, capP };
-  }, [jumlahRuang, customRoomQuotas]);
+    return { count, lRooms, pRooms, campurRooms, capL, capP, capCampur, capTotal: capL + capP + capCampur };
+  }, [jumlahRuang, customRoomQuotas, customRoomGenders]);
 
   const persistConfiguration = async (
     nextAssignments: AssignedParticipant[],
@@ -340,6 +363,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
     const payload = {
       jumlahRuang,
       customRoomQuotas,
+      customRoomGenders,
       sortMode,
       noUjianPrefix,
       tahunAjaranFilter,
@@ -389,7 +413,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
     }
 
     const totalRooms = Math.max(1, Math.min(100, Number(jumlahRuang) || 1));
-    if (capacityStats.capL + capacityStats.capP <= 0) {
+    if (capacityStats.capTotal <= 0) {
       Swal.fire('Oops', 'Silakan isi quota kursi minimal pada salah satu ruang terlebih dahulu.', 'warning');
       return;
     }
@@ -445,11 +469,14 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
     siang8Male.sort(compareStudent);
     siang8Female.sort(compareStudent);
 
-    const oddRoomNums: number[] = [];
-    const evenRoomNums: number[] = [];
+    const lRoomNums: number[] = [];
+    const pRoomNums: number[] = [];
+    const campurRoomNums: number[] = [];
     for (let r = 1; r <= totalRooms; r++) {
-      if (r % 2 === 1) oddRoomNums.push(r);
-      else evenRoomNums.push(r);
+      const mode = getRoomGenderMode(r);
+      if (mode === 'L') lRoomNums.push(r);
+      else if (mode === 'P') pRoomNums.push(r);
+      else campurRoomNums.push(r);
     }
 
     const prefixClean = noUjianPrefix.trim();
@@ -466,9 +493,9 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       s: RawStudent,
       rNum: number,
       seat: number,
-      sesi: 'Pagi' | 'Siang',
-      genderCode: 'L' | 'P'
+      sesi: 'Pagi' | 'Siang'
     ) => {
+      const genderCode: 'L' | 'P' = normalizeGender(s.jenisKelamin) === 'L' ? 'L' : 'P';
       const parsedKelas = parseKelasOrder(s.rombel);
       const roomPad = String(rNum).padStart(2, '0');
       const seatPad = String(seat).padStart(2, '0');
@@ -499,39 +526,26 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       });
     };
 
-    const assignPagiByGender = (
+    const assignPagiRooms = (
       students: RawStudent[],
-      roomNumbers: number[],
-      genderCode: 'L' | 'P',
-      labelIfOverflow: string
-    ) => {
+      roomNumbers: number[]
+    ): RawStudent[] => {
       let idx = 0;
       for (const rNum of roomNumbers) {
         const quota = getRoomQuota(rNum);
         for (let seat = 1; seat <= quota && idx < students.length; seat++) {
-          pushAssigned(students[idx++], rNum, seat, 'Pagi', genderCode);
+          pushAssigned(students[idx++], rNum, seat, 'Pagi');
         }
       }
-      while (idx < students.length) {
-        const s = students[idx++];
-        overflowList.push({
-          nisn: s.nisn || s.nis || '-',
-          nama: s.nama || '-',
-          rombel: s.rombel || '-',
-          jenisKelamin: s.jenisKelamin || '-',
-          reason: labelIfOverflow
-        });
-      }
+      return students.slice(idx);
     };
 
     // Sesi Siang (Kelas 7 & 8 duduk bersebelahan: berselang-seling Kelas 7 dan Kelas 8 per ruang sesuai quota)
     const assignSiangBersebelahan = (
       list7: RawStudent[],
       list8: RawStudent[],
-      roomNumbers: number[],
-      genderCode: 'L' | 'P',
-      labelIfOverflow: string
-    ) => {
+      roomNumbers: number[]
+    ): { rem7: RawStudent[]; rem8: RawStudent[] } => {
       let idx7 = 0;
       let idx8 = 0;
 
@@ -540,6 +554,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
         const rem7 = list7.length - idx7;
         const rem8 = list8.length - idx8;
         if (rem7 === 0 && rem8 === 0) break;
+        if (quota <= 0) continue;
 
         let take7 = Math.min(rem7, rem7 >= rem8 ? Math.ceil(quota / 2) : Math.floor(quota / 2));
         let take8 = Math.min(rem8, quota - take7);
@@ -564,36 +579,51 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
         }
 
         interleaved.forEach((student, sIdx) => {
-          pushAssigned(student, rNum, sIdx + 1, 'Siang', genderCode);
+          pushAssigned(student, rNum, sIdx + 1, 'Siang');
         });
       }
 
-      while (idx7 < list7.length) {
-        const s = list7[idx7++];
-        overflowList.push({
-          nisn: s.nisn || s.nis || '-',
-          nama: s.nama || '-',
-          rombel: s.rombel || '-',
-          jenisKelamin: s.jenisKelamin || '-',
-          reason: labelIfOverflow
-        });
-      }
-      while (idx8 < list8.length) {
-        const s = list8[idx8++];
-        overflowList.push({
-          nisn: s.nisn || s.nis || '-',
-          nama: s.nama || '-',
-          rombel: s.rombel || '-',
-          jenisKelamin: s.jenisKelamin || '-',
-          reason: labelIfOverflow
-        });
-      }
+      return {
+        rem7: list7.slice(idx7),
+        rem8: list8.slice(idx8)
+      };
     };
 
-    assignPagiByGender(pagiMale, oddRoomNums, 'L', 'Melebihi kapasitas Sesi Pagi ruang ganjil (Kls 9 L)');
-    assignPagiByGender(pagiFemale, evenRoomNums, 'P', 'Melebihi kapasitas Sesi Pagi ruang genap (Kls 9 P)');
-    assignSiangBersebelahan(siang7Male, siang8Male, oddRoomNums, 'L', 'Melebihi kapasitas Sesi Siang ruang ganjil (Kls 7&8 L)');
-    assignSiangBersebelahan(siang7Female, siang8Female, evenRoomNums, 'P', 'Melebihi kapasitas Sesi Siang ruang genap (Kls 7&8 P)');
+    // 1. Isi ruang khusus L terlebih dahulu, lalu ruang khusus P
+    const remPagiMale = assignPagiRooms(pagiMale, lRoomNums);
+    const remPagiFemale = assignPagiRooms(pagiFemale, pRoomNums);
+    const remSiangL = assignSiangBersebelahan(siang7Male, siang8Male, lRoomNums);
+    const remSiangP = assignSiangBersebelahan(siang7Female, siang8Female, pRoomNums);
+
+    // 2. Sisa L & P dialokasikan ke ruang bertipe Campur (L/P), tetap urut kelas A-I & bersebelahan 7-8
+    const remPagiCampur = [...remPagiMale, ...remPagiFemale].sort(compareStudent);
+    const unplacedPagi = assignPagiRooms(remPagiCampur, campurRoomNums);
+
+    const remSiang7Campur = [...remSiangL.rem7, ...remSiangP.rem7].sort(compareStudent);
+    const remSiang8Campur = [...remSiangL.rem8, ...remSiangP.rem8].sort(compareStudent);
+    const unplacedSiang = assignSiangBersebelahan(remSiang7Campur, remSiang8Campur, campurRoomNums);
+
+    unplacedPagi.forEach(s => {
+      const g = normalizeGender(s.jenisKelamin);
+      overflowList.push({
+        nisn: s.nisn || s.nis || '-',
+        nama: s.nama || '-',
+        rombel: s.rombel || '-',
+        jenisKelamin: s.jenisKelamin || '-',
+        reason: `Melebihi kapasitas Sesi Pagi (Kls 9 ${g})`
+      });
+    });
+
+    [...unplacedSiang.rem7, ...unplacedSiang.rem8].forEach(s => {
+      const g = normalizeGender(s.jenisKelamin);
+      overflowList.push({
+        nisn: s.nisn || s.nis || '-',
+        nama: s.nama || '-',
+        rombel: s.rombel || '-',
+        jenisKelamin: s.jenisKelamin || '-',
+        reason: `Melebihi kapasitas Sesi Siang (Kls 7&8 ${g})`
+      });
+    });
 
     unknownStudents.forEach(({ s, reason }) => {
       overflowList.push({
@@ -654,7 +684,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
     const list: {
       ruangNumber: number;
       ruangName: string;
-      gender: 'L' | 'P';
+      gender: RoomGenderMode;
       genderLabel: string;
       quota: number;
       pagiStudents: AssignedParticipant[];
@@ -662,19 +692,19 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
     }[] = [];
 
     for (let r = 1; r <= totalRooms; r++) {
-      const isOdd = r % 2 === 1;
+      const mode = getRoomGenderMode(r);
       list.push({
         ruangNumber: r,
         ruangName: `Ruang ${r}`,
-        gender: isOdd ? 'L' : 'P',
-        genderLabel: isOdd ? 'Laki-laki' : 'Perempuan',
+        gender: mode,
+        genderLabel: getRoomGenderLabel(mode),
         quota: getRoomQuota(r),
         pagiStudents: (pagiByRoom[r] || []).slice().sort((a, b) => a.noKursi - b.noKursi),
         siangStudents: (siangByRoom[r] || []).slice().sort((a, b) => a.noKursi - b.noKursi)
       });
     }
     return list;
-  }, [assignments, jumlahRuang, customRoomQuotas]);
+  }, [assignments, jumlahRuang, customRoomQuotas, customRoomGenders]);
 
   const roomSummaries = useMemo<RoomGroupPrintData[]>(() => {
     const list: RoomGroupPrintData[] = [];
@@ -964,19 +994,23 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
         <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '12px 14px' }}>
           <div style={{ fontSize: '12px', color: '#1d4ed8', fontWeight: 700 }}>
             <i className="fas fa-mars" style={{ marginRight: '5px' }}></i>
-            Ruang Ganjil (1, 3, 5, ...) — Laki-laki
+            Ruang Laki-laki (L)
           </div>
           <div style={{ fontSize: '19px', fontWeight: 800, color: '#1e3a8a', marginTop: '2px' }}>
-            {capacityStats.oddRooms} Ruang &rarr; {capacityStats.capL} Kursi / Sesi
+            {capacityStats.lRooms} Ruang &rarr; {capacityStats.capL} Kursi / Sesi
           </div>
           <div style={{ fontSize: '11.5px', marginTop: '4px', fontWeight: 600, lineHeight: 1.45 }}>
-            <div style={{ color: capacityStats.capL >= genderStats.pagiL ? '#15803d' : '#dc2626' }}>
-              Pagi (Kls 9): {genderStats.pagiL}/{capacityStats.capL}{' '}
-              {capacityStats.capL >= genderStats.pagiL ? `(sisa ${capacityStats.capL - genderStats.pagiL})` : `(kurang ${genderStats.pagiL - capacityStats.capL}!)`}
+            <div style={{ color: capacityStats.capL + capacityStats.capCampur >= genderStats.pagiL ? '#15803d' : '#dc2626' }}>
+              Pagi (Kls 9): {genderStats.pagiL}/{capacityStats.capL}
+              {capacityStats.capL >= genderStats.pagiL
+                ? ` (sisa ${capacityStats.capL - genderStats.pagiL})`
+                : ` (kurang ${genderStats.pagiL - capacityStats.capL}${capacityStats.campurRooms > 0 ? ', pakai Campur' : '!'})`}
             </div>
-            <div style={{ color: capacityStats.capL >= genderStats.siangL ? '#15803d' : '#dc2626' }}>
-              Siang (Kls 7&amp;8): {genderStats.siangL}/{capacityStats.capL}{' '}
-              {capacityStats.capL >= genderStats.siangL ? `(sisa ${capacityStats.capL - genderStats.siangL})` : `(kurang ${genderStats.siangL - capacityStats.capL}!)`}
+            <div style={{ color: capacityStats.capL + capacityStats.capCampur >= genderStats.siangL ? '#15803d' : '#dc2626' }}>
+              Siang (Kls 7&amp;8): {genderStats.siangL}/{capacityStats.capL}
+              {capacityStats.capL >= genderStats.siangL
+                ? ` (sisa ${capacityStats.capL - genderStats.siangL})`
+                : ` (kurang ${genderStats.siangL - capacityStats.capL}${capacityStats.campurRooms > 0 ? ', pakai Campur' : '!'})`}
             </div>
           </div>
         </div>
@@ -984,33 +1018,41 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
         <div style={{ background: '#fdf2f8', border: '1px solid #fbcfe8', borderRadius: '8px', padding: '12px 14px' }}>
           <div style={{ fontSize: '12px', color: '#be185d', fontWeight: 700 }}>
             <i className="fas fa-venus" style={{ marginRight: '5px' }}></i>
-            Ruang Genap (2, 4, 6, ...) — Perempuan
+            Ruang Perempuan (P)
           </div>
           <div style={{ fontSize: '19px', fontWeight: 800, color: '#831843', marginTop: '2px' }}>
-            {capacityStats.evenRooms} Ruang &rarr; {capacityStats.capP} Kursi / Sesi
+            {capacityStats.pRooms} Ruang &rarr; {capacityStats.capP} Kursi / Sesi
           </div>
           <div style={{ fontSize: '11.5px', marginTop: '4px', fontWeight: 600, lineHeight: 1.45 }}>
-            <div style={{ color: capacityStats.capP >= genderStats.pagiP ? '#15803d' : '#dc2626' }}>
-              Pagi (Kls 9): {genderStats.pagiP}/{capacityStats.capP}{' '}
-              {capacityStats.capP >= genderStats.pagiP ? `(sisa ${capacityStats.capP - genderStats.pagiP})` : `(kurang ${genderStats.pagiP - capacityStats.capP}!)`}
+            <div style={{ color: capacityStats.capP + capacityStats.capCampur >= genderStats.pagiP ? '#15803d' : '#dc2626' }}>
+              Pagi (Kls 9): {genderStats.pagiP}/{capacityStats.capP}
+              {capacityStats.capP >= genderStats.pagiP
+                ? ` (sisa ${capacityStats.capP - genderStats.pagiP})`
+                : ` (kurang ${genderStats.pagiP - capacityStats.capP}${capacityStats.campurRooms > 0 ? ', pakai Campur' : '!'})`}
             </div>
-            <div style={{ color: capacityStats.capP >= genderStats.siangP ? '#15803d' : '#dc2626' }}>
-              Siang (Kls 7&amp;8): {genderStats.siangP}/{capacityStats.capP}{' '}
-              {capacityStats.capP >= genderStats.siangP ? `(sisa ${capacityStats.capP - genderStats.siangP})` : `(kurang ${genderStats.siangP - capacityStats.capP}!)`}
+            <div style={{ color: capacityStats.capP + capacityStats.capCampur >= genderStats.siangP ? '#15803d' : '#dc2626' }}>
+              Siang (Kls 7&amp;8): {genderStats.siangP}/{capacityStats.capP}
+              {capacityStats.capP >= genderStats.siangP
+                ? ` (sisa ${capacityStats.capP - genderStats.siangP})`
+                : ` (kurang ${genderStats.siangP - capacityStats.capP}${capacityStats.campurRooms > 0 ? ', pakai Campur' : '!'})`}
             </div>
           </div>
         </div>
 
-        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '12px 14px' }}>
-          <div style={{ fontSize: '12px', color: '#15803d', fontWeight: 700 }}>
-            <i className="fas fa-sort-alpha-down" style={{ marginRight: '5px' }}></i>
-            Aturan Penentuan Ruang
+        <div style={{ background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: '8px', padding: '12px 14px' }}>
+          <div style={{ fontSize: '12px', color: '#6d28d9', fontWeight: 700 }}>
+            <i className="fas fa-users" style={{ marginRight: '5px' }}></i>
+            {capacityStats.campurRooms > 0 ? `Ruang Campur (${capacityStats.campurRooms} Ruang • ${capacityStats.capCampur} Kursi)` : 'Aturan Penentuan Ruang'}
           </div>
-          <ul style={{ margin: '6px 0 0 0', paddingLeft: '16px', fontSize: '11.5px', color: '#166534', lineHeight: 1.45 }}>
-            <li>Ganjil = Laki-laki, Genap = Perempuan</li>
-            <li><b>Pagi:</b> Kelas 9 (duduk sendiri-sendiri)</li>
-            <li><b>Siang:</b> Kelas 7 &amp; 8 (duduk bersebelahan)</li>
-            <li>Urut mulai kelas A–I</li>
+          {capacityStats.campurRooms > 0 && (
+            <div style={{ fontSize: '11.5px', fontWeight: 700, color: capacityStats.capTotal >= Math.max(genderStats.pagiTotal, genderStats.siangTotal) ? '#15803d' : '#dc2626', marginTop: '3px' }}>
+              Total Semua: Pagi {genderStats.pagiTotal}/{capacityStats.capTotal} &bull; Siang {genderStats.siangTotal}/{capacityStats.capTotal}
+            </div>
+          )}
+          <ul style={{ margin: '5px 0 0 0', paddingLeft: '16px', fontSize: '11.5px', color: '#4c1d95', lineHeight: 1.42 }}>
+            <li>Default: Ganjil = L, Genap = P (bisa ubah per ruang ke L / P / Campur)</li>
+            <li><b>Pagi:</b> Kls 9 sendiri &bull; <b>Siang:</b> Kls 7 &amp; 8 bersebelahan</li>
+            <li>Penentuan ruang urut mulai kelas A–I</li>
           </ul>
         </div>
       </div>
@@ -1105,25 +1147,68 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
           </div>
         </div>
 
-        {/* Quota Manual Per Ruang (Selalu Tampil agar mudah diatur per ruang) */}
+        {/* Quota Manual & Pengaturan Jenis (L / P / Campur) Per Ruang */}
         <div style={{ marginTop: '14px', background: 'white', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
             <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#0f172a' }}>
               <i className="fas fa-chair" style={{ color: '#0284c7', marginRight: '6px' }}></i>
-              Quota Tempat Duduk Per Ruang (Manual — per sesi Pagi / Siang)
+              Quota &amp; Jenis Ruang Per Ruang (Manual — per sesi Pagi / Siang)
             </div>
             <div style={{ fontSize: '11.5px', color: '#64748b' }}>
               Total Kursi / Sesi: <b style={{ color: '#1d4ed8' }}>L = {capacityStats.capL}</b> &bull; <b style={{ color: '#be185d' }}>P = {capacityStats.capP}</b>
+              {capacityStats.capCampur > 0 && <> &bull; <b style={{ color: '#6d28d9' }}>Campur = {capacityStats.capCampur}</b></>}
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '8px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '8px' }}>
             {Array.from({ length: jumlahRuang }, (_, i) => i + 1).map(rNum => {
-              const isOdd = rNum % 2 === 1;
+              const mode = getRoomGenderMode(rNum);
+              const tileStyle =
+                mode === 'L'
+                  ? { border: '#bfdbfe', bg: '#eff6ff', title: '#1d4ed8' }
+                  : mode === 'P'
+                  ? { border: '#fbcfe8', bg: '#fdf2f8', title: '#be185d' }
+                  : { border: '#ddd6fe', bg: '#f5f3ff', title: '#6d28d9' };
+
               return (
-                <div key={rNum} style={{ border: `1px solid ${isOdd ? '#bfdbfe' : '#fbcfe8'}`, borderRadius: '6px', padding: '6px 8px', background: isOdd ? '#eff6ff' : '#fdf2f8' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: isOdd ? '#1d4ed8' : '#be185d', marginBottom: '3px' }}>
-                    Ruang {rNum} ({isOdd ? 'L' : 'P'})
+                <div key={rNum} style={{ border: `1px solid ${tileStyle.border}`, borderRadius: '6px', padding: '7px 8px', background: tileStyle.bg }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px', gap: '4px' }}>
+                    <span style={{ fontSize: '11.5px', fontWeight: 800, color: tileStyle.title }}>
+                      Ruang {rNum}
+                    </span>
+                    <div style={{ display: 'flex', borderRadius: '4px', overflow: 'hidden', border: '1px solid #cbd5e1', background: 'white' }}>
+                      {(['L', 'P', 'CAMPUR'] as RoomGenderMode[]).map(opt => {
+                        const active = mode === opt;
+                        const activeBg =
+                          opt === 'L' ? '#2563eb' : opt === 'P' ? '#db2777' : '#7c3aed';
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() =>
+                              setCustomRoomGenders(prev => {
+                                const next = { ...prev };
+                                const defaultMode: RoomGenderMode = rNum % 2 === 1 ? 'L' : 'P';
+                                if (opt === defaultMode) delete next[rNum];
+                                else next[rNum] = opt;
+                                return next;
+                              })
+                            }
+                            style={{
+                              border: 'none',
+                              padding: '2px 5px',
+                              fontSize: '10px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              background: active ? activeBg : 'transparent',
+                              color: active ? 'white' : '#475569'
+                            }}
+                          >
+                            {opt === 'CAMPUR' ? 'Campur' : opt}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                   <input
                     type="number"
@@ -1144,7 +1229,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
                         return next;
                       });
                     }}
-                    style={{ width: '100%', padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12.5px', fontWeight: 700 }}
+                    style={{ width: '100%', padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12.5px', fontWeight: 700, background: 'white' }}
                   />
                 </div>
               );
@@ -1153,16 +1238,25 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
 
           <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
             <span style={{ fontSize: '11.5px', color: '#64748b' }}>
-              Isi quota kursi masing-masing ruang sesuai kebutuhan (kosong / <b>0</b> berarti ruang dilewati). Perubahan otomatis tersimpan lokal, klik <b>Simpan Quota Ruang</b> / <b>Bagi Ruang Otomatis</b> untuk simpan ke server.
+              Pilih <b>L</b>, <b>P</b>, atau <b>Campur</b> tiap ruang (default: ganjil L, genap P) dan isi quota kursinya (kosong / <b>0</b> berarti dilewati).
             </span>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {Object.keys(customRoomGenders).length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setCustomRoomGenders({})}
+                  style={{ background: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Reset L/P Default
+                </button>
+              )}
               {Object.keys(customRoomQuotas).length > 0 && (
                 <button
                   type="button"
                   onClick={() => setCustomRoomQuotas({})}
                   style={{ background: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
                 >
-                  Kosongkan Semua
+                  Kosongkan Quota
                 </button>
               )}
               <button
@@ -1254,20 +1348,15 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '10px' }}>
               {roomOverviews.map(r => {
                 const isSelected = filterRuang === String(r.ruangNumber);
-                const isOdd = r.gender === 'L';
                 const totalAny = r.pagiStudents.length + r.siangStudents.length;
-                const accentBorder = isSelected
-                  ? '#0284c7'
-                  : isOdd
-                  ? '#bfdbfe'
-                  : '#fbcfe8';
-                const accentBg = isSelected
-                  ? '#e0f2fe'
-                  : totalAny === 0
-                  ? '#f8fafc'
-                  : isOdd
-                  ? '#eff6ff'
-                  : '#fdf2f8';
+                const modeStyle =
+                  r.gender === 'L'
+                    ? { border: '#bfdbfe', bg: '#eff6ff', badgeBg: '#dbeafe', badgeText: '#1d4ed8' }
+                    : r.gender === 'P'
+                    ? { border: '#fbcfe8', bg: '#fdf2f8', badgeBg: '#fce7f3', badgeText: '#be185d' }
+                    : { border: '#ddd6fe', bg: '#f5f3ff', badgeBg: '#ede9fe', badgeText: '#6d28d9' };
+                const accentBorder = isSelected ? '#0284c7' : modeStyle.border;
+                const accentBg = isSelected ? '#e0f2fe' : totalAny === 0 ? '#f8fafc' : modeStyle.bg;
 
                 return (
                   <div
@@ -1296,8 +1385,8 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
                           fontWeight: 700,
                           padding: '2px 8px',
                           borderRadius: '999px',
-                          background: isOdd ? '#dbeafe' : '#fce7f3',
-                          color: isOdd ? '#1d4ed8' : '#be185d'
+                          background: modeStyle.badgeBg,
+                          color: modeStyle.badgeText
                         }}
                       >
                         {r.genderLabel} • {r.quota} Kursi
