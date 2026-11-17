@@ -110,14 +110,14 @@ export function buildDeskGrid(
 
 function renderSeatLine(p: AssignedParticipant | null, emptyText: string, compact = false) {
   if (!p) {
-    return `<div style="font-size:6.8pt;color:#94a3b8;font-style:italic;">${escapeHtml(emptyText)}</div>`;
+    return `<div style="font-size:6.8pt;color:#94a3b8;font-style:italic;text-align:center;">${escapeHtml(emptyText)}</div>`;
   }
-  const codeSize = compact ? '5.9pt' : '7.4pt';
+  const codeSize = compact ? '5.5pt' : '7.4pt';
   const nameSize = compact ? '6.6pt' : '7pt';
   return `
-    <div style="font-weight:800;font-size:${codeSize};color:#0369a1;letter-spacing:-0.25px;line-height:1.15;overflow-wrap:anywhere;word-break:break-word;">${escapeHtml(p.noUjian)}</div>
-    <div style="font-size:${nameSize};font-weight:700;color:#1e293b;line-height:1.15;margin-top:1.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;" title="${escapeHtml(p.nama)}">${escapeHtml(p.nama)}</div>
-    <div style="font-size:6pt;color:#475569;margin-top:1px;">${escapeHtml(p.rombel)} (${escapeHtml(p.jenisKelamin)})</div>
+    <div style="font-weight:800;font-size:${codeSize};color:#0369a1;letter-spacing:-0.25px;line-height:1.15;text-align:center;overflow-wrap:anywhere;word-break:break-word;">${escapeHtml(p.noUjian)}</div>
+    <div style="font-size:${nameSize};font-weight:700;color:#1e293b;line-height:1.15;margin-top:1.5px;text-align:center;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;" title="${escapeHtml(p.nama)}">${escapeHtml(p.nama)}</div>
+    <div style="font-size:6pt;color:#475569;margin-top:1px;text-align:center;">${escapeHtml(p.rombel)} (${escapeHtml(p.jenisKelamin)})</div>
   `;
 }
 
@@ -154,8 +154,8 @@ function renderRoomDenahPage(
               </div>
               ${
                 showPagi
-                  ? `<div style="background:#fffbeb;padding:4px 5px;border-bottom:${showSiang ? '1px dashed #cbd5e1' : 'none'};min-width:0;overflow:hidden;">
-                      <div style="font-size:5.8pt;font-weight:800;color:#b45309;text-transform:uppercase;margin-bottom:1px;">Pagi (Kls 9 • Sendiri)</div>
+                  ? `<div style="background:#fffbeb;padding:4px 5px;border-bottom:${showSiang ? '1px dashed #cbd5e1' : 'none'};min-width:0;overflow:hidden;text-align:center;">
+                      <div style="font-size:5.8pt;font-weight:800;color:#b45309;text-transform:uppercase;margin-bottom:1px;text-align:center;">Pagi (Kls 9 • Sendiri)</div>
                       ${renderSeatLine(slot.pagi, 'Bangku kosong', false)}
                     </div>`
                   : ''
@@ -163,12 +163,12 @@ function renderRoomDenahPage(
               ${
                 showSiang
                   ? `<div style="display:grid;grid-template-columns:1fr 1fr;background:#f8fafc;flex:1;min-width:0;">
-                      <div style="padding:4px;border-right:1px solid #cbd5e1;min-width:0;overflow:hidden;">
-                        <div style="font-size:5.7pt;font-weight:800;color:#4338ca;margin-bottom:1px;">Siang Kiri (${2 * slot.deskNumber - 1})</div>
+                      <div style="padding:4px;border-right:1px solid #cbd5e1;min-width:0;overflow:hidden;text-align:center;">
+                        <div style="font-size:5.7pt;font-weight:800;color:#4338ca;margin-bottom:1px;text-align:center;">Siang Kiri (${2 * slot.deskNumber - 1})</div>
                         ${renderSeatLine(slot.siangKiri, '-', true)}
                       </div>
-                      <div style="padding:4px;min-width:0;overflow:hidden;">
-                        <div style="font-size:5.7pt;font-weight:800;color:#4338ca;margin-bottom:1px;">Siang Kanan (${2 * slot.deskNumber})</div>
+                      <div style="padding:4px;min-width:0;overflow:hidden;text-align:center;">
+                        <div style="font-size:5.7pt;font-weight:800;color:#4338ca;margin-bottom:1px;text-align:center;">Siang Kanan (${2 * slot.deskNumber})</div>
                         ${renderSeatLine(slot.siangKanan, '-', true)}
                       </div>
                     </div>`

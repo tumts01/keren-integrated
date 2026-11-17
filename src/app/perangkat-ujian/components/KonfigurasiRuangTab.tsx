@@ -589,12 +589,6 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
     ) => {
       const genderCode: 'L' | 'P' = normalizeGender(s.jenisKelamin) === 'L' ? 'L' : 'P';
       const parsedKelas = parseKelasOrder(s.rombel);
-      const roomPad = String(rNum).padStart(2, '0');
-      const seatPad = String(seat).padStart(2, '0');
-      const sesiCode = sesi === 'Pagi' ? 'P' : 'S';
-      const noUjian = prefixClean
-        ? `${prefixClean}-R.${roomPad}${sesiCode}-${seatPad}`
-        : `R.${roomPad}${sesiCode}-${seatPad}`;
       const rawFoto =
         s.rawMetadata?.['LINK FOTO TERBARU'] ||
         s.rawMetadata?.['LINK URL FOTO 1'] ||
@@ -613,7 +607,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
         ruangNumber: rNum,
         ruang: `Ruang ${rNum}`,
         noKursi: seat,
-        noUjian,
+        noUjian: '',
         foto: rawFoto
       });
     };
@@ -839,6 +833,20 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       if (a.ruangNumber !== b.ruangNumber) return a.ruangNumber - b.ruangNumber;
       if (a.sesi !== b.sesi) return a.sesi === 'Pagi' ? -1 : 1;
       return a.noKursi - b.noKursi;
+    });
+
+    // Generate No. Ujian setelah urut ruang & kursi: [Awalan-]R.<ruang><L/P>-<tingkat><urut 3 digit per angkatan>
+    const gradeCounter: Record<number, number> = { 7: 0, 8: 0, 9: 0 };
+    assignedList.forEach(a => {
+      const gradeKey = a.tingkat === 7 || a.tingkat === 8 || a.tingkat === 9 ? a.tingkat : 0;
+      gradeCounter[gradeKey] = (gradeCounter[gradeKey] || 0) + 1;
+      const roomPad = String(a.ruangNumber).padStart(2, '0');
+      const genderCode = a.jenisKelamin; // 'L' | 'P'
+      const seqPad = String(gradeCounter[gradeKey]).padStart(3, '0');
+      const gradeSeq = gradeKey ? `${gradeKey}${seqPad}` : seqPad;
+      a.noUjian = prefixClean
+        ? `${prefixClean}-R.${roomPad}${genderCode}-${gradeSeq}`
+        : `R.${roomPad}${genderCode}-${gradeSeq}`;
     });
 
     setAssignments(assignedList);
@@ -1331,7 +1339,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
               type="text"
               value={noUjianPrefix}
               onChange={e => setNoUjianPrefix(e.target.value)}
-              placeholder="Contoh: U / STS (kosong = R.01P-01)"
+              placeholder="Contoh: U / SAS-26 (kosong = R.01L-7001 / R.01P-9001)"
               style={{ width: '100%', padding: '9px 11px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
             />
           </div>
@@ -2288,56 +2296,56 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
                           </div>
 
                           {showPagi && (
-                            <div style={{ background: '#fffbeb', padding: '7px 8px', borderBottom: showSiang ? '1px dashed #cbd5e1' : 'none', minWidth: 0, overflow: 'hidden' }}>
-                              <div style={{ fontSize: '10px', fontWeight: 800, color: '#b45309', marginBottom: '2px' }}>
+                            <div style={{ background: '#fffbeb', padding: '7px 8px', borderBottom: showSiang ? '1px dashed #cbd5e1' : 'none', minWidth: 0, overflow: 'hidden', textAlign: 'center' }}>
+                              <div style={{ fontSize: '10px', fontWeight: 800, color: '#b45309', marginBottom: '2px', textAlign: 'center' }}>
                                 PAGI (Kls 9 • Sendiri)
                               </div>
                               {slot.pagi ? (
                                 <>
-                                  <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#0369a1', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.2 }}>{slot.pagi.noUjian}</div>
-                                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#1e293b', marginTop: '2px', lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={slot.pagi.nama}>
+                                  <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#0369a1', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.2, textAlign: 'center' }}>{slot.pagi.noUjian}</div>
+                                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#1e293b', marginTop: '2px', lineHeight: 1.25, textAlign: 'center', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={slot.pagi.nama}>
                                     {slot.pagi.nama}
                                   </div>
-                                  <div style={{ fontSize: '10px', color: '#64748b', marginTop: '1px' }}>Kelas {slot.pagi.rombel} ({slot.pagi.jenisKelamin})</div>
+                                  <div style={{ fontSize: '10px', color: '#64748b', marginTop: '1px', textAlign: 'center' }}>Kelas {slot.pagi.rombel} ({slot.pagi.jenisKelamin})</div>
                                 </>
                               ) : (
-                                <div style={{ fontSize: '10.5px', color: '#94a3b8', fontStyle: 'italic' }}>Kosong</div>
+                                <div style={{ fontSize: '10.5px', color: '#94a3b8', fontStyle: 'italic', textAlign: 'center' }}>Kosong</div>
                               )}
                             </div>
                           )}
 
                           {showSiang && (
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: '#f8fafc', flex: 1, minWidth: 0 }}>
-                              <div style={{ padding: '6px 7px', borderRight: '1px solid #cbd5e1', minWidth: 0, overflow: 'hidden' }}>
-                                <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#4338ca', marginBottom: '2px' }}>
+                              <div style={{ padding: '6px 7px', borderRight: '1px solid #cbd5e1', minWidth: 0, overflow: 'hidden', textAlign: 'center' }}>
+                                <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#4338ca', marginBottom: '2px', textAlign: 'center' }}>
                                   Siang Kiri ({2 * slot.deskNumber - 1})
                                 </div>
                                 {slot.siangKiri ? (
                                   <>
-                                    <div style={{ fontSize: '10px', fontWeight: 800, color: '#0369a1', letterSpacing: '-0.2px', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.2 }}>{slot.siangKiri.noUjian}</div>
-                                    <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#1e293b', marginTop: '2px', lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={slot.siangKiri.nama}>
+                                    <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#0369a1', letterSpacing: '-0.25px', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.2, textAlign: 'center' }}>{slot.siangKiri.noUjian}</div>
+                                    <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#1e293b', marginTop: '2px', lineHeight: 1.2, textAlign: 'center', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={slot.siangKiri.nama}>
                                       {slot.siangKiri.nama}
                                     </div>
-                                    <div style={{ fontSize: '9.5px', color: '#64748b', marginTop: '1px' }}>{slot.siangKiri.rombel} ({slot.siangKiri.jenisKelamin})</div>
+                                    <div style={{ fontSize: '9.5px', color: '#64748b', marginTop: '1px', textAlign: 'center' }}>{slot.siangKiri.rombel} ({slot.siangKiri.jenisKelamin})</div>
                                   </>
                                 ) : (
-                                  <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>-</div>
+                                  <div style={{ fontSize: '10.5px', color: '#94a3b8', textAlign: 'center' }}>-</div>
                                 )}
                               </div>
-                              <div style={{ padding: '6px 7px', minWidth: 0, overflow: 'hidden' }}>
-                                <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#4338ca', marginBottom: '2px' }}>
+                              <div style={{ padding: '6px 7px', minWidth: 0, overflow: 'hidden', textAlign: 'center' }}>
+                                <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#4338ca', marginBottom: '2px', textAlign: 'center' }}>
                                   Siang Kanan ({2 * slot.deskNumber})
                                 </div>
                                 {slot.siangKanan ? (
                                   <>
-                                    <div style={{ fontSize: '10px', fontWeight: 800, color: '#0369a1', letterSpacing: '-0.2px', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.2 }}>{slot.siangKanan.noUjian}</div>
-                                    <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#1e293b', marginTop: '2px', lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={slot.siangKanan.nama}>
+                                    <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#0369a1', letterSpacing: '-0.25px', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.2, textAlign: 'center' }}>{slot.siangKanan.noUjian}</div>
+                                    <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#1e293b', marginTop: '2px', lineHeight: 1.2, textAlign: 'center', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={slot.siangKanan.nama}>
                                       {slot.siangKanan.nama}
                                     </div>
-                                    <div style={{ fontSize: '9.5px', color: '#64748b', marginTop: '1px' }}>{slot.siangKanan.rombel} ({slot.siangKanan.jenisKelamin})</div>
+                                    <div style={{ fontSize: '9.5px', color: '#64748b', marginTop: '1px', textAlign: 'center' }}>{slot.siangKanan.rombel} ({slot.siangKanan.jenisKelamin})</div>
                                   </>
                                 ) : (
-                                  <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>-</div>
+                                  <div style={{ fontSize: '10.5px', color: '#94a3b8', textAlign: 'center' }}>-</div>
                                 )}
                               </div>
                             </div>
