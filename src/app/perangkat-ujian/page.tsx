@@ -1,6 +1,5 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
-import * as XLSX from 'xlsx';
+import { useState, useEffect } from 'react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { supabase } from '@/lib/supabase';
@@ -191,7 +190,6 @@ export default function PerangkatUjianPage() {
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState('');
   const [customDesign, setCustomDesign] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDesignUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -242,7 +240,17 @@ export default function PerangkatUjianPage() {
   };
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Load saved layout on mount
+  const mapConfigAssignments = (rawAssignments: any[]): Participant[] =>
+    rawAssignments.map((a: any) => ({
+      nisn: String(a.nisn || ''),
+      noUjian: String(a.noUjian || ''),
+      ruang: String(a.ruang || ''),
+      kelas: String(a.rombel || a.kelas || '-'),
+      nama: String(a.nama || ''),
+      foto: String(a.foto || '')
+    }));
+
+  // Load saved layout + konfigurasi ruang on mount
   useEffect(() => {
     const storedUser = localStorage.getItem('keren_user_data');
     if (storedUser) {
@@ -256,11 +264,15 @@ export default function PerangkatUjianPage() {
 
     const loadGlobalConfig = async () => {
       try {
-        // Coba load dari Supabase (Global)
-        const { data, error } = await supabase.from('rapor_config').select('*').in('key', ['nopes_layout', 'nobang_layout']);
+        // Coba load dari Supabase (Global): layout + exam_room_config dalam 1 query
+        const { data, error } = await supabase
+          .from('rapor_config')
+          .select('*')
+          .in('key', ['nopes_layout', 'nobang_layout', 'exam_room_config']);
         
         let loadedNopes = false;
         let loadedNobang = false;
+        let loadedParticipants = false;
 
         if (!error && data) {
           const nopesCfg = data.find((d: any) => d.key === 'nopes_layout');
@@ -274,6 +286,15 @@ export default function PerangkatUjianPage() {
             setLayoutNobang(JSON.parse(nobangCfg.value));
             loadedNobang = true;
           }
+
+          const roomCfg = data.find((d: any) => d.key === 'exam_room_config');
+          if (roomCfg && roomCfg.value) {
+            const parsedRoom = JSON.parse(roomCfg.value);
+            if (Array.isArray(parsedRoom.assignments) && parsedRoom.assignments.length > 0) {
+              setParticipants(mapConfigAssignments(parsedRoom.assignments));
+              loadedParticipants = true;
+            }
+          }
         }
 
         // Fallback ke local storage jika di Supabase belum ada
@@ -284,6 +305,15 @@ export default function PerangkatUjianPage() {
         if (!loadedNobang) {
           const savedNobang = localStorage.getItem('nopes_layout_nobang');
           if (savedNobang) setLayoutNobang(JSON.parse(savedNobang));
+        }
+        if (!loadedParticipants) {
+          const savedRoom = localStorage.getItem('exam_room_config');
+          if (savedRoom) {
+            const parsedRoom = JSON.parse(savedRoom);
+            if (Array.isArray(parsedRoom.assignments) && parsedRoom.assignments.length > 0) {
+              setParticipants(mapConfigAssignments(parsedRoom.assignments));
+            }
+          }
         }
       } catch (err) {}
     };
@@ -310,68 +340,47 @@ export default function PerangkatUjianPage() {
     localStorage.setItem('nopesLayoutConfig', JSON.stringify(newLayout));
   };
 
-  const downloadTemplate = () => {
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet([{ NISN: '1234567890', 'NO UJIAN': '001-01', RUANG: 'Ruang 1' }]);
-    XLSX.utils.book_append_sheet(wb, ws, 'Template Nopes');
-    XLSX.writeFile(wb, 'Template_Import_Nopes.xlsx');
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const syncFromKonfigurasiRuang = async () => {
     setLoading(true);
     try {
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet);
+      const { data, error } = await supabase
+        .from('rapor_config')
+        .select('value')
+        .eq('key', 'exam_room_config')
+        .maybeSingle();
 
-      if (rows.length === 0) {
-        Swal.fire('Error', 'File Excel kosong', 'error');
-        setLoading(false);
+      let rawValue: string | null = !error && data?.value ? data.value : null;
+      if (!rawValue) {
+        rawValue = localStorage.getItem('exam_room_config');
+      }
+
+      if (!rawValue) {
+        Swal.fire('Belum Ada Data', 'Konfigurasi pembagian ruang belum tersimpan. Silakan bagi ruang terlebih dahulu di tab 1. Konfigurasi Ruang.', 'info');
         return;
       }
 
-      const parsed: Participant[] = rows.map(r => ({
-        nisn: String(r['NISN'] || ''),
-        kelas: String(r['KELAS'] || ''),
-        noUjian: String(r['NO UJIAN'] || ''),
-        ruang: String(r['RUANG'] || '')
-      })).filter(p => p.nisn);
-
-      // Ambil data nama dan foto via API (tidak lagi query Supabase langsung di client)
-      const nisns = parsed.map(p => p.nisn);
-      
-      const res = await fetch('/api/perangkat-ujian/peserta', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nisns })
-      });
-      const resData = await res.json();
-
-      if (!resData.success) {
-        Swal.fire('Error', resData.error || 'Gagal memuat data peserta', 'error');
-      } else {
-        const dbData = resData.data; // { [nisn]: { nama, rombel, foto } }
-        const enriched = parsed.map(p => {
-          const match = dbData[p.nisn];
-          return {
-            ...p,
-            nama: match?.nama || 'TIDAK DITEMUKAN',
-            kelas: p.kelas || match?.rombel || '-',
-            foto: match?.foto || ''
-          };
-        });
-        setParticipants(enriched);
+      const parsed = JSON.parse(rawValue);
+      if (!Array.isArray(parsed.assignments) || parsed.assignments.length === 0) {
+        Swal.fire('Belum Ada Data', 'Data pembagian peserta di Konfigurasi Ruang masih kosong.', 'info');
+        return;
       }
+
+      const mapped = mapConfigAssignments(parsed.assignments);
+      setParticipants(mapped);
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: `${mapped.length} peserta dimuat dari Konfigurasi Ruang.`,
+        showConfirmButton: false,
+        timer: 2000
+      });
     } catch (err) {
       console.error(err);
-      Swal.fire('Error', 'Gagal membaca file Excel', 'error');
+      Swal.fire('Error', 'Gagal memuat data dari Konfigurasi Ruang.', 'error');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const generateNobangPDF = async () => {
@@ -850,22 +859,19 @@ export default function PerangkatUjianPage() {
         )}
         {activeTab === 'nopes' && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: 0 }}>
                 Daftar Nomor Peserta
               </h2>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button onClick={downloadTemplate} style={{ padding: '8px 16px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: '#475569' }}>
-                  <i className="fas fa-download"></i> Template Excel
-                </button>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <label style={{ padding: '8px 16px', background: customDesign ? '#10b981' : '#f59e0b', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
                   <i className="fas fa-image"></i> {customDesign ? 'Design OK' : 'Import Design'}
                   <input type="file" accept="image/png, image/jpeg" style={{ display: 'none' }} onChange={handleDesignUpload} disabled={loading || generating} />
                 </label>
-                <label style={{ padding: '8px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
-                  <i className="fas fa-upload"></i> {loading ? 'Memproses...' : 'Import Data'}
-                  <input type="file" accept=".xlsx, .xls" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileUpload} disabled={loading} />
-                </label>
+                <button onClick={syncFromKonfigurasiRuang} disabled={loading || generating} style={{ padding: '8px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: loading || generating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
+                  <i className={loading ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'}></i>
+                  {loading ? 'Memuat...' : 'Muat dari Konfigurasi Ruang'}
+                </button>
                 {(participants.length > 0 && customDesign) && (
                   <button onClick={generatePDF} disabled={generating} style={{ padding: '8px 16px', background: generating ? '#94a3b8' : '#10b981', border: 'none', borderRadius: '6px', cursor: generating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
                     <i className={generating ? 'fas fa-spinner fa-spin' : 'fas fa-file-pdf'}></i>
@@ -912,8 +918,8 @@ export default function PerangkatUjianPage() {
               </div>
             ) : (
               <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
-                <i className="fas fa-file-excel" style={{ fontSize: '48px', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
-                Belum ada data peserta. Silakan import file Excel terlebih dahulu.
+                <i className="fas fa-door-open" style={{ fontSize: '48px', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
+                Belum ada data peserta. Silakan bagi ruang terlebih dahulu di tab <b>1. Konfigurasi Ruang</b>, lalu klik <b>Muat dari Konfigurasi Ruang</b>.
               </div>
             )}
           </div>
@@ -921,22 +927,19 @@ export default function PerangkatUjianPage() {
 
         {activeTab === 'nobang' && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: 0 }}>
                 Daftar Nomor Bangku
               </h2>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button onClick={downloadTemplate} style={{ padding: '8px 16px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: '#475569' }}>
-                  <i className="fas fa-download"></i> Template Excel
-                </button>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <label style={{ padding: '8px 16px', background: nobangDesign ? '#10b981' : '#f59e0b', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
                   <i className="fas fa-image"></i> {nobangDesign ? 'Design OK' : 'Import Design'}
                   <input type="file" accept="image/png, image/jpeg" style={{ display: 'none' }} onChange={handleNobangDesignUpload} disabled={loading || generating} />
                 </label>
-                <label style={{ padding: '8px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
-                  <i className="fas fa-upload"></i> {loading ? 'Memproses...' : 'Import Data'}
-                  <input type="file" accept=".xlsx, .xls" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileUpload} disabled={loading} />
-                </label>
+                <button onClick={syncFromKonfigurasiRuang} disabled={loading || generating} style={{ padding: '8px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: loading || generating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
+                  <i className={loading ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'}></i>
+                  {loading ? 'Memuat...' : 'Muat dari Konfigurasi Ruang'}
+                </button>
                 {(participants.length > 0 && nobangDesign) && (
                   <button onClick={generateNobangPDF} disabled={generating} style={{ padding: '8px 16px', background: generating ? '#94a3b8' : '#10b981', border: 'none', borderRadius: '6px', cursor: generating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
                     <i className={generating ? 'fas fa-spinner fa-spin' : 'fas fa-file-pdf'}></i>
@@ -970,9 +973,9 @@ export default function PerangkatUjianPage() {
                 </table>
               </div>
             ) : (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
-                <i className="fas fa-users" style={{ fontSize: '48px', marginBottom: '16px' }}></i>
-                <p>Belum ada data. Silakan import dari Excel.</p>
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                <i className="fas fa-door-open" style={{ fontSize: '48px', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
+                Belum ada data peserta. Silakan bagi ruang terlebih dahulu di tab <b>1. Konfigurasi Ruang</b>, lalu klik <b>Muat dari Konfigurasi Ruang</b>.
               </div>
             )}
           </div>
