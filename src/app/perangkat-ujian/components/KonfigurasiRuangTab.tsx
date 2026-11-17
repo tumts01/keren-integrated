@@ -111,7 +111,6 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
   // Configuration state
   const [tahunAjaranFilter, setTahunAjaranFilter] = useState<string>('SEMUA');
   const [jumlahRuang, setJumlahRuang] = useState<number>(20);
-  const [quotaPerRuang, setQuotaPerRuang] = useState<number>(20);
   const [customRoomQuotas, setCustomRoomQuotas] = useState<Record<number, number>>({});
   const [sortMode, setSortMode] = useState<'tingkat-huruf' | 'huruf-tingkat'>('tingkat-huruf');
   const [noUjianPrefix, setNoUjianPrefix] = useState<string>('');
@@ -179,7 +178,6 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
           try {
             const parsed = JSON.parse(savedRaw);
             if (typeof parsed.jumlahRuang === 'number') setJumlahRuang(parsed.jumlahRuang);
-            if (typeof parsed.quotaPerRuang === 'number') setQuotaPerRuang(parsed.quotaPerRuang);
             if (parsed.customRoomQuotas) setCustomRoomQuotas(parsed.customRoomQuotas);
             if (parsed.sortMode) setSortMode(parsed.sortMode);
             if (typeof parsed.noUjianPrefix === 'string') setNoUjianPrefix(parsed.noUjianPrefix);
@@ -214,7 +212,6 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
     try {
       const draft = {
         jumlahRuang,
-        quotaPerRuang,
         customRoomQuotas,
         sortMode,
         noUjianPrefix,
@@ -226,7 +223,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       };
       localStorage.setItem(CONFIG_KEY, JSON.stringify(draft));
     } catch {}
-  }, [jumlahRuang, quotaPerRuang, customRoomQuotas, sortMode, noUjianPrefix, tahunAjaranFilter]);
+  }, [jumlahRuang, customRoomQuotas, sortMode, noUjianPrefix, tahunAjaranFilter]);
 
   const tahunAjaranOptions = useMemo(() => {
     return Array.from(
@@ -312,17 +309,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
 
   const getRoomQuota = (roomNumber: number) => {
     const custom = customRoomQuotas[roomNumber];
-    if (typeof custom === 'number' && custom >= 0) return custom;
-    return Math.max(1, Number(quotaPerRuang) || 1);
-  };
-
-  const handleApplyDefaultQuotaAll = () => {
-    const val = Math.max(1, Number(quotaPerRuang) || 20);
-    const next: Record<number, number> = {};
-    for (let r = 1; r <= jumlahRuang; r++) {
-      next[r] = val;
-    }
-    setCustomRoomQuotas(next);
+    return typeof custom === 'number' && custom >= 0 ? custom : 0;
   };
 
   const capacityStats = useMemo(() => {
@@ -342,7 +329,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       }
     }
     return { count, oddRooms, evenRooms, capL, capP };
-  }, [jumlahRuang, quotaPerRuang, customRoomQuotas]);
+  }, [jumlahRuang, customRoomQuotas]);
 
   const persistConfiguration = async (
     nextAssignments: AssignedParticipant[],
@@ -352,7 +339,6 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
     const updatedAt = new Date().toLocaleString('id-ID');
     const payload = {
       jumlahRuang,
-      quotaPerRuang,
       customRoomQuotas,
       sortMode,
       noUjianPrefix,
@@ -403,6 +389,10 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
     }
 
     const totalRooms = Math.max(1, Math.min(100, Number(jumlahRuang) || 1));
+    if (capacityStats.capL + capacityStats.capP <= 0) {
+      Swal.fire('Oops', 'Silakan isi quota kursi minimal pada salah satu ruang terlebih dahulu.', 'warning');
+      return;
+    }
 
     const compareStudent = (a: RawStudent, b: RawStudent) => {
       const ka = parseKelasOrder(a.rombel);
@@ -684,7 +674,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       });
     }
     return list;
-  }, [assignments, jumlahRuang, quotaPerRuang, customRoomQuotas]);
+  }, [assignments, jumlahRuang, customRoomQuotas]);
 
   const roomSummaries = useMemo<RoomGroupPrintData[]>(() => {
     const list: RoomGroupPrintData[] = [];
@@ -1044,30 +1034,6 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
 
           <div>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
-              Quota Default / Isi Massal
-            </label>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <input
-                type="number"
-                min={1}
-                max={100}
-                value={quotaPerRuang}
-                onChange={e => setQuotaPerRuang(Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 1)))}
-                style={{ width: '100%', padding: '9px 11px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 700, fontSize: '14px' }}
-              />
-              <button
-                type="button"
-                onClick={handleApplyDefaultQuotaAll}
-                title="Isi seluruh ruang dengan angka default ini"
-                style={{ background: '#e2e8f0', color: '#334155', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '0 10px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
-              >
-                Terapkan Semua
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
               Urutan Kelas (A–I)
             </label>
             <select
@@ -1163,7 +1129,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
                     type="number"
                     min={0}
                     max={100}
-                    placeholder={String(quotaPerRuang)}
+                    placeholder="0"
                     value={customRoomQuotas[rNum] ?? ''}
                     onChange={e => {
                       const raw = e.target.value;
@@ -1173,7 +1139,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
                           delete next[rNum];
                         } else {
                           const parsed = parseInt(raw, 10);
-                          next[rNum] = Number.isNaN(parsed) ? quotaPerRuang : Math.max(0, Math.min(100, parsed));
+                          next[rNum] = Number.isNaN(parsed) ? 0 : Math.max(0, Math.min(100, parsed));
                         }
                         return next;
                       });
@@ -1187,7 +1153,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
 
           <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
             <span style={{ fontSize: '11.5px', color: '#64748b' }}>
-              Kosongkan kolom untuk mengikuti quota default (<b>{quotaPerRuang}</b>), atau isi <b>0</b> untuk melewati ruang. Perubahan otomatis tersimpan lokal, klik <b>Simpan Quota Ruang</b> / <b>Bagi Ruang Otomatis</b> untuk simpan ke server.
+              Isi quota kursi masing-masing ruang sesuai kebutuhan (kosong / <b>0</b> berarti ruang dilewati). Perubahan otomatis tersimpan lokal, klik <b>Simpan Quota Ruang</b> / <b>Bagi Ruang Otomatis</b> untuk simpan ke server.
             </span>
             <div style={{ display: 'flex', gap: '8px' }}>
               {Object.keys(customRoomQuotas).length > 0 && (
@@ -1196,7 +1162,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
                   onClick={() => setCustomRoomQuotas({})}
                   style={{ background: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
                 >
-                  Reset ke Default ({quotaPerRuang})
+                  Kosongkan Semua
                 </button>
               )}
               <button
