@@ -579,8 +579,8 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       const seatPad = String(seat).padStart(2, '0');
       const sesiCode = sesi === 'Pagi' ? 'P' : 'S';
       const noUjian = prefixClean
-        ? `${prefixClean}-${roomPad}${sesiCode}-${seatPad}`
-        : `${roomPad}${sesiCode}-${seatPad}`;
+        ? `${prefixClean}-R.${roomPad}${sesiCode}-${seatPad}`
+        : `R.${roomPad}${sesiCode}-${seatPad}`;
       const rawFoto =
         s.rawMetadata?.['LINK FOTO TERBARU'] ||
         s.rawMetadata?.['LINK URL FOTO 1'] ||
@@ -1210,7 +1210,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
               type="text"
               value={noUjianPrefix}
               onChange={e => setNoUjianPrefix(e.target.value)}
-              placeholder="Contoh: U / PTS (kosong = 01-01)"
+              placeholder="Contoh: U / STS (kosong = R.01P-01)"
               style={{ width: '100%', padding: '9px 11px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
             />
           </div>
