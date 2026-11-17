@@ -108,14 +108,16 @@ export function buildDeskGrid(
   return grid;
 }
 
-function renderSeatLine(p: AssignedParticipant | null, emptyText: string) {
+function renderSeatLine(p: AssignedParticipant | null, emptyText: string, compact = false) {
   if (!p) {
-    return `<div style="font-size:7pt;color:#94a3b8;font-style:italic;">${escapeHtml(emptyText)}</div>`;
+    return `<div style="font-size:6.8pt;color:#94a3b8;font-style:italic;">${escapeHtml(emptyText)}</div>`;
   }
+  const codeSize = compact ? '5.9pt' : '7.4pt';
+  const nameSize = compact ? '6.6pt' : '7pt';
   return `
-    <div style="font-weight:800;font-size:7.6pt;color:#0f172a;white-space:nowrap;">${escapeHtml(p.noUjian)}</div>
-    <div style="font-size:7.1pt;font-weight:600;color:#1e293b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(p.nama)}">${escapeHtml(p.nama)}</div>
-    <div style="font-size:6.6pt;color:#475569;">Kelas ${escapeHtml(p.rombel)} (${escapeHtml(p.jenisKelamin)})</div>
+    <div style="font-weight:800;font-size:${codeSize};color:#0369a1;letter-spacing:-0.25px;line-height:1.15;overflow-wrap:anywhere;word-break:break-word;">${escapeHtml(p.noUjian)}</div>
+    <div style="font-size:${nameSize};font-weight:700;color:#1e293b;line-height:1.15;margin-top:1.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;" title="${escapeHtml(p.nama)}">${escapeHtml(p.nama)}</div>
+    <div style="font-size:6pt;color:#475569;margin-top:1px;">${escapeHtml(p.rombel)} (${escapeHtml(p.jenisKelamin)})</div>
   `;
 }
 
@@ -138,36 +140,36 @@ function renderRoomDenahPage(
       row
         .map(slot => {
           if (!slot) {
-            return `<div style="border:1px dashed #e2e8f0;border-radius:6px;min-height:68px;background:#fafafa;"></div>`;
+            return `<div></div>`;
           }
 
           const showPagi = options.sesiView === 'gabungan' || options.sesiView === 'pagi';
           const showSiang = options.sesiView === 'gabungan' || options.sesiView === 'siang';
 
           return `
-            <div style="border:1.4px solid #334155;border-radius:6px;overflow:hidden;background:#fff;display:flex;flex-direction:column;">
-              <div style="background:#0f172a;color:#fff;padding:2.5px 6px;font-size:7.5pt;font-weight:800;display:flex;justify-content:space-between;align-items:center;">
+            <div style="border:1.4px solid #334155;border-radius:6px;overflow:hidden;background:#fff;display:flex;flex-direction:column;min-width:0;">
+              <div style="background:#0f172a;color:#fff;padding:2.5px 6px;font-size:7.2pt;font-weight:800;display:flex;justify-content:space-between;align-items:center;">
                 <span>BANGKU ${slot.deskNumber}</span>
-                <span style="font-size:6.5pt;font-weight:600;color:#cbd5e1;">K.${2 * slot.deskNumber - 1}-${2 * slot.deskNumber}</span>
+                <span style="font-size:6.2pt;font-weight:600;color:#cbd5e1;">K.${2 * slot.deskNumber - 1}-${2 * slot.deskNumber}</span>
               </div>
               ${
                 showPagi
-                  ? `<div style="background:#fffbeb;padding:4px 6px;border-bottom:${showSiang ? '1px dashed #cbd5e1' : 'none'};">
-                      <div style="font-size:6.2pt;font-weight:800;color:#b45309;text-transform:uppercase;margin-bottom:1px;">Pagi (Kls 9 • Sendiri)</div>
-                      ${renderSeatLine(slot.pagi, 'Bangku kosong')}
+                  ? `<div style="background:#fffbeb;padding:4px 5px;border-bottom:${showSiang ? '1px dashed #cbd5e1' : 'none'};min-width:0;overflow:hidden;">
+                      <div style="font-size:5.8pt;font-weight:800;color:#b45309;text-transform:uppercase;margin-bottom:1px;">Pagi (Kls 9 • Sendiri)</div>
+                      ${renderSeatLine(slot.pagi, 'Bangku kosong', false)}
                     </div>`
                   : ''
               }
               ${
                 showSiang
-                  ? `<div style="display:grid;grid-template-columns:1fr 1fr;background:#f8fafc;flex:1;">
-                      <div style="padding:4px 5px;border-right:1px solid #cbd5e1;min-width:0;">
-                        <div style="font-size:6pt;font-weight:800;color:#4338ca;margin-bottom:1px;">Siang Kiri (${2 * slot.deskNumber - 1})</div>
-                        ${renderSeatLine(slot.siangKiri, '-')}
+                  ? `<div style="display:grid;grid-template-columns:1fr 1fr;background:#f8fafc;flex:1;min-width:0;">
+                      <div style="padding:4px;border-right:1px solid #cbd5e1;min-width:0;overflow:hidden;">
+                        <div style="font-size:5.7pt;font-weight:800;color:#4338ca;margin-bottom:1px;">Siang Kiri (${2 * slot.deskNumber - 1})</div>
+                        ${renderSeatLine(slot.siangKiri, '-', true)}
                       </div>
-                      <div style="padding:4px 5px;min-width:0;">
-                        <div style="font-size:6pt;font-weight:800;color:#4338ca;margin-bottom:1px;">Siang Kanan (${2 * slot.deskNumber})</div>
-                        ${renderSeatLine(slot.siangKanan, '-')}
+                      <div style="padding:4px;min-width:0;overflow:hidden;">
+                        <div style="font-size:5.7pt;font-weight:800;color:#4338ca;margin-bottom:1px;">Siang Kanan (${2 * slot.deskNumber})</div>
+                        ${renderSeatLine(slot.siangKanan, '-', true)}
                       </div>
                     </div>`
                   : ''

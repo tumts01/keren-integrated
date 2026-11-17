@@ -2155,7 +2155,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
               padding: '16px'
             }}
           >
-            <div style={{ background: 'white', borderRadius: '12px', width: '100%', maxWidth: '1080px', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 48px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+            <div style={{ background: 'white', borderRadius: '12px', width: '100%', maxWidth: '1220px', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 48px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
               <div style={{ background: '#0f766e', color: 'white', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontWeight: 800, fontSize: '15.5px' }}>
@@ -2269,12 +2269,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
                   <div style={{ display: 'grid', gridTemplateColumns: `repeat(${denahCols}, minmax(0, 1fr))`, gap: '10px' }}>
                     {deskGrid.flat().map((slot, cellIdx) => {
                       if (!slot) {
-                        return (
-                          <div
-                            key={`empty-${cellIdx}`}
-                            style={{ border: '1px dashed #e2e8f0', borderRadius: '8px', minHeight: '95px', background: '#fafafa' }}
-                          />
-                        );
+                        return <div key={`empty-${cellIdx}`} />;
                       }
 
                       const showPagi = denahSesiView === 'gabungan' || denahSesiView === 'pagi';
@@ -2283,9 +2278,9 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
                       return (
                         <div
                           key={slot.deskNumber}
-                          style={{ border: '1.5px solid #334155', borderRadius: '8px', overflow: 'hidden', background: 'white', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+                          style={{ border: '1.5px solid #334155', borderRadius: '8px', overflow: 'hidden', background: 'white', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', minWidth: 0 }}
                         >
-                          <div style={{ background: '#0f172a', color: 'white', padding: '4px 8px', fontSize: '11.5px', fontWeight: 800, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ background: '#0f172a', color: 'white', padding: '5px 8px', fontSize: '11.5px', fontWeight: 800, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span>BANGKU {slot.deskNumber}</span>
                             <span style={{ fontSize: '10px', color: '#cbd5e1', fontWeight: 600 }}>
                               Kursi {2 * slot.deskNumber - 1}–{2 * slot.deskNumber}
@@ -2293,17 +2288,17 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
                           </div>
 
                           {showPagi && (
-                            <div style={{ background: '#fffbeb', padding: '6px 8px', borderBottom: showSiang ? '1px dashed #cbd5e1' : 'none' }}>
+                            <div style={{ background: '#fffbeb', padding: '7px 8px', borderBottom: showSiang ? '1px dashed #cbd5e1' : 'none', minWidth: 0, overflow: 'hidden' }}>
                               <div style={{ fontSize: '10px', fontWeight: 800, color: '#b45309', marginBottom: '2px' }}>
                                 PAGI (Kls 9 • Sendiri)
                               </div>
                               {slot.pagi ? (
                                 <>
-                                  <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#0f172a' }}>{slot.pagi.noUjian}</div>
-                                  <div style={{ fontSize: '11px', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={slot.pagi.nama}>
+                                  <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#0369a1', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.2 }}>{slot.pagi.noUjian}</div>
+                                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#1e293b', marginTop: '2px', lineHeight: 1.25, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={slot.pagi.nama}>
                                     {slot.pagi.nama}
                                   </div>
-                                  <div style={{ fontSize: '10px', color: '#64748b' }}>Kelas {slot.pagi.rombel} ({slot.pagi.jenisKelamin})</div>
+                                  <div style={{ fontSize: '10px', color: '#64748b', marginTop: '1px' }}>Kelas {slot.pagi.rombel} ({slot.pagi.jenisKelamin})</div>
                                 </>
                               ) : (
                                 <div style={{ fontSize: '10.5px', color: '#94a3b8', fontStyle: 'italic' }}>Kosong</div>
@@ -2312,34 +2307,34 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
                           )}
 
                           {showSiang && (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: '#f8fafc', flex: 1 }}>
-                              <div style={{ padding: '6px', borderRight: '1px solid #cbd5e1', minWidth: 0 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: '#f8fafc', flex: 1, minWidth: 0 }}>
+                              <div style={{ padding: '6px 7px', borderRight: '1px solid #cbd5e1', minWidth: 0, overflow: 'hidden' }}>
                                 <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#4338ca', marginBottom: '2px' }}>
                                   Siang Kiri ({2 * slot.deskNumber - 1})
                                 </div>
                                 {slot.siangKiri ? (
                                   <>
-                                    <div style={{ fontSize: '11px', fontWeight: 800, color: '#0f172a' }}>{slot.siangKiri.noUjian}</div>
-                                    <div style={{ fontSize: '10.5px', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={slot.siangKiri.nama}>
+                                    <div style={{ fontSize: '10px', fontWeight: 800, color: '#0369a1', letterSpacing: '-0.2px', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.2 }}>{slot.siangKiri.noUjian}</div>
+                                    <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#1e293b', marginTop: '2px', lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={slot.siangKiri.nama}>
                                       {slot.siangKiri.nama}
                                     </div>
-                                    <div style={{ fontSize: '9.5px', color: '#64748b' }}>{slot.siangKiri.rombel} ({slot.siangKiri.jenisKelamin})</div>
+                                    <div style={{ fontSize: '9.5px', color: '#64748b', marginTop: '1px' }}>{slot.siangKiri.rombel} ({slot.siangKiri.jenisKelamin})</div>
                                   </>
                                 ) : (
                                   <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>-</div>
                                 )}
                               </div>
-                              <div style={{ padding: '6px', minWidth: 0 }}>
+                              <div style={{ padding: '6px 7px', minWidth: 0, overflow: 'hidden' }}>
                                 <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#4338ca', marginBottom: '2px' }}>
                                   Siang Kanan ({2 * slot.deskNumber})
                                 </div>
                                 {slot.siangKanan ? (
                                   <>
-                                    <div style={{ fontSize: '11px', fontWeight: 800, color: '#0f172a' }}>{slot.siangKanan.noUjian}</div>
-                                    <div style={{ fontSize: '10.5px', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={slot.siangKanan.nama}>
+                                    <div style={{ fontSize: '10px', fontWeight: 800, color: '#0369a1', letterSpacing: '-0.2px', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.2 }}>{slot.siangKanan.noUjian}</div>
+                                    <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#1e293b', marginTop: '2px', lineHeight: 1.2, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={slot.siangKanan.nama}>
                                       {slot.siangKanan.nama}
                                     </div>
-                                    <div style={{ fontSize: '9.5px', color: '#64748b' }}>{slot.siangKanan.rombel} ({slot.siangKanan.jenisKelamin})</div>
+                                    <div style={{ fontSize: '9.5px', color: '#64748b', marginTop: '1px' }}>{slot.siangKanan.rombel} ({slot.siangKanan.jenisKelamin})</div>
                                   </>
                                 ) : (
                                   <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>-</div>
