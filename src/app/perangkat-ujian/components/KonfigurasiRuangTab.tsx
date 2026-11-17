@@ -10,6 +10,13 @@ import {
   RoomGroupPrintData,
   buildDaftarHadirHtml
 } from './daftarHadirPrint';
+import {
+  DenahOrderPattern,
+  DenahSesiView,
+  buildDeskSlotsForRoom,
+  buildDeskGrid,
+  buildDenahRuangHtml
+} from './denahRuangPrint';
 
 interface RawStudent {
   id: number;
@@ -148,6 +155,13 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
   const [printHariTanggal, setPrintHariTanggal] = useState<string>('');
   const [printWaktu, setPrintWaktu] = useState<string>('');
   const [duplicateSingleOn2Up, setDuplicateSingleOn2Up] = useState<boolean>(false);
+
+  // Denah / Mapping Tempat Duduk Modal State
+  const [showDenahModal, setShowDenahModal] = useState<boolean>(false);
+  const [denahRoomNumber, setDenahRoomNumber] = useState<number>(1);
+  const [denahCols, setDenahCols] = useState<number>(4);
+  const [denahPattern, setDenahPattern] = useState<DenahOrderPattern>('baris-kiri-kanan');
+  const [denahSesiView, setDenahSesiView] = useState<DenahSesiView>('gabungan');
 
   const fetchCompactStudents = async (forceFresh = false): Promise<RawStudent[]> => {
     if (!forceFresh && typeof window !== 'undefined') {
@@ -1470,6 +1484,21 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
                 >
                   <i className="fas fa-print"></i> Cetak Daftar Hadir (F5)
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const firstActive = roomOverviews.find(r => r.pagiStudents.length > 0 || r.siangStudents.length > 0);
+                    const initialRoom =
+                      filterRuang !== 'ALL'
+                        ? Number(filterRuang)
+                        : firstActive?.ruangNumber || 1;
+                    setDenahRoomNumber(initialRoom);
+                    setShowDenahModal(true);
+                  }}
+                  style={{ background: '#0f766e', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 14px', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <i className="fas fa-th"></i> Mapping Tempat Duduk
+                </button>
                 {onApplyToGenerator && (
                   <>
                     <button
@@ -1521,22 +1550,38 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
                       transition: 'all 0.15s'
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px', gap: '4px' }}>
                       <span style={{ fontWeight: 800, fontSize: '14px', color: '#0f172a' }}>
                         {r.ruangName}
                       </span>
-                      <span
-                        style={{
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          padding: '2px 8px',
-                          borderRadius: '999px',
-                          background: modeStyle.badgeBg,
-                          color: modeStyle.badgeText
-                        }}
-                      >
-                        {r.genderLabel} • {r.quotaKursi} Krs ({r.quotaPagi} Bku)
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {totalAny > 0 && (
+                          <button
+                            type="button"
+                            onClick={e => {
+                              e.stopPropagation();
+                              setDenahRoomNumber(r.ruangNumber);
+                              setShowDenahModal(true);
+                            }}
+                            title={`Lihat & Cetak Denah Bangku ${r.ruangName}`}
+                            style={{ background: 'white', color: '#0f766e', border: '1px solid #99f6e4', borderRadius: '4px', padding: '1px 6px', fontSize: '10.5px', fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            <i className="fas fa-th" style={{ marginRight: '3px' }}></i>Denah
+                          </button>
+                        )}
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            background: modeStyle.badgeBg,
+                            color: modeStyle.badgeText
+                          }}
+                        >
+                          {r.genderLabel} • {r.quotaKursi} Krs ({r.quotaPagi} Bku)
+                        </span>
+                      </div>
                     </div>
 
                     <div style={{ fontSize: '11.5px', color: '#334155', display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1953,6 +1998,258 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
           </div>
         </div>
       )}
+
+      {/* Modal Denah / Mapping Tempat Duduk Per Ruang */}
+      {showDenahModal && (() => {
+        const activeRooms = roomOverviews.filter(r => r.pagiStudents.length > 0 || r.siangStudents.length > 0);
+        const currentRoom = roomOverviews.find(r => r.ruangNumber === denahRoomNumber) || activeRooms[0] || roomOverviews[0];
+        if (!currentRoom) return null;
+
+        const slots = buildDeskSlotsForRoom(currentRoom);
+        const deskGrid = buildDeskGrid(slots, denahCols, denahPattern);
+
+        const triggerDenahPrint = (printAll: boolean) => {
+          const targets = printAll ? activeRooms : [currentRoom];
+          if (targets.length === 0) {
+            Swal.fire('Info', 'Belum ada ruang yang memiliki peserta.', 'info');
+            return;
+          }
+          const html = buildDenahRuangHtml(
+            targets,
+            {
+              examTitle,
+              tahunAjaran: printTahunAjaran,
+              cols: denahCols,
+              pattern: denahPattern,
+              sesiView: denahSesiView
+            },
+            window.location.origin
+          );
+          const win = window.open('', '_blank', 'width=1120,height=800');
+          if (!win) {
+            Swal.fire('Pop-up Diblokir', 'Izinkan pop-up browser agar preview cetak denah dapat dibuka.', 'warning');
+            return;
+          }
+          win.document.open();
+          win.document.write(html);
+          win.document.close();
+        };
+
+        return (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(15, 23, 42, 0.6)',
+              zIndex: 9999,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px'
+            }}
+          >
+            <div style={{ background: 'white', borderRadius: '12px', width: '100%', maxWidth: '1080px', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 48px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+              <div style={{ background: '#0f766e', color: 'white', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '15.5px' }}>
+                    <i className="fas fa-th" style={{ marginRight: '8px' }}></i>
+                    Mapping &amp; Denah Tempat Duduk — {currentRoom.ruangName} ({currentRoom.genderLabel})
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#ccfbf1', marginTop: '2px' }}>
+                    Panduan posisi bangku untuk penempelan kartu Nobang &bull; Pagi (Kls 9): {currentRoom.pagiStudents.length} siswa • Siang (Kls 7&amp;8): {currentRoom.siangStudents.length} siswa
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDenahModal(false)}
+                  style={{ background: 'none', border: 'none', color: 'white', fontSize: '22px', cursor: 'pointer', lineHeight: 1 }}
+                >
+                  &times;
+                </button>
+              </div>
+
+              {/* Controls Bar */}
+              <div style={{ padding: '12px 18px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'end' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '3px' }}>Pilih Ruang</label>
+                  <select
+                    value={currentRoom.ruangNumber}
+                    onChange={e => setDenahRoomNumber(Number(e.target.value))}
+                    style={{ padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', fontWeight: 600, background: 'white' }}
+                  >
+                    {roomOverviews.map(r => (
+                      <option key={r.ruangNumber} value={r.ruangNumber}>
+                        {r.ruangName} ({r.genderLabel} • Pagi {r.pagiStudents.length} / Siang {r.siangStudents.length})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '3px' }}>Tampilan Sesi</label>
+                  <select
+                    value={denahSesiView}
+                    onChange={e => setDenahSesiView(e.target.value as DenahSesiView)}
+                    style={{ padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
+                  >
+                    <option value="gabungan">Gabungan Pagi + Siang per Bangku</option>
+                    <option value="pagi">Khusus Sesi Pagi (Kelas 9)</option>
+                    <option value="siang">Khusus Sesi Siang (Kelas 7 &amp; 8)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '3px' }}>Jumlah Banjar / Kolom</label>
+                  <select
+                    value={denahCols}
+                    onChange={e => setDenahCols(Number(e.target.value))}
+                    style={{ padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
+                  >
+                    <option value={3}>3 Banjar Bangku</option>
+                    <option value={4}>4 Banjar Bangku</option>
+                    <option value={5}>5 Banjar Bangku</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '3px' }}>Pola Urut Nomor Bangku</label>
+                  <select
+                    value={denahPattern}
+                    onChange={e => setDenahPattern(e.target.value as DenahOrderPattern)}
+                    style={{ padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
+                  >
+                    <option value="baris-kiri-kanan">Per Baris (Kiri &rarr; Kanan)</option>
+                    <option value="zigzag-ular">Zig-Zag Ular (Depan &harr; Belakang)</option>
+                    <option value="kolom-depan-belakang">Per Banjar (Depan &rarr; Belakang)</option>
+                  </select>
+                </div>
+
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => triggerDenahPrint(false)}
+                    style={{ background: '#0284c7', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 13px', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <i className="fas fa-print"></i> Cetak {currentRoom.ruangName}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => triggerDenahPrint(true)}
+                    style={{ background: '#6d28d9', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 13px', fontSize: '12.5px', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <i className="fas fa-copy"></i> Cetak Semua Ruang ({activeRooms.length})
+                  </button>
+                </div>
+              </div>
+
+              {/* Live Visual Denah Canvas */}
+              <div style={{ padding: '16px 18px', overflowY: 'auto', flex: 1 }}>
+                {/* Bagian Depan Kelas */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px', alignItems: 'center', marginBottom: '14px' }}>
+                  <div style={{ border: '2px solid #334155', background: '#e2e8f0', textAlign: 'center', padding: '8px', fontSize: '12px', fontWeight: 800, letterSpacing: '0.6px', borderRadius: '6px', color: '#0f172a' }}>
+                    PAPAN TULIS / BAGIAN DEPAN RUANG
+                  </div>
+                  <div style={{ border: '2px solid #334155', background: '#f1f5f9', textAlign: 'center', padding: '8px 18px', fontSize: '12px', fontWeight: 700, borderRadius: '6px', color: '#334155' }}>
+                    MEJA PENGAWAS
+                  </div>
+                </div>
+
+                {deskGrid.length === 0 ? (
+                  <div style={{ padding: '32px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+                    Ruang ini belum memiliki quota atau peserta.
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(${denahCols}, minmax(0, 1fr))`, gap: '10px' }}>
+                    {deskGrid.flat().map((slot, cellIdx) => {
+                      if (!slot) {
+                        return (
+                          <div
+                            key={`empty-${cellIdx}`}
+                            style={{ border: '1px dashed #e2e8f0', borderRadius: '8px', minHeight: '95px', background: '#fafafa' }}
+                          />
+                        );
+                      }
+
+                      const showPagi = denahSesiView === 'gabungan' || denahSesiView === 'pagi';
+                      const showSiang = denahSesiView === 'gabungan' || denahSesiView === 'siang';
+
+                      return (
+                        <div
+                          key={slot.deskNumber}
+                          style={{ border: '1.5px solid #334155', borderRadius: '8px', overflow: 'hidden', background: 'white', display: 'flex', flexDirection: 'column', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+                        >
+                          <div style={{ background: '#0f172a', color: 'white', padding: '4px 8px', fontSize: '11.5px', fontWeight: 800, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>BANGKU {slot.deskNumber}</span>
+                            <span style={{ fontSize: '10px', color: '#cbd5e1', fontWeight: 600 }}>
+                              Kursi {2 * slot.deskNumber - 1}–{2 * slot.deskNumber}
+                            </span>
+                          </div>
+
+                          {showPagi && (
+                            <div style={{ background: '#fffbeb', padding: '6px 8px', borderBottom: showSiang ? '1px dashed #cbd5e1' : 'none' }}>
+                              <div style={{ fontSize: '10px', fontWeight: 800, color: '#b45309', marginBottom: '2px' }}>
+                                PAGI (Kls 9 • Sendiri)
+                              </div>
+                              {slot.pagi ? (
+                                <>
+                                  <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#0f172a' }}>{slot.pagi.noUjian}</div>
+                                  <div style={{ fontSize: '11px', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={slot.pagi.nama}>
+                                    {slot.pagi.nama}
+                                  </div>
+                                  <div style={{ fontSize: '10px', color: '#64748b' }}>Kelas {slot.pagi.rombel} ({slot.pagi.jenisKelamin})</div>
+                                </>
+                              ) : (
+                                <div style={{ fontSize: '10.5px', color: '#94a3b8', fontStyle: 'italic' }}>Kosong</div>
+                              )}
+                            </div>
+                          )}
+
+                          {showSiang && (
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: '#f8fafc', flex: 1 }}>
+                              <div style={{ padding: '6px', borderRight: '1px solid #cbd5e1', minWidth: 0 }}>
+                                <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#4338ca', marginBottom: '2px' }}>
+                                  Siang Kiri ({2 * slot.deskNumber - 1})
+                                </div>
+                                {slot.siangKiri ? (
+                                  <>
+                                    <div style={{ fontSize: '11px', fontWeight: 800, color: '#0f172a' }}>{slot.siangKiri.noUjian}</div>
+                                    <div style={{ fontSize: '10.5px', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={slot.siangKiri.nama}>
+                                      {slot.siangKiri.nama}
+                                    </div>
+                                    <div style={{ fontSize: '9.5px', color: '#64748b' }}>{slot.siangKiri.rombel} ({slot.siangKiri.jenisKelamin})</div>
+                                  </>
+                                ) : (
+                                  <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>-</div>
+                                )}
+                              </div>
+                              <div style={{ padding: '6px', minWidth: 0 }}>
+                                <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#4338ca', marginBottom: '2px' }}>
+                                  Siang Kanan ({2 * slot.deskNumber})
+                                </div>
+                                {slot.siangKanan ? (
+                                  <>
+                                    <div style={{ fontSize: '11px', fontWeight: 800, color: '#0f172a' }}>{slot.siangKanan.noUjian}</div>
+                                    <div style={{ fontSize: '10.5px', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={slot.siangKanan.nama}>
+                                      {slot.siangKanan.nama}
+                                    </div>
+                                    <div style={{ fontSize: '9.5px', color: '#64748b' }}>{slot.siangKanan.rombel} ({slot.siangKanan.jenisKelamin})</div>
+                                  </>
+                                ) : (
+                                  <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>-</div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
         </>
       )}
     </div>
