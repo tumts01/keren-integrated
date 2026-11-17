@@ -32,22 +32,6 @@ interface RawStudent {
   rawMetadata?: Record<string, string>;
 }
 
-interface GeneratorParticipant {
-  nisn: string;
-  noUjian: string;
-  ruang: string;
-  kelas?: string;
-  nama?: string;
-  foto?: string;
-}
-
-interface KonfigurasiRuangTabProps {
-  onApplyToGenerator?: (
-    participants: GeneratorParticipant[],
-    targetTab?: 'nopes' | 'nobang'
-  ) => void;
-}
-
 type RoomGenderMode = 'L' | 'P' | 'CAMPUR';
 
 const CONFIG_KEY = 'konfigurasi_ruang_ujian';
@@ -114,7 +98,7 @@ function summarizeClasses(students: AssignedParticipant[]): string {
     .join(', ');
 }
 
-export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiRuangTabProps) {
+export default function KonfigurasiRuangTab() {
   const [rawStudents, setRawStudents] = useState<RawStudent[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
   const [refreshingStudents, setRefreshingStudents] = useState(false);
@@ -1117,31 +1101,6 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
     win.document.close();
   };
 
-  const handleApplyToGenerator = (targetTab: 'nopes' | 'nobang') => {
-    if (assignments.length === 0) {
-      Swal.fire('Oops', 'Silakan bagi ruang terlebih dahulu.', 'warning');
-      return;
-    }
-    const sourceList = filteredAssignments.length > 0 ? filteredAssignments : assignments;
-    const mapped: GeneratorParticipant[] = sourceList.map(a => ({
-      nisn: a.nisn,
-      noUjian: a.noUjian,
-      ruang: a.ruang,
-      kelas: a.rombel,
-      nama: a.nama,
-      foto: a.foto
-    }));
-    onApplyToGenerator?.(mapped, targetTab);
-    Swal.fire({
-      toast: true,
-      position: 'top-end',
-      icon: 'success',
-      title: `${mapped.length} peserta dikirim ke ${targetTab === 'nopes' ? 'Generate Nopes' : 'Generate Nobang'}`,
-      showConfirmButton: false,
-      timer: 2200
-    });
-  };
-
   return (
     <div>
       {/* Header & Status Info */}
@@ -1614,24 +1573,6 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
                 >
                   <i className="fas fa-th"></i> Mapping Tempat Duduk
                 </button>
-                {onApplyToGenerator && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => handleApplyToGenerator('nopes')}
-                      style={{ background: '#0284c7', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 14px', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                    >
-                      <i className="fas fa-id-badge"></i> Kirim ke Generate Nopes
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleApplyToGenerator('nobang')}
-                      style={{ background: '#f59e0b', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 14px', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                    >
-                      <i className="fas fa-chair"></i> Kirim ke Generate Nobang
-                    </button>
-                  </>
-                )}
               </div>
             </div>
 

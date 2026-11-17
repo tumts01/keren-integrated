@@ -850,12 +850,7 @@ export default function PerangkatUjianPage() {
       {/* Tab Content */}
       <div style={{ background: 'white', padding: '24px', borderRadius: '8px', border: '1px solid #e2e8f0', minHeight: '400px' }}>
         {activeTab === 'konfigurasi-ruang' && (
-          <KonfigurasiRuangTab
-            onApplyToGenerator={(mapped, targetTab) => {
-              setParticipants(mapped);
-              setActiveTab(targetTab || 'nopes');
-            }}
-          />
+          <KonfigurasiRuangTab />
         )}
         {activeTab === 'nopes' && (
           <div>
