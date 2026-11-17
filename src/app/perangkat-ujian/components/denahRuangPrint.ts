@@ -9,6 +9,11 @@ export interface DenahRoomInput {
   genderLabel: string;
   quotaKursi: number;
   quotaPagi: number;
+  quotaSiang?: number;
+  pagiPairMode?: boolean;
+  siangPairMode?: boolean;
+  pagiGradesLabel?: string;
+  siangGradesLabel?: string;
   pagiStudents: AssignedParticipant[];
   siangStudents: AssignedParticipant[];
 }
@@ -16,6 +21,8 @@ export interface DenahRoomInput {
 export interface DeskSlot {
   deskNumber: number;
   pagi: AssignedParticipant | null;
+  pagiKiri: AssignedParticipant | null;
+  pagiKanan: AssignedParticipant | null;
   siangKiri: AssignedParticipant | null;
   siangKanan: AssignedParticipant | null;
 }
@@ -38,13 +45,21 @@ function escapeHtml(text: string | number | null | undefined): string {
 }
 
 export function buildDeskSlotsForRoom(room: DenahRoomInput): DeskSlot[] {
+  const pagiPair = Boolean(room.pagiPairMode);
+  const siangPair = room.siangPairMode !== false;
   const maxSiangKursi = room.siangStudents.reduce((m, s) => Math.max(m, s.noKursi), 0);
   const maxPagiKursi = room.pagiStudents.reduce((m, s) => Math.max(m, s.noKursi), 0);
+  const pagiDesks = pagiPair
+    ? Math.max(Math.ceil(room.quotaPagi / 2), Math.ceil(maxPagiKursi / 2))
+    : Math.max(room.quotaPagi, maxPagiKursi);
+  const siangQuota = typeof room.quotaSiang === 'number' ? room.quotaSiang : room.quotaKursi;
+  const siangDesks = siangPair
+    ? Math.max(Math.ceil(siangQuota / 2), Math.ceil(maxSiangKursi / 2))
+    : Math.max(siangQuota, maxSiangKursi);
   const totalDesks = Math.max(
-    room.quotaPagi,
     Math.ceil(room.quotaKursi / 2),
-    maxPagiKursi,
-    Math.ceil(maxSiangKursi / 2),
+    pagiDesks,
+    siangDesks,
     0
   );
 
@@ -60,11 +75,17 @@ export function buildDeskSlotsForRoom(room: DenahRoomInput): DeskSlot[] {
 
   const slots: DeskSlot[] = [];
   for (let d = 1; d <= totalDesks; d++) {
+    const pagiLeft = pagiPair ? pagiBySeat[2 * d - 1] || null : pagiBySeat[d] || null;
+    const pagiRight = pagiPair ? pagiBySeat[2 * d] || null : null;
+    const siangLeft = siangPair ? siangBySeat[2 * d - 1] || null : siangBySeat[d] || null;
+    const siangRight = siangPair ? siangBySeat[2 * d] || null : null;
     slots.push({
       deskNumber: d,
-      pagi: pagiBySeat[d] || null,
-      siangKiri: siangBySeat[2 * d - 1] || null,
-      siangKanan: siangBySeat[2 * d] || null
+      pagi: pagiLeft,
+      pagiKiri: pagiLeft,
+      pagiKanan: pagiRight,
+      siangKiri: siangLeft,
+      siangKanan: siangRight
     });
   }
   return slots;
@@ -135,6 +156,12 @@ function renderRoomDenahPage(
       ? 'Kolom Depan→Belakang'
       : 'Baris Kiri→Kanan';
 
+  const pagiPair = Boolean(room.pagiPairMode);
+  const siangPair = room.siangPairMode !== false;
+  const pagiLabel = room.pagiGradesLabel || 'Kls 9';
+  const siangLabel = room.siangGradesLabel || 'Kls 7 & 8';
+  const siangQuota = typeof room.quotaSiang === 'number' ? room.quotaSiang : room.quotaKursi;
+
   const cellsHtml = grid
     .map(row =>
       row
@@ -146,34 +173,50 @@ function renderRoomDenahPage(
           const showPagi = options.sesiView === 'gabungan' || options.sesiView === 'pagi';
           const showSiang = options.sesiView === 'gabungan' || options.sesiView === 'siang';
 
+          const pagiHtml = !showPagi
+            ? ''
+            : pagiPair
+            ? `<div style="display:grid;grid-template-columns:1fr 1fr;background:#fffbeb;border-bottom:${showSiang ? '1px dashed #cbd5e1' : 'none'};min-width:0;">
+                <div style="padding:4px;border-right:1px solid #fde68a;min-width:0;overflow:hidden;text-align:center;">
+                  <div style="font-size:5.7pt;font-weight:800;color:#b45309;margin-bottom:1px;text-align:center;">Pagi Kiri (${2 * slot.deskNumber - 1})</div>
+                  ${renderSeatLine(slot.pagiKiri, '-', true)}
+                </div>
+                <div style="padding:4px;min-width:0;overflow:hidden;text-align:center;">
+                  <div style="font-size:5.7pt;font-weight:800;color:#b45309;margin-bottom:1px;text-align:center;">Pagi Kanan (${2 * slot.deskNumber})</div>
+                  ${renderSeatLine(slot.pagiKanan, '-', true)}
+                </div>
+              </div>`
+            : `<div style="background:#fffbeb;padding:4px 5px;border-bottom:${showSiang ? '1px dashed #cbd5e1' : 'none'};min-width:0;overflow:hidden;text-align:center;">
+                <div style="font-size:5.8pt;font-weight:800;color:#b45309;text-transform:uppercase;margin-bottom:1px;text-align:center;">Pagi (${escapeHtml(pagiLabel)} • Sendiri)</div>
+                ${renderSeatLine(slot.pagi, 'Bangku kosong', false)}
+              </div>`;
+
+          const siangHtml = !showSiang
+            ? ''
+            : siangPair
+            ? `<div style="display:grid;grid-template-columns:1fr 1fr;background:#f8fafc;flex:1;min-width:0;">
+                <div style="padding:4px;border-right:1px solid #cbd5e1;min-width:0;overflow:hidden;text-align:center;">
+                  <div style="font-size:5.7pt;font-weight:800;color:#4338ca;margin-bottom:1px;text-align:center;">Siang Kiri (${2 * slot.deskNumber - 1})</div>
+                  ${renderSeatLine(slot.siangKiri, '-', true)}
+                </div>
+                <div style="padding:4px;min-width:0;overflow:hidden;text-align:center;">
+                  <div style="font-size:5.7pt;font-weight:800;color:#4338ca;margin-bottom:1px;text-align:center;">Siang Kanan (${2 * slot.deskNumber})</div>
+                  ${renderSeatLine(slot.siangKanan, '-', true)}
+                </div>
+              </div>`
+            : `<div style="background:#f8fafc;padding:4px 5px;flex:1;min-width:0;overflow:hidden;text-align:center;">
+                <div style="font-size:5.8pt;font-weight:800;color:#4338ca;text-transform:uppercase;margin-bottom:1px;text-align:center;">Siang (${escapeHtml(siangLabel)} • Sendiri)</div>
+                ${renderSeatLine(slot.siangKiri, 'Bangku kosong', false)}
+              </div>`;
+
           return `
             <div style="border:1.4px solid #334155;border-radius:6px;overflow:hidden;background:#fff;display:flex;flex-direction:column;min-width:0;">
               <div style="background:#0f172a;color:#fff;padding:2.5px 6px;font-size:7.2pt;font-weight:800;display:flex;justify-content:space-between;align-items:center;">
                 <span>BANGKU ${slot.deskNumber}</span>
                 <span style="font-size:6.2pt;font-weight:600;color:#cbd5e1;">K.${2 * slot.deskNumber - 1}-${2 * slot.deskNumber}</span>
               </div>
-              ${
-                showPagi
-                  ? `<div style="background:#fffbeb;padding:4px 5px;border-bottom:${showSiang ? '1px dashed #cbd5e1' : 'none'};min-width:0;overflow:hidden;text-align:center;">
-                      <div style="font-size:5.8pt;font-weight:800;color:#b45309;text-transform:uppercase;margin-bottom:1px;text-align:center;">Pagi (Kls 9 • Sendiri)</div>
-                      ${renderSeatLine(slot.pagi, 'Bangku kosong', false)}
-                    </div>`
-                  : ''
-              }
-              ${
-                showSiang
-                  ? `<div style="display:grid;grid-template-columns:1fr 1fr;background:#f8fafc;flex:1;min-width:0;">
-                      <div style="padding:4px;border-right:1px solid #cbd5e1;min-width:0;overflow:hidden;text-align:center;">
-                        <div style="font-size:5.7pt;font-weight:800;color:#4338ca;margin-bottom:1px;text-align:center;">Siang Kiri (${2 * slot.deskNumber - 1})</div>
-                        ${renderSeatLine(slot.siangKiri, '-', true)}
-                      </div>
-                      <div style="padding:4px;min-width:0;overflow:hidden;text-align:center;">
-                        <div style="font-size:5.7pt;font-weight:800;color:#4338ca;margin-bottom:1px;text-align:center;">Siang Kanan (${2 * slot.deskNumber})</div>
-                        ${renderSeatLine(slot.siangKanan, '-', true)}
-                      </div>
-                    </div>`
-                  : ''
-              }
+              ${pagiHtml}
+              ${siangHtml}
             </div>
           `;
         })
@@ -195,8 +238,8 @@ function renderRoomDenahPage(
       </div>
 
       <div style="display:flex;justify-content:space-between;align-items:center;font-size:7.8pt;margin-bottom:8px;padding:4px 8px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:4px;">
-        <span><b>Pagi (Kls 9):</b> ${room.pagiStudents.length} siswa (${room.quotaPagi} bangku)</span>
-        <span><b>Siang (Kls 7 &amp; 8):</b> ${room.siangStudents.length} siswa (${room.quotaKursi} kursi)</span>
+        <span><b>Pagi (${escapeHtml(pagiLabel)}):</b> ${room.pagiStudents.length} siswa (${room.quotaPagi} ${pagiPair ? 'kursi' : 'bangku'})</span>
+        <span><b>Siang (${escapeHtml(siangLabel)}):</b> ${room.siangStudents.length} siswa (${siangQuota} ${siangPair ? 'kursi' : 'bangku'})</span>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;margin-bottom:10px;">

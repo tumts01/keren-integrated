@@ -34,6 +34,23 @@ interface RawStudent {
 }
 
 type RoomGenderMode = 'L' | 'P' | 'CAMPUR';
+type ExamSesi = 'Pagi' | 'Siang';
+type GradeNumber = 7 | 8 | 9;
+type GradeSessionMap = Record<GradeNumber, ExamSesi>;
+
+const GRADE_NUMBERS: GradeNumber[] = [7, 8, 9];
+const DEFAULT_GRADE_SESSION: GradeSessionMap = { 7: 'Siang', 8: 'Siang', 9: 'Pagi' };
+
+function formatGradesShort(grades: GradeNumber[]): string {
+  if (grades.length === 0) return 'Kosong';
+  if (grades.length === 1) return `Kls ${grades[0]}`;
+  return `Kls ${grades.join(' & ')}`;
+}
+
+function formatGradesLong(grades: GradeNumber[]): string {
+  if (grades.length === 0) return 'Kosong';
+  return `Kelas ${grades.join(' & ')}`;
+}
 
 const CONFIG_KEY = 'konfigurasi_ruang_ujian';
 const SISWA_SESSION_CACHE_KEY = 'keren_ujian_siswa_compact_v1';
@@ -113,6 +130,7 @@ export default function KonfigurasiRuangTab() {
   const [customRoomGenders, setCustomRoomGenders] = useState<Record<number, RoomGenderMode>>({});
   const [sortMode, setSortMode] = useState<'tingkat-huruf' | 'huruf-tingkat'>('tingkat-huruf');
   const [noUjianPrefix, setNoUjianPrefix] = useState<string>('');
+  const [gradeSessionMap, setGradeSessionMap] = useState<GradeSessionMap>(DEFAULT_GRADE_SESSION);
 
   // Result state
   const [assignments, setAssignments] = useState<AssignedParticipant[]>([]);
@@ -218,6 +236,13 @@ export default function KonfigurasiRuangTab() {
             if (parsed.sortMode) setSortMode(parsed.sortMode);
             if (typeof parsed.noUjianPrefix === 'string') setNoUjianPrefix(parsed.noUjianPrefix);
             if (typeof parsed.tahunAjaranFilter === 'string') setTahunAjaranFilter(parsed.tahunAjaranFilter);
+            if (parsed.gradeSessionMap && typeof parsed.gradeSessionMap === 'object') {
+              setGradeSessionMap({
+                7: parsed.gradeSessionMap[7] === 'Pagi' ? 'Pagi' : 'Siang',
+                8: parsed.gradeSessionMap[8] === 'Pagi' ? 'Pagi' : 'Siang',
+                9: parsed.gradeSessionMap[9] === 'Siang' ? 'Siang' : 'Pagi'
+              });
+            }
             if (Array.isArray(parsed.assignments)) {
               setAssignments(
                 parsed.assignments.map((a: any) => ({
@@ -271,6 +296,7 @@ export default function KonfigurasiRuangTab() {
         sortMode,
         noUjianPrefix,
         tahunAjaranFilter,
+        gradeSessionMap,
         examTitle,
         assignments,
         unassigned,
@@ -278,7 +304,7 @@ export default function KonfigurasiRuangTab() {
       };
       localStorage.setItem(CONFIG_KEY, JSON.stringify(draft));
     } catch {}
-  }, [jumlahRuang, customRoomQuotas, customRoomGenders, sortMode, noUjianPrefix, tahunAjaranFilter]);
+  }, [jumlahRuang, customRoomQuotas, customRoomGenders, sortMode, noUjianPrefix, tahunAjaranFilter, gradeSessionMap]);
 
   const tahunAjaranOptions = useMemo(() => {
     return Array.from(
@@ -295,6 +321,21 @@ export default function KonfigurasiRuangTab() {
     });
   }, [rawStudents, tahunAjaranFilter]);
 
+  const pagiGrades = useMemo(
+    () => GRADE_NUMBERS.filter(g => gradeSessionMap[g] === 'Pagi'),
+    [gradeSessionMap]
+  );
+  const siangGrades = useMemo(
+    () => GRADE_NUMBERS.filter(g => gradeSessionMap[g] === 'Siang'),
+    [gradeSessionMap]
+  );
+  const pagiPairMode = pagiGrades.length >= 2;
+  const siangPairMode = siangGrades.length >= 2;
+  const pagiGradesLabel = formatGradesShort(pagiGrades);
+  const siangGradesLabel = formatGradesShort(siangGrades);
+  const pagiGradesLong = formatGradesLong(pagiGrades);
+  const siangGradesLong = formatGradesLong(siangGrades);
+
   const genderStats = useMemo(() => {
     let laki = 0;
     let perempuan = 0;
@@ -303,10 +344,6 @@ export default function KonfigurasiRuangTab() {
     let pagiP = 0;
     let siangL = 0;
     let siangP = 0;
-    let k7L = 0;
-    let k7P = 0;
-    let k8L = 0;
-    let k8P = 0;
     let unknownGrade = 0;
 
     activeStudentsPool.forEach(s => {
@@ -319,24 +356,13 @@ export default function KonfigurasiRuangTab() {
         return;
       }
 
-      if (tingkat === 9) {
-        if (g === 'L') pagiL++;
-        else pagiP++;
-      } else if (tingkat === 7) {
-        if (g === 'L') {
-          siangL++;
-          k7L++;
+      if (tingkat === 7 || tingkat === 8 || tingkat === 9) {
+        if (gradeSessionMap[tingkat] === 'Pagi') {
+          if (g === 'L') pagiL++;
+          else pagiP++;
         } else {
-          siangP++;
-          k7P++;
-        }
-      } else if (tingkat === 8) {
-        if (g === 'L') {
-          siangL++;
-          k8L++;
-        } else {
-          siangP++;
-          k8P++;
+          if (g === 'L') siangL++;
+          else siangP++;
         }
       } else {
         unknownGrade++;
@@ -354,23 +380,28 @@ export default function KonfigurasiRuangTab() {
       siangTotal: siangL + siangP,
       siangL,
       siangP,
-      k7L,
-      k7P,
-      k8L,
-      k8P,
       unknownGrade
     };
-  }, [activeStudentsPool]);
+  }, [activeStudentsPool, gradeSessionMap]);
 
   const getRoomQuota = (roomNumber: number) => {
     const custom = customRoomQuotas[roomNumber];
     return typeof custom === 'number' && custom >= 0 ? custom : 0;
   };
 
-  // 1 bangku = 2 kursi -> Pagi (Kelas 9) duduk 1 siswa per bangku; Siang (Kelas 7&8) berjejer 2 kursi per bangku
+  // 1 bangku = 2 kursi -> 1 angkatan di sesi = 1 siswa/bangku (Math.ceil(kursi/2)); >=2 angkatan di sesi = 2 siswa/bangku (kursi penuh)
   const getRoomQuotaPagi = (roomNumber: number) => {
+    if (pagiGrades.length === 0) return 0;
     const kursi = getRoomQuota(roomNumber);
-    return kursi <= 0 ? 0 : Math.ceil(kursi / 2);
+    if (kursi <= 0) return 0;
+    return pagiPairMode ? kursi : Math.ceil(kursi / 2);
+  };
+
+  const getRoomQuotaSiang = (roomNumber: number) => {
+    if (siangGrades.length === 0) return 0;
+    const kursi = getRoomQuota(roomNumber);
+    if (kursi <= 0) return 0;
+    return siangPairMode ? kursi : Math.ceil(kursi / 2);
   };
 
   const getRoomGenderMode = (roomNumber: number): RoomGenderMode => {
@@ -396,10 +427,13 @@ export default function KonfigurasiRuangTab() {
     let capSiangL = 0;
     let capSiangP = 0;
     let capSiangCampur = 0;
+    let totalChairsConfigured = 0;
 
     for (let r = 1; r <= count; r++) {
-      const qSiang = getRoomQuota(r);
-      const qPagi = qSiang <= 0 ? 0 : Math.ceil(qSiang / 2);
+      const rawKursi = getRoomQuota(r);
+      totalChairsConfigured += rawKursi;
+      const qPagi = getRoomQuotaPagi(r);
+      const qSiang = getRoomQuotaSiang(r);
       const mode = getRoomGenderMode(r);
       if (mode === 'L') {
         lRooms++;
@@ -429,9 +463,9 @@ export default function KonfigurasiRuangTab() {
       capSiangP,
       capSiangCampur,
       capSiangTotal: capSiangL + capSiangP + capSiangCampur,
-      capTotal: capSiangL + capSiangP + capSiangCampur
+      capTotal: totalChairsConfigured
     };
-  }, [jumlahRuang, customRoomQuotas, customRoomGenders]);
+  }, [jumlahRuang, customRoomQuotas, customRoomGenders, pagiPairMode, siangPairMode, pagiGrades.length, siangGrades.length]);
 
   const persistConfiguration = async (
     nextAssignments: AssignedParticipant[],
@@ -446,6 +480,7 @@ export default function KonfigurasiRuangTab() {
       sortMode,
       noUjianPrefix,
       tahunAjaranFilter,
+      gradeSessionMap,
       examTitle,
       assignments: nextAssignments,
       unassigned: nextUnassigned,
@@ -512,12 +547,11 @@ export default function KonfigurasiRuangTab() {
       return (a.nama || '').localeCompare(b.nama || '', 'id');
     };
 
-    const pagiMale: RawStudent[] = [];
-    const pagiFemale: RawStudent[] = [];
-    const siang7Male: RawStudent[] = [];
-    const siang7Female: RawStudent[] = [];
-    const siang8Male: RawStudent[] = [];
-    const siang8Female: RawStudent[] = [];
+    const byGradeGender: Record<GradeNumber, { L: RawStudent[]; P: RawStudent[] }> = {
+      7: { L: [], P: [] },
+      8: { L: [], P: [] },
+      9: { L: [], P: [] }
+    };
     const unknownStudents: { s: RawStudent; reason: string }[] = [];
 
     activeStudentsPool.forEach(s => {
@@ -527,26 +561,17 @@ export default function KonfigurasiRuangTab() {
         return;
       }
       const { tingkat } = parseKelasOrder(s.rombel);
-      if (tingkat === 9) {
-        if (g === 'L') pagiMale.push(s);
-        else pagiFemale.push(s);
-      } else if (tingkat === 7) {
-        if (g === 'L') siang7Male.push(s);
-        else siang7Female.push(s);
-      } else if (tingkat === 8) {
-        if (g === 'L') siang8Male.push(s);
-        else siang8Female.push(s);
+      if (tingkat === 7 || tingkat === 8 || tingkat === 9) {
+        byGradeGender[tingkat][g].push(s);
       } else {
         unknownStudents.push({ s, reason: 'Tingkat kelas selain 7/8/9 tidak dikenali' });
       }
     });
 
-    pagiMale.sort(compareStudent);
-    pagiFemale.sort(compareStudent);
-    siang7Male.sort(compareStudent);
-    siang7Female.sort(compareStudent);
-    siang8Male.sort(compareStudent);
-    siang8Female.sort(compareStudent);
+    GRADE_NUMBERS.forEach(g => {
+      byGradeGender[g].L.sort(compareStudent);
+      byGradeGender[g].P.sort(compareStudent);
+    });
 
     const lRoomNums: number[] = [];
     const pRoomNums: number[] = [];
@@ -572,7 +597,7 @@ export default function KonfigurasiRuangTab() {
       s: RawStudent,
       rNum: number,
       seat: number,
-      sesi: 'Pagi' | 'Siang'
+      sesi: ExamSesi
     ) => {
       const genderCode: 'L' | 'P' = normalizeGender(s.jenisKelamin) === 'L' ? 'L' : 'P';
       const parsedKelas = parseKelasOrder(s.rombel);
@@ -599,110 +624,98 @@ export default function KonfigurasiRuangTab() {
       });
     };
 
-    const assignPagiRooms = (
+    const assignSingleDeskRooms = (
       students: RawStudent[],
-      roomNumbers: number[]
+      roomNumbers: number[],
+      sesi: ExamSesi
     ): RawStudent[] => {
       let idx = 0;
       for (const rNum of roomNumbers) {
-        // Sesi Pagi (Kelas 9): duduk sendiri 1 siswa per bangku (quotaKursi / 2)
-        const quotaPagi = getRoomQuotaPagi(rNum);
-        for (let seat = 1; seat <= quotaPagi && idx < students.length; seat++) {
-          pushAssigned(students[idx++], rNum, seat, 'Pagi');
+        const kursi = getRoomQuota(rNum);
+        const quotaBangku = kursi <= 0 ? 0 : Math.ceil(kursi / 2);
+        for (let seat = 1; seat <= quotaBangku && idx < students.length; seat++) {
+          pushAssigned(students[idx++], rNum, seat, sesi);
         }
       }
       return students.slice(idx);
     };
 
-    // Sesi Siang (Kelas 7 & 8 duduk bersebelahan: berselang-seling Kelas 7 dan Kelas 8 per ruang sesuai quota)
-    const assignSiangBersebelahan = (
-      list7: RawStudent[],
-      list8: RawStudent[],
-      roomNumbers: number[]
-    ): { rem7: RawStudent[]; rem8: RawStudent[] } => {
-      let idx7 = 0;
-      let idx8 = 0;
+    const assignPairedBersebelahan = (
+      listA: RawStudent[],
+      listB: RawStudent[],
+      roomNumbers: number[],
+      sesi: ExamSesi
+    ): { remA: RawStudent[]; remB: RawStudent[] } => {
+      let idxA = 0;
+      let idxB = 0;
 
       for (const rNum of roomNumbers) {
         const quota = getRoomQuota(rNum);
-        const rem7 = list7.length - idx7;
-        const rem8 = list8.length - idx8;
-        if (rem7 === 0 && rem8 === 0) break;
+        const remA = listA.length - idxA;
+        const remB = listB.length - idxB;
+        if (remA === 0 && remB === 0) break;
         if (quota <= 0) continue;
 
-        let take7 = Math.min(rem7, rem7 >= rem8 ? Math.ceil(quota / 2) : Math.floor(quota / 2));
-        let take8 = Math.min(rem8, quota - take7);
+        let takeA = Math.min(remA, remA >= remB ? Math.ceil(quota / 2) : Math.floor(quota / 2));
+        let takeB = Math.min(remB, quota - takeA);
 
-        if (take7 + take8 < quota) {
-          const extra7 = Math.min(rem7 - take7, quota - (take7 + take8));
-          take7 += extra7;
-          const extra8 = Math.min(rem8 - take8, quota - (take7 + take8));
-          take8 += extra8;
+        if (takeA + takeB < quota) {
+          const extraA = Math.min(remA - takeA, quota - (takeA + takeB));
+          takeA += extraA;
+          const extraB = Math.min(remB - takeB, quota - (takeA + takeB));
+          takeB += extraB;
         }
 
-        const chunk7 = list7.slice(idx7, idx7 + take7);
-        const chunk8 = list8.slice(idx8, idx8 + take8);
-        idx7 += take7;
-        idx8 += take8;
+        const chunkA = listA.slice(idxA, idxA + takeA);
+        const chunkB = listB.slice(idxB, idxB + takeB);
+        idxA += takeA;
+        idxB += takeB;
 
         const interleaved: RawStudent[] = [];
-        const maxLen = Math.max(chunk7.length, chunk8.length);
+        const maxLen = Math.max(chunkA.length, chunkB.length);
         for (let i = 0; i < maxLen; i++) {
-          if (i < chunk7.length) interleaved.push(chunk7[i]);
-          if (i < chunk8.length) interleaved.push(chunk8[i]);
+          if (i < chunkA.length) interleaved.push(chunkA[i]);
+          if (i < chunkB.length) interleaved.push(chunkB[i]);
         }
 
         interleaved.forEach((student, sIdx) => {
-          pushAssigned(student, rNum, sIdx + 1, 'Siang');
+          pushAssigned(student, rNum, sIdx + 1, sesi);
         });
       }
 
       return {
-        rem7: list7.slice(idx7),
-        rem8: list8.slice(idx8)
+        remA: listA.slice(idxA),
+        remB: listB.slice(idxB)
       };
     };
 
-    // 1. Isi ruang khusus L terlebih dahulu, lalu ruang khusus P
-    const remPagiMale = assignPagiRooms(pagiMale, lRoomNums);
-    const remPagiFemale = assignPagiRooms(pagiFemale, pRoomNums);
-    const remSiangL = assignSiangBersebelahan(siang7Male, siang8Male, lRoomNums);
-    const remSiangP = assignSiangBersebelahan(siang7Female, siang8Female, pRoomNums);
-
-    // 2. Sisa L & P dialokasikan ke ruang bertipe Campur (L/P)
-    // Pagi (Kls 9): 1 siswa/bangku, urut A-I
-    const remPagiCampur = [...remPagiMale, ...remPagiFemale].sort(compareStudent);
-    const unplacedPagi = assignPagiRooms(remPagiCampur, campurRoomNums);
-
-    // Siang (Kls 7 & 8) di ruang Campur: siswa L dan P TIDAK duduk berjejer di 1 bangku yang sama
-    const assignSiangCampurNoMixGender = (
-      list7L: RawStudent[],
-      list8L: RawStudent[],
-      list7P: RawStudent[],
-      list8P: RawStudent[],
-      roomNumbers: number[]
+    const assignPairedCampurNoMixGender = (
+      listAL: RawStudent[],
+      listBL: RawStudent[],
+      listAP: RawStudent[],
+      listBP: RawStudent[],
+      roomNumbers: number[],
+      sesi: ExamSesi
     ): RawStudent[] => {
       type DeskPair = { left: RawStudent; right: RawStudent | null };
 
-      const buildSameGenderDesks = (arr7: RawStudent[], arr8: RawStudent[]): DeskPair[] => {
+      const buildSameGenderDesks = (arrA: RawStudent[], arrB: RawStudent[]): DeskPair[] => {
         const desks: DeskPair[] = [];
-        let i7 = 0;
-        let i8 = 0;
-        // Utamakan pasangan beda tingkat (Kelas 7 & Kelas 8 bersebelahan) dalam gender yang sama
-        while (i7 < arr7.length && i8 < arr8.length) {
-          desks.push({ left: arr7[i7++], right: arr8[i8++] });
+        let iA = 0;
+        let iB = 0;
+        while (iA < arrA.length && iB < arrB.length) {
+          desks.push({ left: arrA[iA++], right: arrB[iB++] });
         }
-        const rest = [...arr7.slice(i7), ...arr8.slice(i8)];
+        const rest = [...arrA.slice(iA), ...arrB.slice(iB)];
         for (let i = 0; i < rest.length; i += 2) {
           desks.push({ left: rest[i], right: rest[i + 1] ?? null });
         }
         return desks;
       };
 
-      const maleDesks = buildSameGenderDesks(list7L, list8L);
-      const femaleDesks = buildSameGenderDesks(list7P, list8P);
+      const maleDesks = buildSameGenderDesks(listAL, listBL);
+      const femaleDesks = buildSameGenderDesks(listAP, listBP);
 
-      // Hitung total kapasitas bangku 2-kursi & kursi tunggal yang tersedia
       let totalRoomSlots = 0;
       let totalRoomChairs = 0;
       roomNumbers.forEach(rNum => {
@@ -715,9 +728,8 @@ export default function KonfigurasiRuangTab() {
 
       const allDesks: DeskPair[] = [...maleDesks, ...femaleDesks];
       const totalStudents =
-        list7L.length + list8L.length + list7P.length + list8P.length;
+        listAL.length + listBL.length + listAP.length + listBP.length;
 
-      // Hanya jika kapasitas kursi total cukup tapi jumlah bangku ganjil tepat kurang 1 karena 1 L tunggal + 1 P tunggal
       if (allDesks.length > totalRoomSlots && totalStudents <= totalRoomChairs) {
         const lastMaleIdx = maleDesks.length - 1;
         const lastFemaleIdx = femaleDesks.length - 1;
@@ -733,7 +745,6 @@ export default function KonfigurasiRuangTab() {
       }
 
       const finalDesks: DeskPair[] = [...maleDesks, ...femaleDesks];
-      // Susun ke tiap ruang Campur; jika ruang punya kursi ganjil terakhir (misal kursi 35), isi dengan 1 siswa saja
       const queue = [...finalDesks];
 
       for (const rNum of roomNumbers) {
@@ -743,21 +754,20 @@ export default function KonfigurasiRuangTab() {
         const pairDesksCount = Math.floor(quota / 2);
         for (let d = 1; d <= pairDesksCount && queue.length > 0; d++) {
           const desk = queue.shift()!;
-          pushAssigned(desk.left, rNum, (d - 1) * 2 + 1, 'Siang');
+          pushAssigned(desk.left, rNum, (d - 1) * 2 + 1, sesi);
           if (desk.right) {
-            pushAssigned(desk.right, rNum, (d - 1) * 2 + 2, 'Siang');
+            pushAssigned(desk.right, rNum, (d - 1) * 2 + 2, sesi);
           }
         }
 
-        // Kursi ganjil ke-quota (bangku tunggal paling belakang di ruang tsb)
         if (quota % 2 === 1 && queue.length > 0) {
           const oddIdx = queue.findIndex(item => item.right === null);
           if (oddIdx !== -1) {
             const singleDesk = queue.splice(oddIdx, 1)[0];
-            pushAssigned(singleDesk.left, rNum, quota, 'Siang');
+            pushAssigned(singleDesk.left, rNum, quota, sesi);
           } else {
             const frontDesk = queue[0];
-            pushAssigned(frontDesk.left, rNum, quota, 'Siang');
+            pushAssigned(frontDesk.left, rNum, quota, sesi);
             if (frontDesk.right) {
               frontDesk.left = frontDesk.right;
               frontDesk.right = null;
@@ -776,13 +786,32 @@ export default function KonfigurasiRuangTab() {
       return leftover;
     };
 
-    const unplacedSiang = assignSiangCampurNoMixGender(
-      remSiangL.rem7,
-      remSiangL.rem8,
-      remSiangP.rem7,
-      remSiangP.rem8,
-      campurRoomNums
-    );
+    const allocateSession = (sesi: ExamSesi, gradesInSession: GradeNumber[]): RawStudent[] => {
+      if (gradesInSession.length === 0) return [];
+      if (gradesInSession.length === 1) {
+        // 1 angkatan: duduk sendiri 1 siswa/bangku
+        const g = gradesInSession[0];
+        const remMale = assignSingleDeskRooms(byGradeGender[g].L, lRoomNums, sesi);
+        const remFemale = assignSingleDeskRooms(byGradeGender[g].P, pRoomNums, sesi);
+        const remCampur = [...remMale, ...remFemale].sort(compareStudent);
+        return assignSingleDeskRooms(remCampur, campurRoomNums, sesi);
+      }
+
+      // >= 2 angkatan: 2 siswa/bangku bersebelahan (utamakan pasangan beda tingkat)
+      const firstGrade = gradesInSession[0];
+      const otherGrades = gradesInSession.slice(1);
+      const listAL = byGradeGender[firstGrade].L;
+      const listAP = byGradeGender[firstGrade].P;
+      const listBL = otherGrades.flatMap(g => byGradeGender[g].L).sort(compareStudent);
+      const listBP = otherGrades.flatMap(g => byGradeGender[g].P).sort(compareStudent);
+
+      const remL = assignPairedBersebelahan(listAL, listBL, lRoomNums, sesi);
+      const remP = assignPairedBersebelahan(listAP, listBP, pRoomNums, sesi);
+      return assignPairedCampurNoMixGender(remL.remA, remL.remB, remP.remA, remP.remB, campurRoomNums, sesi);
+    };
+
+    const unplacedPagi = allocateSession('Pagi', pagiGrades);
+    const unplacedSiang = allocateSession('Siang', siangGrades);
 
     unplacedPagi.forEach(s => {
       const g = normalizeGender(s.jenisKelamin);
@@ -791,7 +820,7 @@ export default function KonfigurasiRuangTab() {
         nama: s.nama || '-',
         rombel: s.rombel || '-',
         jenisKelamin: s.jenisKelamin || '-',
-        reason: `Melebihi kapasitas Sesi Pagi (Kls 9 ${g})`
+        reason: `Melebihi kapasitas Sesi Pagi (${pagiGradesLabel} ${g})`
       });
     });
 
@@ -802,7 +831,7 @@ export default function KonfigurasiRuangTab() {
         nama: s.nama || '-',
         rombel: s.rombel || '-',
         jenisKelamin: s.jenisKelamin || '-',
-        reason: `Melebihi kapasitas Sesi Siang (Kls 7&8 ${g})`
+        reason: `Melebihi kapasitas Sesi Siang (${siangGradesLabel} ${g})`
       });
     });
 
@@ -847,16 +876,25 @@ export default function KonfigurasiRuangTab() {
 
     await persistConfiguration(assignedList, overflowList, false);
 
+    const pagiRuleDesc =
+      pagiGrades.length === 0
+        ? 'Kosong'
+        : `${pagiGradesLong} duduk ${pagiPairMode ? 'bersebelahan (2/bangku)' : 'sendiri (1/bangku)'}`;
+    const siangRuleDesc =
+      siangGrades.length === 0
+        ? 'Kosong'
+        : `${siangGradesLong} duduk ${siangPairMode ? 'bersebelahan (2/bangku)' : 'sendiri (1/bangku)'}`;
+
     if (overflowList.length > 0) {
       Swal.fire(
         'Pembagian Selesai dengan Catatan',
-        `Berhasil membagi <b>${assignedList.length}</b> siswa ke Sesi Pagi (Kls 9) & Sesi Siang (Kls 7&8) dalam ${totalRooms} ruang, namun terdapat <b>${overflowList.length}</b> siswa belum mendapat ruang.`,
+        `Berhasil membagi <b>${assignedList.length}</b> siswa ke Sesi Pagi (${pagiGradesLabel}) & Sesi Siang (${siangGradesLabel}) dalam ${totalRooms} ruang, namun terdapat <b>${overflowList.length}</b> siswa belum mendapat ruang.`,
         'warning'
       );
     } else {
       Swal.fire(
         'Berhasil!',
-        `Sebanyak ${assignedList.length} siswa aktif telah dibagi otomatis ke ${totalRooms} ruang (Pagi: Kelas 9 duduk sendiri; Siang: Kelas 7 & 8 duduk bersebelahan; Ganjil = L, Genap = P; urut A–I).`,
+        `Sebanyak ${assignedList.length} siswa aktif telah dibagi otomatis ke ${totalRooms} ruang (Pagi: ${pagiRuleDesc}; Siang: ${siangRuleDesc}; urut A–I).`,
         'success'
       );
     }
@@ -883,6 +921,11 @@ export default function KonfigurasiRuangTab() {
       genderLabel: string;
       quotaKursi: number;
       quotaPagi: number;
+      quotaSiang: number;
+      pagiPairMode: boolean;
+      siangPairMode: boolean;
+      pagiGradesLabel: string;
+      siangGradesLabel: string;
       pagiStudents: AssignedParticipant[];
       siangStudents: AssignedParticipant[];
     }[] = [];
@@ -891,6 +934,7 @@ export default function KonfigurasiRuangTab() {
       const mode = getRoomGenderMode(r);
       const quotaKursi = getRoomQuota(r);
       const quotaPagi = getRoomQuotaPagi(r);
+      const quotaSiang = getRoomQuotaSiang(r);
       list.push({
         ruangNumber: r,
         ruangName: `Ruang ${r}`,
@@ -898,12 +942,17 @@ export default function KonfigurasiRuangTab() {
         genderLabel: getRoomGenderLabel(mode),
         quotaKursi,
         quotaPagi,
+        quotaSiang,
+        pagiPairMode,
+        siangPairMode,
+        pagiGradesLabel,
+        siangGradesLabel,
         pagiStudents: (pagiByRoom[r] || []).slice().sort((a, b) => a.noKursi - b.noKursi),
         siangStudents: (siangByRoom[r] || []).slice().sort((a, b) => a.noKursi - b.noKursi)
       });
     }
     return list;
-  }, [assignments, jumlahRuang, customRoomQuotas, customRoomGenders]);
+  }, [assignments, jumlahRuang, customRoomQuotas, customRoomGenders, pagiPairMode, siangPairMode, pagiGradesLabel, siangGradesLabel]);
 
   const roomSummaries = useMemo<RoomGroupPrintData[]>(() => {
     const list: RoomGroupPrintData[] = [];
@@ -913,7 +962,7 @@ export default function KonfigurasiRuangTab() {
           ruangNumber: r.ruangNumber,
           ruangName: r.ruangName,
           sesi: 'Pagi',
-          sesiLabel: 'Sesi Pagi (Kls 9)',
+          sesiLabel: `Sesi Pagi (${pagiGradesLabel})`,
           gender: r.gender,
           genderLabel: r.genderLabel,
           quota: r.quotaPagi,
@@ -925,10 +974,10 @@ export default function KonfigurasiRuangTab() {
           ruangNumber: r.ruangNumber,
           ruangName: r.ruangName,
           sesi: 'Siang',
-          sesiLabel: 'Sesi Siang (Kls 7 & 8)',
+          sesiLabel: `Sesi Siang (${siangGradesLabel})`,
           gender: r.gender,
           genderLabel: r.genderLabel,
-          quota: r.quotaKursi,
+          quota: r.quotaSiang,
           students: r.siangStudents
         });
       }
@@ -1023,16 +1072,16 @@ export default function KonfigurasiRuangTab() {
     ];
     XLSX.utils.book_append_sheet(wb, wsPeserta, 'Daftar Peserta');
 
-    // Sheet 2: Rekap Per Ruang (Pagi Kls 9 + Siang Kls 7&8)
+    // Sheet 2: Rekap Per Ruang
     const rekapRows = roomOverviews.map(r => ({
       'NO RUANG': r.ruangNumber,
       'NAMA RUANG': r.ruangName,
       JENIS: r.genderLabel,
-      'BANGKU (PAGI)': r.quotaPagi,
-      'PAGI (KLS 9)': r.pagiStudents.length,
+      [`KUOTA PAGI (${pagiPairMode ? 'KURSI' : 'BANGKU'})`]: r.quotaPagi,
+      [`PAGI (${pagiGradesLabel.toUpperCase()})`]: r.pagiStudents.length,
       'KELAS PAGI': summarizeClasses(r.pagiStudents) || '-',
-      'KURSI (SIANG)': r.quotaKursi,
-      'SIANG (KLS 7&8)': r.siangStudents.length,
+      [`KUOTA SIANG (${siangPairMode ? 'KURSI' : 'BANGKU'})`]: r.quotaSiang,
+      [`SIANG (${siangGradesLabel.toUpperCase()})`]: r.siangStudents.length,
       'KELAS SIANG': summarizeClasses(r.siangStudents) || '-'
     }));
     const wsRekap = XLSX.utils.json_to_sheet(rekapRows);
@@ -1199,8 +1248,8 @@ export default function KonfigurasiRuangTab() {
             {loadingStudents ? 'Memuat...' : `${genderStats.total} Siswa`}
           </div>
           <div style={{ fontSize: '11.5px', color: '#475569', marginTop: '4px', lineHeight: 1.45 }}>
-            <div><b>Pagi (Kls 9):</b> {genderStats.pagiTotal} (L: {genderStats.pagiL}, P: {genderStats.pagiP})</div>
-            <div><b>Siang (Kls 7&amp;8):</b> {genderStats.siangTotal} (L: {genderStats.siangL}, P: {genderStats.siangP})</div>
+            <div><b>Pagi ({pagiGradesLabel}):</b> {genderStats.pagiTotal} (L: {genderStats.pagiL}, P: {genderStats.pagiP})</div>
+            <div><b>Siang ({siangGradesLabel}):</b> {genderStats.siangTotal} (L: {genderStats.siangL}, P: {genderStats.siangP})</div>
             {(genderStats.unknown > 0 || genderStats.unknownGrade > 0) && (
               <div style={{ color: '#dc2626' }}>
                 Data belum lengkap: {genderStats.unknown + genderStats.unknownGrade}
@@ -1215,17 +1264,17 @@ export default function KonfigurasiRuangTab() {
             Ruang Laki-laki (L) — {capacityStats.lRooms} Ruang
           </div>
           <div style={{ fontSize: '15.5px', fontWeight: 800, color: '#1e3a8a', marginTop: '3px' }}>
-            Pagi: {capacityStats.capPagiL} Bku &bull; Siang: {capacityStats.capSiangL} Krs
+            Pagi: {capacityStats.capPagiL} {pagiPairMode ? 'Krs' : 'Bku'} &bull; Siang: {capacityStats.capSiangL} {siangPairMode ? 'Krs' : 'Bku'}
           </div>
           <div style={{ fontSize: '11.5px', marginTop: '5px', fontWeight: 600, lineHeight: 1.45 }}>
             <div style={{ color: capacityStats.capPagiL + capacityStats.capPagiCampur >= genderStats.pagiL ? '#15803d' : '#dc2626' }}>
-              Pagi (Kls 9): {genderStats.pagiL}/{capacityStats.capPagiL}
+              Pagi ({pagiGradesLabel}): {genderStats.pagiL}/{capacityStats.capPagiL}
               {capacityStats.capPagiL >= genderStats.pagiL
                 ? ` (sisa ${capacityStats.capPagiL - genderStats.pagiL})`
                 : ` (kurang ${genderStats.pagiL - capacityStats.capPagiL}${capacityStats.campurRooms > 0 ? ', pakai Campur' : '!'})`}
             </div>
             <div style={{ color: capacityStats.capSiangL + capacityStats.capSiangCampur >= genderStats.siangL ? '#15803d' : '#dc2626' }}>
-              Siang (Kls 7&amp;8): {genderStats.siangL}/{capacityStats.capSiangL}
+              Siang ({siangGradesLabel}): {genderStats.siangL}/{capacityStats.capSiangL}
               {capacityStats.capSiangL >= genderStats.siangL
                 ? ` (sisa ${capacityStats.capSiangL - genderStats.siangL})`
                 : ` (kurang ${genderStats.siangL - capacityStats.capSiangL}${capacityStats.campurRooms > 0 ? ', pakai Campur' : '!'})`}
@@ -1239,17 +1288,17 @@ export default function KonfigurasiRuangTab() {
             Ruang Perempuan (P) — {capacityStats.pRooms} Ruang
           </div>
           <div style={{ fontSize: '15.5px', fontWeight: 800, color: '#831843', marginTop: '3px' }}>
-            Pagi: {capacityStats.capPagiP} Bku &bull; Siang: {capacityStats.capSiangP} Krs
+            Pagi: {capacityStats.capPagiP} {pagiPairMode ? 'Krs' : 'Bku'} &bull; Siang: {capacityStats.capSiangP} {siangPairMode ? 'Krs' : 'Bku'}
           </div>
           <div style={{ fontSize: '11.5px', marginTop: '5px', fontWeight: 600, lineHeight: 1.45 }}>
             <div style={{ color: capacityStats.capPagiP + capacityStats.capPagiCampur >= genderStats.pagiP ? '#15803d' : '#dc2626' }}>
-              Pagi (Kls 9): {genderStats.pagiP}/{capacityStats.capPagiP}
+              Pagi ({pagiGradesLabel}): {genderStats.pagiP}/{capacityStats.capPagiP}
               {capacityStats.capPagiP >= genderStats.pagiP
                 ? ` (sisa ${capacityStats.capPagiP - genderStats.pagiP})`
                 : ` (kurang ${genderStats.pagiP - capacityStats.capPagiP}${capacityStats.campurRooms > 0 ? ', pakai Campur' : '!'})`}
             </div>
             <div style={{ color: capacityStats.capSiangP + capacityStats.capSiangCampur >= genderStats.siangP ? '#15803d' : '#dc2626' }}>
-              Siang (Kls 7&amp;8): {genderStats.siangP}/{capacityStats.capSiangP}
+              Siang ({siangGradesLabel}): {genderStats.siangP}/{capacityStats.capSiangP}
               {capacityStats.capSiangP >= genderStats.siangP
                 ? ` (sisa ${capacityStats.capSiangP - genderStats.siangP})`
                 : ` (kurang ${genderStats.siangP - capacityStats.capSiangP}${capacityStats.campurRooms > 0 ? ', pakai Campur' : '!'})`}
@@ -1261,15 +1310,15 @@ export default function KonfigurasiRuangTab() {
           <div style={{ fontSize: '12px', color: '#6d28d9', fontWeight: 700 }}>
             <i className="fas fa-users" style={{ marginRight: '5px' }}></i>
             {capacityStats.campurRooms > 0
-              ? `Campur (${capacityStats.campurRooms} R: Pagi ${capacityStats.capPagiCampur} Bku • Siang ${capacityStats.capSiangCampur} Krs)`
+              ? `Campur (${capacityStats.campurRooms} R: Pagi ${capacityStats.capPagiCampur} ${pagiPairMode ? 'Krs' : 'Bku'} • Siang ${capacityStats.capSiangCampur} ${siangPairMode ? 'Krs' : 'Bku'})`
               : 'Aturan Bangku & Ruang'}
           </div>
           <div style={{ fontSize: '11.5px', fontWeight: 700, color: capacityStats.capPagiTotal >= genderStats.pagiTotal && capacityStats.capSiangTotal >= genderStats.siangTotal ? '#15803d' : '#b45309', marginTop: '3px' }}>
-            Total: Pagi {genderStats.pagiTotal}/{capacityStats.capPagiTotal} Bku &bull; Siang {genderStats.siangTotal}/{capacityStats.capSiangTotal} Krs
+            Total: Pagi {genderStats.pagiTotal}/{capacityStats.capPagiTotal} {pagiPairMode ? 'Krs' : 'Bku'} &bull; Siang {genderStats.siangTotal}/{capacityStats.capSiangTotal} {siangPairMode ? 'Krs' : 'Bku'}
           </div>
           <ul style={{ margin: '4px 0 0 0', paddingLeft: '16px', fontSize: '11px', color: '#4c1d95', lineHeight: 1.4 }}>
             <li>Input quota = jumlah <b>kursi</b> (1 bangku = 2 kursi)</li>
-            <li><b>Pagi (Kls 9):</b> 1 siswa/bangku &bull; <b>Siang (7&amp;8):</b> 2 siswa/bangku</li>
+            <li><b>Pagi ({pagiGradesLabel}):</b> {pagiGrades.length === 0 ? 'tidak ada' : pagiPairMode ? '2 siswa/bangku' : '1 siswa/bangku'} &bull; <b>Siang ({siangGradesLabel}):</b> {siangGrades.length === 0 ? 'tidak ada' : siangPairMode ? '2 siswa/bangku' : '1 siswa/bangku'}</li>
             <li>Default Ganjil L / Genap P, urut kelas A–I</li>
           </ul>
         </div>
@@ -1365,15 +1414,74 @@ export default function KonfigurasiRuangTab() {
           </div>
         </div>
 
+        {/* Pengaturan Sesi Pagi / Siang Per Angkatan */}
+        <div style={{ marginTop: '12px', background: 'white', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#0f172a' }}>
+              <i className="fas fa-clock" style={{ color: '#f59e0b', marginRight: '6px' }}></i>
+              Sesi Masuk Angkatan:
+            </span>
+            {GRADE_NUMBERS.map(g => {
+              const cur = gradeSessionMap[g];
+              return (
+                <div key={g} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#f8fafc', padding: '4px 8px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#334155' }}>Kls {g}</span>
+                  <div style={{ display: 'flex', borderRadius: '4px', overflow: 'hidden', border: '1px solid #cbd5e1', background: 'white' }}>
+                    {(['Pagi', 'Siang'] as ExamSesi[]).map(opt => {
+                      const active = cur === opt;
+                      const activeBg = opt === 'Pagi' ? '#d97706' : '#4338ca';
+                      return (
+                        <button
+                          key={opt}
+                          type="button"
+                          onClick={() =>
+                            setGradeSessionMap(prev => ({
+                              ...prev,
+                              [g]: opt
+                            }))
+                          }
+                          style={{
+                            border: 'none',
+                            padding: '3px 8px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            background: active ? activeBg : 'transparent',
+                            color: active ? 'white' : '#475569'
+                          }}
+                        >
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ fontSize: '11.5px', color: '#475569', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span>
+              <b style={{ color: '#b45309' }}>Pagi ({pagiGradesLabel}):</b>{' '}
+              {pagiGrades.length === 0 ? 'Kosong' : pagiPairMode ? '2 siswa/bangku' : '1 siswa/bangku'}
+            </span>
+            <span>&bull;</span>
+            <span>
+              <b style={{ color: '#4338ca' }}>Siang ({siangGradesLabel}):</b>{' '}
+              {siangGrades.length === 0 ? 'Kosong' : siangPairMode ? '2 siswa/bangku' : '1 siswa/bangku'}
+            </span>
+          </div>
+        </div>
+
         {/* Quota Manual & Pengaturan Jenis (L / P / Campur) Per Ruang */}
-        <div style={{ marginTop: '14px', background: 'white', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+        <div style={{ marginTop: '12px', background: 'white', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
             <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#0f172a' }}>
               <i className="fas fa-chair" style={{ color: '#0284c7', marginRight: '6px' }}></i>
               Quota Kursi &amp; Jenis Ruang Per Ruang (1 Bangku = 2 Kursi)
             </div>
             <div style={{ fontSize: '11.5px', color: '#64748b' }}>
-              Pagi (Bangku): <b style={{ color: '#b45309' }}>{capacityStats.capPagiTotal}</b> &bull; Siang (Kursi):{' '}
+              Pagi ({pagiGradesLabel}): <b style={{ color: '#b45309' }}>{capacityStats.capPagiTotal} {pagiPairMode ? 'Krs' : 'Bku'}</b> &bull; Siang ({siangGradesLabel}):{' '}
               <b style={{ color: '#1d4ed8' }}>L={capacityStats.capSiangL}</b>, <b style={{ color: '#be185d' }}>P={capacityStats.capSiangP}</b>
               {capacityStats.capSiangCampur > 0 && <>, <b style={{ color: '#6d28d9' }}>Campur={capacityStats.capSiangCampur}</b></>}
             </div>
@@ -1383,7 +1491,9 @@ export default function KonfigurasiRuangTab() {
             {Array.from({ length: jumlahRuang }, (_, i) => i + 1).map(rNum => {
               const mode = getRoomGenderMode(rNum);
               const kursi = getRoomQuota(rNum);
-              const bangku = getRoomQuotaPagi(rNum);
+              const bangku = kursi <= 0 ? 0 : Math.ceil(kursi / 2);
+              const qPagi = getRoomQuotaPagi(rNum);
+              const qSiang = getRoomQuotaSiang(rNum);
               const tileStyle =
                 mode === 'L'
                   ? { border: '#bfdbfe', bg: '#eff6ff', title: '#1d4ed8' }
@@ -1453,7 +1563,7 @@ export default function KonfigurasiRuangTab() {
                     style={{ width: '100%', padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12.5px', fontWeight: 700, background: 'white' }}
                   />
                   <div style={{ fontSize: '10px', color: '#475569', marginTop: '3px', fontWeight: 600 }}>
-                    {kursi > 0 ? `${bangku} bangku • Pagi ${bangku} / Siang ${kursi}` : 'Kosong / dilewati'}
+                    {kursi > 0 ? `${bangku} bangku • Pagi ${qPagi} / Siang ${qSiang}` : 'Kosong / dilewati'}
                   </div>
                 </div>
               );
@@ -1651,7 +1761,7 @@ export default function KonfigurasiRuangTab() {
                             color: modeStyle.badgeText
                           }}
                         >
-                          {r.genderLabel} • {r.quotaKursi} Krs ({r.quotaPagi} Bku)
+                          {r.genderLabel} • {r.quotaKursi} Krs ({r.quotaKursi > 0 ? Math.ceil(r.quotaKursi / 2) : 0} Bku)
                         </span>
                       </div>
                     </div>
@@ -1659,7 +1769,7 @@ export default function KonfigurasiRuangTab() {
                     <div style={{ fontSize: '11.5px', color: '#334155', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px' }}>
                         <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          <b style={{ color: '#b45309' }}>Pagi (Kls 9):</b> {r.pagiStudents.length}/{r.quotaPagi}{' '}
+                          <b style={{ color: '#b45309' }}>Pagi ({pagiGradesLabel}):</b> {r.pagiStudents.length}/{r.quotaPagi}{' '}
                           <span style={{ color: '#64748b', fontSize: '10.5px' }}>
                             {r.pagiStudents.length > 0 ? `(${summarizeClasses(r.pagiStudents)})` : '(Kosong)'}
                           </span>
@@ -1681,7 +1791,7 @@ export default function KonfigurasiRuangTab() {
 
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px' }}>
                         <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          <b style={{ color: '#4338ca' }}>Siang (7&amp;8):</b> {r.siangStudents.length}/{r.quotaKursi}{' '}
+                          <b style={{ color: '#4338ca' }}>Siang ({siangGradesLabel}):</b> {r.siangStudents.length}/{r.quotaSiang}{' '}
                           <span style={{ color: '#64748b', fontSize: '10.5px' }}>
                             {r.siangStudents.length > 0 ? `(${summarizeClasses(r.siangStudents)})` : '(Kosong)'}
                           </span>
@@ -1725,8 +1835,8 @@ export default function KonfigurasiRuangTab() {
               style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
             >
               <option value="ALL">Semua Sesi</option>
-              <option value="Pagi">Sesi Pagi (Kelas 9)</option>
-              <option value="Siang">Sesi Siang (Kelas 7 &amp; 8)</option>
+              <option value="Pagi">Sesi Pagi ({pagiGradesLong})</option>
+              <option value="Siang">Sesi Siang ({siangGradesLong})</option>
             </select>
 
             <select
@@ -1954,8 +2064,8 @@ export default function KonfigurasiRuangTab() {
                     style={{ width: '100%', padding: '9px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13.5px' }}
                   >
                     <option value="ALL">Semua Sesi (Pagi &amp; Siang)</option>
-                    <option value="Pagi">Sesi Pagi (Kelas 9)</option>
-                    <option value="Siang">Sesi Siang (Kelas 7 &amp; 8)</option>
+                    <option value="Pagi">Sesi Pagi ({pagiGradesLong})</option>
+                    <option value="Siang">Sesi Siang ({siangGradesLong})</option>
                   </select>
                 </div>
               </div>
@@ -2137,7 +2247,7 @@ export default function KonfigurasiRuangTab() {
                     Mapping &amp; Denah Tempat Duduk — {currentRoom.ruangName} ({currentRoom.genderLabel})
                   </div>
                   <div style={{ fontSize: '12px', color: '#ccfbf1', marginTop: '2px' }}>
-                    Panduan posisi bangku untuk penempelan kartu Nobang &bull; Pagi (Kls 9): {currentRoom.pagiStudents.length} siswa • Siang (Kls 7&amp;8): {currentRoom.siangStudents.length} siswa
+                    Panduan posisi bangku untuk penempelan kartu Nobang &bull; Pagi ({currentRoom.pagiGradesLabel}): {currentRoom.pagiStudents.length} siswa • Siang ({currentRoom.siangGradesLabel}): {currentRoom.siangStudents.length} siswa
                   </div>
                 </div>
                 <button
@@ -2174,8 +2284,8 @@ export default function KonfigurasiRuangTab() {
                     style={{ padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
                   >
                     <option value="gabungan">Gabungan Pagi + Siang per Bangku</option>
-                    <option value="pagi">Khusus Sesi Pagi (Kelas 9)</option>
-                    <option value="siang">Khusus Sesi Siang (Kelas 7 &amp; 8)</option>
+                    <option value="pagi">Khusus Sesi Pagi ({pagiGradesLong})</option>
+                    <option value="siang">Khusus Sesi Siang ({siangGradesLong})</option>
                   </select>
                 </div>
 
@@ -2262,59 +2372,115 @@ export default function KonfigurasiRuangTab() {
                           </div>
 
                           {showPagi && (
-                            <div style={{ background: '#fffbeb', padding: '7px 8px', borderBottom: showSiang ? '1px dashed #cbd5e1' : 'none', minWidth: 0, overflow: 'hidden', textAlign: 'center' }}>
-                              <div style={{ fontSize: '10px', fontWeight: 800, color: '#b45309', marginBottom: '2px', textAlign: 'center' }}>
-                                PAGI (Kls 9 • Sendiri)
-                              </div>
-                              {slot.pagi ? (
-                                <>
-                                  <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#0369a1', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.2, textAlign: 'center' }}>{slot.pagi.noUjian}</div>
-                                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#1e293b', marginTop: '2px', lineHeight: 1.25, textAlign: 'center', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={slot.pagi.nama}>
-                                    {slot.pagi.nama}
+                            currentRoom.pagiPairMode ? (
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: '#fffbeb', borderBottom: showSiang ? '1px dashed #cbd5e1' : 'none', minWidth: 0 }}>
+                                <div style={{ padding: '6px 7px', borderRight: '1px solid #fde68a', minWidth: 0, overflow: 'hidden', textAlign: 'center' }}>
+                                  <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#b45309', marginBottom: '2px', textAlign: 'center' }}>
+                                    Pagi Kiri ({2 * slot.deskNumber - 1})
                                   </div>
-                                  <div style={{ fontSize: '10px', color: '#64748b', marginTop: '1px', textAlign: 'center' }}>Kelas {slot.pagi.rombel} ({slot.pagi.jenisKelamin})</div>
-                                </>
-                              ) : (
-                                <div style={{ fontSize: '10.5px', color: '#94a3b8', fontStyle: 'italic', textAlign: 'center' }}>Kosong</div>
-                              )}
-                            </div>
+                                  {slot.pagiKiri ? (
+                                    <>
+                                      <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#0369a1', letterSpacing: '-0.25px', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.2, textAlign: 'center' }}>{slot.pagiKiri.noUjian}</div>
+                                      <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#1e293b', marginTop: '2px', lineHeight: 1.2, textAlign: 'center', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={slot.pagiKiri.nama}>
+                                        {slot.pagiKiri.nama}
+                                      </div>
+                                      <div style={{ fontSize: '9.5px', color: '#64748b', marginTop: '1px', textAlign: 'center' }}>{slot.pagiKiri.rombel} ({slot.pagiKiri.jenisKelamin})</div>
+                                    </>
+                                  ) : (
+                                    <div style={{ fontSize: '10.5px', color: '#94a3b8', textAlign: 'center' }}>-</div>
+                                  )}
+                                </div>
+                                <div style={{ padding: '6px 7px', minWidth: 0, overflow: 'hidden', textAlign: 'center' }}>
+                                  <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#b45309', marginBottom: '2px', textAlign: 'center' }}>
+                                    Pagi Kanan ({2 * slot.deskNumber})
+                                  </div>
+                                  {slot.pagiKanan ? (
+                                    <>
+                                      <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#0369a1', letterSpacing: '-0.25px', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.2, textAlign: 'center' }}>{slot.pagiKanan.noUjian}</div>
+                                      <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#1e293b', marginTop: '2px', lineHeight: 1.2, textAlign: 'center', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={slot.pagiKanan.nama}>
+                                        {slot.pagiKanan.nama}
+                                      </div>
+                                      <div style={{ fontSize: '9.5px', color: '#64748b', marginTop: '1px', textAlign: 'center' }}>{slot.pagiKanan.rombel} ({slot.pagiKanan.jenisKelamin})</div>
+                                    </>
+                                  ) : (
+                                    <div style={{ fontSize: '10.5px', color: '#94a3b8', textAlign: 'center' }}>-</div>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <div style={{ background: '#fffbeb', padding: '7px 8px', borderBottom: showSiang ? '1px dashed #cbd5e1' : 'none', minWidth: 0, overflow: 'hidden', textAlign: 'center' }}>
+                                <div style={{ fontSize: '10px', fontWeight: 800, color: '#b45309', marginBottom: '2px', textAlign: 'center' }}>
+                                  PAGI ({currentRoom.pagiGradesLabel} • Sendiri)
+                                </div>
+                                {slot.pagi ? (
+                                  <>
+                                    <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#0369a1', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.2, textAlign: 'center' }}>{slot.pagi.noUjian}</div>
+                                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#1e293b', marginTop: '2px', lineHeight: 1.25, textAlign: 'center', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={slot.pagi.nama}>
+                                      {slot.pagi.nama}
+                                    </div>
+                                    <div style={{ fontSize: '10px', color: '#64748b', marginTop: '1px', textAlign: 'center' }}>Kelas {slot.pagi.rombel} ({slot.pagi.jenisKelamin})</div>
+                                  </>
+                                ) : (
+                                  <div style={{ fontSize: '10.5px', color: '#94a3b8', fontStyle: 'italic', textAlign: 'center' }}>Kosong</div>
+                                )}
+                              </div>
+                            )
                           )}
 
                           {showSiang && (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: '#f8fafc', flex: 1, minWidth: 0 }}>
-                              <div style={{ padding: '6px 7px', borderRight: '1px solid #cbd5e1', minWidth: 0, overflow: 'hidden', textAlign: 'center' }}>
-                                <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#4338ca', marginBottom: '2px', textAlign: 'center' }}>
-                                  Siang Kiri ({2 * slot.deskNumber - 1})
+                            currentRoom.siangPairMode ? (
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: '#f8fafc', flex: 1, minWidth: 0 }}>
+                                <div style={{ padding: '6px 7px', borderRight: '1px solid #cbd5e1', minWidth: 0, overflow: 'hidden', textAlign: 'center' }}>
+                                  <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#4338ca', marginBottom: '2px', textAlign: 'center' }}>
+                                    Siang Kiri ({2 * slot.deskNumber - 1})
+                                  </div>
+                                  {slot.siangKiri ? (
+                                    <>
+                                      <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#0369a1', letterSpacing: '-0.25px', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.2, textAlign: 'center' }}>{slot.siangKiri.noUjian}</div>
+                                      <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#1e293b', marginTop: '2px', lineHeight: 1.2, textAlign: 'center', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={slot.siangKiri.nama}>
+                                        {slot.siangKiri.nama}
+                                      </div>
+                                      <div style={{ fontSize: '9.5px', color: '#64748b', marginTop: '1px', textAlign: 'center' }}>{slot.siangKiri.rombel} ({slot.siangKiri.jenisKelamin})</div>
+                                    </>
+                                  ) : (
+                                    <div style={{ fontSize: '10.5px', color: '#94a3b8', textAlign: 'center' }}>-</div>
+                                  )}
+                                </div>
+                                <div style={{ padding: '6px 7px', minWidth: 0, overflow: 'hidden', textAlign: 'center' }}>
+                                  <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#4338ca', marginBottom: '2px', textAlign: 'center' }}>
+                                    Siang Kanan ({2 * slot.deskNumber})
+                                  </div>
+                                  {slot.siangKanan ? (
+                                    <>
+                                      <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#0369a1', letterSpacing: '-0.25px', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.2, textAlign: 'center' }}>{slot.siangKanan.noUjian}</div>
+                                      <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#1e293b', marginTop: '2px', lineHeight: 1.2, textAlign: 'center', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={slot.siangKanan.nama}>
+                                        {slot.siangKanan.nama}
+                                      </div>
+                                      <div style={{ fontSize: '9.5px', color: '#64748b', marginTop: '1px', textAlign: 'center' }}>{slot.siangKanan.rombel} ({slot.siangKanan.jenisKelamin})</div>
+                                    </>
+                                  ) : (
+                                    <div style={{ fontSize: '10.5px', color: '#94a3b8', textAlign: 'center' }}>-</div>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <div style={{ background: '#f8fafc', padding: '7px 8px', flex: 1, minWidth: 0, overflow: 'hidden', textAlign: 'center' }}>
+                                <div style={{ fontSize: '10px', fontWeight: 800, color: '#4338ca', marginBottom: '2px', textAlign: 'center' }}>
+                                  SIANG ({currentRoom.siangGradesLabel} • Sendiri)
                                 </div>
                                 {slot.siangKiri ? (
                                   <>
-                                    <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#0369a1', letterSpacing: '-0.25px', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.2, textAlign: 'center' }}>{slot.siangKiri.noUjian}</div>
-                                    <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#1e293b', marginTop: '2px', lineHeight: 1.2, textAlign: 'center', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={slot.siangKiri.nama}>
+                                    <div style={{ fontSize: '11.5px', fontWeight: 800, color: '#0369a1', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.2, textAlign: 'center' }}>{slot.siangKiri.noUjian}</div>
+                                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#1e293b', marginTop: '2px', lineHeight: 1.25, textAlign: 'center', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={slot.siangKiri.nama}>
                                       {slot.siangKiri.nama}
                                     </div>
-                                    <div style={{ fontSize: '9.5px', color: '#64748b', marginTop: '1px', textAlign: 'center' }}>{slot.siangKiri.rombel} ({slot.siangKiri.jenisKelamin})</div>
+                                    <div style={{ fontSize: '10px', color: '#64748b', marginTop: '1px', textAlign: 'center' }}>Kelas {slot.siangKiri.rombel} ({slot.siangKiri.jenisKelamin})</div>
                                   </>
                                 ) : (
-                                  <div style={{ fontSize: '10.5px', color: '#94a3b8', textAlign: 'center' }}>-</div>
+                                  <div style={{ fontSize: '10.5px', color: '#94a3b8', fontStyle: 'italic', textAlign: 'center' }}>Kosong</div>
                                 )}
                               </div>
-                              <div style={{ padding: '6px 7px', minWidth: 0, overflow: 'hidden', textAlign: 'center' }}>
-                                <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#4338ca', marginBottom: '2px', textAlign: 'center' }}>
-                                  Siang Kanan ({2 * slot.deskNumber})
-                                </div>
-                                {slot.siangKanan ? (
-                                  <>
-                                    <div style={{ fontSize: '9.5px', fontWeight: 800, color: '#0369a1', letterSpacing: '-0.25px', overflowWrap: 'anywhere', wordBreak: 'break-word', lineHeight: 1.2, textAlign: 'center' }}>{slot.siangKanan.noUjian}</div>
-                                    <div style={{ fontSize: '10.5px', fontWeight: 700, color: '#1e293b', marginTop: '2px', lineHeight: 1.2, textAlign: 'center', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={slot.siangKanan.nama}>
-                                      {slot.siangKanan.nama}
-                                    </div>
-                                    <div style={{ fontSize: '9.5px', color: '#64748b', marginTop: '1px', textAlign: 'center' }}>{slot.siangKanan.rombel} ({slot.siangKanan.jenisKelamin})</div>
-                                  </>
-                                ) : (
-                                  <div style={{ fontSize: '10.5px', color: '#94a3b8', textAlign: 'center' }}>-</div>
-                                )}
-                              </div>
-                            </div>
+                            )
                           )}
                         </div>
                       );
