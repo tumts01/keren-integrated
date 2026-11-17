@@ -5,8 +5,11 @@ import { revalidateTag } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const mode = searchParams.get('mode');
+    const isFresh = searchParams.get('fresh') === '1';
     const sbRows = await getAllCachedDataInduk();
     
     // Mock Google Sheet row interface
@@ -116,6 +119,34 @@ export async function GET() {
 
       return records;
     });
+
+    if (mode === 'ujian') {
+      const compactData = data
+        .filter((s: any) => s.isLatest && (s.status || '').toLowerCase().trim() === 'aktif')
+        .map((s: any) => ({
+          id: s.id,
+          nis: s.nis,
+          nisn: s.nisn,
+          nama: s.nama,
+          foto: s.foto || s.rawMetadata?.['LINK URL FOTO 1'] || '',
+          jenisKelamin: s.jenisKelamin,
+          status: s.status,
+          rombel: s.rombel,
+          tahunAjaran: s.tahunAjaran,
+          isLatest: true
+        }));
+
+      return NextResponse.json(
+        { success: true, data: compactData },
+        {
+          headers: {
+            'Cache-Control': isFresh
+              ? 'no-store, max-age=0'
+              : 'public, s-maxage=300, stale-while-revalidate=600'
+          }
+        }
+      );
+    }
 
     return NextResponse.json({ success: true, data });
   } catch (error: any) {

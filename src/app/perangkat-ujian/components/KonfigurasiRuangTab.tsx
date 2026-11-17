@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
 import { supabase } from '@/lib/supabase';
+import InlineLoading from '@/components/InlineLoading';
 import {
   AssignedParticipant,
   PrintPaperMode,
@@ -43,6 +44,8 @@ interface KonfigurasiRuangTabProps {
 type RoomGenderMode = 'L' | 'P' | 'CAMPUR';
 
 const CONFIG_KEY = 'konfigurasi_ruang_ujian';
+const SISWA_SESSION_CACHE_KEY = 'keren_ujian_siswa_compact_v1';
+const SISWA_CACHE_TTL_MS = 15 * 60 * 1000; // 15 menit cache sesi agar hemat kuota Fast Data Transfer
 
 function normalizeGender(jk?: string): 'L' | 'P' | 'UNKNOWN' {
   const v = (jk || '').toLowerCase().trim();
@@ -107,6 +110,7 @@ function summarizeClasses(students: AssignedParticipant[]): string {
 export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiRuangTabProps) {
   const [rawStudents, setRawStudents] = useState<RawStudent[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
+  const [refreshingStudents, setRefreshingStudents] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
   const hasLoadedInitialRef = useRef(false);
 
@@ -145,21 +149,48 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
   const [printWaktu, setPrintWaktu] = useState<string>('');
   const [duplicateSingleOn2Up, setDuplicateSingleOn2Up] = useState<boolean>(false);
 
+  const fetchCompactStudents = async (forceFresh = false): Promise<RawStudent[]> => {
+    if (!forceFresh && typeof window !== 'undefined') {
+      try {
+        const cachedRaw = sessionStorage.getItem(SISWA_SESSION_CACHE_KEY);
+        if (cachedRaw) {
+          const parsed = JSON.parse(cachedRaw);
+          if (parsed && Array.isArray(parsed.data) && Date.now() - Number(parsed.ts || 0) < SISWA_CACHE_TTL_MS) {
+            return parsed.data;
+          }
+        }
+      } catch {}
+    }
+
+    const url = forceFresh ? '/api/siswa?mode=ujian&fresh=1' : '/api/siswa?mode=ujian';
+    const siswaRes = await fetch(url).then(r => r.json()).catch(() => null);
+    if (siswaRes?.success && Array.isArray(siswaRes.data)) {
+      const activeList: RawStudent[] = siswaRes.data.filter((s: RawStudent) => {
+        const isAktif = (s.status || '').toLowerCase().trim() === 'aktif';
+        return s.isLatest && isAktif;
+      });
+      try {
+        sessionStorage.setItem(
+          SISWA_SESSION_CACHE_KEY,
+          JSON.stringify({ ts: Date.now(), data: activeList })
+        );
+      } catch {}
+      return activeList;
+    }
+    return [];
+  };
+
   // Load students + saved room configuration on mount
   useEffect(() => {
     const loadInitial = async () => {
       setLoadingStudents(true);
       try {
-        const [siswaRes, cfgRes] = await Promise.all([
-          fetch('/api/siswa').then(r => r.json()).catch(() => null),
+        const [activeList, cfgRes] = await Promise.all([
+          fetchCompactStudents(false),
           supabase.from('rapor_config').select('*').eq('key', CONFIG_KEY).maybeSingle()
         ]);
 
-        if (siswaRes?.success && Array.isArray(siswaRes.data)) {
-          const activeList: RawStudent[] = siswaRes.data.filter((s: RawStudent) => {
-            const isAktif = (s.status || '').toLowerCase().trim() === 'aktif';
-            return s.isLatest && isAktif;
-          });
+        if (activeList.length > 0) {
           setRawStudents(activeList);
 
           const taSet = Array.from(
@@ -209,6 +240,24 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
 
     loadInitial();
   }, []);
+
+  const handleRefreshStudents = async () => {
+    setRefreshingStudents(true);
+    try {
+      const freshList = await fetchCompactStudents(true);
+      setRawStudents(freshList);
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: `Data ${freshList.length} siswa aktif berhasil disinkronkan.`,
+        showConfirmButton: false,
+        timer: 2000
+      });
+    } finally {
+      setRefreshingStudents(false);
+    }
+  };
 
   // Auto-simpan draft konfigurasi ke localStorage setiap kali input ruang/quota diubah
   useEffect(() => {
@@ -987,6 +1036,28 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
           )}
           <button
             type="button"
+            onClick={handleRefreshStudents}
+            disabled={loadingStudents || refreshingStudents}
+            title="Tarik ulang data siswa aktif terbaru dari database"
+            style={{
+              background: '#f8fafc',
+              color: '#334155',
+              border: '1px solid #cbd5e1',
+              borderRadius: '6px',
+              padding: '8px 12px',
+              fontWeight: 700,
+              fontSize: '13px',
+              cursor: loadingStudents || refreshingStudents ? 'not-allowed' : 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <i className={`fas fa-sync-alt ${refreshingStudents ? 'fa-spin' : ''}`}></i>
+            {refreshingStudents ? 'Menarik Data...' : 'Refresh Data Siswa'}
+          </button>
+          <button
+            type="button"
             onClick={() => persistConfiguration(assignments, unassigned, true)}
             disabled={savingConfig}
             style={{
@@ -1008,6 +1079,13 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
           </button>
         </div>
       </div>
+
+      {loadingStudents ? (
+        <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '20px', marginBottom: '18px' }}>
+          <InlineLoading message="Menarik data siswa aktif & konfigurasi ruang..." />
+        </div>
+      ) : (
+        <>
 
       {/* Ringkasan Aturan & Data Siswa Aktif */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', marginBottom: '18px' }}>
@@ -1848,6 +1926,8 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );
