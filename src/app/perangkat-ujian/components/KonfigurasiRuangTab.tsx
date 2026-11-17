@@ -111,9 +111,8 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
   // Configuration state
   const [tahunAjaranFilter, setTahunAjaranFilter] = useState<string>('SEMUA');
   const [jumlahRuang, setJumlahRuang] = useState<number>(20);
-  const [quotaPerRuang, setQuotaPerRuang] = useState<number>(30);
+  const [quotaPerRuang, setQuotaPerRuang] = useState<number>(20);
   const [customRoomQuotas, setCustomRoomQuotas] = useState<Record<number, number>>({});
-  const [showCustomQuotas, setShowCustomQuotas] = useState<boolean>(false);
   const [sortMode, setSortMode] = useState<'tingkat-huruf' | 'huruf-tingkat'>('tingkat-huruf');
   const [noUjianPrefix, setNoUjianPrefix] = useState<string>('');
 
@@ -313,8 +312,17 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
 
   const getRoomQuota = (roomNumber: number) => {
     const custom = customRoomQuotas[roomNumber];
-    if (typeof custom === 'number' && custom > 0) return custom;
+    if (typeof custom === 'number' && custom >= 0) return custom;
     return Math.max(1, Number(quotaPerRuang) || 1);
+  };
+
+  const handleApplyDefaultQuotaAll = () => {
+    const val = Math.max(1, Number(quotaPerRuang) || 20);
+    const next: Record<number, number> = {};
+    for (let r = 1; r <= jumlahRuang; r++) {
+      next[r] = val;
+    }
+    setCustomRoomQuotas(next);
   };
 
   const capacityStats = useMemo(() => {
@@ -1036,16 +1044,26 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
 
           <div>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '5px' }}>
-              Quota Tempat Duduk / Ruang
+              Quota Default / Isi Massal
             </label>
-            <input
-              type="number"
-              min={1}
-              max={100}
-              value={quotaPerRuang}
-              onChange={e => setQuotaPerRuang(Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 1)))}
-              style={{ width: '100%', padding: '9px 11px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 700, fontSize: '14px' }}
-            />
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={quotaPerRuang}
+                onChange={e => setQuotaPerRuang(Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 1)))}
+                style={{ width: '100%', padding: '9px 11px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 700, fontSize: '14px' }}
+              />
+              <button
+                type="button"
+                onClick={handleApplyDefaultQuotaAll}
+                title="Isi seluruh ruang dengan angka default ini"
+                style={{ background: '#e2e8f0', color: '#334155', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '0 10px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >
+                Terapkan Semua
+              </button>
+            </div>
           </div>
 
           <div>
@@ -1121,75 +1139,77 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
           </div>
         </div>
 
-        {/* Toggle Quota Khusus Per Ruang */}
-        <div style={{ marginTop: '12px' }}>
-          <button
-            type="button"
-            onClick={() => setShowCustomQuotas(prev => !prev)}
-            style={{ background: 'none', border: 'none', padding: 0, color: '#0284c7', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}
-          >
-            <i className={`fas fa-chevron-${showCustomQuotas ? 'up' : 'down'}`} style={{ marginRight: '6px' }}></i>
-            {showCustomQuotas ? 'Tutup' : 'Atur'} Quota Berbeda Per Ruang (Opsional)
-          </button>
-
-          {showCustomQuotas && (
-            <div style={{ marginTop: '10px', background: 'white', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '8px' }}>
-                {Array.from({ length: jumlahRuang }, (_, i) => i + 1).map(rNum => {
-                  const isOdd = rNum % 2 === 1;
-                  return (
-                    <div key={rNum} style={{ border: `1px solid ${isOdd ? '#bfdbfe' : '#fbcfe8'}`, borderRadius: '6px', padding: '6px 8px', background: isOdd ? '#eff6ff' : '#fdf2f8' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 700, color: isOdd ? '#1d4ed8' : '#be185d', marginBottom: '3px' }}>
-                        Ruang {rNum} ({isOdd ? 'L' : 'P'})
-                      </div>
-                      <input
-                        type="number"
-                        min={1}
-                        max={100}
-                        placeholder={String(quotaPerRuang)}
-                        value={customRoomQuotas[rNum] ?? ''}
-                        onChange={e => {
-                          const raw = e.target.value;
-                          setCustomRoomQuotas(prev => {
-                            const next = { ...prev };
-                            if (!raw) delete next[rNum];
-                            else next[rNum] = Math.max(1, parseInt(raw, 10) || quotaPerRuang);
-                            return next;
-                          });
-                        }}
-                        style={{ width: '100%', padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12px' }}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-              <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                <span style={{ fontSize: '11.5px', color: '#64748b' }}>
-                  Kosongkan kolom untuk mengikuti quota default (<b>{quotaPerRuang}</b>). Perubahan otomatis tersimpan lokal, klik <b>Simpan Quota Ruang</b> atau <b>Bagi Ruang Otomatis</b> untuk simpan ke server.
-                </span>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  {Object.keys(customRoomQuotas).length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setCustomRoomQuotas({})}
-                      style={{ background: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
-                    >
-                      Reset ke Default
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => persistConfiguration(assignments, unassigned, true)}
-                    disabled={savingConfig}
-                    style={{ background: '#0f766e', color: 'white', border: 'none', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 700, cursor: savingConfig ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                  >
-                    <i className={savingConfig ? 'fas fa-spinner fa-spin' : 'fas fa-save'}></i>
-                    Simpan Quota Ruang
-                  </button>
-                </div>
-              </div>
+        {/* Quota Manual Per Ruang (Selalu Tampil agar mudah diatur per ruang) */}
+        <div style={{ marginTop: '14px', background: 'white', padding: '12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+            <div style={{ fontSize: '12.5px', fontWeight: 700, color: '#0f172a' }}>
+              <i className="fas fa-chair" style={{ color: '#0284c7', marginRight: '6px' }}></i>
+              Quota Tempat Duduk Per Ruang (Manual — per sesi Pagi / Siang)
             </div>
-          )}
+            <div style={{ fontSize: '11.5px', color: '#64748b' }}>
+              Total Kursi / Sesi: <b style={{ color: '#1d4ed8' }}>L = {capacityStats.capL}</b> &bull; <b style={{ color: '#be185d' }}>P = {capacityStats.capP}</b>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '8px' }}>
+            {Array.from({ length: jumlahRuang }, (_, i) => i + 1).map(rNum => {
+              const isOdd = rNum % 2 === 1;
+              return (
+                <div key={rNum} style={{ border: `1px solid ${isOdd ? '#bfdbfe' : '#fbcfe8'}`, borderRadius: '6px', padding: '6px 8px', background: isOdd ? '#eff6ff' : '#fdf2f8' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: isOdd ? '#1d4ed8' : '#be185d', marginBottom: '3px' }}>
+                    Ruang {rNum} ({isOdd ? 'L' : 'P'})
+                  </div>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    placeholder={String(quotaPerRuang)}
+                    value={customRoomQuotas[rNum] ?? ''}
+                    onChange={e => {
+                      const raw = e.target.value;
+                      setCustomRoomQuotas(prev => {
+                        const next = { ...prev };
+                        if (raw === '') {
+                          delete next[rNum];
+                        } else {
+                          const parsed = parseInt(raw, 10);
+                          next[rNum] = Number.isNaN(parsed) ? quotaPerRuang : Math.max(0, Math.min(100, parsed));
+                        }
+                        return next;
+                      });
+                    }}
+                    style={{ width: '100%', padding: '4px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '12.5px', fontWeight: 700 }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <span style={{ fontSize: '11.5px', color: '#64748b' }}>
+              Kosongkan kolom untuk mengikuti quota default (<b>{quotaPerRuang}</b>), atau isi <b>0</b> untuk melewati ruang. Perubahan otomatis tersimpan lokal, klik <b>Simpan Quota Ruang</b> / <b>Bagi Ruang Otomatis</b> untuk simpan ke server.
+            </span>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              {Object.keys(customRoomQuotas).length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setCustomRoomQuotas({})}
+                  style={{ background: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Reset ke Default ({quotaPerRuang})
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => persistConfiguration(assignments, unassigned, true)}
+                disabled={savingConfig}
+                style={{ background: '#0f766e', color: 'white', border: 'none', borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: 700, cursor: savingConfig ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <i className={savingConfig ? 'fas fa-spinner fa-spin' : 'fas fa-save'}></i>
+                Simpan Quota Ruang
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
