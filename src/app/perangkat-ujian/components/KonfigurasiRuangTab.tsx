@@ -688,13 +688,120 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
     const remSiangL = assignSiangBersebelahan(siang7Male, siang8Male, lRoomNums);
     const remSiangP = assignSiangBersebelahan(siang7Female, siang8Female, pRoomNums);
 
-    // 2. Sisa L & P dialokasikan ke ruang bertipe Campur (L/P), tetap urut kelas A-I & bersebelahan 7-8
+    // 2. Sisa L & P dialokasikan ke ruang bertipe Campur (L/P)
+    // Pagi (Kls 9): 1 siswa/bangku, urut A-I
     const remPagiCampur = [...remPagiMale, ...remPagiFemale].sort(compareStudent);
     const unplacedPagi = assignPagiRooms(remPagiCampur, campurRoomNums);
 
-    const remSiang7Campur = [...remSiangL.rem7, ...remSiangP.rem7].sort(compareStudent);
-    const remSiang8Campur = [...remSiangL.rem8, ...remSiangP.rem8].sort(compareStudent);
-    const unplacedSiang = assignSiangBersebelahan(remSiang7Campur, remSiang8Campur, campurRoomNums);
+    // Siang (Kls 7 & 8) di ruang Campur: siswa L dan P TIDAK duduk berjejer di 1 bangku yang sama
+    const assignSiangCampurNoMixGender = (
+      list7L: RawStudent[],
+      list8L: RawStudent[],
+      list7P: RawStudent[],
+      list8P: RawStudent[],
+      roomNumbers: number[]
+    ): RawStudent[] => {
+      type DeskPair = { left: RawStudent; right: RawStudent | null };
+
+      const buildSameGenderDesks = (arr7: RawStudent[], arr8: RawStudent[]): DeskPair[] => {
+        const desks: DeskPair[] = [];
+        let i7 = 0;
+        let i8 = 0;
+        // Utamakan pasangan beda tingkat (Kelas 7 & Kelas 8 bersebelahan) dalam gender yang sama
+        while (i7 < arr7.length && i8 < arr8.length) {
+          desks.push({ left: arr7[i7++], right: arr8[i8++] });
+        }
+        const rest = [...arr7.slice(i7), ...arr8.slice(i8)];
+        for (let i = 0; i < rest.length; i += 2) {
+          desks.push({ left: rest[i], right: rest[i + 1] ?? null });
+        }
+        return desks;
+      };
+
+      const maleDesks = buildSameGenderDesks(list7L, list8L);
+      const femaleDesks = buildSameGenderDesks(list7P, list8P);
+
+      // Hitung total kapasitas bangku 2-kursi & kursi tunggal yang tersedia
+      let totalRoomSlots = 0;
+      let totalRoomChairs = 0;
+      roomNumbers.forEach(rNum => {
+        const q = getRoomQuota(rNum);
+        if (q > 0) {
+          totalRoomChairs += q;
+          totalRoomSlots += Math.ceil(q / 2);
+        }
+      });
+
+      const allDesks: DeskPair[] = [...maleDesks, ...femaleDesks];
+      const totalStudents =
+        list7L.length + list8L.length + list7P.length + list8P.length;
+
+      // Hanya jika kapasitas kursi total cukup tapi jumlah bangku ganjil tepat kurang 1 karena 1 L tunggal + 1 P tunggal
+      if (allDesks.length > totalRoomSlots && totalStudents <= totalRoomChairs) {
+        const lastMaleIdx = maleDesks.length - 1;
+        const lastFemaleIdx = femaleDesks.length - 1;
+        if (
+          lastMaleIdx >= 0 &&
+          lastFemaleIdx >= 0 &&
+          maleDesks[lastMaleIdx].right === null &&
+          femaleDesks[lastFemaleIdx].right === null
+        ) {
+          maleDesks[lastMaleIdx].right = femaleDesks[lastFemaleIdx].left;
+          femaleDesks.pop();
+        }
+      }
+
+      const finalDesks: DeskPair[] = [...maleDesks, ...femaleDesks];
+      // Susun ke tiap ruang Campur; jika ruang punya kursi ganjil terakhir (misal kursi 35), isi dengan 1 siswa saja
+      const queue = [...finalDesks];
+
+      for (const rNum of roomNumbers) {
+        const quota = getRoomQuota(rNum);
+        if (quota <= 0 || queue.length === 0) continue;
+
+        const pairDesksCount = Math.floor(quota / 2);
+        for (let d = 1; d <= pairDesksCount && queue.length > 0; d++) {
+          const desk = queue.shift()!;
+          pushAssigned(desk.left, rNum, (d - 1) * 2 + 1, 'Siang');
+          if (desk.right) {
+            pushAssigned(desk.right, rNum, (d - 1) * 2 + 2, 'Siang');
+          }
+        }
+
+        // Kursi ganjil ke-quota (bangku tunggal paling belakang di ruang tsb)
+        if (quota % 2 === 1 && queue.length > 0) {
+          const oddIdx = queue.findIndex(item => item.right === null);
+          if (oddIdx !== -1) {
+            const singleDesk = queue.splice(oddIdx, 1)[0];
+            pushAssigned(singleDesk.left, rNum, quota, 'Siang');
+          } else {
+            const frontDesk = queue[0];
+            pushAssigned(frontDesk.left, rNum, quota, 'Siang');
+            if (frontDesk.right) {
+              frontDesk.left = frontDesk.right;
+              frontDesk.right = null;
+            } else {
+              queue.shift();
+            }
+          }
+        }
+      }
+
+      const leftover: RawStudent[] = [];
+      queue.forEach(d => {
+        leftover.push(d.left);
+        if (d.right) leftover.push(d.right);
+      });
+      return leftover;
+    };
+
+    const unplacedSiang = assignSiangCampurNoMixGender(
+      remSiangL.rem7,
+      remSiangL.rem8,
+      remSiangP.rem7,
+      remSiangP.rem8,
+      campurRoomNums
+    );
 
     unplacedPagi.forEach(s => {
       const g = normalizeGender(s.jenisKelamin);
@@ -707,7 +814,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       });
     });
 
-    [...unplacedSiang.rem7, ...unplacedSiang.rem8].forEach(s => {
+    unplacedSiang.forEach(s => {
       const g = normalizeGender(s.jenisKelamin);
       overflowList.push({
         nisn: s.nisn || s.nis || '-',
