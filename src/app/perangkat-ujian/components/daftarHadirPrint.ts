@@ -62,36 +62,35 @@ function getRowDensity(count: number, isLandscapeHalf: boolean) {
   if (isLandscapeHalf) {
     // Dalam mode F5 Landscape (165mm tinggi), gunakan 2 kolom jika > 15 siswa
     const perCol = count > 15 ? Math.ceil(count / 2) : count;
-    if (perCol <= 12) return { fontSize: '8pt', padY: '3.2px', padX: '4px', kopSize: '9pt' };
-    if (perCol <= 16) return { fontSize: '7.4pt', padY: '2.2px', padX: '3.5px', kopSize: '8.5pt' };
-    return { fontSize: '6.9pt', padY: '1.5px', padX: '3px', kopSize: '8pt' };
+    if (perCol <= 10) return { fontSize: '8pt', padY: '5.5px', padX: '4px', rowHeight: '23px', kopSize: '9pt' };
+    if (perCol <= 14) return { fontSize: '7.5pt', padY: '4px', padX: '3.5px', rowHeight: '19px', kopSize: '8.5pt' };
+    return { fontSize: '7pt', padY: '2.5px', padX: '3px', rowHeight: '16px', kopSize: '8pt' };
   }
-  if (count <= 20) return { fontSize: '8.4pt', padY: '3.6px', padX: '4px', kopSize: '9pt' };
-  if (count <= 28) return { fontSize: '7.7pt', padY: '2.4px', padX: '3.5px', kopSize: '8.5pt' };
-  return { fontSize: '7.1pt', padY: '1.6px', padX: '3px', kopSize: '8.2pt' };
+  if (count <= 20) return { fontSize: '8.3pt', padY: '5.5px', padX: '4px', rowHeight: '24px', kopSize: '9pt' };
+  if (count <= 28) return { fontSize: '7.7pt', padY: '4px', padX: '3.5px', rowHeight: '20px', kopSize: '8.5pt' };
+  return { fontSize: '7.1pt', padY: '2.4px', padX: '3px', rowHeight: '16px', kopSize: '8.2pt' };
 }
 
 function buildAttendanceRowsHtml(
   rows: AssignedParticipant[],
   startNo: number,
-  density: { fontSize: string; padY: string; padX: string },
-  compactForTwoCol = false
+  density: { fontSize: string; padY: string; padX: string; rowHeight: string }
 ): string {
   return rows
     .map((s, idx) => {
       const num = startNo + idx;
       const isOdd = num % 2 === 1;
       const ttdHtml = isOdd
-        ? `<div style="display:flex;justify-content:flex-start;align-items:center;padding-left:3px;"><span>${num}.</span></div>`
-        : `<div style="display:flex;justify-content:center;align-items:center;padding-left:14px;"><span>${num}.</span></div>`;
+        ? `<div style="display:flex;justify-content:flex-start;align-items:center;padding-left:4px;"><span>${num}.</span></div>`
+        : `<div style="display:flex;justify-content:flex-start;align-items:center;padding-left:52%;"><span>${num}.</span></div>`;
 
       return `
-        <tr>
+        <tr style="height:${density.rowHeight};">
           <td style="text-align:center;border:1px solid #1e293b;padding:${density.padY} ${density.padX};">${num}</td>
           <td style="text-align:center;border:1px solid #1e293b;padding:${density.padY} ${density.padX};white-space:nowrap;">${escapeHtml(s.noUjian)}</td>
-          <td style="border:1px solid #1e293b;padding:${density.padY} ${density.padX};${compactForTwoCol ? 'max-width:38mm;' : 'max-width:56mm;'}overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;">${escapeHtml(s.nama)}</td>
+          <td style="border:1px solid #1e293b;padding:${density.padY} ${density.padX};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;">${escapeHtml(s.nama)}</td>
           <td style="text-align:center;border:1px solid #1e293b;padding:${density.padY} ${density.padX};white-space:nowrap;">${escapeHtml(s.rombel)}</td>
-          <td style="border:1px solid #1e293b;padding:${density.padY} ${density.padX};font-size:7pt;color:#334155;">${ttdHtml}</td>
+          <td style="border:1px solid #1e293b;padding:${density.padY} ${density.padX};font-size:7.5pt;color:#334155;">${ttdHtml}</td>
         </tr>
       `;
     })
@@ -129,10 +128,10 @@ function renderSingleF5Card(
     <thead>
       <tr style="background:#f1f5f9;">
         <th style="border:1px solid #1e293b;padding:${density.padY} ${density.padX};width:${compact ? '18px' : '22px'};text-align:center;">No</th>
-        <th style="border:1px solid #1e293b;padding:${density.padY} ${density.padX};width:${compact ? '52px' : '70px'};text-align:center;">No. Ujian</th>
-        <th style="border:1px solid #1e293b;padding:${density.padY} ${density.padX};text-align:left;">Nama Peserta</th>
-        <th style="border:1px solid #1e293b;padding:${density.padY} ${density.padX};width:${compact ? '26px' : '34px'};text-align:center;">Kls</th>
-        <th style="border:1px solid #1e293b;padding:${density.padY} ${density.padX};width:${compact ? '54px' : '86px'};text-align:center;">Tanda Tangan</th>
+        <th style="border:1px solid #1e293b;padding:${density.padY} ${density.padX};width:${compact ? '84px' : '102px'};text-align:center;">No. Ujian</th>
+        <th style="border:1px solid #1e293b;padding:${density.padY} ${density.padX};width:${compact ? '112px' : '170px'};text-align:left;">Nama Peserta</th>
+        <th style="border:1px solid #1e293b;padding:${density.padY} ${density.padX};width:${compact ? '26px' : '32px'};text-align:center;">Kls</th>
+        <th style="border:1px solid #1e293b;padding:${density.padY} ${density.padX};text-align:center;">Tanda Tangan</th>
       </tr>
     </thead>
   `;
@@ -144,21 +143,21 @@ function renderSingleF5Card(
     const rightRows = chunk.slice(mid);
     tablesHtml = `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4mm;align-items:start;">
-        <table style="width:100%;border-collapse:collapse;font-size:${density.fontSize};">
+        <table style="width:100%;table-layout:fixed;border-collapse:collapse;font-size:${density.fontSize};">
           ${tableHead(true)}
-          <tbody>${buildAttendanceRowsHtml(leftRows, startIndex + 1, density, true)}</tbody>
+          <tbody>${buildAttendanceRowsHtml(leftRows, startIndex + 1, density)}</tbody>
         </table>
-        <table style="width:100%;border-collapse:collapse;font-size:${density.fontSize};">
+        <table style="width:100%;table-layout:fixed;border-collapse:collapse;font-size:${density.fontSize};">
           ${tableHead(true)}
-          <tbody>${buildAttendanceRowsHtml(rightRows, startIndex + mid + 1, density, true)}</tbody>
+          <tbody>${buildAttendanceRowsHtml(rightRows, startIndex + mid + 1, density)}</tbody>
         </table>
       </div>
     `;
   } else {
     tablesHtml = `
-      <table style="width:100%;border-collapse:collapse;font-size:${density.fontSize};">
+      <table style="width:100%;table-layout:fixed;border-collapse:collapse;font-size:${density.fontSize};">
         ${tableHead(false)}
-        <tbody>${buildAttendanceRowsHtml(chunk, startIndex + 1, density, false)}</tbody>
+        <tbody>${buildAttendanceRowsHtml(chunk, startIndex + 1, density)}</tbody>
       </table>
     `;
   }
