@@ -129,7 +129,7 @@ function renderSingleF5Card(
       <tr style="background:#f1f5f9;">
         <th style="border:1px solid #1e293b;padding:${density.padY} ${density.padX};width:${compact ? '18px' : '22px'};text-align:center;">No</th>
         <th style="border:1px solid #1e293b;padding:${density.padY} ${density.padX};width:${compact ? '84px' : '102px'};text-align:center;">No. Ujian</th>
-        <th style="border:1px solid #1e293b;padding:${density.padY} ${density.padX};width:${compact ? '112px' : '170px'};text-align:left;">Nama Peserta</th>
+        <th style="border:1px solid #1e293b;padding:${density.padY} ${density.padX};width:${compact ? '142px' : '65mm'};text-align:left;">Nama Peserta</th>
         <th style="border:1px solid #1e293b;padding:${density.padY} ${density.padX};width:${compact ? '26px' : '32px'};text-align:center;">Kls</th>
         <th style="border:1px solid #1e293b;padding:${density.padY} ${density.padX};text-align:center;">Tanda Tangan</th>
       </tr>
