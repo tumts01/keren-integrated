@@ -835,7 +835,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       return a.noKursi - b.noKursi;
     });
 
-    // Generate No. Ujian setelah urut ruang & kursi: [Awalan-]R.<ruang><L/P>-<tingkat><urut 3 digit per angkatan>
+    // Generate No. Ujian setelah urut ruang & kursi: [Awalan-]R.<ruang><L/P>-<tingkat>-<urut 3 digit per angkatan>
     const gradeCounter: Record<number, number> = { 7: 0, 8: 0, 9: 0 };
     assignedList.forEach(a => {
       const gradeKey = a.tingkat === 7 || a.tingkat === 8 || a.tingkat === 9 ? a.tingkat : 0;
@@ -843,7 +843,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       const roomPad = String(a.ruangNumber).padStart(2, '0');
       const genderCode = a.jenisKelamin; // 'L' | 'P'
       const seqPad = String(gradeCounter[gradeKey]).padStart(3, '0');
-      const gradeSeq = gradeKey ? `${gradeKey}${seqPad}` : seqPad;
+      const gradeSeq = gradeKey ? `${gradeKey}-${seqPad}` : seqPad;
       a.noUjian = prefixClean
         ? `${prefixClean}-R.${roomPad}${genderCode}-${gradeSeq}`
         : `R.${roomPad}${genderCode}-${gradeSeq}`;
@@ -1339,7 +1339,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
               type="text"
               value={noUjianPrefix}
               onChange={e => setNoUjianPrefix(e.target.value)}
-              placeholder="Contoh: U / SAS-26 (kosong = R.01L-7001 / R.01P-9001)"
+              placeholder="Contoh: U / SAS-26 (kosong = R.01L-7-001 / R.01P-9-001)"
               style={{ width: '100%', padding: '9px 11px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
             />
           </div>
