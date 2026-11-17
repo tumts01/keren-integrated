@@ -126,6 +126,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
 
   // Table Filters
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [filterSesi, setFilterSesi] = useState<'ALL' | 'Pagi' | 'Siang'>('ALL');
   const [filterRuang, setFilterRuang] = useState<string>('ALL');
   const [filterGender, setFilterGender] = useState<'ALL' | 'L' | 'P'>('ALL');
   const [filterTingkat, setFilterTingkat] = useState<string>('ALL');
@@ -134,6 +135,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
   // Print Daftar Hadir Modal State
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
   const [printTargetRoom, setPrintTargetRoom] = useState<string>('ALL');
+  const [printTargetSesi, setPrintTargetSesi] = useState<'ALL' | 'Pagi' | 'Siang'>('ALL');
   const [printPaperMode, setPrintPaperMode] = useState<PrintPaperMode>('f4-landscape-2up');
   const [examTitle, setExamTitle] = useState<string>('ASESMEN MADRASAH');
   const [printTahunAjaran, setPrintTahunAjaran] = useState<string>('2026/2027');
@@ -183,7 +185,14 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
             if (parsed.sortMode) setSortMode(parsed.sortMode);
             if (typeof parsed.noUjianPrefix === 'string') setNoUjianPrefix(parsed.noUjianPrefix);
             if (typeof parsed.tahunAjaranFilter === 'string') setTahunAjaranFilter(parsed.tahunAjaranFilter);
-            if (Array.isArray(parsed.assignments)) setAssignments(parsed.assignments);
+            if (Array.isArray(parsed.assignments)) {
+              setAssignments(
+                parsed.assignments.map((a: any) => ({
+                  ...a,
+                  sesi: a.sesi === 'Pagi' || a.sesi === 'Siang' ? a.sesi : a.tingkat === 9 ? 'Pagi' : 'Siang'
+                }))
+              );
+            }
             if (Array.isArray(parsed.unassigned)) setUnassigned(parsed.unassigned);
             if (parsed.examTitle) setExamTitle(parsed.examTitle);
             if (parsed.updatedAt) setLastUpdatedInfo(parsed.updatedAt);
@@ -239,13 +248,67 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
     let laki = 0;
     let perempuan = 0;
     let unknown = 0;
+    let pagiL = 0;
+    let pagiP = 0;
+    let siangL = 0;
+    let siangP = 0;
+    let k7L = 0;
+    let k7P = 0;
+    let k8L = 0;
+    let k8P = 0;
+    let unknownGrade = 0;
+
     activeStudentsPool.forEach(s => {
       const g = normalizeGender(s.jenisKelamin);
+      const { tingkat } = parseKelasOrder(s.rombel);
       if (g === 'L') laki++;
       else if (g === 'P') perempuan++;
-      else unknown++;
+      else {
+        unknown++;
+        return;
+      }
+
+      if (tingkat === 9) {
+        if (g === 'L') pagiL++;
+        else pagiP++;
+      } else if (tingkat === 7) {
+        if (g === 'L') {
+          siangL++;
+          k7L++;
+        } else {
+          siangP++;
+          k7P++;
+        }
+      } else if (tingkat === 8) {
+        if (g === 'L') {
+          siangL++;
+          k8L++;
+        } else {
+          siangP++;
+          k8P++;
+        }
+      } else {
+        unknownGrade++;
+      }
     });
-    return { total: activeStudentsPool.length, laki, perempuan, unknown };
+
+    return {
+      total: activeStudentsPool.length,
+      laki,
+      perempuan,
+      unknown,
+      pagiTotal: pagiL + pagiP,
+      pagiL,
+      pagiP,
+      siangTotal: siangL + siangP,
+      siangL,
+      siangP,
+      k7L,
+      k7P,
+      k8L,
+      k8P,
+      unknownGrade
+    };
   }, [activeStudentsPool]);
 
   const getRoomQuota = (roomNumber: number) => {
@@ -348,19 +411,41 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       return (a.nama || '').localeCompare(b.nama || '', 'id');
     };
 
-    const maleStudents: RawStudent[] = [];
-    const femaleStudents: RawStudent[] = [];
-    const unknownStudents: RawStudent[] = [];
+    const pagiMale: RawStudent[] = [];
+    const pagiFemale: RawStudent[] = [];
+    const siang7Male: RawStudent[] = [];
+    const siang7Female: RawStudent[] = [];
+    const siang8Male: RawStudent[] = [];
+    const siang8Female: RawStudent[] = [];
+    const unknownStudents: { s: RawStudent; reason: string }[] = [];
 
     activeStudentsPool.forEach(s => {
       const g = normalizeGender(s.jenisKelamin);
-      if (g === 'L') maleStudents.push(s);
-      else if (g === 'P') femaleStudents.push(s);
-      else unknownStudents.push(s);
+      if (g === 'UNKNOWN') {
+        unknownStudents.push({ s, reason: 'Jenis kelamin kosong/tidak dikenali' });
+        return;
+      }
+      const { tingkat } = parseKelasOrder(s.rombel);
+      if (tingkat === 9) {
+        if (g === 'L') pagiMale.push(s);
+        else pagiFemale.push(s);
+      } else if (tingkat === 7) {
+        if (g === 'L') siang7Male.push(s);
+        else siang7Female.push(s);
+      } else if (tingkat === 8) {
+        if (g === 'L') siang8Male.push(s);
+        else siang8Female.push(s);
+      } else {
+        unknownStudents.push({ s, reason: 'Tingkat kelas selain 7/8/9 tidak dikenali' });
+      }
     });
 
-    maleStudents.sort(compareStudent);
-    femaleStudents.sort(compareStudent);
+    pagiMale.sort(compareStudent);
+    pagiFemale.sort(compareStudent);
+    siang7Male.sort(compareStudent);
+    siang7Female.sort(compareStudent);
+    siang8Male.sort(compareStudent);
+    siang8Female.sort(compareStudent);
 
     const oddRoomNums: number[] = [];
     const evenRoomNums: number[] = [];
@@ -379,7 +464,44 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       reason: string;
     }[] = [];
 
-    const assignByGender = (
+    const pushAssigned = (
+      s: RawStudent,
+      rNum: number,
+      seat: number,
+      sesi: 'Pagi' | 'Siang',
+      genderCode: 'L' | 'P'
+    ) => {
+      const parsedKelas = parseKelasOrder(s.rombel);
+      const roomPad = String(rNum).padStart(2, '0');
+      const seatPad = String(seat).padStart(2, '0');
+      const sesiCode = sesi === 'Pagi' ? 'P' : 'S';
+      const noUjian = prefixClean
+        ? `${prefixClean}-${roomPad}${sesiCode}-${seatPad}`
+        : `${roomPad}${sesiCode}-${seatPad}`;
+      const rawFoto =
+        s.rawMetadata?.['LINK FOTO TERBARU'] ||
+        s.rawMetadata?.['LINK URL FOTO 1'] ||
+        s.foto ||
+        '';
+
+      assignedList.push({
+        nis: s.nis || '',
+        nisn: s.nisn || s.nis || '',
+        nama: s.nama || 'TANPA NAMA',
+        jenisKelamin: genderCode,
+        rombel: s.rombel || '-',
+        tingkat: parsedKelas.tingkat,
+        hurufKelas: parsedKelas.huruf,
+        sesi,
+        ruangNumber: rNum,
+        ruang: `Ruang ${rNum}`,
+        noKursi: seat,
+        noUjian,
+        foto: rawFoto
+      });
+    };
+
+    const assignPagiByGender = (
       students: RawStudent[],
       roomNumbers: number[],
       genderCode: 'L' | 'P',
@@ -389,31 +511,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       for (const rNum of roomNumbers) {
         const quota = getRoomQuota(rNum);
         for (let seat = 1; seat <= quota && idx < students.length; seat++) {
-          const s = students[idx++];
-          const parsedKelas = parseKelasOrder(s.rombel);
-          const roomPad = String(rNum).padStart(2, '0');
-          const seatPad = String(seat).padStart(2, '0');
-          const noUjian = prefixClean ? `${prefixClean}-${roomPad}-${seatPad}` : `${roomPad}-${seatPad}`;
-          const rawFoto =
-            s.rawMetadata?.['LINK FOTO TERBARU'] ||
-            s.rawMetadata?.['LINK URL FOTO 1'] ||
-            s.foto ||
-            '';
-
-          assignedList.push({
-            nis: s.nis || '',
-            nisn: s.nisn || s.nis || '',
-            nama: s.nama || 'TANPA NAMA',
-            jenisKelamin: genderCode,
-            rombel: s.rombel || '-',
-            tingkat: parsedKelas.tingkat,
-            hurufKelas: parsedKelas.huruf,
-            ruangNumber: rNum,
-            ruang: `Ruang ${rNum}`,
-            noKursi: seat,
-            noUjian,
-            foto: rawFoto
-          });
+          pushAssigned(students[idx++], rNum, seat, 'Pagi', genderCode);
         }
       }
       while (idx < students.length) {
@@ -428,25 +526,96 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       }
     };
 
-    assignByGender(maleStudents, oddRoomNums, 'L', 'Melebihi kapasitas ruang ganjil (L)');
-    assignByGender(femaleStudents, evenRoomNums, 'P', 'Melebihi kapasitas ruang genap (P)');
-    unknownStudents.forEach(s => {
+    // Sesi Siang (Kelas 7 & 8 duduk bersebelahan: berselang-seling Kelas 7 dan Kelas 8 per ruang sesuai quota)
+    const assignSiangBersebelahan = (
+      list7: RawStudent[],
+      list8: RawStudent[],
+      roomNumbers: number[],
+      genderCode: 'L' | 'P',
+      labelIfOverflow: string
+    ) => {
+      let idx7 = 0;
+      let idx8 = 0;
+
+      for (const rNum of roomNumbers) {
+        const quota = getRoomQuota(rNum);
+        const rem7 = list7.length - idx7;
+        const rem8 = list8.length - idx8;
+        if (rem7 === 0 && rem8 === 0) break;
+
+        let take7 = Math.min(rem7, rem7 >= rem8 ? Math.ceil(quota / 2) : Math.floor(quota / 2));
+        let take8 = Math.min(rem8, quota - take7);
+
+        if (take7 + take8 < quota) {
+          const extra7 = Math.min(rem7 - take7, quota - (take7 + take8));
+          take7 += extra7;
+          const extra8 = Math.min(rem8 - take8, quota - (take7 + take8));
+          take8 += extra8;
+        }
+
+        const chunk7 = list7.slice(idx7, idx7 + take7);
+        const chunk8 = list8.slice(idx8, idx8 + take8);
+        idx7 += take7;
+        idx8 += take8;
+
+        const interleaved: RawStudent[] = [];
+        const maxLen = Math.max(chunk7.length, chunk8.length);
+        for (let i = 0; i < maxLen; i++) {
+          if (i < chunk7.length) interleaved.push(chunk7[i]);
+          if (i < chunk8.length) interleaved.push(chunk8[i]);
+        }
+
+        interleaved.forEach((student, sIdx) => {
+          pushAssigned(student, rNum, sIdx + 1, 'Siang', genderCode);
+        });
+      }
+
+      while (idx7 < list7.length) {
+        const s = list7[idx7++];
+        overflowList.push({
+          nisn: s.nisn || s.nis || '-',
+          nama: s.nama || '-',
+          rombel: s.rombel || '-',
+          jenisKelamin: s.jenisKelamin || '-',
+          reason: labelIfOverflow
+        });
+      }
+      while (idx8 < list8.length) {
+        const s = list8[idx8++];
+        overflowList.push({
+          nisn: s.nisn || s.nis || '-',
+          nama: s.nama || '-',
+          rombel: s.rombel || '-',
+          jenisKelamin: s.jenisKelamin || '-',
+          reason: labelIfOverflow
+        });
+      }
+    };
+
+    assignPagiByGender(pagiMale, oddRoomNums, 'L', 'Melebihi kapasitas Sesi Pagi ruang ganjil (Kls 9 L)');
+    assignPagiByGender(pagiFemale, evenRoomNums, 'P', 'Melebihi kapasitas Sesi Pagi ruang genap (Kls 9 P)');
+    assignSiangBersebelahan(siang7Male, siang8Male, oddRoomNums, 'L', 'Melebihi kapasitas Sesi Siang ruang ganjil (Kls 7&8 L)');
+    assignSiangBersebelahan(siang7Female, siang8Female, evenRoomNums, 'P', 'Melebihi kapasitas Sesi Siang ruang genap (Kls 7&8 P)');
+
+    unknownStudents.forEach(({ s, reason }) => {
       overflowList.push({
         nisn: s.nisn || s.nis || '-',
         nama: s.nama || '-',
         rombel: s.rombel || '-',
         jenisKelamin: s.jenisKelamin || '-',
-        reason: 'Jenis kelamin kosong/tidak dikenali'
+        reason
       });
     });
 
     assignedList.sort((a, b) => {
       if (a.ruangNumber !== b.ruangNumber) return a.ruangNumber - b.ruangNumber;
+      if (a.sesi !== b.sesi) return a.sesi === 'Pagi' ? -1 : 1;
       return a.noKursi - b.noKursi;
     });
 
     setAssignments(assignedList);
     setUnassigned(overflowList);
+    setFilterSesi('ALL');
     setFilterRuang('ALL');
     setFilterGender('ALL');
     setFilterTingkat('ALL');
@@ -458,33 +627,43 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
     if (overflowList.length > 0) {
       Swal.fire(
         'Pembagian Selesai dengan Catatan',
-        `Berhasil membagi <b>${assignedList.length}</b> siswa ke ruang ujian, namun terdapat <b>${overflowList.length}</b> siswa belum mendapat ruang (cek kotak peringatan di bawah).`,
+        `Berhasil membagi <b>${assignedList.length}</b> siswa ke Sesi Pagi (Kls 9) & Sesi Siang (Kls 7&8) dalam ${totalRooms} ruang, namun terdapat <b>${overflowList.length}</b> siswa belum mendapat ruang.`,
         'warning'
       );
     } else {
       Swal.fire(
         'Berhasil!',
-        `Sebanyak ${assignedList.length} siswa aktif telah dibagi otomatis ke ${totalRooms} ruang (Ganjil = Laki-laki, Genap = Perempuan, urut A–I).`,
+        `Sebanyak ${assignedList.length} siswa aktif telah dibagi otomatis ke ${totalRooms} ruang (Pagi: Kelas 9 duduk sendiri; Siang: Kelas 7 & 8 duduk bersebelahan; Ganjil = L, Genap = P; urut A–I).`,
         'success'
       );
     }
   };
 
-  // Room summaries
-  const roomSummaries = useMemo<RoomGroupPrintData[]>(() => {
+  // Ringkasan per Ruang (menggabungkan Pagi & Siang) + daftar sheet print per sesi
+  const roomOverviews = useMemo(() => {
     const totalRooms = Math.max(
       jumlahRuang,
       assignments.reduce((max, a) => Math.max(max, a.ruangNumber), 0)
     );
-    const byRoom: Record<number, AssignedParticipant[]> = {};
+    const pagiByRoom: Record<number, AssignedParticipant[]> = {};
+    const siangByRoom: Record<number, AssignedParticipant[]> = {};
     assignments.forEach(a => {
-      if (!byRoom[a.ruangNumber]) byRoom[a.ruangNumber] = [];
-      byRoom[a.ruangNumber].push(a);
+      const target = a.sesi === 'Pagi' ? pagiByRoom : siangByRoom;
+      if (!target[a.ruangNumber]) target[a.ruangNumber] = [];
+      target[a.ruangNumber].push(a);
     });
 
-    const list: RoomGroupPrintData[] = [];
+    const list: {
+      ruangNumber: number;
+      ruangName: string;
+      gender: 'L' | 'P';
+      genderLabel: string;
+      quota: number;
+      pagiStudents: AssignedParticipant[];
+      siangStudents: AssignedParticipant[];
+    }[] = [];
+
     for (let r = 1; r <= totalRooms; r++) {
-      const students = (byRoom[r] || []).slice().sort((a, b) => a.noKursi - b.noKursi);
       const isOdd = r % 2 === 1;
       list.push({
         ruangNumber: r,
@@ -492,11 +671,43 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
         gender: isOdd ? 'L' : 'P',
         genderLabel: isOdd ? 'Laki-laki' : 'Perempuan',
         quota: getRoomQuota(r),
-        students
+        pagiStudents: (pagiByRoom[r] || []).slice().sort((a, b) => a.noKursi - b.noKursi),
+        siangStudents: (siangByRoom[r] || []).slice().sort((a, b) => a.noKursi - b.noKursi)
       });
     }
     return list;
   }, [assignments, jumlahRuang, quotaPerRuang, customRoomQuotas]);
+
+  const roomSummaries = useMemo<RoomGroupPrintData[]>(() => {
+    const list: RoomGroupPrintData[] = [];
+    roomOverviews.forEach(r => {
+      if (r.pagiStudents.length > 0) {
+        list.push({
+          ruangNumber: r.ruangNumber,
+          ruangName: r.ruangName,
+          sesi: 'Pagi',
+          sesiLabel: 'Sesi Pagi (Kls 9)',
+          gender: r.gender,
+          genderLabel: r.genderLabel,
+          quota: r.quota,
+          students: r.pagiStudents
+        });
+      }
+      if (r.siangStudents.length > 0) {
+        list.push({
+          ruangNumber: r.ruangNumber,
+          ruangName: r.ruangName,
+          sesi: 'Siang',
+          sesiLabel: 'Sesi Siang (Kls 7 & 8)',
+          gender: r.gender,
+          genderLabel: r.genderLabel,
+          quota: r.quota,
+          students: r.siangStudents
+        });
+      }
+    });
+    return list;
+  }, [roomOverviews]);
 
   const availableKelasOptions = useMemo(() => {
     return Array.from(new Set(assignments.map(a => a.rombel).filter(Boolean))).sort((a, b) => {
@@ -510,6 +721,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
   const filteredAssignments = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return assignments.filter(a => {
+      if (filterSesi !== 'ALL' && a.sesi !== filterSesi) return false;
       if (filterRuang !== 'ALL' && String(a.ruangNumber) !== filterRuang) return false;
       if (filterGender !== 'ALL' && a.jenisKelamin !== filterGender) return false;
       if (filterTingkat !== 'ALL' && String(a.tingkat) !== filterTingkat) return false;
@@ -524,10 +736,11 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       }
       return true;
     });
-  }, [assignments, filterRuang, filterGender, filterTingkat, filterKelas, searchQuery]);
+  }, [assignments, filterSesi, filterRuang, filterGender, filterTingkat, filterKelas, searchQuery]);
 
   const handleResetFilters = () => {
     setSearchQuery('');
+    setFilterSesi('ALL');
     setFilterRuang('ALL');
     setFilterGender('ALL');
     setFilterTingkat('ALL');
@@ -550,6 +763,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       NAMA: p.nama,
       KELAS: p.rombel,
       JK: p.jenisKelamin === 'L' ? 'Laki-laki' : 'Perempuan',
+      SESI: p.sesi,
       RUANG: p.ruang,
       'NO KURSI': p.noKursi,
       'NO UJIAN': p.noUjian
@@ -562,31 +776,34 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
       { wch: 32 },
       { wch: 10 },
       { wch: 13 },
+      { wch: 10 },
       { wch: 12 },
       { wch: 10 },
-      { wch: 14 }
+      { wch: 15 }
     ];
     XLSX.utils.book_append_sheet(wb, wsPeserta, 'Daftar Peserta');
 
-    // Sheet 2: Rekap Per Ruang
-    const rekapRows = roomSummaries.map(r => ({
+    // Sheet 2: Rekap Per Ruang (Pagi Kls 9 + Siang Kls 7&8)
+    const rekapRows = roomOverviews.map(r => ({
       'NO RUANG': r.ruangNumber,
       'NAMA RUANG': r.ruangName,
       JENIS: r.genderLabel,
-      QUOTA: r.quota,
-      TERISI: r.students.length,
-      'SISA KURSI': Math.max(0, r.quota - r.students.length),
-      'SEBARAN KELAS': summarizeClasses(r.students) || '-'
+      'QUOTA / SESI': r.quota,
+      'PAGI (KLS 9)': r.pagiStudents.length,
+      'KELAS PAGI': summarizeClasses(r.pagiStudents) || '-',
+      'SIANG (KLS 7&8)': r.siangStudents.length,
+      'KELAS SIANG': summarizeClasses(r.siangStudents) || '-'
     }));
     const wsRekap = XLSX.utils.json_to_sheet(rekapRows);
     wsRekap['!cols'] = [
       { wch: 10 },
       { wch: 14 },
       { wch: 14 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 12 },
-      { wch: 42 }
+      { wch: 13 },
+      { wch: 14 },
+      { wch: 28 },
+      { wch: 16 },
+      { wch: 36 }
     ];
     XLSX.utils.book_append_sheet(wb, wsRekap, 'Rekap Ruang');
 
@@ -595,7 +812,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
     XLSX.writeFile(wb, `Konfigurasi_Ruang_Ujian${suffix}_${dateStr}.xlsx`);
   };
 
-  const openPrintModal = (roomNumber?: number) => {
+  const openPrintModal = (roomNumber?: number, sesi?: 'ALL' | 'Pagi' | 'Siang') => {
     if (assignments.length === 0) {
       Swal.fire('Oops', 'Silakan klik "Bagi Ruang Otomatis" terlebih dahulu.', 'warning');
       return;
@@ -607,17 +824,26 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
     } else {
       setPrintTargetRoom('ALL');
     }
+    if (sesi) {
+      setPrintTargetSesi(sesi);
+    } else if (filterSesi !== 'ALL') {
+      setPrintTargetSesi(filterSesi);
+    } else {
+      setPrintTargetSesi('ALL');
+    }
     setShowPrintModal(true);
   };
 
   const handleLaunchPrint = () => {
-    const selectedRooms =
-      printTargetRoom === 'ALL'
-        ? roomSummaries.filter(r => r.students.length > 0)
-        : roomSummaries.filter(r => String(r.ruangNumber) === printTargetRoom && r.students.length > 0);
+    const selectedRooms = roomSummaries.filter(r => {
+      if (r.students.length === 0) return false;
+      if (printTargetRoom !== 'ALL' && String(r.ruangNumber) !== printTargetRoom) return false;
+      if (printTargetSesi !== 'ALL' && r.sesi !== printTargetSesi) return false;
+      return true;
+    });
 
     if (selectedRooms.length === 0) {
-      Swal.fire('Info', 'Ruang yang dipilih belum memiliki peserta.', 'info');
+      Swal.fire('Info', 'Ruang / sesi yang dipilih belum memiliki peserta.', 'info');
       return;
     }
 
@@ -726,9 +952,14 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
           <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
             {loadingStudents ? 'Memuat...' : `${genderStats.total} Siswa`}
           </div>
-          <div style={{ fontSize: '12px', color: '#475569', marginTop: '4px' }}>
-            L: <b>{genderStats.laki}</b> &bull; P: <b>{genderStats.perempuan}</b>
-            {genderStats.unknown > 0 && <span style={{ color: '#dc2626' }}> &bull; Lainnya: {genderStats.unknown}</span>}
+          <div style={{ fontSize: '11.5px', color: '#475569', marginTop: '4px', lineHeight: 1.45 }}>
+            <div><b>Pagi (Kls 9):</b> {genderStats.pagiTotal} (L: {genderStats.pagiL}, P: {genderStats.pagiP})</div>
+            <div><b>Siang (Kls 7&amp;8):</b> {genderStats.siangTotal} (L: {genderStats.siangL}, P: {genderStats.siangP})</div>
+            {(genderStats.unknown > 0 || genderStats.unknownGrade > 0) && (
+              <div style={{ color: '#dc2626' }}>
+                Data belum lengkap: {genderStats.unknown + genderStats.unknownGrade}
+              </div>
+            )}
           </div>
         </div>
 
@@ -737,13 +968,18 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
             <i className="fas fa-mars" style={{ marginRight: '5px' }}></i>
             Ruang Ganjil (1, 3, 5, ...) — Laki-laki
           </div>
-          <div style={{ fontSize: '20px', fontWeight: 800, color: '#1e3a8a', marginTop: '2px' }}>
-            {capacityStats.oddRooms} Ruang &rarr; {capacityStats.capL} Kursi
+          <div style={{ fontSize: '19px', fontWeight: 800, color: '#1e3a8a', marginTop: '2px' }}>
+            {capacityStats.oddRooms} Ruang &rarr; {capacityStats.capL} Kursi / Sesi
           </div>
-          <div style={{ fontSize: '12px', marginTop: '4px', fontWeight: 600, color: capacityStats.capL >= genderStats.laki ? '#15803d' : '#dc2626' }}>
-            {capacityStats.capL >= genderStats.laki
-              ? `Kapasitas cukup (sisa ${capacityStats.capL - genderStats.laki} kursi)`
-              : `Kurang ${genderStats.laki - capacityStats.capL} kursi!`}
+          <div style={{ fontSize: '11.5px', marginTop: '4px', fontWeight: 600, lineHeight: 1.45 }}>
+            <div style={{ color: capacityStats.capL >= genderStats.pagiL ? '#15803d' : '#dc2626' }}>
+              Pagi (Kls 9): {genderStats.pagiL}/{capacityStats.capL}{' '}
+              {capacityStats.capL >= genderStats.pagiL ? `(sisa ${capacityStats.capL - genderStats.pagiL})` : `(kurang ${genderStats.pagiL - capacityStats.capL}!)`}
+            </div>
+            <div style={{ color: capacityStats.capL >= genderStats.siangL ? '#15803d' : '#dc2626' }}>
+              Siang (Kls 7&amp;8): {genderStats.siangL}/{capacityStats.capL}{' '}
+              {capacityStats.capL >= genderStats.siangL ? `(sisa ${capacityStats.capL - genderStats.siangL})` : `(kurang ${genderStats.siangL - capacityStats.capL}!)`}
+            </div>
           </div>
         </div>
 
@@ -752,13 +988,18 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
             <i className="fas fa-venus" style={{ marginRight: '5px' }}></i>
             Ruang Genap (2, 4, 6, ...) — Perempuan
           </div>
-          <div style={{ fontSize: '20px', fontWeight: 800, color: '#831843', marginTop: '2px' }}>
-            {capacityStats.evenRooms} Ruang &rarr; {capacityStats.capP} Kursi
+          <div style={{ fontSize: '19px', fontWeight: 800, color: '#831843', marginTop: '2px' }}>
+            {capacityStats.evenRooms} Ruang &rarr; {capacityStats.capP} Kursi / Sesi
           </div>
-          <div style={{ fontSize: '12px', marginTop: '4px', fontWeight: 600, color: capacityStats.capP >= genderStats.perempuan ? '#15803d' : '#dc2626' }}>
-            {capacityStats.capP >= genderStats.perempuan
-              ? `Kapasitas cukup (sisa ${capacityStats.capP - genderStats.perempuan} kursi)`
-              : `Kurang ${genderStats.perempuan - capacityStats.capP} kursi!`}
+          <div style={{ fontSize: '11.5px', marginTop: '4px', fontWeight: 600, lineHeight: 1.45 }}>
+            <div style={{ color: capacityStats.capP >= genderStats.pagiP ? '#15803d' : '#dc2626' }}>
+              Pagi (Kls 9): {genderStats.pagiP}/{capacityStats.capP}{' '}
+              {capacityStats.capP >= genderStats.pagiP ? `(sisa ${capacityStats.capP - genderStats.pagiP})` : `(kurang ${genderStats.pagiP - capacityStats.capP}!)`}
+            </div>
+            <div style={{ color: capacityStats.capP >= genderStats.siangP ? '#15803d' : '#dc2626' }}>
+              Siang (Kls 7&amp;8): {genderStats.siangP}/{capacityStats.capP}{' '}
+              {capacityStats.capP >= genderStats.siangP ? `(sisa ${capacityStats.capP - genderStats.siangP})` : `(kurang ${genderStats.siangP - capacityStats.capP}!)`}
+            </div>
           </div>
         </div>
 
@@ -767,10 +1008,11 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
             <i className="fas fa-sort-alpha-down" style={{ marginRight: '5px' }}></i>
             Aturan Penentuan Ruang
           </div>
-          <ul style={{ margin: '6px 0 0 0', paddingLeft: '16px', fontSize: '12px', color: '#166534', lineHeight: 1.45 }}>
-            <li>Ruang ganjil khusus siswa laki-laki</li>
-            <li>Ruang genap khusus siswa perempuan</li>
-            <li>Penentuan ruang urut mulai kelas A–I</li>
+          <ul style={{ margin: '6px 0 0 0', paddingLeft: '16px', fontSize: '11.5px', color: '#166534', lineHeight: 1.45 }}>
+            <li>Ganjil = Laki-laki, Genap = Perempuan</li>
+            <li><b>Pagi:</b> Kelas 9 (duduk sendiri-sendiri)</li>
+            <li><b>Siang:</b> Kelas 7 &amp; 8 (duduk bersebelahan)</li>
+            <li>Urut mulai kelas A–I</li>
           </ul>
         </div>
       </div>
@@ -985,7 +1227,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
           <div style={{ marginBottom: '18px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ fontWeight: 700, fontSize: '14px', color: '#334155' }}>
-                Ringkasan Sebaran Per Ruang ({roomSummaries.filter(r => r.students.length > 0).length} Ruang Terisi)
+                Ringkasan Sebaran Per Ruang ({roomOverviews.filter(r => r.pagiStudents.length > 0 || r.siangStudents.length > 0).length} Ruang Terisi)
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button
@@ -1023,10 +1265,11 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '10px' }}>
-              {roomSummaries.map(r => {
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '10px' }}>
+              {roomOverviews.map(r => {
                 const isSelected = filterRuang === String(r.ruangNumber);
                 const isOdd = r.gender === 'L';
+                const totalAny = r.pagiStudents.length + r.siangStudents.length;
                 const accentBorder = isSelected
                   ? '#0284c7'
                   : isOdd
@@ -1034,7 +1277,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
                   : '#fbcfe8';
                 const accentBg = isSelected
                   ? '#e0f2fe'
-                  : r.students.length === 0
+                  : totalAny === 0
                   ? '#f8fafc'
                   : isOdd
                   ? '#eff6ff'
@@ -1057,7 +1300,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
                       transition: 'all 0.15s'
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                       <span style={{ fontWeight: 800, fontSize: '14px', color: '#0f172a' }}>
                         {r.ruangName}
                       </span>
@@ -1071,41 +1314,54 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
                           color: isOdd ? '#1d4ed8' : '#be185d'
                         }}
                       >
-                        {r.genderLabel}
+                        {r.genderLabel} • {r.quota} Kursi
                       </span>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: '#334155', marginBottom: '4px' }}>
-                      <span>
-                        Terisi: <b>{r.students.length}</b> / {r.quota}
-                      </span>
-                      {r.students.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={e => {
-                            e.stopPropagation();
-                            openPrintModal(r.ruangNumber);
-                          }}
-                          title={`Cetak Daftar Hadir F5 ${r.ruangName}`}
-                          style={{
-                            background: 'white',
-                            color: '#6d28d9',
-                            border: '1px solid #ddd6fe',
-                            borderRadius: '5px',
-                            padding: '2px 7px',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <i className="fas fa-print" style={{ marginRight: '3px' }}></i>
-                          F5
-                        </button>
-                      )}
-                    </div>
+                    <div style={{ fontSize: '11.5px', color: '#334155', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <b style={{ color: '#b45309' }}>Pagi (Kls 9):</b> {r.pagiStudents.length}/{r.quota}{' '}
+                          <span style={{ color: '#64748b', fontSize: '10.5px' }}>
+                            {r.pagiStudents.length > 0 ? `(${summarizeClasses(r.pagiStudents)})` : '(Kosong)'}
+                          </span>
+                        </span>
+                        {r.pagiStudents.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={e => {
+                              e.stopPropagation();
+                              openPrintModal(r.ruangNumber, 'Pagi');
+                            }}
+                            title={`Cetak Daftar Hadir F5 Pagi ${r.ruangName}`}
+                            style={{ background: 'white', color: '#6d28d9', border: '1px solid #ddd6fe', borderRadius: '4px', padding: '1px 6px', fontSize: '10.5px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+                          >
+                            F5
+                          </button>
+                        )}
+                      </div>
 
-                    <div style={{ fontSize: '11px', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {r.students.length > 0 ? summarizeClasses(r.students) : 'Kosong'}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <b style={{ color: '#4338ca' }}>Siang (7&amp;8):</b> {r.siangStudents.length}/{r.quota}{' '}
+                          <span style={{ color: '#64748b', fontSize: '10.5px' }}>
+                            {r.siangStudents.length > 0 ? `(${summarizeClasses(r.siangStudents)})` : '(Kosong)'}
+                          </span>
+                        </span>
+                        {r.siangStudents.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={e => {
+                              e.stopPropagation();
+                              openPrintModal(r.ruangNumber, 'Siang');
+                            }}
+                            title={`Cetak Daftar Hadir F5 Siang ${r.ruangName}`}
+                            style={{ background: 'white', color: '#6d28d9', border: '1px solid #ddd6fe', borderRadius: '4px', padding: '1px 6px', fontSize: '10.5px', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}
+                          >
+                            F5
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -1126,16 +1382,26 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
             </div>
 
             <select
+              value={filterSesi}
+              onChange={e => setFilterSesi(e.target.value as 'ALL' | 'Pagi' | 'Siang')}
+              style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
+            >
+              <option value="ALL">Semua Sesi</option>
+              <option value="Pagi">Sesi Pagi (Kelas 9)</option>
+              <option value="Siang">Sesi Siang (Kelas 7 &amp; 8)</option>
+            </select>
+
+            <select
               value={filterRuang}
               onChange={e => setFilterRuang(e.target.value)}
               style={{ padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
             >
               <option value="ALL">Semua Ruang</option>
-              {roomSummaries
-                .filter(r => r.students.length > 0)
+              {roomOverviews
+                .filter(r => r.pagiStudents.length > 0 || r.siangStudents.length > 0)
                 .map(r => (
                   <option key={r.ruangNumber} value={String(r.ruangNumber)}>
-                    {r.ruangName} ({r.genderLabel} • {r.students.length})
+                    {r.ruangName} ({r.genderLabel} • Pagi {r.pagiStudents.length} / Siang {r.siangStudents.length})
                   </option>
                 ))}
             </select>
@@ -1192,6 +1458,7 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#334155', textAlign: 'left' }}>
                   <th style={{ padding: '11px 12px', width: '56px', textAlign: 'center' }}>No</th>
+                  <th style={{ padding: '11px 12px' }}>Sesi</th>
                   <th style={{ padding: '11px 12px' }}>Ruang</th>
                   <th style={{ padding: '11px 12px', textAlign: 'center' }}>Kursi</th>
                   <th style={{ padding: '11px 12px' }}>No. Ujian</th>
@@ -1204,16 +1471,32 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
               <tbody>
                 {filteredAssignments.length === 0 ? (
                   <tr>
-                    <td colSpan={8} style={{ padding: '28px', textAlign: 'center', color: '#64748b' }}>
+                    <td colSpan={9} style={{ padding: '28px', textAlign: 'center', color: '#64748b' }}>
                       Tidak ada peserta yang sesuai dengan filter.
                     </td>
                   </tr>
                 ) : (
                   filteredAssignments.map((p, idx) => {
                     const isOdd = p.jenisKelamin === 'L';
+                    const isPagi = p.sesi === 'Pagi';
                     return (
-                      <tr key={`${p.nisn}-${p.ruangNumber}-${p.noKursi}`} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <tr key={`${p.nisn}-${p.sesi}-${p.ruangNumber}-${p.noKursi}`} style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '9px 12px', textAlign: 'center', color: '#64748b' }}>{idx + 1}</td>
+                        <td style={{ padding: '9px 12px' }}>
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                              fontWeight: 700,
+                              fontSize: '11.5px',
+                              background: isPagi ? '#fef3c7' : '#e0e7ff',
+                              color: isPagi ? '#92400e' : '#3730a3'
+                            }}
+                          >
+                            {p.sesi}
+                          </span>
+                        </td>
                         <td style={{ padding: '9px 12px' }}>
                           <span
                             style={{
@@ -1291,26 +1574,43 @@ export default function KonfigurasiRuangTab({ onApplyToGenerator }: KonfigurasiR
             </div>
 
             <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                  Pilih Ruang yang Dicetak
-                </label>
-                <select
-                  value={printTargetRoom}
-                  onChange={e => setPrintTargetRoom(e.target.value)}
-                  style={{ width: '100%', padding: '9px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13.5px' }}
-                >
-                  <option value="ALL">
-                    Semua Ruang Terisi ({roomSummaries.filter(r => r.students.length > 0).length} Ruang)
-                  </option>
-                  {roomSummaries
-                    .filter(r => r.students.length > 0)
-                    .map(r => (
-                      <option key={r.ruangNumber} value={String(r.ruangNumber)}>
-                        {r.ruangName} ({r.genderLabel} • {r.students.length} siswa)
-                      </option>
-                    ))}
-                </select>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Pilih Ruang yang Dicetak
+                  </label>
+                  <select
+                    value={printTargetRoom}
+                    onChange={e => setPrintTargetRoom(e.target.value)}
+                    style={{ width: '100%', padding: '9px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13.5px' }}
+                  >
+                    <option value="ALL">
+                      Semua Ruang Terisi ({roomOverviews.filter(r => r.pagiStudents.length > 0 || r.siangStudents.length > 0).length} Ruang)
+                    </option>
+                    {roomOverviews
+                      .filter(r => r.pagiStudents.length > 0 || r.siangStudents.length > 0)
+                      .map(r => (
+                        <option key={r.ruangNumber} value={String(r.ruangNumber)}>
+                          {r.ruangName} ({r.genderLabel} • Pagi {r.pagiStudents.length} / Siang {r.siangStudents.length})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
+                    Pilih Sesi
+                  </label>
+                  <select
+                    value={printTargetSesi}
+                    onChange={e => setPrintTargetSesi(e.target.value as 'ALL' | 'Pagi' | 'Siang')}
+                    style={{ width: '100%', padding: '9px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13.5px' }}
+                  >
+                    <option value="ALL">Semua Sesi (Pagi &amp; Siang)</option>
+                    <option value="Pagi">Sesi Pagi (Kelas 9)</option>
+                    <option value="Siang">Sesi Siang (Kelas 7 &amp; 8)</option>
+                  </select>
+                </div>
               </div>
 
               <div>

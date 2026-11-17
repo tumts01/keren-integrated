@@ -6,6 +6,7 @@ export interface AssignedParticipant {
   rombel: string;
   tingkat: number;
   hurufKelas: string;
+  sesi: 'Pagi' | 'Siang';
   ruangNumber: number;
   ruang: string;
   noKursi: number;
@@ -16,6 +17,8 @@ export interface AssignedParticipant {
 export interface RoomGroupPrintData {
   ruangNumber: number;
   ruangName: string;
+  sesi: 'Pagi' | 'Siang';
+  sesiLabel: string;
   gender: 'L' | 'P';
   genderLabel: string;
   quota: number;
@@ -164,7 +167,7 @@ function renderSingleF5Card(
       <div style="margin-top:auto;padding-top:4px;display:flex;justify-content:space-between;align-items:flex-end;gap:8px;">
         <table style="border-collapse:collapse;font-size:7.4pt;width:54%;">
           <tr>
-            <td style="border:1px solid #334155;padding:2px 5px;background:#f8fafc;font-weight:bold;" colspan="2">Rekap Kehadiran (${escapeHtml(room.ruangName)})</td>
+            <td style="border:1px solid #334155;padding:2px 5px;background:#f8fafc;font-weight:bold;" colspan="2">Rekap Kehadiran (${escapeHtml(room.ruangName)} • Sesi ${escapeHtml(room.sesi)})</td>
           </tr>
           <tr>
             <td style="border:1px solid #334155;padding:2px 5px;">Jumlah Peserta Seharusnya</td>
@@ -213,10 +216,10 @@ function renderSingleF5Card(
 
       <table style="width:100%;font-size:7.4pt;margin-bottom:4px;border-collapse:collapse;">
         <tr>
-          <td style="width:16%;padding:1px 2px;font-weight:700;">Ruang</td>
+          <td style="width:16%;padding:1px 2px;font-weight:700;">Ruang / Sesi</td>
           <td style="width:2%;padding:1px 0;">:</td>
           <td style="width:36%;padding:1px 2px;">
-            <b>${escapeHtml(room.ruangName)}</b> (${escapeHtml(room.genderLabel)})${totalChunksForRoom > 1 ? ` • Hal ${chunkPageIdx + 1}/${totalChunksForRoom}` : ''}
+            <b>${escapeHtml(room.ruangName)}</b> (${escapeHtml(room.genderLabel)}) &bull; <b>${escapeHtml(room.sesiLabel)}</b>${totalChunksForRoom > 1 ? ` • Hal ${chunkPageIdx + 1}/${totalChunksForRoom}` : ''}
           </td>
           <td style="width:17%;padding:1px 2px;font-weight:700;">Hari / Tgl</td>
           <td style="width:2%;padding:1px 0;">:</td>
