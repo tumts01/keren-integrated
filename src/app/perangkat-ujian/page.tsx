@@ -264,11 +264,11 @@ export default function PerangkatUjianPage() {
 
     const loadGlobalConfig = async () => {
       try {
-        // Coba load dari Supabase (Global): layout + exam_room_config dalam 1 query
+        // Coba load dari Supabase (Global): layout + konfigurasi_ruang_ujian dalam 1 query
         const { data, error } = await supabase
           .from('rapor_config')
           .select('*')
-          .in('key', ['nopes_layout', 'nobang_layout', 'exam_room_config']);
+          .in('key', ['nopes_layout', 'nobang_layout', 'konfigurasi_ruang_ujian']);
         
         let loadedNopes = false;
         let loadedNobang = false;
@@ -287,7 +287,7 @@ export default function PerangkatUjianPage() {
             loadedNobang = true;
           }
 
-          const roomCfg = data.find((d: any) => d.key === 'exam_room_config');
+          const roomCfg = data.find((d: any) => d.key === 'konfigurasi_ruang_ujian');
           if (roomCfg && roomCfg.value) {
             const parsedRoom = JSON.parse(roomCfg.value);
             if (Array.isArray(parsedRoom.assignments) && parsedRoom.assignments.length > 0) {
@@ -307,7 +307,7 @@ export default function PerangkatUjianPage() {
           if (savedNobang) setLayoutNobang(JSON.parse(savedNobang));
         }
         if (!loadedParticipants) {
-          const savedRoom = localStorage.getItem('exam_room_config');
+          const savedRoom = localStorage.getItem('konfigurasi_ruang_ujian');
           if (savedRoom) {
             const parsedRoom = JSON.parse(savedRoom);
             if (Array.isArray(parsedRoom.assignments) && parsedRoom.assignments.length > 0) {
@@ -346,12 +346,12 @@ export default function PerangkatUjianPage() {
       const { data, error } = await supabase
         .from('rapor_config')
         .select('value')
-        .eq('key', 'exam_room_config')
+        .eq('key', 'konfigurasi_ruang_ujian')
         .maybeSingle();
 
       let rawValue: string | null = !error && data?.value ? data.value : null;
       if (!rawValue) {
-        rawValue = localStorage.getItem('exam_room_config');
+        rawValue = localStorage.getItem('konfigurasi_ruang_ujian');
       }
 
       if (!rawValue) {
