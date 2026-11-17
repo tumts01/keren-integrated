@@ -1,11 +1,12 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
 import { jsPDF } from 'jspdf';
 import KonfigurasiRuangTab from './components/KonfigurasiRuangTab';
+import PaginationBar from './components/PaginationBar';
 
 interface Participant {
   nisn: string;
@@ -190,6 +191,46 @@ export default function PerangkatUjianPage() {
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState('');
   const [customDesign, setCustomDesign] = useState<string | null>(null);
+  const [roomFilter, setRoomFilter] = useState<string>('ALL');
+  const [searchText, setSearchText] = useState<string>('');
+  const [tablePage, setTablePage] = useState<number>(1);
+  const [tablePageSize, setTablePageSize] = useState<number>(25);
+
+  const roomOptions = useMemo(() => {
+    return Array.from(new Set(participants.map(p => p.ruang).filter(Boolean))).sort((a, b) =>
+      a.localeCompare(b, 'id', { numeric: true })
+    );
+  }, [participants]);
+
+  const filteredParticipants = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    return participants.filter(p => {
+      if (roomFilter !== 'ALL' && p.ruang !== roomFilter) return false;
+      if (q) {
+        const hit =
+          (p.nama || '').toLowerCase().includes(q) ||
+          (p.nisn || '').toLowerCase().includes(q) ||
+          (p.noUjian || '').toLowerCase().includes(q) ||
+          (p.kelas || '').toLowerCase().includes(q);
+        if (!hit) return false;
+      }
+      return true;
+    });
+  }, [participants, roomFilter, searchText]);
+
+  useEffect(() => {
+    setTablePage(1);
+  }, [roomFilter, searchText, participants.length, activeTab]);
+
+  const safeTablePage = Math.min(
+    tablePage,
+    Math.max(1, Math.ceil(filteredParticipants.length / tablePageSize))
+  );
+
+  const paginatedParticipants = useMemo(() => {
+    const start = (safeTablePage - 1) * tablePageSize;
+    return filteredParticipants.slice(start, start + tablePageSize);
+  }, [filteredParticipants, safeTablePage, tablePageSize]);
 
   const handleDesignUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -384,7 +425,8 @@ export default function PerangkatUjianPage() {
   };
 
   const generateNobangPDF = async () => {
-    if (participants.length === 0) {
+    const targetList = filteredParticipants;
+    if (targetList.length === 0) {
       Swal.fire('Oops', 'Data peserta masih kosong!', 'warning');
       return;
     }
@@ -446,9 +488,9 @@ export default function PerangkatUjianPage() {
       // Draw crop marks on the first page
       drawCropMarks(pdf);
 
-      const totalPages = Math.ceil(participants.length / cardsPerPage);
+      const totalPages = Math.ceil(targetList.length / cardsPerPage);
 
-      for (let i = 0; i < participants.length; i++) {
+      for (let i = 0; i < targetList.length; i++) {
         const pageIdx = Math.floor(i / cardsPerPage);
         const posInPage = i % cardsPerPage;
 
@@ -457,7 +499,7 @@ export default function PerangkatUjianPage() {
           drawCropMarks(pdf);
         }
 
-        setProgress(`Merender nobang ${i + 1} / ${participants.length} (Hal ${pageIdx + 1}/${totalPages})`);
+        setProgress(`Merender nobang ${i + 1} / ${targetList.length} (Hal ${pageIdx + 1}/${totalPages})`);
 
         const col = posInPage % cols;
         const row = Math.floor(posInPage / cols);
@@ -472,7 +514,7 @@ export default function PerangkatUjianPage() {
         ctx.drawImage(bgImg, 0, 0, cW, cH);
 
         // Draw Text
-        const p = participants[i];
+        const p = targetList[i];
         ctx.fillStyle = '#000';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -505,7 +547,7 @@ export default function PerangkatUjianPage() {
       setProgress('Menyimpan PDF...');
       pdf.save('Kartu_Nobang_Ujian.pdf');
 
-      Swal.fire('Berhasil!', `PDF Nobang berhasil digenerate (${participants.length} kartu, ${totalPages} halaman)`, 'success');
+      Swal.fire('Berhasil!', `PDF Nobang berhasil digenerate (${targetList.length} kartu, ${totalPages} halaman)`, 'success');
     } catch (err) {
       console.error(err);
       Swal.fire('Error', 'Gagal generate PDF: ' + String(err), 'error');
@@ -516,7 +558,8 @@ export default function PerangkatUjianPage() {
   };
 
   const generatePDF = async () => {
-    if (participants.length === 0) {
+    const targetList = filteredParticipants;
+    if (targetList.length === 0) {
       Swal.fire('Oops', 'Data peserta masih kosong!', 'warning');
       return;
     }
@@ -586,15 +629,15 @@ export default function PerangkatUjianPage() {
 
       // Pre-load all photos in parallel
       setProgress('Memuat foto siswa...');
-      const photoPromises = participants.map(p => {
+      const photoPromises = targetList.map(p => {
         if (!p.foto) return Promise.resolve(null);
         return loadImage(getPhotoUrl(p.foto)).catch(() => null);
       });
       const photos = await Promise.all(photoPromises);
 
-      const totalPages = Math.ceil(participants.length / cardsPerPage);
+      const totalPages = Math.ceil(targetList.length / cardsPerPage);
 
-      for (let i = 0; i < participants.length; i++) {
+      for (let i = 0; i < targetList.length; i++) {
         const pageIdx = Math.floor(i / cardsPerPage);
         const posInPage = i % cardsPerPage;
 
@@ -603,7 +646,7 @@ export default function PerangkatUjianPage() {
           drawCropMarks(pdf);
         }
 
-        setProgress(`Merender kartu ${i + 1} / ${participants.length} (Hal ${pageIdx + 1}/${totalPages})`);
+        setProgress(`Merender kartu ${i + 1} / ${targetList.length} (Hal ${pageIdx + 1}/${totalPages})`);
 
         const col = posInPage % cols;
         const row = Math.floor(posInPage / cols);
@@ -671,7 +714,7 @@ export default function PerangkatUjianPage() {
         ctx.restore();
 
         // Draw name text
-        const p = participants[i];
+        const p = targetList[i];
         ctx.fillStyle = '#000';
         ctx.font = `bold ${Math.round(cW * (layout.nameSize / 100))}px Arial, sans-serif`;
         ctx.textAlign = 'center';
@@ -703,7 +746,7 @@ export default function PerangkatUjianPage() {
       setProgress('Menyimpan PDF...');
       pdf.save('Kartu_Nopes_Ujian.pdf');
 
-      Swal.fire('Berhasil!', `PDF berhasil digenerate (${participants.length} kartu, ${totalPages} halaman)`, 'success');
+      Swal.fire('Berhasil!', `PDF berhasil digenerate (${targetList.length} kartu, ${totalPages} halaman)`, 'success');
     } catch (err) {
       console.error(err);
       Swal.fire('Error', 'Gagal generate PDF: ' + String(err), 'error');
@@ -712,6 +755,144 @@ export default function PerangkatUjianPage() {
     setGenerating(false);
     setProgress('');
   };
+
+  const renderParticipantSection = ({
+    title,
+    designValue,
+    onDesignUpload,
+    onDownloadPdf,
+    showPhoto
+  }: {
+    title: string;
+    designValue: string | null;
+    onDesignUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onDownloadPdf: () => void;
+    showPhoto: boolean;
+  }) => (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+        <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: 0 }}>
+          {title}
+        </h2>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <label style={{ padding: '8px 16px', background: designValue ? '#10b981' : '#f59e0b', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
+            <i className="fas fa-image"></i> {designValue ? 'Design OK' : 'Import Design'}
+            <input type="file" accept="image/png, image/jpeg" style={{ display: 'none' }} onChange={onDesignUpload} disabled={loading || generating} />
+          </label>
+          <button onClick={syncFromKonfigurasiRuang} disabled={loading || generating} style={{ padding: '8px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: loading || generating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
+            <i className={loading ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'}></i>
+            {loading ? 'Memuat...' : 'Muat dari Konfigurasi Ruang'}
+          </button>
+          {(filteredParticipants.length > 0 && designValue) && (
+            <button onClick={onDownloadPdf} disabled={generating} style={{ padding: '8px 16px', background: generating ? '#94a3b8' : '#10b981', border: 'none', borderRadius: '6px', cursor: generating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
+              <i className={generating ? 'fas fa-spinner fa-spin' : 'fas fa-file-pdf'}></i>
+              {generating ? progress : `Download PDF (${filteredParticipants.length} Kartu)`}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {participants.length > 0 ? (
+        <>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '12px', padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <input
+              type="text"
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
+              placeholder="Cari nama, NISN, kelas, atau No. Ujian..."
+              style={{ flex: '1 1 240px', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
+            />
+            <select
+              value={roomFilter}
+              onChange={e => setRoomFilter(e.target.value)}
+              style={{ padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white', minWidth: '150px' }}
+            >
+              <option value="ALL">Semua Ruang ({participants.length})</option>
+              {roomOptions.map(r => (
+                <option key={r} value={r}>{r}</option>
+              ))}
+            </select>
+            {(searchText || roomFilter !== 'ALL') && (
+              <button
+                type="button"
+                onClick={() => { setSearchText(''); setRoomFilter('ALL'); }}
+                style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', background: 'white', color: '#475569', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}
+              >
+                Reset
+              </button>
+            )}
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                  <th style={{ padding: '12px', textAlign: 'center', color: '#475569', width: '52px' }}>No</th>
+                  <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>NISN</th>
+                  <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Nama Siswa</th>
+                  <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>No Ujian</th>
+                  <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Ruang</th>
+                  {showPhoto && <th style={{ padding: '12px', textAlign: 'center', color: '#475569' }}>Foto</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedParticipants.length === 0 ? (
+                  <tr>
+                    <td colSpan={showPhoto ? 6 : 5} style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
+                      Tidak ada peserta yang cocok dengan filter.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedParticipants.map((p, idx) => {
+                    const rowNo = (safeTablePage - 1) * tablePageSize + idx + 1;
+                    return (
+                      <tr key={`${p.nisn}-${p.noUjian}-${rowNo}`} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ padding: '12px', textAlign: 'center', color: '#64748b' }}>{rowNo}</td>
+                        <td style={{ padding: '12px' }}>{p.nisn}</td>
+                        <td style={{ padding: '12px', fontWeight: 'bold', color: '#334155' }}>{p.nama}</td>
+                        <td style={{ padding: '12px' }}>
+                          {showPhoto ? (
+                            <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: '4px' }}>{p.noUjian}</span>
+                          ) : (
+                            p.noUjian
+                          )}
+                        </td>
+                        <td style={{ padding: '12px' }}>{p.ruang}</td>
+                        {showPhoto && (
+                          <td style={{ padding: '12px', textAlign: 'center' }}>
+                            {p.foto ? (
+                              <img src={getPhotoUrl(p.foto)} alt="foto" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '50%', border: '2px solid #e2e8f0' }} />
+                            ) : (
+                              <div style={{ width: '40px', height: '40px', background: '#e2e8f0', borderRadius: '50%', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', border: '2px solid #e2e8f0' }}>
+                                <i className="fas fa-user"></i>
+                              </div>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <PaginationBar
+            totalItems={filteredParticipants.length}
+            currentPage={safeTablePage}
+            pageSize={tablePageSize}
+            onPageChange={setTablePage}
+            onPageSizeChange={setTablePageSize}
+          />
+        </>
+      ) : (
+        <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+          <i className="fas fa-door-open" style={{ fontSize: '48px', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
+          Belum ada data peserta. Silakan bagi ruang terlebih dahulu di tab <b>1. Konfigurasi Ruang</b>, lalu klik <b>Muat dari Konfigurasi Ruang</b>.
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
@@ -852,129 +1033,23 @@ export default function PerangkatUjianPage() {
         {activeTab === 'konfigurasi-ruang' && (
           <KonfigurasiRuangTab />
         )}
-        {activeTab === 'nopes' && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: 0 }}>
-                Daftar Nomor Peserta
-              </h2>
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <label style={{ padding: '8px 16px', background: customDesign ? '#10b981' : '#f59e0b', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
-                  <i className="fas fa-image"></i> {customDesign ? 'Design OK' : 'Import Design'}
-                  <input type="file" accept="image/png, image/jpeg" style={{ display: 'none' }} onChange={handleDesignUpload} disabled={loading || generating} />
-                </label>
-                <button onClick={syncFromKonfigurasiRuang} disabled={loading || generating} style={{ padding: '8px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: loading || generating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
-                  <i className={loading ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'}></i>
-                  {loading ? 'Memuat...' : 'Muat dari Konfigurasi Ruang'}
-                </button>
-                {(participants.length > 0 && customDesign) && (
-                  <button onClick={generatePDF} disabled={generating} style={{ padding: '8px 16px', background: generating ? '#94a3b8' : '#10b981', border: 'none', borderRadius: '6px', cursor: generating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
-                    <i className={generating ? 'fas fa-spinner fa-spin' : 'fas fa-file-pdf'}></i>
-                    {generating ? progress : `Download PDF (${participants.length} Kartu)`}
-                  </button>
-                )}
-              </div>
-            </div>
+        {activeTab === 'nopes' &&
+          renderParticipantSection({
+            title: 'Daftar Nomor Peserta',
+            designValue: customDesign,
+            onDesignUpload: handleDesignUpload,
+            onDownloadPdf: generatePDF,
+            showPhoto: true
+          })}
 
-            {participants.length > 0 ? (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>NISN</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Nama Siswa</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>No Ujian</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Ruang</th>
-                      <th style={{ padding: '12px', textAlign: 'center', color: '#475569' }}>Foto</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {participants.map((p, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                        <td style={{ padding: '12px' }}>{p.nisn}</td>
-                        <td style={{ padding: '12px', fontWeight: 'bold' }}>{p.nama}</td>
-                        <td style={{ padding: '12px' }}>
-                          <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: '4px' }}>{p.noUjian}</span>
-                        </td>
-                        <td style={{ padding: '12px' }}>{p.ruang}</td>
-                        <td style={{ padding: '12px', textAlign: 'center' }}>
-                          {p.foto ? (
-                            <img src={getPhotoUrl(p.foto)} alt="foto" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '50%', border: '2px solid #e2e8f0' }} />
-                          ) : (
-                            <div style={{ width: '40px', height: '40px', background: '#e2e8f0', borderRadius: '50%', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', border: '2px solid #e2e8f0' }}>
-                              <i className="fas fa-user"></i>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
-                <i className="fas fa-door-open" style={{ fontSize: '48px', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
-                Belum ada data peserta. Silakan bagi ruang terlebih dahulu di tab <b>1. Konfigurasi Ruang</b>, lalu klik <b>Muat dari Konfigurasi Ruang</b>.
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'nobang' && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: 0 }}>
-                Daftar Nomor Bangku
-              </h2>
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <label style={{ padding: '8px 16px', background: nobangDesign ? '#10b981' : '#f59e0b', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
-                  <i className="fas fa-image"></i> {nobangDesign ? 'Design OK' : 'Import Design'}
-                  <input type="file" accept="image/png, image/jpeg" style={{ display: 'none' }} onChange={handleNobangDesignUpload} disabled={loading || generating} />
-                </label>
-                <button onClick={syncFromKonfigurasiRuang} disabled={loading || generating} style={{ padding: '8px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: loading || generating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
-                  <i className={loading ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'}></i>
-                  {loading ? 'Memuat...' : 'Muat dari Konfigurasi Ruang'}
-                </button>
-                {(participants.length > 0 && nobangDesign) && (
-                  <button onClick={generateNobangPDF} disabled={generating} style={{ padding: '8px 16px', background: generating ? '#94a3b8' : '#10b981', border: 'none', borderRadius: '6px', cursor: generating ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold' }}>
-                    <i className={generating ? 'fas fa-spinner fa-spin' : 'fas fa-file-pdf'}></i>
-                    {generating ? progress : `Download PDF (${participants.length} Kartu)`}
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {participants.length > 0 ? (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>NISN</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Nama Siswa</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>No Ujian</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Ruang</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {participants.map((p, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                        <td style={{ padding: '12px' }}>{p.nisn}</td>
-                        <td style={{ padding: '12px', fontWeight: 'bold', color: '#334155' }}>{p.nama}</td>
-                        <td style={{ padding: '12px' }}>{p.noUjian}</td>
-                        <td style={{ padding: '12px' }}>{p.ruang}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
-                <i className="fas fa-door-open" style={{ fontSize: '48px', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
-                Belum ada data peserta. Silakan bagi ruang terlebih dahulu di tab <b>1. Konfigurasi Ruang</b>, lalu klik <b>Muat dari Konfigurasi Ruang</b>.
-              </div>
-            )}
-          </div>
-        )}
+        {activeTab === 'nobang' &&
+          renderParticipantSection({
+            title: 'Daftar Nomor Bangku',
+            designValue: nobangDesign,
+            onDesignUpload: handleNobangDesignUpload,
+            onDownloadPdf: generateNobangPDF,
+            showPhoto: false
+          })}
 
         {activeTab === 'identitas' && (
           <CetakIdentitasTab />

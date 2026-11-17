@@ -17,6 +17,7 @@ import {
   buildDeskGrid,
   buildDenahRuangHtml
 } from './denahRuangPrint';
+import PaginationBar from './PaginationBar';
 
 interface RawStudent {
   id: number;
@@ -120,13 +121,15 @@ export default function KonfigurasiRuangTab() {
   >([]);
   const [lastUpdatedInfo, setLastUpdatedInfo] = useState<string>('');
 
-  // Table Filters
+  // Table Filters & Pagination
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterSesi, setFilterSesi] = useState<'ALL' | 'Pagi' | 'Siang'>('ALL');
   const [filterRuang, setFilterRuang] = useState<string>('ALL');
   const [filterGender, setFilterGender] = useState<'ALL' | 'L' | 'P'>('ALL');
   const [filterTingkat, setFilterTingkat] = useState<string>('ALL');
   const [filterKelas, setFilterKelas] = useState<string>('ALL');
+  const [tablePage, setTablePage] = useState<number>(1);
+  const [tablePageSize, setTablePageSize] = useState<number>(25);
 
   // Print Daftar Hadir Modal State
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
@@ -961,6 +964,19 @@ export default function KonfigurasiRuangTab() {
       return true;
     });
   }, [assignments, filterSesi, filterRuang, filterGender, filterTingkat, filterKelas, searchQuery]);
+
+  useEffect(() => {
+    setTablePage(1);
+  }, [assignments.length, filterSesi, filterRuang, filterGender, filterTingkat, filterKelas, searchQuery]);
+
+  const safeTablePage = Math.min(
+    tablePage,
+    Math.max(1, Math.ceil(filteredAssignments.length / tablePageSize))
+  );
+  const paginatedAssignments = useMemo(() => {
+    const start = (safeTablePage - 1) * tablePageSize;
+    return filteredAssignments.slice(start, start + tablePageSize);
+  }, [filteredAssignments, safeTablePage, tablePageSize]);
 
   const handleResetFilters = () => {
     setSearchQuery('');
@@ -1798,12 +1814,13 @@ export default function KonfigurasiRuangTab() {
                     </td>
                   </tr>
                 ) : (
-                  filteredAssignments.map((p, idx) => {
+                  paginatedAssignments.map((p, idx) => {
                     const isOdd = p.jenisKelamin === 'L';
                     const isPagi = p.sesi === 'Pagi';
+                    const rowNo = (safeTablePage - 1) * tablePageSize + idx + 1;
                     return (
                       <tr key={`${p.nisn}-${p.sesi}-${p.ruangNumber}-${p.noKursi}`} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '9px 12px', textAlign: 'center', color: '#64748b' }}>{idx + 1}</td>
+                        <td style={{ padding: '9px 12px', textAlign: 'center', color: '#64748b' }}>{rowNo}</td>
                         <td style={{ padding: '9px 12px' }}>
                           <span
                             style={{
@@ -1863,6 +1880,14 @@ export default function KonfigurasiRuangTab() {
               </tbody>
             </table>
           </div>
+
+          <PaginationBar
+            totalItems={filteredAssignments.length}
+            currentPage={safeTablePage}
+            pageSize={tablePageSize}
+            onPageChange={setTablePage}
+            onPageSizeChange={setTablePageSize}
+          />
         </>
       )}
 
