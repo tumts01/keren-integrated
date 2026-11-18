@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import crypto from 'crypto';
 import { unstable_cache, revalidateTag } from 'next/cache';
+import { getEffectiveJamsForKelas, normalizeJamPerTingkat, parseJamList } from '@/lib/jam-config';
 
 const cleanJamKe = (val: string) => val.replace(/,(19|20)\d{2}$/g, '').replace(/^'/, '').trim();
 
@@ -80,6 +81,46 @@ export async function POST(request: Request) {
     mapel = String(mapel).trim().replace(/\bllmu\b/g, 'Ilmu');
 
     const jamKeText = String(jamKe);
+    const submittedJams = jamKeText.split(',').map(j => j.trim()).filter(Boolean);
+
+    // Validasi konfigurasi buka/tutup jam mengajar (global maupun per angkatan 7/8/9)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(String(tanggal))) {
+      const { data: jamCfgRows } = await supabase
+        .from('data_jam_config')
+        .select('tanggal, metadata')
+        .or(`tanggal.eq.${tanggal},metadata->>Tanggal.eq.${tanggal}`);
+
+      if (jamCfgRows && jamCfgRows.length > 0) {
+        const cfgRow = jamCfgRows[0] as any;
+        const globalJams = parseJamList(cfgRow.metadata?.['JamTersedia'] ?? '');
+        const perTingkat = normalizeJamPerTingkat(cfgRow.metadata?.['JamPerTingkat'], globalJams);
+        const effectiveJams = getEffectiveJamsForKelas(kelas, globalJams, perTingkat);
+        const ket = String(cfgRow.metadata?.['Keterangan'] || '').trim();
+
+        if (effectiveJams.length === 0) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Pengisian Jurnal Mengajar untuk kelas ${kelas} pada tanggal ${tanggal} sedang ditutup/dinonaktifkan.${ket ? ` Keterangan: ${ket}` : ''}`
+            },
+            { status: 403 }
+          );
+        }
+
+        const disallowedJams = submittedJams
+          .map(j => parseInt(j, 10))
+          .filter(n => !isNaN(n) && !effectiveJams.includes(n));
+        if (disallowedJams.length > 0) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Jam ke-${disallowedJams.join(', ')} untuk kelas ${kelas} pada tanggal ${tanggal} tidak diaktifkan. Jam aktif: ${effectiveJams.join(', ')}.`
+            },
+            { status: 403 }
+          );
+        }
+      }
+    }
 
     const isProksus = mapel.toLowerCase().includes('program khusus') || mapel.toLowerCase().includes('proksus');
     if (isProksus) {
@@ -87,7 +128,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, error: 'Mata pelajaran Program Khusus hanya dapat diisi di Jam ke-1.' }, { status: 400 });
       }
     } else {
-      const jamList = jamKeText.split(',').map(j => j.trim()).filter(Boolean);
+      const jamList = submittedJams;
       if (jamList.length > 3) {
         return NextResponse.json({ success: false, error: 'Maksimal 3 jam pelajaran per sesi mata pelajaran.' }, { status: 400 });
       }
@@ -98,8 +139,6 @@ export async function POST(request: Request) {
 
     const { data: rowsDay, error: readError } = await supabase.from('data_jurnal_mengajar').select('*').eq('tanggal', tanggal);
     if (readError) throw readError;
-
-    const submittedJams = jamKeText.split(',').map(j => j.trim()).filter(Boolean);
     let overlappingClass = null;
     let overlappingGuru = null;
     let isExactMatch = false;

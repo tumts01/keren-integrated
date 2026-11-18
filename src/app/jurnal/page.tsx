@@ -1,10 +1,19 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
 import styles from './jurnal.module.css';
 import InlineLoading from '@/components/InlineLoading';
+import {
+  ALL_JAMS,
+  JamPerTingkat,
+  createDefaultJamPerTingkat,
+  extractGradeFromKelas,
+  getClosedGrades,
+  getEffectiveJamsForKelas,
+  normalizeJamPerTingkat
+} from '@/lib/jam-config';
 
 interface JurnalRecord {
   id: string;
@@ -34,6 +43,38 @@ export default function JurnalPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGuruPengganti, setIsGuruPengganti] = useState(false);
   const [guruDigantikan, setGuruDigantikan] = useState('');
+  const [jamTersedia, setJamTersedia] = useState<number[]>([...ALL_JAMS]);
+  const [jamPerTingkat, setJamPerTingkat] = useState<JamPerTingkat>(() => createDefaultJamPerTingkat());
+  const [jamKeterangan, setJamKeterangan] = useState('');
+
+  const selectedGrade = extractGradeFromKelas(selectedKelas);
+  const effectiveJamTersedia = useMemo(
+    () => getEffectiveJamsForKelas(selectedKelas, jamTersedia, jamPerTingkat),
+    [selectedKelas, jamTersedia, jamPerTingkat]
+  );
+  const closedGrades = useMemo(() => getClosedGrades(jamPerTingkat), [jamPerTingkat]);
+
+  useEffect(() => {
+    if (!tanggal) return;
+    fetch(`/api/jam-config?tanggal=${tanggal}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          const availableJams = Array.isArray(data.jamTersedia) ? data.jamTersedia : [];
+          setJamTersedia(availableJams);
+          setJamPerTingkat(normalizeJamPerTingkat(data.jamPerTingkat, availableJams));
+          setJamKeterangan(data.keterangan || '');
+        }
+      })
+      .catch(() => {});
+  }, [tanggal]);
+
+  useEffect(() => {
+    setSelectedJam(prev => {
+      const next = prev.filter(j => effectiveJamTersedia.includes(j));
+      return next.length === prev.length ? prev : next;
+    });
+  }, [effectiveJamTersedia]);
 
   // --- REKAP STATE ---
   const [rekapData, setRekapData] = useState<JurnalRecord[]>([]);
@@ -210,6 +251,14 @@ export default function JurnalPage() {
   };
 
   const handleSubmit = async () => {
+    if (effectiveJamTersedia.length === 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: `Jurnal${selectedGrade ? ` Kelas ${selectedGrade}` : ''} Dinonaktifkan`,
+        text: `Pengisian Jurnal Mengajar${selectedGrade ? ` untuk Kelas ${selectedGrade}` : ''} pada tanggal ini sedang dinonaktifkan.${jamKeterangan ? ` Keterangan: ${jamKeterangan}` : ''}`
+      });
+      return;
+    }
     if (!selectedKelas || !selectedMapel) {
       Swal.fire({ icon: 'warning', title: 'Oops...', text: 'Mohon pilih Kelas dan Mata Pelajaran!' });
       return;
@@ -777,7 +826,11 @@ export default function JurnalPage() {
               <label>Kelas</label>
               <select value={selectedKelas} onChange={e => setSelectedKelas(e.target.value)} className={styles.inputField}>
                 <option value="">-- Pilih Kelas --</option>
-                {kelasList.map(k => <option key={k} value={k}>{k}</option>)}
+                {kelasList.map(k => {
+                  const gk = extractGradeFromKelas(k);
+                  const isClosed = Boolean(gk && (jamPerTingkat[gk] || []).length === 0);
+                  return <option key={k} value={k}>{isClosed ? `${k} (Ditutup)` : k}</option>;
+                })}
               </select>
             </div>
 
@@ -849,18 +902,35 @@ export default function JurnalPage() {
 
             <div className={styles.filterGroup} style={{ flex: '1 1 100%' }}>
               <label>Jam Ke (Pilih satu atau lebih)</label>
+              {effectiveJamTersedia.length === 0 && (
+                <div style={{ marginTop: 4, marginBottom: 8, padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, color: '#991b1b', fontSize: '0.82rem', fontWeight: 600 }}>
+                  Jurnal Mengajar {selectedGrade ? `Kelas ${selectedGrade} ` : ''}dinonaktifkan pada tanggal ini.{jamKeterangan ? ` Keterangan: ${jamKeterangan}` : ''}
+                </div>
+              )}
+              {!selectedKelas && closedGrades.length > 0 && closedGrades.length < 3 && (
+                <div style={{ marginTop: 4, marginBottom: 8, padding: '8px 12px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, color: '#92400e', fontSize: '0.82rem', fontWeight: 600 }}>
+                  Kelas {closedGrades.join(', ')} ditutup pada tanggal ini.{jamKeterangan ? ` (${jamKeterangan})` : ''}
+                </div>
+              )}
               <div className={styles.jamPills}>
-                {[1,2,3,4,5,6,7,8,9,10,11,12,13].map(jam => {
+                {ALL_JAMS.map(jam => {
+                  const available = effectiveJamTersedia.includes(jam);
                   const isExtra = jam >= 11;
                   const isActive = selectedJam.includes(jam);
+                  let customStyle: any = {};
+                  if (!available) {
+                    customStyle = { opacity: 0.25, cursor: 'not-allowed', textDecoration: 'line-through' };
+                  } else if (isExtra) {
+                    customStyle = {
+                      background: isActive ? '#ef4444' : '#fee2e2',
+                      color: isActive ? 'white' : '#ef4444',
+                      borderColor: isActive ? '#ef4444' : '#fca5a5'
+                    };
+                  }
                   return (
-                    <button key={jam} type="button" onClick={() => toggleJam(jam)}
+                    <button key={jam} type="button" onClick={() => available ? toggleJam(jam) : null}
                       className={`${styles.jamPill} ${isActive && !isExtra ? styles.jamPillActive : ''}`}
-                      style={isExtra ? {
-                        background: isActive ? '#ef4444' : '#fee2e2',
-                        color: isActive ? 'white' : '#ef4444',
-                        borderColor: isActive ? '#ef4444' : '#fca5a5'
-                      } : {}}
+                      style={customStyle}
                     >
                       {jam}
                     </button>
@@ -878,9 +948,9 @@ export default function JurnalPage() {
             </div>
           )}
           <div className={styles.actions} style={{ marginTop: 30, display: 'flex', justifyContent: 'flex-end' }}>
-            <button className={styles.btnSave} onClick={handleSubmit} disabled={isSubmitting}
-              style={{ opacity: isSubmitting ? 0.7 : 1, width: '100%' }}>
-              {isSubmitting ? 'Menyimpan...' : <><i className="fas fa-save"></i> Simpan Jurnal</>}
+            <button className={styles.btnSave} onClick={handleSubmit} disabled={isSubmitting || effectiveJamTersedia.length === 0}
+              style={{ opacity: (isSubmitting || effectiveJamTersedia.length === 0) ? 0.65 : 1, width: '100%' }}>
+              {isSubmitting ? 'Menyimpan...' : effectiveJamTersedia.length === 0 ? `Jurnal${selectedGrade ? ` Kls ${selectedGrade}` : ''} Dinonaktifkan` : <><i className="fas fa-save"></i> Simpan Jurnal</>}
             </button>
           </div>
         </div>
