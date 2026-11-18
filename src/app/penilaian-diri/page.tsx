@@ -58,11 +58,24 @@ export default function PenilaianDiriPage() {
     summary: { totalSiswa: number; sudahMengisi: number; belumMengisi: number; persentase: number };
     rombelSummary: Array<{ rombel: string; total: number; sudah: number; belum: number; persentase: number }>;
     students: Array<{ id: string; nisn: string; nis: string; nama: string; rombel: string; jk: string; status: 'sudah' | 'belum'; submittedAt: string | null; submissionId: string | null }>;
+    staffSummary?: {
+      total: number;
+      sudahMengisi: number;
+      belumMengisi: number;
+      persentase: number;
+      guru: { total: number; sudah: number; belum: number };
+      staf: { total: number; sudah: number; belum: number };
+    };
+    staffList?: Array<{ id: string; nama: string; username: string; nip: string; jabatan: string; kategori: 'Guru' | 'Staf'; role: string; status: 'sudah' | 'belum'; submittedAt: string | null; submissionId: string | null }>;
   } | null>(null);
   const [loadingMonitoring, setLoadingMonitoring] = useState(false);
+  const [monitorTarget, setMonitorTarget] = useState<'siswa' | 'guru-staf'>('siswa');
   const [monitorRombel, setMonitorRombel] = useState('semua');
   const [monitorStatus, setMonitorStatus] = useState<'semua' | 'sudah' | 'belum'>('semua');
   const [monitorSearch, setMonitorSearch] = useState('');
+  const [monitorStaffKategori, setMonitorStaffKategori] = useState<'semua' | 'Guru' | 'Staf'>('semua');
+  const [monitorStaffStatus, setMonitorStaffStatus] = useState<'semua' | 'sudah' | 'belum'>('semua');
+  const [monitorStaffSearch, setMonitorStaffSearch] = useState('');
 
   const isPortalRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/portal');
   const isSiswa = isPortalRoute || (userRole || '').toLowerCase().includes('siswa');
@@ -400,6 +413,36 @@ export default function PenilaianDiriPage() {
 
   const handleCopyBelumMengisi = () => {
     if (!monitoringData) return;
+
+    if (monitorTarget === 'guru-staf') {
+      const listBelumStaff = (monitoringData.staffList || []).filter((st: any) => {
+        if (st.status !== 'belum') return false;
+        if (monitorStaffKategori !== 'semua' && st.kategori !== monitorStaffKategori) return false;
+        return true;
+      });
+
+      if (listBelumStaff.length === 0) {
+        return Swal.fire('Hebat!', 'Seluruh Guru/Staf pada filter ini sudah mengisi penilaian.', 'success');
+      }
+
+      const targetTitle = monitorStaffKategori === 'semua' ? 'Semua Guru & Staf' : monitorStaffKategori;
+      const listText = listBelumStaff.map((st: any, idx: number) => `${idx + 1}. ${st.nama} (${st.jabatan})`).join('\n');
+      const textToCopy = `📢 *MONITORING PENILAIAN KARAKTER (GURU & STAF)*\nPeriode: *${periode}*\nTarget: *${targetTitle}*\nStatus: *${listBelumStaff.length} belum mengisi*\n\nBerikut daftar Guru & Staf yang *BELUM* mengisi:\n${listText}\n\n_Mohon berkenan membuka menu Penilaian Diri & Karakter di sistem dan menyelesaikan pengisian. Terima kasih._`;
+
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        Swal.fire({
+          icon: 'success',
+          title: 'Berhasil Disalin!',
+          text: `Daftar ${listBelumStaff.length} Guru/Staf belum mengisi berhasil disalin ke clipboard.`,
+          timer: 2500,
+          showConfirmButton: false
+        });
+      }).catch(() => {
+        Swal.fire('Gagal', 'Tidak dapat menyalin ke clipboard', 'error');
+      });
+      return;
+    }
+
     const listBelum = (monitoringData.students || []).filter((s: any) => {
       if (s.status !== 'belum') return false;
       if (monitorRombel !== 'semua' && s.rombel !== monitorRombel) return false;
@@ -431,6 +474,34 @@ export default function PenilaianDiriPage() {
     if (!monitoringData) return;
     try {
       const XLSX = await import('xlsx');
+      if (monitorTarget === 'guru-staf') {
+        const dataToExport = filteredMonitoringStaff.map((st: any, idx: number) => ({
+          'No': idx + 1,
+          'Nama Guru / Staf': st.nama,
+          'Username': st.username || '-',
+          'NIP / ID': st.nip || '-',
+          'Jabatan': st.jabatan || '-',
+          'Kategori': st.kategori,
+          'Status': st.status === 'sudah' ? 'Sudah Mengisi' : 'Belum Mengisi',
+          'Waktu Pengisian': st.submittedAt ? new Date(st.submittedAt).toLocaleDateString('id-ID', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric'
+          }) + ' ' + new Date(st.submittedAt).toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }) + ' WIB' : '-'
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Monitoring Guru & Staf');
+        const safePeriode = (periode || '').replace(/\s+/g, '_');
+        const safeKat = monitorStaffKategori === 'semua' ? 'Guru_Staf' : monitorStaffKategori;
+        XLSX.writeFile(wb, `Monitoring_Penilaian_Karakter_${safePeriode}_${safeKat}.xlsx`);
+        return;
+      }
+
       const dataToExport = filteredMonitoringStudents.map((s: any, idx: number) => ({
         'No': idx + 1,
         'NISN': s.nisn || '-',
@@ -491,6 +562,37 @@ export default function PenilaianDiriPage() {
     }
   };
 
+  const handleResetStaffFromMonitor = async (staff: any) => {
+    const confirm = await Swal.fire({
+      title: 'Reset Pengisian Guru / Staf?',
+      html: `Yakin ingin mereset pengisian untuk <b>${staff.nama}</b> (${staff.jabatan}) pada periode <b>${periode}</b>?<br/><span style="font-size:0.85rem; color:#ef4444">Akun ini akan dapat mengisi ulang kembali formulir penilaian.</span>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Ya, Reset',
+      cancelButtonText: 'Batal'
+    });
+
+    if (confirm.isConfirmed) {
+      try {
+        const deleteUrl = staff.submissionId
+          ? `/api/penilaian-karakter?id=${encodeURIComponent(staff.submissionId)}`
+          : `/api/penilaian-karakter?periode=${encodeURIComponent(periode)}&penilai_id=${encodeURIComponent(staff.username || staff.nama)}`;
+        const res = await fetch(deleteUrl, { method: 'DELETE' });
+        const json = await res.json();
+        if (json.success) {
+          Swal.fire('Berhasil', `Pengisian untuk ${staff.nama} telah direset.`, 'success');
+          loadMonitoring(periode);
+        } else {
+          Swal.fire('Gagal', json.error, 'error');
+        }
+      } catch (e: any) {
+        Swal.fire('Error', e.message, 'error');
+      }
+    }
+  };
+
   const filteredMonitoringStudents = (monitoringData?.students || []).filter((s: any) => {
     if (monitorRombel !== 'semua' && s.rombel !== monitorRombel) return false;
     if (monitorStatus !== 'semua' && s.status !== monitorStatus) return false;
@@ -501,6 +603,20 @@ export default function PenilaianDiriPage() {
       const matchNis = (s.nis || '').includes(q);
       const matchRombel = (s.rombel || '').toLowerCase().includes(q);
       if (!matchNama && !matchNisn && !matchNis && !matchRombel) return false;
+    }
+    return true;
+  });
+
+  const filteredMonitoringStaff = (monitoringData?.staffList || []).filter((st: any) => {
+    if (monitorStaffKategori !== 'semua' && st.kategori !== monitorStaffKategori) return false;
+    if (monitorStaffStatus !== 'semua' && st.status !== monitorStaffStatus) return false;
+    if (monitorStaffSearch.trim()) {
+      const q = monitorStaffSearch.toLowerCase();
+      const matchNama = (st.nama || '').toLowerCase().includes(q);
+      const matchJabatan = (st.jabatan || '').toLowerCase().includes(q);
+      const matchUsername = (st.username || '').toLowerCase().includes(q);
+      const matchNip = (st.nip || '').toLowerCase().includes(q);
+      if (!matchNama && !matchJabatan && !matchUsername && !matchNip) return false;
     }
     return true;
   });
@@ -1198,7 +1314,354 @@ export default function PenilaianDiriPage() {
             </div>
           ) : (
             <>
-              {/* KPI Summary Cards */}
+              {/* Sub-tab Switcher: Siswa vs Guru & Staf */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setMonitorTarget('siswa')}
+                  style={{
+                    padding: '9px 18px',
+                    borderRadius: '10px',
+                    border: monitorTarget === 'siswa' ? '2px solid #047857' : '1px solid #cbd5e1',
+                    background: monitorTarget === 'siswa' ? '#ecfdf5' : 'white',
+                    color: monitorTarget === 'siswa' ? '#047857' : '#475569',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <i className="fas fa-user-graduate"></i>
+                  Siswa ({monitoringData.summary.sudahMengisi}/{monitoringData.summary.totalSiswa})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMonitorTarget('guru-staf')}
+                  style={{
+                    padding: '9px 18px',
+                    borderRadius: '10px',
+                    border: monitorTarget === 'guru-staf' ? '2px solid #047857' : '1px solid #cbd5e1',
+                    background: monitorTarget === 'guru-staf' ? '#ecfdf5' : 'white',
+                    color: monitorTarget === 'guru-staf' ? '#047857' : '#475569',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <i className="fas fa-chalkboard-teacher"></i>
+                  Guru &amp; Staf ({monitoringData.staffSummary?.sudahMengisi || 0}/{monitoringData.staffSummary?.total || 0})
+                </button>
+              </div>
+
+              {monitorTarget === 'guru-staf' ? (
+                <>
+                  {/* KPI Summary Cards: Guru & Staf */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gap: '16px',
+                    marginBottom: '24px'
+                  }}>
+                    <div style={{
+                      background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                      borderRadius: '14px',
+                      padding: '18px 20px',
+                      border: '1.5px solid #bae6fd',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '16px'
+                    }}>
+                      <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#0284c7', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem' }}>
+                        <i className="fas fa-user-tie"></i>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#0369a1', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Guru &amp; Staf Aktif</div>
+                        <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#0c4a6e', lineHeight: 1.2 }}>
+                          {monitoringData.staffSummary?.total || 0} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0284c7' }}>Orang</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{
+                      background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+                      borderRadius: '14px',
+                      padding: '18px 20px',
+                      border: '1.5px solid #a7f3d0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '16px'
+                    }}>
+                      <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#10b981', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem' }}>
+                        <i className="fas fa-check-circle"></i>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#047857', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sudah Mengisi</div>
+                        <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#064e3b', lineHeight: 1.2 }}>
+                          {monitoringData.staffSummary?.sudahMengisi || 0}{' '}
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#059669' }}>
+                            ({monitoringData.staffSummary?.persentase || 0}%)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{
+                      background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                      borderRadius: '14px',
+                      padding: '18px 20px',
+                      border: '1.5px solid #fde68a',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '16px'
+                    }}>
+                      <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#f59e0b', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem' }}>
+                        <i className="fas fa-hourglass-half"></i>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#b45309', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Belum Mengisi</div>
+                        <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#78350f', lineHeight: 1.2 }}>
+                          {monitoringData.staffSummary?.belumMengisi || 0}{' '}
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#d97706' }}>
+                            ({(monitoringData.staffSummary?.total || 0) > 0 ? (100 - (monitoringData.staffSummary?.persentase || 0)).toFixed(1) : 0}%)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{
+                      background: '#f8fafc',
+                      borderRadius: '14px',
+                      padding: '18px 20px',
+                      border: '1.5px solid #e2e8f0',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Kelengkapan GTK</span>
+                        <span style={{ fontSize: '1rem', fontWeight: 800, color: '#047857' }}>{monitoringData.staffSummary?.persentase || 0}%</span>
+                      </div>
+                      <div style={{ width: '100%', height: '10px', background: '#e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+                        <div style={{ width: `${monitoringData.staffSummary?.persentase || 0}%`, height: '100%', background: 'linear-gradient(90deg, #10b981 0%, #047857 100%)', borderRadius: '8px', transition: 'width 0.5s ease' }}></div>
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '6px' }}>
+                        Guru: <b>{monitoringData.staffSummary?.guru.sudah || 0}/{monitoringData.staffSummary?.guru.total || 0}</b> · Staf: <b>{monitoringData.staffSummary?.staf.sudah || 0}/{monitoringData.staffSummary?.staf.total || 0}</b>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Filter Toolbar Guru & Staf */}
+                  <div style={{
+                    background: '#f8fafc',
+                    border: '1.5px solid #e2e8f0',
+                    borderRadius: '14px',
+                    padding: '16px',
+                    marginBottom: '20px',
+                    display: 'flex',
+                    gap: '12px',
+                    alignItems: 'center',
+                    flexWrap: 'wrap'
+                  }}>
+                    <div style={{ minWidth: '160px', flex: '1 1 180px' }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                        Kategori:
+                      </label>
+                      <select
+                        value={monitorStaffKategori}
+                        onChange={e => setMonitorStaffKategori(e.target.value as any)}
+                        className={styles.inputField}
+                        style={{ width: '100%', margin: 0, padding: '8px 12px', fontSize: '0.9rem', fontWeight: 600 }}
+                      >
+                        <option value="semua">Semua Guru &amp; Staf ({monitoringData.staffSummary?.total || 0})</option>
+                        <option value="Guru">Guru ({monitoringData.staffSummary?.guru.sudah || 0}/{monitoringData.staffSummary?.guru.total || 0})</option>
+                        <option value="Staf">Staf ({monitoringData.staffSummary?.staf.sudah || 0}/{monitoringData.staffSummary?.staf.total || 0})</option>
+                      </select>
+                    </div>
+
+                    <div style={{ minWidth: '160px', flex: '1 1 180px' }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                        Status Pengisian:
+                      </label>
+                      <select
+                        value={monitorStaffStatus}
+                        onChange={e => setMonitorStaffStatus(e.target.value as any)}
+                        className={styles.inputField}
+                        style={{ width: '100%', margin: 0, padding: '8px 12px', fontSize: '0.9rem', fontWeight: 600 }}
+                      >
+                        <option value="semua">Semua Status</option>
+                        <option value="sudah">✅ Sudah Mengisi Saja</option>
+                        <option value="belum">⏳ Belum Mengisi Saja</option>
+                      </select>
+                    </div>
+
+                    <div style={{ minWidth: '220px', flex: '2 1 250px' }}>
+                      <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                        Cari Nama / Jabatan / Username:
+                      </label>
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          type="text"
+                          value={monitorStaffSearch}
+                          onChange={e => setMonitorStaffSearch(e.target.value)}
+                          placeholder="Ketik nama atau jabatan..."
+                          className={styles.inputField}
+                          style={{ width: '100%', margin: 0, padding: '8px 36px 8px 12px', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                        />
+                        {monitorStaffSearch && (
+                          <button
+                            onClick={() => setMonitorStaffSearch('')}
+                            style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}
+                          >
+                            <i className="fas fa-times-circle"></i>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={{ marginLeft: 'auto', alignSelf: 'flex-end', paddingBottom: '4px' }}>
+                      <span style={{ fontSize: '0.88rem', color: '#334155', fontWeight: 600 }}>
+                        Menampilkan <b>{filteredMonitoringStaff.length}</b> guru &amp; staf
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Tabel Guru & Staf */}
+                  <div className={styles.tableWrapper}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th style={{ width: '50px', textAlign: 'center' }}>No</th>
+                          <th>Nama Guru / Staf</th>
+                          <th>Jabatan</th>
+                          <th style={{ width: '100px', textAlign: 'center' }}>Kategori</th>
+                          <th style={{ width: '160px', textAlign: 'center' }}>Status</th>
+                          <th style={{ width: '180px' }}>Waktu Kirim</th>
+                          {isAdmin && <th style={{ width: '90px', textAlign: 'center' }}>Aksi</th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredMonitoringStaff.map((st: any, idx: number) => {
+                          const isSudah = st.status === 'sudah';
+                          return (
+                            <tr key={st.id || idx} style={{ background: isSudah ? 'transparent' : '#fffdfa' }}>
+                              <td style={{ textAlign: 'center', color: '#64748b' }}>{idx + 1}</td>
+                              <td>
+                                <div style={{ fontWeight: 700, color: '#0f172a' }}>{st.nama}</div>
+                                {st.username && (
+                                  <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Username: {st.username}</div>
+                                )}
+                              </td>
+                              <td style={{ color: '#475569', fontSize: '0.88rem' }}>{st.jabatan || '-'}</td>
+                              <td style={{ textAlign: 'center' }}>
+                                <span style={{
+                                  background: st.kategori === 'Staf' ? '#ede9fe' : '#e0f2fe',
+                                  color: st.kategori === 'Staf' ? '#6d28d9' : '#0369a1',
+                                  padding: '4px 10px',
+                                  borderRadius: '6px',
+                                  fontWeight: 700,
+                                  fontSize: '0.82rem'
+                                }}>
+                                  {st.kategori}
+                                </span>
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                {isSudah ? (
+                                  <span style={{
+                                    background: '#dcfce7',
+                                    color: '#15803d',
+                                    border: '1px solid #bbf7d0',
+                                    padding: '4px 12px',
+                                    borderRadius: '50px',
+                                    fontSize: '0.82rem',
+                                    fontWeight: 700,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '5px'
+                                  }}>
+                                    <i className="fas fa-check-circle" style={{ color: '#16a34a' }}></i> Sudah Mengisi
+                                  </span>
+                                ) : (
+                                  <span style={{
+                                    background: '#fef3c7',
+                                    color: '#b45309',
+                                    border: '1px solid #fde68a',
+                                    padding: '4px 12px',
+                                    borderRadius: '50px',
+                                    fontSize: '0.82rem',
+                                    fontWeight: 700,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '5px'
+                                  }}>
+                                    <i className="fas fa-clock" style={{ color: '#d97706' }}></i> Belum Mengisi
+                                  </span>
+                                )}
+                              </td>
+                              <td style={{ fontSize: '0.85rem', color: '#475569' }}>
+                                {st.submittedAt ? (
+                                  <div>
+                                    <i className="fas fa-calendar-check" style={{ marginRight: '6px', color: '#10b981' }}></i>
+                                    {new Date(st.submittedAt).toLocaleDateString('id-ID', {
+                                      day: 'numeric',
+                                      month: 'short',
+                                      year: 'numeric'
+                                    })},{' '}
+                                    {new Date(st.submittedAt).toLocaleTimeString('id-ID', {
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })} WIB
+                                  </div>
+                                ) : (
+                                  <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Belum ada kiriman</span>
+                                )}
+                              </td>
+                              {isAdmin && (
+                                <td style={{ textAlign: 'center' }}>
+                                  {isSudah && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleResetStaffFromMonitor(st)}
+                                      style={{
+                                        background: '#fee2e2',
+                                        color: '#ef4444',
+                                        border: 'none',
+                                        padding: '5px 10px',
+                                        borderRadius: '6px',
+                                        fontSize: '0.78rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer'
+                                      }}
+                                      title="Reset pengisian akun ini agar dapat mengisi ulang"
+                                    >
+                                      <i className="fas fa-undo"></i> Reset
+                                    </button>
+                                  )}
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })}
+
+                        {filteredMonitoringStaff.length === 0 && (
+                          <tr>
+                            <td colSpan={isAdmin ? 7 : 6} style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
+                              <i className="fas fa-search" style={{ fontSize: '2rem', color: '#cbd5e1', marginBottom: '10px', display: 'block' }}></i>
+                              <b>Tidak ada data Guru / Staf yang cocok dengan filter.</b>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* KPI Summary Cards */}
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
@@ -1606,6 +2069,8 @@ export default function PenilaianDiriPage() {
                   </tbody>
                 </table>
               </div>
+                </>
+              )}
             </>
           )}
         </div>
