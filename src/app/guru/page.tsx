@@ -22,6 +22,9 @@ interface Guru {
   domisili?: string;
   passEmisHijau: string;
   passEmisDev: string;
+  userRdm?: string;
+  passRdm?: string;
+  rdmAccounts?: Array<{ username: string; password: string }>;
   jenisKelamin: string;
   jabatan: string;
   tempatLahir: string;
@@ -245,6 +248,8 @@ export default function GuruPage() {
       'Peg ID': g.pegId,
       'Pass Emis (Hijau)': g.passEmisHijau,
       'Pass Emis (Dev)': g.passEmisDev,
+      'User RDM': g.userRdm || '',
+      'Pass RDM': g.passRdm || '',
       'Jenis Kelamin': g.jenisKelamin,
       'Jabatan': g.jabatan,
       'Pendidikan': g.pendidikan,
@@ -502,6 +507,8 @@ export default function GuruPage() {
                   <th>Tanggal SK Awal</th>
                   <th>Pass EMIS Hijau</th>
                   <th>Pass EMIS DEV</th>
+                  <th>User RDM</th>
+                  <th>Pass RDM</th>
                   <th style={{ minWidth: '155px', textAlign: 'center' }}>Aksi</th>
                 </tr>
               </thead>
@@ -555,6 +562,8 @@ export default function GuruPage() {
                       <td>{guru.tanggalSk || '-'}</td>
                       <td>{guru.passEmisHijau || '-'}</td>
                       <td>{guru.passEmisDev || '-'}</td>
+                      <td>{guru.userRdm || '-'}</td>
+                      <td>{guru.passRdm || '-'}</td>
                       <td style={{ textAlign: 'center' }}>
                         <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center', justifyContent: 'center' }}>
                           <button 
@@ -591,7 +600,7 @@ export default function GuruPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={20} style={{ textAlign: 'center', padding: '40px' }}>
+                    <td colSpan={22} style={{ textAlign: 'center', padding: '40px' }}>
                       <i className="fas fa-folder-open" style={{ fontSize: '3rem', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
                       Tidak ada data guru yang ditemukan. Coba cek isi Excel Anda.
                     </td>

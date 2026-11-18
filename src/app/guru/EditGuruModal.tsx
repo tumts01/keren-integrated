@@ -19,6 +19,9 @@ export interface GuruData {
   domisili?: string;
   passEmisHijau: string;
   passEmisDev: string;
+  userRdm?: string;
+  passRdm?: string;
+  rdmAccounts?: Array<{ username: string; password: string }>;
   jenisKelamin: string;
   jabatan: string;
   tempatLahir: string;
@@ -67,6 +70,8 @@ export default function EditGuruModal({ guru, isOpen, onClose, onSuccess }: Edit
   const [rfidUid, setRfidUid] = useState('');
   const [passEmisHijau, setPassEmisHijau] = useState('');
   const [passEmisDev, setPassEmisDev] = useState('');
+  const [userRdm, setUserRdm] = useState('');
+  const [passRdm, setPassRdm] = useState('');
 
   const [noHp, setNoHp] = useState('');
   const [email, setEmail] = useState('');
@@ -114,6 +119,8 @@ export default function EditGuruModal({ guru, isOpen, onClose, onSuccess }: Edit
       setRfidUid(guru.rfidUid || guru.rawMetadata?.['RFID_UID'] || '');
       setPassEmisHijau(guru.passEmisHijau || '');
       setPassEmisDev(guru.passEmisDev || '');
+      setUserRdm(guru.userRdm || guru.rawMetadata?.['User RDM'] || '');
+      setPassRdm(guru.passRdm || guru.rawMetadata?.['Pass RDM'] || '');
 
       setNoHp(guru.noHp || '');
       setEmail(guru.email || '');
@@ -154,6 +161,8 @@ export default function EditGuruModal({ guru, isOpen, onClose, onSuccess }: Edit
       setRfidUid('');
       setPassEmisHijau('');
       setPassEmisDev('');
+      setUserRdm('');
+      setPassRdm('');
 
       setNoHp('');
       setEmail('');
@@ -203,6 +212,8 @@ export default function EditGuruModal({ guru, isOpen, onClose, onSuccess }: Edit
         'RFID_UID': rfidUid.trim(),
         'Pass EMIS Hijau': passEmisHijau.trim(),
         'Pass EMIS DEV': passEmisDev.trim(),
+        'User RDM': userRdm.trim(),
+        'Pass RDM': passRdm.trim(),
         'No WA': noHp.trim(),
         'Email': email.trim(),
         'Domisili': domisili.trim(),
@@ -902,6 +913,41 @@ export default function EditGuruModal({ guru, isOpen, onClose, onSuccess }: Edit
                       value={passEmisDev}
                       onChange={(e) => setPassEmisDev(e.target.value)}
                       placeholder="Password EMIS DEV / Champion"
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '0.9rem',
+                        color: '#0f172a'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className={styles.infoGroup}>
+                    <label className={styles.infoLabel}>User RDM</label>
+                    <input
+                      type="text"
+                      value={userRdm}
+                      onChange={(e) => setUserRdm(e.target.value)}
+                      placeholder="Username RDM"
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '0.9rem',
+                        color: '#0f172a'
+                      }}
+                    />
+                  </div>
+                  <div className={styles.infoGroup}>
+                    <label className={styles.infoLabel}>Pass RDM</label>
+                    <input
+                      type="text"
+                      value={passRdm}
+                      onChange={(e) => setPassRdm(e.target.value)}
+                      placeholder="Password RDM"
                       style={{
                         padding: '10px 12px',
                         borderRadius: '8px',

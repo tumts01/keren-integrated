@@ -1508,26 +1508,76 @@ export default function Home() {
               </div>
             </div>
             <div className={styles.infoItem}>
-              <span className={styles.infoLabel}>Tanggal SK Awal</span>
-              <div className={styles.infoValue}>
-                <i className="fas fa-calendar-alt" style={{ color: '#94a3b8' }}></i>
-                {profile.tanggalSk || '-'}
-              </div>
-            </div>
-            <div className={styles.infoItem}>
-              <span className={styles.infoLabel}>Password EMIS Hijau</span>
-              <div className={styles.infoValue}>
-                <i className="fas fa-lock" style={{ color: '#10b981' }}></i>
-                {profile.passEmisHijau || '-'}
-              </div>
-            </div>
-            <div className={styles.infoItem}>
-              <span className={styles.infoLabel}>Password EMIS DEV</span>
+              <span className={styles.infoLabel}>Password</span>
               <div className={styles.infoValue}>
                 <i className="fas fa-shield-alt" style={{ color: '#8b5cf6' }}></i>
                 {profile.passEmisDev || '-'}
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Kolom Akses RDM */}
+        <div className={styles.detailCard}>
+          <div className={styles.cardHeader}>
+            <div className={styles.cardIcon} style={{ background: '#0284c7' }}>
+              <i className="fas fa-laptop-code"></i>
+            </div>
+            Kredensial RDM
+          </div>
+
+          <div className={styles.infoList}>
+            {Array.isArray(profile.rdmAccounts) && profile.rdmAccounts.length > 0 ? (
+              profile.rdmAccounts.map((acc: { username?: string; password?: string }, idx: number) => (
+                <div
+                  key={`${acc.username || idx}-${idx}`}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                    paddingBottom: idx < profile.rdmAccounts.length - 1 ? '10px' : 0,
+                    borderBottom: idx < profile.rdmAccounts.length - 1 ? '1px dashed #e2e8f0' : 'none'
+                  }}
+                >
+                  {profile.rdmAccounts.length > 1 && (
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#0284c7', textTransform: 'uppercase' }}>
+                      Akun RDM {idx + 1}
+                    </span>
+                  )}
+                  <div className={styles.infoItem}>
+                    <span className={styles.infoLabel}>Username</span>
+                    <div className={styles.infoValue}>
+                      <i className="fas fa-user" style={{ color: '#0284c7' }}></i>
+                      {acc.username || '-'}
+                    </div>
+                  </div>
+                  <div className={styles.infoItem}>
+                    <span className={styles.infoLabel}>Password</span>
+                    <div className={styles.infoValue}>
+                      <i className="fas fa-lock" style={{ color: '#8b5cf6' }}></i>
+                      {acc.password || '-'}
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <>
+                <div className={styles.infoItem}>
+                  <span className={styles.infoLabel}>Username</span>
+                  <div className={styles.infoValue}>
+                    <i className="fas fa-user" style={{ color: '#0284c7' }}></i>
+                    {profile.userRdm || '-'}
+                  </div>
+                </div>
+                <div className={styles.infoItem}>
+                  <span className={styles.infoLabel}>Password</span>
+                  <div className={styles.infoValue}>
+                    <i className="fas fa-lock" style={{ color: '#8b5cf6' }}></i>
+                    {profile.passRdm || '-'}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
