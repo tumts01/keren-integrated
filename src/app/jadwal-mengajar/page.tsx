@@ -57,8 +57,11 @@ export default function JadwalMengajarPage() {
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<Jadwal>>({});
 
-  const [activeTab, setActiveTab] = useState<'guru' | 'kelas'>('guru');
+  const [activeTab, setActiveTab] = useState<'guru' | 'kelas' | 'pengampu'>('guru');
   const [selectedKelas, setSelectedKelas] = useState('VII_A');
+  const [pengampuJenjang, setPengampuJenjang] = useState<'ALL' | 'VII' | 'VIII' | 'IX'>('ALL');
+  const [pengampuKelas, setPengampuKelas] = useState<string>('ALL');
+  const [pengampuSearch, setPengampuSearch] = useState<string>('');
   const [jadwalPelajaran, setJadwalPelajaran] = useState<JadwalKelasEntry[]>([]);
   const [loadingPelajaran, setLoadingPelajaran] = useState(false);
   const [generatingKelas, setGeneratingKelas] = useState(false);
@@ -79,8 +82,8 @@ export default function JadwalMengajarPage() {
         setCurrentUsername(user.nama || user.username || '');
       } catch(e) {}
     }
-    if (activeTab === 'guru') {
-      fetchData();
+    if (activeTab === 'guru' || activeTab === 'pengampu') {
+      if (jadwalList.length === 0) fetchData();
     } else if (activeTab === 'kelas') {
       if (jadwalList.length === 0) fetchData();
       if (jadwalPelajaran.length === 0 && !loadingPelajaran) {
@@ -250,6 +253,7 @@ export default function JadwalMengajarPage() {
     const reqs: Array<{
       kodeGuru: string;
       namaGuru: string;
+      statusGuru: string;
       mataPelajaran: string;
       targetJP: number;
       scheduledJP: number;
@@ -269,14 +273,104 @@ export default function JadwalMengajarPage() {
         reqs.push({
           kodeGuru: j.kodeGuru,
           namaGuru: j.namaGuru,
+          statusGuru: j.statusGuru || '-',
           mataPelajaran: j.mataPelajaran,
           targetJP: jp,
           scheduledJP: scheduledCount[key] || 0,
         });
       }
     });
-    return reqs;
+    return reqs.sort((a, b) => a.mataPelajaran.localeCompare(b.mataPelajaran));
   }, [jadwalList, jadwalPelajaran, selectedKelas]);
+
+  // Matriks & Daftar Guru Pengampu per Kelas & Mapel (langsung dari Jadwal Guru)
+  const pengampuData = useMemo(() => {
+    const activeClasses = ALL_KELAS_OPTIONS.filter(k => (classTargetJPMap[k] || 0) > 0);
+    const jenjangClasses =
+      pengampuJenjang === 'ALL'
+        ? activeClasses
+        : activeClasses.filter(k => k.startsWith(`${pengampuJenjang}_`));
+
+    const mapelSet = new Set<string>();
+    const cellMap = new Map<
+      string,
+      Array<{ kodeGuru: string; namaGuru: string; statusGuru: string; jp: number }>
+    >();
+
+    jadwalList.forEach(j => {
+      const mapel = (j.mataPelajaran || '').trim();
+      const namaGuru = (j.namaGuru || '').trim();
+      const kodeGuru = (j.kodeGuru || '').trim();
+      const statusGuru = (j.statusGuru || '-').trim();
+      if (!mapel) return;
+
+      let hasAnyInScope = false;
+      jenjangClasses.forEach(k => {
+        const jp = parseInt(j[k] || '0', 10);
+        if (jp > 0) {
+          hasAnyInScope = true;
+          const key = `${mapel}||${k}`;
+          const list = cellMap.get(key) || [];
+          list.push({ kodeGuru, namaGuru, statusGuru, jp });
+          cellMap.set(key, list);
+        }
+      });
+      if (hasAnyInScope) {
+        mapelSet.add(mapel);
+      }
+    });
+
+    const q = pengampuSearch.trim().toLowerCase();
+    const allMapels = Array.from(mapelSet).sort((a, b) => a.localeCompare(b));
+    const filteredMapels = allMapels.filter(mapel => {
+      if (!q) return true;
+      if (mapel.toLowerCase().includes(q)) return true;
+      return jenjangClasses.some(k => {
+        const teachers = cellMap.get(`${mapel}||${k}`) || [];
+        return teachers.some(
+          t => t.namaGuru.toLowerCase().includes(q) || t.kodeGuru.toLowerCase().includes(q)
+        );
+      });
+    });
+
+    const singleClassRows: Array<{
+      kelas: string;
+      mataPelajaran: string;
+      namaGuru: string;
+      kodeGuru: string;
+      statusGuru: string;
+      jp: number;
+    }> = [];
+
+    if (pengampuKelas !== 'ALL') {
+      allMapels.forEach(mapel => {
+        const list = cellMap.get(`${mapel}||${pengampuKelas}`) || [];
+        list.forEach(t => {
+          if (
+            !q ||
+            mapel.toLowerCase().includes(q) ||
+            t.namaGuru.toLowerCase().includes(q) ||
+            t.kodeGuru.toLowerCase().includes(q)
+          ) {
+            singleClassRows.push({
+              kelas: pengampuKelas,
+              mataPelajaran: mapel,
+              ...t,
+            });
+          }
+        });
+      });
+    }
+
+    return {
+      activeClasses,
+      jenjangClasses,
+      allMapels,
+      filteredMapels,
+      cellMap,
+      singleClassRows,
+    };
+  }, [jadwalList, ALL_KELAS_OPTIONS, classTargetJPMap, pengampuJenjang, pengampuKelas, pengampuSearch]);
 
   const allClashes = useMemo(() => findTeacherClashes(jadwalPelajaran), [jadwalPelajaran]);
   const clashCellMap = useMemo(() => {
@@ -530,18 +624,84 @@ export default function JadwalMengajarPage() {
     XLSX.writeFile(wb, `Jadwal_Kelas_${selectedKelas}.xlsx`);
   };
 
+  const handleExportPengampuExcel = () => {
+    if (pengampuData.allMapels.length === 0) return;
+    const wb = XLSX.utils.book_new();
+
+    // Sheet 1: Matriks Mapel x Kelas
+    const matrixRows: (string | number)[][] = [
+      ['DAFTAR GURU PENGAMPU PER KELAS & MATA PELAJARAN'],
+      ['Mata Pelajaran', ...pengampuData.jenjangClasses.map(c => c.replace('_', ' '))],
+    ];
+    pengampuData.filteredMapels.forEach(mapel => {
+      const row: (string | number)[] = [mapel];
+      pengampuData.jenjangClasses.forEach(k => {
+        const list = pengampuData.cellMap.get(`${mapel}||${k}`) || [];
+        row.push(
+          list.length > 0
+            ? list.map(t => `${t.namaGuru} (${t.kodeGuru}) - ${t.jp} JP`).join('\n')
+            : '-'
+        );
+      });
+      matrixRows.push(row);
+    });
+    const wsMatrix = XLSX.utils.aoa_to_sheet(matrixRows);
+    XLSX.utils.book_append_sheet(wb, wsMatrix, 'Matriks Kelas x Mapel');
+
+    // Sheet 2: Daftar Lengkap per Kelas
+    const flatRows: (string | number)[][] = [
+      ['No', 'Kelas', 'Mata Pelajaran', 'Nama Guru', 'Kode Guru', 'Status', 'Jumlah JP'],
+    ];
+    let no = 1;
+    pengampuData.jenjangClasses.forEach(k => {
+      pengampuData.allMapels.forEach(mapel => {
+        const list = pengampuData.cellMap.get(`${mapel}||${k}`) || [];
+        list.forEach(t => {
+          flatRows.push([no++, k.replace('_', ' '), mapel, t.namaGuru, t.kodeGuru, t.statusGuru, t.jp]);
+        });
+      });
+    });
+    const wsFlat = XLSX.utils.aoa_to_sheet(flatRows);
+    XLSX.utils.book_append_sheet(wb, wsFlat, 'Daftar Per Kelas');
+
+    XLSX.writeFile(
+      wb,
+      `Guru_Pengampu_${pengampuKelas !== 'ALL' ? pengampuKelas : pengampuJenjang}.xlsx`
+    );
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Jadwal Mengajar</h1>
           <p style={{ margin: '4px 0 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Rincian beban jam mengajar guru dan jadwal pelajaran per kelas.
+            Rincian beban jam mengajar guru, jadwal pelajaran per kelas, dan daftar guru pengampu.
           </p>
         </div>
         {isAdmin && activeTab === 'guru' && (
           <button className={styles.addBtn} onClick={openAddModal}>
             <i className="fas fa-plus"></i> Tambah Jadwal
+          </button>
+        )}
+        {activeTab === 'pengampu' && pengampuData.allMapels.length > 0 && (
+          <button
+            onClick={handleExportPengampuExcel}
+            style={{
+              background: '#16a34a',
+              color: 'white',
+              border: 'none',
+              padding: '8px 14px',
+              borderRadius: '6px',
+              fontWeight: 600,
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <i className="fas fa-file-excel"></i> Export Excel Pengampu
           </button>
         )}
         {activeTab === 'kelas' && (
@@ -642,6 +802,13 @@ export default function JadwalMengajarPage() {
           <i className="fas fa-users"></i>
           Jadwal Kelas
         </button>
+        <button 
+          className={`${styles.tab} ${activeTab === 'pengampu' ? styles.activeTab : ''}`}
+          onClick={() => setActiveTab('pengampu')}
+        >
+          <i className="fas fa-address-book"></i>
+          Guru Pengampu per Kelas
+        </button>
       </div>
 
       {activeTab === 'guru' && (
@@ -652,6 +819,49 @@ export default function JadwalMengajarPage() {
             className={styles.searchInput}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      )}
+
+      {activeTab === 'pengampu' && (
+        <div className={styles.controls} style={{ flexWrap: 'wrap' }}>
+          <select
+            className={styles.searchInput}
+            value={pengampuJenjang}
+            onChange={(e) => {
+              const val = e.target.value as 'ALL' | 'VII' | 'VIII' | 'IX';
+              setPengampuJenjang(val);
+              setPengampuKelas('ALL');
+            }}
+            style={{ maxWidth: '180px' }}
+          >
+            <option value="ALL">Semua Jenjang</option>
+            <option value="VII">Kelas VII</option>
+            <option value="VIII">Kelas VIII</option>
+            <option value="IX">Kelas IX</option>
+          </select>
+
+          <select
+            className={styles.searchInput}
+            value={pengampuKelas}
+            onChange={(e) => setPengampuKelas(e.target.value)}
+            style={{ maxWidth: '230px' }}
+          >
+            <option value="ALL">Semua Kelas (Tampilan Matriks)</option>
+            {pengampuData.jenjangClasses.map(k => (
+              <option key={k} value={k}>
+                Kelas {k.replace('_', ' ')} ({classTargetJPMap[k] || 0} JP)
+              </option>
+            ))}
+          </select>
+
+          <input
+            type="text"
+            placeholder="Cari mata pelajaran atau nama guru..."
+            className={styles.searchInput}
+            value={pengampuSearch}
+            onChange={(e) => setPengampuSearch(e.target.value)}
+            style={{ minWidth: '220px' }}
           />
         </div>
       )}
@@ -794,7 +1004,7 @@ export default function JadwalMengajarPage() {
             </table>
           </div>
           )
-        ) : (
+        ) : activeTab === 'kelas' ? (
           loadingPelajaran ? (
             <InlineLoading message="Memuat jadwal kelas..." />
           ) : classTimetable.length === 0 ? (
@@ -907,34 +1117,195 @@ export default function JadwalMengajarPage() {
               </div>
 
               {classRequirements.length > 0 && (
-                <div style={{ padding: '14px 16px', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>
-                    Kesesuaian Jam per Mapel (Kelas {selectedKelas.replace('_', ' ')}):
+                <div style={{ padding: '16px', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e3a5f', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    <span>Daftar Guru Pengampu per Mapel — Kelas {selectedKelas.replace('_', ' ')}</span>
+                    <span style={{ fontSize: '0.76rem', color: '#64748b', fontWeight: 500 }}>
+                      {classRequirements.length} Mapel/Pengampu · Total {expectedClassJP} JP
+                    </span>
                   </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {classRequirements.map((req, idx) => {
-                      const matched = req.scheduledJP === req.targetJP;
-                      return (
-                        <span
-                          key={`${req.kodeGuru}-${req.mataPelajaran}-${idx}`}
-                          style={{
-                            fontSize: '0.74rem',
-                            padding: '4px 10px',
-                            borderRadius: '999px',
-                            background: matched ? '#dcfce7' : '#fef3c7',
-                            color: matched ? '#166534' : '#92400e',
-                            border: `1px solid ${matched ? '#86efac' : '#fde68a'}`,
-                            fontWeight: 600,
-                          }}
-                          title={req.namaGuru}
-                        >
-                          {req.mataPelajaran} ({req.kodeGuru}): {req.scheduledJP}/{req.targetJP} JP {matched ? '✓' : ''}
-                        </span>
-                      );
-                    })}
+                  <div className={styles.tableWrapper}>
+                    <table className={styles.table} style={{ background: 'white' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ width: '42px' }}>No</th>
+                          <th className={styles.textLeft}>Mata Pelajaran</th>
+                          <th className={styles.textLeft}>Nama Guru Pengampu</th>
+                          <th style={{ width: '70px' }}>Kode</th>
+                          <th style={{ width: '75px' }}>Status</th>
+                          <th style={{ width: '110px' }}>Terjadwal / Target</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {classRequirements.map((req, idx) => {
+                          const matched = req.scheduledJP === req.targetJP;
+                          return (
+                            <tr key={`${req.kodeGuru}-${req.mataPelajaran}-${idx}`}>
+                              <td>{idx + 1}</td>
+                              <td className={styles.textLeft} style={{ fontWeight: 600 }}>{req.mataPelajaran}</td>
+                              <td className={styles.textLeft}>{req.namaGuru}</td>
+                              <td>{req.kodeGuru}</td>
+                              <td>{req.statusGuru}</td>
+                              <td>
+                                <span
+                                  style={{
+                                    display: 'inline-block',
+                                    fontSize: '0.73rem',
+                                    padding: '2px 8px',
+                                    borderRadius: '999px',
+                                    background: matched ? '#dcfce7' : '#fef3c7',
+                                    color: matched ? '#166534' : '#92400e',
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {req.scheduledJP} / {req.targetJP} JP {matched ? '✓' : ''}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
+            </div>
+          )
+        ) : (
+          pengampuData.allMapels.length === 0 ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <p>Belum ada data pengampu di Jadwal Guru.</p>
+            </div>
+          ) : pengampuKelas !== 'ALL' ? (
+            <div key="wrapper-pengampu-single" style={{ padding: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                <h3 style={{ margin: 0, fontSize: '1rem', color: '#1e3a5f' }}>
+                  Guru Pengampu Kelas {pengampuKelas.replace('_', ' ')}
+                </h3>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#0369a1', background: '#e0f2fe', padding: '4px 12px', borderRadius: '999px' }}>
+                  Total: {classTargetJPMap[pengampuKelas] || 0} JP ({pengampuData.singleClassRows.length} entri)
+                </span>
+              </div>
+              <div className={styles.tableWrapper}>
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '48px' }}>No</th>
+                      <th className={styles.textLeft}>Mata Pelajaran</th>
+                      <th className={styles.textLeft}>Nama Guru Pengampu</th>
+                      <th style={{ width: '80px' }}>Kode Guru</th>
+                      <th style={{ width: '80px' }}>Status</th>
+                      <th style={{ width: '90px' }}>Jumlah JP</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pengampuData.singleClassRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} style={{ padding: '24px', color: '#64748b' }}>
+                          Tidak ada data yang cocok dengan pencarian.
+                        </td>
+                      </tr>
+                    ) : (
+                      pengampuData.singleClassRows.map((row, idx) => (
+                        <tr key={`${row.mataPelajaran}-${row.kodeGuru}-${idx}`}>
+                          <td>{idx + 1}</td>
+                          <td className={styles.textLeft} style={{ fontWeight: 600, color: '#1e3a5f' }}>{row.mataPelajaran}</td>
+                          <td className={styles.textLeft}>{row.namaGuru}</td>
+                          <td>{row.kodeGuru}</td>
+                          <td>{row.statusGuru}</td>
+                          <td style={{ fontWeight: 700, color: '#166534' }}>{row.jp} JP</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div key="wrapper-pengampu-matrix" className={styles.tableWrapper}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th
+                      className={styles.textLeft}
+                      style={{
+                        position: 'sticky',
+                        left: 0,
+                        zIndex: 3,
+                        background: '#237227',
+                        minWidth: '180px',
+                      }}
+                    >
+                      Mata Pelajaran
+                    </th>
+                    {pengampuData.jenjangClasses.map(k => (
+                      <th key={k} style={{ minWidth: '145px' }}>
+                        {k.replace('_', ' ')} ({classTargetJPMap[k] || 0} JP)
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pengampuData.filteredMapels.length === 0 ? (
+                    <tr>
+                      <td colSpan={pengampuData.jenjangClasses.length + 1} style={{ padding: '24px', color: '#64748b' }}>
+                        Tidak ada mata pelajaran atau guru yang sesuai dengan pencarian.
+                      </td>
+                    </tr>
+                  ) : (
+                    pengampuData.filteredMapels.map(mapel => (
+                      <tr key={mapel}>
+                        <td
+                          className={styles.textLeft}
+                          style={{
+                            position: 'sticky',
+                            left: 0,
+                            zIndex: 2,
+                            background: '#f8fafc',
+                            fontWeight: 700,
+                            color: '#1e3a5f',
+                            whiteSpace: 'normal',
+                            minWidth: '180px',
+                          }}
+                        >
+                          {mapel}
+                        </td>
+                        {pengampuData.jenjangClasses.map(k => {
+                          const list = pengampuData.cellMap.get(`${mapel}||${k}`) || [];
+                          return (
+                            <td
+                              key={`${mapel}-${k}`}
+                              style={{
+                                whiteSpace: 'normal',
+                                textAlign: 'left',
+                                verticalAlign: 'top',
+                                padding: '6px 8px',
+                                minWidth: '145px',
+                                lineHeight: 1.3,
+                              }}
+                            >
+                              {list.length === 0 ? (
+                                <span style={{ color: '#cbd5e1', display: 'block', textAlign: 'center' }}>-</span>
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {list.map((t, i) => (
+                                    <div key={`${t.kodeGuru}-${i}`} style={{ fontSize: '0.72rem' }}>
+                                      <div style={{ fontWeight: 600, color: '#0f172a' }}>{t.namaGuru}</div>
+                                      <div style={{ fontSize: '0.65rem', color: '#64748b' }}>
+                                        Kode {t.kodeGuru} · {t.jp} JP
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           )
         )}
