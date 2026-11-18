@@ -237,22 +237,27 @@ export function resolveCanonicalMapel(kategori: PKCategoryKey, rawMapelName: str
   );
 }
 
-export function getLayananUmumMapels(kategori: PKCategoryKey): PKMapelDef[] {
-  return kategori === 'MULTILINGUAL' ? [] : PK_LAYANAN_UMUM_MAPELS;
+export function getLayananUmumMapels(_kategori?: PKCategoryKey): PKMapelDef[] {
+  return PK_LAYANAN_UMUM_MAPELS;
 }
 
-export function resolveLayananUmumMapel(rawMapelName: string): PKMapelDef | undefined {
+export function resolveLayananUmumMapel(rawMapelName: string, allowGenericAlias = true): PKMapelDef | undefined {
   const normalized = rawMapelName.trim().toLowerCase();
-  return PK_LAYANAN_UMUM_MAPELS.find(
-    (m) =>
-      m.name.toLowerCase() === normalized ||
-      m.aliases.some((a) => a.toLowerCase() === normalized)
-  );
+  return PK_LAYANAN_UMUM_MAPELS.find((m) => {
+    if (m.name.toLowerCase() === normalized) return true;
+    return m.aliases.some((a) => {
+      const al = a.toLowerCase();
+      if (!allowGenericAlias && (al === 'bahasa arab' || al === 'bahasa inggris')) {
+        return false;
+      }
+      return al === normalized;
+    });
+  });
 }
 
 export function resolveMapelForKategori(kategori: PKCategoryKey, rawMapelName: string): PKMapelDef | undefined {
   return (
     resolveCanonicalMapel(kategori, rawMapelName) ||
-    (kategori !== 'MULTILINGUAL' ? resolveLayananUmumMapel(rawMapelName) : undefined)
+    resolveLayananUmumMapel(rawMapelName, kategori !== 'MULTILINGUAL')
   );
 }
