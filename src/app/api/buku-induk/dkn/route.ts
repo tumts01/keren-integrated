@@ -183,10 +183,17 @@ export async function GET(request: Request) {
         if (!matchingLegger || !matchingLegger.data_nilai) return null;
 
         const normStudent = normalizeName(nama);
+        const cleanStudentNisn = nisn.replace(/\D/g, '');
         const match = matchingLegger.data_nilai.find((d: any) => {
-          if (d.nis && (d.nis === id_siswa || d.nis === nism || (nism && nism.endsWith(d.nis)))) return true;
-          if (d.nama && normalizeName(d.nama) === normStudent) return true;
-          return false;
+          if (d.nisn) {
+            const cleanRowNisn = String(d.nisn).replace(/\D/g, '');
+            if (!cleanRowNisn || !cleanStudentNisn) return false;
+            return (
+              cleanRowNisn === cleanStudentNisn ||
+              cleanRowNisn.replace(/^0+/, '') === cleanStudentNisn.replace(/^0+/, '')
+            );
+          }
+          return Boolean(d.nama && normalizeName(d.nama) === normStudent);
         });
 
         if (match && match.nilai !== undefined && match.nilai !== null && match.nilai !== '') {

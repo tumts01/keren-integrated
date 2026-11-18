@@ -47,6 +47,14 @@ function matchNis(a: any, b: any): boolean {
   return cleanA !== '' && cleanB !== '' && cleanA === cleanB;
 }
 
+function matchNisn(a: any, b: any): boolean {
+  if (!a || !b) return false;
+  const cleanA = String(a).replace(/\D/g, '');
+  const cleanB = String(b).replace(/\D/g, '');
+  if (!cleanA || !cleanB) return false;
+  return cleanA === cleanB || cleanA.replace(/^0+/, '') === cleanB.replace(/^0+/, '');
+}
+
 function matchNama(a: any, b: any): boolean {
   if (!a || !b) return false;
   const normA = String(a).toUpperCase().replace(/\s+/g, ' ').trim();
@@ -205,10 +213,11 @@ async function processBatchStudents(requestedIds: string[]) {
       );
 
       if (matchedHistory) {
+        const sNisn = student.induk?.['NISN'];
         const studentGrades = (row.data_nilai || []).find((d: any) =>
-          matchNis(d.nis, student.nis) ||
-          matchNama(d.nama, student.nama) ||
-          (student.induk?.['NISN'] && matchNis(d.nisn, student.induk?.['NISN']))
+          d.nisn
+            ? Boolean(sNisn && matchNisn(d.nisn, sNisn))
+            : matchNama(d.nama, student.nama)
         );
 
         if (studentGrades) {

@@ -43,10 +43,12 @@ export default function UploadLeggerPage() {
         
         json.data.forEach((m: any) => {
           m.data_nilai.forEach((d: any) => {
-            if (!studentMap[d.nis]) {
-              studentMap[d.nis] = { nis: d.nis, nama: d.nama, mapels: {} };
+            const key = String(d.nisn || d.nis || d.nama || '').trim();
+            if (!key) return;
+            if (!studentMap[key]) {
+              studentMap[key] = { key, nisn: d.nisn || '-', nis: d.nis || '', nama: d.nama, mapels: {} };
             }
-            studentMap[d.nis].mapels[m.mata_pelajaran] = d.nilai;
+            studentMap[key].mapels[m.mata_pelajaran] = d.nilai;
           });
         });
 
@@ -278,17 +280,17 @@ export default function UploadLeggerPage() {
                 <thead>
                   <tr>
                     <th style={{ position: 'sticky', left: 0, backgroundColor: '#f3f4f6' }}>No</th>
-                    <th style={{ position: 'sticky', left: '40px', backgroundColor: '#f3f4f6' }}>NIS</th>
-                    <th style={{ position: 'sticky', left: '120px', backgroundColor: '#f3f4f6', minWidth: '200px' }}>Nama Siswa</th>
+                    <th style={{ position: 'sticky', left: '40px', backgroundColor: '#f3f4f6' }}>NISN</th>
+                    <th style={{ position: 'sticky', left: '140px', backgroundColor: '#f3f4f6', minWidth: '200px' }}>Nama Siswa</th>
                     {viewData.mapels.map((m: string) => <th key={m}>{m}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {viewData.students.map((s: any, idx: number) => (
-                    <tr key={s.nis}>
+                    <tr key={s.key || idx}>
                       <td style={{ position: 'sticky', left: 0, backgroundColor: 'white' }}>{idx + 1}</td>
-                      <td style={{ position: 'sticky', left: '40px', backgroundColor: 'white' }}>{s.nis}</td>
-                      <td style={{ position: 'sticky', left: '120px', backgroundColor: 'white' }}>{s.nama}</td>
+                      <td style={{ position: 'sticky', left: '40px', backgroundColor: 'white' }}>{s.nisn !== '-' ? s.nisn : (s.nis || '-')}</td>
+                      <td style={{ position: 'sticky', left: '140px', backgroundColor: 'white' }}>{s.nama}</td>
                       {viewData.mapels.map((m: string) => (
                         <td key={m} style={{ textAlign: 'center' }}>{s.mapels[m] ?? '-'}</td>
                       ))}

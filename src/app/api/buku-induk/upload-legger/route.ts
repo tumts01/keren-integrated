@@ -23,6 +23,36 @@ const mapelsIndex = [
   { name: 'KE-NU-AN', col: 20 }
 ];
 
+function cleanNisn(val: unknown): string {
+  if (val === undefined || val === null) return '';
+  return String(val).replace(/^'/, '').trim();
+}
+
+function detectStudentColumns(data: unknown[][]): { nisnCol: number; namaCol: number } {
+  let nisnCol = 2; // Default Kolom C
+  let namaCol = 3; // Default Kolom D
+  let foundNisn = false;
+  let foundNama = false;
+
+  const scanLimit = Math.min(data.length, 8);
+  for (let r = 0; r < scanLimit; r++) {
+    const row = data[r];
+    if (!Array.isArray(row)) continue;
+    for (let c = 0; c < Math.min(row.length, 8); c++) {
+      const cell = String(row[c] ?? '').trim().toUpperCase();
+      if (!foundNisn && cell === 'NISN') {
+        nisnCol = c;
+        foundNisn = true;
+      }
+      if (!foundNama && (cell === 'NAMA' || cell === 'NAMA SISWA' || cell === 'NAMA PESERTA DIDIK')) {
+        namaCol = c;
+        foundNama = true;
+      }
+    }
+  }
+  return { nisnCol, namaCol };
+}
+
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
@@ -52,20 +82,26 @@ export async function POST(request: Request) {
           continue;
         }
 
+        const { nisnCol, namaCol } = detectStudentColumns(data);
+
         const mapelDataMap: Record<string, any[]> = {};
         mapelsIndex.forEach(m => { mapelDataMap[m.name] = []; });
 
         for (let i = 7; i < data.length; i++) {
           const row = data[i];
-          if (!row || !row[1] || !row[3]) continue;
+          if (!row) continue;
 
-          const nis = String(row[1]).trim();
-          const nama = String(row[3]).trim();
+          const nisn = cleanNisn(row[nisnCol]);
+          const nisnDigits = nisn.replace(/\D/g, '');
+          const nama = String(row[namaCol] || '').trim();
+
+          // Wajib ada NISN (berisi angka) & Nama; tidak lagi bergantung pada kolom NIS
+          if (!nisnDigits || !nama) continue;
 
           mapelsIndex.forEach(m => {
             const val = row[m.col];
             if (val !== undefined && val !== null && val !== '') {
-              mapelDataMap[m.name].push({ nis, nama, nilai: val });
+              mapelDataMap[m.name].push({ nisn: nisnDigits, nama, nilai: val });
             }
           });
         }
