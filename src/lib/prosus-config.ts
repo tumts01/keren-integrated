@@ -112,6 +112,19 @@ export const PK_CATEGORIES: PKCategoryDef[] = [
   },
 ];
 
+export const PK_LAYANAN_UMUM_MAPELS: PKMapelDef[] = [
+  {
+    name: 'Bahasa Arab (Layanan Umum)',
+    shortName: 'B. Arab (LU)',
+    aliases: ['Bahasa Arab (Layanan Umum)', 'Bahasa Arab', 'B. Arab (LU)', 'PK Bahasa Arab'],
+  },
+  {
+    name: 'Bahasa Inggris (Layanan Umum)',
+    shortName: 'B. Inggris (LU)',
+    aliases: ['Bahasa Inggris (Layanan Umum)', 'Bahasa Inggris', 'B. Inggris (LU)', 'PK Bahasa Inggris'],
+  },
+];
+
 export const PK_CATEGORY_MAP: Record<PKCategoryKey, PKCategoryDef> = PK_CATEGORIES.reduce(
   (acc, item) => {
     acc[item.key] = item;
@@ -221,5 +234,25 @@ export function resolveCanonicalMapel(kategori: PKCategoryKey, rawMapelName: str
     (m) =>
       m.name.toLowerCase() === normalized ||
       m.aliases.some((a) => a.toLowerCase() === normalized)
+  );
+}
+
+export function getLayananUmumMapels(kategori: PKCategoryKey): PKMapelDef[] {
+  return kategori === 'MULTILINGUAL' ? [] : PK_LAYANAN_UMUM_MAPELS;
+}
+
+export function resolveLayananUmumMapel(rawMapelName: string): PKMapelDef | undefined {
+  const normalized = rawMapelName.trim().toLowerCase();
+  return PK_LAYANAN_UMUM_MAPELS.find(
+    (m) =>
+      m.name.toLowerCase() === normalized ||
+      m.aliases.some((a) => a.toLowerCase() === normalized)
+  );
+}
+
+export function resolveMapelForKategori(kategori: PKCategoryKey, rawMapelName: string): PKMapelDef | undefined {
+  return (
+    resolveCanonicalMapel(kategori, rawMapelName) ||
+    (kategori !== 'MULTILINGUAL' ? resolveLayananUmumMapel(rawMapelName) : undefined)
   );
 }

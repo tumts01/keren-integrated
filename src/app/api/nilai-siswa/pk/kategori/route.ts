@@ -11,8 +11,9 @@ import {
   createEmptyMapelScores,
   computeMapelAverage,
   getCanonicalFieldStorage,
+  getLayananUmumMapels,
   getReadTahunAjaranCandidates,
-  resolveCanonicalMapel,
+  resolveMapelForKategori,
   toStorageTahunAjaran,
 } from '@/lib/prosus-config';
 
@@ -129,6 +130,8 @@ export async function GET(request: Request) {
     ) as PKCategoryKey;
 
     const categoryDef = PK_CATEGORY_MAP[kategoriKey];
+    const layananUmumMapels = getLayananUmumMapels(kategoriKey);
+    const allExpectedMapels = [...categoryDef.mapels, ...layananUmumMapels];
     const baseTA = tahunAjaran.replace(/\s*\((Ganjil|Genap)\)\s*$/i, '').trim();
     const taCandidates = getReadTahunAjaranCandidates(baseTA, semester);
 
@@ -156,10 +159,10 @@ export async function GET(request: Request) {
 
     const students = extractStudentsForClass(rawSiswa, kelas, baseTA);
 
-    // Prepare score maps per student
+    // Prepare score maps per student (kategori utama + layanan umum)
     const studentMaps = students.map((st) => {
       const scoresByMapel: Record<string, PKMapelScores> = {};
-      for (const m of categoryDef.mapels) {
+      for (const m of allExpectedMapels) {
         scoresByMapel[m.name] = createEmptyMapelScores();
       }
       return { ...st, scoresByMapel };
@@ -180,7 +183,7 @@ export async function GET(request: Request) {
       const rowMetaSem = String(row.metadata?.semester || '').toLowerCase();
       if (semester === 'Ganjil' && rowMetaSem === 'genap') continue;
 
-      const canonicalMapel = resolveCanonicalMapel(kategoriKey, String(row.mata_pelajaran || ''));
+      const canonicalMapel = resolveMapelForKategori(kategoriKey, String(row.mata_pelajaran || ''));
       if (!canonicalMapel) continue;
 
       const classified = classifyLegacyRow(row);
@@ -216,7 +219,7 @@ export async function GET(request: Request) {
     }
 
     for (const st of studentMaps) {
-      for (const m of categoryDef.mapels) {
+      for (const m of allExpectedMapels) {
         st.scoresByMapel[m.name].rata = computeMapelAverage(st.scoresByMapel[m.name]);
       }
     }
@@ -230,6 +233,7 @@ export async function GET(request: Request) {
       kategoriLabel: categoryDef.label,
       waliKelas,
       mapels: categoryDef.mapels.map((m) => ({ name: m.name, shortName: m.shortName })),
+      layananUmumMapels: layananUmumMapels.map((m) => ({ name: m.name, shortName: m.shortName })),
       students: studentMaps,
     });
   } catch (error: any) {
@@ -264,7 +268,7 @@ export async function POST(request: Request) {
 
     const canonicalMapel =
       PK_CATEGORY_MAP[kategoriKey]
-        ? resolveCanonicalMapel(kategoriKey, rawMapel)?.name || rawMapel
+        ? resolveMapelForKategori(kategoriKey, rawMapel)?.name || rawMapel
         : rawMapel;
 
     const storageTA = toStorageTahunAjaran(tahunAjaran, semester);
@@ -292,7 +296,7 @@ export async function POST(request: Request) {
       const rowMetaSem = String(r.metadata?.semester || '').toLowerCase();
       if (semester === 'Ganjil' && rowMetaSem === 'genap') return false;
       if (PK_CATEGORY_MAP[kategoriKey]) {
-        const resolved = resolveCanonicalMapel(kategoriKey, String(r.mata_pelajaran || ''));
+        const resolved = resolveMapelForKategori(kategoriKey, String(r.mata_pelajaran || ''));
         if (!resolved || resolved.name !== canonicalMapel) return false;
       } else if (String(r.mata_pelajaran || '').trim().toLowerCase() !== canonicalMapel.toLowerCase()) {
         return false;

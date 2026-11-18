@@ -12,6 +12,7 @@ import {
   PKSemester,
   PKMapelScores,
   computeMapelAverage,
+  getLayananUmumMapels,
 } from '@/lib/prosus-config';
 
 interface PKStudentRow {
@@ -72,6 +73,9 @@ export default function NilaiSiswaPage() {
   // Loaded Data States
   const [students, setStudents] = useState<PKStudentRow[]>([]);
   const [mapels, setMapels] = useState<PKMapelHeader[]>(PK_CATEGORY_MAP['SAINS RISET'].mapels);
+  const [layananUmumMapels, setLayananUmumMapels] = useState<PKMapelHeader[]>(() =>
+    getLayananUmumMapels('SAINS RISET').map((m) => ({ name: m.name, shortName: m.shortName }))
+  );
   const [waliKelas, setWaliKelas] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -129,6 +133,9 @@ export default function NilaiSiswaPage() {
       studentsRef.current = [];
       lastSavedSnapshotRef.current = {};
       setMapels(PK_CATEGORY_MAP[kategori].mapels);
+      setLayananUmumMapels(
+        getLayananUmumMapels(kategori).map((m) => ({ name: m.name, shortName: m.shortName }))
+      );
       setDirtyCells({});
       setSaveError('');
       return;
@@ -151,10 +158,13 @@ export default function NilaiSiswaPage() {
 
       const loadedStudents: PKStudentRow[] = json.students || [];
       const loadedMapels: PKMapelHeader[] = json.mapels || PK_CATEGORY_MAP[kategori].mapels;
+      const loadedLayananUmumMapels: PKMapelHeader[] =
+        json.layananUmumMapels ||
+        getLayananUmumMapels(kategori).map((m) => ({ name: m.name, shortName: m.shortName }));
 
       const snapshot: Record<string, string> = {};
       for (const st of loadedStudents) {
-        for (const m of loadedMapels) {
+        for (const m of [...loadedMapels, ...loadedLayananUmumMapels]) {
           const sc = st.scoresByMapel[m.name];
           for (const f of PK_SCORE_FIELDS) {
             snapshot[`${st.induk}::${m.name}::${f.key}`] = String(sc?.[f.key] ?? '');
@@ -166,6 +176,7 @@ export default function NilaiSiswaPage() {
       studentsRef.current = loadedStudents;
       setStudents(loadedStudents);
       setMapels(loadedMapels);
+      setLayananUmumMapels(loadedLayananUmumMapels);
       setWaliKelas(json.waliKelas || '');
       setDirtyCells({});
       setJustSavedCells({});
@@ -367,12 +378,17 @@ export default function NilaiSiswaPage() {
     persistColumnField(mapelName, field, st.induk);
   };
 
+  const allMapels = [...mapels, ...layananUmumMapels];
   const visibleMapels = focusedMapel === 'ALL'
     ? mapels
     : mapels.filter((m) => m.name === focusedMapel);
+  const visibleLayananUmumMapels = focusedMapel === 'ALL'
+    ? layananUmumMapels
+    : layananUmumMapels.filter((m) => m.name === focusedMapel);
 
   const handleCellKeyDown = (
     e: React.KeyboardEvent<HTMLInputElement>,
+    tableIdPrefix: string,
     rowIdx: number,
     flatColIdx: number,
     totalCols: number
@@ -410,7 +426,7 @@ export default function NilaiSiswaPage() {
     }
 
     const nextInput = document.querySelector<HTMLInputElement>(
-      `input[data-cell-coord="${nextRow}-${nextCol}"]`
+      `input[data-cell-coord="${tableIdPrefix}-${nextRow}-${nextCol}"]`
     );
     if (nextInput) {
       nextInput.focus();
@@ -435,7 +451,7 @@ export default function NilaiSiswaPage() {
 
   // --- CETAK RAPOR PK LOGIC ---
   const computeStudentOverallAverage = (st: PKStudentRow): number => {
-    const avgs = mapels
+    const avgs = allMapels
       .map((m) => st.scoresByMapel[m.name]?.rata)
       .filter((v): v is number => v !== null && v !== undefined);
     if (avgs.length === 0) return 0;
@@ -448,26 +464,57 @@ export default function NilaiSiswaPage() {
     const { predikat, ket, deskripsi } = getPredikat(overallAvg);
     const walasName = waliKelas || profile?.nama || '........................................';
 
-    const mapelRowsHtml = mapels
-      .map((m, idx) => {
-        const sc = s.scoresByMapel[m.name] || { m1: '', m2: '', m3: '', sts: '', sas: '', rata: null };
-        const rataNum = sc.rata ?? 0;
-        const mapelPred = getPredikat(rataNum);
-        return `
-          <tr>
-            <td style="border: 1px solid #000; padding: 6px; text-align: center;">${idx + 1}</td>
-            <td style="border: 1px solid #000; padding: 6px; text-align: left; font-weight: 600;">${m.name}</td>
-            <td style="border: 1px solid #000; padding: 6px; text-align: center;">${sc.m1 || '-'}</td>
-            <td style="border: 1px solid #000; padding: 6px; text-align: center;">${sc.m2 || '-'}</td>
-            <td style="border: 1px solid #000; padding: 6px; text-align: center;">${sc.m3 || '-'}</td>
-            <td style="border: 1px solid #000; padding: 6px; text-align: center;">${sc.sts || '-'}</td>
-            <td style="border: 1px solid #000; padding: 6px; text-align: center;">${sc.sas || '-'}</td>
-            <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; background: #f8fafc;">${sc.rata !== null ? sc.rata : '-'}</td>
-            <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${mapelPred.predikat}</td>
-          </tr>
-        `;
-      })
-      .join('');
+    const buildMapelRowsHtml = (targetMapels: PKMapelHeader[]) =>
+      targetMapels
+        .map((m, idx) => {
+          const sc = s.scoresByMapel[m.name] || { m1: '', m2: '', m3: '', sts: '', sas: '', rata: null };
+          const rataNum = sc.rata ?? 0;
+          const mapelPred = getPredikat(rataNum);
+          return `
+            <tr>
+              <td style="border: 1px solid #000; padding: 6px; text-align: center;">${idx + 1}</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: left; font-weight: 600;">${m.name}</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: center;">${sc.m1 || '-'}</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: center;">${sc.m2 || '-'}</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: center;">${sc.m3 || '-'}</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: center;">${sc.sts || '-'}</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: center;">${sc.sas || '-'}</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; background: #f8fafc;">${sc.rata !== null ? sc.rata : '-'}</td>
+              <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${mapelPred.predikat}</td>
+            </tr>
+          `;
+        })
+        .join('');
+
+    const tableHeaderRowHtml = `
+      <thead>
+        <tr style="background-color: #f1f5f9;">
+          <th style="border: 1px solid #000; padding: 6px; width: 32px; text-align: center;">No</th>
+          <th style="border: 1px solid #000; padding: 6px; text-align: left;">Mata Pelajaran</th>
+          <th style="border: 1px solid #000; padding: 6px; width: 58px; text-align: center;">Materi 1</th>
+          <th style="border: 1px solid #000; padding: 6px; width: 58px; text-align: center;">Materi 2</th>
+          <th style="border: 1px solid #000; padding: 6px; width: 58px; text-align: center;">Materi 3</th>
+          <th style="border: 1px solid #000; padding: 6px; width: 52px; text-align: center;">STS</th>
+          <th style="border: 1px solid #000; padding: 6px; width: 52px; text-align: center;">SAS</th>
+          <th style="border: 1px solid #000; padding: 6px; width: 64px; text-align: center;">Rata-Rata</th>
+          <th style="border: 1px solid #000; padding: 6px; width: 56px; text-align: center;">Predikat</th>
+        </tr>
+      </thead>
+    `;
+
+    const mapelRowsHtml = buildMapelRowsHtml(mapels);
+    const layananUmumTableHtml =
+      layananUmumMapels.length > 0
+        ? `
+          <div style="font-size: 10pt; font-weight: bold; margin: 10px 0 4px 0;">B. Program Khusus Layanan Umum</div>
+          <table style="width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 14px;">
+            ${tableHeaderRowHtml}
+            <tbody>
+              ${buildMapelRowsHtml(layananUmumMapels)}
+            </tbody>
+          </table>
+        `
+        : '';
 
     return `
       <div class="rapor-page" style="font-family: 'Times New Roman', Times, serif; padding: 15px 25px; color: #000; page-break-after: always; max-width: 820px; margin: 0 auto; background: #fff;">
@@ -520,24 +567,14 @@ export default function NilaiSiswaPage() {
         </table>
 
         <!-- TABEL RINCIAN NILAI MAPEL -->
-        <table style="width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 14px;">
-          <thead>
-            <tr style="background-color: #f1f5f9;">
-              <th style="border: 1px solid #000; padding: 6px; width: 32px; text-align: center;">No</th>
-              <th style="border: 1px solid #000; padding: 6px; text-align: left;">Mata Pelajaran</th>
-              <th style="border: 1px solid #000; padding: 6px; width: 58px; text-align: center;">Materi 1</th>
-              <th style="border: 1px solid #000; padding: 6px; width: 58px; text-align: center;">Materi 2</th>
-              <th style="border: 1px solid #000; padding: 6px; width: 58px; text-align: center;">Materi 3</th>
-              <th style="border: 1px solid #000; padding: 6px; width: 52px; text-align: center;">STS</th>
-              <th style="border: 1px solid #000; padding: 6px; width: 52px; text-align: center;">SAS</th>
-              <th style="border: 1px solid #000; padding: 6px; width: 64px; text-align: center;">Rata-Rata</th>
-              <th style="border: 1px solid #000; padding: 6px; width: 56px; text-align: center;">Predikat</th>
-            </tr>
-          </thead>
+        ${layananUmumMapels.length > 0 ? `<div style="font-size: 10pt; font-weight: bold; margin: 4px 0;">A. Program Khusus Minat &amp; Bakat (${katDef?.label || kategori})</div>` : ''}
+        <table style="width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 12px;">
+          ${tableHeaderRowHtml}
           <tbody>
             ${mapelRowsHtml}
           </tbody>
         </table>
+        ${layananUmumTableHtml}
 
         <!-- REKAP KESELURUHAN -->
         <table style="width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 14px;">
@@ -619,6 +656,111 @@ export default function NilaiSiswaPage() {
   };
 
   const totalPendingDirty = Object.values(dirtyCells).filter(Boolean).length;
+
+  const renderScoreMatrixTable = (tableMapels: PKMapelHeader[], tableIdPrefix: string, headerOffset = 0) => (
+    <div className={styles.matrixWrapper}>
+      <table className={styles.matrixTable}>
+        <thead>
+          <tr>
+            <th rowSpan={2} className={`${styles.stickyCol} ${styles.stickyNo}`}>No</th>
+            <th rowSpan={2} className={`${styles.stickyCol} ${styles.stickyNis}`}>NIS</th>
+            <th rowSpan={2} className={`${styles.stickyCol} ${styles.stickyNama}`}>Nama Siswa</th>
+            <th rowSpan={2} className={`${styles.stickyCol} ${styles.stickyJk}`}>L/P</th>
+            {tableMapels.map((m, mIdx) => {
+              const headerTint = styles[`groupHeader${(mIdx + headerOffset) % 4}` as keyof typeof styles] || styles.groupHeader0;
+              return (
+                <th
+                  key={m.name}
+                  colSpan={6}
+                  className={`${headerTint} ${styles.groupEndCol}`}
+                  title={m.name}
+                >
+                  {m.name}
+                </th>
+              );
+            })}
+          </tr>
+          <tr>
+            {tableMapels.map((m) => (
+              <React.Fragment key={`${m.name}-sub`}>
+                {PK_SCORE_FIELDS.map((f) => (
+                  <th
+                    key={`${m.name}-${f.key}`}
+                    className={styles.subHeaderCell}
+                    title={f.label}
+                  >
+                    {f.label}
+                  </th>
+                ))}
+                <th className={`${styles.subHeaderAvg} ${styles.groupEndCol}`} title="Rata-rata / Nilai Akhir">
+                  NA
+                </th>
+              </React.Fragment>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {students.map((st, rowIdx) => {
+            const totalCols = tableMapels.length * PK_SCORE_FIELDS.length;
+            return (
+              <tr key={st.induk || `${rowIdx}-${st.nama}`}>
+                <td className={`${styles.stickyCol} ${styles.stickyNo}`}>{rowIdx + 1}</td>
+                <td className={`${styles.stickyCol} ${styles.stickyNis}`} style={{ color: '#64748b' }}>
+                  {st.induk || '-'}
+                </td>
+                <td className={`${styles.stickyCol} ${styles.stickyNama}`} style={{ fontWeight: 600, color: '#0f172a' }} title={st.nama}>
+                  {st.nama}
+                </td>
+                <td className={`${styles.stickyCol} ${styles.stickyJk}`}>{st.jk}</td>
+
+                {tableMapels.map((m, visMapelIdx) => {
+                  const mScores = st.scoresByMapel[m.name] || {
+                    m1: '', m2: '', m3: '', sts: '', sas: '', rata: null,
+                  };
+                  return (
+                    <React.Fragment key={`${st.induk}-${m.name}`}>
+                      {PK_SCORE_FIELDS.map((f, fIdx) => {
+                        const flatColIdx = visMapelIdx * PK_SCORE_FIELDS.length + fIdx;
+                        const cellKey = `${st.induk}::${m.name}::${f.key}`;
+                        const isDirty = Boolean(dirtyCells[cellKey]);
+                        const isJustSaved = Boolean(justSavedCells[cellKey]);
+
+                        return (
+                          <td key={cellKey} className={styles.scoreCell}>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              data-cell-coord={`${tableIdPrefix}-${rowIdx}-${flatColIdx}`}
+                              className={`${styles.cellInput} ${
+                                isDirty
+                                  ? styles.cellInputDirty
+                                  : isJustSaved
+                                  ? styles.cellInputJustSaved
+                                  : ''
+                              }`}
+                              value={mScores[f.key] ?? ''}
+                              onChange={(e) => handleCellChange(rowIdx, m.name, f.key, e.target.value)}
+                              onBlur={() => handleCellBlur(rowIdx, m.name, f.key)}
+                              onKeyDown={(e) => handleCellKeyDown(e, tableIdPrefix, rowIdx, flatColIdx, totalCols)}
+                              onFocus={(e) => e.currentTarget.select()}
+                              aria-label={`${st.nama} ${m.name} ${f.label}`}
+                            />
+                          </td>
+                        );
+                      })}
+                      <td className={styles.avgCell}>
+                        {mScores.rata !== null ? mScores.rata : '-'}
+                      </td>
+                    </React.Fragment>
+                  );
+                })}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
 
   return (
     <div className={styles.container}>
@@ -718,6 +860,7 @@ export default function NilaiSiswaPage() {
                   }}
                 >
                   {PK_CATEGORY_MAP[kategori].mapels.length} Mapel
+                  {layananUmumMapels.length > 0 ? ` + ${layananUmumMapels.length} LU` : ''}
                 </span>
               </>
             ) : (
@@ -799,9 +942,9 @@ export default function NilaiSiswaPage() {
                     className={`${styles.mapelPill} ${focusedMapel === 'ALL' ? styles.mapelPillActive : ''}`}
                     onClick={() => setFocusedMapel('ALL')}
                   >
-                    Semua Mapel ({mapels.length})
+                    Semua Mapel ({allMapels.length})
                   </button>
-                  {mapels.map((m) => (
+                  {allMapels.map((m) => (
                     <button
                       key={m.name}
                       type="button"
@@ -848,109 +991,32 @@ export default function NilaiSiswaPage() {
                 </div>
               </div>
 
-              {/* Spreadsheet-style Matrix Table */}
-              <div className={styles.matrixWrapper}>
-                <table className={styles.matrixTable}>
-                  <thead>
-                    <tr>
-                      <th rowSpan={2} className={`${styles.stickyCol} ${styles.stickyNo}`}>No</th>
-                      <th rowSpan={2} className={`${styles.stickyCol} ${styles.stickyNis}`}>NIS</th>
-                      <th rowSpan={2} className={`${styles.stickyCol} ${styles.stickyNama}`}>Nama Siswa</th>
-                      <th rowSpan={2} className={`${styles.stickyCol} ${styles.stickyJk}`}>L/P</th>
-                      {visibleMapels.map((m, mIdx) => {
-                        const headerTint = styles[`groupHeader${mIdx % 4}` as keyof typeof styles] || styles.groupHeader0;
-                        return (
-                          <th
-                            key={m.name}
-                            colSpan={6}
-                            className={`${headerTint} ${styles.groupEndCol}`}
-                            title={m.name}
-                          >
-                            {m.name}
-                          </th>
-                        );
-                      })}
-                    </tr>
-                    <tr>
-                      {visibleMapels.map((m) => (
-                        <React.Fragment key={`${m.name}-sub`}>
-                          {PK_SCORE_FIELDS.map((f) => (
-                            <th
-                              key={`${m.name}-${f.key}`}
-                              className={styles.subHeaderCell}
-                              title={f.label}
-                            >
-                              {f.label}
-                            </th>
-                          ))}
-                          <th className={`${styles.subHeaderAvg} ${styles.groupEndCol}`} title="Rata-rata / Nilai Akhir">
-                            NA
-                          </th>
-                        </React.Fragment>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {students.map((st, rowIdx) => {
-                      const totalCols = visibleMapels.length * PK_SCORE_FIELDS.length;
-                      return (
-                        <tr key={st.induk || `${rowIdx}-${st.nama}`}>
-                          <td className={`${styles.stickyCol} ${styles.stickyNo}`}>{rowIdx + 1}</td>
-                          <td className={`${styles.stickyCol} ${styles.stickyNis}`} style={{ color: '#64748b' }}>
-                            {st.induk || '-'}
-                          </td>
-                          <td className={`${styles.stickyCol} ${styles.stickyNama}`} style={{ fontWeight: 600, color: '#0f172a' }} title={st.nama}>
-                            {st.nama}
-                          </td>
-                          <td className={`${styles.stickyCol} ${styles.stickyJk}`}>{st.jk}</td>
+              {/* Tabel A: Program Khusus Minat & Bakat */}
+              {visibleMapels.length > 0 && (
+                <div style={{ marginBottom: visibleLayananUmumMapels.length > 0 ? '24px' : 0 }}>
+                  {layananUmumMapels.length > 0 && (
+                    <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e293b', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ background: '#dbeafe', color: '#1d4ed8', padding: '2px 8px', borderRadius: '6px', fontSize: '0.78rem' }}>A</span>
+                      Program Khusus Minat &amp; Bakat — {PK_CATEGORY_MAP[kategori].label}
+                    </div>
+                  )}
+                  {renderScoreMatrixTable(visibleMapels, 'utama', 0)}
+                </div>
+              )}
 
-                          {visibleMapels.map((m, visMapelIdx) => {
-                            const mScores = st.scoresByMapel[m.name] || {
-                              m1: '', m2: '', m3: '', sts: '', sas: '', rata: null,
-                            };
-                            return (
-                              <React.Fragment key={`${st.induk}-${m.name}`}>
-                                {PK_SCORE_FIELDS.map((f, fIdx) => {
-                                  const flatColIdx = visMapelIdx * PK_SCORE_FIELDS.length + fIdx;
-                                  const cellKey = `${st.induk}::${m.name}::${f.key}`;
-                                  const isDirty = Boolean(dirtyCells[cellKey]);
-                                  const isJustSaved = Boolean(justSavedCells[cellKey]);
-
-                                  return (
-                                    <td key={cellKey} className={styles.scoreCell}>
-                                      <input
-                                        type="text"
-                                        inputMode="decimal"
-                                        data-cell-coord={`${rowIdx}-${flatColIdx}`}
-                                        className={`${styles.cellInput} ${
-                                          isDirty
-                                            ? styles.cellInputDirty
-                                            : isJustSaved
-                                            ? styles.cellInputJustSaved
-                                            : ''
-                                        }`}
-                                        value={mScores[f.key] ?? ''}
-                                        onChange={(e) => handleCellChange(rowIdx, m.name, f.key, e.target.value)}
-                                        onBlur={() => handleCellBlur(rowIdx, m.name, f.key)}
-                                        onKeyDown={(e) => handleCellKeyDown(e, rowIdx, flatColIdx, totalCols)}
-                                        onFocus={(e) => e.currentTarget.select()}
-                                        aria-label={`${st.nama} ${m.name} ${f.label}`}
-                                      />
-                                    </td>
-                                  );
-                                })}
-                                <td className={styles.avgCell}>
-                                  {mScores.rata !== null ? mScores.rata : '-'}
-                                </td>
-                              </React.Fragment>
-                            );
-                          })}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              {/* Tabel B: Program Khusus Layanan Umum (Bahasa Arab & Bahasa Inggris) */}
+              {visibleLayananUmumMapels.length > 0 && (
+                <div style={{ marginTop: visibleMapels.length > 0 ? '6px' : 0 }}>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1e293b', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <span style={{ background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '6px', fontSize: '0.78rem' }}>B</span>
+                    Program Khusus Layanan Umum — Bahasa Arab &amp; Bahasa Inggris
+                    <span style={{ fontSize: '0.78rem', fontWeight: 500, color: '#64748b' }}>
+                      (Nilai harian Materi 1–3, STS, SAS khusus layanan umum kelas {kelas})
+                    </span>
+                  </div>
+                  {renderScoreMatrixTable(visibleLayananUmumMapels, 'layanan-umum', 2)}
+                </div>
+              )}
 
               <div style={{ marginTop: '10px', fontSize: '0.82rem', color: '#64748b', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                 <span>
@@ -1012,7 +1078,7 @@ export default function NilaiSiswaPage() {
                     <th style={{ width: '110px' }}>No Induk</th>
                     <th>Nama Siswa</th>
                     <th style={{ width: '55px', textAlign: 'center' }}>L/P</th>
-                    {mapels.map((m) => (
+                    {allMapels.map((m) => (
                       <th key={m.name} style={{ textAlign: 'center' }} title={m.name}>
                         {m.shortName}
                       </th>
@@ -1025,7 +1091,7 @@ export default function NilaiSiswaPage() {
                 <tbody>
                   {students.length === 0 ? (
                     <tr>
-                      <td colSpan={7 + mapels.length} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                      <td colSpan={7 + allMapels.length} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
                         Tidak ada siswa aktif di kelas ini.
                       </td>
                     </tr>
@@ -1039,7 +1105,7 @@ export default function NilaiSiswaPage() {
                           <td>{st.induk || '-'}</td>
                           <td style={{ fontWeight: 600 }}>{st.nama}</td>
                           <td style={{ textAlign: 'center' }}>{st.jk}</td>
-                          {mapels.map((m) => {
+                          {allMapels.map((m) => {
                             const r = st.scoresByMapel[m.name]?.rata;
                             return (
                               <td key={m.name} style={{ textAlign: 'center', fontWeight: 600 }}>
