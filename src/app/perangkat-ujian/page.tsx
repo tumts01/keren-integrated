@@ -22,6 +22,11 @@ function getPhotoUrl(url?: string) {
   return '/api/proxy-image?url=' + encodeURIComponent(url);
 }
 
+function getParticipantGrade(kelas?: string): string {
+  const m = (kelas || '').trim().match(/^(\d+)/);
+  return m ? m[1] : '';
+}
+
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -229,36 +234,42 @@ export default function PerangkatUjianPage() {
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState('');
   const [customDesign, setCustomDesign] = useState<string | null>(null);
-  const [roomFilter, setRoomFilter] = useState<string>('ALL');
+  const [gradeFilter, setGradeFilter] = useState<string>('ALL');
   const [searchText, setSearchText] = useState<string>('');
   const [tablePage, setTablePage] = useState<number>(1);
   const [tablePageSize, setTablePageSize] = useState<number>(25);
 
-  const roomOptions = useMemo(() => {
-    return Array.from(new Set(participants.map(p => p.ruang).filter(Boolean))).sort((a, b) =>
-      a.localeCompare(b, 'id', { numeric: true })
-    );
+  const gradeOptions = useMemo(() => {
+    const counts: Record<string, number> = {};
+    participants.forEach(p => {
+      const g = getParticipantGrade(p.kelas);
+      if (g) counts[g] = (counts[g] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([grade, count]) => ({ grade, count }));
   }, [participants]);
 
   const filteredParticipants = useMemo(() => {
     const q = searchText.trim().toLowerCase();
     return participants.filter(p => {
-      if (roomFilter !== 'ALL' && p.ruang !== roomFilter) return false;
+      if (gradeFilter !== 'ALL' && getParticipantGrade(p.kelas) !== gradeFilter) return false;
       if (q) {
         const hit =
           (p.nama || '').toLowerCase().includes(q) ||
           (p.nisn || '').toLowerCase().includes(q) ||
           (p.noUjian || '').toLowerCase().includes(q) ||
-          (p.kelas || '').toLowerCase().includes(q);
+          (p.kelas || '').toLowerCase().includes(q) ||
+          (p.ruang || '').toLowerCase().includes(q);
         if (!hit) return false;
       }
       return true;
     });
-  }, [participants, roomFilter, searchText]);
+  }, [participants, gradeFilter, searchText]);
 
   useEffect(() => {
     setTablePage(1);
-  }, [roomFilter, searchText, participants.length, activeTab]);
+  }, [gradeFilter, searchText, participants.length, activeTab]);
 
   const safeTablePage = Math.min(
     tablePage,
@@ -565,7 +576,8 @@ export default function PerangkatUjianPage() {
       }
 
       setProgress('Menyimpan PDF...');
-      pdf.save('Kartu_Nobang_Ujian.pdf');
+      const nobangSuffix = gradeFilter !== 'ALL' ? `_Kls${gradeFilter}` : '';
+      pdf.save(`Kartu_Nobang_Ujian${nobangSuffix}.pdf`);
 
       Swal.fire('Berhasil!', `PDF Nobang berhasil digenerate (${targetList.length} kartu, ${totalPages} halaman)`, 'success');
     } catch (err) {
@@ -743,7 +755,8 @@ export default function PerangkatUjianPage() {
       }
 
       setProgress('Menyimpan PDF...');
-      pdf.save('Kartu_Nopes_Ujian.pdf');
+      const nopesSuffix = gradeFilter !== 'ALL' ? `_Kls${gradeFilter}` : '';
+      pdf.save(`Kartu_Nopes_Ujian${nopesSuffix}.pdf`);
 
       Swal.fire('Berhasil!', `PDF berhasil digenerate (${targetList.length} kartu, ${totalPages} halaman)`, 'success');
     } catch (err) {
@@ -802,19 +815,21 @@ export default function PerangkatUjianPage() {
               style={{ flex: '1 1 240px', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
             />
             <select
-              value={roomFilter}
-              onChange={e => setRoomFilter(e.target.value)}
-              style={{ padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white', minWidth: '150px' }}
+              value={gradeFilter}
+              onChange={e => setGradeFilter(e.target.value)}
+              style={{ padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white', minWidth: '175px' }}
             >
-              <option value="ALL">Semua Ruang ({participants.length})</option>
-              {roomOptions.map(r => (
-                <option key={r} value={r}>{r}</option>
+              <option value="ALL">Semua Angkatan ({participants.length})</option>
+              {gradeOptions.map(opt => (
+                <option key={opt.grade} value={opt.grade}>
+                  Kelas {opt.grade} ({opt.count})
+                </option>
               ))}
             </select>
-            {(searchText || roomFilter !== 'ALL') && (
+            {(searchText || gradeFilter !== 'ALL') && (
               <button
                 type="button"
-                onClick={() => { setSearchText(''); setRoomFilter('ALL'); }}
+                onClick={() => { setSearchText(''); setGradeFilter('ALL'); }}
                 style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', background: 'white', color: '#475569', fontSize: '12.5px', fontWeight: 600, cursor: 'pointer' }}
               >
                 Reset
