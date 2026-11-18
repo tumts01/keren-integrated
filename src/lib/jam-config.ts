@@ -82,6 +82,12 @@ export function getRestrictedGrades(perTingkat: JamPerTingkat): GradeKey[] {
   });
 }
 
+export function hasPerGradeJamDifference(perTingkat: JamPerTingkat): boolean {
+  const sig = (jams: number[]) => parseJamList(jams).join(',');
+  const s7 = sig(perTingkat['7'] || []);
+  return sig(perTingkat['8'] || []) !== s7 || sig(perTingkat['9'] || []) !== s7;
+}
+
 export function formatClosedJamsText(jams: number[]): string {
   const clean = parseJamList(jams);
   if (clean.length === 0) return 'Ditutup penuh (0 Jam)';

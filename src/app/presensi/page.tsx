@@ -28,6 +28,7 @@ import {
   getClosedGrades,
   getEffectiveJamsForKelas,
   getRestrictedGrades,
+  hasPerGradeJamDifference,
   normalizeJamPerTingkat
 } from '@/lib/jam-config';
 
@@ -130,9 +131,14 @@ export default function PresensiPage() {
   const [hasJamConfig, setHasJamConfig] = useState(false); // ada config khusus untuk tanggal ini
 
   const selectedGrade = extractGradeFromKelas(selectedKelas);
+  const hasGradeDiff = useMemo(
+    () => hasPerGradeJamDifference(jamPerTingkat),
+    [jamPerTingkat]
+  );
+  const waitingForKelas = !selectedKelas && hasGradeDiff;
   const effectiveJamTersedia = useMemo(
-    () => getEffectiveJamsForKelas(selectedKelas, jamTersedia, jamPerTingkat),
-    [selectedKelas, jamTersedia, jamPerTingkat]
+    () => (waitingForKelas ? [] : getEffectiveJamsForKelas(selectedKelas, jamTersedia, jamPerTingkat)),
+    [waitingForKelas, selectedKelas, jamTersedia, jamPerTingkat]
   );
   const closedGrades = useMemo(
     () => getClosedGrades(jamPerTingkat),
@@ -2926,15 +2932,17 @@ export default function PresensiPage() {
                   {hasJamConfig && (
                     <span style={{
                       fontSize: '0.72rem',
-                      background: effectiveJamTersedia.length === 0 ? '#fee2e2' : '#fef3c7',
-                      color: effectiveJamTersedia.length === 0 ? '#b91c1c' : '#b45309',
-                      border: `1px solid ${effectiveJamTersedia.length === 0 ? '#fca5a5' : '#fde68a'}`,
+                      background: (!waitingForKelas && effectiveJamTersedia.length === 0) ? '#fee2e2' : '#fef3c7',
+                      color: (!waitingForKelas && effectiveJamTersedia.length === 0) ? '#b91c1c' : '#b45309',
+                      border: `1px solid ${(!waitingForKelas && effectiveJamTersedia.length === 0) ? '#fca5a5' : '#fde68a'}`,
                       borderRadius: 6,
                       padding: '1px 8px',
                       fontWeight: 600
                     }}>
-                      <i className={`fas ${effectiveJamTersedia.length === 0 ? 'fa-ban' : 'fa-cog'}`} style={{ marginRight: 4 }}></i>
-                      {effectiveJamTersedia.length === 0
+                      <i className={`fas ${(!waitingForKelas && effectiveJamTersedia.length === 0) ? 'fa-ban' : 'fa-cog'}`} style={{ marginRight: 4 }}></i>
+                      {waitingForKelas
+                        ? `Pilih Kelas Dulu (Aturan Khusus Kls ${restrictedGrades.join(', ')})`
+                        : effectiveJamTersedia.length === 0
                         ? `0 Jam (${selectedGrade ? `Kls ${selectedGrade} ` : ''}Ditutup)`
                         : selectedGrade && effectiveJamTersedia.length < ALL_JAMS.length
                         ? `Kls ${selectedGrade}: Jam ${ALL_JAMS.filter(j => !effectiveJamTersedia.includes(j)).join(', ')} Ditutup`
@@ -2954,7 +2962,7 @@ export default function PresensiPage() {
                   )}
                 </div>
 
-                {hasJamConfig && effectiveJamTersedia.length === 0 && (
+                {hasJamConfig && !waitingForKelas && effectiveJamTersedia.length === 0 && (
                   <div style={{ marginTop: 6, marginBottom: 10, padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, color: '#991b1b', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 10 }}>
                     <i className="fas fa-calendar-times" style={{ fontSize: '1.2rem', color: '#ef4444', flexShrink: 0 }}></i>
                     <div>
@@ -2970,7 +2978,7 @@ export default function PresensiPage() {
                   </div>
                 )}
 
-                {hasJamConfig && restrictedGrades.length > 0 && effectiveJamTersedia.length > 0 && (
+                {hasJamConfig && restrictedGrades.length > 0 && (waitingForKelas || effectiveJamTersedia.length > 0) && (
                   <div style={{ marginTop: 6, marginBottom: 10, padding: '8px 12px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, color: '#92400e', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <i className="fas fa-info-circle" style={{ color: '#d97706', flexShrink: 0 }}></i>
                     <span>
@@ -2989,7 +2997,8 @@ export default function PresensiPage() {
                               <b>Kls {g}:</b> {formatClosedJamsText(jamPerTingkat[g] || [])}
                             </span>
                           ))}
-                          {konfigKeterangan ? ` (${konfigKeterangan})` : ''}
+                          {konfigKeterangan ? ` (${konfigKeterangan})` : ''}.{' '}
+                          <b>Silakan pilih Kelas terlebih dahulu untuk membuka pilihan Jam Ke.</b>
                         </>
                       )}
                     </span>
@@ -2998,12 +3007,14 @@ export default function PresensiPage() {
 
                 <div className={styles.jamPills}>
                   {ALL_JAMS.map(jam => {
-                    const available = effectiveJamTersedia.includes(jam);
+                    const available = !waitingForKelas && effectiveJamTersedia.includes(jam);
                     const isExtra = jam >= 11;
                     const isActive = selectedJam.includes(jam);
                     
                     let customStyle: any = {};
-                    if (!available) {
+                    if (waitingForKelas) {
+                      customStyle = { opacity: 0.45, cursor: 'not-allowed' };
+                    } else if (!available) {
                       customStyle = { opacity: 0.25, cursor: 'not-allowed', textDecoration: 'line-through' };
                     } else if (isExtra) {
                       customStyle = {
@@ -3020,7 +3031,15 @@ export default function PresensiPage() {
                         onClick={() => available ? toggleJam(jam) : null}
                         className={`${styles.jamPill} ${isActive && !isExtra ? styles.jamPillActive : ''}`}
                         style={customStyle}
-                        title={!available ? (effectiveJamTersedia.length === 0 ? 'Jurnal mengajar dinonaktifkan' : `Jam ${jam} tidak tersedia untuk pilihan ini`) : `Jam ${jam}`}
+                        title={
+                          waitingForKelas
+                            ? 'Silakan pilih Kelas terlebih dahulu'
+                            : !available
+                            ? effectiveJamTersedia.length === 0
+                              ? 'Jurnal mengajar dinonaktifkan'
+                              : `Jam ${jam} tidak tersedia untuk pilihan ini`
+                            : `Jam ${jam}`
+                        }
                       >
                         {jam}
                       </button>

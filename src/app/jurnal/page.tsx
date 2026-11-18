@@ -14,6 +14,7 @@ import {
   formatClosedJamsText,
   getEffectiveJamsForKelas,
   getRestrictedGrades,
+  hasPerGradeJamDifference,
   normalizeJamPerTingkat
 } from '@/lib/jam-config';
 
@@ -50,9 +51,11 @@ export default function JurnalPage() {
   const [jamKeterangan, setJamKeterangan] = useState('');
 
   const selectedGrade = extractGradeFromKelas(selectedKelas);
+  const hasGradeDiff = useMemo(() => hasPerGradeJamDifference(jamPerTingkat), [jamPerTingkat]);
+  const waitingForKelas = !selectedKelas && hasGradeDiff;
   const effectiveJamTersedia = useMemo(
-    () => getEffectiveJamsForKelas(selectedKelas, jamTersedia, jamPerTingkat),
-    [selectedKelas, jamTersedia, jamPerTingkat]
+    () => (waitingForKelas ? [] : getEffectiveJamsForKelas(selectedKelas, jamTersedia, jamPerTingkat)),
+    [waitingForKelas, selectedKelas, jamTersedia, jamPerTingkat]
   );
   const restrictedGrades = useMemo(() => getRestrictedGrades(jamPerTingkat), [jamPerTingkat]);
 
@@ -910,12 +913,12 @@ export default function JurnalPage() {
 
             <div className={styles.filterGroup} style={{ flex: '1 1 100%' }}>
               <label>Jam Ke (Pilih satu atau lebih)</label>
-              {effectiveJamTersedia.length === 0 && (
+              {!waitingForKelas && effectiveJamTersedia.length === 0 && (
                 <div style={{ marginTop: 4, marginBottom: 8, padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, color: '#991b1b', fontSize: '0.82rem', fontWeight: 600 }}>
                   Jurnal Mengajar {selectedGrade ? `Kelas ${selectedGrade} ` : ''}dinonaktifkan pada tanggal ini.{jamKeterangan ? ` Keterangan: ${jamKeterangan}` : ''}
                 </div>
               )}
-              {restrictedGrades.length > 0 && effectiveJamTersedia.length > 0 && (
+              {restrictedGrades.length > 0 && (waitingForKelas || effectiveJamTersedia.length > 0) && (
                 <div style={{ marginTop: 4, marginBottom: 8, padding: '8px 12px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, color: '#92400e', fontSize: '0.82rem', fontWeight: 600 }}>
                   {selectedGrade ? (
                     <>Pengaturan <b>Kelas {selectedGrade}</b>: <b>{formatClosedJamsText(effectiveJamTersedia)}</b>.{jamKeterangan ? ` (${jamKeterangan})` : ''}</>
@@ -927,18 +930,20 @@ export default function JurnalPage() {
                           <b>Kls {g}:</b> {formatClosedJamsText(jamPerTingkat[g] || [])}
                         </span>
                       ))}
-                      {jamKeterangan ? ` (${jamKeterangan})` : ''}
+                      {jamKeterangan ? ` (${jamKeterangan})` : ''}. <b>Silakan pilih Kelas terlebih dahulu.</b>
                     </>
                   )}
                 </div>
               )}
               <div className={styles.jamPills}>
                 {ALL_JAMS.map(jam => {
-                  const available = effectiveJamTersedia.includes(jam);
+                  const available = !waitingForKelas && effectiveJamTersedia.includes(jam);
                   const isExtra = jam >= 11;
                   const isActive = selectedJam.includes(jam);
                   let customStyle: any = {};
-                  if (!available) {
+                  if (waitingForKelas) {
+                    customStyle = { opacity: 0.45, cursor: 'not-allowed' };
+                  } else if (!available) {
                     customStyle = { opacity: 0.25, cursor: 'not-allowed', textDecoration: 'line-through' };
                   } else if (isExtra) {
                     customStyle = {
@@ -951,6 +956,7 @@ export default function JurnalPage() {
                     <button key={jam} type="button" onClick={() => available ? toggleJam(jam) : null}
                       className={`${styles.jamPill} ${isActive && !isExtra ? styles.jamPillActive : ''}`}
                       style={customStyle}
+                      title={waitingForKelas ? 'Silakan pilih Kelas terlebih dahulu' : undefined}
                     >
                       {jam}
                     </button>
