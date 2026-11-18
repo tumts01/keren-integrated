@@ -5,6 +5,7 @@ import Link from 'next/link';
 import styles from './Dkn.module.css';
 import InlineLoading from '@/components/InlineLoading';
 import { DKN_MAPELS, calculateNR, calculateNM, DknStudentItem } from '@/lib/dkn';
+import PaginationBar from '@/app/perangkat-ujian/components/PaginationBar';
 
 export default function DknPage() {
   const [students, setStudents] = useState<DknStudentItem[]>([]);
@@ -17,6 +18,8 @@ export default function DknPage() {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [viewMode, setViewMode] = useState<'compact' | 'full'>('compact');
   const [focusMapel, setFocusMapel] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(50);
 
   // Track dirty (edited) records: studentId -> { id_siswa, nomor_peserta?, num?, r_grades? }
   const [dirtyMap, setDirtyMap] = useState<Map<string | number, {
@@ -130,6 +133,18 @@ export default function DknPage() {
       s.nomor_peserta.toLowerCase().includes(q)
     );
   }, [students, searchTerm]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedTa, selectedKelas, searchTerm]);
+
+  const effectivePageSize = Math.min(50, pageSize);
+  const totalPages = Math.max(1, Math.ceil(displayedStudents.length / effectivePageSize));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const paginatedStudents = useMemo(() => {
+    const start = (safePage - 1) * effectivePageSize;
+    return displayedStudents.slice(start, start + effectivePageSize);
+  }, [displayedStudents, safePage, effectivePageSize]);
 
   // Statistics calculation
   const stats = useMemo(() => {
@@ -866,8 +881,9 @@ export default function DknPage() {
           </p>
         </div>
       ) : (
-        <div className={styles.tableWrapper}>
-          <table className={styles.table}>
+        <>
+          <div className={styles.tableWrapper}>
+            <table className={styles.table}>
             <thead>
               {/* Row 1: Group Headers */}
               <tr>
@@ -949,15 +965,16 @@ export default function DknPage() {
               </tr>
             </thead>
             <tbody>
-              {displayedStudents.map((s, idx) => {
+              {paginatedStudents.map((s, idx) => {
+                const globalIdx = (safePage - 1) * effectivePageSize + idx;
                 const isEven = idx % 2 === 1;
                 const rowClass = isEven ? styles.tdRowEven : '';
 
                 return (
-                  <tr key={s.id || s.id_siswa || idx}>
+                  <tr key={s.id || s.id_siswa || globalIdx}>
                     {/* Sticky Info Columns */}
                     <td className={`${styles.tdCell} ${styles.tdStickyLeft} ${styles.tdNo} ${rowClass}`}>
-                      {idx + 1}
+                      {globalIdx + 1}
                     </td>
                     <td className={`${styles.tdCell} ${styles.tdStickyLeft} ${styles.tdPeserta} ${rowClass}`}>
                       {isAdmin ? (
@@ -967,7 +984,7 @@ export default function DknPage() {
                           value={s.nomor_peserta}
                           placeholder="Contoh: 26-13-..."
                           onChange={e => handleNoPesertaChange(s.id, e.target.value)}
-                          onPaste={e => handlePasteColumn(e, idx, 'nomor_peserta')}
+                          onPaste={e => handlePasteColumn(e, globalIdx, 'nomor_peserta')}
                           title="Bisa paste kolom dari Excel (Ctrl+V) langsung ke bawah"
                         />
                       ) : (
@@ -1015,7 +1032,7 @@ export default function DknPage() {
                                     className={styles.inputR}
                                     value={grade.r1 !== null && grade.r1 !== undefined ? grade.r1 : ''}
                                     onChange={e => handleRChange(s.id, m.name, 'r1', e.target.value)}
-                                    onPaste={e => handlePasteColumn(e, idx, 'r1', m.name)}
+                                    onPaste={e => handlePasteColumn(e, globalIdx, 'r1', m.name)}
                                     placeholder="-"
                                   />
                                 ) : (
@@ -1032,7 +1049,7 @@ export default function DknPage() {
                                     className={styles.inputR}
                                     value={grade.r2 !== null && grade.r2 !== undefined ? grade.r2 : ''}
                                     onChange={e => handleRChange(s.id, m.name, 'r2', e.target.value)}
-                                    onPaste={e => handlePasteColumn(e, idx, 'r2', m.name)}
+                                    onPaste={e => handlePasteColumn(e, globalIdx, 'r2', m.name)}
                                     placeholder="-"
                                   />
                                 ) : (
@@ -1049,7 +1066,7 @@ export default function DknPage() {
                                     className={styles.inputR}
                                     value={grade.r3 !== null && grade.r3 !== undefined ? grade.r3 : ''}
                                     onChange={e => handleRChange(s.id, m.name, 'r3', e.target.value)}
-                                    onPaste={e => handlePasteColumn(e, idx, 'r3', m.name)}
+                                    onPaste={e => handlePasteColumn(e, globalIdx, 'r3', m.name)}
                                     placeholder="-"
                                   />
                                 ) : (
@@ -1066,7 +1083,7 @@ export default function DknPage() {
                                     className={styles.inputR}
                                     value={grade.r4 !== null && grade.r4 !== undefined ? grade.r4 : ''}
                                     onChange={e => handleRChange(s.id, m.name, 'r4', e.target.value)}
-                                    onPaste={e => handlePasteColumn(e, idx, 'r4', m.name)}
+                                    onPaste={e => handlePasteColumn(e, globalIdx, 'r4', m.name)}
                                     placeholder="-"
                                   />
                                 ) : (
@@ -1083,7 +1100,7 @@ export default function DknPage() {
                                     className={styles.inputR}
                                     value={grade.r5 !== null && grade.r5 !== undefined ? grade.r5 : ''}
                                     onChange={e => handleRChange(s.id, m.name, 'r5', e.target.value)}
-                                    onPaste={e => handlePasteColumn(e, idx, 'r5', m.name)}
+                                    onPaste={e => handlePasteColumn(e, globalIdx, 'r5', m.name)}
                                     placeholder="-"
                                   />
                                 ) : (
@@ -1105,7 +1122,7 @@ export default function DknPage() {
                                 className={styles.inputNum}
                                 value={grade.num !== null && grade.num !== undefined ? grade.num : ''}
                                 onChange={e => handleNumChange(s.id, m.name, e.target.value)}
-                                onPaste={e => handlePasteColumn(e, idx, 'num', m.name)}
+                                onPaste={e => handlePasteColumn(e, globalIdx, 'num', m.name)}
                                 placeholder="-"
                                 title="Bisa paste kolom dari Excel (Ctrl+V) langsung ke bawah"
                               />
@@ -1137,7 +1154,19 @@ export default function DknPage() {
               })}
             </tbody>
           </table>
-        </div>
+          </div>
+          <PaginationBar
+            totalItems={displayedStudents.length}
+            currentPage={safePage}
+            pageSize={effectivePageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => {
+              setPageSize(Math.min(50, size));
+              setCurrentPage(1);
+            }}
+            pageSizeOptions={[25, 50]}
+          />
+        </>
       )}
 
       {/* Auto-Generate Nomor Peserta Modal */}
