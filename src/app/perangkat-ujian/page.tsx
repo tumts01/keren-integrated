@@ -32,6 +32,44 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
+function drawGridCropMarks(
+  doc: jsPDF,
+  cfg: {
+    cols: number;
+    rows: number;
+    cardW: number;
+    cardH: number;
+    gap: number;
+    marginX: number;
+    marginY: number;
+    pageW: number;
+    pageH: number;
+    markLen: number;
+  }
+) {
+  doc.setDrawColor(100, 100, 100);
+  doc.setLineWidth(0.2);
+  const { cols, rows, cardW, cardH, gap, marginX, marginY, pageW, pageH, markLen } = cfg;
+
+  for (let c = 0; c < cols; c++) {
+    const leftX = marginX + c * (cardW + gap);
+    const rightX = leftX + cardW;
+    doc.line(leftX, marginY - markLen, leftX, marginY);
+    doc.line(leftX, pageH - marginY, leftX, pageH - marginY + markLen);
+    doc.line(rightX, marginY - markLen, rightX, marginY);
+    doc.line(rightX, pageH - marginY, rightX, pageH - marginY + markLen);
+  }
+
+  for (let r = 0; r < rows; r++) {
+    const topY = marginY + r * (cardH + gap);
+    const bottomY = topY + cardH;
+    doc.line(marginX - markLen, topY, marginX, topY);
+    doc.line(pageW - marginX, topY, pageW - marginX + markLen, topY);
+    doc.line(marginX - markLen, bottomY, marginX, bottomY);
+    doc.line(pageW - marginX, bottomY, pageW - marginX + markLen, bottomY);
+  }
+}
+
 const KELAS_LIST = [
   '7A','7B','7C','7D','7E','7F','7G','7H','7I',
   '8A','8B','8C','8D','8E','8F','8G','8H','8I',
@@ -444,49 +482,31 @@ export default function PerangkatUjianPage() {
       const cW = 660;
       const cH = 250;
 
-      // Card dimensions in mm — 3 kartu per baris (hemat kertas)
-      // 3 × 66 = 198mm → sisa 6mm kiri + 6mm kanan
-      const cardW = 66;
+      // Card dimensions in mm — 3 kartu per baris dengan jarak 5mm (0.5cm)
+      const gap = 5;
+      const cardW = 62;
       // Hitung cardH dari rasio pixel canvas agar proporsional (tidak mleyot)
-      const cardH = Math.round(cardW * (cH / cW) * 10) / 10; // = 66 × (250/660) = 25mm
+      const cardH = Math.round(cardW * (cH / cW) * 10) / 10; // = 62 × (250/660) = 23.5mm
       const cols = 3;
-      const rows = 11; // 11 × 25mm = 275mm → margin atas/bawah ~11mm
-      const cardsPerPage = cols * rows; // 33
+      const rows = 10; // 10×23.5 + 9×5 = 280mm → margin atas/bawah 8.5mm
+      const cardsPerPage = cols * rows; // 30
 
       // A4 size in mm: 210 x 297
       const pageW = 210;
       const pageH = 297;
-      const marginX = (pageW - cols * cardW) / 2; // (210 - 198)/2 = 6mm
-      const marginY = (pageH - rows * cardH) / 2; // (297 - 250)/2 = 23.5mm
+      const totalW = cols * cardW + (cols - 1) * gap;
+      const totalH = rows * cardH + (rows - 1) * gap;
+      const marginX = (pageW - totalW) / 2; // (210 - 196)/2 = 7mm
+      const marginY = (pageH - totalH) / 2; // (297 - 280)/2 = 8.5mm
 
       // Load template background once
       const bgImg = await loadImage(nobangDesign);
 
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-      // Helper to draw crop marks (garis bantu potong)
-      const drawCropMarks = (doc: any) => {
-        doc.setDrawColor(100, 100, 100);
-        doc.setLineWidth(0.2);
-        const markLen = 3; // 3mm length since margins are small
-
-        // Vertical marks (top and bottom)
-        for (let c = 0; c <= cols; c++) {
-          const vx = marginX + c * cardW;
-          doc.line(vx, marginY - markLen, vx, marginY);
-          doc.line(vx, pageH - marginY, vx, pageH - marginY + markLen);
-        }
-
-        // Horizontal marks (left and right)
-        for (let r = 0; r <= rows; r++) {
-          const hy = marginY + r * cardH;
-          doc.line(marginX - markLen, hy, marginX, hy);
-          doc.line(pageW - marginX, hy, pageW - marginX + markLen, hy);
-        }
-      };
+      const cropCfg = { cols, rows, cardW, cardH, gap, marginX, marginY, pageW, pageH, markLen: 4 };
 
       // Draw crop marks on the first page
-      drawCropMarks(pdf);
+      drawGridCropMarks(pdf, cropCfg);
 
       const totalPages = Math.ceil(targetList.length / cardsPerPage);
 
@@ -496,7 +516,7 @@ export default function PerangkatUjianPage() {
 
         if (posInPage === 0 && i > 0) {
           pdf.addPage();
-          drawCropMarks(pdf);
+          drawGridCropMarks(pdf, cropCfg);
         }
 
         setProgress(`Merender nobang ${i + 1} / ${targetList.length} (Hal ${pageIdx + 1}/${totalPages})`);
@@ -539,8 +559,8 @@ export default function PerangkatUjianPage() {
 
         // Add card to PDF as compressed JPEG
         const imgData = canvas.toDataURL('image/jpeg', 0.85);
-        const x = marginX + col * cardW;
-        const y = marginY + row * cardH;
+        const x = marginX + col * (cardW + gap);
+        const y = marginY + row * (cardH + gap);
         pdf.addImage(imgData, 'JPEG', x, y, cardW, cardH);
       }
 
@@ -568,9 +588,10 @@ export default function PerangkatUjianPage() {
     setProgress('Memuat template...');
 
     try {
-      // Card dimensions in mm (5.58cm x 9.5cm)
-      const cardW = 55.8;
-      const cardH = 95;
+      // Card dimensions in mm dengan jarak antar kartu 5mm (0.5cm)
+      const gap = 5;
+      const cardW = 54;
+      const cardH = 92;
       const cols = 3;
       const rows = 3;
       const cardsPerPage = cols * rows;
@@ -578,13 +599,15 @@ export default function PerangkatUjianPage() {
       // A4 size in mm: 210 x 297
       const pageW = 210;
       const pageH = 297;
-      const marginX = (pageW - cols * cardW) / 2;
-      const marginY = (pageH - rows * cardH) / 2;
+      const totalW = cols * cardW + (cols - 1) * gap; // 172mm
+      const totalH = rows * cardH + (rows - 1) * gap; // 286mm
+      const marginX = (pageW - totalW) / 2; // 19mm
+      const marginY = (pageH - totalH) / 2; // 5.5mm
 
       // Canvas pixel dimensions (300 DPI = ~11.81 pixels per mm)
       const scale = 11.81;
-      const cW = Math.round(cardW * scale); // ~659px
-      const cH = Math.round(cardH * scale); // ~1122px
+      const cW = Math.round(cardW * scale);
+      const cH = Math.round(cardH * scale);
 
       // Require custom design
       if (!customDesign) {
@@ -598,34 +621,10 @@ export default function PerangkatUjianPage() {
       const bgImg = await loadImage(customDesign);
 
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-      // Helper to draw crop marks (garis bantu potong)
-      const drawCropMarks = (doc: any) => {
-        doc.setDrawColor(100, 100, 100); // gray
-        doc.setLineWidth(0.2); // thin line
-        const markLen = 6; // 6mm length
-
-        // Vertical marks (top and bottom)
-        for (let c = 0; c <= cols; c++) {
-          const vx = marginX + c * cardW;
-          // Top
-          doc.line(vx, marginY - markLen, vx, marginY);
-          // Bottom
-          doc.line(vx, pageH - marginY, vx, pageH - marginY + markLen);
-        }
-
-        // Horizontal marks (left and right)
-        for (let r = 0; r <= rows; r++) {
-          const hy = marginY + r * cardH;
-          // Left
-          doc.line(marginX - markLen, hy, marginX, hy);
-          // Right
-          doc.line(pageW - marginX, hy, pageW - marginX + markLen, hy);
-        }
-      };
+      const cropCfg = { cols, rows, cardW, cardH, gap, marginX, marginY, pageW, pageH, markLen: 4 };
 
       // Draw crop marks on the first page
-      drawCropMarks(pdf);
+      drawGridCropMarks(pdf, cropCfg);
 
       // Pre-load all photos in parallel
       setProgress('Memuat foto siswa...');
@@ -643,7 +642,7 @@ export default function PerangkatUjianPage() {
 
         if (posInPage === 0 && i > 0) {
           pdf.addPage();
-          drawCropMarks(pdf);
+          drawGridCropMarks(pdf, cropCfg);
         }
 
         setProgress(`Merender kartu ${i + 1} / ${targetList.length} (Hal ${pageIdx + 1}/${totalPages})`);
@@ -738,8 +737,8 @@ export default function PerangkatUjianPage() {
 
         // Add card to PDF as compressed JPEG
         const imgData = canvas.toDataURL('image/jpeg', 0.85);
-        const x = marginX + col * cardW;
-        const y = marginY + row * cardH;
+        const x = marginX + col * (cardW + gap);
+        const y = marginY + row * (cardH + gap);
         pdf.addImage(imgData, 'JPEG', x, y, cardW, cardH);
       }
 
