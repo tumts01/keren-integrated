@@ -1,8 +1,9 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
-import * as XLSX from 'xlsx';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import Swal from 'sweetalert2';
 import InlineLoading from '@/components/InlineLoading';
+import { supabase } from '@/lib/supabase';
+import PaginationBar from '../components/PaginationBar';
 
 interface Participant {
   nisn: string;
@@ -97,13 +98,12 @@ const SearchableSelect = ({ value, options, onChange, placeholder }: any) => {
 export default function SusulanPage() {
   const [activeTab, setActiveTab] = useState<'rekap-data' | 'input'>('rekap-data');
   const [participants, setParticipants] = useState<Participant[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pulling, setPulling] = useState(false);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({ nisn: '', noUjian: '', ruang: '' });
+  // Rekap Data search & pagination (max 50 rows/page)
+  const [rekapSearch, setRekapSearch] = useState('');
+  const [rekapPage, setRekapPage] = useState(1);
+  const [rekapPageSize, setRekapPageSize] = useState(50);
 
   // Input Tab states
   const [mapelList, setMapelList] = useState<string[]>([]);
@@ -112,6 +112,8 @@ export default function SusulanPage() {
   const [inputSearch, setInputSearch] = useState('');
   const [inputFilterStatus, setInputFilterStatus] = useState('Semua');
   const [inputFilterRuang, setInputFilterRuang] = useState('Semua');
+  const [inputPage, setInputPage] = useState(1);
+  const [inputPageSize, setInputPageSize] = useState(50);
 
   // Load existing data
   useEffect(() => {
@@ -168,6 +170,7 @@ export default function SusulanPage() {
   // --- Input Tab Handlers ---
   const handleAddInputRow = () => {
     setInputRows([{ id: undefined, nisn: '', nama: '', kelas: '', ruang: '', noUjian: '', mapel: '', isSelesai: false, isEditing: true }, ...inputRows]);
+    setInputPage(1);
   };
 
   const handleInputRowChange = (index: number, field: keyof InputRow, value: string) => {
@@ -292,144 +295,129 @@ export default function SusulanPage() {
   };
   // --------------------------
 
-  const handleSave = async () => {
-    setSaving(true);
+  const handlePullFromRoomConfig = async () => {
+    setPulling(true);
     try {
-      const res = await fetch('/api/perangkat-ujian/susulan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ participants })
-      });
-      const resData = await res.json();
-      if (resData.success) {
-        Swal.fire('Berhasil', 'Data Rekap Susulan berhasil disimpan', 'success');
-      } else {
-        Swal.fire('Error', resData.error || 'Gagal menyimpan data. Pastikan tabel data_susulan sudah ada.', 'error');
+      const { data, error } = await supabase
+        .from('rapor_config')
+        .select('value')
+        .eq('key', 'konfigurasi_ruang_ujian')
+        .maybeSingle();
+
+      let rawValue: string | null = !error && data?.value ? data.value : null;
+      if (!rawValue) {
+        rawValue = localStorage.getItem('konfigurasi_ruang_ujian');
       }
-    } catch (err) {
-      console.error(err);
-      Swal.fire('Error', 'Terjadi kesalahan sistem', 'error');
-    }
-    setSaving(false);
-  };
 
-  const downloadTemplate = () => {
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet([{ NISN: '1234567890', 'NO UJIAN': '001-01', RUANG: 'Ruang 1' }]);
-    XLSX.utils.book_append_sheet(wb, ws, 'Template Susulan');
-    XLSX.writeFile(wb, 'Template_Susulan.xlsx');
-  };
-
-  const handleAddParticipant = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.nisn || !formData.noUjian || !formData.ruang) {
-      Swal.fire('Error', 'Semua field harus diisi', 'error');
-      return;
-    }
-    
-    setIsSubmitting(true);
-    try {
-      const res = await fetch('/api/perangkat-ujian/peserta', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nisns: [formData.nisn] })
-      });
-      const resData = await res.json();
-      
-      if (!resData.success) {
-        Swal.fire('Error', resData.error || 'Gagal memuat data peserta', 'error');
-      } else {
-        const dbData = resData.data;
-        const match = dbData[formData.nisn];
-        
-        const newPart = {
-          nisn: formData.nisn,
-          noUjian: formData.noUjian,
-          ruang: formData.ruang,
-          nama: match?.nama || 'TIDAK DITEMUKAN',
-          kelas: match?.rombel || '-'
-        };
-        
-        setParticipants(prev => [...prev, newPart]);
-        setIsModalOpen(false);
-        setFormData({ nisn: '', noUjian: '', ruang: '' });
-        Swal.fire('Berhasil', 'Siswa berhasil ditambahkan', 'success');
-      }
-    } catch (err) {
-      console.error(err);
-      Swal.fire('Error', 'Gagal menambahkan peserta', 'error');
-    }
-    setIsSubmitting(false);
-  };
-
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setLoading(true);
-    try {
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet);
-
-      if (rows.length === 0) {
-        Swal.fire('Error', 'File Excel kosong', 'error');
-        setLoading(false);
+      if (!rawValue) {
+        Swal.fire(
+          'Belum Ada Data',
+          'Konfigurasi pembagian ruang belum tersimpan. Silakan bagi ruang terlebih dahulu di menu Perangkat Ujian.',
+          'info'
+        );
         return;
       }
 
-      const parsed: Participant[] = rows.map(r => ({
-        nisn: String(r['NISN'] || ''),
-        noUjian: String(r['NO UJIAN'] || ''),
-        ruang: String(r['RUANG'] || '')
-      })).filter(p => p.nisn);
+      const parsed = JSON.parse(rawValue);
+      if (!Array.isArray(parsed.assignments) || parsed.assignments.length === 0) {
+        Swal.fire('Belum Ada Data', 'Data pembagian peserta di Konfigurasi Ruang masih kosong.', 'info');
+        return;
+      }
 
-      // Fetch names from API
-      const nisns = parsed.map(p => p.nisn);
-      const res = await fetch('/api/perangkat-ujian/peserta', {
+      const mapped: Participant[] = parsed.assignments
+        .map((a: { nisn?: string; nama?: string; rombel?: string; kelas?: string; noUjian?: string; ruang?: string }) => ({
+          nisn: String(a.nisn || ''),
+          nama: a.nama || '-',
+          kelas: a.rombel || a.kelas || '-',
+          noUjian: a.noUjian || '-',
+          ruang: a.ruang || '-'
+        }))
+        .filter((p: Participant) => p.nisn);
+
+      const res = await fetch('/api/perangkat-ujian/susulan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nisns })
+        body: JSON.stringify({ participants: mapped })
       });
       const resData = await res.json();
 
       if (!resData.success) {
-        Swal.fire('Error', resData.error || 'Gagal memuat data peserta', 'error');
-      } else {
-        const dbData = resData.data;
-        const enriched = parsed.map(p => {
-          const match = dbData[p.nisn];
-          return {
-            ...p,
-            nama: match?.nama || 'TIDAK DITEMUKAN',
-            kelas: match?.rombel || '-'
-          };
-        });
-        setParticipants(enriched);
+        Swal.fire(
+          'Error',
+          resData.error || 'Gagal menyimpan data susulan. Pastikan tabel data_susulan sudah ada.',
+          'error'
+        );
+        return;
       }
+
+      setParticipants(mapped);
+      setRekapPage(1);
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: `${mapped.length} peserta berhasil ditarik & disimpan.`,
+        showConfirmButton: false,
+        timer: 2500
+      });
     } catch (err) {
       console.error(err);
-      Swal.fire('Error', 'Gagal membaca file Excel', 'error');
+      Swal.fire('Error', 'Gagal menarik data dari Konfigurasi Pembagian Ruang.', 'error');
+    } finally {
+      setPulling(false);
     }
-    setLoading(false);
-    if (fileInputRef.current) fileInputRef.current.value = '';
   };
+
+  const filteredParticipants = useMemo(() => {
+    const q = rekapSearch.trim().toLowerCase();
+    if (!q) return participants;
+    return participants.filter(
+      p =>
+        (p.nama || '').toLowerCase().includes(q) ||
+        (p.nisn || '').toLowerCase().includes(q) ||
+        (p.kelas || '').toLowerCase().includes(q) ||
+        (p.noUjian || '').toLowerCase().includes(q) ||
+        (p.ruang || '').toLowerCase().includes(q)
+    );
+  }, [participants, rekapSearch]);
+
+  const effectiveRekapPageSize = Math.min(50, rekapPageSize);
+  const totalRekapPages = Math.max(1, Math.ceil(filteredParticipants.length / effectiveRekapPageSize));
+  const safeRekapPage = Math.min(Math.max(1, rekapPage), totalRekapPages);
+  const paginatedParticipants = useMemo(() => {
+    const start = (safeRekapPage - 1) * effectiveRekapPageSize;
+    return filteredParticipants.slice(start, start + effectiveRekapPageSize);
+  }, [filteredParticipants, safeRekapPage, effectiveRekapPageSize]);
 
   const uniqueInputRuang = Array.from(new Set(inputRows.map(r => r.ruang).filter(Boolean))).sort();
 
-  const filteredInputRows = inputRows.filter(row => {
-    const matchesSearch = row.nama.toLowerCase().includes(inputSearch.toLowerCase()) || 
-                          row.mapel.toLowerCase().includes(inputSearch.toLowerCase());
-    
-    let matchesStatus = true;
-    if (inputFilterStatus === 'Selesai') matchesStatus = !!row.isSelesai;
-    if (inputFilterStatus === 'Belum Selesai') matchesStatus = !row.isSelesai;
+  const filteredInputRows = useMemo(() => {
+    const q = inputSearch.trim().toLowerCase();
+    return inputRows.filter(row => {
+      const matchesSearch =
+        !q ||
+        row.nama.toLowerCase().includes(q) ||
+        row.mapel.toLowerCase().includes(q) ||
+        row.kelas.toLowerCase().includes(q) ||
+        row.ruang.toLowerCase().includes(q);
 
-    const matchesRuang = inputFilterRuang === 'Semua' || row.ruang === inputFilterRuang;
+      let matchesStatus = true;
+      if (inputFilterStatus === 'Selesai') matchesStatus = !!row.isSelesai;
+      if (inputFilterStatus === 'Belum Selesai') matchesStatus = !row.isSelesai;
 
-    return matchesSearch && matchesStatus && matchesRuang;
-  });
+      const matchesRuang = inputFilterRuang === 'Semua' || row.ruang === inputFilterRuang;
+
+      return matchesSearch && matchesStatus && matchesRuang;
+    });
+  }, [inputRows, inputSearch, inputFilterStatus, inputFilterRuang]);
+
+  const effectiveInputPageSize = Math.min(50, inputPageSize);
+  const totalInputPages = Math.max(1, Math.ceil(filteredInputRows.length / effectiveInputPageSize));
+  const safeInputPage = Math.min(Math.max(1, inputPage), totalInputPages);
+  const paginatedInputRows = useMemo(() => {
+    const start = (safeInputPage - 1) * effectiveInputPageSize;
+    return filteredInputRows.slice(start, start + effectiveInputPageSize);
+  }, [filteredInputRows, safeInputPage, effectiveInputPageSize]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -470,54 +458,100 @@ export default function SusulanPage() {
                   </span>
                 )}
               </h2>
-              <button onClick={downloadTemplate} style={{ padding: '8px 14px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: '#475569', whiteSpace: 'nowrap', fontSize: '0.9rem' }}>
-                <i className="fas fa-download"></i> Template
-              </button>
-              <button onClick={() => setIsModalOpen(true)} style={{ padding: '8px 14px', background: '#f59e0b', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap', fontSize: '0.9rem' }}>
-                <i className="fas fa-plus"></i> Tambah Data
-              </button>
-              <label style={{ padding: '8px 14px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap', fontSize: '0.9rem' }}>
-                <i className="fas fa-upload"></i> {loading ? 'Memproses...' : 'Import Excel'}
-                <input type="file" accept=".xlsx, .xls" style={{ display: 'none' }} ref={fileInputRef} onChange={handleFileUpload} disabled={loading} />
-              </label>
               {participants.length > 0 && (
-                <button onClick={handleSave} disabled={saving} style={{ padding: '8px 14px', background: saving ? '#94a3b8' : '#10b981', border: 'none', borderRadius: '6px', cursor: saving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap', fontSize: '0.9rem' }}>
-                  <i className={saving ? 'fas fa-spinner fa-spin' : 'fas fa-save'}></i> {saving ? 'Menyimpan...' : 'Simpan'}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', background: '#f1f5f9', padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', minWidth: '220px' }}>
+                  <i className="fas fa-search" style={{ color: '#94a3b8', marginRight: '8px' }}></i>
+                  <input
+                    type="text"
+                    placeholder="Cari nama / NISN / kelas / ruang..."
+                    value={rekapSearch}
+                    onChange={(e) => {
+                      setRekapSearch(e.target.value);
+                      setRekapPage(1);
+                    }}
+                    style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '0.9rem' }}
+                  />
+                </div>
               )}
+              <button
+                onClick={handlePullFromRoomConfig}
+                disabled={pulling}
+                style={{
+                  padding: '8px 16px',
+                  background: pulling ? '#94a3b8' : '#0ea5e9',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: pulling ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  whiteSpace: 'nowrap',
+                  fontSize: '0.9rem'
+                }}
+              >
+                <i className={pulling ? 'fas fa-spinner fa-spin' : 'fas fa-sync-alt'}></i>
+                {pulling ? 'Menarik Data...' : 'Tarik Data Pembagian Ruang'}
+              </button>
             </div>
 
             {participants.length > 0 ? (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>NISN</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Nama Siswa</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Kelas</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>No Ujian</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Ruang</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {participants.map((p, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                        <td style={{ padding: '12px' }}>{p.nisn}</td>
-                        <td style={{ padding: '12px', fontWeight: 'bold', color: '#334155' }}>{p.nama}</td>
-                        <td style={{ padding: '12px' }}>{p.kelas}</td>
-                        <td style={{ padding: '12px' }}>
-                          <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: '4px' }}>{p.noUjian}</span>
-                        </td>
-                        <td style={{ padding: '12px' }}>{p.ruang}</td>
+              <>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                        <th style={{ padding: '12px', textAlign: 'center', color: '#475569', width: '56px' }}>No</th>
+                        <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>NISN</th>
+                        <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Nama Siswa</th>
+                        <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Kelas</th>
+                        <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>No Ujian</th>
+                        <th style={{ padding: '12px', textAlign: 'left', color: '#475569' }}>Ruang</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {paginatedParticipants.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
+                            Tidak ada peserta yang sesuai dengan pencarian.
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedParticipants.map((p, idx) => (
+                          <tr key={`${p.nisn}-${idx}`} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                            <td style={{ padding: '12px', textAlign: 'center', color: '#64748b' }}>
+                              {(safeRekapPage - 1) * effectiveRekapPageSize + idx + 1}
+                            </td>
+                            <td style={{ padding: '12px' }}>{p.nisn}</td>
+                            <td style={{ padding: '12px', fontWeight: 'bold', color: '#334155' }}>{p.nama}</td>
+                            <td style={{ padding: '12px' }}>{p.kelas}</td>
+                            <td style={{ padding: '12px' }}>
+                              <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '4px 8px', borderRadius: '4px' }}>{p.noUjian}</span>
+                            </td>
+                            <td style={{ padding: '12px' }}>{p.ruang}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <PaginationBar
+                  totalItems={filteredParticipants.length}
+                  currentPage={safeRekapPage}
+                  pageSize={effectiveRekapPageSize}
+                  onPageChange={setRekapPage}
+                  onPageSizeChange={(size) => {
+                    setRekapPageSize(Math.min(50, size));
+                    setRekapPage(1);
+                  }}
+                  pageSizeOptions={[25, 50]}
+                />
+              </>
             ) : (
               <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
-                <i className="fas fa-file-excel" style={{ fontSize: '48px', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
-                Belum ada data. Silakan import file Excel terlebih dahulu.
+                <i className="fas fa-door-open" style={{ fontSize: '48px', color: '#cbd5e1', marginBottom: '16px', display: 'block' }}></i>
+                Belum ada data. Klik &quot;Tarik Data Pembagian Ruang&quot; untuk memuat data peserta.
               </div>
             )}
           </div>
@@ -538,7 +572,10 @@ export default function SusulanPage() {
                   type="text" 
                   placeholder="Cari siswa / mapel..." 
                   value={inputSearch}
-                  onChange={(e) => setInputSearch(e.target.value)}
+                  onChange={(e) => {
+                    setInputSearch(e.target.value);
+                    setInputPage(1);
+                  }}
                   style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '0.9rem' }}
                 />
               </div>
@@ -546,7 +583,10 @@ export default function SusulanPage() {
               {/* Filter Status */}
               <select 
                 value={inputFilterStatus} 
-                onChange={(e) => setInputFilterStatus(e.target.value)}
+                onChange={(e) => {
+                  setInputFilterStatus(e.target.value);
+                  setInputPage(1);
+                }}
                 style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem', color: '#475569', flex: '1 1 130px', minWidth: '120px' }}
               >
                 <option value="Semua">Semua Status</option>
@@ -557,7 +597,10 @@ export default function SusulanPage() {
               {/* Filter Ruang */}
               <select 
                 value={inputFilterRuang} 
-                onChange={(e) => setInputFilterRuang(e.target.value)}
+                onChange={(e) => {
+                  setInputFilterRuang(e.target.value);
+                  setInputPage(1);
+                }}
                 style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem', color: '#475569', flex: '1 1 120px', minWidth: '110px' }}
               >
                 <option value="Semua">Semua Ruang</option>
@@ -576,133 +619,118 @@ export default function SusulanPage() {
           <InlineLoading message="Memuat data..." />
         ) : inputRows.length > 0 ? (
               /* Horizontal scroll wrapper so the table doesn't overflow on mobile */
-              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569', whiteSpace: 'nowrap' }}>Nama Siswa</th>
-                      <th style={{ padding: '12px', textAlign: 'center', color: '#475569', width: '80px', whiteSpace: 'nowrap' }}>Susulan</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569', whiteSpace: 'nowrap' }}>Mata Pelajaran</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569', whiteSpace: 'nowrap' }}>Kelas</th>
-                      <th style={{ padding: '12px', textAlign: 'left', color: '#475569', whiteSpace: 'nowrap' }}>Ruang</th>
-                      <th style={{ padding: '12px', textAlign: 'center', color: '#475569', width: '140px', whiteSpace: 'nowrap' }}>Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredInputRows.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
-                          Tidak ada data yang sesuai dengan pencarian atau filter.
-                        </td>
+              <>
+                <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                  <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                        <th style={{ padding: '12px', textAlign: 'left', color: '#475569', whiteSpace: 'nowrap' }}>Nama Siswa</th>
+                        <th style={{ padding: '12px', textAlign: 'center', color: '#475569', width: '80px', whiteSpace: 'nowrap' }}>Susulan</th>
+                        <th style={{ padding: '12px', textAlign: 'left', color: '#475569', whiteSpace: 'nowrap' }}>Mata Pelajaran</th>
+                        <th style={{ padding: '12px', textAlign: 'left', color: '#475569', whiteSpace: 'nowrap' }}>Kelas</th>
+                        <th style={{ padding: '12px', textAlign: 'left', color: '#475569', whiteSpace: 'nowrap' }}>Ruang</th>
+                        <th style={{ padding: '12px', textAlign: 'center', color: '#475569', width: '140px', whiteSpace: 'nowrap' }}>Aksi</th>
                       </tr>
-                    ) : (
-                      filteredInputRows.map((row, _idx) => {
-                        const idx = inputRows.findIndex(r => r === row);
-                        return (
-                          <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0', background: row.isSelesai ? '#ecfdf5' : 'transparent' }}>
-                            <td style={{ padding: '12px', minWidth: '160px' }}>
-                              {row.isEditing ? (
-                                <SearchableSelect 
-                                  value={row.nisn} 
-                                  onChange={(val: string) => handleInputRowChange(idx, 'nisn', val)}
-                                  placeholder="Pilih Siswa..."
-                                  options={participants.map(p => ({ value: p.nisn, label: p.nama }))}
-                                />
-                              ) : (
-                                <span style={{ fontWeight: 'bold', color: '#334155' }}>{row.nama}</span>
-                              )}
-                            </td>
-                            <td style={{ padding: '12px', textAlign: 'center' }}>
-                              {row.isSelesai ? (
-                                <i className="fas fa-check-circle" style={{ color: '#10b981', fontSize: '1.2rem' }}></i>
-                              ) : (
-                                <span style={{ color: '#cbd5e1' }}>-</span>
-                              )}
-                            </td>
-                            <td style={{ padding: '12px', minWidth: '150px' }}>
-                              {row.isEditing ? (
-                                <SearchableSelect 
-                                  value={row.mapel} 
-                                  onChange={(val: string) => handleInputRowChange(idx, 'mapel', val)}
-                                  placeholder="Pilih Mata Pelajaran..."
-                                  options={mapelList.map(m => ({ value: m, label: m }))}
-                                />
-                              ) : (
-                                <span>{row.mapel}</span>
-                              )}
-                            </td>
-                            <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>{row.kelas}</td>
-                            <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>{row.ruang}</td>
-                            <td style={{ padding: '12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                              {row.isEditing ? (
-                                <button onClick={() => handleSaveInputRow(idx)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }} title="Simpan">
-                                  <i className="fas fa-save"></i>
+                    </thead>
+                    <tbody>
+                      {paginatedInputRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
+                            Tidak ada data yang sesuai dengan pencarian atau filter.
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedInputRows.map((row) => {
+                          const idx = inputRows.findIndex(r => r === row);
+                          return (
+                            <tr key={row.id ?? `new-${idx}`} style={{ borderBottom: '1px solid #e2e8f0', background: row.isSelesai ? '#ecfdf5' : 'transparent' }}>
+                              <td style={{ padding: '12px', minWidth: '160px' }}>
+                                {row.isEditing ? (
+                                  <SearchableSelect 
+                                    value={row.nisn} 
+                                    onChange={(val: string) => handleInputRowChange(idx, 'nisn', val)}
+                                    placeholder="Pilih Siswa..."
+                                    options={participants.map(p => ({ value: p.nisn, label: p.nama }))}
+                                  />
+                                ) : (
+                                  <span style={{ fontWeight: 'bold', color: '#334155' }}>{row.nama}</span>
+                                )}
+                              </td>
+                              <td style={{ padding: '12px', textAlign: 'center' }}>
+                                {row.isSelesai ? (
+                                  <i className="fas fa-check-circle" style={{ color: '#10b981', fontSize: '1.2rem' }}></i>
+                                ) : (
+                                  <span style={{ color: '#cbd5e1' }}>-</span>
+                                )}
+                              </td>
+                              <td style={{ padding: '12px', minWidth: '150px' }}>
+                                {row.isEditing ? (
+                                  <SearchableSelect 
+                                    value={row.mapel} 
+                                    onChange={(val: string) => handleInputRowChange(idx, 'mapel', val)}
+                                    placeholder="Pilih Mata Pelajaran..."
+                                    options={mapelList.map(m => ({ value: m, label: m }))}
+                                  />
+                                ) : (
+                                  <span>{row.mapel}</span>
+                                )}
+                              </td>
+                              <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>{row.kelas}</td>
+                              <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>{row.ruang}</td>
+                              <td style={{ padding: '12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                {row.isEditing ? (
+                                  <button onClick={() => handleSaveInputRow(idx)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }} title="Simpan">
+                                    <i className="fas fa-save"></i>
+                                  </button>
+                                ) : (
+                                  <>
+                                    <button 
+                                      onClick={() => handleToggleSelesai(idx)} 
+                                      style={{ background: row.isSelesai ? '#64748b' : '#3b82f6', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }}
+                                      title={row.isSelesai ? "Batalkan Selesai" : "Tandai Selesai"}
+                                    >
+                                      <i className={row.isSelesai ? "fas fa-undo" : "fas fa-check"}></i>
+                                    </button>
+                                    <button onClick={() => {
+                                      const updated = [...inputRows];
+                                      updated[idx].isEditing = true;
+                                      setInputRows(updated);
+                                    }} style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }} title="Edit">
+                                      <i className="fas fa-edit"></i>
+                                    </button>
+                                  </>
+                                )}
+                                <button onClick={() => handleDeleteInputRow(idx)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer' }} title="Hapus">
+                                  <i className="fas fa-trash"></i>
                                 </button>
-                              ) : (
-                                <>
-                                  <button 
-                                    onClick={() => handleToggleSelesai(idx)} 
-                                    style={{ background: row.isSelesai ? '#64748b' : '#3b82f6', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }}
-                                    title={row.isSelesai ? "Batalkan Selesai" : "Tandai Selesai"}
-                                  >
-                                    <i className={row.isSelesai ? "fas fa-undo" : "fas fa-check"}></i>
-                                  </button>
-                                  <button onClick={() => {
-                                    const updated = [...inputRows];
-                                    updated[idx].isEditing = true;
-                                    setInputRows(updated);
-                                  }} style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }} title="Edit">
-                                    <i className="fas fa-edit"></i>
-                                  </button>
-                                </>
-                              )}
-                              <button onClick={() => handleDeleteInputRow(idx)} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer' }} title="Hapus">
-                                <i className="fas fa-trash"></i>
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+                <PaginationBar
+                  totalItems={filteredInputRows.length}
+                  currentPage={safeInputPage}
+                  pageSize={effectiveInputPageSize}
+                  onPageChange={setInputPage}
+                  onPageSizeChange={(size) => {
+                    setInputPageSize(Math.min(50, size));
+                    setInputPage(1);
+                  }}
+                  pageSizeOptions={[25, 50]}
+                />
+              </>
             ) : (
               <div style={{ padding: '40px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
-                <p>Belum ada data input susulan. Klik "Tambah Baris" untuk memulai.</p>
+                <p>Belum ada data input susulan. Klik &quot;Tambah Baris&quot; untuk memulai.</p>
               </div>
             )}
           </div>
         )}
       </div>
-
-      {isModalOpen && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: 'white', padding: '24px', borderRadius: '12px', width: '100%', maxWidth: '400px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '20px', fontSize: '1.2rem', color: '#1e293b' }}>Tambah Peserta Susulan</h3>
-            <form onSubmit={handleAddParticipant}>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>NISN</label>
-                <input type="text" value={formData.nisn} onChange={e => setFormData({...formData, nisn: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px' }} placeholder="Masukkan NISN" required />
-              </div>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>No Ujian</label>
-                <input type="text" value={formData.noUjian} onChange={e => setFormData({...formData, noUjian: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px' }} placeholder="Contoh: 7-09-001" required />
-              </div>
-              <div style={{ marginBottom: '24px' }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#475569', fontSize: '0.9rem' }}>Ruang</label>
-                <input type="text" value={formData.ruang} onChange={e => setFormData({...formData, ruang: e.target.value})} style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px' }} placeholder="Contoh: Ruang 01" required />
-              </div>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                <button type="button" onClick={() => setIsModalOpen(false)} style={{ padding: '10px 16px', background: '#f1f5f9', border: 'none', borderRadius: '6px', color: '#475569', fontWeight: 600, cursor: 'pointer' }}>Batal</button>
-                <button type="submit" disabled={isSubmitting} style={{ padding: '10px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', color: 'white', fontWeight: 600, cursor: isSubmitting ? 'not-allowed' : 'pointer' }}>
-                  {isSubmitting ? 'Menyimpan...' : 'Simpan'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
