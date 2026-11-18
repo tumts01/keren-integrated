@@ -4,6 +4,7 @@ import {
   ALL_JAMS,
   computeUnionJams,
   createDefaultJamPerTingkat,
+  expandDateRange,
   normalizeJamPerTingkat,
   parseJamList
 } from '@/lib/jam-config';
@@ -58,9 +59,12 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { tanggal, jamTersedia, jamPerTingkat, keterangan } = body;
+    const { tanggal, tanggalMulai, tanggalSelesai, jamTersedia, jamPerTingkat, keterangan } = body;
+    const start = tanggalMulai || tanggal;
+    const end = tanggalSelesai || start;
+    const targetDates = expandDateRange(start, end);
 
-    if (!tanggal || (!Array.isArray(jamTersedia) && (!jamPerTingkat || typeof jamPerTingkat !== 'object'))) {
+    if (targetDates.length === 0 || (!Array.isArray(jamTersedia) && (!jamPerTingkat || typeof jamPerTingkat !== 'object'))) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
     }
 
@@ -73,28 +77,39 @@ export async function POST(request: Request) {
     const jamStr = effectiveGlobal.join(', ');
     const updatedAt = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' });
 
-    // Check existing
     const { data: existingRows } = await supabase.from('data_jam_config').select('id, tanggal, metadata');
-    const existingRow = (existingRows || []).find((r: any) => (r.metadata?.['Tanggal'] || r.tanggal) === tanggal);
+    const existingByDate = new Map<string, any>();
+    (existingRows || []).forEach((r: any) => {
+      const t = r.metadata?.['Tanggal'] || r.tanggal;
+      if (t) existingByDate.set(t, r);
+    });
 
-    const metadata = {
-      'Tanggal': tanggal,
-      'JamTersedia': jamStr,
-      'JamPerTingkat': normalizedPerTingkat,
-      'Keterangan': keterangan || '',
-      'UpdatedAt': updatedAt
-    };
+    const toInsert: any[] = [];
+    for (const dt of targetDates) {
+      const metadata = {
+        'Tanggal': dt,
+        'JamTersedia': jamStr,
+        'JamPerTingkat': normalizedPerTingkat,
+        'Keterangan': keterangan || '',
+        'UpdatedAt': updatedAt
+      };
+      const existingRow = existingByDate.get(dt);
+      if (existingRow) {
+        const { error } = await supabase.from('data_jam_config').update({ metadata }).eq('id', existingRow.id);
+        if (error) throw error;
+      } else {
+        toInsert.push({ tanggal: dt, metadata });
+      }
+    }
 
-    if (existingRow) {
-      const { error } = await supabase.from('data_jam_config').update({ metadata }).eq('id', existingRow.id);
-      if (error) throw error;
-    } else {
-      const { error } = await supabase.from('data_jam_config').insert([{ tanggal, metadata }]);
+    if (toInsert.length > 0) {
+      const { error } = await supabase.from('data_jam_config').insert(toInsert);
       if (error) throw error;
     }
 
     return NextResponse.json({
       success: true,
+      dates: targetDates,
       jamTersedia: effectiveGlobal,
       jamPerTingkat: normalizedPerTingkat
     });
@@ -107,24 +122,28 @@ export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const tanggal = searchParams.get('tanggal');
+    const tanggalMulai = searchParams.get('tanggalMulai');
+    const tanggalSelesai = searchParams.get('tanggalSelesai');
+    const targetDates = expandDateRange(tanggalMulai || tanggal || '', tanggalSelesai || tanggalMulai || tanggal || '');
 
-    if (!tanggal) {
+    if (targetDates.length === 0) {
       return NextResponse.json({ success: false, error: 'Tanggal diperlukan' }, { status: 400 });
     }
 
     const { data: rows, error: selectErr } = await supabase.from('data_jam_config').select('id, tanggal, metadata');
     if (selectErr) throw selectErr;
 
-    const matched = (rows || []).filter((r: any) => (r.metadata?.['Tanggal'] || r.tanggal) === tanggal);
+    const targetSet = new Set(targetDates);
+    const matched = (rows || []).filter((r: any) => targetSet.has(r.metadata?.['Tanggal'] || r.tanggal));
     if (matched.length > 0) {
       const ids = matched.map((r: any) => r.id);
       const { error: delErr } = await supabase.from('data_jam_config').delete().in('id', ids);
       if (delErr) throw delErr;
     } else {
-      await supabase.from('data_jam_config').delete().eq('tanggal', tanggal);
+      await supabase.from('data_jam_config').delete().in('tanggal', targetDates);
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, dates: targetDates });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

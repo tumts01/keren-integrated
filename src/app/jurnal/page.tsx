@@ -7,11 +7,13 @@ import styles from './jurnal.module.css';
 import InlineLoading from '@/components/InlineLoading';
 import {
   ALL_JAMS,
+  GRADE_KEYS,
   JamPerTingkat,
   createDefaultJamPerTingkat,
   extractGradeFromKelas,
-  getClosedGrades,
+  formatClosedJamsText,
   getEffectiveJamsForKelas,
+  getRestrictedGrades,
   normalizeJamPerTingkat
 } from '@/lib/jam-config';
 
@@ -52,7 +54,7 @@ export default function JurnalPage() {
     () => getEffectiveJamsForKelas(selectedKelas, jamTersedia, jamPerTingkat),
     [selectedKelas, jamTersedia, jamPerTingkat]
   );
-  const closedGrades = useMemo(() => getClosedGrades(jamPerTingkat), [jamPerTingkat]);
+  const restrictedGrades = useMemo(() => getRestrictedGrades(jamPerTingkat), [jamPerTingkat]);
 
   useEffect(() => {
     if (!tanggal) return;
@@ -828,8 +830,14 @@ export default function JurnalPage() {
                 <option value="">-- Pilih Kelas --</option>
                 {kelasList.map(k => {
                   const gk = extractGradeFromKelas(k);
-                  const isClosed = Boolean(gk && (jamPerTingkat[gk] || []).length === 0);
-                  return <option key={k} value={k}>{isClosed ? `${k} (Ditutup)` : k}</option>;
+                  const gJams = gk ? jamPerTingkat[gk] || [] : ALL_JAMS;
+                  const suffix =
+                    gJams.length === 0
+                      ? ' (Ditutup)'
+                      : gJams.length < ALL_JAMS.length
+                      ? ' (Jam Khusus)'
+                      : '';
+                  return <option key={k} value={k}>{k}{suffix}</option>;
                 })}
               </select>
             </div>
@@ -907,9 +915,21 @@ export default function JurnalPage() {
                   Jurnal Mengajar {selectedGrade ? `Kelas ${selectedGrade} ` : ''}dinonaktifkan pada tanggal ini.{jamKeterangan ? ` Keterangan: ${jamKeterangan}` : ''}
                 </div>
               )}
-              {!selectedKelas && closedGrades.length > 0 && closedGrades.length < 3 && (
+              {restrictedGrades.length > 0 && effectiveJamTersedia.length > 0 && (
                 <div style={{ marginTop: 4, marginBottom: 8, padding: '8px 12px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, color: '#92400e', fontSize: '0.82rem', fontWeight: 600 }}>
-                  Kelas {closedGrades.join(', ')} ditutup pada tanggal ini.{jamKeterangan ? ` (${jamKeterangan})` : ''}
+                  {selectedGrade ? (
+                    <>Pengaturan <b>Kelas {selectedGrade}</b>: <b>{formatClosedJamsText(effectiveJamTersedia)}</b>.{jamKeterangan ? ` (${jamKeterangan})` : ''}</>
+                  ) : (
+                    <>
+                      {GRADE_KEYS.map((g, idx) => (
+                        <span key={g}>
+                          {idx > 0 ? ' • ' : ''}
+                          <b>Kls {g}:</b> {formatClosedJamsText(jamPerTingkat[g] || [])}
+                        </span>
+                      ))}
+                      {jamKeterangan ? ` (${jamKeterangan})` : ''}
+                    </>
+                  )}
                 </div>
               )}
               <div className={styles.jamPills}>

@@ -22,9 +22,12 @@ import {
   JamPerTingkat,
   computeUnionJams,
   createDefaultJamPerTingkat,
+  expandDateRange,
   extractGradeFromKelas,
+  formatClosedJamsText,
   getClosedGrades,
   getEffectiveJamsForKelas,
+  getRestrictedGrades,
   normalizeJamPerTingkat
 } from '@/lib/jam-config';
 
@@ -120,7 +123,9 @@ export default function PresensiPage() {
   const [jamConfigLoading, setJamConfigLoading] = useState(false);
   const [showJamConfig, setShowJamConfig] = useState(false);
   const [konfigJamPerTingkat, setKonfigJamPerTingkat] = useState<JamPerTingkat>(() => createDefaultJamPerTingkat());
-  const [konfigTargetGrade, setKonfigTargetGrade] = useState<'ALL' | GradeKey>('ALL');
+  const [konfigSelectedGrades, setKonfigSelectedGrades] = useState<GradeKey[]>([...GRADE_KEYS]);
+  const [konfigTanggalMulai, setKonfigTanggalMulai] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [konfigTanggalSelesai, setKonfigTanggalSelesai] = useState<string>(new Date().toISOString().split('T')[0]);
   const [konfigKeterangan, setKonfigKeterangan] = useState('');
   const [hasJamConfig, setHasJamConfig] = useState(false); // ada config khusus untuk tanggal ini
 
@@ -131,6 +136,10 @@ export default function PresensiPage() {
   );
   const closedGrades = useMemo(
     () => getClosedGrades(jamPerTingkat),
+    [jamPerTingkat]
+  );
+  const restrictedGrades = useMemo(
+    () => getRestrictedGrades(jamPerTingkat),
     [jamPerTingkat]
   );
   
@@ -329,6 +338,8 @@ export default function PresensiPage() {
   // Fetch jam config setiap kali tanggal berubah
   useEffect(() => {
     if (!tanggal) return;
+    setKonfigTanggalMulai(tanggal);
+    setKonfigTanggalSelesai(tanggal);
     setJamConfigLoading(true);
     fetch(`/api/jam-config?tanggal=${tanggal}`)
       .then(r => r.json())
@@ -2776,10 +2787,16 @@ export default function PresensiPage() {
                   <option value="">-- Pilih Kelas --</option>
                   {kelasList.map(k => {
                     const gk = extractGradeFromKelas(k);
-                    const isClosed = Boolean(gk && (jamPerTingkat[gk] || []).length === 0);
+                    const gJams = gk ? jamPerTingkat[gk] || [] : ALL_JAMS;
+                    const suffix =
+                      gJams.length === 0
+                        ? ' (Ditutup)'
+                        : gJams.length < ALL_JAMS.length
+                        ? ' (Jam Khusus)'
+                        : '';
                     return (
                       <option key={k} value={k}>
-                        {isClosed ? `${k} (Ditutup)` : k}
+                        {k}{suffix}
                       </option>
                     );
                   })}
@@ -2919,8 +2936,10 @@ export default function PresensiPage() {
                       <i className={`fas ${effectiveJamTersedia.length === 0 ? 'fa-ban' : 'fa-cog'}`} style={{ marginRight: 4 }}></i>
                       {effectiveJamTersedia.length === 0
                         ? `0 Jam (${selectedGrade ? `Kls ${selectedGrade} ` : ''}Ditutup)`
-                        : closedGrades.length > 0 && !selectedKelas
-                        ? `Kls ${closedGrades.join(', ')} Ditutup • Kls Lain Aktif`
+                        : selectedGrade && effectiveJamTersedia.length < ALL_JAMS.length
+                        ? `Kls ${selectedGrade}: Jam ${ALL_JAMS.filter(j => !effectiveJamTersedia.includes(j)).join(', ')} Ditutup`
+                        : restrictedGrades.length > 0 && !selectedKelas
+                        ? `Pengaturan Khusus Kls ${restrictedGrades.join(', ')}`
                         : `${effectiveJamTersedia.length} Jam Aktif${selectedGrade ? ` (Kls ${selectedGrade})` : ''}`}
                     </span>
                   )}
@@ -2951,12 +2970,28 @@ export default function PresensiPage() {
                   </div>
                 )}
 
-                {hasJamConfig && !selectedKelas && closedGrades.length > 0 && closedGrades.length < GRADE_KEYS.length && (
+                {hasJamConfig && restrictedGrades.length > 0 && effectiveJamTersedia.length > 0 && (
                   <div style={{ marginTop: 6, marginBottom: 10, padding: '8px 12px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, color: '#92400e', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <i className="fas fa-info-circle" style={{ color: '#d97706', flexShrink: 0 }}></i>
                     <span>
-                      Pengisian jurnal untuk <b>Kelas {closedGrades.join(', ')}</b> ditutup pada tanggal ini.
-                      {konfigKeterangan ? ` (${konfigKeterangan})` : ''} Pilih kelas yang aktif untuk mengisi jurnal.
+                      {selectedGrade ? (
+                        <>
+                          Pengaturan <b>Kelas {selectedGrade}</b> pada tanggal ini:{' '}
+                          <b>{formatClosedJamsText(effectiveJamTersedia)}</b>.
+                          {konfigKeterangan ? ` (${konfigKeterangan})` : ''}
+                        </>
+                      ) : (
+                        <>
+                          Pengaturan jam pada tanggal ini:{' '}
+                          {GRADE_KEYS.map((g, idx) => (
+                            <span key={g}>
+                              {idx > 0 ? ' • ' : ''}
+                              <b>Kls {g}:</b> {formatClosedJamsText(jamPerTingkat[g] || [])}
+                            </span>
+                          ))}
+                          {konfigKeterangan ? ` (${konfigKeterangan})` : ''}
+                        </>
+                      )}
                     </span>
                   </div>
                 )}
@@ -2994,48 +3029,91 @@ export default function PresensiPage() {
                   {jamConfigLoading && <span style={{ fontSize: '0.75rem', color: '#94a3b8', marginLeft: 4 }}><i className="fas fa-spinner fa-spin"></i></span>}
                 </div>
 
-                {/* Panel konfigurasi jam — admin only (buka/tutup global & per angkatan 7/8/9) */}
+                {/* Panel konfigurasi jam — admin only (rentang tanggal + pilih multi-kelas 7/8/9) */}
                 {isAdmin && showJamConfig && (() => {
-                  const displayedJams =
-                    konfigTargetGrade === 'ALL'
-                      ? computeUnionJams(konfigJamPerTingkat)
-                      : konfigJamPerTingkat[konfigTargetGrade];
+                  const targetGrades: GradeKey[] = konfigSelectedGrades.length > 0 ? konfigSelectedGrades : [...GRADE_KEYS];
+                  const dateRangeList = expandDateRange(konfigTanggalMulai, konfigTanggalSelesai);
 
-                  const setTargetGradesJams = (updater: (cur: number[]) => number[]) => {
+                  const setSelectedGradesJams = (updater: (cur: number[]) => number[]) => {
                     setKonfigJamPerTingkat(prev => {
-                      if (konfigTargetGrade === 'ALL') {
-                        const base = computeUnionJams(prev);
-                        const nextList = updater(base);
-                        return { '7': [...nextList], '8': [...nextList], '9': [...nextList] };
-                      }
-                      return {
-                        ...prev,
-                        [konfigTargetGrade]: updater(prev[konfigTargetGrade])
-                      };
+                      const unionSelected = Array.from(
+                        new Set(targetGrades.flatMap(g => prev[g] || []))
+                      ).sort((a, b) => a - b);
+                      const nextList = updater(unionSelected);
+                      const updated = { ...prev };
+                      targetGrades.forEach(g => {
+                        updated[g] = [...nextList];
+                      });
+                      return updated;
                     });
                   };
 
+                  const isJamCheckedForTargets = (j: number) =>
+                    targetGrades.every(g => (konfigJamPerTingkat[g] || []).includes(j));
+
+                  const allTargetsFull = ALL_JAMS.every(j => isJamCheckedForTargets(j));
+                  const allTargetsEmpty = targetGrades.every(g => (konfigJamPerTingkat[g] || []).length === 0);
                   const closedPreviewGrades = getClosedGrades(konfigJamPerTingkat);
+                  const restrictedPreviewGrades = getRestrictedGrades(konfigJamPerTingkat);
 
                   return (
                     <div style={{ marginTop: 12, background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, padding: 16 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
                         <p style={{ margin: 0, fontWeight: 700, color: '#0369a1', fontSize: '0.85rem' }}>
-                          <i className="fas fa-cog" style={{ marginRight: 6 }}></i>Atur Jam &amp; Buka/Tutup Mengajar untuk {tanggal || 'tanggal ini'}
+                          <i className="fas fa-cog" style={{ marginRight: 6 }}></i>Atur Jam &amp; Buka/Tutup Mengajar Per Rentang Tanggal &amp; Angkatan
                         </p>
                       </div>
 
-                      {/* Ringkasan Cepat Buka/Tutup Per Jenjang */}
+                      {/* Pilih Rentang Tanggal (misal Kamis s.d. Sabtu) */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 10, marginBottom: 12, background: '#ffffff', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', alignItems: 'end' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.73rem', fontWeight: 700, color: '#334155', marginBottom: 3 }}>
+                            Dari Tanggal
+                          </label>
+                          <input
+                            type="date"
+                            value={konfigTanggalMulai}
+                            onChange={e => {
+                              const val = e.target.value;
+                              setKonfigTanggalMulai(val);
+                              if (!konfigTanggalSelesai || konfigTanggalSelesai < val) {
+                                setKonfigTanggalSelesai(val);
+                              }
+                            }}
+                            style={{ width: '100%', padding: '5px 8px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: '0.82rem' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.73rem', fontWeight: 700, color: '#334155', marginBottom: 3 }}>
+                            Sampai Tanggal
+                          </label>
+                          <input
+                            type="date"
+                            value={konfigTanggalSelesai}
+                            min={konfigTanggalMulai}
+                            onChange={e => setKonfigTanggalSelesai(e.target.value)}
+                            style={{ width: '100%', padding: '5px 8px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: '0.82rem' }}
+                          />
+                        </div>
+                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0369a1', paddingBottom: 4 }}>
+                          <i className="fas fa-calendar-week" style={{ marginRight: 5 }}></i>
+                          Berlaku untuk {dateRangeList.length} hari
+                          {dateRangeList.length > 1 ? ` (${konfigTanggalMulai} s.d. ${konfigTanggalSelesai})` : ''}
+                        </div>
+                      </div>
+
+                      {/* Ringkasan Status Saat Ini Per Jenjang */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: 8, marginBottom: 12 }}>
                         {GRADE_KEYS.map(g => {
                           const jamsForGrade = konfigJamPerTingkat[g] || [];
                           const isOpen = jamsForGrade.length > 0;
+                          const isPartial = isOpen && jamsForGrade.length < ALL_JAMS.length;
                           return (
                             <div
                               key={g}
                               style={{
-                                background: isOpen ? '#ffffff' : '#fef2f2',
-                                border: `1px solid ${isOpen ? '#cbd5e1' : '#fca5a5'}`,
+                                background: !isOpen ? '#fef2f2' : isPartial ? '#fffbeb' : '#ffffff',
+                                border: `1px solid ${!isOpen ? '#fca5a5' : isPartial ? '#fcd34d' : '#cbd5e1'}`,
                                 borderRadius: 8,
                                 padding: '8px 10px',
                                 display: 'flex',
@@ -3046,8 +3124,8 @@ export default function PresensiPage() {
                             >
                               <div>
                                 <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#0f172a' }}>Kelas {g}</div>
-                                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: isOpen ? '#15803d' : '#dc2626' }}>
-                                  {isOpen ? `Buka (${jamsForGrade.length} Jam)` : 'Ditutup (0 Jam)'}
+                                <div style={{ fontSize: '0.71rem', fontWeight: 600, color: !isOpen ? '#dc2626' : isPartial ? '#b45309' : '#15803d' }}>
+                                  {formatClosedJamsText(jamsForGrade)}
                                 </div>
                               </div>
                               <button
@@ -3055,65 +3133,88 @@ export default function PresensiPage() {
                                 onClick={() =>
                                   setKonfigJamPerTingkat(prev => ({
                                     ...prev,
-                                    [g]: isOpen ? [] : [...ALL_JAMS]
+                                    [g]: isOpen && !isPartial ? [] : [...ALL_JAMS]
                                   }))
                                 }
                                 style={{
                                   border: 'none',
                                   borderRadius: 6,
-                                  padding: '4px 10px',
-                                  fontSize: '0.74rem',
+                                  padding: '4px 9px',
+                                  fontSize: '0.72rem',
                                   fontWeight: 700,
                                   cursor: 'pointer',
-                                  background: isOpen ? '#fee2e2' : '#dcfce7',
-                                  color: isOpen ? '#b91c1c' : '#15803d'
+                                  background: isOpen && !isPartial ? '#fee2e2' : '#dcfce7',
+                                  color: isOpen && !isPartial ? '#b91c1c' : '#15803d',
+                                  flexShrink: 0
                                 }}
                               >
-                                {isOpen ? 'Tutup' : 'Buka'}
+                                {isOpen && !isPartial ? 'Tutup' : 'Normal'}
                               </button>
                             </div>
                           );
                         })}
                       </div>
 
-                      {/* Pilih Target Pengaturan Jam (Semua vs Per Jenjang) */}
+                      {/* Multi-Select Target Kelas yang Diubah Jamnya */}
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#334155' }}>Detail Jam:</span>
-                          {(['ALL', ...GRADE_KEYS] as const).map(target => {
-                            const active = konfigTargetGrade === target;
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#334155' }}>Terapkan jam ke kelas:</span>
+                          {GRADE_KEYS.map(g => {
+                            const selected = konfigSelectedGrades.includes(g);
                             return (
-                              <button
-                                key={target}
-                                type="button"
-                                onClick={() => setKonfigTargetGrade(target)}
+                              <label
+                                key={g}
                                 style={{
-                                  fontSize: '0.75rem',
-                                  padding: '3px 10px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 5,
+                                  fontSize: '0.76rem',
+                                  padding: '4px 10px',
                                   borderRadius: 6,
-                                  border: `1px solid ${active ? '#0284c7' : '#cbd5e1'}`,
-                                  background: active ? '#0284c7' : '#ffffff',
-                                  color: active ? '#ffffff' : '#334155',
+                                  border: `1.5px solid ${selected ? '#0284c7' : '#cbd5e1'}`,
+                                  background: selected ? '#e0f2fe' : '#ffffff',
+                                  color: selected ? '#0369a1' : '#64748b',
                                   cursor: 'pointer',
-                                  fontWeight: 700
+                                  fontWeight: 700,
+                                  userSelect: 'none'
                                 }}
                               >
-                                {target === 'ALL' ? 'Semua (7, 8, 9)' : `Kelas ${target}`}
-                              </button>
+                                <input
+                                  type="checkbox"
+                                  checked={selected}
+                                  onChange={() =>
+                                    setKonfigSelectedGrades(prev => {
+                                      if (prev.includes(g)) {
+                                        return prev.length > 1 ? prev.filter(x => x !== g) : prev;
+                                      }
+                                      return [...prev, g].sort();
+                                    })
+                                  }
+                                  style={{ accentColor: '#0284c7', cursor: 'pointer' }}
+                                />
+                                Kelas {g}
+                              </label>
                             );
                           })}
+                          <button
+                            type="button"
+                            onClick={() => setKonfigSelectedGrades([...GRADE_KEYS])}
+                            style={{ fontSize: '0.72rem', padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: '#ffffff', color: '#475569', cursor: 'pointer', fontWeight: 600 }}
+                          >
+                            Semua (7,8,9)
+                          </button>
                         </div>
                         <div style={{ display: 'flex', gap: 6 }}>
                           <button
                             type="button"
-                            onClick={() => setTargetGradesJams(() => [...ALL_JAMS])}
+                            onClick={() => setSelectedGradesJams(() => [...ALL_JAMS])}
                             style={{
                               fontSize: '0.75rem',
                               padding: '3px 8px',
                               borderRadius: 6,
                               border: '1px solid #38bdf8',
-                              background: displayedJams.length === ALL_JAMS.length ? '#0284c7' : '#ffffff',
-                              color: displayedJams.length === ALL_JAMS.length ? '#ffffff' : '#0284c7',
+                              background: allTargetsFull ? '#0284c7' : '#ffffff',
+                              color: allTargetsFull ? '#ffffff' : '#0284c7',
                               cursor: 'pointer',
                               fontWeight: 600
                             }}
@@ -3122,14 +3223,14 @@ export default function PresensiPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => setTargetGradesJams(() => [])}
+                            onClick={() => setSelectedGradesJams(() => [])}
                             style={{
                               fontSize: '0.75rem',
                               padding: '3px 8px',
                               borderRadius: 6,
                               border: '1px solid #f87171',
-                              background: displayedJams.length === 0 ? '#ef4444' : '#ffffff',
-                              color: displayedJams.length === 0 ? '#ffffff' : '#ef4444',
+                              background: allTargetsEmpty ? '#ef4444' : '#ffffff',
+                              color: allTargetsEmpty ? '#ffffff' : '#ef4444',
                               cursor: 'pointer',
                               fontWeight: 600
                             }}
@@ -3139,28 +3240,28 @@ export default function PresensiPage() {
                         </div>
                       </div>
 
-                      {closedPreviewGrades.length > 0 && (
-                        <div style={{ marginBottom: 10, padding: '8px 12px', background: '#fee2e2', border: '1px solid #fecaca', borderRadius: 6, fontSize: '0.8rem', color: '#991b1b', fontWeight: 600 }}>
+                      {restrictedPreviewGrades.length > 0 && (
+                        <div style={{ marginBottom: 10, padding: '8px 12px', background: closedPreviewGrades.length === GRADE_KEYS.length ? '#fee2e2' : '#fffbeb', border: `1px solid ${closedPreviewGrades.length === GRADE_KEYS.length ? '#fecaca' : '#fde68a'}`, borderRadius: 6, fontSize: '0.78rem', color: closedPreviewGrades.length === GRADE_KEYS.length ? '#991b1b' : '#92400e', fontWeight: 600 }}>
                           <i className="fas fa-info-circle" style={{ marginRight: 6 }}></i>
-                          {closedPreviewGrades.length === GRADE_KEYS.length
-                            ? 'Semua Kelas (7, 8, 9) diset 0 Jam: Guru tidak dapat mengisi jurnal mengajar pada tanggal ini.'
-                            : `Kelas ${closedPreviewGrades.join(', ')} diset 0 Jam (ditutup); kelas lainnya tetap mengikuti jam yang aktif.`}
+                          {GRADE_KEYS.map((g, idx) => (
+                            <span key={g}>
+                              {idx > 0 ? ' • ' : ''}
+                              <b>Kls {g}:</b> {formatClosedJamsText(konfigJamPerTingkat[g] || [])}
+                            </span>
+                          ))}
                         </div>
                       )}
 
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
                         {ALL_JAMS.map(j => {
-                          const checked =
-                            konfigTargetGrade === 'ALL'
-                              ? GRADE_KEYS.every(g => (konfigJamPerTingkat[g] || []).includes(j))
-                              : (konfigJamPerTingkat[konfigTargetGrade] || []).includes(j);
+                          const checked = isJamCheckedForTargets(j);
                           return (
                             <label key={j} style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', padding: '4px 10px', background: checked ? '#0284c7' : '#e2e8f0', color: checked ? 'white' : '#475569', borderRadius: 8, fontWeight: 600, fontSize: '0.85rem', userSelect: 'none' }}>
                               <input
                                 type="checkbox"
                                 checked={checked}
                                 onChange={() =>
-                                  setTargetGradesJams(cur =>
+                                  setSelectedGradesJams(cur =>
                                     cur.includes(j) ? cur.filter(x => x !== j) : [...cur, j].sort((a, b) => a - b)
                                   )
                                 }
@@ -3174,7 +3275,7 @@ export default function PresensiPage() {
                       <div style={{ marginBottom: 8 }}>
                         <input
                           type="text"
-                          placeholder={closedPreviewGrades.length > 0 ? "Keterangan penutupan/jam khusus (opsional), contoh: Ujian Kelas 9 / Hari Tanpa KBM" : "Keterangan (opsional), contoh: Hari Pendek"}
+                          placeholder="Keterangan (opsional), contoh: Kls 7 & 8 Jam 1-2 Ditutup / Kegiatan Khusus"
                           value={konfigKeterangan}
                           onChange={e => setKonfigKeterangan(e.target.value)}
                           style={{ width: '100%', padding: '6px 10px', border: '1px solid #bae6fd', borderRadius: 6, fontSize: '0.85rem' }}
@@ -3190,6 +3291,8 @@ export default function PresensiPage() {
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({
                                 tanggal,
+                                tanggalMulai: konfigTanggalMulai,
+                                tanggalSelesai: konfigTanggalSelesai,
                                 jamTersedia: unionJams,
                                 jamPerTingkat: konfigJamPerTingkat,
                                 keterangan: konfigKeterangan
@@ -3197,18 +3300,20 @@ export default function PresensiPage() {
                             });
                             const data = await res.json();
                             if (data.success) {
-                              setJamTersedia(unionJams);
-                              setJamPerTingkat(konfigJamPerTingkat);
-                              setHasJamConfig(true);
+                              if (dateRangeList.includes(tanggal)) {
+                                setJamTersedia(unionJams);
+                                setJamPerTingkat(konfigJamPerTingkat);
+                                setHasJamConfig(true);
+                              }
                               setShowJamConfig(false);
-                              const summaryParts = GRADE_KEYS.map(g => {
-                                const list = konfigJamPerTingkat[g] || [];
-                                return `Kls ${g}: ${list.length === 0 ? 'Tutup' : `${list.length} jam`}`;
-                              });
+                              const dateDesc =
+                                dateRangeList.length > 1
+                                  ? `${dateRangeList.length} hari (${konfigTanggalMulai} s.d. ${konfigTanggalSelesai})`
+                                  : konfigTanggalMulai;
                               Swal.fire({
                                 icon: 'success',
                                 title: 'Tersimpan!',
-                                text: `Pengaturan ${tanggal} (${summaryParts.join(' • ')}) berhasil disimpan.`,
+                                text: `Konfigurasi jam untuk ${dateDesc} berhasil disimpan.`,
                                 timer: 1800,
                                 showConfirmButton: false
                               });
@@ -3218,28 +3323,40 @@ export default function PresensiPage() {
                           }}
                           style={{ background: '#0284c7', color: 'white', border: 'none', borderRadius: 8, padding: '6px 16px', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
                         >
-                          <i className="fas fa-save" style={{ marginRight: 4 }}></i>Simpan Konfigurasi
+                          <i className="fas fa-save" style={{ marginRight: 4 }}></i>
+                          Simpan ({dateRangeList.length > 1 ? `${dateRangeList.length} Hari` : '1 Hari'})
                         </button>
                         {hasJamConfig && (
                           <button
                             type="button"
                             onClick={async () => {
-                              const res = await fetch(`/api/jam-config?tanggal=${tanggal}`, { method: 'DELETE' });
+                              const res = await fetch(
+                                `/api/jam-config?tanggalMulai=${encodeURIComponent(konfigTanggalMulai)}&tanggalSelesai=${encodeURIComponent(konfigTanggalSelesai)}`,
+                                { method: 'DELETE' }
+                              );
                               const data = await res.json();
                               if (data.success) {
                                 const fullPerTingkat = createDefaultJamPerTingkat();
-                                setJamTersedia([...ALL_JAMS]);
-                                setJamPerTingkat(fullPerTingkat);
+                                if (dateRangeList.includes(tanggal)) {
+                                  setJamTersedia([...ALL_JAMS]);
+                                  setJamPerTingkat(fullPerTingkat);
+                                  setHasJamConfig(false);
+                                }
                                 setKonfigJamPerTingkat(fullPerTingkat);
                                 setKonfigKeterangan('');
-                                setHasJamConfig(false);
                                 setShowJamConfig(false);
-                                Swal.fire({ icon: 'success', title: 'Direset!', text: `Konfigurasi jam untuk ${tanggal} dihapus (semua kelas kembali normal 1-13)`, timer: 1500, showConfirmButton: false });
+                                Swal.fire({
+                                  icon: 'success',
+                                  title: 'Direset!',
+                                  text: `Konfigurasi jam untuk ${dateRangeList.length > 1 ? `${dateRangeList.length} hari` : konfigTanggalMulai} dihapus (kembali normal 1-13).`,
+                                  timer: 1500,
+                                  showConfirmButton: false
+                                });
                               }
                             }}
                             style={{ background: '#ef4444', color: 'white', border: 'none', borderRadius: 8, padding: '6px 16px', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}
                           >
-                            <i className="fas fa-undo" style={{ marginRight: 4 }}></i>Reset (Semua Jam)
+                            <i className="fas fa-undo" style={{ marginRight: 4 }}></i>Reset ({dateRangeList.length > 1 ? `${dateRangeList.length} Hari` : 'Semua Jam'})
                           </button>
                         )}
                       </div>

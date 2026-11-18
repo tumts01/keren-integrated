@@ -74,3 +74,44 @@ export function getEffectiveJamsForKelas(
 export function getClosedGrades(perTingkat: JamPerTingkat): GradeKey[] {
   return GRADE_KEYS.filter(g => (perTingkat[g] || []).length === 0);
 }
+
+export function getRestrictedGrades(perTingkat: JamPerTingkat): GradeKey[] {
+  return GRADE_KEYS.filter(g => {
+    const len = (perTingkat[g] || []).length;
+    return len < ALL_JAMS.length;
+  });
+}
+
+export function formatClosedJamsText(jams: number[]): string {
+  const clean = parseJamList(jams);
+  if (clean.length === 0) return 'Ditutup penuh (0 Jam)';
+  if (clean.length === ALL_JAMS.length) return 'Normal (Jam 1–13)';
+  const closed = ALL_JAMS.filter(j => !clean.includes(j));
+  if (closed.length <= 5) {
+    return `Jam ${closed.join(', ')} ditutup (${clean.length} jam aktif)`;
+  }
+  return `Aktif Jam ${clean.join(', ')} (${clean.length} jam)`;
+}
+
+export function expandDateRange(startDate: string, endDate?: string): string[] {
+  const start = String(startDate || '').trim();
+  const end = String(endDate || start).trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) return [];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(end) || end <= start) return [start];
+
+  const [sy, sm, sd] = start.split('-').map(Number);
+  const [ey, em, ed] = end.split('-').map(Number);
+  const startMs = Date.UTC(sy, sm - 1, sd);
+  const endMs = Date.UTC(ey, em - 1, ed);
+  const maxDays = 31;
+  const dates: string[] = [];
+
+  for (let ms = startMs; ms <= endMs && dates.length < maxDays; ms += 86400000) {
+    const d = new Date(ms);
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    dates.push(`${y}-${m}-${day}`);
+  }
+  return dates;
+}
