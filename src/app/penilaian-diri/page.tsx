@@ -1,9 +1,10 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import styles from '@/app/presensi/presensi.module.css';
 import InlineLoading from '@/components/InlineLoading';
 import SearchableSelect from '@/components/SearchableSelect';
 import Swal from 'sweetalert2';
+import PaginationBar from '@/app/perangkat-ujian/components/PaginationBar';
 
 const TRAITS = [
   { id: 'religius', label: 'Religius', desc: 'sikap/perilaku yang bersifat keagamaan' },
@@ -76,6 +77,14 @@ export default function PenilaianDiriPage() {
   const [monitorStaffKategori, setMonitorStaffKategori] = useState<'semua' | 'Guru' | 'Staf'>('semua');
   const [monitorStaffStatus, setMonitorStaffStatus] = useState<'semua' | 'sudah' | 'belum'>('semua');
   const [monitorStaffSearch, setMonitorStaffSearch] = useState('');
+
+  // Pagination states (default 50 baris per halaman, max 50)
+  const [monitorStudentPage, setMonitorStudentPage] = useState(1);
+  const [monitorStudentPageSize, setMonitorStudentPageSize] = useState(50);
+  const [monitorStaffPage, setMonitorStaffPage] = useState(1);
+  const [monitorStaffPageSize, setMonitorStaffPageSize] = useState(50);
+  const [rekapPage, setRekapPage] = useState(1);
+  const [rekapPageSize, setRekapPageSize] = useState(50);
 
   const isPortalRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/portal');
   const isSiswa = isPortalRoute || (userRole || '').toLowerCase().includes('siswa');
@@ -620,6 +629,48 @@ export default function PenilaianDiriPage() {
     }
     return true;
   });
+
+  useEffect(() => {
+    setMonitorStudentPage(1);
+  }, [monitorRombel, monitorStatus, monitorSearch, periode]);
+
+  useEffect(() => {
+    setMonitorStaffPage(1);
+  }, [monitorStaffKategori, monitorStaffStatus, monitorStaffSearch, periode]);
+
+  useEffect(() => {
+    setRekapPage(1);
+  }, [periode, rekapData.length]);
+
+  const effectiveStudentPageSize = Math.min(50, monitorStudentPageSize);
+  const totalStudentPages = Math.max(1, Math.ceil(filteredMonitoringStudents.length / effectiveStudentPageSize));
+  const safeStudentPage = Math.min(Math.max(1, monitorStudentPage), totalStudentPages);
+  const paginatedMonitoringStudents = useMemo(() => {
+    const start = (safeStudentPage - 1) * effectiveStudentPageSize;
+    return filteredMonitoringStudents.slice(start, start + effectiveStudentPageSize);
+  }, [filteredMonitoringStudents, safeStudentPage, effectiveStudentPageSize]);
+
+  const effectiveStaffPageSize = Math.min(50, monitorStaffPageSize);
+  const totalStaffPages = Math.max(1, Math.ceil(filteredMonitoringStaff.length / effectiveStaffPageSize));
+  const safeStaffPage = Math.min(Math.max(1, monitorStaffPage), totalStaffPages);
+  const paginatedMonitoringStaff = useMemo(() => {
+    const start = (safeStaffPage - 1) * effectiveStaffPageSize;
+    return filteredMonitoringStaff.slice(start, start + effectiveStaffPageSize);
+  }, [filteredMonitoringStaff, safeStaffPage, effectiveStaffPageSize]);
+
+  const sortedRekapData = useMemo(() => {
+    return [...rekapData].sort(
+      (a, b) => b.total - a.total || (a.kelas || '').localeCompare(b.kelas || '') || (a.nama || '').localeCompare(b.nama || '')
+    );
+  }, [rekapData]);
+
+  const effectiveRekapPageSize = Math.min(50, rekapPageSize);
+  const totalRekapPages = Math.max(1, Math.ceil(sortedRekapData.length / effectiveRekapPageSize));
+  const safeRekapPage = Math.min(Math.max(1, rekapPage), totalRekapPages);
+  const paginatedRekapData = useMemo(() => {
+    const start = (safeRekapPage - 1) * effectiveRekapPageSize;
+    return sortedRekapData.slice(start, start + effectiveRekapPageSize);
+  }, [sortedRekapData, safeRekapPage, effectiveRekapPageSize]);
 
   const handleSave = async () => {
     if (alreadySubmitted) {
@@ -1545,11 +1596,12 @@ export default function PenilaianDiriPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredMonitoringStaff.map((st: any, idx: number) => {
+                        {paginatedMonitoringStaff.map((st: any, idx: number) => {
                           const isSudah = st.status === 'sudah';
+                          const rowNumber = (safeStaffPage - 1) * effectiveStaffPageSize + idx + 1;
                           return (
-                            <tr key={st.id || idx} style={{ background: isSudah ? 'transparent' : '#fffdfa' }}>
-                              <td style={{ textAlign: 'center', color: '#64748b' }}>{idx + 1}</td>
+                            <tr key={st.id || rowNumber} style={{ background: isSudah ? 'transparent' : '#fffdfa' }}>
+                              <td style={{ textAlign: 'center', color: '#64748b' }}>{rowNumber}</td>
                               <td>
                                 <div style={{ fontWeight: 700, color: '#0f172a' }}>{st.nama}</div>
                                 {st.username && (
@@ -1658,6 +1710,17 @@ export default function PenilaianDiriPage() {
                       </tbody>
                     </table>
                   </div>
+                  <PaginationBar
+                    totalItems={filteredMonitoringStaff.length}
+                    currentPage={safeStaffPage}
+                    pageSize={effectiveStaffPageSize}
+                    onPageChange={setMonitorStaffPage}
+                    onPageSizeChange={(size) => {
+                      setMonitorStaffPageSize(Math.min(50, size));
+                      setMonitorStaffPage(1);
+                    }}
+                    pageSizeOptions={[25, 50]}
+                  />
                 </>
               ) : (
                 <>
@@ -1950,11 +2013,12 @@ export default function PenilaianDiriPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredMonitoringStudents.map((st: any, idx: number) => {
+                    {paginatedMonitoringStudents.map((st: any, idx: number) => {
                       const isSudah = st.status === 'sudah';
+                      const rowNumber = (safeStudentPage - 1) * effectiveStudentPageSize + idx + 1;
                       return (
-                        <tr key={st.id || idx} style={{ background: isSudah ? 'transparent' : '#fffdfa' }}>
-                          <td style={{ textAlign: 'center', color: '#64748b' }}>{idx + 1}</td>
+                        <tr key={st.id || rowNumber} style={{ background: isSudah ? 'transparent' : '#fffdfa' }}>
+                          <td style={{ textAlign: 'center', color: '#64748b' }}>{rowNumber}</td>
                           <td>
                             <div style={{ fontWeight: 600, color: '#1e293b' }}>{st.nisn || '-'}</div>
                             {st.nis && st.nis !== st.nisn && (
@@ -2069,6 +2133,17 @@ export default function PenilaianDiriPage() {
                   </tbody>
                 </table>
               </div>
+              <PaginationBar
+                totalItems={filteredMonitoringStudents.length}
+                currentPage={safeStudentPage}
+                pageSize={effectiveStudentPageSize}
+                onPageChange={setMonitorStudentPage}
+                onPageSizeChange={(size) => {
+                  setMonitorStudentPageSize(Math.min(50, size));
+                  setMonitorStudentPage(1);
+                }}
+                pageSizeOptions={[25, 50]}
+              />
                 </>
               )}
             </>
@@ -2086,7 +2161,8 @@ export default function PenilaianDiriPage() {
           {loading ? (
             <InlineLoading message="Menghitung poin rekapitulasi..." />
           ) : (
-            <div className={styles.tableWrapper}>
+            <>
+              <div className={styles.tableWrapper}>
               <table className={styles.table}>
                 <thead>
                   <tr>
@@ -2098,11 +2174,11 @@ export default function PenilaianDiriPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rekapData
-                    .sort((a, b) => b.total - a.total || (a.kelas || '').localeCompare(b.kelas || '') || (a.nama || '').localeCompare(b.nama || ''))
-                    .map((r, idx) => (
+                  {paginatedRekapData.map((r, idx) => {
+                    const rowNumber = (safeRekapPage - 1) * effectiveRekapPageSize + idx + 1;
+                    return (
                     <tr key={r.nisn}>
-                      <td style={{ textAlign: 'center' }}>{idx + 1}</td>
+                      <td style={{ textAlign: 'center' }}>{rowNumber}</td>
                       <td style={{ textAlign: 'center' }}>{r.kelas}</td>
                       <td>{r.nama}</td>
                       {TRAITS.map(t => (
@@ -2112,8 +2188,9 @@ export default function PenilaianDiriPage() {
                       ))}
                       <td style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '1.1rem' }}>{r.total}</td>
                     </tr>
-                  ))}
-                  {rekapData.length === 0 && (
+                    );
+                  })}
+                  {sortedRekapData.length === 0 && (
                     <tr>
                       <td colSpan={16} style={{ textAlign: 'center', padding: 20 }}>Belum ada data penilaian di periode ini.</td>
                     </tr>
@@ -2121,6 +2198,18 @@ export default function PenilaianDiriPage() {
                 </tbody>
               </table>
             </div>
+            <PaginationBar
+              totalItems={sortedRekapData.length}
+              currentPage={safeRekapPage}
+              pageSize={effectiveRekapPageSize}
+              onPageChange={setRekapPage}
+              onPageSizeChange={(size) => {
+                setRekapPageSize(Math.min(50, size));
+                setRekapPage(1);
+              }}
+              pageSizeOptions={[25, 50]}
+            />
+            </>
           )}
         </div>
       )}
