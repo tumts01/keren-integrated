@@ -486,6 +486,7 @@ export default function SertifikatKarakterModal({
   const [uploading, setUploading] = useState<boolean>(false);
   const [snapCenterX, setSnapCenterX] = useState<boolean>(false);
   const [canvasWidthPx, setCanvasWidthPx] = useState<number>(640);
+  const [hexColorInput, setHexColorInput] = useState<string>(initialTemplate.fields.nama.color);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const draggingKeyRef = useRef<CertFieldKey | null>(null);
@@ -497,6 +498,10 @@ export default function SertifikatKarakterModal({
       setSampleIndex(0);
     }
   }, [isOpen, initialTemplate]);
+
+  useEffect(() => {
+    setHexColorInput(draft.fields[selectedKey]?.color || '#1e293b');
+  }, [selectedKey, draft.fields]);
 
   // Inject Google Fonts once for accurate live preview inside the modal
   useEffect(() => {
@@ -1124,10 +1129,10 @@ export default function SertifikatKarakterModal({
                 </select>
               </div>
 
-              {/* Font Size + Color */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px', gap: '8px' }}>
+              {/* Font Size + Color (Picker + Hex Input) */}
+              <div style={{ display: 'grid', gridTemplateColumns: '95px 1fr', gap: '8px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', color: '#475569', marginBottom: '3px' }}>Ukuran Font (pt)</label>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: '#475569', marginBottom: '3px' }}>Ukuran (pt)</label>
                   <input
                     type="number"
                     min="8"
@@ -1138,13 +1143,46 @@ export default function SertifikatKarakterModal({
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', color: '#475569', marginBottom: '3px' }}>Warna</label>
-                  <input
-                    type="color"
-                    value={activeField.color}
-                    onChange={(e) => updateField(selectedKey, { color: e.target.value })}
-                    style={{ width: '100%', height: '34px', padding: '2px', border: '1px solid #cbd5e1', borderRadius: '5px', cursor: 'pointer', background: 'white' }}
-                  />
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: '#475569', marginBottom: '3px' }}>Warna (Hex)</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <input
+                      type="color"
+                      value={/^#[0-9a-fA-F]{6}$/.test(activeField.color) ? activeField.color : '#1e293b'}
+                      onChange={(e) => {
+                        const val = e.target.value.toLowerCase();
+                        setHexColorInput(val);
+                        updateField(selectedKey, { color: val });
+                      }}
+                      style={{ width: '38px', height: '34px', padding: '2px', border: '1px solid #cbd5e1', borderRadius: '5px', cursor: 'pointer', background: 'white', flexShrink: 0 }}
+                    />
+                    <input
+                      type="text"
+                      value={hexColorInput}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        setHexColorInput(raw);
+                        const trimmed = raw.trim();
+                        const withHash = trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
+                        if (/^#[0-9a-fA-F]{6}$/.test(withHash)) {
+                          updateField(selectedKey, { color: withHash.toLowerCase() });
+                        } else if (/^#[0-9a-fA-F]{3}$/.test(withHash)) {
+                          const expanded = `#${withHash[1]}${withHash[1]}${withHash[2]}${withHash[2]}${withHash[3]}${withHash[3]}`;
+                          updateField(selectedKey, { color: expanded.toLowerCase() });
+                        }
+                      }}
+                      onBlur={() => setHexColorInput(activeField.color)}
+                      placeholder="#c95f58"
+                      maxLength={12}
+                      style={{
+                        width: '100%',
+                        padding: '6px 8px',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '5px',
+                        fontSize: '0.84rem',
+                        fontFamily: 'monospace',
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 
