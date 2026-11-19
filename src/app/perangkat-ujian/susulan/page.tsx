@@ -274,6 +274,11 @@ export default function SusulanPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [pulling, setPulling] = useState(false);
 
+  // Active Exam Info
+  const [activeExamTitle, setActiveExamTitle] = useState<string>('');
+  const [activeExamTA, setActiveExamTA] = useState<string>('');
+  const [examConfigLoaded, setExamConfigLoaded] = useState<boolean>(false);
+
   // Rekap Data search & pagination (max 50 rows/page)
   const [rekapSearch, setRekapSearch] = useState('');
   const [rekapPage, setRekapPage] = useState(1);
@@ -322,6 +327,62 @@ export default function SusulanPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Fetch active exam info from rapor_config (susulan_exam_info & konfigurasi_ruang_ujian)
+        let resolvedTitle = '';
+        let resolvedTA = '';
+        try {
+          const { data: cfgRows, error: cfgErr } = await supabase
+            .from('rapor_config')
+            .select('key, value')
+            .in('key', ['susulan_exam_info', 'konfigurasi_ruang_ujian']);
+
+          if (!cfgErr && cfgRows) {
+            const susulanCfg = cfgRows.find((r: any) => r.key === 'susulan_exam_info');
+            const roomCfg = cfgRows.find((r: any) => r.key === 'konfigurasi_ruang_ujian');
+
+            if (roomCfg?.value) {
+              try {
+                const parsedRoom = JSON.parse(roomCfg.value);
+                if (parsedRoom.examTitle) resolvedTitle = String(parsedRoom.examTitle).trim();
+                if (parsedRoom.tahunAjaranFilter) resolvedTA = String(parsedRoom.tahunAjaranFilter).trim();
+              } catch {}
+            }
+
+            if (susulanCfg?.value) {
+              try {
+                const parsedSusulan = JSON.parse(susulanCfg.value);
+                if (parsedSusulan.examTitle) resolvedTitle = String(parsedSusulan.examTitle).trim();
+                if (parsedSusulan.tahunAjaran !== undefined) resolvedTA = String(parsedSusulan.tahunAjaran).trim();
+              } catch {}
+            }
+          }
+
+          if (!resolvedTitle) {
+            const localSusulan = localStorage.getItem('susulan_exam_info');
+            if (localSusulan) {
+              try {
+                const parsed = JSON.parse(localSusulan);
+                if (parsed.examTitle) resolvedTitle = String(parsed.examTitle).trim();
+                if (parsed.tahunAjaran) resolvedTA = String(parsed.tahunAjaran).trim();
+              } catch {}
+            }
+          }
+          if (!resolvedTitle) {
+            const localRoom = localStorage.getItem('konfigurasi_ruang_ujian');
+            if (localRoom) {
+              try {
+                const parsed = JSON.parse(localRoom);
+                if (parsed.examTitle) resolvedTitle = String(parsed.examTitle).trim();
+                if (parsed.tahunAjaranFilter) resolvedTA = String(parsed.tahunAjaranFilter).trim();
+              } catch {}
+            }
+          }
+        } catch {}
+
+        setActiveExamTitle(resolvedTitle);
+        setActiveExamTA(resolvedTA);
+        setExamConfigLoaded(true);
+
         // Fetch participants (Rekap Data)
         const resPart = await fetch('/api/perangkat-ujian/susulan');
         const resData = await resPart.json();
@@ -560,18 +621,30 @@ export default function SusulanPage() {
       return;
     }
 
-    const excelRows = rowsToExport.map((row, idx) => ({
-      No: idx + 1,
-      NISN: row.nisn || '-',
-      'Nama Siswa': row.nama || '-',
-      'No Ujian': row.noUjian || '-',
-      Kelas: row.kelas || '-',
-      Ruang: row.ruang || '-',
-      'Mata Pelajaran': row.mapel || '-',
-      'Status Susulan': row.isSelesai ? 'Selesai' : 'Belum Selesai',
-    }));
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const examLabel = activeExamTitle || 'Ujian Susulan';
+    const aoa: (string | number)[][] = [
+      [`DATA INPUT UJIAN SUSULAN — ${examLabel.toUpperCase()}`],
+      [`${activeExamTA ? `Tahun Ajaran: ${activeExamTA}  |  ` : ''}Tanggal Export: ${dateStr}`],
+      [],
+      ['No', 'NISN', 'Nama Siswa', 'No Ujian', 'Kelas', 'Ruang', 'Mata Pelajaran', 'Status Susulan'],
+      ...rowsToExport.map((row, idx) => [
+        idx + 1,
+        row.nisn || '-',
+        row.nama || '-',
+        row.noUjian || '-',
+        row.kelas || '-',
+        row.ruang || '-',
+        row.mapel || '-',
+        row.isSelesai ? 'Selesai' : 'Belum Selesai',
+      ]),
+    ];
 
-    const ws = XLSX.utils.json_to_sheet(excelRows);
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } },
+    ];
     ws['!cols'] = [
       { wch: 5 },
       { wch: 15 },
@@ -586,7 +659,6 @@ export default function SusulanPage() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Data Input Susulan');
 
-    const dateStr = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `Data_Input_Susulan_${dateStr}.xlsx`);
   };
 
@@ -639,6 +711,69 @@ export default function SusulanPage() {
       Swal.fire('Error', 'Terjadi kesalahan jaringan', 'error');
     } finally {
       setResettingInput(false);
+    }
+  };
+  const saveActiveExamInfo = async (examTitle: string, tahunAjaran: string) => {
+    const payload = { examTitle: examTitle.trim(), tahunAjaran: tahunAjaran.trim() };
+    setActiveExamTitle(payload.examTitle);
+    setActiveExamTA(payload.tahunAjaran);
+    try {
+      localStorage.setItem('susulan_exam_info', JSON.stringify(payload));
+      await supabase
+        .from('rapor_config')
+        .upsert({ key: 'susulan_exam_info', value: JSON.stringify(payload) }, { onConflict: 'key' });
+    } catch (err) {
+      console.error('Error saving susulan_exam_info:', err);
+    }
+  };
+
+  const handleEditActiveExam = async () => {
+    const esc = (s: string) =>
+      s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    const result = await Swal.fire({
+      title: 'Atur Info Ujian Aktif',
+      html: `
+        <div style="text-align:left;display:flex;flex-direction:column;gap:12px;">
+          <div>
+            <label style="display:block;font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:4px;">Nama Ujian</label>
+            <input id="swal-exam-title" class="swal2-input" style="margin:0;width:100%;font-size:0.95rem;" value="${esc(activeExamTitle)}" placeholder="Misal: SUMATIF AKHIR SEMESTER GANJIL" />
+          </div>
+          <div>
+            <label style="display:block;font-size:0.85rem;font-weight:600;color:#334155;margin-bottom:4px;">Tahun Ajaran</label>
+            <input id="swal-exam-ta" class="swal2-input" style="margin:0;width:100%;font-size:0.95rem;" value="${esc(activeExamTA)}" placeholder="Misal: 2026/2027" />
+          </div>
+          <div style="font-size:0.8rem;color:#64748b;">
+            Otomatis tersinkron saat menarik data dari <b>Konfigurasi Pembagian Ruang</b>, atau dapat diubah manual di sini.
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Simpan',
+      cancelButtonText: 'Batal',
+      preConfirm: () => {
+        const titleEl = document.getElementById('swal-exam-title') as HTMLInputElement | null;
+        const taEl = document.getElementById('swal-exam-ta') as HTMLInputElement | null;
+        const titleVal = titleEl?.value.trim() || '';
+        const taVal = taEl?.value.trim() || '';
+        if (!titleVal) {
+          Swal.showValidationMessage('Nama Ujian wajib diisi');
+          return null;
+        }
+        return { titleVal, taVal };
+      },
+    });
+
+    if (result.isConfirmed && result.value) {
+      await saveActiveExamInfo(result.value.titleVal, result.value.taVal);
+      Swal.fire({
+        icon: 'success',
+        title: 'Info ujian aktif diperbarui',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 1800,
+      });
     }
   };
   // --------------------------
@@ -700,6 +835,13 @@ export default function SusulanPage() {
 
       setParticipants(mapped);
       setRekapPage(1);
+
+      const syncedTitle = String(parsed.examTitle || '').trim();
+      const syncedTA = String(parsed.tahunAjaranFilter || '').trim();
+      if (syncedTitle || syncedTA) {
+        await saveActiveExamInfo(syncedTitle || activeExamTitle, syncedTA);
+      }
+
       Swal.fire({
         toast: true,
         position: 'top-end',
@@ -769,12 +911,82 @@ export default function SusulanPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div style={{ background: 'white', padding: '24px', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-        <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: '#1e293b', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <i className="fas fa-file-alt" style={{ color: '#3b82f6' }}></i>
-          Perangkat Ujian Susulan
-        </h1>
-        <p style={{ color: '#64748b' }}>Kelola data perangkat ujian susulan.</p>
+      <div style={{ background: 'white', padding: '24px', borderRadius: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+        <div>
+          <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: '#1e293b', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <i className="fas fa-file-alt" style={{ color: '#3b82f6' }}></i>
+            Perangkat Ujian Susulan
+          </h1>
+          <p style={{ color: '#64748b', margin: 0 }}>Kelola data perangkat ujian susulan.</p>
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '10px 14px',
+            borderRadius: '8px',
+            background: activeExamTitle ? '#f0fdf4' : '#fffbeb',
+            border: `1px solid ${activeExamTitle ? '#bbf7d0' : '#fde68a'}`,
+          }}
+        >
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: activeExamTitle ? '#15803d' : '#b45309' }}>
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '999px',
+                  background: activeExamTitle ? '#22c55e' : '#f59e0b',
+                  display: 'inline-block',
+                }}
+              />
+              Ujian Aktif
+            </div>
+            <div style={{ fontSize: '0.96rem', fontWeight: 700, color: '#0f172a', marginTop: '2px' }}>
+              {!examConfigLoaded ? 'Memuat info ujian...' : activeExamTitle || 'Belum diatur'}
+              {activeExamTA && (
+                <span
+                  style={{
+                    marginLeft: '8px',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: '999px',
+                    background: 'white',
+                    border: '1px solid #cbd5e1',
+                    color: '#334155',
+                  }}
+                >
+                  TA {activeExamTA}
+                </span>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleEditActiveExam}
+            style={{
+              padding: '6px 10px',
+              borderRadius: '6px',
+              border: '1px solid #cbd5e1',
+              background: 'white',
+              color: '#334155',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              whiteSpace: 'nowrap',
+            }}
+            title="Ubah Info Ujian Aktif"
+          >
+            <i className="fas fa-pen" style={{ fontSize: '0.72rem' }}></i>
+            Ubah
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid #e2e8f0', marginBottom: '20px' }}>
