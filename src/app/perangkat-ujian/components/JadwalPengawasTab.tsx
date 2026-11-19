@@ -262,6 +262,7 @@ export default function JadwalPengawasTab() {
   });
 
   const [roomCountInput, setRoomCountInput] = useState<number>(17);
+  const [highlightedKode, setHighlightedKode] = useState<string | null>(null);
 
   const [editingCell, setEditingCell] = useState<{
     dayId: string;
@@ -1587,6 +1588,8 @@ export default function JadwalPengawasTab() {
                   {currentGroup.rooms.map(r => {
                     const kode = ses.pengawas?.[r] || '';
                     const isClash = scheduleStats.clashCellKeys.has(`${day.id}|${ses.id}|${r}`);
+                    const isHighlighted = Boolean(highlightedKode && kode === highlightedKode);
+                    const isDimmed = Boolean(highlightedKode && !isHighlighted && !isClash);
                     const teacher = kode ? teacherByKode.get(kode) : null;
                     return (
                       <td
@@ -1607,10 +1610,26 @@ export default function JadwalPengawasTab() {
                           border: '1px solid #cbd5e1',
                           padding: '6px 4px',
                           textAlign: 'center',
-                          fontWeight: 700,
+                          fontWeight: isHighlighted ? 900 : 700,
                           cursor: 'pointer',
-                          background: isClash ? '#fee2e2' : undefined,
-                          color: isClash ? '#dc2626' : kode ? '#0f172a' : '#cbd5e1'
+                          background: isClash
+                            ? '#fee2e2'
+                            : isHighlighted
+                            ? '#facc15'
+                            : undefined,
+                          boxShadow: isHighlighted && !isClash
+                            ? 'inset 0 0 0 2px #b45309'
+                            : undefined,
+                          color: isClash
+                            ? '#dc2626'
+                            : isHighlighted
+                            ? '#713f12'
+                            : isDimmed
+                            ? '#cbd5e1'
+                            : kode
+                            ? '#0f172a'
+                            : '#cbd5e1',
+                          transition: 'background-color 0.15s ease, color 0.15s ease'
                         }}
                       >
                         {kode || '-'}
@@ -1626,9 +1645,36 @@ export default function JadwalPengawasTab() {
 
       {/* Tabel Legend: Kode & Nama Pengawas (3 Kolom seperti gambar) */}
       <div>
-        <h3 style={{ margin: '0 0 8px 0', fontSize: '0.95rem', fontWeight: 700, color: '#1e293b' }}>
-          Kode &amp; Nama Pengawas — {activeGroupLabel} ({legendTeachers.length} Guru)
-        </h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+          <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#1e293b' }}>
+            Kode &amp; Nama Pengawas — {activeGroupLabel} ({legendTeachers.length} Guru)
+            <span style={{ fontSize: '0.78rem', fontWeight: 500, color: '#64748b', marginLeft: '8px' }}>
+              (Klik nama pengawas untuk menyorot kodenya di tabel)
+            </span>
+          </h3>
+          {highlightedKode && (
+            <button
+              type="button"
+              onClick={() => setHighlightedKode(null)}
+              style={{
+                background: '#fef08a',
+                color: '#854d0e',
+                border: '1px solid #eab308',
+                padding: '4px 12px',
+                borderRadius: '999px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <i className="fas fa-highlighter"></i>
+              Menyorot [{highlightedKode}] {teacherByKode.get(highlightedKode)?.nama || ''} · Tutup
+            </button>
+          )}
+        </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(270px, 1fr))', gap: '10px' }}>
           {legendColumns.map((col, colIdx) => (
             <table key={colIdx} style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', background: 'white' }}>
@@ -1645,20 +1691,34 @@ export default function JadwalPengawasTab() {
                 </tr>
               </thead>
               <tbody>
-                {col.map(t => (
-                  <tr key={t.kode}>
-                    <td style={{ border: '1px solid #cbd5e1', padding: '4px 6px', textAlign: 'center', fontWeight: 700, color: '#0369a1' }}>
-                      {t.kode}
-                    </td>
-                    <td style={{ border: '1px solid #cbd5e1', padding: '4px 8px', color: '#1e293b' }}>{t.nama}</td>
-                    <td style={{ border: '1px solid #cbd5e1', padding: '4px 6px', textAlign: 'center', fontWeight: 700, color: t.count > 0 ? '#15803d' : '#94a3b8' }}>
-                      {t.count}x
-                    </td>
-                    <td style={{ border: '1px solid #cbd5e1', padding: '4px 6px', textAlign: 'center', fontWeight: 700, color: '#334155', background: '#f8fafc' }}>
-                      {t.totalCombined}x
-                    </td>
-                  </tr>
-                ))}
+                {col.map(t => {
+                  const isRowSelected = highlightedKode === t.kode;
+                  return (
+                    <tr
+                      key={t.kode}
+                      onClick={() => setHighlightedKode(prev => (prev === t.kode ? null : t.kode))}
+                      style={{
+                        cursor: 'pointer',
+                        background: isRowSelected ? '#fef08a' : undefined,
+                        transition: 'background-color 0.15s ease'
+                      }}
+                      title="Klik untuk menyorot kode pengawas ini di tabel jadwal"
+                    >
+                      <td style={{ border: '1px solid #cbd5e1', padding: '4px 6px', textAlign: 'center', fontWeight: 800, color: isRowSelected ? '#92400e' : '#0369a1' }}>
+                        {t.kode}
+                      </td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '4px 8px', color: isRowSelected ? '#78350f' : '#1e293b', fontWeight: isRowSelected ? 700 : 400 }}>
+                        {t.nama}
+                      </td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '4px 6px', textAlign: 'center', fontWeight: 700, color: t.count > 0 ? '#15803d' : '#94a3b8' }}>
+                        {t.count}x
+                      </td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '4px 6px', textAlign: 'center', fontWeight: 700, color: '#334155', background: isRowSelected ? '#fde047' : '#f8fafc' }}>
+                        {t.totalCombined}x
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           ))}
