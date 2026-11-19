@@ -70,6 +70,13 @@
   overflow-x: auto;
 }
 
+.tableGuruWrapper {
+  position: relative;
+  overflow: auto;
+  max-height: 75vh;
+  -webkit-overflow-scrolling: touch;
+}
+
 .tabs {
   display: flex;
   gap: 8px;
@@ -123,6 +130,32 @@
 }
 
 /* Sub-header: A, B, C, dst */
+.tableGuru {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.tableGuru thead {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+}
+
+.tableGuru th {
+  border-top: none;
+  border-left: none;
+  border-right: 1px solid #2d5080;
+  border-bottom: 1px solid #2d5080;
+}
+
+.tableGuru td {
+  border-top: none;
+  border-left: none;
+  border-right: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
 .tableGuru thead tr:nth-child(2) th {
   background: #2d5a8e;
   font-size: 0.7rem;

@@ -949,7 +949,7 @@ export default function JadwalMengajarPage() {
               <p>Tidak ada data jadwal ditemukan.</p>
             </div>
           ) : (
-            <div key="wrapper-guru" className={styles.tableWrapper}>
+            <div key="wrapper-guru" className={styles.tableGuruWrapper}>
             <table className={`${styles.table} ${styles.tableGuru}`}>
               <thead>
                 <tr>
