@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
@@ -17,6 +17,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [newUsername, setNewUsername] = useState('');
   const [updateLoading, setUpdateLoading] = useState(false);
   const [popup, setPopup] = useState<{show: boolean, type: 'error'|'confirm'|'success', title: string, message: string, onConfirm?: () => void} | null>(null);
+  const startupCheckUserRef = useRef<string | null>(null);
   
   const pathname = usePathname();
 
@@ -167,64 +168,156 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Popup Pengumuman Baru & Pemutakhiran Data saat user berhasil login / load
-  useEffect(() => {
-    if (user) {
-      fetch('/api/pengumuman?limit=5')
-        .then(r => r.json())
-        .then(data => {
-          let hasShownAnn = false;
-          if (data.success && data.data && data.data.length > 0) {
-            const latest = data.data[0]; // Pengumuman terbaru
-            const annId = `${latest.tanggal}_${latest.jam}_${latest.pengirim}`;
-            const lastRead = localStorage.getItem('keren_last_read_ann');
-            
-            if (lastRead !== annId) {
-              hasShownAnn = true;
-              import('sweetalert2').then(Swal => {
-                const matchId = latest.lampiran ? (latest.lampiran.match(/\/[d]\/([a-zA-Z0-9_-]+)/) || [])[1] : null;
-                const imgTag = matchId ? `<img src="https://drive.google.com/thumbnail?id=${matchId}&sz=w600" style="width: 100%; border-radius: 8px; margin-bottom: 12px; object-fit: contain; max-height: 350px; display: block;" onerror="this.style.display='none'" />` : '';
+  const checkAndPromptPendingArsip = async (currentUser: any) => {
+    if (!currentUser || !currentUser.nama) return;
 
-                Swal.default.fire({
-                  title: '📢 Pengumuman Baru!',
-                  html: `
-                    <div style="text-align: left; margin-top: 10px;">
-                      <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 12px; display: flex; justify-content: space-between;">
-                        <span>Dari: <b>${latest.pengirim}</b></span>
-                        <span>${latest.tanggal} ${latest.jam}</span>
-                      </div>
-                      ${imgTag}
-                      ${latest.pesan ? `<div style="background: #eff6ff; padding: 16px; border-radius: 12px; border-left: 4px solid #0ea5e9; font-size: 0.95rem; line-height: 1.5; color: #1e293b; white-space: pre-wrap;">${latest.pesan}</div>` : ''}
-                      ${latest.lampiran ? `
-                        <div style="margin-top: 12px; text-align: center;">
-                          <a href="${latest.lampiran}" target="_blank" rel="noreferrer" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; background: #0ea5e9; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 0.9rem;">
-                            <i class="fas fa-paperclip"></i> Buka / Unduh Lampiran
-                          </a>
-                        </div>
-                      ` : ''}
-                    </div>
-                  `,
-                  confirmButtonText: 'Tutup & Mengerti',
-                  confirmButtonColor: '#0ea5e9',
-                  width: '500px',
-                  allowOutsideClick: false
-                }).then(() => {
-                  localStorage.setItem('keren_last_read_ann', annId);
-                  // Setelah pengumuman ditutup, cek pemutakhiran nama ibu kandung
-                  checkAndPromptNamaIbu(user);
-                });
-              });
-            }
-          }
-          if (!hasShownAnn) {
-            checkAndPromptNamaIbu(user);
-          }
-        })
-        .catch(err => {
-          console.error('Gagal memuat pengumuman:', err);
-          checkAndPromptNamaIbu(user);
+    try {
+      const res = await fetch(
+        `/api/persuratan/pending-arsip?nama=${encodeURIComponent(currentUser.nama)}`,
+        { cache: 'no-store' }
+      );
+      const data = await res.json();
+
+      if (data.success && data.totalPending > 0 && Array.isArray(data.items)) {
+        const Swal = (await import('sweetalert2')).default;
+        const esc = (s: string) =>
+          String(s || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+
+        const visibleItems = data.items.slice(0, 8);
+        const listHtml = visibleItems
+          .map(
+            (item: any) => `
+              <div style="padding: 8px 10px; border-radius: 8px; background: #fff7ed; border: 1px solid #fed7aa; margin-bottom: 6px; text-align: left;">
+                <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                  <span style="font-size: 0.78rem; font-weight: 700; color: #c2410c;">${esc(item.noSurat || 'Tanpa Nomor')}</span>
+                  <span style="font-size: 0.72rem; color: #78716c; white-space: nowrap;">${esc(item.tanggal || '-')}</span>
+                </div>
+                <div style="font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-top: 2px;">${esc(item.namaSurat || '-')}</div>
+              </div>
+            `
+          )
+          .join('');
+
+        const moreHtml =
+          data.totalPending > visibleItems.length
+            ? `<div style="font-size: 0.78rem; color: #9a3412; font-weight: 600; margin-top: 4px; text-align: center;">+ ${data.totalPending - visibleItems.length} surat keluar lainnya belum diarsipkan</div>`
+            : '';
+
+        const result = await Swal.fire({
+          title: '',
+          html: `
+            <div style="text-align: center; padding: 4px 0;">
+              <div style="width: 60px; height: 60px; border-radius: 50%; background: #fef2f2; color: #dc2626; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin: 0 auto 12px; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.18);">
+                <i class="fas fa-exclamation-triangle"></i>
+              </div>
+              <h3 style="margin: 0 0 6px; font-weight: 800; color: #991b1b; font-size: 1.2rem;">
+                Belum Mengarsip Surat Keluar!
+              </h3>
+              <p style="margin: 0 0 12px; color: #475569; font-size: 0.88rem; line-height: 1.45;">
+                Halo <b>${esc(currentUser.nama)}</b>, terdapat <b>${data.totalPending}</b> surat keluar atas nama Anda yang <b>belum diupload arsip/scan-nya</b>:
+              </p>
+              <div style="max-height: 230px; overflow-y: auto; padding-right: 2px; margin-bottom: 10px;">
+                ${listHtml}
+                ${moreHtml}
+              </div>
+              <div style="font-size: 0.76rem; color: #64748b;">
+                Mohon segera mengarsipkan file surat keluar melalui menu <b>Persuratan &rarr; Tagihan Arsip</b>.
+              </div>
+            </div>
+          `,
+          showCancelButton: true,
+          confirmButtonText: '<i class="fas fa-cloud-upload-alt" style="margin-right: 6px;"></i> Upload Arsip Sekarang',
+          cancelButtonText: 'Nanti Saja',
+          confirmButtonColor: '#dc2626',
+          cancelButtonColor: '#64748b',
+          width: '500px',
+          allowOutsideClick: false,
         });
+
+        if (result.isConfirmed) {
+          router.push('/persuratan?tab=tagihan');
+        }
+      }
+    } catch (e) {
+      console.error('Error checking pending arsip surat keluar:', e);
     }
+  };
+
+  // Popup Pengumuman Baru, Pemutakhiran Data & Pengingat Arsip Surat Keluar saat user membuka aplikasi
+  useEffect(() => {
+    if (!user) {
+      startupCheckUserRef.current = null;
+      return;
+    }
+
+    const userIdentity = String(user.username || user.nama || '').trim();
+    if (!userIdentity || startupCheckUserRef.current === userIdentity) {
+      return;
+    }
+    startupCheckUserRef.current = userIdentity;
+
+    const runPostAnnouncementChecks = async () => {
+      await checkAndPromptNamaIbu(user);
+      await checkAndPromptPendingArsip(user);
+    };
+
+    fetch('/api/pengumuman?limit=5')
+      .then(r => r.json())
+      .then(data => {
+        let hasShownAnn = false;
+        if (data.success && data.data && data.data.length > 0) {
+          const latest = data.data[0]; // Pengumuman terbaru
+          const annId = `${latest.tanggal}_${latest.jam}_${latest.pengirim}`;
+          const lastRead = localStorage.getItem('keren_last_read_ann');
+          
+          if (lastRead !== annId) {
+            hasShownAnn = true;
+            import('sweetalert2').then(Swal => {
+              const matchId = latest.lampiran ? (latest.lampiran.match(/\/[d]\/([a-zA-Z0-9_-]+)/) || [])[1] : null;
+              const imgTag = matchId ? `<img src="https://drive.google.com/thumbnail?id=${matchId}&sz=w600" style="width: 100%; border-radius: 8px; margin-bottom: 12px; object-fit: contain; max-height: 350px; display: block;" onerror="this.style.display='none'" />` : '';
+
+              Swal.default.fire({
+                title: '📢 Pengumuman Baru!',
+                html: `
+                  <div style="text-align: left; margin-top: 10px;">
+                    <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 12px; display: flex; justify-content: space-between;">
+                      <span>Dari: <b>${latest.pengirim}</b></span>
+                      <span>${latest.tanggal} ${latest.jam}</span>
+                    </div>
+                    ${imgTag}
+                    ${latest.pesan ? `<div style="background: #eff6ff; padding: 16px; border-radius: 12px; border-left: 4px solid #0ea5e9; font-size: 0.95rem; line-height: 1.5; color: #1e293b; white-space: pre-wrap;">${latest.pesan}</div>` : ''}
+                    ${latest.lampiran ? `
+                      <div style="margin-top: 12px; text-align: center;">
+                        <a href="${latest.lampiran}" target="_blank" rel="noreferrer" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; background: #0ea5e9; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 0.9rem;">
+                          <i class="fas fa-paperclip"></i> Buka / Unduh Lampiran
+                        </a>
+                      </div>
+                    ` : ''}
+                  </div>
+                `,
+                confirmButtonText: 'Tutup & Mengerti',
+                confirmButtonColor: '#0ea5e9',
+                width: '500px',
+                allowOutsideClick: false
+              }).then(() => {
+                localStorage.setItem('keren_last_read_ann', annId);
+                runPostAnnouncementChecks();
+              });
+            });
+          }
+        }
+        if (!hasShownAnn) {
+          runPostAnnouncementChecks();
+        }
+      })
+      .catch(err => {
+        console.error('Gagal memuat pengumuman:', err);
+        runPostAnnouncementChecks();
+      });
   }, [user]);
 
   const handleLogin = async (e: React.FormEvent) => {

@@ -249,6 +249,13 @@ export default function PersuratanPage() {
   };
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const tabParam = new URLSearchParams(window.location.search).get('tab');
+      if (tabParam === 'keluar' || tabParam === 'masuk' || tabParam === 'tagihan' || tabParam === 'tugas' || tabParam === 'generate') {
+        setActiveTab(tabParam);
+      }
+    }
+
     const userStr = localStorage.getItem('keren_user_data');
     if (userStr) {
       try {
