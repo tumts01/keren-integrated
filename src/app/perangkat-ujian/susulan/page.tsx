@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import Swal from 'sweetalert2';
+import * as XLSX from 'xlsx';
 import InlineLoading from '@/components/InlineLoading';
 import { supabase } from '@/lib/supabase';
 import PaginationBar from '../components/PaginationBar';
@@ -109,6 +110,7 @@ export default function SusulanPage() {
   const [mapelList, setMapelList] = useState<string[]>([]);
   const [inputRows, setInputRows] = useState<InputRow[]>([]);
   const [isFetchingInput, setIsFetchingInput] = useState(false);
+  const [resettingInput, setResettingInput] = useState(false);
   const [inputSearch, setInputSearch] = useState('');
   const [inputFilterStatus, setInputFilterStatus] = useState('Semua');
   const [inputFilterRuang, setInputFilterRuang] = useState('Semua');
@@ -291,6 +293,97 @@ export default function SusulanPage() {
     } catch (err) {
       console.error(err);
       Swal.fire('Error', 'Terjadi kesalahan jaringan', 'error');
+    }
+  };
+
+  const handleExportInputExcel = () => {
+    const rowsToExport = filteredInputRows.filter(
+      (r) => r.nama || r.nisn || r.mapel
+    );
+    if (rowsToExport.length === 0) {
+      Swal.fire('Info', 'Tidak ada data input susulan untuk diexport.', 'info');
+      return;
+    }
+
+    const excelRows = rowsToExport.map((row, idx) => ({
+      No: idx + 1,
+      NISN: row.nisn || '-',
+      'Nama Siswa': row.nama || '-',
+      'No Ujian': row.noUjian || '-',
+      Kelas: row.kelas || '-',
+      Ruang: row.ruang || '-',
+      'Mata Pelajaran': row.mapel || '-',
+      'Status Susulan': row.isSelesai ? 'Selesai' : 'Belum Selesai',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(excelRows);
+    ws['!cols'] = [
+      { wch: 5 },
+      { wch: 15 },
+      { wch: 30 },
+      { wch: 18 },
+      { wch: 10 },
+      { wch: 14 },
+      { wch: 26 },
+      { wch: 16 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Data Input Susulan');
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `Data_Input_Susulan_${dateStr}.xlsx`);
+  };
+
+  const handleResetInputData = async () => {
+    if (inputRows.length === 0) {
+      Swal.fire('Info', 'Data input susulan sudah kosong.', 'info');
+      return;
+    }
+
+    const { isConfirmed } = await Swal.fire({
+      title: 'Reset Semua Data Input Susulan?',
+      html: `Sebanyak <b>${inputRows.length}</b> baris data input susulan akan dihapus permanen.<br/><span style="color:#64748b;font-size:0.9rem;">Disarankan klik <b>Export Excel</b> terlebih dahulu jika data lama masih diperlukan sebagai arsip.</span>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      confirmButtonText: 'Ya, Reset Semua',
+      cancelButtonText: 'Batal',
+    });
+
+    if (!isConfirmed) return;
+
+    setResettingInput(true);
+    try {
+      const res = await fetch('/api/perangkat-ujian/susulan/input', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset' }),
+      });
+      const resData = await res.json();
+
+      if (resData.success) {
+        setInputRows([]);
+        setInputSearch('');
+        setInputFilterStatus('Semua');
+        setInputFilterRuang('Semua');
+        setInputPage(1);
+        Swal.fire({
+          icon: 'success',
+          title: 'Semua data input susulan berhasil direset',
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 2000,
+        });
+      } else {
+        Swal.fire('Error', resData.error || 'Gagal mereset data input susulan', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire('Error', 'Terjadi kesalahan jaringan', 'error');
+    } finally {
+      setResettingInput(false);
     }
   };
   // --------------------------
@@ -609,9 +702,47 @@ export default function SusulanPage() {
                 ))}
               </select>
 
-              {/* Tambah Baris */}
+              {/* Tambah Baris, Export Excel & Reset */}
               <button onClick={handleAddInputRow} style={{ padding: '8px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                 <i className="fas fa-plus"></i> Tambah Baris
+              </button>
+              <button
+                onClick={handleExportInputExcel}
+                disabled={filteredInputRows.length === 0}
+                style={{
+                  padding: '8px 16px',
+                  background: filteredInputRows.length === 0 ? '#cbd5e1' : '#10b981',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: filteredInputRows.length === 0 ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <i className="fas fa-file-excel"></i> Export Excel
+              </button>
+              <button
+                onClick={handleResetInputData}
+                disabled={inputRows.length === 0 || resettingInput}
+                style={{
+                  padding: '8px 16px',
+                  background: inputRows.length === 0 || resettingInput ? '#cbd5e1' : '#ef4444',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: inputRows.length === 0 || resettingInput ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <i className={resettingInput ? 'fas fa-spinner fa-spin' : 'fas fa-redo'}></i> {resettingInput ? 'Mereset...' : 'Reset'}
               </button>
             </div>
 

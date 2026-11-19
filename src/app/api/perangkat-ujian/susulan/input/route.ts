@@ -46,6 +46,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true });
     }
 
+    else if (action === 'reset') {
+      const { error } = await supabase.from('data_input_susulan').delete().not('id', 'is', null);
+      if (error && error.code !== '42P01') throw error;
+      return NextResponse.json({ success: true });
+    }
+
     return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 });
   } catch (error: any) {
     console.error('API POST Input Susulan Error:', error);
