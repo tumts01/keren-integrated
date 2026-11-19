@@ -117,9 +117,7 @@ export default function Sidebar() {
             { name: 'Apresiasi & Pelanggaran', path: '/dispo/poin' }
           ]
         },
-        ...(isAdmin ? [
-          { name: 'Jadwal Mengajar', path: '/jadwal-mengajar', icon: 'fa-clock' },
-        ] : []),
+        { name: 'Jadwal Mengajar', path: '/jadwal-mengajar', icon: 'fa-clock' },
         { name: 'Pengembalian Rapor', path: '/pengembalian-rapor', icon: 'fa-file-signature' },
         { name: 'Kendaraan Siswa', path: '/kendaraan-siswa', icon: 'fa-motorcycle' },
         { name: "Game's Zone", path: '/games-zone', icon: 'fa-gamepad' },

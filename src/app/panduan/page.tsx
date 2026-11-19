@@ -77,7 +77,7 @@ const guruSections: Section[] = [
       {
         subtitle: 'Melihat Jadwal Mengajar',
         steps: [
-          'Buka menu Jadwal Mengajar di sidebar (hanya tampil untuk admin).',
+          'Buka menu Jadwal Mengajar di sidebar.',
           'Jadwal ditampilkan dalam format tabel per hari (Senin–Sabtu).',
           'Anda bisa mencetak jadwal dengan menekan tombol Cetak.',
         ],
