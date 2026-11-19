@@ -176,17 +176,130 @@ export function createEmptyMapelScores(): PKMapelScores {
 }
 
 export function computeMapelAverage(scores: Pick<PKMapelScores, PKScoreField>): number | null {
-  const vals = (['m1', 'm2', 'm3', 'sts', 'sas'] as PKScoreField[])
-    .map((f) => {
-      const raw = String(scores[f] ?? '').trim();
-      if (!raw) return NaN;
-      return Number(raw.replace(',', '.'));
-    })
-    .filter((n) => !Number.isNaN(n) && n >= 0);
+  const parseNum = (raw: string | undefined): number | null => {
+    const s = String(raw ?? '').trim();
+    if (!s) return null;
+    const n = Number(s.replace(',', '.'));
+    return !Number.isNaN(n) && n >= 0 ? n : null;
+  };
 
-  if (vals.length === 0) return null;
-  const avg = vals.reduce((sum, n) => sum + n, 0) / vals.length;
-  return Math.round(avg);
+  const materiVals = (['m1', 'm2', 'm3'] as PKScoreField[])
+    .map((f) => parseNum(scores[f]))
+    .filter((n): n is number => n !== null);
+
+  const sasVal = parseNum(scores.sas);
+  const avgMateri =
+    materiVals.length > 0
+      ? materiVals.reduce((sum, n) => sum + n, 0) / materiVals.length
+      : null;
+
+  if (avgMateri !== null && sasVal !== null) {
+    return Math.round(avgMateri * 0.4 + sasVal * 0.6);
+  }
+  if (avgMateri !== null) {
+    return Math.round(avgMateri);
+  }
+  if (sasVal !== null) {
+    return Math.round(sasVal);
+  }
+  return null;
+}
+
+export type PKDeskripsiTierKey = 'A' | 'B' | 'C' | 'D';
+
+export type PKDeskripsiProgramKey =
+  | PKCategoryKey
+  | 'Bahasa Arab (Layanan Umum)'
+  | 'Bahasa Inggris (Layanan Umum)';
+
+export type PKDeskripsiConfig = Record<PKDeskripsiProgramKey, Record<PKDeskripsiTierKey, string>>;
+
+export const PK_DESKRIPSI_CONFIG_KEY = 'pk_deskripsi_capaian_config';
+
+export const PK_DESKRIPSI_TIERS: { key: PKDeskripsiTierKey; label: string; rangeLabel: string }[] = [
+  { key: 'A', label: 'Sangat Baik', rangeLabel: '90 – 100' },
+  { key: 'B', label: 'Baik', rangeLabel: '80 – 89' },
+  { key: 'C', label: 'Cukup', rangeLabel: '70 – 79' },
+  { key: 'D', label: 'Perlu Bimbingan', rangeLabel: '< 70' },
+];
+
+export const PK_DESKRIPSI_PROGRAMS: { key: PKDeskripsiProgramKey; label: string; group: string }[] = [
+  { key: 'SAINS RISET', label: 'Sains & Riset', group: 'Kelas Program Khusus' },
+  { key: 'OLAHRAGA SENI', label: 'Olahraga & Seni', group: 'Kelas Program Khusus' },
+  { key: 'MULTILINGUAL', label: 'Multilingual', group: 'Kelas Program Khusus' },
+  { key: 'KETERAMPILAN KREATIF PRODUKTIF', label: 'Keterampilan Kreatif Produktif', group: 'Kelas Program Khusus' },
+  { key: 'AGAMA TAHFIDZ', label: 'Agama & Tahfidz', group: 'Kelas Program Khusus' },
+  { key: 'Bahasa Arab (Layanan Umum)', label: 'Bahasa Arab (Layanan Umum)', group: 'Program Khusus Layanan Umum' },
+  { key: 'Bahasa Inggris (Layanan Umum)', label: 'Bahasa Inggris (Layanan Umum)', group: 'Program Khusus Layanan Umum' },
+];
+
+export function createDefaultPKDeskripsiConfig(): PKDeskripsiConfig {
+  return {
+    'SAINS RISET': {
+      A: 'Sangat baik dalam menguasai konsep sains, matematika, analisis ilmiah, serta terampil melaksanakan kegiatan riset dengan teliti.',
+      B: 'Baik dalam memahami konsep sains, matematika, dan mampu mempraktikkan langkah dasar kegiatan riset secara terarah.',
+      C: 'Cukup memahami konsep dasar sains, matematika, dan riset, namun perlu peningkatan ketelitian dan latihan analisis.',
+      D: 'Memerlukan bimbingan lebih lanjut dalam memahami konsep dasar sains, perhitungan, serta langkah-langkah riset.',
+    },
+    'OLAHRAGA SENI': {
+      A: 'Sangat baik dalam teknik gerak, kebugaran, sportivitas, serta menunjukkan kreativitas dan apresiasi seni yang unggul.',
+      B: 'Baik dalam penguasaan teknik dasar olahraga, kedisiplinan berlatih, dan ekspresi karya seni sesuai target.',
+      C: 'Cukup menguasai teknik dasar olahraga dan seni, namun perlu meningkatkan konsistensi latihan dan rasa percaya diri.',
+      D: 'Memerlukan bimbingan lebih lanjut dalam melatih koordinasi teknik dasar olahraga maupun praktik seni.',
+    },
+    MULTILINGUAL: {
+      A: 'Sangat baik dalam menguasai kosakata, struktur kalimat, serta terampil berkomunikasi aktif dalam Bahasa Arab dan Bahasa Inggris.',
+      B: 'Baik dalam memahami materi kebahasaan serta mampu mempraktikkan percakapan Bahasa Arab dan Bahasa Inggris dengan lancar.',
+      C: 'Cukup memahami kosakata dan ungkapan dasar Bahasa Arab serta Bahasa Inggris, perlu latihan praktik berbicara lebih rutin.',
+      D: 'Memerlukan bimbingan lebih lanjut dalam penguasaan kosakata dasar dan keberanian praktik berbahasa Arab maupun Inggris.',
+    },
+    'KETERAMPILAN KREATIF PRODUKTIF': {
+      A: 'Sangat baik dalam merancang ide kreatif, terampil menggunakan peralatan praktik, dan menghasilkan karya produktif bernilai guna.',
+      B: 'Baik dalam memahami tahapan praktik keterampilan kreatif produktif serta mampu menyelesaikan proyek karya sesuai arahan.',
+      C: 'Cukup terampil mengikuti praktik karya kreatif produktif, namun perlu meningkatkan kerapian dan kemandirian berkarya.',
+      D: 'Memerlukan bimbingan lebih lanjut dalam memahami prosedur praktik dan penyelesaian produk keterampilan kreatif.',
+    },
+    'AGAMA TAHFIDZ': {
+      A: 'Sangat baik dalam pemahaman materi keagamaan serta menunjukkan kelancaran, ketepatan tajwid, dan konsistensi hafalan Al-Qur\'an.',
+      B: 'Baik dalam penguasaan materi keagamaan dan mampu menjaga kelancaran hafalan ayat sesuai target yang ditentukan.',
+      C: 'Cukup baik dalam memahami materi agama dan hafalan Al-Qur\'an, perlu murajaah lebih rutin untuk menjaga kelancaran dan tajwid.',
+      D: 'Memerlukan bimbingan intensif dan pendampingan rutin dalam pemahaman materi keagamaan serta murajaah hafalan.',
+    },
+    'Bahasa Arab (Layanan Umum)': {
+      A: 'Sangat baik dalam penguasaan mufrodat, pemahaman teks sederhana, serta terampil mempraktikkan percakapan Bahasa Arab.',
+      B: 'Baik dalam memahami kosakata dasar dan mampu merangkai ungkapan sederhana Bahasa Arab sesuai materi layanan umum.',
+      C: 'Cukup memahami kosakata dasar Bahasa Arab layanan umum, perlu penguatan pelafalan dan latihan percakapan.',
+      D: 'Memerlukan bimbingan lebih lanjut dalam mengenal mufrodat dasar dan melatih keberanian berbahasa Arab.',
+    },
+    'Bahasa Inggris (Layanan Umum)': {
+      A: 'Sangat baik dalam penguasaan vocabulary, pemahaman kalimat, dan percaya diri berkomunikasi dalam Bahasa Inggris layanan umum.',
+      B: 'Baik dalam memahami kosakata serta mampu menyusun dan mempraktikkan ungkapan sederhana dalam Bahasa Inggris.',
+      C: 'Cukup memahami kosakata dasar Bahasa Inggris layanan umum, perlu lebih aktif berlatih speaking dan pelafalan.',
+      D: 'Memerlukan bimbingan lebih lanjut dalam memahami kosakata dasar dan mempraktikkan ungkapan Bahasa Inggris sehari-hari.',
+    },
+  };
+}
+
+export function getScoreBracketKey(score: number): PKDeskripsiTierKey {
+  if (score >= 90) return 'A';
+  if (score >= 80) return 'B';
+  if (score >= 70) return 'C';
+  return 'D';
+}
+
+export function resolvePKDeskripsi(
+  config: PKDeskripsiConfig,
+  programKey: PKDeskripsiProgramKey,
+  score: number | null | undefined
+): string {
+  if (score === null || score === undefined || Number.isNaN(score) || score <= 0) {
+    return '-';
+  }
+  const tier = getScoreBracketKey(score);
+  const customText = config?.[programKey]?.[tier];
+  if (customText && customText.trim()) return customText.trim();
+  const def = createDefaultPKDeskripsiConfig();
+  return def[programKey]?.[tier] || '-';
 }
 
 /** Encode semester into tahun_ajaran column without altering DB schema. Legacy rows (without suffix) belong to Ganjil. */

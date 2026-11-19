@@ -159,13 +159,13 @@ export async function GET(request: Request) {
 
     const students = extractStudentsForClass(rawSiswa, kelas, baseTA);
 
-    // Prepare score maps per student (kategori utama + layanan umum)
+    // Prepare score maps per student (kategori utama + layanan umum + catatan pengajar)
     const studentMaps = students.map((st) => {
       const scoresByMapel: Record<string, PKMapelScores> = {};
       for (const m of allExpectedMapels) {
         scoresByMapel[m.name] = createEmptyMapelScores();
       }
-      return { ...st, scoresByMapel };
+      return { ...st, scoresByMapel, catatan: '' };
     });
 
     const byInduk = new Map<string, (typeof studentMaps)[number]>();
@@ -182,6 +182,21 @@ export async function GET(request: Request) {
       // Ensure Ganjil doesn't accidentally ingest rows explicitly marked Genap
       const rowMetaSem = String(row.metadata?.semester || '').toLowerCase();
       if (semester === 'Ganjil' && rowMetaSem === 'genap') continue;
+
+      // Load Catatan Pengajar row if present
+      if (String(row.tipe || '').trim().toLowerCase() === 'catatan_pengajar') {
+        const catatanEntries: any[] = Array.isArray(row.data_nilai) ? row.data_nilai : [];
+        for (const entry of catatanEntries) {
+          const val = String(entry?.catatan ?? entry?.nilai ?? '').trim();
+          const entryInduk = String(entry?.induk || '').trim();
+          const entryNama = String(entry?.nama || '').trim().toLowerCase();
+          const target = (entryInduk && byInduk.get(entryInduk)) || (entryNama && byNama.get(entryNama));
+          if (target) {
+            target.catatan = val;
+          }
+        }
+        continue;
+      }
 
       const canonicalMapel = resolveMapelForKategori(kategoriKey, String(row.mata_pelajaran || ''));
       if (!canonicalMapel) continue;
@@ -255,32 +270,20 @@ export async function POST(request: Request) {
     const kelas = String(body.kelas || '').trim().toUpperCase();
     const kategoriKey = String(body.kategori || '').trim().toUpperCase() as PKCategoryKey;
     const rawMapel = String(body.mapel || '').trim();
-    const field = String(body.field || '').trim() as PKScoreField;
+    const field = String(body.field || '').trim();
     const guru = String(body.guru || 'Admin').trim();
     const dataNilai = Array.isArray(body.dataNilai) ? body.dataNilai : [];
 
-    if (!kelas || !rawMapel || !['m1', 'm2', 'm3', 'sts', 'sas'].includes(field)) {
+    const isCatatanField = field === 'catatan';
+    if (!kelas || (!isCatatanField && (!rawMapel || !['m1', 'm2', 'm3', 'sts', 'sas'].includes(field)))) {
       return NextResponse.json(
         { error: 'Parameter kelas, mapel, dan field nilai wajib valid' },
         { status: 400 }
       );
     }
 
-    const canonicalMapel =
-      PK_CATEGORY_MAP[kategoriKey]
-        ? resolveMapelForKategori(kategoriKey, rawMapel)?.name || rawMapel
-        : rawMapel;
-
     const storageTA = toStorageTahunAjaran(tahunAjaran, semester);
     const taCandidates = getReadTahunAjaranCandidates(tahunAjaran, semester);
-    const targetStorage = getCanonicalFieldStorage(field);
-
-    const sanitizedDataNilai = dataNilai.map((item: any) => ({
-      induk: String(item.induk || '').trim(),
-      nama: String(item.nama || '').trim(),
-      jk: normalizeJK(item.jk || ''),
-      nilai: item.nilai !== undefined && item.nilai !== null ? String(item.nilai).trim() : '',
-    }));
 
     // Check existing rows for this (TA candidates, kelas)
     const { data: existingRows, error: fetchErr } = await supabase
@@ -292,6 +295,76 @@ export async function POST(request: Request) {
     if (fetchErr) throw fetchErr;
 
     const now = new Date().toISOString();
+
+    if (isCatatanField) {
+      const sanitizedCatatan = dataNilai.map((item: any) => ({
+        induk: String(item.induk || '').trim(),
+        nama: String(item.nama || '').trim(),
+        jk: normalizeJK(item.jk || ''),
+        catatan: String(item.catatan ?? item.nilai ?? '').trim(),
+      }));
+
+      const existingCatatanRow = (existingRows || []).find((r: any) => {
+        const rowMetaSem = String(r.metadata?.semester || '').toLowerCase();
+        if (semester === 'Ganjil' && rowMetaSem === 'genap') return false;
+        return String(r.tipe || '').trim().toLowerCase() === 'catatan_pengajar';
+      });
+
+      if (existingCatatanRow) {
+        const { error: updateErr } = await supabase
+          .from('nilai_pk')
+          .update({
+            tahun_ajaran: storageTA,
+            mata_pelajaran: 'CATATAN_PENGAJAR',
+            tipe: 'catatan_pengajar',
+            materi: '',
+            sub_materi: '',
+            guru,
+            data_nilai: sanitizedCatatan,
+            metadata: { semester },
+            updated_at: now,
+          })
+          .eq('id', existingCatatanRow.id);
+
+        if (updateErr) throw updateErr;
+      } else {
+        const { error: insertErr } = await supabase.from('nilai_pk').insert({
+          tahun_ajaran: storageTA,
+          kelas,
+          mata_pelajaran: 'CATATAN_PENGAJAR',
+          tipe: 'catatan_pengajar',
+          materi: '',
+          sub_materi: '',
+          guru,
+          data_nilai: sanitizedCatatan,
+          metadata: { semester },
+          updated_at: now,
+        });
+
+        if (insertErr) throw insertErr;
+      }
+
+      return NextResponse.json({
+        success: true,
+        savedAt: now,
+        mapel: 'CATATAN_PENGAJAR',
+        field: 'catatan',
+      });
+    }
+
+    const canonicalMapel =
+      PK_CATEGORY_MAP[kategoriKey]
+        ? resolveMapelForKategori(kategoriKey, rawMapel)?.name || rawMapel
+        : rawMapel;
+
+    const targetStorage = getCanonicalFieldStorage(field as PKScoreField);
+
+    const sanitizedDataNilai = dataNilai.map((item: any) => ({
+      induk: String(item.induk || '').trim(),
+      nama: String(item.nama || '').trim(),
+      jk: normalizeJK(item.jk || ''),
+      nilai: item.nilai !== undefined && item.nilai !== null ? String(item.nilai).trim() : '',
+    }));
     const matchingRows = (existingRows || []).filter((r: any) => {
       const rowMetaSem = String(r.metadata?.semester || '').toLowerCase();
       if (semester === 'Ganjil' && rowMetaSem === 'genap') return false;

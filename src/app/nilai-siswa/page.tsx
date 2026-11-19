@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Swal from 'sweetalert2';
 import styles from './NilaiSiswa.module.css';
+import { supabase } from '@/lib/supabase';
 import {
   PK_CATEGORY_MAP,
   PK_SCORE_FIELDS,
@@ -11,8 +12,15 @@ import {
   PKScoreField,
   PKSemester,
   PKMapelScores,
+  PKDeskripsiConfig,
+  PKDeskripsiProgramKey,
+  PK_DESKRIPSI_CONFIG_KEY,
+  PK_DESKRIPSI_PROGRAMS,
+  PK_DESKRIPSI_TIERS,
   computeMapelAverage,
+  createDefaultPKDeskripsiConfig,
   getLayananUmumMapels,
+  resolvePKDeskripsi,
 } from '@/lib/prosus-config';
 
 interface PKStudentRow {
@@ -21,6 +29,7 @@ interface PKStudentRow {
   jk: string;
   nisn?: string;
   scoresByMapel: Record<string, PKMapelScores>;
+  catatan: string;
 }
 
 interface PKMapelHeader {
@@ -107,6 +116,18 @@ export default function NilaiSiswaPage() {
   });
   const [previewStudent, setPreviewStudent] = useState<PKStudentRow | null>(null);
 
+  // Deskripsi Capaian Config States
+  const [deskripsiConfig, setDeskripsiConfig] = useState<PKDeskripsiConfig>(() =>
+    createDefaultPKDeskripsiConfig()
+  );
+  const [showDeskripsiModal, setShowDeskripsiModal] = useState<boolean>(false);
+  const [draftDeskripsi, setDraftDeskripsi] = useState<PKDeskripsiConfig>(() =>
+    createDefaultPKDeskripsiConfig()
+  );
+  const [activeDeskripsiProgram, setActiveDeskripsiProgram] =
+    useState<PKDeskripsiProgramKey>('SAINS RISET');
+  const [savingDeskripsi, setSavingDeskripsi] = useState<boolean>(false);
+
   useEffect(() => {
     try {
       const userStr = localStorage.getItem('keren_user_data');
@@ -116,6 +137,49 @@ export default function NilaiSiswaPage() {
     } catch {
       // ignore storage errors
     }
+
+    const loadDeskripsiConfig = async () => {
+      const defaults = createDefaultPKDeskripsiConfig();
+      const mergeConfig = (raw: any): PKDeskripsiConfig => {
+        const merged = { ...defaults };
+        if (raw && typeof raw === 'object') {
+          for (const prog of PK_DESKRIPSI_PROGRAMS) {
+            if (raw[prog.key] && typeof raw[prog.key] === 'object') {
+              merged[prog.key] = { ...defaults[prog.key], ...raw[prog.key] };
+            }
+          }
+        }
+        return merged;
+      };
+
+      try {
+        const { data, error } = await supabase
+          .from('rapor_config')
+          .select('value')
+          .eq('key', PK_DESKRIPSI_CONFIG_KEY)
+          .maybeSingle();
+
+        if (!error && data?.value) {
+          const parsed = mergeConfig(JSON.parse(data.value));
+          setDeskripsiConfig(parsed);
+          try {
+            localStorage.setItem(PK_DESKRIPSI_CONFIG_KEY, JSON.stringify(parsed));
+          } catch {}
+          return;
+        }
+      } catch {
+        // fallback to localStorage
+      }
+
+      try {
+        const localRaw = localStorage.getItem(PK_DESKRIPSI_CONFIG_KEY);
+        if (localRaw) {
+          setDeskripsiConfig(mergeConfig(JSON.parse(localRaw)));
+        }
+      } catch {}
+    };
+
+    loadDeskripsiConfig();
   }, []);
 
   const handleKelasChange = (newKelas: string) => {
@@ -156,7 +220,10 @@ export default function NilaiSiswaPage() {
         throw new Error(json.error || 'Gagal memuat data nilai Program Khusus');
       }
 
-      const loadedStudents: PKStudentRow[] = json.students || [];
+      const loadedStudents: PKStudentRow[] = (json.students || []).map((st: any) => ({
+        ...st,
+        catatan: String(st.catatan ?? ''),
+      }));
       const loadedMapels: PKMapelHeader[] = json.mapels || PK_CATEGORY_MAP[kategori].mapels;
       const loadedLayananUmumMapels: PKMapelHeader[] =
         json.layananUmumMapels ||
@@ -170,6 +237,7 @@ export default function NilaiSiswaPage() {
             snapshot[`${st.induk}::${m.name}::${f.key}`] = String(sc?.[f.key] ?? '');
           }
         }
+        snapshot[`${st.induk}::CATATAN_PENGAJAR::catatan`] = String(st.catatan ?? '');
       }
 
       lastSavedSnapshotRef.current = snapshot;
@@ -192,19 +260,24 @@ export default function NilaiSiswaPage() {
   }, [loadKategoriData]);
 
   // Enqueue a column save so fast sequential edits on the same column never overtake each other
-  const persistColumnField = useCallback((mapelName: string, field: PKScoreField, triggerInduk?: string) => {
+  const persistColumnField = useCallback((mapelName: string, field: PKScoreField | 'catatan', triggerInduk?: string) => {
     const meta = filterMetaRef.current;
     if (!meta.kelas) return;
 
     const currentRows = studentsRef.current;
     if (currentRows.length === 0) return;
 
+    const getRowFieldVal = (st: PKStudentRow): string =>
+      field === 'catatan'
+        ? String(st.catatan ?? '').trim()
+        : String(st.scoresByMapel[mapelName]?.[field] ?? '').trim();
+
     // Check whether at least one cell in this column changed vs last saved snapshot
     let hasColumnDiff = false;
     const changedInduks: string[] = [];
     for (const st of currentRows) {
       const key = `${st.induk}::${mapelName}::${field}`;
-      const curVal = String(st.scoresByMapel[mapelName]?.[field] ?? '').trim();
+      const curVal = getRowFieldVal(st);
       const prevVal = String(lastSavedSnapshotRef.current[key] ?? '').trim();
       if (curVal !== prevVal) {
         hasColumnDiff = true;
@@ -237,7 +310,10 @@ export default function NilaiSiswaPage() {
           induk: st.induk,
           nama: st.nama,
           jk: st.jk,
-          nilai: String(st.scoresByMapel[mapelName]?.[field] ?? '').trim(),
+          nilai:
+            field === 'catatan'
+              ? String(st.catatan ?? '').trim()
+              : String(st.scoresByMapel[mapelName]?.[field] ?? '').trim(),
         }));
 
         const snapshotCandidate: Record<string, string> = {};
@@ -273,9 +349,8 @@ export default function NilaiSiswaPage() {
           setDirtyCells((prev) => {
             const next = { ...prev };
             for (const key of Object.keys(snapshotCandidate)) {
-              const latestVal = String(
-                studentsRef.current.find((s) => `${s.induk}::${mapelName}::${field}` === key)?.scoresByMapel[mapelName]?.[field] ?? ''
-              ).trim();
+              const matched = studentsRef.current.find((s) => `${s.induk}::${mapelName}::${field}` === key);
+              const latestVal = matched ? getRowFieldVal(matched) : '';
               if (latestVal === snapshotCandidate[key]) {
                 delete next[key];
               }
@@ -507,10 +582,141 @@ export default function NilaiSiswaPage() {
   const allMapels = [...mapels, ...layananUmumMapels];
   const visibleMapels = focusedMapel === 'ALL'
     ? mapels
+    : focusedMapel === 'CATATAN'
+    ? []
     : mapels.filter((m) => m.name === focusedMapel);
   const visibleLayananUmumMapels = focusedMapel === 'ALL'
     ? layananUmumMapels
+    : focusedMapel === 'CATATAN'
+    ? []
     : layananUmumMapels.filter((m) => m.name === focusedMapel);
+
+  const handleCatatanChange = (rowIdx: number, value: string) => {
+    const updated = [...studentsRef.current];
+    const targetStudent = updated[rowIdx];
+    if (!targetStudent) return;
+
+    updated[rowIdx] = {
+      ...targetStudent,
+      catatan: value,
+    };
+    studentsRef.current = updated;
+    setStudents(updated);
+
+    const cellKey = `${targetStudent.induk}::CATATAN_PENGAJAR::catatan`;
+    const savedVal = String(lastSavedSnapshotRef.current[cellKey] ?? '').trim();
+    const isNowDirty = value.trim() !== savedVal;
+    setDirtyCells((prev) => {
+      if (Boolean(prev[cellKey]) === isNowDirty) return prev;
+      const next = { ...prev };
+      if (isNowDirty) next[cellKey] = true;
+      else delete next[cellKey];
+      return next;
+    });
+  };
+
+  const handleCatatanBlur = (rowIdx: number) => {
+    const st = studentsRef.current[rowIdx];
+    if (!st) return;
+    persistColumnField('CATATAN_PENGAJAR', 'catatan', st.induk);
+  };
+
+  const handleCatatanPaste = (
+    e: React.ClipboardEvent<HTMLInputElement>,
+    startRowIdx: number
+  ) => {
+    const rawText = e.clipboardData.getData('text/plain') || e.clipboardData.getData('text');
+    if (!rawText) return;
+
+    const rawLines = rawText.split(/\r\n|\n|\r/);
+    if (rawLines.length > 1 && rawLines[rawLines.length - 1] === '') {
+      rawLines.pop();
+    }
+    if (rawLines.length <= 1) return;
+
+    e.preventDefault();
+
+    const updated = [...studentsRef.current];
+    const dirtyDiff: Record<string, boolean> = {};
+    let applied = 0;
+
+    rawLines.forEach((line, rOffset) => {
+      const targetRowIdx = startRowIdx + rOffset;
+      if (targetRowIdx < 0 || targetRowIdx >= updated.length) return;
+      const firstColText = line.split('\t')[0].trim();
+      const targetStudent = updated[targetRowIdx];
+      if (!targetStudent) return;
+
+      updated[targetRowIdx] = {
+        ...targetStudent,
+        catatan: firstColText,
+      };
+      const cellKey = `${targetStudent.induk}::CATATAN_PENGAJAR::catatan`;
+      const savedVal = String(lastSavedSnapshotRef.current[cellKey] ?? '').trim();
+      dirtyDiff[cellKey] = firstColText !== savedVal;
+      applied += 1;
+    });
+
+    if (applied === 0) return;
+
+    studentsRef.current = updated;
+    setStudents(updated);
+    setDirtyCells((prev) => {
+      const next = { ...prev };
+      for (const [k, isDirty] of Object.entries(dirtyDiff)) {
+        if (isDirty) next[k] = true;
+        else delete next[k];
+      }
+      return next;
+    });
+    persistColumnField('CATATAN_PENGAJAR', 'catatan');
+
+    Swal.fire({
+      icon: 'success',
+      title: `${applied} catatan pengajar ditempel`,
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 2000,
+    });
+  };
+
+  const openDeskripsiModal = () => {
+    setDraftDeskripsi(JSON.parse(JSON.stringify(deskripsiConfig)));
+    setActiveDeskripsiProgram(kategori);
+    setShowDeskripsiModal(true);
+  };
+
+  const handleSaveDeskripsiConfig = async () => {
+    setSavingDeskripsi(true);
+    try {
+      const serialized = JSON.stringify(draftDeskripsi);
+      try {
+        localStorage.setItem(PK_DESKRIPSI_CONFIG_KEY, serialized);
+      } catch {}
+
+      const { error } = await supabase
+        .from('rapor_config')
+        .upsert({ key: PK_DESKRIPSI_CONFIG_KEY, value: serialized }, { onConflict: 'key' });
+
+      if (error) throw error;
+
+      setDeskripsiConfig(draftDeskripsi);
+      setShowDeskripsiModal(false);
+      Swal.fire({
+        icon: 'success',
+        title: 'Pengaturan deskripsi berhasil disimpan',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 2000,
+      });
+    } catch (err: any) {
+      Swal.fire('Gagal Menyimpan', err?.message || 'Gagal menyimpan pengaturan deskripsi.', 'error');
+    } finally {
+      setSavingDeskripsi(false);
+    }
+  };
 
   const handleCellKeyDown = (
     e: React.KeyboardEvent<HTMLInputElement>,
@@ -570,77 +776,72 @@ export default function NilaiSiswaPage() {
       }
     }
     uniqueSlots.forEach((slot) => {
-      const [mName, f] = slot.split('::') as [string, PKScoreField];
+      const [mName, f] = slot.split('::') as [string, PKScoreField | 'catatan'];
       persistColumnField(mName, f);
     });
   };
 
   // --- CETAK RAPOR PK LOGIC ---
-  const computeStudentOverallAverage = (st: PKStudentRow): number => {
-    const avgs = allMapels
+  const computeCategoryPKAverage = (st: PKStudentRow): number | null => {
+    const avgs = mapels
       .map((m) => st.scoresByMapel[m.name]?.rata)
       .filter((v): v is number => v !== null && v !== undefined);
-    if (avgs.length === 0) return 0;
+    if (avgs.length === 0) return null;
     return Math.round(avgs.reduce((a, b) => a + b, 0) / avgs.length);
   };
 
+  const computeStudentOverallAverage = (st: PKStudentRow): number => {
+    const pkAvg = computeCategoryPKAverage(st);
+    const luAvgs = layananUmumMapels
+      .map((m) => st.scoresByMapel[m.name]?.rata)
+      .filter((v): v is number => v !== null && v !== undefined);
+    const all3 = [pkAvg, ...luAvgs].filter((v): v is number => v !== null && v !== undefined);
+    if (all3.length === 0) return 0;
+    return Math.round(all3.reduce((a, b) => a + b, 0) / all3.length);
+  };
+
+  const escapeHtmlStr = (val: string): string =>
+    String(val)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+
   const generateRaporHtml = (s: PKStudentRow) => {
     const katDef = PK_CATEGORY_MAP[kategori];
-    const overallAvg = computeStudentOverallAverage(s);
-    const { predikat, ket, deskripsi } = getPredikat(overallAvg);
     const walasName = waliKelas || profile?.nama || '........................................';
 
-    const buildMapelRowsHtml = (targetMapels: PKMapelHeader[]) =>
-      targetMapels
-        .map((m, idx) => {
-          const sc = s.scoresByMapel[m.name] || { m1: '', m2: '', m3: '', sts: '', sas: '', rata: null };
-          const rataNum = sc.rata ?? 0;
-          const mapelPred = getPredikat(rataNum);
-          return `
-            <tr>
-              <td style="border: 1px solid #000; padding: 6px; text-align: center;">${idx + 1}</td>
-              <td style="border: 1px solid #000; padding: 6px; text-align: left; font-weight: 600;">${m.name}</td>
-              <td style="border: 1px solid #000; padding: 6px; text-align: center;">${sc.m1 || '-'}</td>
-              <td style="border: 1px solid #000; padding: 6px; text-align: center;">${sc.m2 || '-'}</td>
-              <td style="border: 1px solid #000; padding: 6px; text-align: center;">${sc.m3 || '-'}</td>
-              <td style="border: 1px solid #000; padding: 6px; text-align: center;">${sc.sts || '-'}</td>
-              <td style="border: 1px solid #000; padding: 6px; text-align: center;">${sc.sas || '-'}</td>
-              <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; background: #f8fafc;">${sc.rata !== null ? sc.rata : '-'}</td>
-              <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${mapelPred.predikat}</td>
-            </tr>
-          `;
-        })
-        .join('');
+    const pkClassAvg = computeCategoryPKAverage(s);
+    const raporItems: Array<{ namaMapel: string; rata: number | null; programKey: PKDeskripsiProgramKey }> = [
+      {
+        namaMapel: katDef?.label || kategori,
+        rata: pkClassAvg,
+        programKey: kategori,
+      },
+      ...layananUmumMapels.map((m) => ({
+        namaMapel: m.name,
+        rata: s.scoresByMapel[m.name]?.rata ?? null,
+        programKey: m.name as PKDeskripsiProgramKey,
+      })),
+    ];
 
-    const tableHeaderRowHtml = `
-      <thead>
-        <tr style="background-color: #f1f5f9;">
-          <th style="border: 1px solid #000; padding: 6px; width: 32px; text-align: center;">No</th>
-          <th style="border: 1px solid #000; padding: 6px; text-align: left;">Mata Pelajaran</th>
-          <th style="border: 1px solid #000; padding: 6px; width: 58px; text-align: center;">Materi 1</th>
-          <th style="border: 1px solid #000; padding: 6px; width: 58px; text-align: center;">Materi 2</th>
-          <th style="border: 1px solid #000; padding: 6px; width: 58px; text-align: center;">Materi 3</th>
-          <th style="border: 1px solid #000; padding: 6px; width: 52px; text-align: center;">STS</th>
-          <th style="border: 1px solid #000; padding: 6px; width: 52px; text-align: center;">SAS</th>
-          <th style="border: 1px solid #000; padding: 6px; width: 64px; text-align: center;">Rata-Rata</th>
-          <th style="border: 1px solid #000; padding: 6px; width: 56px; text-align: center;">Predikat</th>
-        </tr>
-      </thead>
-    `;
+    const raporRowsHtml = raporItems
+      .map((item, idx) => {
+        const deskripsiText = resolvePKDeskripsi(deskripsiConfig, item.programKey, item.rata);
+        return `
+          <tr>
+            <td style="border: 1px solid #000; padding: 7px 6px; text-align: center; vertical-align: top;">${idx + 1}</td>
+            <td style="border: 1px solid #000; padding: 7px 8px; text-align: left; font-weight: bold; vertical-align: top;">${escapeHtmlStr(item.namaMapel)}</td>
+            <td style="border: 1px solid #000; padding: 7px 6px; text-align: center; font-weight: bold; font-size: 10.5pt; vertical-align: top;">${item.rata !== null ? item.rata : '-'}</td>
+            <td style="border: 1px solid #000; padding: 7px 8px; text-align: left; line-height: 1.4; vertical-align: top;">${escapeHtmlStr(deskripsiText)}</td>
+          </tr>
+        `;
+      })
+      .join('');
 
-    const mapelRowsHtml = buildMapelRowsHtml(mapels);
-    const layananUmumTableHtml =
-      layananUmumMapels.length > 0
-        ? `
-          <div style="font-size: 10pt; font-weight: bold; margin: 10px 0 4px 0;">B. Program Khusus Layanan Umum</div>
-          <table style="width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 14px;">
-            ${tableHeaderRowHtml}
-            <tbody>
-              ${buildMapelRowsHtml(layananUmumMapels)}
-            </tbody>
-          </table>
-        `
-        : '';
+    const catatanFormatted = (s.catatan || '').trim()
+      ? escapeHtmlStr(s.catatan.trim()).replace(/\r?\n/g, '<br/>')
+      : '-';
 
     return `
       <div class="rapor-page" style="font-family: 'Times New Roman', Times, serif; padding: 15px 25px; color: #000; page-break-after: always; max-width: 820px; margin: 0 auto; background: #fff;">
@@ -669,53 +870,57 @@ export default function NilaiSiswaPage() {
           <tr>
             <td style="width: 18%; padding: 3px 0;">Nama Peserta Didik</td>
             <td style="width: 2%;">:</td>
-            <td style="width: 35%; font-weight: bold;">${s.nama}</td>
+            <td style="width: 35%; font-weight: bold;">${escapeHtmlStr(s.nama)}</td>
             <td style="width: 18%;">Kelas</td>
             <td style="width: 2%;">:</td>
-            <td style="width: 25%; font-weight: bold;">${kelas}</td>
+            <td style="width: 25%; font-weight: bold;">${escapeHtmlStr(kelas)}</td>
           </tr>
           <tr>
             <td style="padding: 3px 0;">Nomor Induk</td>
             <td>:</td>
-            <td>${s.induk || '-'}</td>
+            <td>${escapeHtmlStr(s.induk || '-')}</td>
             <td>Semester</td>
             <td>:</td>
-            <td>${semester}</td>
+            <td>${escapeHtmlStr(semester)}</td>
           </tr>
           <tr>
             <td style="padding: 3px 0;">Kategori Program</td>
             <td>:</td>
-            <td style="font-weight: bold;">${katDef?.label || kategori} (${kategori})</td>
+            <td style="font-weight: bold;">${escapeHtmlStr(katDef?.label || kategori)} (${escapeHtmlStr(kategori)})</td>
             <td>Tahun Ajaran</td>
             <td>:</td>
-            <td>${tahunAjaran}</td>
+            <td>${escapeHtmlStr(tahunAjaran)}</td>
           </tr>
         </table>
 
-        <!-- TABEL RINCIAN NILAI MAPEL -->
-        ${layananUmumMapels.length > 0 ? `<div style="font-size: 10pt; font-weight: bold; margin: 4px 0;">A. Program Khusus Minat &amp; Bakat (${katDef?.label || kategori})</div>` : ''}
-        <table style="width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 12px;">
-          ${tableHeaderRowHtml}
+        <!-- TABEL CAPAIAN PROGRAM KHUSUS (3 MAPEL) -->
+        <table style="width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 16px;">
+          <thead>
+            <tr style="background-color: #f1f5f9;">
+              <th style="border: 1px solid #000; padding: 7px 6px; width: 34px; text-align: center;">No</th>
+              <th style="border: 1px solid #000; padding: 7px 8px; width: 27%; text-align: left;">Mata Pelajaran</th>
+              <th style="border: 1px solid #000; padding: 7px 6px; width: 78px; text-align: center;">Rata-Rata</th>
+              <th style="border: 1px solid #000; padding: 7px 8px; text-align: left;">Deskripsi Capaian</th>
+            </tr>
+          </thead>
           <tbody>
-            ${mapelRowsHtml}
+            ${raporRowsHtml}
           </tbody>
         </table>
-        ${layananUmumTableHtml}
 
-        <!-- REKAP KESELURUHAN -->
-        <table style="width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 14px;">
-          <tr style="background-color: #f8fafc; font-weight: bold;">
-            <td style="border: 1px solid #000; padding: 7px; width: 40%;">Nilai Akhir Keseluruhan Kategori</td>
-            <td style="border: 1px solid #000; padding: 7px; text-align: center; font-size: 11pt;">${overallAvg > 0 ? overallAvg : '-'}</td>
-            <td style="border: 1px solid #000; padding: 7px; text-align: center;">Predikat: ${predikat} (${ket})</td>
-          </tr>
+        <!-- TABEL CATATAN PENGAJAR -->
+        <table style="width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 22px;">
+          <thead>
+            <tr style="background-color: #f1f5f9;">
+              <th style="border: 1px solid #000; padding: 6px 8px; text-align: left;">Catatan Pengajar</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="border: 1px solid #000; padding: 9px 10px; line-height: 1.45; vertical-align: top;">${catatanFormatted}</td>
+            </tr>
+          </tbody>
         </table>
-
-        <!-- DESKRIPSI CAPAIAN -->
-        <div style="border: 1px solid #000; padding: 8px 10px; font-size: 10pt; margin-bottom: 22px;">
-          <b>Deskripsi Capaian Program Khusus:</b><br/>
-          <span style="display: inline-block; margin-top: 4px; line-height: 1.4;">${deskripsi}</span>
-        </div>
 
         <!-- TANDA TANGAN -->
         <table style="width: 100%; font-size: 10pt; text-align: center; margin-top: 10px;">
@@ -726,9 +931,9 @@ export default function NilaiSiswaPage() {
               <b>( ........................................ )</b>
             </td>
             <td style="width: 33%; vertical-align: top;">
-              Singosari, ${tanggalCetak}<br/>
-              Wali Kelas ${kelas}<br/><br/><br/><br/><br/>
-              <b><u>${walasName}</u></b>
+              Singosari, ${escapeHtmlStr(tanggalCetak)}<br/>
+              Wali Kelas ${escapeHtmlStr(kelas)}<br/><br/><br/><br/><br/>
+              <b><u>${escapeHtmlStr(walasName)}</u></b>
             </td>
             <td style="width: 33%; vertical-align: top;">
               Mengetahui,<br/>
@@ -783,15 +988,20 @@ export default function NilaiSiswaPage() {
 
   const totalPendingDirty = Object.values(dirtyCells).filter(Boolean).length;
 
-  const renderScoreMatrixTable = (tableMapels: PKMapelHeader[], tableIdPrefix: string, headerOffset = 0) => (
+  const renderScoreMatrixTable = (
+    tableMapels: PKMapelHeader[],
+    tableIdPrefix: string,
+    headerOffset = 0,
+    includeCatatanCol = false
+  ) => (
     <div className={styles.matrixWrapper}>
       <table className={styles.matrixTable}>
         <thead>
           <tr>
-            <th rowSpan={2} className={`${styles.stickyCol} ${styles.stickyNo}`}>No</th>
-            <th rowSpan={2} className={`${styles.stickyCol} ${styles.stickyNis}`}>NIS</th>
-            <th rowSpan={2} className={`${styles.stickyCol} ${styles.stickyNama}`}>Nama Siswa</th>
-            <th rowSpan={2} className={`${styles.stickyCol} ${styles.stickyJk}`}>L/P</th>
+            <th rowSpan={tableMapels.length > 0 ? 2 : 1} className={`${styles.stickyCol} ${styles.stickyNo}`}>No</th>
+            <th rowSpan={tableMapels.length > 0 ? 2 : 1} className={`${styles.stickyCol} ${styles.stickyNis}`}>NIS</th>
+            <th rowSpan={tableMapels.length > 0 ? 2 : 1} className={`${styles.stickyCol} ${styles.stickyNama}`}>Nama Siswa</th>
+            <th rowSpan={tableMapels.length > 0 ? 2 : 1} className={`${styles.stickyCol} ${styles.stickyJk}`}>L/P</th>
             {tableMapels.map((m, mIdx) => {
               const headerTint = styles[`groupHeader${(mIdx + headerOffset) % 4}` as keyof typeof styles] || styles.groupHeader0;
               return (
@@ -805,29 +1015,53 @@ export default function NilaiSiswaPage() {
                 </th>
               );
             })}
+            {includeCatatanCol && (
+              <th
+                rowSpan={tableMapels.length > 0 ? 2 : 1}
+                style={{
+                  minWidth: '240px',
+                  background: '#fef3c7',
+                  color: '#92400e',
+                  borderBottom: '2px solid #cbd5e1',
+                  textAlign: 'left',
+                  padding: '8px 10px',
+                }}
+              >
+                Catatan Pengajar
+              </th>
+            )}
           </tr>
-          <tr>
-            {tableMapels.map((m) => (
-              <React.Fragment key={`${m.name}-sub`}>
-                {PK_SCORE_FIELDS.map((f) => (
+          {tableMapels.length > 0 && (
+            <tr>
+              {tableMapels.map((m) => (
+                <React.Fragment key={`${m.name}-sub`}>
+                  {PK_SCORE_FIELDS.map((f) => (
+                    <th
+                      key={`${m.name}-${f.key}`}
+                      className={styles.subHeaderCell}
+                      title={f.label}
+                    >
+                      {f.label}
+                    </th>
+                  ))}
                   <th
-                    key={`${m.name}-${f.key}`}
-                    className={styles.subHeaderCell}
-                    title={f.label}
+                    className={`${styles.subHeaderAvg} ${styles.groupEndCol}`}
+                    title="Rata-rata = 40% Rata-rata Materi (M1–M3) + 60% SAS"
                   >
-                    {f.label}
+                    NA
                   </th>
-                ))}
-                <th className={`${styles.subHeaderAvg} ${styles.groupEndCol}`} title="Rata-rata / Nilai Akhir">
-                  NA
-                </th>
-              </React.Fragment>
-            ))}
-          </tr>
+                </React.Fragment>
+              ))}
+            </tr>
+          )}
         </thead>
         <tbody>
           {students.map((st, rowIdx) => {
             const totalCols = tableMapels.length * PK_SCORE_FIELDS.length;
+            const catatanKey = `${st.induk}::CATATAN_PENGAJAR::catatan`;
+            const isCatatanDirty = Boolean(dirtyCells[catatanKey]);
+            const isCatatanJustSaved = Boolean(justSavedCells[catatanKey]);
+
             return (
               <tr key={st.induk || `${rowIdx}-${st.nama}`}>
                 <td className={`${styles.stickyCol} ${styles.stickyNo}`}>{rowIdx + 1}</td>
@@ -881,6 +1115,28 @@ export default function NilaiSiswaPage() {
                     </React.Fragment>
                   );
                 })}
+
+                {includeCatatanCol && (
+                  <td className={styles.scoreCell} style={{ padding: '4px 6px', minWidth: '240px' }}>
+                    <input
+                      type="text"
+                      className={`${styles.cellInput} ${
+                        isCatatanDirty
+                          ? styles.cellInputDirty
+                          : isCatatanJustSaved
+                          ? styles.cellInputJustSaved
+                          : ''
+                      }`}
+                      style={{ width: '100%', textAlign: 'left', padding: '4px 8px' }}
+                      placeholder="Tulis catatan pengajar..."
+                      value={st.catatan ?? ''}
+                      onChange={(e) => handleCatatanChange(rowIdx, e.target.value)}
+                      onBlur={() => handleCatatanBlur(rowIdx)}
+                      onPaste={(e) => handleCatatanPaste(e, rowIdx)}
+                      aria-label={`Catatan Pengajar ${st.nama}`}
+                    />
+                  </td>
+                )}
               </tr>
             );
           })}
@@ -1061,7 +1317,7 @@ export default function NilaiSiswaPage() {
             </div>
           ) : (
             <>
-              {/* Toolbar: Mapel Focus Pills + Auto-save Status */}
+              {/* Toolbar: Mapel Focus Pills + Deskripsi Button + Auto-save Status */}
               <div className={styles.matrixToolbar}>
                 <div className={styles.mapelPills}>
                   <button
@@ -1081,9 +1337,32 @@ export default function NilaiSiswaPage() {
                       {m.name}
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    className={`${styles.mapelPill} ${focusedMapel === 'CATATAN' ? styles.mapelPillActive : ''}`}
+                    onClick={() => setFocusedMapel('CATATAN')}
+                  >
+                    💬 Catatan Pengajar
+                  </button>
                 </div>
 
-                <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={openDeskripsiModal}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #0ea5e9',
+                      background: '#f0f9ff',
+                      color: '#0369a1',
+                      fontWeight: 600,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    📝 Atur Deskripsi Rapor
+                  </button>
                   {savingCount > 0 ? (
                     <span className={`${styles.saveStatusBadge} ${styles.saveStatusSaving}`}>
                       ⏳ Menyimpan otomatis...
@@ -1118,7 +1397,18 @@ export default function NilaiSiswaPage() {
                 </div>
               </div>
 
-              {/* Tabel A: Program Khusus Minat & Bakat */}
+              {/* Fokus Catatan Pengajar saja */}
+              {focusedMapel === 'CATATAN' && (
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#92400e', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ background: '#fef3c7', color: '#92400e', padding: '2px 8px', borderRadius: '6px', fontSize: '0.78rem' }}>💬</span>
+                    Catatan Pengajar — Kelas {kelas} ({PK_CATEGORY_MAP[kategori].label})
+                  </div>
+                  {renderScoreMatrixTable([], 'catatan-only', 0, true)}
+                </div>
+              )}
+
+              {/* Tabel A: Program Khusus Minat & Bakat (+ kolom Catatan Pengajar di akhir) */}
               {visibleMapels.length > 0 && (
                 <div style={{ marginBottom: visibleLayananUmumMapels.length > 0 ? '24px' : 0 }}>
                   {layananUmumMapels.length > 0 && (
@@ -1127,7 +1417,7 @@ export default function NilaiSiswaPage() {
                       Program Khusus Minat &amp; Bakat — {PK_CATEGORY_MAP[kategori].label}
                     </div>
                   )}
-                  {renderScoreMatrixTable(visibleMapels, 'utama', 0)}
+                  {renderScoreMatrixTable(visibleMapels, 'utama', 0, focusedMapel === 'ALL')}
                 </div>
               )}
 
@@ -1141,16 +1431,16 @@ export default function NilaiSiswaPage() {
                       (Nilai harian Materi 1–3, STS, SAS khusus layanan umum kelas {kelas})
                     </span>
                   </div>
-                  {renderScoreMatrixTable(visibleLayananUmumMapels, 'layanan-umum', 2)}
+                  {renderScoreMatrixTable(visibleLayananUmumMapels, 'layanan-umum', 2, false)}
                 </div>
               )}
 
               <div style={{ marginTop: '10px', fontSize: '0.82rem', color: '#64748b', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
                 <span>
-                  Menampilkan <b>{students.length}</b> siswa · Kelas <b>{kelas}</b> · Semester <b>{semester}</b> · Tahun Ajaran <b>{tahunAjaran}</b>
+                  Menampilkan <b>{students.length}</b> siswa · Kelas <b>{kelas}</b> · Semester <b>{semester}</b> · Tahun Ajaran <b>{tahunAjaran}</b> · NA = <b>40% Rata-rata Materi + 60% SAS</b>
                 </span>
                 <span>
-                  Tips: Bisa langsung <b>Copy–Paste dari Excel</b> (1 kolom maupun banyak baris &amp; kolom sekaligus) atau pakai <b>Tab / Enter / Panah</b> — nilai otomatis tersimpan.
+                  Tips: Bisa langsung <b>Copy–Paste dari Excel</b> (termasuk kolom Catatan Pengajar) atau pakai <b>Tab / Enter / Panah</b>.
                 </span>
               </div>
             </>
@@ -1171,7 +1461,23 @@ export default function NilaiSiswaPage() {
                 'Pilih kelas pada filter di atas untuk melihat daftar rapor Program Khusus.'
               )}
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={openDeskripsiModal}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid #0ea5e9',
+                  background: '#f0f9ff',
+                  color: '#0369a1',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: '0.88rem',
+                }}
+              >
+                📝 Atur Deskripsi Capaian
+              </button>
               <button
                 type="button"
                 className={styles.btnSubmit}
@@ -1205,34 +1511,38 @@ export default function NilaiSiswaPage() {
                     <th style={{ width: '110px' }}>No Induk</th>
                     <th>Nama Siswa</th>
                     <th style={{ width: '55px', textAlign: 'center' }}>L/P</th>
-                    {allMapels.map((m) => (
+                    <th style={{ textAlign: 'center' }} title={`Rata-rata gabungan ${PK_CATEGORY_MAP[kategori].label}`}>
+                      {PK_CATEGORY_MAP[kategori].label}
+                    </th>
+                    {layananUmumMapels.map((m) => (
                       <th key={m.name} style={{ textAlign: 'center' }} title={m.name}>
                         {m.shortName}
                       </th>
                     ))}
-                    <th style={{ width: '95px', textAlign: 'center' }}>Rata-rata</th>
-                    <th style={{ width: '110px', textAlign: 'center' }}>Predikat</th>
+                    <th style={{ minWidth: '180px' }}>Catatan Pengajar</th>
                     <th style={{ width: '190px', textAlign: 'center' }}>Aksi Cetak</th>
                   </tr>
                 </thead>
                 <tbody>
                   {students.length === 0 ? (
                     <tr>
-                      <td colSpan={7 + allMapels.length} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                      <td colSpan={7 + layananUmumMapels.length} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
                         Tidak ada siswa aktif di kelas ini.
                       </td>
                     </tr>
                   ) : (
                     students.map((st, idx) => {
-                      const avg = computeStudentOverallAverage(st);
-                      const { predikat, ket } = getPredikat(avg);
+                      const pkAvg = computeCategoryPKAverage(st);
                       return (
                         <tr key={st.induk || idx}>
                           <td style={{ textAlign: 'center' }}>{idx + 1}</td>
                           <td>{st.induk || '-'}</td>
                           <td style={{ fontWeight: 600 }}>{st.nama}</td>
                           <td style={{ textAlign: 'center' }}>{st.jk}</td>
-                          {allMapels.map((m) => {
+                          <td style={{ textAlign: 'center', fontWeight: 700, color: '#1d4ed8' }}>
+                            {pkAvg !== null ? pkAvg : '-'}
+                          </td>
+                          {layananUmumMapels.map((m) => {
                             const r = st.scoresByMapel[m.name]?.rata;
                             return (
                               <td key={m.name} style={{ textAlign: 'center', fontWeight: 600 }}>
@@ -1240,11 +1550,8 @@ export default function NilaiSiswaPage() {
                               </td>
                             );
                           })}
-                          <td style={{ textAlign: 'center', fontWeight: 700, color: '#1d4ed8' }}>
-                            {avg > 0 ? avg : '-'}
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            {predikat} ({ket})
+                          <td style={{ fontSize: '0.84rem', color: st.catatan ? '#1e293b' : '#94a3b8', maxWidth: '260px' }}>
+                            {st.catatan ? st.catatan : '-'}
                           </td>
                           <td style={{ textAlign: 'center' }}>
                             <div style={{ display: 'flex', justifyContent: 'center', gap: '6px' }}>
@@ -1349,6 +1656,239 @@ export default function NilaiSiswaPage() {
               </div>
             </div>
             <div dangerouslySetInnerHTML={{ __html: generateRaporHtml(previewStudent) }} />
+          </div>
+        </div>
+      )}
+
+      {/* Modal Pengaturan Deskripsi Capaian (Per Program x Rentang Nilai) */}
+      {showDeskripsiModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.6)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+          }}
+          onClick={() => setShowDeskripsiModal(false)}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '12px',
+              maxWidth: '920px',
+              width: '100%',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 24px 48px rgba(0, 0, 0, 0.25)',
+              overflow: 'hidden',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div
+              style={{
+                padding: '14px 20px',
+                borderBottom: '1px solid #e2e8f0',
+                background: '#f8fafc',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+              }}
+            >
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.08rem', fontWeight: 700, color: '#0f172a' }}>
+                  📝 Pengaturan Deskripsi Capaian Rapor PK
+                </h3>
+                <p style={{ margin: '2px 0 0', fontSize: '0.82rem', color: '#64748b' }}>
+                  Atur teks deskripsi capaian yang otomatis tampil pada kolom Rapor sesuai Kategori Program &amp; rentang nilai Rata-Rata siswa.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDeskripsiModal(false)}
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  background: 'white',
+                  cursor: 'pointer',
+                  fontWeight: 700,
+                  color: '#475569',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {/* Program Selector Pills */}
+              <div>
+                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                  Pilih Program / Mapel Rapor:
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {PK_DESKRIPSI_PROGRAMS.map((prog) => {
+                    const isActive = activeDeskripsiProgram === prog.key;
+                    const isLU = prog.group === 'Program Khusus Layanan Umum';
+                    return (
+                      <button
+                        key={prog.key}
+                        type="button"
+                        onClick={() => setActiveDeskripsiProgram(prog.key)}
+                        style={{
+                          padding: '7px 12px',
+                          borderRadius: '8px',
+                          border: `1.5px solid ${isActive ? (isLU ? '#16a34a' : '#0284c7') : '#cbd5e1'}`,
+                          background: isActive ? (isLU ? '#dcfce7' : '#e0f2fe') : '#ffffff',
+                          color: isActive ? (isLU ? '#15803d' : '#0369a1') : '#334155',
+                          fontWeight: isActive ? 700 : 500,
+                          fontSize: '0.83rem',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {prog.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 4 Predicate Bracket Textareas */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '12px' }}>
+                {PK_DESKRIPSI_TIERS.map((tier) => {
+                  const val = draftDeskripsi[activeDeskripsiProgram]?.[tier.key] ?? '';
+                  return (
+                    <div
+                      key={tier.key}
+                      style={{
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '8px',
+                        padding: '10px 12px',
+                        background: '#f8fafc',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                        <span style={{ fontSize: '0.86rem', fontWeight: 700, color: '#0f172a' }}>
+                          Nilai {tier.rangeLabel} ({tier.label})
+                        </span>
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            padding: '2px 7px',
+                            borderRadius: '999px',
+                            background: '#e2e8f0',
+                            color: '#334155',
+                          }}
+                        >
+                          Kategori {tier.key}
+                        </span>
+                      </div>
+                      <textarea
+                        rows={3}
+                        value={val}
+                        onChange={(e) => {
+                          const newVal = e.target.value;
+                          setDraftDeskripsi((prev) => ({
+                            ...prev,
+                            [activeDeskripsiProgram]: {
+                              ...prev[activeDeskripsiProgram],
+                              [tier.key]: newVal,
+                            },
+                          }));
+                        }}
+                        placeholder={`Masukkan deskripsi capaian untuk nilai ${tier.rangeLabel}...`}
+                        style={{
+                          width: '100%',
+                          padding: '8px 10px',
+                          borderRadius: '6px',
+                          border: '1px solid #cbd5e1',
+                          fontSize: '0.86rem',
+                          lineHeight: 1.45,
+                          resize: 'vertical',
+                          background: '#ffffff',
+                          fontFamily: 'inherit',
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div
+              style={{
+                padding: '12px 20px',
+                borderTop: '1px solid #e2e8f0',
+                background: '#f8fafc',
+                display: 'flex',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '10px',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  const defaults = createDefaultPKDeskripsiConfig();
+                  setDraftDeskripsi((prev) => ({
+                    ...prev,
+                    [activeDeskripsiProgram]: defaults[activeDeskripsiProgram],
+                  }));
+                }}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  color: '#475569',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                ↺ Reset Bawaan Program Ini
+              </button>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowDeskripsiModal(false)}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#475569',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveDeskripsiConfig}
+                  disabled={savingDeskripsi}
+                  className={styles.btnSubmit}
+                >
+                  {savingDeskripsi ? '⏳ Menyimpan...' : '💾 Simpan Pengaturan Deskripsi'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
