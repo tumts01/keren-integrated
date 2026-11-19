@@ -46,11 +46,17 @@ interface SeragamItem {
   seragam: string;
 }
 
+interface TeacherDayRule {
+  mode: 'only' | 'exclude'; // 'only' = hanya di hari terpilih; 'exclude' = tidak boleh di hari terpilih
+  dayIds: string[];
+}
+
 interface GroupScheduleState {
   headerInfo: HeaderInfo;
   rooms: string[];
   days: ExamDay[];
   excludedKodes: string[];
+  teacherDayRules: Record<string, TeacherDayRule>;
   seragamList: SeragamItem[];
   catatanInfo: string;
 }
@@ -141,9 +147,32 @@ function createInitialGroupState(groupKey: ScheduleGroupKey): GroupScheduleState
     rooms: createDefaultRooms(groupKey === 'kelas78' ? 17 : 15),
     days: [createInitialDay(groupKey)],
     excludedKodes: [],
+    teacherDayRules: {},
     seragamList: DEFAULT_SERAGAM_LIST.map((s, idx) => ({ id: `srg-${groupKey}-${idx}`, ...s })),
     catatanInfo: DEFAULT_CATATAN_INFO
   };
+}
+
+function isTeacherAllowedOnDay(
+  kode: string,
+  dayId: string,
+  rules: Record<string, TeacherDayRule> | undefined,
+  validDayIds: Set<string>
+): boolean {
+  const rule = rules?.[kode];
+  if (!rule || !Array.isArray(rule.dayIds)) return true;
+  const activeRuleDays = rule.dayIds.filter(id => validDayIds.has(id));
+  if (activeRuleDays.length === 0) {
+    // If 'exclude' has 0 valid days, allow all; if 'only' has 0 valid days, teacher cannot supervise on existing days
+    return rule.mode !== 'only';
+  }
+  if (rule.mode === 'only') {
+    return activeRuleDays.includes(dayId);
+  }
+  if (rule.mode === 'exclude') {
+    return !activeRuleDays.includes(dayId);
+  }
+  return true;
 }
 
 function isStafJabatan(jabatan: string): boolean {
@@ -294,6 +323,10 @@ export default function JadwalPengawasTab() {
   const [mapelOptions, setMapelOptions] = useState<string[]>([]);
   const [showTeacherPicker, setShowTeacherPicker] = useState(false);
   const [teacherSearch, setTeacherSearch] = useState('');
+  const [showDayRulesPanel, setShowDayRulesPanel] = useState(false);
+  const [ruleDraftKode, setRuleDraftKode] = useState('');
+  const [ruleDraftMode, setRuleDraftMode] = useState<'only' | 'exclude'>('only');
+  const [ruleDraftDayIds, setRuleDraftDayIds] = useState<string[]>([]);
 
   const [groups, setGroups] = useState<Record<ScheduleGroupKey, GroupScheduleState>>({
     kelas78: createInitialGroupState('kelas78'),
@@ -381,6 +414,10 @@ export default function JadwalPengawasTab() {
                   excludedKodes: Array.isArray(parsed.groups.kelas78?.excludedKodes)
                     ? parsed.groups.kelas78.excludedKodes
                     : [],
+                  teacherDayRules:
+                    parsed.groups.kelas78?.teacherDayRules && typeof parsed.groups.kelas78.teacherDayRules === 'object'
+                      ? parsed.groups.kelas78.teacherDayRules
+                      : {},
                   seragamList: Array.isArray(parsed.groups.kelas78?.seragamList)
                     ? parsed.groups.kelas78.seragamList
                     : init78.seragamList,
@@ -400,6 +437,10 @@ export default function JadwalPengawasTab() {
                   excludedKodes: Array.isArray(parsed.groups.kelas9?.excludedKodes)
                     ? parsed.groups.kelas9.excludedKodes
                     : [],
+                  teacherDayRules:
+                    parsed.groups.kelas9?.teacherDayRules && typeof parsed.groups.kelas9.teacherDayRules === 'object'
+                      ? parsed.groups.kelas9.teacherDayRules
+                      : {},
                   seragamList: Array.isArray(parsed.groups.kelas9?.seragamList)
                     ? parsed.groups.kelas9.seragamList
                     : init9.seragamList,
@@ -419,6 +460,10 @@ export default function JadwalPengawasTab() {
                   rooms: Array.isArray(parsed.rooms) && parsed.rooms.length > 0 ? parsed.rooms : init78.rooms,
                   days: parsed.days.length > 0 ? parsed.days : init78.days,
                   excludedKodes: Array.isArray(parsed.excludedKodes) ? parsed.excludedKodes : [],
+                  teacherDayRules:
+                    parsed.teacherDayRules && typeof parsed.teacherDayRules === 'object'
+                      ? parsed.teacherDayRules
+                      : {},
                   seragamList: Array.isArray(parsed.seragamList) ? parsed.seragamList : init78.seragamList,
                   catatanInfo: typeof parsed.catatanInfo === 'string' ? parsed.catatanInfo : init78.catatanInfo
                 }
@@ -455,6 +500,31 @@ export default function JadwalPengawasTab() {
     const excl = new Set(currentGroup.excludedKodes);
     return teachers.filter(t => !excl.has(t.kode));
   }, [teachers, currentGroup.excludedKodes]);
+
+  const validDayIds = useMemo(() => new Set(currentGroup.days.map(d => d.id)), [currentGroup.days]);
+
+  const activeRuleEntries = useMemo(() => {
+    const rules = currentGroup.teacherDayRules || {};
+    return Object.entries(rules)
+      .map(([kode, rule]) => ({
+        kode,
+        teacher: teacherByKode.get(kode),
+        mode: rule.mode,
+        dayIds: (rule.dayIds || []).filter(id => validDayIds.has(id)),
+      }))
+      .filter(item => item.dayIds.length > 0)
+      .sort((a, b) => Number(a.kode) - Number(b.kode) || a.kode.localeCompare(b.kode));
+  }, [currentGroup.teacherDayRules, teacherByKode, validDayIds]);
+
+  const dayEligibleCountMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    currentGroup.days.forEach(d => {
+      map[d.id] = activePool.filter(t =>
+        isTeacherAllowedOnDay(t.kode, d.id, currentGroup.teacherDayRules, validDayIds)
+      ).length;
+    });
+    return map;
+  }, [currentGroup.days, currentGroup.teacherDayRules, activePool, validDayIds]);
 
   const stats78 = useMemo(() => computeGroupStats(groups.kelas78, groups.kelas9), [groups]);
   const stats9 = useMemo(() => computeGroupStats(groups.kelas9, groups.kelas78), [groups]);
@@ -565,10 +635,90 @@ export default function JadwalPengawasTab() {
 
   const handleRemoveDay = (dayId: string) => {
     if (currentGroup.days.length <= 1) return;
+    updateCurrentGroup(prev => {
+      const nextRules: Record<string, TeacherDayRule> = {};
+      Object.entries(prev.teacherDayRules || {}).forEach(([kode, rule]) => {
+        const remainingIds = (rule.dayIds || []).filter(id => id !== dayId);
+        if (remainingIds.length > 0) {
+          nextRules[kode] = { ...rule, dayIds: remainingIds };
+        }
+      });
+      return {
+        ...prev,
+        days: prev.days.filter(d => d.id !== dayId),
+        teacherDayRules: nextRules,
+      };
+    });
+  };
+
+  const handleSelectTeacherForRule = (kode: string) => {
+    setRuleDraftKode(kode);
+    const existing = currentGroup.teacherDayRules?.[kode];
+    if (existing) {
+      setRuleDraftMode(existing.mode);
+      setRuleDraftDayIds((existing.dayIds || []).filter(id => validDayIds.has(id)));
+    } else {
+      setRuleDraftMode('only');
+      setRuleDraftDayIds([]);
+    }
+  };
+
+  const handleToggleRuleDay = (dayId: string) => {
+    setRuleDraftDayIds(prev =>
+      prev.includes(dayId) ? prev.filter(id => id !== dayId) : [...prev, dayId]
+    );
+  };
+
+  const handleSaveTeacherDayRule = () => {
+    if (!ruleDraftKode) {
+      Swal.fire('Pilih Guru', 'Silakan pilih guru terlebih dahulu.', 'info');
+      return;
+    }
+    if (ruleDraftDayIds.length === 0) {
+      Swal.fire(
+        'Pilih Hari',
+        ruleDraftMode === 'only'
+          ? 'Pilih minimal 1 hari di mana guru tersebut boleh mengawas.'
+          : 'Pilih minimal 1 hari di mana guru tersebut tidak boleh mengawas.',
+        'info'
+      );
+      return;
+    }
+
     updateCurrentGroup(prev => ({
       ...prev,
-      days: prev.days.filter(d => d.id !== dayId)
+      teacherDayRules: {
+        ...(prev.teacherDayRules || {}),
+        [ruleDraftKode]: {
+          mode: ruleDraftMode,
+          dayIds: [...ruleDraftDayIds],
+        },
+      },
     }));
+
+    const t = teacherByKode.get(ruleDraftKode);
+    setRuleDraftKode('');
+    setRuleDraftDayIds([]);
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: `Aturan hari khusus untuk ${t?.nama || ruleDraftKode} diterapkan.`,
+      showConfirmButton: false,
+      timer: 2000,
+    });
+  };
+
+  const handleDeleteTeacherDayRule = (kode: string) => {
+    updateCurrentGroup(prev => {
+      const next = { ...(prev.teacherDayRules || {}) };
+      delete next[kode];
+      return { ...prev, teacherDayRules: next };
+    });
+    if (ruleDraftKode === kode) {
+      setRuleDraftKode('');
+      setRuleDraftDayIds([]);
+    }
   };
 
   const handleUpdateDayDate = (dayId: string, newIso: string) => {
@@ -686,6 +836,28 @@ export default function JadwalPengawasTab() {
       return;
     }
 
+    // Validasi ketersediaan pengawas pada setiap hari setelah aturan hari khusus diterapkan
+    const shortDays = currentGroup.days
+      .map(day => ({
+        day,
+        eligibleCount: activePool.filter(t =>
+          isTeacherAllowedOnDay(t.kode, day.id, currentGroup.teacherDayRules, validDayIds)
+        ).length
+      }))
+      .filter(item => item.eligibleCount < targetRooms.length);
+
+    if (shortDays.length > 0) {
+      const detail = shortDays
+        .map(s => `• ${s.day.labelHariTanggal || s.day.tanggal}: tersedia ${s.eligibleCount} guru (butuh ${targetRooms.length})`)
+        .join('\n');
+      Swal.fire(
+        'Guru Tersedia Tidak Cukup',
+        `Aturan hari khusus membuat beberapa hari kekurangan pengawas:\n${detail}`,
+        'warning'
+      );
+      return;
+    }
+
     // Petakan guru yang sedang bertugas di jadwal pasangan pada (tanggal + waktu) yang persis sama, dan beban hariannya
     const otherBusyAtDateTime = new Map<string, Set<string>>();
     const otherDayCount = new Map<string, Record<string, number>>();
@@ -719,13 +891,16 @@ export default function JadwalPengawasTab() {
       const dayCount: Record<string, number> = {};
       const tgl = (day.tanggal || day.labelHariTanggal || '').trim();
       const otherSameDayMap = otherDayCount.get(tgl) || {};
+      const dayEligiblePool = activePool.filter(t =>
+        isTeacherAllowedOnDay(t.kode, day.id, currentGroup.teacherDayRules, validDayIds)
+      );
       let prevSessionSet = new Set<string>();
 
       const newSessions = day.sessions.map(ses => {
         const wKey = normWaktuKey(ses.waktu);
         const busyInOtherAtExactTime = (tgl && wKey ? otherBusyAtDateTime.get(`${tgl}|${wKey}`) : undefined) || new Set<string>();
 
-        const scoredPool = activePool.map(t => ({
+        const scoredPool = dayEligiblePool.map(t => ({
           teacher: t,
           // Prioritas 1: jangan sampai bentrok dengan jadwal pasangan di tanggal & waktu sama
           crossClash: busyInOtherAtExactTime.has(t.kode) ? 1 : 0,
@@ -774,7 +949,11 @@ export default function JadwalPengawasTab() {
 
     updateCurrentGroup(prev => ({ ...prev, days: updatedDays }));
 
-    const vals = Object.values(totalCount);
+    const activeRuleMap = currentGroup.teacherDayRules || {};
+    const unrestrictedVals = activePool
+      .filter(t => !(activeRuleMap[t.kode]?.dayIds || []).some(id => validDayIds.has(id)))
+      .map(t => totalCount[t.kode] || 0);
+    const vals = unrestrictedVals.length > 0 ? unrestrictedVals : Object.values(totalCount);
     const minV = Math.min(...vals);
     const maxV = Math.max(...vals);
     Swal.fire({
@@ -1520,6 +1699,27 @@ export default function JadwalPengawasTab() {
             Pilih Guru Pengawas ({activePool.length}/{teachers.length} Guru)
           </button>
 
+          <button
+            type="button"
+            onClick={() => setShowDayRulesPanel(prev => !prev)}
+            style={{
+              padding: '7px 12px',
+              borderRadius: '6px',
+              border: `1px solid ${activeRuleEntries.length > 0 ? '#f59e0b' : '#cbd5e1'}`,
+              background: showDayRulesPanel ? '#fef3c7' : activeRuleEntries.length > 0 ? '#fffbeb' : 'white',
+              color: activeRuleEntries.length > 0 || showDayRulesPanel ? '#b45309' : '#334155',
+              fontWeight: 700,
+              fontSize: '0.82rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <i className="fas fa-calendar-check"></i>
+            Atur Hari Khusus Guru {activeRuleEntries.length > 0 ? `(${activeRuleEntries.length})` : ''}
+          </button>
+
           {scheduleStats.filledSlots > 0 && (
             <button
               type="button"
@@ -1569,6 +1769,8 @@ export default function JadwalPengawasTab() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '6px', maxHeight: '220px', overflowY: 'auto' }}>
               {filteredTeachersPicker.map(t => {
                 const checked = !currentGroup.excludedKodes.includes(t.kode);
+                const rule = currentGroup.teacherDayRules?.[t.kode];
+                const ruleDaysCount = (rule?.dayIds || []).filter(id => validDayIds.has(id)).length;
                 return (
                   <label
                     key={t.id}
@@ -1597,13 +1799,265 @@ export default function JadwalPengawasTab() {
                       }
                     />
                     <span style={{ fontWeight: 800, color: '#0369a1', minWidth: '24px' }}>{t.kode}</span>
-                    <span style={{ color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${t.nama} (${t.jabatan})`}>
+                    <span style={{ color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }} title={`${t.nama} (${t.jabatan})`}>
                       {t.nama}
                     </span>
+                    {ruleDaysCount > 0 && (
+                      <span
+                        style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          padding: '1px 5px',
+                          borderRadius: '4px',
+                          background: rule?.mode === 'only' ? '#dcfce7' : '#fee2e2',
+                          color: rule?.mode === 'only' ? '#15803d' : '#b91c1c',
+                          whiteSpace: 'nowrap'
+                        }}
+                        title="Klik Atur Hari Khusus Guru untuk mengubah"
+                      >
+                        {rule?.mode === 'only' ? `Hanya ${ruleDaysCount}h` : `Libur ${ruleDaysCount}h`}
+                      </span>
+                    )}
                   </label>
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* Panel Aturan Hari Khusus Per Guru */}
+        {showDayRulesPanel && (
+          <div style={{ background: 'white', border: '1px solid #fcd34d', borderRadius: '8px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+              <div>
+                <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#92400e' }}>
+                  <i className="fas fa-calendar-check" style={{ marginRight: '6px' }}></i>
+                  Aturan Hari Mengawas Khusus — {activeGroupLabel}
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                  Tentukan guru tertentu hanya mengawas di hari tertentu atau tidak boleh mengawas di hari tertentu sebelum klik <b>Generate Pengawas</b>.
+                </div>
+              </div>
+              {activeRuleEntries.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => updateCurrentGroup(prev => ({ ...prev, teacherDayRules: {} }))}
+                  style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Hapus Semua Aturan ({activeRuleEntries.length})
+                </button>
+              )}
+            </div>
+
+            {/* Form Tambah / Ubah Aturan */}
+            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'flex-end' }}>
+                <div style={{ flex: '1 1 240px' }}>
+                  <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: '#78350f', marginBottom: '4px' }}>
+                    1. Pilih Guru Pengawas
+                  </label>
+                  <select
+                    value={ruleDraftKode}
+                    onChange={e => handleSelectTeacherForRule(e.target.value)}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #fcd34d', fontSize: '0.84rem', background: 'white' }}
+                  >
+                    <option value="">-- Pilih Guru --</option>
+                    {activePool.map(t => (
+                      <option key={t.kode} value={t.kode}>
+                        [{t.kode}] {t.nama}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ flex: '1 1 280px' }}>
+                  <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: '#78350f', marginBottom: '4px' }}>
+                    2. Jenis Aturan
+                  </label>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => setRuleDraftMode('only')}
+                      style={{
+                        flex: 1,
+                        padding: '7px 10px',
+                        borderRadius: '6px',
+                        border: `1.5px solid ${ruleDraftMode === 'only' ? '#16a34a' : '#cbd5e1'}`,
+                        background: ruleDraftMode === 'only' ? '#dcfce7' : 'white',
+                        color: ruleDraftMode === 'only' ? '#15803d' : '#475569',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      ✓ Hanya di Hari Terpilih
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRuleDraftMode('exclude')}
+                      style={{
+                        flex: 1,
+                        padding: '7px 10px',
+                        borderRadius: '6px',
+                        border: `1.5px solid ${ruleDraftMode === 'exclude' ? '#dc2626' : '#cbd5e1'}`,
+                        background: ruleDraftMode === 'exclude' ? '#fee2e2' : 'white',
+                        color: ruleDraftMode === 'exclude' ? '#b91c1c' : '#475569',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap'
+                      }}
+                    >
+                      ✕ Tidak Boleh di Hari Terpilih
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '0.76rem', fontWeight: 700, color: '#78350f', marginBottom: '6px' }}>
+                  3. Pilih Hari Ujian ({ruleDraftMode === 'only' ? 'Guru hanya bertugas pada hari yang dicentang' : 'Guru tidak ditugaskan pada hari yang dicentang'}):
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '6px' }}>
+                  {currentGroup.days.map((d, dIdx) => {
+                    const isChecked = ruleDraftDayIds.includes(d.id);
+                    const eligCount = dayEligibleCountMap[d.id] ?? activePool.length;
+                    const isLow = eligCount < currentGroup.rooms.length;
+                    return (
+                      <label
+                        key={d.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '6px',
+                          padding: '6px 8px',
+                          borderRadius: '6px',
+                          border: `1px solid ${isChecked ? (ruleDraftMode === 'only' ? '#4ade80' : '#fca5a5') : '#cbd5e1'}`,
+                          background: isChecked ? (ruleDraftMode === 'only' ? '#f0fdf4' : '#fef2f2') : 'white',
+                          fontSize: '0.78rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleToggleRuleDay(d.id)}
+                          />
+                          <span style={{ fontWeight: 600, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            #{dIdx + 1} {d.labelHariTanggal || d.tanggal || `Hari ${dIdx + 1}`}
+                          </span>
+                        </span>
+                        <span
+                          style={{
+                            fontSize: '0.7rem',
+                            fontWeight: 700,
+                            color: isLow ? '#dc2626' : '#64748b',
+                            whiteSpace: 'nowrap'
+                          }}
+                          title="Jumlah pengawas tersedia hari ini"
+                        >
+                          {eligCount} gr
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                {ruleDraftKode && currentGroup.teacherDayRules?.[ruleDraftKode] && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteTeacherDayRule(ruleDraftKode)}
+                    style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Hapus Aturan Guru Ini
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSaveTeacherDayRule}
+                  style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: '#0284c7', color: 'white', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  <i className="fas fa-check" style={{ marginRight: '5px' }}></i>
+                  Terapkan Aturan
+                </button>
+              </div>
+            </div>
+
+            {/* Daftar Aturan Aktif */}
+            {activeRuleEntries.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155' }}>
+                  Daftar Aturan Aktif ({activeRuleEntries.length} Guru):
+                </div>
+                {activeRuleEntries.map(entry => {
+                  const dayLabels = entry.dayIds
+                    .map(id => {
+                      const dIdx = currentGroup.days.findIndex(d => d.id === id);
+                      const d = dIdx >= 0 ? currentGroup.days[dIdx] : null;
+                      return d ? (d.labelHariTanggal || `Hari ${dIdx + 1}`) : '';
+                    })
+                    .filter(Boolean)
+                    .join(', ');
+                  const isOnly = entry.mode === 'only';
+                  return (
+                    <div
+                      key={entry.kode}
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px',
+                        padding: '8px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid #e2e8f0',
+                        background: '#f8fafc',
+                        fontSize: '0.8rem'
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontWeight: 800, color: '#0369a1' }}>[{entry.kode}]</span>
+                        <span style={{ fontWeight: 700, color: '#0f172a' }}>{entry.teacher?.nama || 'Guru'}</span>
+                        <span
+                          style={{
+                            padding: '2px 7px',
+                            borderRadius: '999px',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            background: isOnly ? '#dcfce7' : '#fee2e2',
+                            color: isOnly ? '#15803d' : '#b91c1c'
+                          }}
+                        >
+                          {isOnly ? 'Hanya di:' : 'Tidak boleh di:'}
+                        </span>
+                        <span style={{ color: '#334155' }}>{dayLabels}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectTeacherForRule(entry.kode)}
+                          style={{ padding: '4px 8px', borderRadius: '5px', border: '1px solid #cbd5e1', background: 'white', color: '#0369a1', fontSize: '0.74rem', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          Ubah
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTeacherDayRule(entry.kode)}
+                          style={{ padding: '4px 8px', borderRadius: '5px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: '0.74rem', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
