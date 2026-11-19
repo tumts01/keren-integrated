@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
 import Swal from 'sweetalert2';
 import { supabase } from '@/lib/supabase';
 
@@ -22,6 +22,8 @@ export interface CertFieldConfig {
   textTransform: 'none' | 'uppercase' | 'capitalize';
   prefix: string;
   suffix: string;
+  maxWidth: number; // percentage 0..100 (0 = bebas / tanpa batas)
+  overflowMode: 'shrink' | 'wrap';
 }
 
 export interface CertTemplateConfig {
@@ -73,6 +75,8 @@ export const createDefaultCertTemplate = (): CertTemplateConfig => ({
       textTransform: 'uppercase',
       prefix: '',
       suffix: '',
+      maxWidth: 56,
+      overflowMode: 'shrink',
     },
     nisn: {
       key: 'nisn',
@@ -89,6 +93,8 @@ export const createDefaultCertTemplate = (): CertTemplateConfig => ({
       textTransform: 'none',
       prefix: 'NISN: ',
       suffix: '',
+      maxWidth: 0,
+      overflowMode: 'shrink',
     },
     kelas: {
       key: 'kelas',
@@ -105,6 +111,8 @@ export const createDefaultCertTemplate = (): CertTemplateConfig => ({
       textTransform: 'none',
       prefix: 'Kelas ',
       suffix: '',
+      maxWidth: 0,
+      overflowMode: 'shrink',
     },
     karakter_tertinggi: {
       key: 'karakter_tertinggi',
@@ -121,6 +129,8 @@ export const createDefaultCertTemplate = (): CertTemplateConfig => ({
       textTransform: 'uppercase',
       prefix: '',
       suffix: '',
+      maxWidth: 0,
+      overflowMode: 'shrink',
     },
   },
 });
@@ -300,19 +310,27 @@ export function printStudentCertificates(
         if (!f || !f.enabled) return '';
         const text = resolveFieldText(student, f, traits);
         const translateX = f.align === 'center' ? '-50%' : f.align === 'right' ? '-100%' : '0%';
+        const hasMaxW = Number(f.maxWidth || 0) > 0;
+        const isWrap = hasMaxW && f.overflowMode === 'wrap';
+        const isShrink = hasMaxW && f.overflowMode !== 'wrap';
         return `
-          <div class="cert-field" style="
-            left: ${f.x}%;
-            top: ${f.y}%;
-            transform: translate(${translateX}, -50%);
-            font-size: ${f.fontSize}pt;
-            font-family: ${f.fontFamily};
-            color: ${f.color};
-            font-weight: ${f.bold ? '700' : '400'};
-            font-style: ${f.italic ? 'italic' : 'normal'};
-            text-align: ${f.align};
-            text-transform: ${f.textTransform};
-          ">${escapeHtml(text)}</div>
+          <div
+            class="cert-field"
+            ${isShrink ? `data-autofit="shrink" data-max-width-pct="${f.maxWidth}" data-font-pt="${f.fontSize}"` : ''}
+            style="
+              left: ${f.x}%;
+              top: ${f.y}%;
+              transform: translate(${translateX}, -50%);
+              font-size: ${f.fontSize}pt;
+              font-family: ${f.fontFamily};
+              color: ${f.color};
+              font-weight: ${f.bold ? '700' : '400'};
+              font-style: ${f.italic ? 'italic' : 'normal'};
+              text-align: ${f.align};
+              text-transform: ${f.textTransform};
+              ${isWrap ? `width: ${f.maxWidth}%; white-space: normal; overflow-wrap: break-word;` : 'white-space: nowrap;'}
+            "
+          >${escapeHtml(text)}</div>
         `;
       }).join('');
 
@@ -405,6 +423,25 @@ export function printStudentCertificates(
         })
       );
       Promise.all([waitFonts, waitImgs]).then(function () {
+        document.querySelectorAll('.cert-field[data-autofit="shrink"]').forEach(function (el) {
+          var pageEl = el.parentElement;
+          if (!pageEl) return;
+          var maxPct = Number(el.getAttribute('data-max-width-pct') || '0');
+          var basePt = Number(el.getAttribute('data-font-pt') || '20');
+          if (!maxPct || maxPct <= 0) return;
+          var maxPx = pageEl.getBoundingClientRect().width * (maxPct / 100);
+          var actualW = el.scrollWidth;
+          if (actualW > maxPx && maxPx > 0) {
+            var fitted = Math.max(8, Math.floor(basePt * (maxPx / actualW) * 10) / 10);
+            el.style.fontSize = fitted + 'pt';
+            var guard = 0;
+            while (el.scrollWidth > maxPx && fitted > 8 && guard < 30) {
+              fitted = Math.max(8, Math.round((fitted - 0.4) * 10) / 10);
+              el.style.fontSize = fitted + 'pt';
+              guard++;
+            }
+          }
+        });
         setTimeout(function () {
           window.focus();
           window.print();
@@ -476,6 +513,106 @@ interface AlignGuide {
   pos: number; // percentage 0..100
   label: string;
   color: string;
+}
+
+interface PreviewFieldNodeProps {
+  field: CertFieldConfig;
+  text: string;
+  pxPerPt: number;
+  canvasWidthPx: number;
+  isSelected: boolean;
+  registerEl: (el: HTMLDivElement | null) => void;
+  onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => void;
+}
+
+function PreviewFieldNode({
+  field,
+  text,
+  pxPerPt,
+  canvasWidthPx,
+  isSelected,
+  registerEl,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+}: PreviewFieldNodeProps) {
+  const localRef = useRef<HTMLDivElement | null>(null);
+  const baseFontPx = Math.max(6, field.fontSize * pxPerPt);
+  const hasMaxW = Number(field.maxWidth || 0) > 0;
+  const isWrap = hasMaxW && field.overflowMode === 'wrap';
+  const isShrink = hasMaxW && field.overflowMode !== 'wrap';
+  const maxWidthPx = hasMaxW ? canvasWidthPx * (field.maxWidth / 100) : 0;
+
+  useLayoutEffect(() => {
+    const el = localRef.current;
+    if (!el) return;
+
+    const fitText = () => {
+      el.style.fontSize = `${baseFontPx}px`;
+      if (isShrink && maxWidthPx > 0) {
+        const actualW = el.scrollWidth;
+        if (actualW > maxWidthPx) {
+          let fitted = Math.max(6, baseFontPx * (maxWidthPx / actualW));
+          el.style.fontSize = `${fitted}px`;
+          let guard = 0;
+          while (el.scrollWidth > maxWidthPx && fitted > 6 && guard < 28) {
+            fitted = Math.max(6, fitted - 0.35);
+            el.style.fontSize = `${fitted}px`;
+            guard++;
+          }
+        }
+      }
+    };
+
+    fitText();
+    if (typeof document !== 'undefined' && document.fonts) {
+      document.fonts.ready.then(fitText).catch(() => {});
+    }
+  }, [text, baseFontPx, isShrink, maxWidthPx, field.fontFamily, field.bold, field.italic, field.textTransform]);
+
+  const translateX = field.align === 'center' ? '-50%' : field.align === 'right' ? '-100%' : '0%';
+
+  return (
+    <div
+      ref={(el) => {
+        localRef.current = el;
+        registerEl(el);
+      }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      style={{
+        position: 'absolute',
+        left: `${field.x}%`,
+        top: `${field.y}%`,
+        transform: `translate(${translateX}, -50%)`,
+        fontSize: `${baseFontPx}px`,
+        fontFamily: field.fontFamily,
+        color: field.color,
+        fontWeight: field.bold ? 700 : 400,
+        fontStyle: field.italic ? 'italic' : 'normal',
+        textAlign: field.align,
+        textTransform: field.textTransform,
+        whiteSpace: isWrap ? 'normal' : 'nowrap',
+        overflowWrap: isWrap ? 'break-word' : undefined,
+        width: isWrap ? `${field.maxWidth}%` : undefined,
+        lineHeight: 1.15,
+        letterSpacing: '0.01em',
+        cursor: 'grab',
+        padding: 0,
+        borderRadius: '2px',
+        outline: isSelected ? '2px solid #0ea5e9' : '1px dashed rgba(14, 165, 233, 0.55)',
+        outlineOffset: '3px',
+        background: isSelected ? 'rgba(224, 242, 254, 0.35)' : 'rgba(255, 255, 255, 0.18)',
+        zIndex: isSelected ? 20 : 10,
+      }}
+      title={`Geser posisi ${field.label} (atau pakai panah keyboard ↑↓←→)`}
+    >
+      {text}
+    </div>
+  );
 }
 
 export default function SertifikatKarakterModal({
@@ -727,6 +864,30 @@ export default function SertifikatKarakterModal({
     ro.observe(el);
     return () => ro.disconnect();
   }, [isOpen, draft.orientation]);
+
+  const longestStudentIndex = useMemo(() => {
+    if (sampleStudents.length === 0) return -1;
+    let bestIdx = 0;
+    let bestLen = (sampleStudents[0]?.nama || '').length;
+    for (let i = 1; i < sampleStudents.length; i++) {
+      const len = (sampleStudents[i]?.nama || '').length;
+      if (len > bestLen) {
+        bestLen = len;
+        bestIdx = i;
+      }
+    }
+    return bestIdx;
+  }, [sampleStudents]);
+
+  const previewDropdownIndices = useMemo(() => {
+    const indices: number[] = [];
+    const maxCount = Math.min(sampleStudents.length, 30);
+    for (let i = 0; i < maxCount; i++) indices.push(i);
+    if (longestStudentIndex >= 0 && !indices.includes(longestStudentIndex)) {
+      indices.unshift(longestStudentIndex);
+    }
+    return indices;
+  }, [sampleStudents.length, longestStudentIndex]);
 
   const previewStudent = useMemo<RekapSiswaCert>(() => {
     if (sampleStudents.length > 0) {
@@ -1054,8 +1215,8 @@ export default function SertifikatKarakterModal({
               </div>
 
               {sampleStudents.length > 0 && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#475569' }}>
-                  <span>Preview data:</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#475569', flexWrap: 'wrap' }}>
+                  <span>Preview:</span>
                   <select
                     value={sampleIndex}
                     onChange={(e) => setSampleIndex(Number(e.target.value))}
@@ -1064,15 +1225,38 @@ export default function SertifikatKarakterModal({
                       border: '1px solid #cbd5e1',
                       borderRadius: '5px',
                       fontSize: '0.8rem',
-                      maxWidth: '200px',
+                      maxWidth: '190px',
                     }}
                   >
-                    {sampleStudents.slice(0, 30).map((s, i) => (
-                      <option key={`${s.nisn}-${i}`} value={i}>
-                        {s.nama} ({s.kelas})
-                      </option>
-                    ))}
+                    {previewDropdownIndices.map((idx) => {
+                      const s = sampleStudents[idx];
+                      return (
+                        <option key={`${s.nisn}-${idx}`} value={idx}>
+                          {s.nama} ({s.kelas})
+                        </option>
+                      );
+                    })}
                   </select>
+                  {longestStudentIndex >= 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setSampleIndex(longestStudentIndex)}
+                      style={{
+                        padding: '5px 8px',
+                        borderRadius: '5px',
+                        border: '1px solid #f59e0b',
+                        background: sampleIndex === longestStudentIndex ? '#fef3c7' : '#fffbeb',
+                        color: '#b45309',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                      title={`Uji dengan siswa bernama terpanjang: ${sampleStudents[longestStudentIndex]?.nama || ''}`}
+                    >
+                      Cek Nama Terpanjang
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -1209,50 +1393,67 @@ export default function SertifikatKarakterModal({
                 )
               )}
 
+              {/* Max-width visual boundary box for currently selected field */}
+              {activeField?.enabled && Number(activeField.maxWidth || 0) > 0 && (() => {
+                const translateX =
+                  activeField.align === 'center' ? '-50%' : activeField.align === 'right' ? '-100%' : '0%';
+                return (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: `${activeField.x}%`,
+                      top: `${activeField.y}%`,
+                      width: `${activeField.maxWidth}%`,
+                      height: `${Math.max(24, activeField.fontSize * pxPerPt * 1.5)}px`,
+                      transform: `translate(${translateX}, -50%)`,
+                      borderLeft: '1.5px dashed #f59e0b',
+                      borderRight: '1.5px dashed #f59e0b',
+                      background: 'rgba(254, 243, 199, 0.16)',
+                      pointerEvents: 'none',
+                      zIndex: 8,
+                    }}
+                  >
+                    <span
+                      style={{
+                        position: 'absolute',
+                        right: '2px',
+                        top: '-15px',
+                        fontSize: '9px',
+                        fontWeight: 700,
+                        color: '#b45309',
+                        background: 'rgba(254, 243, 199, 0.92)',
+                        padding: '1px 4px',
+                        borderRadius: '3px',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Batas {activeField.maxWidth}%
+                    </span>
+                  </div>
+                );
+              })()}
+
               {/* Draggable Mapped Fields */}
               {FIELD_KEYS.map((key) => {
                 const f = draft.fields[key];
                 if (!f.enabled) return null;
-                const isSelected = selectedKey === key;
-                const translateX = f.align === 'center' ? '-50%' : f.align === 'right' ? '-100%' : '0%';
                 const text = resolveFieldText(previewStudent, f, traits);
 
                 return (
-                  <div
+                  <PreviewFieldNode
                     key={key}
-                    ref={(el) => {
+                    field={f}
+                    text={text}
+                    pxPerPt={pxPerPt}
+                    canvasWidthPx={canvasWidthPx}
+                    isSelected={selectedKey === key}
+                    registerEl={(el) => {
                       fieldElRefs.current[key] = el;
                     }}
                     onPointerDown={(e) => handlePointerDownField(e, key)}
                     onPointerMove={handlePointerMoveField}
                     onPointerUp={handlePointerUpField}
-                    style={{
-                      position: 'absolute',
-                      left: `${f.x}%`,
-                      top: `${f.y}%`,
-                      transform: `translate(${translateX}, -50%)`,
-                      fontSize: `${Math.max(6, f.fontSize * pxPerPt)}px`,
-                      fontFamily: f.fontFamily,
-                      color: f.color,
-                      fontWeight: f.bold ? 700 : 400,
-                      fontStyle: f.italic ? 'italic' : 'normal',
-                      textAlign: f.align,
-                      textTransform: f.textTransform,
-                      whiteSpace: 'nowrap',
-                      lineHeight: 1.15,
-                      letterSpacing: '0.01em',
-                      cursor: 'grab',
-                      padding: 0,
-                      borderRadius: '2px',
-                      outline: isSelected ? '2px solid #0ea5e9' : '1px dashed rgba(14, 165, 233, 0.55)',
-                      outlineOffset: '3px',
-                      background: isSelected ? 'rgba(224, 242, 254, 0.35)' : 'rgba(255, 255, 255, 0.18)',
-                      zIndex: isSelected ? 20 : 10,
-                    }}
-                    title={`Geser posisi ${f.label} (atau pakai panah keyboard ↑↓←→)`}
-                  >
-                    {text}
-                  </div>
+                  />
                 );
               })}
             </div>
@@ -1556,6 +1757,84 @@ export default function SertifikatKarakterModal({
                     style={{ width: '100%', padding: '6px 8px', border: '1px solid #cbd5e1', borderRadius: '5px', fontSize: '0.82rem' }}
                   />
                 </div>
+              </div>
+
+              {/* Batas Lebar & Penanganan Teks Panjang */}
+              <div
+                style={{
+                  background: '#fffbeb',
+                  border: '1px solid #fde68a',
+                  borderRadius: '7px',
+                  padding: '9px 10px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontWeight: 700, color: '#92400e', cursor: 'pointer', margin: 0 }}>
+                    <input
+                      type="checkbox"
+                      checked={Number(activeField.maxWidth || 0) > 0}
+                      onChange={(e) =>
+                        updateField(selectedKey, {
+                          maxWidth: e.target.checked ? 56 : 0,
+                        })
+                      }
+                    />
+                    Batasi Lebar (Nama Panjang)
+                  </label>
+                  {Number(activeField.maxWidth || 0) > 0 && (
+                    <span style={{ fontSize: '0.76rem', fontWeight: 700, color: '#b45309' }}>
+                      {activeField.maxWidth}%
+                    </span>
+                  )}
+                </div>
+
+                {Number(activeField.maxWidth || 0) > 0 && (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
+                        type="range"
+                        min="15"
+                        max="95"
+                        step="1"
+                        value={activeField.maxWidth}
+                        onChange={(e) => updateField(selectedKey, { maxWidth: Number(e.target.value) })}
+                        style={{ flex: 1, accentColor: '#d97706', cursor: 'pointer' }}
+                      />
+                      <input
+                        type="number"
+                        min="15"
+                        max="95"
+                        value={activeField.maxWidth}
+                        onChange={(e) =>
+                          updateField(selectedKey, {
+                            maxWidth: Math.max(15, Math.min(95, Number(e.target.value) || 56)),
+                          })
+                        }
+                        style={{ width: '58px', padding: '4px 6px', border: '1px solid #fcd34d', borderRadius: '5px', fontSize: '0.8rem', background: 'white' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.72rem', color: '#92400e', marginBottom: '3px' }}>
+                        Jika Teks Melebihi Batas:
+                      </label>
+                      <select
+                        value={activeField.overflowMode || 'shrink'}
+                        onChange={(e) =>
+                          updateField(selectedKey, {
+                            overflowMode: e.target.value as 'shrink' | 'wrap',
+                          })
+                        }
+                        style={{ width: '100%', padding: '5px 8px', border: '1px solid #fcd34d', borderRadius: '5px', fontSize: '0.8rem', background: 'white' }}
+                      >
+                        <option value="shrink">Auto Kecilkan Font (Tetap 1 Baris)</option>
+                        <option value="wrap">Turun ke Baris Berikutnya (2 Baris)</option>
+                      </select>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
