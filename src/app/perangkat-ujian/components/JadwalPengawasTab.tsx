@@ -134,6 +134,22 @@ function normWaktuKey(w: string): string {
   return String(w || '').toLowerCase().replace(/\s+/g, '');
 }
 
+function formatWaktuRangeInput(raw: string, prev: string): string {
+  const prevDigits = String(prev || '').replace(/\D/g, '');
+  let digits = String(raw || '').replace(/\D/g, '').slice(0, 8);
+
+  // Jika user menekan Backspace pada pemisah '.' atau ' - ', mundurkan 1 digit agar kursor tidak macet
+  if (raw.length < prev.length && digits.length === prevDigits.length && digits.length > 0) {
+    digits = digits.slice(0, -1);
+  }
+
+  if (digits.length === 0) return '';
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+  if (digits.length <= 6) return `${digits.slice(0, 2)}.${digits.slice(2, 4)} - ${digits.slice(4)}`;
+  return `${digits.slice(0, 2)}.${digits.slice(2, 4)} - ${digits.slice(4, 6)}.${digits.slice(6, 8)}`;
+}
+
 function extractGradeNum(rombelOrKelas: string): number | null {
   const s = String(rombelOrKelas || '').toUpperCase().trim();
   if (!s) return null;
@@ -1440,11 +1456,19 @@ export default function JadwalPengawasTab() {
                     />
                     <input
                       type="text"
+                      inputMode="numeric"
                       value={ses.waktu}
-                      onChange={e => handleUpdateSessionField(day.id, ses.id, 'waktu', e.target.value)}
+                      onChange={e =>
+                        handleUpdateSessionField(
+                          day.id,
+                          ses.id,
+                          'waktu',
+                          formatWaktuRangeInput(e.target.value, ses.waktu)
+                        )
+                      }
                       placeholder="07.30 - 09.30"
                       style={{ padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.84rem', textAlign: 'center', background: 'white' }}
-                      title="Waktu Ujian"
+                      title="Ketik angka jam (misal 07000845), titik dan tanda hubung muncul otomatis"
                     />
                     <input
                       type="text"
