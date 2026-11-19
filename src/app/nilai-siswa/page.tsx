@@ -830,10 +830,10 @@ export default function NilaiSiswaPage() {
         const deskripsiText = resolvePKDeskripsi(deskripsiConfig, item.programKey, item.rata);
         return `
           <tr>
-            <td style="border: 1px solid #000; padding: 7px 6px; text-align: center; vertical-align: top;">${idx + 1}</td>
-            <td style="border: 1px solid #000; padding: 7px 8px; text-align: left; font-weight: bold; vertical-align: top;">${escapeHtmlStr(item.namaMapel)}</td>
-            <td style="border: 1px solid #000; padding: 7px 6px; text-align: center; font-weight: bold; font-size: 10.5pt; vertical-align: top;">${item.rata !== null ? item.rata : '-'}</td>
-            <td style="border: 1px solid #000; padding: 7px 8px; text-align: left; line-height: 1.4; vertical-align: top;">${escapeHtmlStr(deskripsiText)}</td>
+            <td style="border: 1px solid #000; padding: 7px 6px; text-align: center; vertical-align: middle;">${idx + 1}</td>
+            <td style="border: 1px solid #000; padding: 7px 8px; text-align: center; font-weight: bold; vertical-align: middle;">${escapeHtmlStr(item.namaMapel)}</td>
+            <td style="border: 1px solid #000; padding: 7px 6px; text-align: center; font-weight: bold; font-size: 10.5pt; vertical-align: middle;">${item.rata !== null ? item.rata : '-'}</td>
+            <td style="border: 1px solid #000; padding: 7px 8px; text-align: center; line-height: 1.4; vertical-align: middle;">${escapeHtmlStr(deskripsiText)}</td>
           </tr>
         `;
       })
@@ -897,10 +897,10 @@ export default function NilaiSiswaPage() {
         <table style="width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 16px;">
           <thead>
             <tr style="background-color: #f1f5f9;">
-              <th style="border: 1px solid #000; padding: 7px 6px; width: 34px; text-align: center;">No</th>
-              <th style="border: 1px solid #000; padding: 7px 8px; width: 27%; text-align: left;">Mata Pelajaran</th>
-              <th style="border: 1px solid #000; padding: 7px 6px; width: 78px; text-align: center;">Rata-Rata</th>
-              <th style="border: 1px solid #000; padding: 7px 8px; text-align: left;">Deskripsi Capaian</th>
+              <th style="border: 1px solid #000; padding: 7px 6px; width: 34px; text-align: center; vertical-align: middle;">No</th>
+              <th style="border: 1px solid #000; padding: 7px 8px; width: 27%; text-align: center; vertical-align: middle;">Mata Pelajaran</th>
+              <th style="border: 1px solid #000; padding: 7px 6px; width: 78px; text-align: center; vertical-align: middle;">Rata-Rata</th>
+              <th style="border: 1px solid #000; padding: 7px 8px; text-align: center; vertical-align: middle;">Deskripsi Capaian</th>
             </tr>
           </thead>
           <tbody>
@@ -912,12 +912,12 @@ export default function NilaiSiswaPage() {
         <table style="width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 22px;">
           <thead>
             <tr style="background-color: #f1f5f9;">
-              <th style="border: 1px solid #000; padding: 6px 8px; text-align: left;">Catatan Pengajar</th>
+              <th style="border: 1px solid #000; padding: 6px 8px; text-align: center; vertical-align: middle;">Catatan Pengajar</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td style="border: 1px solid #000; padding: 9px 10px; line-height: 1.45; vertical-align: top;">${catatanFormatted}</td>
+              <td style="border: 1px solid #000; padding: 9px 10px; line-height: 1.45; text-align: center; vertical-align: middle;">${catatanFormatted}</td>
             </tr>
           </tbody>
         </table>
