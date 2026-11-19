@@ -40,12 +40,32 @@ interface HeaderInfo {
   kepalaMadrasah: string;
 }
 
+interface SeragamItem {
+  id: string;
+  hari: string;
+  seragam: string;
+}
+
 interface GroupScheduleState {
   headerInfo: HeaderInfo;
   rooms: string[];
   days: ExamDay[];
   excludedKodes: string[];
+  seragamList: SeragamItem[];
+  catatanInfo: string;
 }
+
+const DEFAULT_SERAGAM_LIST: Array<{ hari: string; seragam: string }> = [
+  { hari: 'Senin - Selasa', seragam: 'Seragam Dinas / PDH' },
+  { hari: 'Rabu - Kamis', seragam: 'Batik Khas Madrasah' },
+  { hari: 'Jumat - Sabtu', seragam: 'Baju Muslim / Pramuka' }
+];
+
+const DEFAULT_CATATAN_INFO = [
+  '1. Pengawas hadir di ruang ujian 15 menit sebelum ujian dimulai.',
+  '2. Mengambil & mengembalikan berkas soal serta LJK di ruang panitia.',
+  '3. Bila berhalangan hadir, harap segera menghubungi panitia ujian.'
+].join('\n');
 
 const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI'];
 const DEFAULT_WAKTU_PAGI = ['07.30 - 09.30', '10.00 - 11.30', '11.45 - 13.00', '13.15 - 14.30'];
@@ -120,7 +140,9 @@ function createInitialGroupState(groupKey: ScheduleGroupKey): GroupScheduleState
     },
     rooms: createDefaultRooms(groupKey === 'kelas78' ? 17 : 15),
     days: [createInitialDay(groupKey)],
-    excludedKodes: []
+    excludedKodes: [],
+    seragamList: DEFAULT_SERAGAM_LIST.map((s, idx) => ({ id: `srg-${groupKey}-${idx}`, ...s })),
+    catatanInfo: DEFAULT_CATATAN_INFO
   };
 }
 
@@ -358,7 +380,14 @@ export default function JadwalPengawasTab() {
                     : init78.days,
                   excludedKodes: Array.isArray(parsed.groups.kelas78?.excludedKodes)
                     ? parsed.groups.kelas78.excludedKodes
-                    : []
+                    : [],
+                  seragamList: Array.isArray(parsed.groups.kelas78?.seragamList)
+                    ? parsed.groups.kelas78.seragamList
+                    : init78.seragamList,
+                  catatanInfo:
+                    typeof parsed.groups.kelas78?.catatanInfo === 'string'
+                      ? parsed.groups.kelas78.catatanInfo
+                      : init78.catatanInfo
                 },
                 kelas9: {
                   headerInfo: { ...init9.headerInfo, ...(parsed.groups.kelas9?.headerInfo || {}) },
@@ -370,7 +399,14 @@ export default function JadwalPengawasTab() {
                     : init9.days,
                   excludedKodes: Array.isArray(parsed.groups.kelas9?.excludedKodes)
                     ? parsed.groups.kelas9.excludedKodes
-                    : []
+                    : [],
+                  seragamList: Array.isArray(parsed.groups.kelas9?.seragamList)
+                    ? parsed.groups.kelas9.seragamList
+                    : init9.seragamList,
+                  catatanInfo:
+                    typeof parsed.groups.kelas9?.catatanInfo === 'string'
+                      ? parsed.groups.kelas9.catatanInfo
+                      : init9.catatanInfo
                 }
               });
             } else if (Array.isArray(parsed.days)) {
@@ -382,7 +418,9 @@ export default function JadwalPengawasTab() {
                   headerInfo: { ...init78.headerInfo, ...(parsed.headerInfo || {}) },
                   rooms: Array.isArray(parsed.rooms) && parsed.rooms.length > 0 ? parsed.rooms : init78.rooms,
                   days: parsed.days.length > 0 ? parsed.days : init78.days,
-                  excludedKodes: Array.isArray(parsed.excludedKodes) ? parsed.excludedKodes : []
+                  excludedKodes: Array.isArray(parsed.excludedKodes) ? parsed.excludedKodes : [],
+                  seragamList: Array.isArray(parsed.seragamList) ? parsed.seragamList : init78.seragamList,
+                  catatanInfo: typeof parsed.catatanInfo === 'string' ? parsed.catatanInfo : init78.catatanInfo
                 }
               }));
             }
@@ -829,7 +867,12 @@ export default function JadwalPengawasTab() {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 
-    const { headerInfo, rooms, days } = currentGroup;
+    const { headerInfo, rooms, days, seragamList, catatanInfo } = currentGroup;
+    const activeSeragamRows = (seragamList || []).filter(s => s.hari.trim() || s.seragam.trim());
+    const catatanLines = String(catatanInfo || '')
+      .split(/\r?\n/)
+      .map(l => l.trim())
+      .filter(Boolean);
     const originUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
     // Tentukan daftar halaman yang dicetak:
@@ -918,6 +961,46 @@ export default function JadwalPengawasTab() {
            </div>`
         : '<div class="header-spacer"></div>';
 
+      const seragamBoxHtml =
+        activeSeragamRows.length > 0
+          ? `<div class="extra-col-seragam">
+               <div class="legend-title">Jadwal Seragam Pengawas</div>
+               <table class="seragam-tbl">
+                 <thead>
+                   <tr>
+                     <th style="width: 110px;">Hari / Tanggal</th>
+                     <th>Seragam / Pakaian</th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   ${activeSeragamRows
+                     .map(
+                       sr => `<tr>
+                         <td class="bold">${esc(sr.hari)}</td>
+                         <td>${esc(sr.seragam)}</td>
+                       </tr>`
+                     )
+                     .join('')}
+                 </tbody>
+               </table>
+             </div>`
+          : '';
+
+      const catatanBoxHtml =
+        catatanLines.length > 0
+          ? `<div class="extra-col-catatan">
+               <div class="legend-title">Catatan / Informasi</div>
+               <div class="catatan-box">
+                 ${catatanLines.map(line => `<div class="catatan-line">${esc(line)}</div>`).join('')}
+               </div>
+             </div>`
+          : '';
+
+      const extraFooterHtml =
+        seragamBoxHtml || catatanBoxHtml
+          ? `<div class="extra-footer">${seragamBoxHtml}${catatanBoxHtml}</div>`
+          : '';
+
       return `
         <div class="sheet ${isLastPage ? '' : 'page-break'}">
           <div class="sheet-inner">
@@ -967,6 +1050,7 @@ export default function JadwalPengawasTab() {
                 <div class="ttd-name">${esc(headerInfo.kepalaMadrasah)}</div>
               </div>
             </div>
+            ${extraFooterHtml}
           </div>
         </div>
       `;
@@ -1020,6 +1104,14 @@ export default function JadwalPengawasTab() {
     .ttd-box { width: 195px; text-align: left; padding-top: 6px; font-size: 8pt; flex-shrink: 0; line-height: 1.25; }
     .ttd-space { height: 38px; }
     .ttd-name { font-weight: 800; text-decoration: underline; }
+    .extra-footer { display: flex; gap: 12px; align-items: stretch; margin-top: 6px; }
+    .extra-col-seragam { flex: 0 0 42%; }
+    .extra-col-catatan { flex: 1; display: flex; flex-direction: column; }
+    table.seragam-tbl th, table.seragam-tbl td { border: 1px solid #000; padding: 2px 5px; font-size: 7pt; line-height: 1.2; text-align: left; }
+    table.seragam-tbl th { background: #f1f5f9; font-weight: 800; }
+    .catatan-box { flex: 1; border: 1px solid #000; padding: 4px 7px; font-size: 7.1pt; line-height: 1.3; background: #fff; }
+    .catatan-line { margin-bottom: 1.5px; }
+    .catatan-line:last-child { margin-bottom: 0; }
     @media print {
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     }
@@ -1862,6 +1954,106 @@ export default function JadwalPengawasTab() {
               </tbody>
             </table>
           ))}
+        </div>
+      </div>
+
+      {/* Pengaturan Custom: Jadwal Seragam & Catatan / Info (Tampil di bagian bawah cetak) */}
+      <div style={{ border: '1px solid #cbd5e1', borderRadius: '10px', padding: '16px', background: '#f8fafc', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <h3 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700, color: '#1e293b' }}>
+              <i className="fas fa-tshirt" style={{ color: '#0ea5e9', marginRight: '7px' }}></i>
+              Jadwal Seragam Pengawas — {activeGroupLabel}
+            </h3>
+            <button
+              type="button"
+              onClick={() =>
+                updateCurrentGroup(prev => ({
+                  ...prev,
+                  seragamList: [...(prev.seragamList || []), { id: uid('srg'), hari: '', seragam: '' }]
+                }))
+              }
+              style={{ padding: '4px 10px', borderRadius: '6px', border: '1px solid #0ea5e9', background: 'white', color: '#0284c7', fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer' }}
+            >
+              <i className="fas fa-plus" style={{ marginRight: '4px' }}></i> Tambah Baris
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {(currentGroup.seragamList || []).map(sr => (
+              <div key={sr.id} style={{ display: 'grid', gridTemplateColumns: '140px 1fr 30px', gap: '6px', alignItems: 'center' }}>
+                <input
+                  type="text"
+                  value={sr.hari}
+                  onChange={e =>
+                    updateCurrentGroup(prev => ({
+                      ...prev,
+                      seragamList: prev.seragamList.map(item => (item.id === sr.id ? { ...item, hari: e.target.value } : item))
+                    }))
+                  }
+                  placeholder="Hari (mis. Senin - Selasa)"
+                  style={{ padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', fontWeight: 600, background: 'white' }}
+                />
+                <input
+                  type="text"
+                  value={sr.seragam}
+                  onChange={e =>
+                    updateCurrentGroup(prev => ({
+                      ...prev,
+                      seragamList: prev.seragamList.map(item => (item.id === sr.id ? { ...item, seragam: e.target.value } : item))
+                    }))
+                  }
+                  placeholder="Ketentuan seragam..."
+                  style={{ padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem', background: 'white' }}
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateCurrentGroup(prev => ({
+                      ...prev,
+                      seragamList: prev.seragamList.filter(item => item.id !== sr.id)
+                    }))
+                  }
+                  style={{ padding: '6px', borderRadius: '6px', border: 'none', background: '#fee2e2', color: '#dc2626', cursor: 'pointer' }}
+                  title="Hapus baris"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+            ))}
+            {(currentGroup.seragamList || []).length === 0 && (
+              <div style={{ fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic' }}>
+                Tidak ada jadwal seragam (bagian seragam disembunyikan saat cetak).
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <h3 style={{ margin: '0 0 8px 0', fontSize: '0.92rem', fontWeight: 700, color: '#1e293b' }}>
+            <i className="fas fa-info-circle" style={{ color: '#0ea5e9', marginRight: '7px' }}></i>
+            Catatan / Informasi — {activeGroupLabel}
+          </h3>
+          <textarea
+            rows={4}
+            value={currentGroup.catatanInfo}
+            onChange={e => updateCurrentGroup(prev => ({ ...prev, catatanInfo: e.target.value }))}
+            placeholder="Tulis catatan atau informasi penting untuk pengawas (tiap baris baru akan rapi tampil di cetak)..."
+            style={{
+              width: '100%',
+              flex: 1,
+              padding: '8px 10px',
+              borderRadius: '6px',
+              border: '1px solid #cbd5e1',
+              fontSize: '0.82rem',
+              lineHeight: 1.45,
+              background: 'white',
+              resize: 'vertical',
+              boxSizing: 'border-box'
+            }}
+          />
+          <div style={{ fontSize: '0.74rem', color: '#64748b', marginTop: '4px' }}>
+            Kosongkan jika tidak ingin menampilkan kotak catatan saat dicetak. Jangan lupa klik <b>Simpan Semua</b> setelah mengubah.
+          </div>
         </div>
       </div>
 
