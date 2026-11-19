@@ -127,18 +127,47 @@ export const createDefaultCertTemplate = (): CertTemplateConfig => ({
 
 export const FIELD_KEYS: CertFieldKey[] = ['nama', 'nisn', 'kelas', 'karakter_tertinggi'];
 
-export function getHighestTraitLabel(scores: Record<string, number> | undefined, traits: TraitDef[]): string {
-  if (!scores) return '-';
+function hashStringFNV1a(str: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+export function getHighestTraitInfo(
+  scores: Record<string, number> | undefined,
+  traits: TraitDef[],
+  seed = ''
+): { label: string; score: number; tiedCount: number } {
+  if (!traits || traits.length === 0) return { label: '-', score: 0, tiedCount: 0 };
+
   let maxVal = 0;
   for (const t of traits) {
-    const v = Number(scores[t.id] || 0);
+    const v = Number(scores?.[t.id] || 0);
     if (v > maxVal) maxVal = v;
   }
-  if (maxVal <= 0) return '-';
-  const winners = traits.filter((t) => Number(scores[t.id] || 0) === maxVal).map((t) => t.label);
-  if (winners.length === 1) return winners[0];
-  if (winners.length === 2) return `${winners[0]} & ${winners[1]}`;
-  return winners.join(', ');
+
+  const winners = traits
+    .filter((t) => Number(scores?.[t.id] || 0) === maxVal)
+    .map((t) => t.label);
+
+  if (winners.length === 0) return { label: '-', score: 0, tiedCount: 0 };
+  if (winners.length === 1) return { label: winners[0], score: maxVal, tiedCount: 1 };
+
+  // Deterministic random pick among tied highest traits so preview and printed certificate match
+  const hash = hashStringFNV1a(`${seed}::${maxVal}::${winners.join('|')}`);
+  const picked = winners[hash % winners.length];
+  return { label: picked, score: maxVal, tiedCount: winners.length };
+}
+
+export function getHighestTraitLabel(
+  scores: Record<string, number> | undefined,
+  traits: TraitDef[],
+  seed = ''
+): string {
+  return getHighestTraitInfo(scores, traits, seed).label;
 }
 
 export function resolveFieldText(
@@ -150,7 +179,9 @@ export function resolveFieldText(
   if (field.key === 'nama') raw = student.nama || '-';
   else if (field.key === 'nisn') raw = student.nisn || '-';
   else if (field.key === 'kelas') raw = student.kelas || '-';
-  else if (field.key === 'karakter_tertinggi') raw = getHighestTraitLabel(student.scores, traits);
+  else if (field.key === 'karakter_tertinggi') {
+    raw = getHighestTraitLabel(student.scores, traits, student.nisn || student.nama);
+  }
 
   return `${field.prefix || ''}${raw}${field.suffix || ''}`;
 }

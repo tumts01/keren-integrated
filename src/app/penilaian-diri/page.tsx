@@ -11,7 +11,7 @@ import SertifikatKarakterModal, {
   createDefaultCertTemplate,
   loadCertTemplateConfig,
   printStudentCertificates,
-  getHighestTraitLabel,
+  getHighestTraitInfo,
 } from './components/SertifikatKarakterModal';
 
 const TRAITS = [
@@ -2369,7 +2369,7 @@ export default function PenilaianDiriPage() {
                   {paginatedRekapData.map((r, idx) => {
                     const rowNumber = (safeRekapPage - 1) * effectiveRekapPageSize + idx + 1;
                     const isChecked = selectedCertNisns.includes(r.nisn);
-                    const topTrait = getHighestTraitLabel(r.scores, TRAITS);
+                    const topTraitInfo = getHighestTraitInfo(r.scores, TRAITS, r.nisn || r.nama);
                     return (
                     <tr key={r.nisn} style={{ background: isChecked ? '#f0f9ff' : undefined }}>
                       <td style={{ textAlign: 'center' }}>
@@ -2384,9 +2384,14 @@ export default function PenilaianDiriPage() {
                       <td style={{ textAlign: 'center' }}>{r.kelas}</td>
                       <td>
                         <div style={{ fontWeight: 600 }}>{r.nama}</div>
-                        {topTrait !== '-' && (
+                        {topTraitInfo.label !== '-' && (
                           <div style={{ fontSize: '0.73rem', color: '#0f766e' }}>
-                            Tertinggi: {topTrait}
+                            Tertinggi: <b>{topTraitInfo.label}</b>
+                            {topTraitInfo.tiedCount > 1 && (
+                              <span style={{ color: '#64748b', marginLeft: '4px' }}>
+                                (acak dari {topTraitInfo.tiedCount} seri)
+                              </span>
+                            )}
                           </div>
                         )}
                       </td>
