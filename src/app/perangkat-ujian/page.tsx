@@ -228,7 +228,7 @@ function CetakSampulTab() {
 }
 
 export default function PerangkatUjianPage() {
-  const [activeTab, setActiveTab] = useState<'konfigurasi-ruang' | 'nopes' | 'nobang' | 'identitas' | 'sampul' | 'mapping-foto'>('konfigurasi-ruang');
+  const [activeTab, setActiveTab] = useState<'konfigurasi-ruang' | 'nopes' | 'nobang' | 'jadwal-pengawas' | 'identitas' | 'sampul' | 'mapping-foto'>('konfigurasi-ruang');
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -1027,18 +1027,25 @@ export default function PerangkatUjianPage() {
           3. Generate Nobang
         </button>
         <button
+          onClick={() => setActiveTab('jadwal-pengawas')}
+          style={{ padding: '12px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'jadwal-pengawas' ? '3px solid #0ea5e9' : '3px solid transparent', color: activeTab === 'jadwal-pengawas' ? '#0ea5e9' : '#64748b', fontWeight: activeTab === 'jadwal-pengawas' ? 'bold' : 'normal', cursor: 'pointer', fontSize: '15px' }}
+        >
+          <i className="fas fa-user-shield" style={{ marginRight: '8px' }}></i>
+          4. Jadwal Pengawas
+        </button>
+        <button
           onClick={() => setActiveTab('identitas')}
           style={{ padding: '12px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'identitas' ? '3px solid #0ea5e9' : '3px solid transparent', color: activeTab === 'identitas' ? '#0ea5e9' : '#64748b', fontWeight: activeTab === 'identitas' ? 'bold' : 'normal', cursor: 'pointer', fontSize: '15px' }}
         >
           <i className="fas fa-id-card" style={{ marginRight: '8px' }}></i>
-          4. Cetak Identitas Rapor
+          5. Cetak Identitas Rapor
         </button>
         <button
           onClick={() => setActiveTab('sampul')}
           style={{ padding: '12px 20px', background: 'none', border: 'none', borderBottom: activeTab === 'sampul' ? '3px solid #0ea5e9' : '3px solid transparent', color: activeTab === 'sampul' ? '#0ea5e9' : '#64748b', fontWeight: activeTab === 'sampul' ? 'bold' : 'normal', cursor: 'pointer', fontSize: '15px' }}
         >
           <i className="fas fa-book" style={{ marginRight: '8px' }}></i>
-          5. Cetak Sampul Rapor
+          6. Cetak Sampul Rapor
         </button>
       </div>
 
@@ -1064,6 +1071,18 @@ export default function PerangkatUjianPage() {
             onDownloadPdf: generateNobangPDF,
             showPhoto: false
           })}
+
+        {activeTab === 'jadwal-pengawas' && (
+          <div style={{ padding: '48px 20px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
+            <i className="fas fa-user-shield" style={{ fontSize: '42px', color: '#94a3b8', marginBottom: '12px', display: 'block' }}></i>
+            <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: '0 0 8px 0' }}>
+              Jadwal Pengawas Ujian
+            </h2>
+            <p style={{ margin: 0, fontSize: '14px' }}>
+              Sub menu Jadwal Pengawas telah disiapkan. Fitur penyusunan jadwal pengawas akan menyusul.
+            </p>
+          </div>
+        )}
 
         {activeTab === 'identitas' && (
           <CetakIdentitasTab />
