@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import Swal from 'sweetalert2';
 import { jsPDF } from 'jspdf';
 import KonfigurasiRuangTab from './components/KonfigurasiRuangTab';
+import JadwalPengawasTab from './components/JadwalPengawasTab';
 import PaginationBar from './components/PaginationBar';
 
 interface Participant {
@@ -1073,15 +1074,7 @@ export default function PerangkatUjianPage() {
           })}
 
         {activeTab === 'jadwal-pengawas' && (
-          <div style={{ padding: '48px 20px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '8px', border: '1px dashed #cbd5e1' }}>
-            <i className="fas fa-user-shield" style={{ fontSize: '42px', color: '#94a3b8', marginBottom: '12px', display: 'block' }}></i>
-            <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#334155', margin: '0 0 8px 0' }}>
-              Jadwal Pengawas Ujian
-            </h2>
-            <p style={{ margin: 0, fontSize: '14px' }}>
-              Sub menu Jadwal Pengawas telah disiapkan. Fitur penyusunan jadwal pengawas akan menyusul.
-            </p>
-          </div>
+          <JadwalPengawasTab />
         )}
 
         {activeTab === 'identitas' && (
