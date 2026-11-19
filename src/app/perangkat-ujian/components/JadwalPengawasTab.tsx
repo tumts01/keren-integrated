@@ -894,55 +894,93 @@ export default function JadwalPengawasTab() {
       const dayEligiblePool = activePool.filter(t =>
         isTeacherAllowedOnDay(t.kode, day.id, currentGroup.teacherDayRules, validDayIds)
       );
-      let prevSessionSet = new Set<string>();
 
-      const newSessions = day.sessions.map(ses => {
-        const wKey = normWaktuKey(ses.waktu);
-        const busyInOtherAtExactTime = (tgl && wKey ? otherBusyAtDateTime.get(`${tgl}|${wKey}`) : undefined) || new Set<string>();
+      // Kelompokkan sesi per hari menjadi blok 2 jam: [Jam 1, Jam 2], lalu [Jam 3] (dan seterusnya)
+      const sessionBlocks: number[][] = [];
+      for (let i = 0; i < day.sessions.length; i += 2) {
+        if (i + 1 < day.sessions.length) {
+          sessionBlocks.push([i, i + 1]);
+        } else {
+          sessionBlocks.push([i]);
+        }
+      }
 
-        const scoredPool = dayEligiblePool.map(t => ({
-          teacher: t,
-          // Prioritas 1: jangan sampai bentrok dengan jadwal pasangan di tanggal & waktu sama
-          crossClash: busyInOtherAtExactTime.has(t.kode) ? 1 : 0,
-          // Prioritas 2: beban total di jadwal ini (menjamin merata selisih <= 1)
-          total: totalCount[t.kode] || 0,
-          // Prioritas 3: beban hari ini (jadwal ini + jadwal pasangan)
-          dayLoad: (dayCount[t.kode] || 0) + (otherSameDayMap[t.kode] || 0),
-          // Prioritas 4: beban gabungan total (jadwal ini + jadwal pasangan)
-          combinedTotal: (totalCount[t.kode] || 0) + (otherStats.counts[t.kode] || 0),
-          // Prioritas 5: hindari sesi berurutan langsung jika masih ada pilihan
-          wasPrev: prevSessionSet.has(t.kode) ? 1 : 0,
-          rand: Math.random()
-        }));
+      const newSessions = day.sessions.map(s => ({ ...s, pengawas: {} as Record<string, string> }));
+      let prevBlockTeachers = new Set<string>();
+      let prevBlockRoomTeacher: Record<string, string> = {};
+
+      for (const blockIndices of sessionBlocks) {
+        const busySetsInBlock = blockIndices.map(sIdx => {
+          const ses = day.sessions[sIdx];
+          const wKey = normWaktuKey(ses.waktu);
+          return (tgl && wKey ? otherBusyAtDateTime.get(`${tgl}|${wKey}`) : undefined) || new Set<string>();
+        });
+
+        const scoredPool = dayEligiblePool.map(t => {
+          const crossClashCount = busySetsInBlock.reduce(
+            (acc, set) => acc + (set.has(t.kode) ? 1 : 0),
+            0
+          );
+          return {
+            teacher: t,
+            // Prioritas 1: jangan sampai bentrok dengan jadwal pasangan di tanggal & waktu sama pada blok ini
+            crossClash: crossClashCount > 0 ? 1 : 0,
+            // Prioritas 2: sudah mengawas di blok sebelumnya pada hari yang sama (agar Jam ke-3 ganti pengawas)
+            wasPrevBlock: prevBlockTeachers.has(t.kode) ? 1 : 0,
+            // Prioritas 3: beban total di jadwal ini (menjamin merata)
+            total: totalCount[t.kode] || 0,
+            // Prioritas 4: beban hari ini (jadwal ini + jadwal pasangan)
+            dayLoad: (dayCount[t.kode] || 0) + (otherSameDayMap[t.kode] || 0),
+            // Prioritas 5: beban gabungan total (jadwal ini + jadwal pasangan)
+            combinedTotal: (totalCount[t.kode] || 0) + (otherStats.counts[t.kode] || 0),
+            rand: Math.random()
+          };
+        });
 
         scoredPool.sort(
           (a, b) =>
             a.crossClash - b.crossClash ||
+            a.wasPrevBlock - b.wasPrevBlock ||
             a.total - b.total ||
             a.dayLoad - b.dayLoad ||
             a.combinedTotal - b.combinedTotal ||
-            a.wasPrev - b.wasPrev ||
             a.rand - b.rand
         );
 
         const chosen = scoredPool.slice(0, targetRooms.length).map(x => x.teacher);
         const remainingTeachers = [...chosen];
-        const newPengawas: Record<string, string> = {};
+        const blockRoomPengawas: Record<string, string> = {};
 
         for (const room of targetRooms) {
-          let pickIdx = remainingTeachers.findIndex(t => !roomHistory[t.kode].has(room));
+          const prevKodeInRoom = prevBlockRoomTeacher[room];
+          let pickIdx = remainingTeachers.findIndex(
+            t => t.kode !== prevKodeInRoom && !roomHistory[t.kode].has(room)
+          );
+          if (pickIdx === -1) {
+            pickIdx = remainingTeachers.findIndex(t => t.kode !== prevKodeInRoom);
+          }
           if (pickIdx === -1) pickIdx = 0;
-          const [picked] = remainingTeachers.splice(pickIdx, 1);
 
-          newPengawas[room] = picked.kode;
-          totalCount[picked.kode] = (totalCount[picked.kode] || 0) + 1;
-          dayCount[picked.kode] = (dayCount[picked.kode] || 0) + 1;
+          const [picked] = remainingTeachers.splice(pickIdx, 1);
+          blockRoomPengawas[room] = picked.kode;
+
+          const weight = blockIndices.length;
+          totalCount[picked.kode] = (totalCount[picked.kode] || 0) + weight;
+          dayCount[picked.kode] = (dayCount[picked.kode] || 0) + weight;
           roomHistory[picked.kode].add(room);
         }
 
-        prevSessionSet = new Set(chosen.map(c => c.kode));
-        return { ...ses, pengawas: newPengawas };
-      });
+        // Terapkan pengawas yang sama untuk semua sesi dalam blok ini (Jam 1 & 2 sama; Jam 3 pengawas baru)
+        for (const sIdx of blockIndices) {
+          newSessions[sIdx] = {
+            ...newSessions[sIdx],
+            pengawas: { ...blockRoomPengawas }
+          };
+        }
+
+        prevBlockTeachers = new Set(chosen.map(c => c.kode));
+        prevBlockRoomTeacher = blockRoomPengawas;
+      }
 
       return { ...day, sessions: newSessions };
     });
