@@ -400,7 +400,7 @@ export default function PresensiPage() {
         if (toVal) q.append('to', toVal);
         url += '?' + q.toString();
       }
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: 'no-store' });
       const json = await res.json();
       if (json.success && Array.isArray(json.data)) {
         setRekapPiketData(json.data);
@@ -424,7 +424,7 @@ export default function PresensiPage() {
         if (rsFilterTo) q.append('to', rsFilterTo);
         url += '?' + q.toString();
       }
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: 'no-store' });
       const json = await res.json();
       if (json.success) {
         setRekapSiswaData(json.data);
@@ -908,7 +908,10 @@ export default function PresensiPage() {
       const res = await fetch(`/api/jurnal-piket?id=${editingPiket.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingPiket)
+        body: JSON.stringify({
+          ...editingPiket,
+          originalTanggal: editingPiket._originalTanggal || editingPiket.tanggal,
+        })
       });
       const data = await res.json();
       if (data.success) {
@@ -1013,7 +1016,7 @@ export default function PresensiPage() {
         if (filterTo) q.append('to', filterTo);
         url += '?' + q.toString();
       }
-      const res = await fetch(url);
+      const res = await fetch(url, { cache: 'no-store' });
       const json = await res.json();
       if (json.success) {
         setRekapJurnalData(json.data);
@@ -2178,11 +2181,13 @@ export default function PresensiPage() {
   };
 
   // ── Rekap Piket Filtering ──
-  const rpFiltered = rekapPiketData.filter(r => {
-    if (rpFilterFrom && r.tanggal < rpFilterFrom) return false;
-    if (rpFilterTo && r.tanggal > rpFilterTo) return false;
-    return true;
-  });
+  const rpFiltered = rekapPiketData
+    .filter(r => {
+      if (rpFilterFrom && r.tanggal < rpFilterFrom) return false;
+      if (rpFilterTo && r.tanggal > rpFilterTo) return false;
+      return true;
+    })
+    .sort((a, b) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')));
 
   const rekapTugasList = useMemo(() => {
     return calculateRekapTugasPiketDispo(rpFiltered);
@@ -3985,9 +3990,27 @@ export default function PresensiPage() {
                       for (let i = rpFiltered.length - 1; i > 0; i--) {
                         const current = rpFiltered[i];
                         const prev = rpFiltered[i - 1];
-                        if (current.tanggal === prev.tanggal && current.petugasPiket === prev.petugasPiket && current.guruDispo === prev.guruDispo) {
+                        if (current.tanggal && current.tanggal === prev.tanggal) {
                           rowSpans[i - 1] += rowSpans[i];
                           rowSpans[i] = 0;
+                        }
+                      }
+
+                      const groupNumbers = new Array(rpFiltered.length).fill(0);
+                      const groupPetugas: string[] = new Array(rpFiltered.length).fill('');
+                      const groupDispo: string[] = new Array(rpFiltered.length).fill('');
+                      let groupSeq = 0;
+                      for (let i = 0; i < rpFiltered.length; i++) {
+                        if (rowSpans[i] > 0) {
+                          groupSeq += 1;
+                          groupNumbers[i] = groupSeq;
+                          const slice = rpFiltered.slice(i, i + rowSpans[i]);
+                          groupPetugas[i] = slice
+                            .map(x => String(x.petugasPiket || '').trim())
+                            .sort((a, b) => b.length - a.length)[0] || '';
+                          groupDispo[i] = slice
+                            .map(x => String(x.guruDispo || '').trim())
+                            .sort((a, b) => b.length - a.length)[0] || '';
                         }
                       }
                       
@@ -3995,10 +4018,10 @@ export default function PresensiPage() {
                         <tr key={r.id || i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? 'white' : '#f8fafc' }}>
                           {rowSpans[i] > 0 && (
                             <>
-                              <td rowSpan={rowSpans[i]} style={{ padding: '7px 12px', color: '#94a3b8', verticalAlign: 'middle' }}>{i + 1}</td>
+                              <td rowSpan={rowSpans[i]} style={{ padding: '7px 12px', color: '#94a3b8', verticalAlign: 'middle' }}>{groupNumbers[i]}</td>
                               <td rowSpan={rowSpans[i]} style={{ padding: '7px 12px', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{r.tanggal}</td>
-                              <td rowSpan={rowSpans[i]} style={{ padding: '7px 12px', fontWeight: 600, verticalAlign: 'middle' }}>{r.petugasPiket}</td>
-                              <td rowSpan={rowSpans[i]} style={{ padding: '7px 12px', fontWeight: 600, verticalAlign: 'middle' }}>{r.guruDispo}</td>
+                              <td rowSpan={rowSpans[i]} style={{ padding: '7px 12px', fontWeight: 600, verticalAlign: 'middle' }}>{groupPetugas[i] || r.petugasPiket}</td>
+                              <td rowSpan={rowSpans[i]} style={{ padding: '7px 12px', fontWeight: 600, verticalAlign: 'middle' }}>{groupDispo[i] || r.guruDispo}</td>
                             </>
                           )}
                           <td style={{ padding: '7px 12px', color: '#b45309', fontWeight: 600 }}>{r.guruIzin}</td>
@@ -4011,7 +4034,7 @@ export default function PresensiPage() {
                               <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                                 <button
                                   style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
-                                  onClick={() => setEditingPiket(r)}
+                                  onClick={() => setEditingPiket({ ...r, _originalTanggal: r.tanggal })}
                                 >
                                   <i className="fas fa-edit"></i> Edit
                                 </button>
@@ -4355,7 +4378,12 @@ export default function PresensiPage() {
                 <textarea rows={3} value={editingPiket.materi} onChange={e => setEditingPiket({ ...editingPiket, materi: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', resize: 'vertical' }} />
               </div>
 
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '10px' }}>
+              <div style={{ fontSize: '0.78rem', color: '#64748b', background: '#f8fafc', padding: '8px 10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                <i className="fas fa-info-circle" style={{ color: '#0ea5e9', marginRight: '6px' }}></i>
+                Perubahan <b>Tanggal</b>, <b>Petugas Piket</b>, dan <b>Guru Dispo</b> otomatis diterapkan ke semua baris pada tanggal yang sama.
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '4px' }}>
                 <button onClick={() => setEditingPiket(null)} disabled={isSavingEditPiket} style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f1f5f9', cursor: 'pointer', fontWeight: 600 }}>Batal</button>
                 <button onClick={handleSaveEditPiket} disabled={isSavingEditPiket} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#0ea5e9', color: 'white', cursor: 'pointer', fontWeight: 600 }}>
                   {isSavingEditPiket ? 'Menyimpan...' : 'Simpan Perubahan'}

@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     })).filter((r: any) => r.tanggal || r.petugasPiket).reverse();
 
     return NextResponse.json({ success: true, data }, {
-      headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' }
+      headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' }
     });
   } catch (error: any) {
     console.error('GET Jurnal Piket Error:', error);
@@ -176,16 +176,21 @@ export async function PUT(request: Request) {
     // Temukan baris yang tepat berdasarkan ID metadata atau baris ID
     let updateId: number | null = null;
     let currentMetadata: any = {};
+    let currentRowTanggal = '';
     
     if (/^\d+$/.test(id)) {
       updateId = parseInt(id, 10);
-      const { data: foundRow } = await supabase.from('data_jurnal_piket').select('metadata').eq('id', updateId).single();
-      if (foundRow) currentMetadata = foundRow.metadata;
+      const { data: foundRow } = await supabase.from('data_jurnal_piket').select('tanggal, metadata').eq('id', updateId).single();
+      if (foundRow) {
+        currentMetadata = foundRow.metadata || {};
+        currentRowTanggal = foundRow.tanggal || '';
+      }
     } else {
-      const { data: foundRow } = await supabase.from('data_jurnal_piket').select('id, metadata').contains('metadata', { 'ID': id }).single();
+      const { data: foundRow } = await supabase.from('data_jurnal_piket').select('id, tanggal, metadata').contains('metadata', { 'ID': id }).single();
       if (foundRow) {
         updateId = foundRow.id;
-        currentMetadata = foundRow.metadata;
+        currentMetadata = foundRow.metadata || {};
+        currentRowTanggal = foundRow.tanggal || '';
       }
     }
 
@@ -193,27 +198,62 @@ export async function PUT(request: Request) {
       return NextResponse.json({ success: false, error: 'Data tidak ditemukan' }, { status: 404 });
     }
 
+    const pickVal = (val: any, fallback: string) => (val !== undefined ? String(val) : fallback);
+
+    const newTanggal = pickVal(body.tanggal, currentMetadata['TANGGAL'] || currentRowTanggal);
+    const newPetugas = pickVal(body.petugasPiket, currentMetadata['PETUGAS PIKET'] || '');
+    const newDispo = pickVal(body.guruDispo, currentMetadata['GURU DISPO'] || '');
+
     const newMetadata = {
       ...currentMetadata,
-      'TANGGAL': body.tanggal || currentMetadata['TANGGAL'],
-      'PETUGAS PIKET': body.petugasPiket || currentMetadata['PETUGAS PIKET'],
-      'GURU DISPO': body.guruDispo || currentMetadata['GURU DISPO'] || '',
-      'GURU IZIN': body.guruIzin || currentMetadata['GURU IZIN'],
-      'ALASAN IZIN': body.alasanIzin || currentMetadata['ALASAN IZIN'] || '',
-      'KELAS DITINGGALKAN': body.kelasDitinggalkan || currentMetadata['KELAS DITINGGALKAN'] || '',
-      'MATERI': body.materi || currentMetadata['MATERI'] || '',
-      'GURU PENGGANTI': body.guruPengganti || currentMetadata['GURU PENGGANTI'] || '',
+      'TANGGAL': newTanggal,
+      'PETUGAS PIKET': newPetugas,
+      'GURU DISPO': newDispo,
+      'GURU IZIN': pickVal(body.guruIzin, currentMetadata['GURU IZIN'] || ''),
+      'ALASAN IZIN': pickVal(body.alasanIzin, currentMetadata['ALASAN IZIN'] || ''),
+      'KELAS DITINGGALKAN': pickVal(body.kelasDitinggalkan, currentMetadata['KELAS DITINGGALKAN'] || ''),
+      'MATERI': pickVal(body.materi, currentMetadata['MATERI'] || ''),
+      'GURU PENGGANTI': pickVal(body.guruPengganti, currentMetadata['GURU PENGGANTI'] || ''),
     };
 
     const { error } = await supabase
       .from('data_jurnal_piket')
       .update({
-        tanggal: newMetadata['TANGGAL'], // Pastikan kolom tanggal sinkron
+        tanggal: newTanggal, // Pastikan kolom tanggal sinkron
         metadata: newMetadata
       })
       .eq('id', updateId);
 
     if (error) throw error;
+
+    // Sinkronkan tanggal, petugas piket, dan guru dispo ke semua baris lain di tanggal yang sama agar tetap 1 grup
+    const sourceTanggal = String(body.originalTanggal || currentRowTanggal || currentMetadata['TANGGAL'] || '').trim();
+    if (sourceTanggal) {
+      const { data: siblingRows, error: sibErr } = await supabase
+        .from('data_jurnal_piket')
+        .select('id, metadata')
+        .eq('tanggal', sourceTanggal);
+
+      if (!sibErr && Array.isArray(siblingRows)) {
+        const others = siblingRows.filter((sr: any) => sr.id !== updateId);
+        await Promise.all(
+          others.map((sr: any) =>
+            supabase
+              .from('data_jurnal_piket')
+              .update({
+                tanggal: newTanggal,
+                metadata: {
+                  ...(sr.metadata || {}),
+                  'TANGGAL': newTanggal,
+                  'PETUGAS PIKET': newPetugas,
+                  'GURU DISPO': newDispo,
+                },
+              })
+              .eq('id', sr.id)
+          )
+        );
+      }
+    }
 
     return NextResponse.json({ success: true, message: 'Data berhasil diupdate' });
   } catch (error: any) {
