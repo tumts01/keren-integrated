@@ -5,6 +5,14 @@ import InlineLoading from '@/components/InlineLoading';
 import SearchableSelect from '@/components/SearchableSelect';
 import Swal from 'sweetalert2';
 import PaginationBar from '@/app/perangkat-ujian/components/PaginationBar';
+import SertifikatKarakterModal, {
+  CertTemplateConfig,
+  RekapSiswaCert,
+  createDefaultCertTemplate,
+  loadCertTemplateConfig,
+  printStudentCertificates,
+  getHighestTraitLabel,
+} from './components/SertifikatKarakterModal';
 
 const TRAITS = [
   { id: 'religius', label: 'Religius', desc: 'sikap/perilaku yang bersifat keagamaan' },
@@ -85,6 +93,13 @@ export default function PenilaianDiriPage() {
   const [monitorStaffPageSize, setMonitorStaffPageSize] = useState(50);
   const [rekapPage, setRekapPage] = useState(1);
   const [rekapPageSize, setRekapPageSize] = useState(50);
+  const [rekapSearch, setRekapSearch] = useState('');
+  const [rekapKelasFilter, setRekapKelasFilter] = useState('semua');
+
+  // Certificate Template & Bulk Print states
+  const [certTemplate, setCertTemplate] = useState<CertTemplateConfig>(() => createDefaultCertTemplate());
+  const [showCertModal, setShowCertModal] = useState(false);
+  const [selectedCertNisns, setSelectedCertNisns] = useState<string[]>([]);
 
   const isPortalRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/portal');
   const isSiswa = isPortalRoute || (userRole || '').toLowerCase().includes('siswa');
@@ -414,6 +429,7 @@ export default function PenilaianDiriPage() {
     if (activeTab === 'rekap') {
       if (isAdmin) {
         loadRekap();
+        loadCertTemplateConfig().then((cfg) => setCertTemplate(cfg));
       } else {
         setActiveTab('form');
       }
@@ -658,19 +674,86 @@ export default function PenilaianDiriPage() {
     return filteredMonitoringStaff.slice(start, start + effectiveStaffPageSize);
   }, [filteredMonitoringStaff, safeStaffPage, effectiveStaffPageSize]);
 
-  const sortedRekapData = useMemo(() => {
+  const sortedRekapData = useMemo<RekapSiswaCert[]>(() => {
     return [...rekapData].sort(
       (a, b) => b.total - a.total || (a.kelas || '').localeCompare(b.kelas || '') || (a.nama || '').localeCompare(b.nama || '')
     );
   }, [rekapData]);
 
+  const rekapKelasOptions = useMemo(() => {
+    return Array.from(new Set(sortedRekapData.map((r) => r.kelas).filter(Boolean))).sort();
+  }, [sortedRekapData]);
+
+  const filteredRekapData = useMemo<RekapSiswaCert[]>(() => {
+    const q = rekapSearch.trim().toLowerCase();
+    return sortedRekapData.filter((r) => {
+      const matchKelas = rekapKelasFilter === 'semua' || r.kelas === rekapKelasFilter;
+      const matchQuery =
+        !q ||
+        (r.nama || '').toLowerCase().includes(q) ||
+        (r.nisn || '').toLowerCase().includes(q) ||
+        (r.kelas || '').toLowerCase().includes(q);
+      return matchKelas && matchQuery;
+    });
+  }, [sortedRekapData, rekapSearch, rekapKelasFilter]);
+
   const effectiveRekapPageSize = Math.min(50, rekapPageSize);
-  const totalRekapPages = Math.max(1, Math.ceil(sortedRekapData.length / effectiveRekapPageSize));
+  const totalRekapPages = Math.max(1, Math.ceil(filteredRekapData.length / effectiveRekapPageSize));
   const safeRekapPage = Math.min(Math.max(1, rekapPage), totalRekapPages);
   const paginatedRekapData = useMemo(() => {
     const start = (safeRekapPage - 1) * effectiveRekapPageSize;
-    return sortedRekapData.slice(start, start + effectiveRekapPageSize);
-  }, [sortedRekapData, safeRekapPage, effectiveRekapPageSize]);
+    return filteredRekapData.slice(start, start + effectiveRekapPageSize);
+  }, [filteredRekapData, safeRekapPage, effectiveRekapPageSize]);
+
+  const toggleSelectCertStudent = (nisn: string) => {
+    setSelectedCertNisns((prev) =>
+      prev.includes(nisn) ? prev.filter((id) => id !== nisn) : [...prev, nisn]
+    );
+  };
+
+  const allPageSelected =
+    paginatedRekapData.length > 0 &&
+    paginatedRekapData.every((r) => selectedCertNisns.includes(r.nisn));
+
+  const toggleSelectAllOnPage = () => {
+    const pageIds = paginatedRekapData.map((r) => r.nisn);
+    if (allPageSelected) {
+      setSelectedCertNisns((prev) => prev.filter((id) => !pageIds.includes(id)));
+    } else {
+      setSelectedCertNisns((prev) => Array.from(new Set([...prev, ...pageIds])));
+    }
+  };
+
+  const handlePrintCertificateAction = async (targetStudents: RekapSiswaCert[], docTitle: string) => {
+    if (!certTemplate.bgImage) {
+      const res = await Swal.fire({
+        title: 'Template Sertifikat Belum Diatur',
+        text: 'Upload desain sertifikat (PNG/JPG) dan atur posisi datanya terlebih dahulu sebelum mencetak.',
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonText: 'Atur Template Sekarang',
+        cancelButtonText: 'Batal',
+      });
+      if (res.isConfirmed) {
+        setShowCertModal(true);
+      }
+      return;
+    }
+    printStudentCertificates(targetStudents, certTemplate, TRAITS, docTitle);
+  };
+
+  const handleBulkPrintCertificates = () => {
+    const selectedSet = new Set(selectedCertNisns);
+    const orderedSelected = sortedRekapData.filter((r) => selectedSet.has(r.nisn));
+    if (orderedSelected.length === 0) {
+      Swal.fire('Info', 'Centang minimal satu siswa terlebih dahulu untuk cetak massal.', 'info');
+      return;
+    }
+    handlePrintCertificateAction(
+      orderedSelected,
+      `Sertifikat Karakter Massal (${orderedSelected.length} Siswa - ${periode})`
+    );
+  };
 
   const handleSave = async () => {
     if (alreadySubmitted) {
@@ -2153,9 +2236,108 @@ export default function PenilaianDiriPage() {
 
       {activeTab === 'rekap' && isAdmin && (
         <div className={styles.card} style={{ maxWidth: '100%', width: '95%', margin: '20px auto', padding: '30px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: 16 }}>
             <h2 style={{ margin: 0 }}><i className="fas fa-trophy"></i> Rekapitulasi Poin Karakter ({periode})</h2>
-            <button className={styles.btn} onClick={loadRekap} style={{ padding: '8px 16px' }}><i className="fas fa-sync-alt"></i> Segarkan</button>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => setShowCertModal(true)}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '6px',
+                  border: '1px solid #0ea5e9',
+                  background: certTemplate.bgImage ? '#f0f9ff' : '#0ea5e9',
+                  color: certTemplate.bgImage ? '#0369a1' : '#ffffff',
+                  fontWeight: 600,
+                  fontSize: '0.88rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <i className="fas fa-sliders-h"></i>
+                {certTemplate.bgImage ? 'Atur Template Sertifikat ✓' : 'Atur Template Sertifikat'}
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkPrintCertificates}
+                disabled={selectedCertNisns.length === 0}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: selectedCertNisns.length === 0 ? '#cbd5e1' : '#10b981',
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  fontSize: '0.88rem',
+                  cursor: selectedCertNisns.length === 0 ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <i className="fas fa-print"></i>
+                Cetak Massal ({selectedCertNisns.length})
+              </button>
+              <button className={styles.btn} onClick={loadRekap} style={{ padding: '8px 14px' }}>
+                <i className="fas fa-sync-alt"></i> Segarkan
+              </button>
+            </div>
+          </div>
+
+          {/* Filter & Selection Info Bar */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '10px', marginBottom: 14 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', flex: '1 1 auto' }}>
+              <input
+                type="text"
+                placeholder="Cari nama siswa / NISN..."
+                value={rekapSearch}
+                onChange={(e) => {
+                  setRekapSearch(e.target.value);
+                  setRekapPage(1);
+                }}
+                style={{
+                  padding: '7px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '0.88rem',
+                  minWidth: '210px',
+                }}
+              />
+              <select
+                value={rekapKelasFilter}
+                onChange={(e) => {
+                  setRekapKelasFilter(e.target.value);
+                  setRekapPage(1);
+                }}
+                style={{
+                  padding: '7px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '0.88rem',
+                  color: '#334155',
+                }}
+              >
+                <option value="semua">Semua Kelas</option>
+                {rekapKelasOptions.map((k) => (
+                  <option key={k} value={k}>Kelas {k}</option>
+                ))}
+              </select>
+            </div>
+
+            {selectedCertNisns.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.84rem', color: '#0369a1', background: '#f0f9ff', padding: '5px 10px', borderRadius: '6px', border: '1px solid #bae6fd' }}>
+                <span><b>{selectedCertNisns.length}</b> siswa dipilih untuk cetak massal</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCertNisns([])}
+                  style={{ border: 'none', background: 'none', color: '#ef4444', fontWeight: 600, cursor: 'pointer', fontSize: '0.82rem', textDecoration: 'underline' }}
+                >
+                  Batal Pilih
+                </button>
+              </div>
+            )}
           </div>
           
           {loading ? (
@@ -2166,40 +2348,89 @@ export default function PenilaianDiriPage() {
               <table className={styles.table}>
                 <thead>
                   <tr>
+                    <th style={{ textAlign: 'center', width: '40px' }}>
+                      <input
+                        type="checkbox"
+                        checked={allPageSelected}
+                        onChange={toggleSelectAllOnPage}
+                        title="Pilih semua siswa di halaman ini"
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </th>
                     <th>No</th>
                     <th>Kelas</th>
                     <th>Nama Siswa</th>
                     {TRAITS.map(t => <th key={t.id} style={{ fontSize: '0.8rem', textAlign: 'center' }}>{t.label}</th>)}
                     <th>TOTAL</th>
+                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedRekapData.map((r, idx) => {
                     const rowNumber = (safeRekapPage - 1) * effectiveRekapPageSize + idx + 1;
+                    const isChecked = selectedCertNisns.includes(r.nisn);
+                    const topTrait = getHighestTraitLabel(r.scores, TRAITS);
                     return (
-                    <tr key={r.nisn}>
+                    <tr key={r.nisn} style={{ background: isChecked ? '#f0f9ff' : undefined }}>
+                      <td style={{ textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleSelectCertStudent(r.nisn)}
+                          style={{ cursor: 'pointer' }}
+                        />
+                      </td>
                       <td style={{ textAlign: 'center' }}>{rowNumber}</td>
                       <td style={{ textAlign: 'center' }}>{r.kelas}</td>
-                      <td>{r.nama}</td>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{r.nama}</div>
+                        {topTrait !== '-' && (
+                          <div style={{ fontSize: '0.73rem', color: '#0f766e' }}>
+                            Tertinggi: {topTrait}
+                          </div>
+                        )}
+                      </td>
                       {TRAITS.map(t => (
                         <td key={t.id} style={{ textAlign: 'center', background: r.scores[t.id] > 0 ? '#ecfdf5' : 'transparent', fontWeight: r.scores[t.id] > 0 ? 'bold' : 'normal', color: r.scores[t.id] > 0 ? '#10b981' : '#94a3b8' }}>
                           {r.scores[t.id]}
                         </td>
                       ))}
                       <td style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '1.1rem' }}>{r.total}</td>
+                      <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => handlePrintCertificateAction([r], `Sertifikat Karakter - ${r.nama}`)}
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: '6px',
+                            border: 'none',
+                            background: '#0ea5e9',
+                            color: '#ffffff',
+                            fontWeight: 600,
+                            fontSize: '0.8rem',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                          }}
+                          title={`Cetak sertifikat ${r.nama}`}
+                        >
+                          <i className="fas fa-award"></i> Cetak
+                        </button>
+                      </td>
                     </tr>
                     );
                   })}
-                  {sortedRekapData.length === 0 && (
+                  {filteredRekapData.length === 0 && (
                     <tr>
-                      <td colSpan={16} style={{ textAlign: 'center', padding: 20 }}>Belum ada data penilaian di periode ini.</td>
+                      <td colSpan={18} style={{ textAlign: 'center', padding: 20 }}>Belum ada data penilaian di periode ini.</td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
             <PaginationBar
-              totalItems={sortedRekapData.length}
+              totalItems={filteredRekapData.length}
               currentPage={safeRekapPage}
               pageSize={effectiveRekapPageSize}
               onPageChange={setRekapPage}
@@ -2213,6 +2444,15 @@ export default function PenilaianDiriPage() {
           )}
         </div>
       )}
+
+      <SertifikatKarakterModal
+        isOpen={showCertModal}
+        onClose={() => setShowCertModal(false)}
+        initialTemplate={certTemplate}
+        onSaved={(saved) => setCertTemplate(saved)}
+        sampleStudents={filteredRekapData.length > 0 ? filteredRekapData : sortedRekapData}
+        traits={TRAITS}
+      />
     </div>
   );
 }
