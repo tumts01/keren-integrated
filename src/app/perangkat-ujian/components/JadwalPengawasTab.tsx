@@ -1410,8 +1410,8 @@ export default function JadwalPengawasTab() {
     .kode-lg { width: 24px; }
     .nama-lg { white-space: nowrap; }
     .ttd-box { width: 195px; text-align: left; padding-top: 6px; font-size: 8pt; flex-shrink: 0; line-height: 1.25; }
-    .ttd-space { height: 48px; display: flex; align-items: center; justify-content: flex-start; overflow: visible; }
-    .ttd-img { height: 64px; width: auto; max-width: 180px; object-fit: contain; margin: -6px 0 -8px -4px; display: block; pointer-events: none; }
+    .ttd-space { height: 52px; display: flex; align-items: center; justify-content: flex-start; overflow: visible; }
+    .ttd-img { height: 92px; width: auto; max-width: 210px; object-fit: contain; margin: -18px 0 -20px 14px; display: block; pointer-events: none; }
     .ttd-name { font-weight: 800; text-decoration: underline; position: relative; z-index: 2; }
     .extra-footer { display: flex; gap: 12px; align-items: stretch; margin-top: 6px; }
     .extra-col-seragam { flex: 0 0 42%; }
