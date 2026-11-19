@@ -886,7 +886,7 @@ export default function NilaiSiswaPage() {
           <tr>
             <td style="padding: 3px 0;">Kategori Program</td>
             <td>:</td>
-            <td style="font-weight: bold;">${escapeHtmlStr(katDef?.label || kategori)} (${escapeHtmlStr(kategori)})</td>
+            <td style="font-weight: bold;">${escapeHtmlStr(katDef?.label || kategori)}</td>
             <td>Tahun Ajaran</td>
             <td>:</td>
             <td>${escapeHtmlStr(tahunAjaran)}</td>
