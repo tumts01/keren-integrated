@@ -1,5 +1,6 @@
 'use client';
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
 import InlineLoading from '@/components/InlineLoading';
@@ -27,71 +28,243 @@ interface InputRow {
   isEditing: boolean;
 }
 
-const SearchableSelect = ({ value, options, onChange, placeholder }: any) => {
+interface SelectOption {
+  value: string;
+  label: string;
+  badge?: string;
+  keywords?: string;
+}
+
+const SearchableSelect = ({
+  value,
+  options,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  options: SelectOption[];
+  onChange: (val: string) => void;
+  placeholder: string;
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [menuPos, setMenuPos] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+  } | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const updateMenuPosition = useCallback(() => {
+    if (!wrapperRef.current) return;
+    const rect = wrapperRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom - 12;
+    const spaceAbove = rect.top - 12;
+    const openUpward = spaceBelow < 210 && spaceAbove > spaceBelow;
+    const availHeight = openUpward ? spaceAbove : spaceBelow;
+    const maxListHeight = Math.min(240, Math.max(120, availHeight - 58));
+    const width = Math.min(Math.max(rect.width, 250), window.innerWidth - 16);
+    const left = Math.min(Math.max(8, rect.left), window.innerWidth - width - 8);
+
+    setMenuPos({
+      top: openUpward ? undefined : rect.bottom + 4,
+      bottom: openUpward ? window.innerHeight - rect.top + 4 : undefined,
+      left,
+      width,
+      maxHeight: maxListHeight,
+    });
+  }, []);
 
   useEffect(() => {
+    if (!isOpen) return;
+    updateMenuPosition();
+
     const handleClickOutside = (event: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(target) &&
+        (!menuRef.current || !menuRef.current.contains(target))
+      ) {
         setIsOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
-  const selectedOption = options.find((o: any) => o.value === value);
-  const filteredOptions = options.filter((o: any) => o.label.toLowerCase().includes(search.toLowerCase()));
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('scroll', updateMenuPosition, true);
+    window.addEventListener('resize', updateMenuPosition);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('scroll', updateMenuPosition, true);
+      window.removeEventListener('resize', updateMenuPosition);
+    };
+  }, [isOpen, updateMenuPosition]);
+
+  const selectedOption = options.find((o) => o.value === value);
+  const query = search.trim().toLowerCase();
+  const filteredOptions = useMemo(() => {
+    if (!query) return options;
+    return options.filter(
+      (o) =>
+        o.label.toLowerCase().includes(query) ||
+        (o.keywords && o.keywords.toLowerCase().includes(query))
+    );
+  }, [options, query]);
 
   return (
     <div ref={wrapperRef} style={{ position: 'relative', width: '100%', minWidth: '180px' }}>
-      <div 
-        onClick={() => setIsOpen(!isOpen)}
-        style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', background: 'white', cursor: 'pointer', minHeight: '38px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+      <div
+        onClick={() => setIsOpen((prev) => !prev)}
+        style={{
+          padding: '7px 10px',
+          border: `1px solid ${isOpen ? '#3b82f6' : '#cbd5e1'}`,
+          borderRadius: '6px',
+          background: 'white',
+          cursor: 'pointer',
+          minHeight: '36px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '8px',
+          boxShadow: isOpen ? '0 0 0 2px rgba(59, 130, 246, 0.15)' : 'none',
+        }}
       >
-        <span style={{ color: selectedOption ? '#334155' : '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.95rem' }}>
+        <span
+          style={{
+            color: selectedOption ? '#1e293b' : '#94a3b8',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            fontSize: '0.9rem',
+            fontWeight: selectedOption ? 500 : 400,
+          }}
+        >
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <i className="fas fa-chevron-down" style={{ fontSize: '12px', color: '#94a3b8' }}></i>
+        <i
+          className={`fas fa-chevron-${isOpen ? 'up' : 'down'}`}
+          style={{ fontSize: '11px', color: '#94a3b8', flexShrink: 0 }}
+        ></i>
       </div>
 
-      {isOpen && (
-        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, background: 'white', border: '1px solid #cbd5e1', borderRadius: '6px', marginTop: '4px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
-          <div style={{ padding: '8px', borderBottom: '1px solid #e2e8f0' }}>
-            <input
-              type="text"
-              autoFocus
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari..."
-              style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '4px', outline: 'none', fontSize: '0.9rem' }}
-            />
-          </div>
-          <div style={{ maxHeight: '250px', overflowY: 'auto' }}>
-            {filteredOptions.length === 0 ? (
-              <div style={{ padding: '12px', color: '#94a3b8', textAlign: 'center', fontSize: '0.9rem' }}>Tidak ditemukan</div>
-            ) : (
-              filteredOptions.map((o: any) => (
-                <div
-                  key={o.value}
-                  onClick={() => {
-                    onChange(o.value);
+      {isOpen &&
+        menuPos &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            ref={menuRef}
+            style={{
+              position: 'fixed',
+              top: menuPos.top,
+              bottom: menuPos.bottom,
+              left: menuPos.left,
+              width: menuPos.width,
+              zIndex: 9999,
+              background: 'white',
+              border: '1px solid #cbd5e1',
+              borderRadius: '8px',
+              boxShadow: '0 12px 28px -4px rgba(15, 23, 42, 0.18)',
+              overflow: 'hidden',
+            }}
+          >
+            <div style={{ padding: '7px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+              <input
+                type="text"
+                autoFocus
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && filteredOptions.length > 0) {
+                    e.preventDefault();
+                    onChange(filteredOptions[0].value);
                     setIsOpen(false);
                     setSearch('');
-                  }}
-                  style={{ padding: '10px 12px', cursor: 'pointer', background: o.value === value ? '#e0f2fe' : 'transparent', color: o.value === value ? '#0369a1' : '#334155', fontSize: '0.9rem', borderBottom: '1px solid #f1f5f9' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#f1f5f9')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = o.value === value ? '#e0f2fe' : 'transparent')}
-                >
-                  {o.label}
+                  }
+                }}
+                placeholder="Ketik untuk mencari..."
+                style={{
+                  width: '100%',
+                  padding: '6px 9px',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '5px',
+                  outline: 'none',
+                  fontSize: '0.88rem',
+                  background: 'white',
+                }}
+              />
+            </div>
+            <div style={{ maxHeight: `${menuPos.maxHeight}px`, overflowY: 'auto' }}>
+              {filteredOptions.length === 0 ? (
+                <div style={{ padding: '12px', color: '#94a3b8', textAlign: 'center', fontSize: '0.88rem' }}>
+                  Tidak ditemukan
                 </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
+              ) : (
+                filteredOptions.map((o) => {
+                  const isSelected = o.value === value;
+                  return (
+                    <div
+                      key={o.value}
+                      onClick={() => {
+                        onChange(o.value);
+                        setIsOpen(false);
+                        setSearch('');
+                      }}
+                      style={{
+                        padding: '8px 10px',
+                        cursor: 'pointer',
+                        background: isSelected ? '#e0f2fe' : 'transparent',
+                        color: isSelected ? '#0369a1' : '#334155',
+                        fontSize: '0.88rem',
+                        borderBottom: '1px solid #f1f5f9',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isSelected) e.currentTarget.style.background = '#f1f5f9';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = isSelected ? '#e0f2fe' : 'transparent';
+                      }}
+                    >
+                      <span style={{ fontWeight: isSelected ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {o.label}
+                      </span>
+                      {o.badge && (
+                        <span
+                          style={{
+                            fontSize: '0.75rem',
+                            color: isSelected ? '#0369a1' : '#64748b',
+                            background: isSelected ? '#bae6fd' : '#f1f5f9',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {o.badge}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };
@@ -111,11 +284,39 @@ export default function SusulanPage() {
   const [inputRows, setInputRows] = useState<InputRow[]>([]);
   const [isFetchingInput, setIsFetchingInput] = useState(false);
   const [resettingInput, setResettingInput] = useState(false);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickNisn, setQuickNisn] = useState('');
+  const [quickMapel, setQuickMapel] = useState('');
+  const [savingQuickAdd, setSavingQuickAdd] = useState(false);
   const [inputSearch, setInputSearch] = useState('');
   const [inputFilterStatus, setInputFilterStatus] = useState('Semua');
   const [inputFilterRuang, setInputFilterRuang] = useState('Semua');
   const [inputPage, setInputPage] = useState(1);
   const [inputPageSize, setInputPageSize] = useState(50);
+
+  const participantOptions = useMemo<SelectOption[]>(
+    () =>
+      participants.map((p) => {
+        const badge = [p.kelas, p.ruang].filter((v) => v && v !== '-').join(' · ');
+        return {
+          value: p.nisn,
+          label: p.nama || p.nisn,
+          badge: badge || undefined,
+          keywords: `${p.nama || ''} ${p.kelas || ''} ${p.ruang || ''} ${p.nisn || ''}`,
+        };
+      }),
+    [participants]
+  );
+
+  const mapelOptions = useMemo<SelectOption[]>(
+    () => mapelList.map((m) => ({ value: m, label: m })),
+    [mapelList]
+  );
+
+  const selectedQuickParticipant = useMemo(
+    () => participants.find((p) => p.nisn === quickNisn) || null,
+    [participants, quickNisn]
+  );
 
   // Load existing data
   useEffect(() => {
@@ -171,8 +372,62 @@ export default function SusulanPage() {
 
   // --- Input Tab Handlers ---
   const handleAddInputRow = () => {
-    setInputRows([{ id: undefined, nisn: '', nama: '', kelas: '', ruang: '', noUjian: '', mapel: '', isSelesai: false, isEditing: true }, ...inputRows]);
-    setInputPage(1);
+    setShowQuickAdd((prev) => !prev);
+  };
+
+  const handleSaveQuickAdd = async () => {
+    if (!quickNisn || !quickMapel) {
+      Swal.fire('Info', 'Pilih Siswa dan Mata Pelajaran terlebih dahulu.', 'info');
+      return;
+    }
+
+    const participant = participants.find((p) => p.nisn === quickNisn);
+    const payload = {
+      nisn: quickNisn,
+      nama: participant?.nama || '',
+      kelas: participant?.kelas || '',
+      ruang: participant?.ruang || '',
+      noUjian: participant?.noUjian || '',
+      mapel: quickMapel,
+      isSelesai: false,
+    };
+
+    setSavingQuickAdd(true);
+    try {
+      const res = await fetch('/api/perangkat-ujian/susulan/input', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'add', payload }),
+      });
+      const resData = await res.json();
+
+      if (resData.success && resData.data) {
+        const newRow: InputRow = {
+          id: resData.data.id,
+          ...payload,
+          isEditing: false,
+        };
+        setInputRows((prev) => [newRow, ...prev]);
+        setInputPage(1);
+        setQuickNisn('');
+        setQuickMapel('');
+        Swal.fire({
+          icon: 'success',
+          title: 'Data susulan ditambahkan',
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 1500,
+        });
+      } else {
+        Swal.fire('Error', resData.error || 'Gagal menyimpan data susulan', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire('Error', 'Terjadi kesalahan jaringan', 'error');
+    } finally {
+      setSavingQuickAdd(false);
+    }
   };
 
   const handleInputRowChange = (index: number, field: keyof InputRow, value: string) => {
@@ -703,8 +958,24 @@ export default function SusulanPage() {
               </select>
 
               {/* Tambah Baris, Export Excel & Reset */}
-              <button onClick={handleAddInputRow} style={{ padding: '8px 16px', background: '#3b82f6', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
-                <i className="fas fa-plus"></i> Tambah Baris
+              <button
+                onClick={handleAddInputRow}
+                style={{
+                  padding: '8px 16px',
+                  background: showQuickAdd ? '#1d4ed8' : '#3b82f6',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <i className={showQuickAdd ? 'fas fa-times' : 'fas fa-plus'}></i>
+                {showQuickAdd ? 'Tutup Input' : 'Tambah Baris'}
               </button>
               <button
                 onClick={handleExportInputExcel}
@@ -746,6 +1017,77 @@ export default function SusulanPage() {
               </button>
             </div>
 
+            {showQuickAdd && (
+              <div
+                style={{
+                  background: '#f0f9ff',
+                  border: '1px solid #bae6fd',
+                  borderRadius: '8px',
+                  padding: '12px 14px',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  gap: '10px',
+                }}
+              >
+                <div style={{ flex: '2 1 240px', minWidth: '200px' }}>
+                  <SearchableSelect
+                    value={quickNisn}
+                    onChange={(val) => setQuickNisn(val)}
+                    placeholder="Pilih Siswa (ketik nama / kelas)..."
+                    options={participantOptions}
+                  />
+                </div>
+
+                {selectedQuickParticipant && (
+                  <div
+                    style={{
+                      padding: '6px 10px',
+                      background: 'white',
+                      border: '1px solid #bae6fd',
+                      borderRadius: '6px',
+                      fontSize: '0.84rem',
+                      color: '#0369a1',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Kelas <b>{selectedQuickParticipant.kelas || '-'}</b> · Ruang <b>{selectedQuickParticipant.ruang || '-'}</b>
+                  </div>
+                )}
+
+                <div style={{ flex: '2 1 220px', minWidth: '180px' }}>
+                  <SearchableSelect
+                    value={quickMapel}
+                    onChange={(val) => setQuickMapel(val)}
+                    placeholder="Pilih Mata Pelajaran..."
+                    options={mapelOptions}
+                  />
+                </div>
+
+                <button
+                  onClick={handleSaveQuickAdd}
+                  disabled={savingQuickAdd}
+                  style={{
+                    padding: '8px 16px',
+                    background: savingQuickAdd ? '#94a3b8' : '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontWeight: 'bold',
+                    cursor: savingQuickAdd ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <i className={savingQuickAdd ? 'fas fa-spinner fa-spin' : 'fas fa-save'}></i>
+                  {savingQuickAdd ? 'Menyimpan...' : 'Simpan'}
+                </button>
+              </div>
+            )}
+
             {isFetchingInput ? (
           <InlineLoading message="Memuat data..." />
         ) : inputRows.length > 0 ? (
@@ -781,7 +1123,7 @@ export default function SusulanPage() {
                                     value={row.nisn} 
                                     onChange={(val: string) => handleInputRowChange(idx, 'nisn', val)}
                                     placeholder="Pilih Siswa..."
-                                    options={participants.map(p => ({ value: p.nisn, label: p.nama }))}
+                                    options={participantOptions}
                                   />
                                 ) : (
                                   <span style={{ fontWeight: 'bold', color: '#334155' }}>{row.nama}</span>
@@ -800,7 +1142,7 @@ export default function SusulanPage() {
                                     value={row.mapel} 
                                     onChange={(val: string) => handleInputRowChange(idx, 'mapel', val)}
                                     placeholder="Pilih Mata Pelajaran..."
-                                    options={mapelList.map(m => ({ value: m, label: m }))}
+                                    options={mapelOptions}
                                   />
                                 ) : (
                                   <span>{row.mapel}</span>
@@ -810,9 +1152,24 @@ export default function SusulanPage() {
                               <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>{row.ruang}</td>
                               <td style={{ padding: '12px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                                 {row.isEditing ? (
-                                  <button onClick={() => handleSaveInputRow(idx)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }} title="Simpan">
-                                    <i className="fas fa-save"></i>
-                                  </button>
+                                  <>
+                                    <button onClick={() => handleSaveInputRow(idx)} style={{ background: '#10b981', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }} title="Simpan">
+                                      <i className="fas fa-save"></i>
+                                    </button>
+                                    {row.id && (
+                                      <button
+                                        onClick={() => {
+                                          const updated = [...inputRows];
+                                          updated[idx].isEditing = false;
+                                          setInputRows(updated);
+                                        }}
+                                        style={{ background: '#64748b', color: 'white', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer', marginRight: '4px' }}
+                                        title="Batal Edit"
+                                      >
+                                        <i className="fas fa-times"></i>
+                                      </button>
+                                    )}
+                                  </>
                                 ) : (
                                   <>
                                     <button 
