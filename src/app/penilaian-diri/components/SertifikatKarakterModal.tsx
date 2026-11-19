@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Swal from 'sweetalert2';
 import { supabase } from '@/lib/supabase';
 
@@ -471,6 +471,13 @@ interface SertifikatKarakterModalProps {
   traits: TraitDef[];
 }
 
+interface AlignGuide {
+  axis: 'x' | 'y';
+  pos: number; // percentage 0..100
+  label: string;
+  color: string;
+}
+
 export default function SertifikatKarakterModal({
   isOpen,
   onClose,
@@ -484,24 +491,213 @@ export default function SertifikatKarakterModal({
   const [sampleIndex, setSampleIndex] = useState<number>(0);
   const [saving, setSaving] = useState<boolean>(false);
   const [uploading, setUploading] = useState<boolean>(false);
-  const [snapCenterX, setSnapCenterX] = useState<boolean>(false);
+  const [alignGuides, setAlignGuides] = useState<AlignGuide[]>([]);
   const [canvasWidthPx, setCanvasWidthPx] = useState<number>(640);
   const [hexColorInput, setHexColorInput] = useState<string>(initialTemplate.fields.nama.color);
 
   const canvasRef = useRef<HTMLDivElement>(null);
+  const fieldElRefs = useRef<Partial<Record<CertFieldKey, HTMLDivElement | null>>>({});
   const draggingKeyRef = useRef<CertFieldKey | null>(null);
+  const dragOffsetRef = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 });
+  const guideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const draftRef = useRef<CertTemplateConfig>(draft);
+  const selectedKeyRef = useRef<CertFieldKey>(selectedKey);
+
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+
+  useEffect(() => {
+    selectedKeyRef.current = selectedKey;
+  }, [selectedKey]);
 
   useEffect(() => {
     if (isOpen) {
       setDraft(mergeWithDefaultTemplate(initialTemplate));
       setSampleIndex(0);
+      setAlignGuides([]);
     }
   }, [isOpen, initialTemplate]);
 
   useEffect(() => {
     setHexColorInput(draft.fields[selectedKey]?.color || '#1e293b');
   }, [selectedKey, draft.fields]);
+
+  const computeAlignmentAndSnap = useCallback(
+    (
+      key: CertFieldKey,
+      candidateX: number,
+      candidateY: number,
+      threshold: number,
+      shouldSnap: boolean
+    ): { x: number; y: number; guides: AlignGuide[] } => {
+      const canvasEl = canvasRef.current;
+      const currentDraft = draftRef.current;
+      const activeFieldCfg = currentDraft.fields[key];
+      if (!canvasEl || !activeFieldCfg) {
+        return { x: candidateX, y: candidateY, guides: [] };
+      }
+
+      const canvasRect = canvasEl.getBoundingClientRect();
+      if (canvasRect.width <= 0 || canvasRect.height <= 0) {
+        return { x: candidateX, y: candidateY, guides: [] };
+      }
+
+      const activeEl = fieldElRefs.current[key];
+      const activeWidthPct = activeEl ? (activeEl.getBoundingClientRect().width / canvasRect.width) * 100 : 0;
+
+      const leftOffset =
+        activeFieldCfg.align === 'left' ? 0 : activeFieldCfg.align === 'center' ? -activeWidthPct / 2 : -activeWidthPct;
+      const centerOffset =
+        activeFieldCfg.align === 'left' ? activeWidthPct / 2 : activeFieldCfg.align === 'center' ? 0 : -activeWidthPct / 2;
+      const rightOffset =
+        activeFieldCfg.align === 'left' ? activeWidthPct : activeFieldCfg.align === 'center' ? activeWidthPct / 2 : 0;
+
+      const cLeft = candidateX + leftOffset;
+      const cCenter = candidateX + centerOffset;
+      const cRight = candidateX + rightOffset;
+
+      type XTarget = { pos: number; edge: 'left' | 'center' | 'right'; label: string; color: string };
+      const xTargets: XTarget[] = [
+        { pos: 50, edge: 'center', label: 'Tengah Halaman', color: '#ef4444' },
+      ];
+
+      type YTarget = { pos: number; label: string; color: string };
+      const yTargets: YTarget[] = [
+        { pos: 50, label: 'Tengah Vertikal', color: '#ef4444' },
+      ];
+
+      for (const otherKey of FIELD_KEYS) {
+        if (otherKey === key) continue;
+        const otherCfg = currentDraft.fields[otherKey];
+        if (!otherCfg?.enabled) continue;
+        const otherEl = fieldElRefs.current[otherKey];
+        if (!otherEl) continue;
+
+        const r = otherEl.getBoundingClientRect();
+        const oLeft = ((r.left - canvasRect.left) / canvasRect.width) * 100;
+        const oCenterX = ((r.left + r.width / 2 - canvasRect.left) / canvasRect.width) * 100;
+        const oRight = ((r.right - canvasRect.left) / canvasRect.width) * 100;
+        const oCenterY = ((r.top + r.height / 2 - canvasRect.top) / canvasRect.height) * 100;
+
+        xTargets.push(
+          { pos: oLeft, edge: 'left', label: `Rata Kiri · ${otherCfg.label}`, color: '#d946ef' },
+          { pos: oCenterX, edge: 'center', label: `Sejajar Tengah · ${otherCfg.label}`, color: '#0284c7' },
+          { pos: oRight, edge: 'right', label: `Rata Kanan · ${otherCfg.label}`, color: '#d946ef' }
+        );
+        yTargets.push({ pos: oCenterY, label: `Sejajar Baris · ${otherCfg.label}`, color: '#10b981' });
+      }
+
+      let bestX: { target: XTarget; diff: number; snappedAnchorX: number } | null = null;
+      for (const t of xTargets) {
+        const edgeVal = t.edge === 'left' ? cLeft : t.edge === 'center' ? cCenter : cRight;
+        const offset = t.edge === 'left' ? leftOffset : t.edge === 'center' ? centerOffset : rightOffset;
+        const diff = Math.abs(edgeVal - t.pos);
+        if (diff <= threshold && (!bestX || diff < bestX.diff)) {
+          bestX = { target: t, diff, snappedAnchorX: t.pos - offset };
+        }
+      }
+
+      let bestY: { target: YTarget; diff: number } | null = null;
+      for (const t of yTargets) {
+        const diff = Math.abs(candidateY - t.pos);
+        if (diff <= threshold && (!bestY || diff < bestY.diff)) {
+          bestY = { target: t, diff };
+        }
+      }
+
+      const guides: AlignGuide[] = [];
+      let finalX = candidateX;
+      let finalY = candidateY;
+
+      if (bestX) {
+        if (shouldSnap) finalX = bestX.snappedAnchorX;
+        guides.push({
+          axis: 'x',
+          pos: bestX.target.pos,
+          label: bestX.target.label,
+          color: bestX.target.color,
+        });
+      }
+      if (bestY) {
+        if (shouldSnap) finalY = bestY.target.pos;
+        guides.push({
+          axis: 'y',
+          pos: bestY.target.pos,
+          label: bestY.target.label,
+          color: bestY.target.color,
+        });
+      }
+
+      return {
+        x: Math.max(0, Math.min(100, Math.round(finalX * 10) / 10)),
+        y: Math.max(0, Math.min(100, Math.round(finalY * 10) / 10)),
+        guides,
+      };
+    },
+    []
+  );
+
+  // Keyboard arrow nudging (0.2% per press, 1% with Shift) when not typing inside an input/select
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+
+      const activeEl = document.activeElement as HTMLElement | null;
+      const tag = activeEl?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || activeEl?.isContentEditable) {
+        return;
+      }
+
+      const key = selectedKeyRef.current;
+      const fieldCfg = draftRef.current.fields[key];
+      if (!fieldCfg?.enabled) return;
+
+      e.preventDefault();
+      const step = e.shiftKey ? 1.0 : 0.2;
+      let nextX = fieldCfg.x;
+      let nextY = fieldCfg.y;
+
+      if (e.key === 'ArrowLeft') nextX -= step;
+      if (e.key === 'ArrowRight') nextX += step;
+      if (e.key === 'ArrowUp') nextY -= step;
+      if (e.key === 'ArrowDown') nextY += step;
+
+      nextX = Math.max(0, Math.min(100, Math.round(nextX * 10) / 10));
+      nextY = Math.max(0, Math.min(100, Math.round(nextY * 10) / 10));
+
+      const aligned = computeAlignmentAndSnap(key, nextX, nextY, 0.35, false);
+
+      setDraft((prev) => ({
+        ...prev,
+        fields: {
+          ...prev.fields,
+          [key]: {
+            ...prev.fields[key],
+            x: nextX,
+            y: nextY,
+          },
+        },
+      }));
+
+      setAlignGuides(aligned.guides);
+      if (guideTimerRef.current) clearTimeout(guideTimerRef.current);
+      if (aligned.guides.length > 0) {
+        guideTimerRef.current = setTimeout(() => {
+          setAlignGuides([]);
+        }, 1600);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (guideTimerRef.current) clearTimeout(guideTimerRef.current);
+    };
+  }, [isOpen, computeAlignmentAndSnap]);
 
   // Inject Google Fonts once for accurate live preview inside the modal
   useEffect(() => {
@@ -601,8 +797,25 @@ export default function SertifikatKarakterModal({
   const handlePointerDownField = (e: React.PointerEvent<HTMLDivElement>, key: CertFieldKey) => {
     e.preventDefault();
     e.stopPropagation();
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     setSelectedKey(key);
     draggingKeyRef.current = key;
+
+    if (canvasRef.current) {
+      const rect = canvasRef.current.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        const ptrX = ((e.clientX - rect.left) / rect.width) * 100;
+        const ptrY = ((e.clientY - rect.top) / rect.height) * 100;
+        const cur = draftRef.current.fields[key];
+        dragOffsetRef.current = {
+          dx: ptrX - cur.x,
+          dy: ptrY - cur.y,
+        };
+      }
+    }
+
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
@@ -612,30 +825,25 @@ export default function SertifikatKarakterModal({
     const rect = canvasRef.current.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
 
-    let rawX = ((e.clientX - rect.left) / rect.width) * 100;
-    let rawY = ((e.clientY - rect.top) / rect.height) * 100;
+    const ptrX = ((e.clientX - rect.left) / rect.width) * 100;
+    const ptrY = ((e.clientY - rect.top) / rect.height) * 100;
 
-    rawX = Math.max(0, Math.min(100, rawX));
-    rawY = Math.max(0, Math.min(100, rawY));
+    const rawX = Math.max(0, Math.min(100, ptrX - dragOffsetRef.current.dx));
+    const rawY = Math.max(0, Math.min(100, ptrY - dragOffsetRef.current.dy));
 
-    // Magnetic snap to horizontal center (50%) when within 1.2%
-    if (Math.abs(rawX - 50) <= 1.2) {
-      rawX = 50;
-      setSnapCenterX(true);
-    } else {
-      setSnapCenterX(false);
-    }
+    const aligned = computeAlignmentAndSnap(key, rawX, rawY, 0.9, true);
+    setAlignGuides(aligned.guides);
 
     updateField(key, {
-      x: Math.round(rawX * 10) / 10,
-      y: Math.round(rawY * 10) / 10,
+      x: aligned.x,
+      y: aligned.y,
     });
   };
 
   const handlePointerUpField = (e: React.PointerEvent<HTMLDivElement>) => {
     if (draggingKeyRef.current) {
       draggingKeyRef.current = null;
-      setSnapCenterX(false);
+      setAlignGuides([]);
       try {
         e.currentTarget.releasePointerCapture(e.pointerId);
       } catch {}
@@ -926,20 +1134,79 @@ export default function SertifikatKarakterModal({
                 </div>
               )}
 
-              {/* Center horizontal guide line when snapping */}
-              {snapCenterX && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    bottom: 0,
-                    left: '50%',
-                    width: '1px',
-                    borderLeft: '1.5px dashed #ef4444',
-                    pointerEvents: 'none',
-                    zIndex: 5,
-                  }}
-                />
+              {/* Smart alignment guide lines & badges */}
+              {alignGuides.map((g, idx) =>
+                g.axis === 'x' ? (
+                  <React.Fragment key={`gx-${idx}`}>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        bottom: 0,
+                        left: `${g.pos}%`,
+                        width: '1px',
+                        borderLeft: `1.5px dashed ${g.color}`,
+                        pointerEvents: 'none',
+                        zIndex: 30,
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '6px',
+                        left: `${Math.min(84, Math.max(16, g.pos))}%`,
+                        transform: 'translateX(-50%)',
+                        background: g.color,
+                        color: 'white',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        whiteSpace: 'nowrap',
+                        pointerEvents: 'none',
+                        zIndex: 35,
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                      }}
+                    >
+                      {g.label}
+                    </div>
+                  </React.Fragment>
+                ) : (
+                  <React.Fragment key={`gy-${idx}`}>
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        top: `${g.pos}%`,
+                        height: '1px',
+                        borderTop: `1.5px dashed ${g.color}`,
+                        pointerEvents: 'none',
+                        zIndex: 30,
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: '6px',
+                        top: `${Math.min(92, Math.max(8, g.pos))}%`,
+                        transform: 'translateY(-115%)',
+                        background: g.color,
+                        color: 'white',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        whiteSpace: 'nowrap',
+                        pointerEvents: 'none',
+                        zIndex: 35,
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                      }}
+                    >
+                      {g.label}
+                    </div>
+                  </React.Fragment>
+                )
               )}
 
               {/* Draggable Mapped Fields */}
@@ -953,6 +1220,9 @@ export default function SertifikatKarakterModal({
                 return (
                   <div
                     key={key}
+                    ref={(el) => {
+                      fieldElRefs.current[key] = el;
+                    }}
                     onPointerDown={(e) => handlePointerDownField(e, key)}
                     onPointerMove={handlePointerMoveField}
                     onPointerUp={handlePointerUpField}
@@ -972,13 +1242,14 @@ export default function SertifikatKarakterModal({
                       lineHeight: 1.15,
                       letterSpacing: '0.01em',
                       cursor: 'grab',
-                      padding: '2px 6px',
-                      borderRadius: '4px',
+                      padding: 0,
+                      borderRadius: '2px',
                       outline: isSelected ? '2px solid #0ea5e9' : '1px dashed rgba(14, 165, 233, 0.55)',
-                      background: isSelected ? 'rgba(224, 242, 254, 0.45)' : 'rgba(255, 255, 255, 0.25)',
+                      outlineOffset: '3px',
+                      background: isSelected ? 'rgba(224, 242, 254, 0.35)' : 'rgba(255, 255, 255, 0.18)',
                       zIndex: isSelected ? 20 : 10,
                     }}
-                    title={`Geser posisi ${f.label}`}
+                    title={`Geser posisi ${f.label} (atau pakai panah keyboard ↑↓←→)`}
                   >
                     {text}
                   </div>
@@ -987,7 +1258,7 @@ export default function SertifikatKarakterModal({
             </div>
 
             <div style={{ fontSize: '0.78rem', color: '#475569', textAlign: 'center' }}>
-              Tip: Klik dan geser langsung teks di atas gambar. Garis merah putus-putus muncul saat tepat di tengah halaman (50%).
+              Tip: Geser teks dengan mouse/sentuh atau pakai tombol <b>Panah Keyboard (↑ ↓ ← →)</b> untuk geser halus (tahan <b>Shift</b> untuk lebih cepat). Garis bantu otomatis muncul saat sejajar rata kiri, tengah, rata kanan, atau sejajar baris.
             </div>
           </div>
 
@@ -1024,7 +1295,12 @@ export default function SertifikatKarakterModal({
                   return (
                     <div
                       key={key}
-                      onClick={() => setSelectedKey(key)}
+                      onClick={() => {
+                        if (document.activeElement instanceof HTMLElement) {
+                          document.activeElement.blur();
+                        }
+                        setSelectedKey(key);
+                      }}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
