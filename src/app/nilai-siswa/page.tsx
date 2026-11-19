@@ -316,9 +316,11 @@ export default function NilaiSiswaPage() {
     saveQueuesRef.current[queueKey] = nextTask;
   }, [profile]);
 
-  const handleCellChange = (rowIdx: number, mapelName: string, field: PKScoreField, rawValue: string) => {
-    // Allow digits, one dot/comma, up to 100
-    const cleaned = rawValue.replace(',', '.').replace(/[^0-9.]/g, '');
+  const normalizeScoreInput = (rawValue: string, trimTrailingDot = false): string => {
+    const trimmed = rawValue.trim();
+    if (!trimmed || trimmed === '-') return '';
+
+    const cleaned = trimmed.replace(',', '.').replace(/[^0-9.]/g, '');
     const parts = cleaned.split('.');
     let normalized = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : cleaned;
 
@@ -328,6 +330,16 @@ export default function NilaiSiswaPage() {
         normalized = '100';
       }
     }
+
+    if (trimTrailingDot) {
+      normalized = normalized.replace(/\.+$/, '');
+    }
+
+    return normalized;
+  };
+
+  const handleCellChange = (rowIdx: number, mapelName: string, field: PKScoreField, rawValue: string) => {
+    const normalized = normalizeScoreInput(rawValue, false);
 
     const updated = [...studentsRef.current];
     const targetStudent = updated[rowIdx];
@@ -376,6 +388,120 @@ export default function NilaiSiswaPage() {
     }
 
     persistColumnField(mapelName, field, st.induk);
+  };
+
+  // Paste 1D/2D values directly from Excel (columns separated by tab, rows by newline)
+  const handleCellPaste = (
+    e: React.ClipboardEvent<HTMLInputElement>,
+    tableMapels: PKMapelHeader[],
+    startRowIdx: number,
+    startFlatColIdx: number
+  ) => {
+    const rawText = e.clipboardData.getData('text/plain') || e.clipboardData.getData('text');
+    if (!rawText) return;
+
+    const rawLines = rawText.split(/\r\n|\n|\r/);
+    if (rawLines.length > 1 && rawLines[rawLines.length - 1] === '') {
+      rawLines.pop(); // Excel adds one trailing newline on copied blocks
+    }
+
+    const isMultiCell = rawLines.length > 1 || rawLines[0].includes('\t');
+    if (!isMultiCell) {
+      // Single-cell paste: let browser input + onChange handle normalization
+      return;
+    }
+
+    e.preventDefault();
+
+    const flatSlots: Array<{ mapelName: string; field: PKScoreField }> = [];
+    for (const m of tableMapels) {
+      for (const f of PK_SCORE_FIELDS) {
+        flatSlots.push({ mapelName: m.name, field: f.key });
+      }
+    }
+
+    const currentRows = studentsRef.current;
+    if (currentRows.length === 0 || flatSlots.length === 0) return;
+
+    const updated = [...currentRows];
+    const touchedColumns = new Map<string, { mapelName: string; field: PKScoreField }>();
+    const dirtyDiff: Record<string, boolean> = {};
+    let appliedCells = 0;
+
+    rawLines.forEach((line, rOffset) => {
+      const targetRowIdx = startRowIdx + rOffset;
+      if (targetRowIdx < 0 || targetRowIdx >= updated.length) return;
+
+      const cols = line.split('\t');
+      const targetStudent = updated[targetRowIdx];
+      if (!targetStudent) return;
+
+      let nextScoresByMapel = targetStudent.scoresByMapel;
+      let rowModified = false;
+
+      cols.forEach((rawCell, cOffset) => {
+        const slot = flatSlots[startFlatColIdx + cOffset];
+        if (!slot) return;
+
+        const normalized = normalizeScoreInput(rawCell, true);
+        if (!rowModified) {
+          nextScoresByMapel = { ...targetStudent.scoresByMapel };
+          rowModified = true;
+        }
+
+        const prevMapelScores = nextScoresByMapel[slot.mapelName] || {
+          m1: '', m2: '', m3: '', sts: '', sas: '', rata: null,
+        };
+        const nextMapelScores: PKMapelScores = {
+          ...prevMapelScores,
+          [slot.field]: normalized,
+        };
+        nextMapelScores.rata = computeMapelAverage(nextMapelScores);
+        nextScoresByMapel[slot.mapelName] = nextMapelScores;
+
+        const cellKey = `${targetStudent.induk}::${slot.mapelName}::${slot.field}`;
+        const savedVal = String(lastSavedSnapshotRef.current[cellKey] ?? '').trim();
+        dirtyDiff[cellKey] = normalized.trim() !== savedVal;
+
+        touchedColumns.set(`${slot.mapelName}::${slot.field}`, slot);
+        appliedCells += 1;
+      });
+
+      if (rowModified) {
+        updated[targetRowIdx] = {
+          ...targetStudent,
+          scoresByMapel: nextScoresByMapel,
+        };
+      }
+    });
+
+    if (appliedCells === 0) return;
+
+    studentsRef.current = updated;
+    setStudents(updated);
+
+    setDirtyCells((prev) => {
+      const next = { ...prev };
+      for (const [k, isDirty] of Object.entries(dirtyDiff)) {
+        if (isDirty) next[k] = true;
+        else delete next[k];
+      }
+      return next;
+    });
+
+    touchedColumns.forEach(({ mapelName, field }) => {
+      persistColumnField(mapelName, field);
+    });
+
+    Swal.fire({
+      icon: 'success',
+      title: `${appliedCells} sel nilai ditempel dari Excel`,
+      text: `Auto-save ke ${touchedColumns.size} kolom nilai...`,
+      toast: true,
+      position: 'top-end',
+      showConfirmButton: false,
+      timer: 2200,
+    });
   };
 
   const allMapels = [...mapels, ...layananUmumMapels];
@@ -742,6 +868,7 @@ export default function NilaiSiswaPage() {
                               onChange={(e) => handleCellChange(rowIdx, m.name, f.key, e.target.value)}
                               onBlur={() => handleCellBlur(rowIdx, m.name, f.key)}
                               onKeyDown={(e) => handleCellKeyDown(e, tableIdPrefix, rowIdx, flatColIdx, totalCols)}
+                              onPaste={(e) => handleCellPaste(e, tableMapels, rowIdx, flatColIdx)}
                               onFocus={(e) => e.currentTarget.select()}
                               aria-label={`${st.nama} ${m.name} ${f.label}`}
                             />
@@ -1023,7 +1150,7 @@ export default function NilaiSiswaPage() {
                   Menampilkan <b>{students.length}</b> siswa · Kelas <b>{kelas}</b> · Semester <b>{semester}</b> · Tahun Ajaran <b>{tahunAjaran}</b>
                 </span>
                 <span>
-                  Tips: Gunakan tombol <b>Tab</b>, <b>Enter</b>, atau <b>Panah</b> untuk berpindah kolom/baris — nilai langsung tersimpan otomatis.
+                  Tips: Bisa langsung <b>Copy–Paste dari Excel</b> (1 kolom maupun banyak baris &amp; kolom sekaligus) atau pakai <b>Tab / Enter / Panah</b> — nilai otomatis tersimpan.
                 </span>
               </div>
             </>
