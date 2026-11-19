@@ -721,6 +721,95 @@ export default function JadwalPengawasTab() {
     }
   };
 
+  const handleCopyDayRulesFromOther = async () => {
+    const sourceRules = otherGroup.teacherDayRules || {};
+    const sourceValidIds = new Set(otherGroup.days.map(d => d.id));
+    const entries = Object.entries(sourceRules).filter(([, r]) =>
+      (r.dayIds || []).some(id => sourceValidIds.has(id))
+    );
+
+    const sourceLabel = otherGroupKey === 'kelas78' ? 'Kelas 7–8' : 'Kelas 9';
+    if (entries.length === 0) {
+      Swal.fire(
+        'Belum Ada Aturan',
+        `Aturan hari khusus guru di jadwal ${sourceLabel} masih kosong.`,
+        'info'
+      );
+      return;
+    }
+
+    if (activeRuleEntries.length > 0) {
+      const confirm = await Swal.fire({
+        title: `Tarik Aturan dari ${sourceLabel}?`,
+        text: `Aturan hari khusus pada ${activeGroupLabel} akan diganti dengan aturan dari ${sourceLabel} (${entries.length} guru).`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Tarik Data',
+        cancelButtonText: 'Batal',
+      });
+      if (!confirm.isConfirmed) return;
+    }
+
+    // Petakan ID hari sumber ke ID hari tujuan berdasarkan tanggal -> label -> urutan hari
+    const mapSourceDayIdToTarget = (srcDayId: string): string | null => {
+      const srcIdx = otherGroup.days.findIndex(d => d.id === srcDayId);
+      if (srcIdx < 0) return null;
+      const srcDay = otherGroup.days[srcIdx];
+
+      if (srcDay.tanggal) {
+        const byIso = currentGroup.days.find(d => d.tanggal === srcDay.tanggal);
+        if (byIso) return byIso.id;
+      }
+      if (srcDay.labelHariTanggal) {
+        const normLbl = srcDay.labelHariTanggal.trim().toLowerCase();
+        const byLbl = currentGroup.days.find(
+          d => (d.labelHariTanggal || '').trim().toLowerCase() === normLbl
+        );
+        if (byLbl) return byLbl.id;
+      }
+      return currentGroup.days[srcIdx]?.id || null;
+    };
+
+    const nextRules: Record<string, TeacherDayRule> = {};
+    let copiedCount = 0;
+
+    entries.forEach(([kode, rule]) => {
+      const mappedIds = Array.from(
+        new Set(
+          (rule.dayIds || [])
+            .filter(id => sourceValidIds.has(id))
+            .map(id => mapSourceDayIdToTarget(id))
+            .filter((id): id is string => Boolean(id))
+        )
+      );
+      if (mappedIds.length > 0) {
+        nextRules[kode] = { mode: rule.mode, dayIds: mappedIds };
+        copiedCount += 1;
+      }
+    });
+
+    if (copiedCount === 0) {
+      Swal.fire(
+        'Tidak Ada Hari Cocok',
+        `Tanggal/hari di ${activeGroupLabel} belum cocok dengan aturan di ${sourceLabel}.`,
+        'warning'
+      );
+      return;
+    }
+
+    updateCurrentGroup(prev => ({ ...prev, teacherDayRules: nextRules }));
+    setRuleDraftKode('');
+    setRuleDraftDayIds([]);
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: `${copiedCount} aturan hari khusus guru ditarik dari ${sourceLabel}.`,
+      showConfirmButton: false,
+      timer: 2400,
+    });
+  };
+
   const handleUpdateDayDate = (dayId: string, newIso: string) => {
     updateCurrentGroup(prev => ({
       ...prev,
@@ -1876,15 +1965,25 @@ export default function JadwalPengawasTab() {
                   Tentukan guru tertentu hanya mengawas di hari tertentu atau tidak boleh mengawas di hari tertentu sebelum klik <b>Generate Pengawas</b>.
                 </div>
               </div>
-              {activeRuleEntries.length > 0 && (
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button
                   type="button"
-                  onClick={() => updateCurrentGroup(prev => ({ ...prev, teacherDayRules: {} }))}
-                  style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                  onClick={handleCopyDayRulesFromOther}
+                  style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0369a1', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                 >
-                  Hapus Semua Aturan ({activeRuleEntries.length})
+                  <i className="fas fa-download"></i>
+                  Tarik Data dari {otherGroupKey === 'kelas78' ? 'Kelas 7–8' : 'Kelas 9'}
                 </button>
-              )}
+                {activeRuleEntries.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => updateCurrentGroup(prev => ({ ...prev, teacherDayRules: {} }))}
+                    style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    Hapus Semua Aturan ({activeRuleEntries.length})
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Form Tambah / Ubah Aturan */}
