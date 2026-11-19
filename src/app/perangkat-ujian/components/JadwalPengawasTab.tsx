@@ -134,6 +134,23 @@ function normWaktuKey(w: string): string {
   return String(w || '').toLowerCase().replace(/\s+/g, '');
 }
 
+function formatMapelShort(rawName: string): string {
+  const s = String(rawName || '').trim();
+  if (!s) return '';
+  const low = s.toLowerCase();
+  if (low.includes('jasmani') || low.includes('olahraga') || low.includes('olah raga') || low.includes('pjok')) {
+    return 'PJOK';
+  }
+  if (low.includes('ilmu pengetahuan alam') || low === 'ipa') return 'IPA';
+  if (low.includes('ilmu pengetahuan sosial') || low === 'ips') return 'IPS';
+  if (low.includes('sejarah kebudayaan islam') || low === 'ski') return 'SKI';
+  if (low.includes('pendidikan pancasila') || low.includes('ppkn') || low === 'pkn') return 'PPKn';
+  if (low.includes('bimbingan') && low.includes('konseling')) return 'BK';
+  if (low.includes('quran') && low.includes('hadis')) return 'Al-Quran Hadis';
+  if (low.includes('quran') && low.includes('hadits')) return 'Al-Quran Hadis';
+  return s;
+}
+
 function formatWaktuRangeInput(raw: string, prev: string): string {
   const prevDigits = String(prev || '').replace(/\D/g, '');
   let digits = String(raw || '').replace(/\D/g, '').slice(0, 8);
@@ -799,7 +816,7 @@ export default function JadwalPengawasTab() {
     setEditingCell(null);
   };
 
-  const handlePrintPdf = () => {
+  const handlePrintPdf = (mode: 'single' | 'per-pengawas' = 'single') => {
     const win = window.open('', '_blank', 'width=1200,height=800');
     if (!win) {
       Swal.fire('Popup Diblokir', 'Izinkan pop-up browser untuk mencetak jadwal pengawas.', 'warning');
@@ -813,76 +830,195 @@ export default function JadwalPengawasTab() {
         .replace(/>/g, '&gt;');
 
     const { headerInfo, rooms, days } = currentGroup;
+    const originUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
-    const bodyRowsHtml = days
-      .map((day, dIdx) => {
-        const span = day.sessions.length;
-        return day.sessions
-          .map((ses, sIdx) => {
-            const dayCells =
-              sIdx === 0
-                ? `<td rowspan="${span}" class="center bold">${dIdx + 1}</td>
-                   <td rowspan="${span}" class="center bold hari-col">${esc(day.labelHariTanggal)}</td>`
-                : '';
-            const roomCells = rooms
-              .map(r => `<td class="center bold kode-cell">${esc(ses.pengawas?.[r] || '')}</td>`)
-              .join('');
-            return `<tr>
-              ${dayCells}
-              <td class="center bold">${esc(ses.jamKe)}</td>
-              <td class="center nowrap">${esc(ses.waktu)}</td>
-              <td class="left mapel-col">${esc(ses.mataUjian)}</td>
-              ${roomCells}
-            </tr>`;
-          })
-          .join('');
-      })
-      .join('');
+    // Tentukan daftar halaman yang dicetak:
+    // - 'single': 1 halaman (jika ada sorotan aktif, sorot kode tsb)
+    // - 'per-pengawas': 1 halaman per pengawas yang bertugas (masing-masing sudah ada sorotnya)
+    let pageTargets: Array<{ targetKode: string | null; targetNama?: string; count?: number }> = [];
+    if (mode === 'per-pengawas') {
+      const assigned = legendTeachers.filter(t => t.count > 0);
+      if (assigned.length === 0) {
+        win.close();
+        Swal.fire('Belum Ada Pengawas', 'Generate atau isi kode pengawas terlebih dahulu sebelum mencetak per pengawas.', 'info');
+        return;
+      }
+      pageTargets = assigned.map(t => ({ targetKode: t.kode, targetNama: t.nama, count: t.count }));
+    } else {
+      const hInfo = highlightedKode ? teacherByKode.get(highlightedKode) : null;
+      pageTargets = [
+        {
+          targetKode: highlightedKode,
+          targetNama: hInfo?.nama,
+          count: highlightedKode ? (scheduleStats.counts[highlightedKode] || 0) : undefined
+        }
+      ];
+    }
 
     const maxLegendRows = Math.max(legendColumns[0].length, legendColumns[1].length, legendColumns[2].length);
-    const legendRowsHtml = Array.from({ length: maxLegendRows }, (_, i) => {
-      const c0 = legendColumns[0][i];
-      const c1 = legendColumns[1][i];
-      const c2 = legendColumns[2][i];
-      return `<tr>
-        <td class="center bold kode-lg">${c0 ? esc(c0.kode) : ''}</td>
-        <td class="left nama-lg">${c0 ? esc(c0.nama) : ''}</td>
-        <td class="center bold kode-lg">${c1 ? esc(c1.kode) : ''}</td>
-        <td class="left nama-lg">${c1 ? esc(c1.nama) : ''}</td>
-        <td class="center bold kode-lg">${c2 ? esc(c2.kode) : ''}</td>
-        <td class="left nama-lg">${c2 ? esc(c2.nama) : ''}</td>
-      </tr>`;
-    }).join('');
+
+    const buildSingleSheet = (
+      targetKode: string | null,
+      targetNama?: string,
+      targetCount?: number,
+      isLastPage = true
+    ) => {
+      const bodyRowsHtml = days
+        .map((day, dIdx) => {
+          const span = day.sessions.length;
+          return day.sessions
+            .map((ses, sIdx) => {
+              const dayCells =
+                sIdx === 0
+                  ? `<td rowspan="${span}" class="center bold">${dIdx + 1}</td>
+                     <td rowspan="${span}" class="center bold hari-col">${esc(day.labelHariTanggal)}</td>`
+                  : '';
+              const roomCells = rooms
+                .map(r => {
+                  const k = (ses.pengawas?.[r] || '').trim();
+                  const isHit = Boolean(targetKode && k === targetKode);
+                  const cls = isHit ? 'center bold kode-cell hl-cell' : 'center bold kode-cell';
+                  return `<td class="${cls}">${esc(k)}</td>`;
+                })
+                .join('');
+              const mapelDisplay = formatMapelShort(ses.mataUjian);
+              return `<tr>
+                ${dayCells}
+                <td class="center bold">${esc(ses.jamKe)}</td>
+                <td class="center nowrap">${esc(ses.waktu)}</td>
+                <td class="left mapel-col">${esc(mapelDisplay)}</td>
+                ${roomCells}
+              </tr>`;
+            })
+            .join('');
+        })
+        .join('');
+
+      const legendRowsHtml = Array.from({ length: maxLegendRows }, (_, i) => {
+        const renderPair = (item: { kode: string; nama: string } | undefined) => {
+          const isHit = Boolean(targetKode && item && item.kode === targetKode);
+          const rowCls = isHit ? 'hl-legend' : '';
+          return `
+            <td class="center bold kode-lg ${rowCls}">${item ? esc(item.kode) : ''}</td>
+            <td class="left nama-lg ${rowCls}">${item ? esc(item.nama) : ''}</td>
+          `;
+        };
+        return `<tr>
+          ${renderPair(legendColumns[0][i])}
+          ${renderPair(legendColumns[1][i])}
+          ${renderPair(legendColumns[2][i])}
+        </tr>`;
+      }).join('');
+
+      const pengawasBadgeHtml = targetKode
+        ? `<div class="target-badge">
+             <div class="tb-lbl">JADWAL PENGAWAS</div>
+             <div class="tb-val">[${esc(targetKode)}] ${esc(targetNama || '')}</div>
+             <div class="tb-cnt">${targetCount ?? 0}x Mengawas</div>
+           </div>`
+        : '<div class="header-spacer"></div>';
+
+      return `
+        <div class="sheet ${isLastPage ? '' : 'page-break'}">
+          <div class="sheet-inner">
+            <div class="header">
+              <div class="logo-wrap">
+                <img src="${originUrl}/logo.png" alt="Logo" class="logo-img" />
+              </div>
+              <div class="header-titles">
+                <h2>${esc(headerInfo.judul)}</h2>
+                <h3>${esc(headerInfo.subJudul)}</h3>
+              </div>
+              ${pengawasBadgeHtml}
+            </div>
+
+            <table class="main-tbl">
+              <thead>
+                <tr>
+                  <th rowspan="2" style="width: 24px;">NO</th>
+                  <th rowspan="2" style="width: 96px;">HARI / TANGGAL</th>
+                  <th rowspan="2" style="width: 30px;">JAM</th>
+                  <th rowspan="2" style="width: 72px;">WAKTU</th>
+                  <th rowspan="2" style="width: 105px;">MATA UJIAN</th>
+                  <th colspan="${rooms.length}">RUANG &amp; KODE PENGAWAS</th>
+                </tr>
+                <tr>
+                  ${rooms.map(r => `<th>${esc(r)}</th>`).join('')}
+                </tr>
+              </thead>
+              <tbody>
+                ${bodyRowsHtml}
+              </tbody>
+            </table>
+
+            <div class="bottom-wrap">
+              <div class="legend-box">
+                <div class="legend-title">Kode &amp; Nama Pengawas</div>
+                <table class="legend">
+                  <tbody>
+                    ${legendRowsHtml}
+                  </tbody>
+                </table>
+              </div>
+              <div class="ttd-box">
+                <div>${esc(headerInfo.tanggalTtd)}</div>
+                <div>Kepala Madrasah,</div>
+                <div class="ttd-space"></div>
+                <div class="ttd-name">${esc(headerInfo.kepalaMadrasah)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
+    const sheetsHtml = pageTargets
+      .map((p, idx) => buildSingleSheet(p.targetKode, p.targetNama, p.count, idx === pageTargets.length - 1))
+      .join('');
 
     win.document.write(`<!DOCTYPE html>
 <html>
 <head>
-  <title>${esc(headerInfo.judul)}</title>
+  <title>${esc(headerInfo.judul)}${mode === 'per-pengawas' ? ' (Per Pengawas)' : ''}</title>
   <style>
-    @page { size: A4 landscape; margin: 8mm 10mm; }
+    @page { size: A4 landscape; margin: 5mm 6mm; }
     * { box-sizing: border-box; }
-    body { font-family: Arial, Helvetica, sans-serif; color: #000; margin: 0; padding: 0; font-size: 9pt; }
-    .header { text-align: center; margin-bottom: 8px; }
-    .header h2 { margin: 0; font-size: 12pt; font-weight: 800; letter-spacing: 0.3px; }
-    .header h3 { margin: 2px 0 0; font-size: 10.5pt; font-weight: 700; }
+    html, body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; color: #000; background: #fff; }
+    .sheet { width: 285mm; height: 199mm; overflow: hidden; margin: 0 auto; position: relative; }
+    .page-break { page-break-after: always; break-after: page; }
+    .sheet-inner { width: 100%; transform-origin: top left; }
+    .header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 5px; border-bottom: 2px solid #000; padding-bottom: 4px; }
+    .logo-wrap { width: 52px; display: flex; align-items: center; justify-content: flex-start; flex-shrink: 0; }
+    .logo-img { height: 38px; width: auto; object-fit: contain; }
+    .header-titles { flex: 1; text-align: center; }
+    .header-titles h2 { margin: 0; font-size: 11pt; font-weight: 800; letter-spacing: 0.3px; }
+    .header-titles h3 { margin: 1px 0 0; font-size: 9.5pt; font-weight: 700; }
+    .header-spacer { width: 52px; flex-shrink: 0; }
+    .target-badge { min-width: 170px; max-width: 240px; border: 1.5px solid #ca8a04; background: #fef08a; padding: 3px 8px; border-radius: 4px; text-align: right; flex-shrink: 0; }
+    .target-badge .tb-lbl { font-size: 6pt; font-weight: 800; color: #854d0e; letter-spacing: 0.4px; }
+    .target-badge .tb-val { font-size: 7.5pt; font-weight: 800; color: #713f12; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .target-badge .tb-cnt { font-size: 6.5pt; font-weight: 700; color: #92400e; }
     table { width: 100%; border-collapse: collapse; }
-    th, td { border: 1.2px solid #000; padding: 3px 4px; vertical-align: middle; }
-    th { background: #f8fafc; font-weight: 800; text-align: center; font-size: 8.5pt; }
+    table.main-tbl th, table.main-tbl td { border: 1.1px solid #000; padding: 1.8px 3px; vertical-align: middle; line-height: 1.15; }
+    table.main-tbl th { background: #f1f5f9; font-weight: 800; text-align: center; font-size: 7.5pt; }
+    table.main-tbl td { font-size: 7.4pt; }
     .center { text-align: center; }
     .left { text-align: left; }
     .bold { font-weight: 700; }
     .nowrap { white-space: nowrap; }
-    .hari-col { min-width: 98px; line-height: 1.25; }
-    .mapel-col { min-width: 115px; font-weight: 600; }
-    .kode-cell { min-width: 26px; font-size: 8.5pt; }
-    .bottom-wrap { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; margin-top: 10px; }
+    .hari-col { font-size: 7pt; line-height: 1.15; }
+    .mapel-col { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 118px; }
+    .kode-cell { min-width: 22px; font-size: 7.6pt; }
+    .hl-cell { background: #fde047 !important; color: #713f12 !important; font-weight: 900 !important; box-shadow: inset 0 0 0 1.4px #b45309; }
+    .hl-legend { background: #fde047 !important; color: #713f12 !important; font-weight: 800 !important; }
+    .bottom-wrap { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-top: 6px; }
     .legend-box { flex: 1; }
-    .legend-title { font-weight: 800; font-size: 8.8pt; margin-bottom: 3px; }
-    table.legend td { padding: 2px 5px; font-size: 7.8pt; border: 1px solid #000; }
-    .kode-lg { width: 28px; }
+    .legend-title { font-weight: 800; font-size: 7.8pt; margin-bottom: 2px; }
+    table.legend td { padding: 1px 4px; font-size: 6.7pt; border: 1px solid #000; line-height: 1.15; }
+    .kode-lg { width: 24px; }
     .nama-lg { white-space: nowrap; }
-    .ttd-box { width: 220px; text-align: left; padding-top: 14px; font-size: 9pt; flex-shrink: 0; }
-    .ttd-space { height: 58px; }
+    .ttd-box { width: 195px; text-align: left; padding-top: 6px; font-size: 8pt; flex-shrink: 0; line-height: 1.25; }
+    .ttd-space { height: 38px; }
     .ttd-name { font-weight: 800; text-decoration: underline; }
     @media print {
       body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -890,49 +1026,28 @@ export default function JadwalPengawasTab() {
   </style>
 </head>
 <body>
-  <div class="header">
-    <h2>${esc(headerInfo.judul)}</h2>
-    <h3>${esc(headerInfo.subJudul)}</h3>
-  </div>
-  <table>
-    <thead>
-      <tr>
-        <th rowspan="2" style="width: 28px;">NO</th>
-        <th rowspan="2" style="width: 110px;">HARI / TANGGAL</th>
-        <th rowspan="2" style="width: 36px;">JAM KE</th>
-        <th rowspan="2" style="width: 82px;">WAKTU</th>
-        <th rowspan="2" style="width: 130px;">MATA UJIAN</th>
-        <th colspan="${rooms.length}">RUANG &amp; KODE PENGAWAS</th>
-      </tr>
-      <tr>
-        ${rooms.map(r => `<th>${esc(r)}</th>`).join('')}
-      </tr>
-    </thead>
-    <tbody>
-      ${bodyRowsHtml}
-    </tbody>
-  </table>
-
-  <div class="bottom-wrap">
-    <div class="legend-box">
-      <div class="legend-title">Kode &amp; Nama Pengawas</div>
-      <table class="legend">
-        <tbody>
-          ${legendRowsHtml}
-        </tbody>
-      </table>
-    </div>
-    <div class="ttd-box">
-      <div>${esc(headerInfo.tanggalTtd)}</div>
-      <div>Kepala Madrasah,</div>
-      <div class="ttd-space"></div>
-      <div class="ttd-name">${esc(headerInfo.kepalaMadrasah)}</div>
-    </div>
-  </div>
+  ${sheetsHtml}
+  <script>
+    window.addEventListener('load', function() {
+      var sheets = document.querySelectorAll('.sheet');
+      sheets.forEach(function(sheet) {
+        var inner = sheet.querySelector('.sheet-inner');
+        if (!inner) return;
+        var maxH = sheet.clientHeight - 2;
+        var maxW = sheet.clientWidth - 2;
+        var h = inner.scrollHeight;
+        var w = inner.scrollWidth;
+        var scale = Math.min(1, maxH / h, maxW / w);
+        if (scale < 0.999) {
+          inner.style.zoom = String(scale);
+        }
+      });
+      setTimeout(function() { window.print(); }, 350);
+    });
+  </script>
 </body>
 </html>`);
     win.document.close();
-    setTimeout(() => win.print(), 400);
   };
 
   const buildSheetForGroup = (grp: GroupScheduleState, st: ReturnType<typeof computeGroupStats>) => {
@@ -1157,12 +1272,12 @@ export default function JadwalPengawasTab() {
           </button>
           <button
             type="button"
-            onClick={handlePrintPdf}
+            onClick={() => handlePrintPdf('single')}
             style={{
-              background: '#1e293b',
+              background: highlightedKode ? '#ca8a04' : '#1e293b',
               color: 'white',
               border: 'none',
-              padding: '9px 16px',
+              padding: '9px 14px',
               borderRadius: '8px',
               fontWeight: 700,
               fontSize: '0.86rem',
@@ -1171,8 +1286,30 @@ export default function JadwalPengawasTab() {
               alignItems: 'center',
               gap: '7px'
             }}
+            title="Cetak 1 halaman jadwal (A4 Landscape)"
           >
-            <i className="fas fa-print"></i> Cetak {activeGroupLabel}
+            <i className="fas fa-print"></i>
+            {highlightedKode ? `Cetak Sorot (${highlightedKode})` : `Cetak ${activeGroupLabel}`}
+          </button>
+          <button
+            type="button"
+            onClick={() => handlePrintPdf('per-pengawas')}
+            style={{
+              background: '#7c3aed',
+              color: 'white',
+              border: 'none',
+              padding: '9px 14px',
+              borderRadius: '8px',
+              fontWeight: 700,
+              fontSize: '0.86rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '7px'
+            }}
+            title="Cetak semua halaman per pengawas (tiap lembar sudah tersorot untuk guru masing-masing)"
+          >
+            <i className="fas fa-user-check"></i> Cetak Per Pengawas
           </button>
           <button
             type="button"
@@ -1582,8 +1719,11 @@ export default function JadwalPengawasTab() {
                   <td style={{ border: '1px solid #cbd5e1', padding: '6px', textAlign: 'center', whiteSpace: 'nowrap', color: '#475569' }}>
                     {ses.waktu || '-'}
                   </td>
-                  <td style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 600, color: '#1e293b' }}>
-                    {ses.mataUjian || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Belum diisi</span>}
+                  <td
+                    style={{ border: '1px solid #cbd5e1', padding: '6px 10px', fontWeight: 600, color: '#1e293b', whiteSpace: 'nowrap' }}
+                    title={ses.mataUjian || ''}
+                  >
+                    {ses.mataUjian ? formatMapelShort(ses.mataUjian) : <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Belum diisi</span>}
                   </td>
                   {currentGroup.rooms.map(r => {
                     const kode = ses.pengawas?.[r] || '';
