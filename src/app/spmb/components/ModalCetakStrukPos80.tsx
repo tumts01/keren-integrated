@@ -218,7 +218,7 @@ export default function ModalCetakStrukPos80({
 
     <div class="double-divider"></div>
     <div style="font-size: 9px; text-align: center; margin: 3px 0;">
-      * Simpan struk ini sebagai bukti pembayaran sah *<br/>
+      * Uang DPP yang telah dibayarkan tidak dapat dikembalikan apabila mengundurkan diri *<br/>
       Terima kasih telah mendaftar di MTs Almaarif 01 Singosari
     </div>
 
@@ -412,7 +412,7 @@ ${student.catatanDaftarUlang ? `Catatan      : ${student.catatanDaftarUlang}\n` 
     }
 
     plainText += `----------------------------------------
-* Simpan struk ini sebagai bukti resmi *
+* Uang DPP yang telah dibayarkan tidak dapat dikembalikan apabila mengundurkan diri *
 Bendahara SPMB: S. Nur Ainy, S.Pd. (+62 852-3666-0862)
 ========================================`;
 
@@ -849,7 +849,7 @@ Bendahara SPMB: S. Nur Ainy, S.Pd. (+62 852-3666-0862)
 
             <div style={{ borderTop: '2px solid #000', margin: '6px 0 5px 0' }}></div>
             <div style={{ fontSize: '9px', textAlign: 'center', color: '#475569', marginBottom: '8px' }}>
-              Simpan struk ini sebagai bukti pembayaran sah.
+              Uang DPP yang telah dibayarkan tidak dapat dikembalikan apabila mengundurkan diri.
             </div>
 
             <div style={{ textAlign: 'right', fontSize: '10px' }}>
