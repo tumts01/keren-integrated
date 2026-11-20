@@ -57,9 +57,13 @@ interface GroupScheduleState {
   days: ExamDay[];
   excludedKodes: string[];
   teacherDayRules: Record<string, TeacherDayRule>;
+  roomFloors: Record<string, string>;
+  teacherFloorRules: Record<string, string[]>;
   seragamList: SeragamItem[];
   catatanInfo: string;
 }
+
+const AVAILABLE_FLOORS = ['1', '2', '3'];
 
 const DEFAULT_SERAGAM_LIST: Array<{ hari: string; seragam: string }> = [
   { hari: 'Senin - Selasa', seragam: 'Seragam Dinas / PDH' },
@@ -148,9 +152,94 @@ function createInitialGroupState(groupKey: ScheduleGroupKey): GroupScheduleState
     days: [createInitialDay(groupKey)],
     excludedKodes: [],
     teacherDayRules: {},
+    roomFloors: {},
+    teacherFloorRules: {},
     seragamList: DEFAULT_SERAGAM_LIST.map((s, idx) => ({ id: `srg-${groupKey}-${idx}`, ...s })),
     catatanInfo: DEFAULT_CATATAN_INFO
   };
+}
+
+function getRoomFloor(room: string, roomFloors?: Record<string, string>): string {
+  const f = roomFloors?.[room];
+  return f ? String(f) : '1';
+}
+
+function isTeacherAllowedInRoom(
+  kode: string,
+  room: string,
+  roomFloors?: Record<string, string>,
+  teacherFloorRules?: Record<string, string[]>
+): boolean {
+  const allowed = teacherFloorRules?.[kode];
+  if (!allowed || allowed.length === 0) return true;
+  return allowed.includes(getRoomFloor(room, roomFloors));
+}
+
+// Bipartite matching (Kuhn DFS) to ensure teachers fit room floor rules & prioritize unrepeated rooms
+function matchTeachersToRooms(
+  candidateTeachers: GuruOption[],
+  rooms: string[],
+  roomFloors?: Record<string, string>,
+  teacherFloorRules?: Record<string, string[]>,
+  prevRoomTeacher?: Record<string, string>,
+  roomHistory?: Record<string, Set<string>>
+): Record<string, GuruOption> | null {
+  const matchTeacherForRoom = new Array<number>(rooms.length).fill(-1);
+
+  // Order room choices per teacher: prefer rooms not in prevRoomTeacher & not yet visited in roomHistory
+  const getPreferredRooms = (t: GuruOption): number[] => {
+    const allowedIndices: number[] = [];
+    for (let rIdx = 0; rIdx < rooms.length; rIdx++) {
+      if (isTeacherAllowedInRoom(t.kode, rooms[rIdx], roomFloors, teacherFloorRules)) {
+        allowedIndices.push(rIdx);
+      }
+    }
+    allowedIndices.sort((a, b) => {
+      const rmA = rooms[a];
+      const rmB = rooms[b];
+      const prevA = prevRoomTeacher?.[rmA] === t.kode ? 1 : 0;
+      const prevB = prevRoomTeacher?.[rmB] === t.kode ? 1 : 0;
+      if (prevA !== prevB) return prevA - prevB;
+      const histA = roomHistory?.[t.kode]?.has(rmA) ? 1 : 0;
+      const histB = roomHistory?.[t.kode]?.has(rmB) ? 1 : 0;
+      return histA - histB;
+    });
+    return allowedIndices;
+  };
+
+  const adj = candidateTeachers.map(getPreferredRooms);
+
+  const dfs = (tIdx: number, visitedRoom: boolean[]): boolean => {
+    for (const rIdx of adj[tIdx]) {
+      if (visitedRoom[rIdx]) continue;
+      visitedRoom[rIdx] = true;
+      if (matchTeacherForRoom[rIdx] === -1 || dfs(matchTeacherForRoom[rIdx], visitedRoom)) {
+        matchTeacherForRoom[rIdx] = tIdx;
+        return true;
+      }
+    }
+    return false;
+  };
+
+  let matchedCount = 0;
+  for (let tIdx = 0; tIdx < candidateTeachers.length; tIdx++) {
+    if (dfs(tIdx, new Array(rooms.length).fill(false))) {
+      matchedCount += 1;
+    }
+  }
+
+  if (matchedCount < Math.min(candidateTeachers.length, rooms.length)) {
+    return null;
+  }
+
+  const result: Record<string, GuruOption> = {};
+  for (let rIdx = 0; rIdx < rooms.length; rIdx++) {
+    const tIdx = matchTeacherForRoom[rIdx];
+    if (tIdx >= 0) {
+      result[rooms[rIdx]] = candidateTeachers[tIdx];
+    }
+  }
+  return result;
 }
 
 function isTeacherAllowedOnDay(
@@ -327,6 +416,12 @@ export default function JadwalPengawasTab() {
   const [ruleDraftKode, setRuleDraftKode] = useState('');
   const [ruleDraftMode, setRuleDraftMode] = useState<'only' | 'exclude'>('only');
   const [ruleDraftDayIds, setRuleDraftDayIds] = useState<string[]>([]);
+  const [showFloorRulesPanel, setShowFloorRulesPanel] = useState(false);
+  const [floorRuleDraftKode, setFloorRuleDraftKode] = useState('');
+  const [floorRuleDraftFloors, setFloorRuleDraftFloors] = useState<string[]>(['2']);
+  const [rangeStartIdx, setRangeStartIdx] = useState(0);
+  const [rangeEndIdx, setRangeEndIdx] = useState(0);
+  const [rangeTargetFloor, setRangeTargetFloor] = useState('2');
 
   const [groups, setGroups] = useState<Record<ScheduleGroupKey, GroupScheduleState>>({
     kelas78: createInitialGroupState('kelas78'),
@@ -418,6 +513,14 @@ export default function JadwalPengawasTab() {
                     parsed.groups.kelas78?.teacherDayRules && typeof parsed.groups.kelas78.teacherDayRules === 'object'
                       ? parsed.groups.kelas78.teacherDayRules
                       : {},
+                  roomFloors:
+                    parsed.groups.kelas78?.roomFloors && typeof parsed.groups.kelas78.roomFloors === 'object'
+                      ? parsed.groups.kelas78.roomFloors
+                      : {},
+                  teacherFloorRules:
+                    parsed.groups.kelas78?.teacherFloorRules && typeof parsed.groups.kelas78.teacherFloorRules === 'object'
+                      ? parsed.groups.kelas78.teacherFloorRules
+                      : {},
                   seragamList: Array.isArray(parsed.groups.kelas78?.seragamList)
                     ? parsed.groups.kelas78.seragamList
                     : init78.seragamList,
@@ -441,6 +544,14 @@ export default function JadwalPengawasTab() {
                     parsed.groups.kelas9?.teacherDayRules && typeof parsed.groups.kelas9.teacherDayRules === 'object'
                       ? parsed.groups.kelas9.teacherDayRules
                       : {},
+                  roomFloors:
+                    parsed.groups.kelas9?.roomFloors && typeof parsed.groups.kelas9.roomFloors === 'object'
+                      ? parsed.groups.kelas9.roomFloors
+                      : {},
+                  teacherFloorRules:
+                    parsed.groups.kelas9?.teacherFloorRules && typeof parsed.groups.kelas9.teacherFloorRules === 'object'
+                      ? parsed.groups.kelas9.teacherFloorRules
+                      : {},
                   seragamList: Array.isArray(parsed.groups.kelas9?.seragamList)
                     ? parsed.groups.kelas9.seragamList
                     : init9.seragamList,
@@ -463,6 +574,14 @@ export default function JadwalPengawasTab() {
                   teacherDayRules:
                     parsed.teacherDayRules && typeof parsed.teacherDayRules === 'object'
                       ? parsed.teacherDayRules
+                      : {},
+                  roomFloors:
+                    parsed.roomFloors && typeof parsed.roomFloors === 'object'
+                      ? parsed.roomFloors
+                      : {},
+                  teacherFloorRules:
+                    parsed.teacherFloorRules && typeof parsed.teacherFloorRules === 'object'
+                      ? parsed.teacherFloorRules
                       : {},
                   seragamList: Array.isArray(parsed.seragamList) ? parsed.seragamList : init78.seragamList,
                   catatanInfo: typeof parsed.catatanInfo === 'string' ? parsed.catatanInfo : init78.catatanInfo
@@ -525,6 +644,32 @@ export default function JadwalPengawasTab() {
     });
     return map;
   }, [currentGroup.days, currentGroup.teacherDayRules, activePool, validDayIds]);
+
+  const floorCounts = useMemo(() => {
+    const counts: Record<string, number> = { '1': 0, '2': 0, '3': 0 };
+    currentGroup.rooms.forEach(r => {
+      const f = getRoomFloor(r, currentGroup.roomFloors);
+      counts[f] = (counts[f] || 0) + 1;
+    });
+    return counts;
+  }, [currentGroup.rooms, currentGroup.roomFloors]);
+
+  const hasCustomFloors = useMemo(
+    () => currentGroup.rooms.some(r => getRoomFloor(r, currentGroup.roomFloors) !== '1'),
+    [currentGroup.rooms, currentGroup.roomFloors]
+  );
+
+  const activeFloorRuleEntries = useMemo(() => {
+    const rules = currentGroup.teacherFloorRules || {};
+    return Object.entries(rules)
+      .filter(([, fls]) => Array.isArray(fls) && fls.length > 0)
+      .map(([kode, floors]) => ({
+        kode,
+        teacher: teacherByKode.get(kode),
+        floors: [...floors].sort(),
+      }))
+      .sort((a, b) => Number(a.kode) - Number(b.kode) || a.kode.localeCompare(b.kode));
+  }, [currentGroup.teacherFloorRules, teacherByKode]);
 
   const stats78 = useMemo(() => computeGroupStats(groups.kelas78, groups.kelas9), [groups]);
   const stats9 = useMemo(() => computeGroupStats(groups.kelas9, groups.kelas78), [groups]);
@@ -810,6 +955,137 @@ export default function JadwalPengawasTab() {
     });
   };
 
+  // --- Pengaturan Lantai Ruang & Aturan Lantai Guru ---
+  const handleSetRoomFloor = (room: string, floor: string) => {
+    updateCurrentGroup(prev => ({
+      ...prev,
+      roomFloors: { ...(prev.roomFloors || {}), [room]: floor }
+    }));
+  };
+
+  const handleApplyRoomFloorRange = () => {
+    const rooms = currentGroup.rooms;
+    if (rooms.length === 0) return;
+    const s = Math.max(0, Math.min(rooms.length - 1, rangeStartIdx));
+    const e = Math.max(0, Math.min(rooms.length - 1, rangeEndIdx));
+    const lo = Math.min(s, e);
+    const hi = Math.max(s, e);
+    updateCurrentGroup(prev => {
+      const next = { ...(prev.roomFloors || {}) };
+      for (let i = lo; i <= hi; i++) {
+        next[rooms[i]] = rangeTargetFloor;
+      }
+      return { ...prev, roomFloors: next };
+    });
+  };
+
+  const handleSelectTeacherForFloorRule = (kode: string) => {
+    setFloorRuleDraftKode(kode);
+    const existing = currentGroup.teacherFloorRules?.[kode];
+    if (existing && existing.length > 0) {
+      setFloorRuleDraftFloors([...existing]);
+    } else {
+      setFloorRuleDraftFloors(['2']);
+    }
+  };
+
+  const handleToggleFloorDraft = (fl: string) => {
+    setFloorRuleDraftFloors(prev =>
+      prev.includes(fl) ? prev.filter(x => x !== fl) : [...prev, fl].sort()
+    );
+  };
+
+  const handleSaveTeacherFloorRule = () => {
+    if (!floorRuleDraftKode) {
+      Swal.fire('Pilih Guru', 'Silakan pilih guru terlebih dahulu.', 'info');
+      return;
+    }
+    if (floorRuleDraftFloors.length === 0) {
+      Swal.fire('Pilih Lantai', 'Pilih minimal 1 lantai tempat guru tersebut diperbolehkan mengawas.', 'info');
+      return;
+    }
+
+    updateCurrentGroup(prev => ({
+      ...prev,
+      teacherFloorRules: {
+        ...(prev.teacherFloorRules || {}),
+        [floorRuleDraftKode]: [...floorRuleDraftFloors].sort()
+      }
+    }));
+
+    const t = teacherByKode.get(floorRuleDraftKode);
+    setFloorRuleDraftKode('');
+    setFloorRuleDraftFloors(['2']);
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: `Aturan lantai untuk ${t?.nama || floorRuleDraftKode} diterapkan.`,
+      showConfirmButton: false,
+      timer: 2000,
+    });
+  };
+
+  const handleDeleteTeacherFloorRule = (kode: string) => {
+    updateCurrentGroup(prev => {
+      const next = { ...(prev.teacherFloorRules || {}) };
+      delete next[kode];
+      return { ...prev, teacherFloorRules: next };
+    });
+    if (floorRuleDraftKode === kode) {
+      setFloorRuleDraftKode('');
+      setFloorRuleDraftFloors(['2']);
+    }
+  };
+
+  const handleCopyFloorRulesFromOther = async () => {
+    const sourceLabel = otherGroupKey === 'kelas78' ? 'Kelas 7–8' : 'Kelas 9';
+    const srcFloors = otherGroup.roomFloors || {};
+    const srcTeacherRules = otherGroup.teacherFloorRules || {};
+    const hasSrcFloors = Object.values(srcFloors).some(v => v && v !== '1');
+    const srcTeacherCount = Object.values(srcTeacherRules).filter(v => Array.isArray(v) && v.length > 0).length;
+
+    if (!hasSrcFloors && srcTeacherCount === 0) {
+      Swal.fire(
+        'Belum Ada Konfigurasi Lantai',
+        `Pengaturan lantai ruang & guru di jadwal ${sourceLabel} masih bawaan (semua Lantai 1, 0 aturan guru).`,
+        'info'
+      );
+      return;
+    }
+
+    if (hasCustomFloors || activeFloorRuleEntries.length > 0) {
+      const confirm = await Swal.fire({
+        title: `Tarik Setting Lantai dari ${sourceLabel}?`,
+        text: `Peta lantai ruang & aturan lantai guru pada ${activeGroupLabel} akan mengikuti jadwal ${sourceLabel}.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Tarik Data',
+        cancelButtonText: 'Batal',
+      });
+      if (!confirm.isConfirmed) return;
+    }
+
+    const nextRoomFloors: Record<string, string> = {};
+    currentGroup.rooms.forEach(r => {
+      if (srcFloors[r]) nextRoomFloors[r] = srcFloors[r];
+    });
+
+    updateCurrentGroup(prev => ({
+      ...prev,
+      roomFloors: nextRoomFloors,
+      teacherFloorRules: JSON.parse(JSON.stringify(srcTeacherRules)),
+    }));
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: `Pengaturan lantai ruang & guru ditarik dari ${sourceLabel}.`,
+      showConfirmButton: false,
+      timer: 2200,
+    });
+  };
+
   const handleUpdateDayDate = (dayId: string, newIso: string) => {
     updateCurrentGroup(prev => ({
       ...prev,
@@ -925,23 +1201,35 @@ export default function JadwalPengawasTab() {
       return;
     }
 
-    // Validasi ketersediaan pengawas pada setiap hari setelah aturan hari khusus diterapkan
+    // Validasi ketersediaan pengawas pada setiap hari setelah aturan hari khusus & aturan lantai diterapkan
     const shortDays = currentGroup.days
-      .map(day => ({
-        day,
-        eligibleCount: activePool.filter(t =>
+      .map(day => {
+        const eligiblePool = activePool.filter(t =>
           isTeacherAllowedOnDay(t.kode, day.id, currentGroup.teacherDayRules, validDayIds)
-        ).length
-      }))
-      .filter(item => item.eligibleCount < targetRooms.length);
+        );
+        const matchOk =
+          eligiblePool.length >= targetRooms.length &&
+          matchTeachersToRooms(
+            eligiblePool,
+            targetRooms,
+            currentGroup.roomFloors,
+            currentGroup.teacherFloorRules
+          ) !== null;
+        return { day, eligibleCount: eligiblePool.length, matchOk };
+      })
+      .filter(item => !item.matchOk);
 
     if (shortDays.length > 0) {
       const detail = shortDays
-        .map(s => `• ${s.day.labelHariTanggal || s.day.tanggal}: tersedia ${s.eligibleCount} guru (butuh ${targetRooms.length})`)
+        .map(s =>
+          s.eligibleCount < targetRooms.length
+            ? `• ${s.day.labelHariTanggal || s.day.tanggal}: tersedia ${s.eligibleCount} guru (butuh ${targetRooms.length})`
+            : `• ${s.day.labelHariTanggal || s.day.tanggal}: kombinasi guru & lantai ruang tidak memenuhi ${targetRooms.length} ruang (cek distribusi lantai ruang & aturan lantai guru)`
+        )
         .join('\n');
       Swal.fire(
-        'Guru Tersedia Tidak Cukup',
-        `Aturan hari khusus membuat beberapa hari kekurangan pengawas:\n${detail}`,
+        'Guru / Lantai Tidak Memenuhi',
+        `Aturan hari atau lantai khusus membuat beberapa hari tidak bisa dipasangkan ke seluruh ruang:\n${detail}`,
         'warning'
       );
       return;
@@ -1036,21 +1324,37 @@ export default function JadwalPengawasTab() {
             a.rand - b.rand
         );
 
-        const chosen = scoredPool.slice(0, targetRooms.length).map(x => x.teacher);
-        const remainingTeachers = [...chosen];
-        const blockRoomPengawas: Record<string, string> = {};
-
-        for (const room of targetRooms) {
-          const prevKodeInRoom = prevBlockRoomTeacher[room];
-          let pickIdx = remainingTeachers.findIndex(
-            t => t.kode !== prevKodeInRoom && !roomHistory[t.kode].has(room)
-          );
-          if (pickIdx === -1) {
-            pickIdx = remainingTeachers.findIndex(t => t.kode !== prevKodeInRoom);
+        // Pilih tepat N guru dengan tetap menjamin kecocokan 1-to-1 terhadap aturan lantai masing-masing ruang
+        const chosen: GuruOption[] = [];
+        for (const cand of scoredPool) {
+          if (chosen.length >= targetRooms.length) break;
+          const trial = [...chosen, cand.teacher];
+          if (
+            matchTeachersToRooms(
+              trial,
+              targetRooms,
+              currentGroup.roomFloors,
+              currentGroup.teacherFloorRules
+            ) !== null
+          ) {
+            chosen.push(cand.teacher);
           }
-          if (pickIdx === -1) pickIdx = 0;
+        }
 
-          const [picked] = remainingTeachers.splice(pickIdx, 1);
+        const roomAssignmentMap =
+          matchTeachersToRooms(
+            chosen,
+            targetRooms,
+            currentGroup.roomFloors,
+            currentGroup.teacherFloorRules,
+            prevBlockRoomTeacher,
+            roomHistory
+          ) || {};
+
+        const blockRoomPengawas: Record<string, string> = {};
+        for (const room of targetRooms) {
+          const picked = roomAssignmentMap[room];
+          if (!picked) continue;
           blockRoomPengawas[room] = picked.kode;
 
           const weight = blockIndices.length;
@@ -1850,6 +2154,27 @@ export default function JadwalPengawasTab() {
             Atur Hari Khusus Guru {activeRuleEntries.length > 0 ? `(${activeRuleEntries.length})` : ''}
           </button>
 
+          <button
+            type="button"
+            onClick={() => setShowFloorRulesPanel(prev => !prev)}
+            style={{
+              padding: '7px 12px',
+              borderRadius: '6px',
+              border: `1px solid ${hasCustomFloors || activeFloorRuleEntries.length > 0 ? '#8b5cf6' : '#cbd5e1'}`,
+              background: showFloorRulesPanel ? '#ede9fe' : hasCustomFloors || activeFloorRuleEntries.length > 0 ? '#f5f3ff' : 'white',
+              color: hasCustomFloors || activeFloorRuleEntries.length > 0 || showFloorRulesPanel ? '#6d28d9' : '#334155',
+              fontWeight: 700,
+              fontSize: '0.82rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <i className="fas fa-building"></i>
+            Atur Lantai Ruang &amp; Guru {activeFloorRuleEntries.length > 0 ? `(${activeFloorRuleEntries.length})` : ''}
+          </button>
+
           {scheduleStats.filledSlots > 0 && (
             <button
               type="button"
@@ -2200,6 +2525,285 @@ export default function JadwalPengawasTab() {
             )}
           </div>
         )}
+
+        {/* Panel Pengaturan Lantai Ruang & Aturan Lantai Guru */}
+        {showFloorRulesPanel && (
+          <div style={{ background: 'white', border: '1px solid #c4b5fd', borderRadius: '8px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+              <div>
+                <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#5b21b6' }}>
+                  <i className="fas fa-building" style={{ marginRight: '6px' }}></i>
+                  Konfigurasi Lantai Ruang &amp; Aturan Lantai Guru — {activeGroupLabel}
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                  Atur setiap ruang berada di lantai berapa, lalu tentukan guru sepuh/khusus yang harus mengawas di lantai tertentu (misal Lantai 2).
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={handleCopyFloorRulesFromOther}
+                  style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0369a1', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                >
+                  <i className="fas fa-download"></i>
+                  Tarik Setting Lantai dari {otherGroupKey === 'kelas78' ? 'Kelas 7–8' : 'Kelas 9'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateCurrentGroup(prev => ({ ...prev, roomFloors: {} }))}
+                  style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Reset Ruang ke Lantai 1
+                </button>
+              </div>
+            </div>
+
+            {/* 1. Peta Lantai per Ruang */}
+            <div style={{ background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#4c1d95' }}>
+                  1. Peta Lokasi Lantai per Ruang ({currentGroup.rooms.length} Ruang · Lantai 1: {floorCounts['1'] || 0}, Lantai 2: {floorCounts['2'] || 0}{(floorCounts['3'] || 0) > 0 ? `, Lantai 3: ${floorCounts['3']}` : ''})
+                </div>
+
+                {/* Quick Range Setter */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontSize: '0.78rem' }}>
+                  <span style={{ color: '#5b21b6', fontWeight: 600 }}>Set cepat:</span>
+                  <select
+                    value={Math.min(rangeStartIdx, Math.max(0, currentGroup.rooms.length - 1))}
+                    onChange={e => setRangeStartIdx(Number(e.target.value))}
+                    style={{ padding: '4px 6px', borderRadius: '5px', border: '1px solid #c4b5fd', background: 'white', fontSize: '0.78rem' }}
+                  >
+                    {currentGroup.rooms.map((r, i) => (
+                      <option key={`rs-${r}`} value={i}>{r}</option>
+                    ))}
+                  </select>
+                  <span>s/d</span>
+                  <select
+                    value={Math.min(rangeEndIdx, Math.max(0, currentGroup.rooms.length - 1))}
+                    onChange={e => setRangeEndIdx(Number(e.target.value))}
+                    style={{ padding: '4px 6px', borderRadius: '5px', border: '1px solid #c4b5fd', background: 'white', fontSize: '0.78rem' }}
+                  >
+                    {currentGroup.rooms.map((r, i) => (
+                      <option key={`re-${r}`} value={i}>{r}</option>
+                    ))}
+                  </select>
+                  <span>&rarr;</span>
+                  <select
+                    value={rangeTargetFloor}
+                    onChange={e => setRangeTargetFloor(e.target.value)}
+                    style={{ padding: '4px 6px', borderRadius: '5px', border: '1px solid #c4b5fd', background: 'white', fontSize: '0.78rem', fontWeight: 700 }}
+                  >
+                    {AVAILABLE_FLOORS.map(f => (
+                      <option key={`rf-${f}`} value={f}>Lantai {f}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleApplyRoomFloorRange}
+                    style={{ padding: '4px 10px', borderRadius: '5px', border: 'none', background: '#7c3aed', color: 'white', fontWeight: 700, fontSize: '0.76rem', cursor: 'pointer' }}
+                  >
+                    Terapkan
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(145px, 1fr))', gap: '6px' }}>
+                {currentGroup.rooms.map(room => {
+                  const curFloor = getRoomFloor(room, currentGroup.roomFloors);
+                  return (
+                    <div
+                      key={room}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '6px',
+                        padding: '5px 8px',
+                        borderRadius: '6px',
+                        border: `1px solid ${curFloor === '2' ? '#a78bfa' : curFloor === '3' ? '#38bdf8' : '#cbd5e1'}`,
+                        background: 'white'
+                      }}
+                    >
+                      <span style={{ fontWeight: 800, fontSize: '0.8rem', color: '#1e293b' }}>{room}</span>
+                      <div style={{ display: 'inline-flex', borderRadius: '4px', overflow: 'hidden', border: '1px solid #cbd5e1' }}>
+                        {AVAILABLE_FLOORS.map(fl => {
+                          const active = curFloor === fl;
+                          return (
+                            <button
+                              key={fl}
+                              type="button"
+                              onClick={() => handleSetRoomFloor(room, fl)}
+                              style={{
+                                padding: '2px 6px',
+                                border: 'none',
+                                borderLeft: fl === '1' ? 'none' : '1px solid #e2e8f0',
+                                background: active
+                                  ? fl === '2'
+                                    ? '#7c3aed'
+                                    : fl === '3'
+                                    ? '#0284c7'
+                                    : '#1e293b'
+                                  : '#f8fafc',
+                                color: active ? 'white' : '#64748b',
+                                fontWeight: active ? 800 : 600,
+                                fontSize: '0.72rem',
+                                cursor: 'pointer'
+                              }}
+                              title={`Set ${room} di Lantai ${fl}`}
+                            >
+                              L{fl}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 2. Aturan Lantai Khusus Guru (misal guru sepuh di Lantai 2) */}
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155' }}>
+                2. Guru dengan Ketentuan Lantai Khusus (Misal Guru Sepuh Hanya di Lantai 2)
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'flex-end' }}>
+                <div style={{ flex: '1 1 240px' }}>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                    Pilih Guru
+                  </label>
+                  <select
+                    value={floorRuleDraftKode}
+                    onChange={e => handleSelectTeacherForFloorRule(e.target.value)}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.84rem', background: 'white' }}
+                  >
+                    <option value="">-- Pilih Guru --</option>
+                    {activePool.map(t => (
+                      <option key={t.kode} value={t.kode}>
+                        [{t.kode}] {t.nama}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, color: '#475569', marginBottom: '4px' }}>
+                    Hanya Boleh Mengawas di:
+                  </label>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {AVAILABLE_FLOORS.map(fl => {
+                      const isChecked = floorRuleDraftFloors.includes(fl);
+                      const rCount = floorCounts[fl] || 0;
+                      return (
+                        <label
+                          key={fl}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            padding: '6px 10px',
+                            borderRadius: '6px',
+                            border: `1.5px solid ${isChecked ? '#7c3aed' : '#cbd5e1'}`,
+                            background: isChecked ? '#ede9fe' : 'white',
+                            color: isChecked ? '#5b21b6' : '#475569',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleToggleFloorDraft(fl)}
+                          />
+                          Lantai {fl} ({rCount} r)
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  {floorRuleDraftKode && currentGroup.teacherFloorRules?.[floorRuleDraftKode] && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteTeacherFloorRule(floorRuleDraftKode)}
+                      style={{ padding: '7px 12px', borderRadius: '6px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Hapus Aturan
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleSaveTeacherFloorRule}
+                    style={{ padding: '7px 14px', borderRadius: '6px', border: 'none', background: '#7c3aed', color: 'white', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    <i className="fas fa-check" style={{ marginRight: '5px' }}></i>
+                    Terapkan Aturan Lantai
+                  </button>
+                </div>
+              </div>
+
+              {activeFloorRuleEntries.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+                  <div style={{ fontSize: '0.76rem', fontWeight: 700, color: '#334155' }}>
+                    Daftar Guru dengan Aturan Lantai ({activeFloorRuleEntries.length} Guru):
+                  </div>
+                  {activeFloorRuleEntries.map(entry => (
+                    <div
+                      key={entry.kode}
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px',
+                        padding: '7px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid #ddd6fe',
+                        background: 'white',
+                        fontSize: '0.8rem'
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontWeight: 800, color: '#6d28d9' }}>[{entry.kode}]</span>
+                        <span style={{ fontWeight: 700, color: '#0f172a' }}>{entry.teacher?.nama || 'Guru'}</span>
+                        <span
+                          style={{
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            background: '#ede9fe',
+                            color: '#5b21b6'
+                          }}
+                        >
+                          Hanya {entry.floors.map(f => `Lantai ${f}`).join(' / ')}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleSelectTeacherForFloorRule(entry.kode)}
+                          style={{ padding: '4px 8px', borderRadius: '5px', border: '1px solid #cbd5e1', background: 'white', color: '#0369a1', fontSize: '0.74rem', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          Ubah
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTeacherFloorRule(entry.kode)}
+                          style={{ padding: '4px 8px', borderRadius: '5px', border: '1px solid #fecaca', background: '#fef2f2', color: '#dc2626', fontSize: '0.74rem', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Form Input Hari, Jam Ke, Waktu, Mata Ujian */}
@@ -2372,11 +2976,23 @@ export default function JadwalPengawasTab() {
               </th>
             </tr>
             <tr style={{ background: '#2d5a8e', color: 'white' }}>
-              {currentGroup.rooms.map(r => (
-                <th key={r} style={{ border: '1px solid #334155', padding: '5px 4px', textAlign: 'center', minWidth: '38px' }}>
-                  {r}
-                </th>
-              ))}
+              {currentGroup.rooms.map(r => {
+                const fl = getRoomFloor(r, currentGroup.roomFloors);
+                return (
+                  <th
+                    key={r}
+                    style={{ border: '1px solid #334155', padding: '5px 4px', textAlign: 'center', minWidth: '38px' }}
+                    title={`${r} (Lantai ${fl})`}
+                  >
+                    <div>{r}</div>
+                    {hasCustomFloors && (
+                      <div style={{ fontSize: '0.62rem', fontWeight: 600, color: fl === '2' ? '#fde047' : fl === '3' ? '#7dd3fc' : '#cbd5e1', lineHeight: 1 }}>
+                        Lt.{fl}
+                      </div>
+                    )}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
