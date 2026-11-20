@@ -232,7 +232,8 @@ export async function PUT(request: Request) {
       return NextResponse.json({ success: false, error: 'Data tidak lengkap' }, { status: 400 });
     }
 
-    const jamKeText = String(jamKe);
+    const submittedJams = String(jamKe).split(',').map(j => j.trim()).filter(Boolean);
+    const jamKeText = submittedJams.join(',');
 
     const isProksus = mapel.toLowerCase().includes('program khusus') || mapel.toLowerCase().includes('proksus');
     if (isProksus) {
@@ -240,8 +241,7 @@ export async function PUT(request: Request) {
         return NextResponse.json({ success: false, error: 'Mata pelajaran Program Khusus hanya dapat diisi di Jam ke-1.' }, { status: 400 });
       }
     } else {
-      const jamList = jamKeText.split(',').map(j => j.trim()).filter(Boolean);
-      if (jamList.length > 3) {
+      if (submittedJams.length > 3) {
         return NextResponse.json({ success: false, error: 'Maksimal 3 jam pelajaran per sesi mata pelajaran.' }, { status: 400 });
       }
     }
@@ -254,7 +254,6 @@ export async function PUT(request: Request) {
 
     if (readError) throw readError;
 
-    const submittedJams = jamKeText.split(',').map(j => j.trim()).filter(Boolean);
     let overlappingClass = null;
     let overlappingGuru = null;
 
@@ -323,7 +322,7 @@ export async function PUT(request: Request) {
       ...(existingRow?.metadata || {}),
       'TANGGAL': tanggal,
       'JAM KE': `'${jamKeText}`,
-      'TAHUN AJARAN': tahunAjaran,
+      'TAHUN AJARAN': tahunAjaran || existingRow?.metadata?.['TAHUN AJARAN'] || '',
       'KELAS': kelas,
       'MAPEL': mapel,
       'NAMA GURU': actualGuru,

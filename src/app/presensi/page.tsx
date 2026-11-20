@@ -958,12 +958,26 @@ export default function PresensiPage() {
 
   const handleSaveEditJurnal = async () => {
     if (!editingJurnal) return;
+    const normalizedJamKe = String(editingJurnal.jamKe || '')
+      .split(',')
+      .map((j: string) => j.trim())
+      .filter(Boolean)
+      .join(',');
+    const payload = {
+      ...editingJurnal,
+      jamKe: normalizedJamKe,
+      namaGuru: isAdmin ? editingJurnal.namaGuru : (editingJurnal._originalNamaGuru || editingJurnal.namaGuru || currentUsername)
+    };
+    if (!payload.tanggal || !payload.kelas || !payload.jamKe || !payload.mapel || !payload.materi || !payload.namaGuru) {
+      Swal.fire('Data Belum Lengkap', 'Pastikan Tanggal, Kelas, Jam Ke, Mapel, Nama Guru, dan Materi sudah terisi.', 'warning');
+      return;
+    }
     setIsSavingEdit(true);
     try {
       const res = await fetch('/api/jurnal', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingJurnal)
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (data.success) {
@@ -993,7 +1007,7 @@ export default function PresensiPage() {
     if (!confirm.isConfirmed) return;
 
     try {
-      const res = await fetch(`/api/jurnal?id=${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/jurnal?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         Swal.fire('Terhapus!', 'Data jurnal berhasil dihapus.', 'success');
@@ -2295,7 +2309,7 @@ export default function PresensiPage() {
               onClick={() => setActiveTab('rekap_jurnal')}
             >
               <i className="fas fa-clipboard-list"></i>
-              Rekap Jurnal
+              Rekap Jurnal Mengajar
             </button>
           </div>
         </div>
@@ -4188,7 +4202,7 @@ export default function PresensiPage() {
                 Memuat data jurnal...
               </div>
             ) : (() => {
-              const matchName = (a: string, b: string) => { if (!a || !b) return false; return a.trim().toLowerCase() === b.trim().toLowerCase(); };
+              const matchName = (a: string, b: string) => { if (!a || !b) return false; return a.trim().toLowerCase().replace(/\s+/g, ' ') === b.trim().toLowerCase().replace(/\s+/g, ' '); };
               const filtered = rekapJurnalData.filter(r => { if (!isAdmin && !matchName(r.namaGuru, currentUsername)) return false; if (filterGuruRekap && !matchName(r.namaGuru, filterGuruRekap)) return false; if (filterKelasRekap && r.kelas !== filterKelasRekap) return false; if (filterFrom && r.tanggal < filterFrom) return false; if (filterTo && r.tanggal > filterTo) return false; return true; });
               filtered.sort((a, b) => { if (a.tanggal > b.tanggal) return -1; if (a.tanggal < b.tanggal) return 1; const jamA = parseInt(a.jamKe.split(',')[0]) || 0; const jamB = parseInt(b.jamKe.split(',')[0]) || 0; return jamA - jamB; });
               return (
@@ -4241,11 +4255,13 @@ export default function PresensiPage() {
                             <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>Mata Pelajaran</th>
                             <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>Jam Ke</th>
                             <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, color: '#475569' }}>Materi</th>
-                            {isAdmin && <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>Aksi</th>}
+                            <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700, color: '#475569', whiteSpace: 'nowrap' }}>Aksi</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {filtered.map((r, i) => (
+                          {filtered.map((r, i) => {
+                            const canManageRow = isAdmin || matchName(r.namaGuru, currentUsername);
+                            return (
                             <tr key={r.id || i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? 'white' : '#fafafa' }}>
                               <td style={{ padding: '10px 14px', color: '#94a3b8' }}>{i + 1}</td>
                               <td style={{ padding: '10px 14px', whiteSpace: 'nowrap', color: '#334155', fontWeight: 500 }}>
@@ -4289,12 +4305,12 @@ export default function PresensiPage() {
                                 <span style={{ background: /(11|12|13)/.test(r.jamKe) ? '#fee2e2' : '#dcfce7', color: /(11|12|13)/.test(r.jamKe) ? '#ef4444' : '#16a34a', padding: '3px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600 }}>Jam {r.jamKe}</span>
                               </td>
                               <td style={{ padding: '10px 14px', color: '#475569', maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.materi}>{r.materi}</td>
-                              {isAdmin && (
-                                <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                              <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                                {canManageRow ? (
                                   <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                                     <button
                                       style={{ background: '#f59e0b', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem' }}
-                                      onClick={() => setEditingJurnal(r)}
+                                      onClick={() => setEditingJurnal({ ...r, _originalNamaGuru: r.namaGuru })}
                                     >
                                       <i className="fas fa-edit"></i> Edit
                                     </button>
@@ -4305,10 +4321,13 @@ export default function PresensiPage() {
                                       <i className="fas fa-trash"></i> Hapus
                                     </button>
                                   </div>
-                                </td>
-                              )}
+                                ) : (
+                                  <span style={{ color: '#94a3b8' }}>-</span>
+                                )}
+                              </td>
                             </tr>
-                          ))}
+                            );
+                          })}
                         </tbody>
                       </table>
                       <div style={{ marginTop: 12, fontSize: '0.8rem', color: '#94a3b8', textAlign: 'right' }}>
@@ -4413,7 +4432,12 @@ export default function PresensiPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Kelas</label>
-                  <input type="text" value={editingJurnal.kelas} onChange={e => setEditingJurnal({ ...editingJurnal, kelas: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                  <input list="list-kelas-edit-jurnal" type="text" value={editingJurnal.kelas} onChange={e => setEditingJurnal({ ...editingJurnal, kelas: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                  <datalist id="list-kelas-edit-jurnal">
+                    {kelasList.map((k, idx) => (
+                      <option key={idx} value={k} />
+                    ))}
+                  </datalist>
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Jam Ke (pisahkan dengan koma)</label>
@@ -4423,12 +4447,31 @@ export default function PresensiPage() {
               
               <div>
                 <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Nama Guru</label>
-                <input type="text" value={editingJurnal.namaGuru} onChange={e => setEditingJurnal({ ...editingJurnal, namaGuru: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                <input
+                  type="text"
+                  value={editingJurnal.namaGuru}
+                  onChange={e => isAdmin && setEditingJurnal({ ...editingJurnal, namaGuru: e.target.value })}
+                  readOnly={!isAdmin}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: isAdmin ? 'white' : '#f1f5f9',
+                    color: isAdmin ? '#1e293b' : '#64748b',
+                    cursor: isAdmin ? 'text' : 'not-allowed'
+                  }}
+                />
               </div>
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Mata Pelajaran</label>
-                <input type="text" value={editingJurnal.mapel} onChange={e => setEditingJurnal({ ...editingJurnal, mapel: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                <input list="list-mapel-edit-jurnal" type="text" value={editingJurnal.mapel} onChange={e => setEditingJurnal({ ...editingJurnal, mapel: e.target.value })} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                <datalist id="list-mapel-edit-jurnal">
+                  {mapelList.map((m, idx) => (
+                    <option key={idx} value={m} />
+                  ))}
+                </datalist>
               </div>
 
               <div style={{ background: editingJurnal.isGuruPengganti ? '#fffbeb' : '#f8fafc', border: `1px solid ${editingJurnal.isGuruPengganti ? '#f59e0b' : '#e2e8f0'}`, padding: '12px', borderRadius: '8px' }}>
