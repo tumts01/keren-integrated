@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import styles from './pengumuman.module.css';
 import LoadingScreen from '@/components/LoadingScreen';
+import { showAnnouncementPopup, extractDriveFileId } from '@/lib/announcementPopup';
 
 // ===== CUSTOM SEND MODAL =====
 function CustomSendModal({
@@ -210,6 +211,35 @@ export default function PengumumanPage() {
   }, []);
 
   const isAdmin = user?.role?.toLowerCase() === 'admin';
+
+  const handlePreviewPopup = async () => {
+    const now = new Date();
+    const tanggal = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+    const jam = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    let objectUrl = '';
+    if (attachment && attachment.type.startsWith('image/')) {
+      objectUrl = URL.createObjectURL(attachment);
+    }
+    try {
+      await showAnnouncementPopup(
+        {
+          pengirim: user?.nama || 'Admin',
+          tanggal,
+          jam,
+          pesan: message.trim() || '(Belum ada isi pesan — ketik isi pengumuman terlebih dahulu)',
+          previewImageUrl: objectUrl || undefined,
+          attachmentName: attachment?.name
+        },
+        {
+          isPreview: true,
+          allowOutsideClick: true,
+          confirmButtonText: 'Tutup Pratinjau'
+        }
+      );
+    } finally {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    }
+  };
 
   const handleSend = async (target: 'all' | 'pimpinan' | 'siswa') => {
     if (!message.trim() && !attachment) {
@@ -421,6 +451,22 @@ export default function PengumumanPage() {
                 }}>
                 <i className="fa-solid fa-user-check"></i> Pilih Guru Tertentu
               </button>
+
+              {/* Pratinjau Pop-Up User */}
+              <button type="button"
+                disabled={sendingTo !== null}
+                onClick={handlePreviewPopup}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  padding: '12px 16px',
+                  background: '#f8fafc',
+                  color: '#0369a1', border: '1.5px solid #7dd3fc', borderRadius: 12, fontSize: '0.88rem', fontWeight: 700,
+                  cursor: sendingTo !== null ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                title="Lihat pratinjau kotak pop-up pengumuman yang tampil di user">
+                <i className="fa-solid fa-eye"></i> Pratinjau Pop-Up
+              </button>
             </div>
 
             {status.type && (
@@ -454,36 +500,75 @@ export default function PengumumanPage() {
             return visibleHistory.length === 0 ? (
               <div className={styles.noHistory}>Belum ada pengumuman.</div>
             ) : (
-              visibleHistory.map((h, i) => (
-                <div key={i} className={styles.historyCard}>
+              visibleHistory.map((h, i) => {
+                const driveId = extractDriveFileId(h.lampiran);
+                return (
+                <div key={h.id || i} className={styles.historyCard}>
                   <div className={styles.historyMeta}>
                     <span className={styles.historySender}>
-                      <i className="fa-solid fa-user mr-1"></i> {h.pengirim}
-                    </span>
-                    <span>
-                      <i className="fa-solid fa-calendar mr-1"></i> {h.tanggal} - {h.jam} WIB
-                    </span>
-                    {isAdmin && h.target && (
-                      <span style={badgeStyle(h.target)}>
-                        <i className={`fas ${badgeIcon(h.target)}`} style={{ marginRight: 4 }}></i>
-                        {h.target}
+                      <span style={{
+                        width: 28, height: 28, borderRadius: '50%', background: '#e0f2fe', color: '#0369a1',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.78rem'
+                      }}>
+                        <i className="fa-solid fa-user-shield"></i>
                       </span>
-                    )}
+                      {h.pengirim}
+                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{
+                        background: '#f1f5f9', padding: '4px 10px', borderRadius: 20,
+                        fontSize: '0.76rem', fontWeight: 600, color: '#475569'
+                      }}>
+                        <i className="fa-regular fa-calendar mr-1" style={{ color: '#0284c7' }}></i> {h.tanggal} • {h.jam} WIB
+                      </span>
+                      {isAdmin && h.target && (
+                        <span style={badgeStyle(h.target)}>
+                          <i className={`fas ${badgeIcon(h.target)}`} style={{ marginRight: 4 }}></i>
+                          {h.target}
+                        </span>
+                      )}
+                    </div>
                   </div>
+
+                  {driveId && (
+                    <div style={{ marginBottom: 12, borderRadius: 12, overflow: 'hidden', border: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                      <img
+                        src={`https://drive.google.com/thumbnail?id=${driveId}&sz=w800`}
+                        alt="Lampiran Pengumuman"
+                        style={{ width: '100%', maxHeight: 280, objectFit: 'contain', display: 'block' }}
+                        onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }}
+                      />
+                    </div>
+                  )}
+
                   <div className={styles.historyMessage}>{h.pesan}</div>
                   
                   {/* Actions / Lampiran row */}
-                  <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                    {h.lampiran ? (
-                      <a href={h.lampiran} target="_blank" rel="noreferrer" style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '6px',
-                        padding: '6px 12px', background: '#f1f5f9', color: '#0ea5e9',
-                        borderRadius: '6px', fontSize: '0.85rem', fontWeight: 600,
-                        textDecoration: 'none', border: '1px solid #e2e8f0'
-                      }}>
-                        <i className="fas fa-paperclip"></i> Lihat Lampiran
-                      </a>
-                    ) : <div />}
+                  <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      {h.lampiran && (
+                        <a href={h.lampiran} target="_blank" rel="noreferrer" style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '6px',
+                          padding: '6px 12px', background: '#f1f5f9', color: '#0ea5e9',
+                          borderRadius: '8px', fontSize: '0.82rem', fontWeight: 600,
+                          textDecoration: 'none', border: '1px solid #e2e8f0'
+                        }}>
+                          <i className="fas fa-paperclip"></i> Lihat Lampiran
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => showAnnouncementPopup(h, { allowOutsideClick: true })}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '6px',
+                          padding: '6px 12px', background: '#e0f2fe', color: '#0369a1',
+                          borderRadius: '8px', fontSize: '0.82rem', fontWeight: 700,
+                          border: '1px solid #bae6fd', cursor: 'pointer'
+                        }}
+                      >
+                        <i className="fas fa-expand-alt"></i> Lihat Pop-Up
+                      </button>
+                    </div>
 
                     {/* Admin Portal Toggle Button */}
                     {isAdmin && h.id && (
@@ -512,7 +597,8 @@ export default function PengumumanPage() {
                     )}
                   </div>
                 </div>
-              ))
+                );
+              })
             );
           })()}
         </div>

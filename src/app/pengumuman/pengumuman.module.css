@@ -158,23 +158,38 @@
 
 .historyCard {
   background: white;
-  border-left: 4px solid #3b82f6;
+  border: 1px solid #e2e8f0;
+  border-left: 5px solid #0284c7;
   padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.historyCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(2, 132, 199, 0.1);
 }
 
 .historyMeta {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
   margin-bottom: 12px;
-  font-size: 0.9rem;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.88rem;
   color: #64748b;
 }
 
 .historySender {
-  font-weight: 600;
-  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: #0f172a;
 }
 
 .historyMessage {
