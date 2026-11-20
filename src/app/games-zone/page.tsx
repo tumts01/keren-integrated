@@ -7,6 +7,7 @@ import styles from './games-zone.module.css';
 import { SaveSlot } from './types';
 import { DetectiveSaveSlot } from './misi-detektif/detektifData';
 import { JeopardySaveSlot } from './arena-cepat-tangkas/jeopardyData';
+import { MathSaveSlot } from './benteng-matematika/mathFortressData';
 import Swal from 'sweetalert2';
 
 export default function GamesZoneLobbyPage() {
@@ -14,9 +15,11 @@ export default function GamesZoneLobbyPage() {
   const [savedSlots, setSavedSlots] = useState<SaveSlot[]>([]);
   const [detektifSlots, setDetektifSlots] = useState<DetectiveSaveSlot[]>([]);
   const [jeopardySlots, setJeopardySlots] = useState<JeopardySaveSlot[]>([]);
+  const [mathSlots, setMathSlots] = useState<MathSaveSlot[]>([]);
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [showDetektifLoadModal, setShowDetektifLoadModal] = useState(false);
   const [showJeopardyLoadModal, setShowJeopardyLoadModal] = useState(false);
+  const [showMathLoadModal, setShowMathLoadModal] = useState(false);
 
   useEffect(() => {
     try {
@@ -31,6 +34,10 @@ export default function GamesZoneLobbyPage() {
       const jeopStr = localStorage.getItem('gameszone_jeopardy_save_slots');
       if (jeopStr) {
         setJeopardySlots(JSON.parse(jeopStr));
+      }
+      const mathStr = localStorage.getItem('gameszone_math_save_slots');
+      if (mathStr) {
+        setMathSlots(JSON.parse(mathStr));
       }
     } catch (e) {
       console.error(e);
@@ -62,6 +69,36 @@ export default function GamesZoneLobbyPage() {
     } catch (e: any) {
       Swal.fire('Error', 'Gagal memuat sesi cepat tangkas: ' + e.message, 'error');
     }
+  };
+
+  const handleOpenMathSlot = (slot: MathSaveSlot) => {
+    try {
+      localStorage.setItem('gameszone_math_active_session', JSON.stringify(slot.session));
+      router.push('/games-zone/benteng-matematika');
+    } catch (e: any) {
+      Swal.fire('Error', 'Gagal memuat sesi Benteng Matematika: ' + e.message, 'error');
+    }
+  };
+
+  const handleShowMathRules = () => {
+    Swal.fire({
+      title: '🏰 PANDUAN BENTENG MATEMATIKA (KELAS 7–9)',
+      html: `
+        <div style="text-align: left; font-size: 0.95rem; line-height: 1.6; color: #334155;">
+          <h4 style="color: #0284c7; margin-bottom: 6px;">1. Pilih Tingkat Kurikulum Kelas 7, 8, atau 9:</h4>
+          <p style="margin-top: 0;">Tersedia <b>3 Paket Tingkat Kesulitan</b> (masing-masing <b>16 Sektor Benteng 4x4</b> = 48 soal terkurasi) plus <b>Generator Soal Dinamis Tak Terbatas</b>.</p>
+          
+          <h4 style="color: #0284c7; margin-bottom: 6px;">2. Tempa Angka, Keypad Tanpa Spoiler &amp; Papan Coretan:</h4>
+          <p style="margin-top: 0;">Selain Pilihan Ganda A-B-C-D, siswa bisa merakit kartu angka di <b>Meja Tempa Target</b>, mengetik lewat <b>Keypad Angka</b> sebelum opsi dibuka, dan mencoret-coret hitungan langsung di <b>Papan Cakar-Cakaran Digital</b>.</p>
+          
+          <h4 style="color: #0284c7; margin-bottom: 6px;">3. Duel Meriam Aljabar &amp; Ronde Kilat 60 Detik:</h4>
+          <p style="margin-top: 0;">Saat regu berhasil menaklukkan sektor, mereka dapat memilih <b>Tembak Meriam ke Benteng Lawan</b> (kurangi Shield/HP lawan) atau <b>Perkuat Benteng Sendiri</b>. Tersedia pula <b>⚡ Ronde Kilat 60 Detik</b> dan 3 Jurus Taktis Matematika!</p>
+        </div>
+      `,
+      confirmButtonText: 'Siap Bertempur!',
+      confirmButtonColor: '#06b6d4',
+      width: '640px'
+    });
   };
 
   const handleShowJeopardyRules = () => {
@@ -167,7 +204,7 @@ export default function GamesZoneLobbyPage() {
           PILIH GAME PEMBELAJARAN
         </h2>
         <span style={{ fontSize: '0.85rem', color: '#34d399', fontWeight: 700 }}>
-          Tersedia 3 Game Aktif • Siap Dimainkan di Kelas
+          Tersedia 4 Game Aktif • Siap Dimainkan di Kelas
         </span>
       </div>
 
@@ -354,6 +391,71 @@ export default function GamesZoneLobbyPage() {
           </div>
         </div>
 
+        {/* GAME 4: BENTENG MATEMATIKA: DUEL TAKTIK & LOGIKA (KELAS 7-9) */}
+        <div
+          className={styles.gameCardFeatured}
+          style={{
+            borderColor: '#06b6d4',
+            boxShadow: '0 15px 35px -10px rgba(6, 182, 212, 0.32)'
+          }}
+        >
+          <div>
+            <div className={styles.gameThumbnailBox} style={{ background: 'linear-gradient(135deg, #082f49 0%, #0369a1 50%, #065f46 100%)' }}>
+              <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 5, background: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)', border: '1px solid #a5f3fc', color: '#082f49', fontSize: '0.73rem', fontWeight: 900, padding: '5px 12px', borderRadius: 20, letterSpacing: '0.5px', textTransform: 'uppercase', boxShadow: '0 4px 14px rgba(0, 0, 0, 0.45)' }}>
+                <i className="fas fa-chess-rook" style={{ marginRight: 5 }}></i> BARU • SIAP MAIN
+              </div>
+              <i className={`fas fa-square-root-alt ${styles.gameThumbIcon}`} style={{ color: '#67e8f9' }}></i>
+              <div style={{ position: 'absolute', bottom: 10, left: 14, background: 'rgba(0,0,0,0.65)', padding: '3px 10px', borderRadius: 6, fontSize: '0.75rem', color: '#a5f3fc', fontWeight: 700 }}>
+                Matematika Kelas 7–8–9 • 48+ Sektor &amp; Blitz 60d
+              </div>
+            </div>
+
+            <h3 className={styles.gameCardTitle}>BENTENG MATEMATIKA: DUEL TAKTIK</h3>
+            <p className={styles.gameCardDescription}>
+              Perebutan 16 Sektor Benteng 4x4 khusus Matematika SMP/MTs Kelas 7, 8, dan 9! Dilengkapi Meja Tempa Target Angka, Papan Coretan Proyektor, Keypad Tanpa Spoiler, Jurus Taktis, Serangan Meriam HP Lawan, serta Ronde Kilat 60 Detik &amp; Soal Dinamis.
+            </p>
+
+            <div className={styles.gameTags}>
+              <span className={styles.gameTag}><i className="fas fa-layer-group" style={{ color: '#67e8f9', marginRight: 4 }}></i> Level Kls 7/8/9</span>
+              <span className={styles.gameTag}><i className="fas fa-hammer" style={{ color: '#fbbf24', marginRight: 4 }}></i> Tempa Angka</span>
+              <span className={styles.gameTag}><i className="fas fa-pen-fancy" style={{ color: '#34d399', marginRight: 4 }}></i> Papan Coretan</span>
+              <span className={styles.gameTag}><i className="fas fa-stopwatch" style={{ color: '#f472b6', marginRight: 4 }}></i> Blitz 60d</span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <Link
+              href="/games-zone/benteng-matematika"
+              className={styles.btnPlayLarge}
+              style={{
+                background: 'linear-gradient(135deg, #06b6d4 0%, #0284c7 100%)',
+                color: '#ffffff',
+                boxShadow: '0 8px 20px rgba(6, 182, 212, 0.4)'
+              }}
+            >
+              <i className="fas fa-chess-rook"></i> MAINKAN SEKARANG (BUKA BENTENG)
+            </Link>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <button 
+                className={styles.btnAction} 
+                onClick={() => setShowMathLoadModal(true)}
+                style={{ justifyContent: 'center', fontSize: '0.85rem' }}
+              >
+                <i className="fas fa-folder-open" style={{ color: '#67e8f9' }}></i> Sesi Tersimpan ({mathSlots.length})
+              </button>
+
+              <button 
+                className={styles.btnAction} 
+                onClick={handleShowMathRules}
+                style={{ justifyContent: 'center', fontSize: '0.85rem' }}
+              >
+                <i className="fas fa-book-open" style={{ color: '#34d399' }}></i> Aturan Main
+              </button>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       {/* SAVED SESSIONS MODAL */}
@@ -529,6 +631,67 @@ export default function GamesZoneLobbyPage() {
                 style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)', color: '#ffffff' }}
               >
                 <i className="fas fa-bolt"></i> Buka Arena Cepat Tangkas Baru
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SAVED SESSIONS MODAL FOR BENTENG MATEMATIKA */}
+      {showMathLoadModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalCard} style={{ maxWidth: 640, borderColor: 'rgba(6, 182, 212, 0.45)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ margin: 0, fontSize: '1.3rem', color: '#67e8f9' }}>
+                <i className="fas fa-chess-rook" style={{ color: '#06b6d4', marginRight: 10 }}></i>
+                SESI BENTENG MATEMATIKA TERSIMPAN
+              </h2>
+              <button className={styles.btnAction} onClick={() => setShowMathLoadModal(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: 15 }}>
+              Pilih sesi duel Benteng Matematika yang ingin dilanjutkan:
+            </p>
+
+            <div style={{ maxHeight: 300, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {mathSlots.length > 0 ? (
+                mathSlots.map(slot => (
+                  <div 
+                    key={slot.id}
+                    style={{ background: '#0f172a', border: '1px solid rgba(6,182,212,0.3)', padding: '14px 18px', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#f1f5f9' }}>{slot.name}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: 4 }}>
+                        Disimpan: {slot.date} • {slot.session.selectedGradeId?.toUpperCase()} • {slot.session.solvedSectorIds?.length || 0} Sektor Terkuasai
+                      </div>
+                    </div>
+                    <button 
+                      className={styles.btnAction}
+                      style={{ background: '#06b6d4', color: '#082f49' }}
+                      onClick={() => handleOpenMathSlot(slot)}
+                    >
+                      <i className="fas fa-play"></i> Lanjutkan
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>
+                  <i className="fas fa-inbox" style={{ fontSize: '2rem', marginBottom: 10, display: 'block' }}></i>
+                  Belum ada sesi Benteng Matematika yang disimpan.
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: 20, textAlign: 'center' }}>
+              <Link
+                href="/games-zone/benteng-matematika"
+                className={styles.btnPlayLarge}
+                style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #0284c7 100%)', color: '#ffffff' }}
+              >
+                <i className="fas fa-chess-rook"></i> Buka Arena Benteng Matematika Baru
               </Link>
             </div>
           </div>
