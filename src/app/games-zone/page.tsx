@@ -8,6 +8,7 @@ import { SaveSlot } from './types';
 import { DetectiveSaveSlot } from './misi-detektif/detektifData';
 import { JeopardySaveSlot } from './arena-cepat-tangkas/jeopardyData';
 import { MathSaveSlot } from './benteng-matematika/mathFortressData';
+import { GalaxySaveSlot } from './galaksi-matematika/galaxyMathData';
 import Swal from 'sweetalert2';
 
 export default function GamesZoneLobbyPage() {
@@ -16,10 +17,12 @@ export default function GamesZoneLobbyPage() {
   const [detektifSlots, setDetektifSlots] = useState<DetectiveSaveSlot[]>([]);
   const [jeopardySlots, setJeopardySlots] = useState<JeopardySaveSlot[]>([]);
   const [mathSlots, setMathSlots] = useState<MathSaveSlot[]>([]);
+  const [galaxySlots, setGalaxySlots] = useState<GalaxySaveSlot[]>([]);
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [showDetektifLoadModal, setShowDetektifLoadModal] = useState(false);
   const [showJeopardyLoadModal, setShowJeopardyLoadModal] = useState(false);
   const [showMathLoadModal, setShowMathLoadModal] = useState(false);
+  const [showGalaxyLoadModal, setShowGalaxyLoadModal] = useState(false);
 
   useEffect(() => {
     try {
@@ -38,6 +41,10 @@ export default function GamesZoneLobbyPage() {
       const mathStr = localStorage.getItem('gameszone_math_save_slots');
       if (mathStr) {
         setMathSlots(JSON.parse(mathStr));
+      }
+      const galStr = localStorage.getItem('gameszone_galaxy_save_slots');
+      if (galStr) {
+        setGalaxySlots(JSON.parse(galStr));
       }
     } catch (e) {
       console.error(e);
@@ -78,6 +85,36 @@ export default function GamesZoneLobbyPage() {
     } catch (e: any) {
       Swal.fire('Error', 'Gagal memuat sesi Benteng Matematika: ' + e.message, 'error');
     }
+  };
+
+  const handleOpenGalaxySlot = (slot: GalaxySaveSlot) => {
+    try {
+      localStorage.setItem('gameszone_galaxy_active_session', JSON.stringify(slot.session));
+      router.push('/games-zone/galaksi-matematika');
+    } catch (e: any) {
+      Swal.fire('Error', 'Gagal memuat sesi Galaksi Matematika: ' + e.message, 'error');
+    }
+  };
+
+  const handleShowGalaxyRules = () => {
+    Swal.fire({
+      title: '🚀 PANDUAN GALAKSI MATEMATIKA (VISUAL 60 FPS)',
+      html: `
+        <div style="text-align: left; font-size: 0.95rem; line-height: 1.6; color: #334155;">
+          <h4 style="color: #0284c7; margin-bottom: 6px;">1. Arena Antariksa 60 FPS (0% Beban Server):</h4>
+          <p style="margin-top: 0;">4 Kapal Induk Skuad beradu di kanvas interaktif! Setiap jawaban benar meluncurkan <b>animasi proyektil plasma, ledakan partikel, &amp; gelombang kejut</b> langsung di layar.</p>
+          
+          <h4 style="color: #0284c7; margin-bottom: 6px;">2. Hologram Diagram SVG Otomatis di Tiap Soal:</h4>
+          <p style="margin-top: 0;">Semua 36 misi (Kelas 7–9) plus Soal Visual Dinamis dilengkapi <b>6 jenis ilustrasi visual hidup</b>: Neraca Aljabar, Radar Segitiga, Kartesius &amp; Parabola, Juring Lingkaran, Bangun Ruang 3D, serta Diagram Venn.</p>
+          
+          <h4 style="color: #0284c7; margin-bottom: 6px;">3. 🎯 Simulator Kalibrasi Meriam Koordinat:</h4>
+          <p style="margin-top: 0;">Geser slider <b>Gradien (m)</b> atau <b>Kurva Parabola</b> hingga lintasan tembak melewati koordinat Meteor, lalu luncurkan plasma untuk meledakkannya!</p>
+        </div>
+      `,
+      confirmButtonText: 'Siap Mengorbit!',
+      confirmButtonColor: '#0ea5e9',
+      width: '640px'
+    });
   };
 
   const handleShowMathRules = () => {
@@ -204,7 +241,7 @@ export default function GamesZoneLobbyPage() {
           PILIH GAME PEMBELAJARAN
         </h2>
         <span style={{ fontSize: '0.85rem', color: '#34d399', fontWeight: 700 }}>
-          Tersedia 4 Game Aktif • Siap Dimainkan di Kelas
+          Tersedia 5 Game Aktif • Siap Dimainkan di Kelas
         </span>
       </div>
 
@@ -456,6 +493,71 @@ export default function GamesZoneLobbyPage() {
           </div>
         </div>
 
+        {/* GAME 5: GALAKSI MATEMATIKA: SIMULATOR VISUAL & ANIMASI 60 FPS */}
+        <div
+          className={styles.gameCardFeatured}
+          style={{
+            borderColor: '#38bdf8',
+            boxShadow: '0 15px 35px -10px rgba(56, 189, 248, 0.36)'
+          }}
+        >
+          <div>
+            <div className={styles.gameThumbnailBox} style={{ background: 'linear-gradient(135deg, #020617 0%, #0f172a 45%, #3b0764 100%)' }}>
+              <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 5, background: 'linear-gradient(135deg, #38bdf8 0%, #a855f7 100%)', border: '1px solid #e0f2fe', color: '#ffffff', fontSize: '0.73rem', fontWeight: 900, padding: '5px 12px', borderRadius: 20, letterSpacing: '0.5px', textTransform: 'uppercase', boxShadow: '0 4px 14px rgba(0, 0, 0, 0.45)' }}>
+                <i className="fas fa-rocket" style={{ marginRight: 5 }}></i> ANIMASI VISUAL 60 FPS
+              </div>
+              <i className={`fas fa-satellite-dish ${styles.gameThumbIcon}`} style={{ color: '#38bdf8' }}></i>
+              <div style={{ position: 'absolute', bottom: 10, left: 14, background: 'rgba(0,0,0,0.68)', padding: '3px 10px', borderRadius: 6, fontSize: '0.75rem', color: '#e9d5ff', fontWeight: 700 }}>
+                Canvas 60 FPS • Hologram SVG • Kelas 7–8–9
+              </div>
+            </div>
+
+            <h3 className={styles.gameCardTitle}>GALAKSI MATEMATIKA (VISUAL ARCADE)</h3>
+            <p className={styles.gameCardDescription}>
+              Pertempuran pesawat antariksa 60 FPS dengan animasi tembakan laser &amp; ledakan partikel! Tiap soal Kelas 7–9 memunculkan Diagram Hologram interaktif (Neraca, Kartesius, Segitiga, 3D, Juring) plus Simulator Bidikan Kurva.
+            </p>
+
+            <div className={styles.gameTags}>
+              <span className={styles.gameTag}><i className="fas fa-film" style={{ color: '#38bdf8', marginRight: 4 }}></i> Animasi 60 FPS</span>
+              <span className={styles.gameTag}><i className="fas fa-cube" style={{ color: '#c084fc', marginRight: 4 }}></i> Hologram 3D/SVG</span>
+              <span className={styles.gameTag}><i className="fas fa-crosshairs" style={{ color: '#fde047', marginRight: 4 }}></i> Bidik Kurva</span>
+              <span className={styles.gameTag}><i className="fas fa-server" style={{ color: '#34d399', marginRight: 4 }}></i> 0% Beban Server</span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <Link
+              href="/games-zone/galaksi-matematika"
+              className={styles.btnPlayLarge}
+              style={{
+                background: 'linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 100%)',
+                color: '#ffffff',
+                boxShadow: '0 8px 20px rgba(56, 189, 248, 0.42)'
+              }}
+            >
+              <i className="fas fa-rocket"></i> MAINKAN SEKARANG (BUKA SIMULATOR)
+            </Link>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <button 
+                className={styles.btnAction} 
+                onClick={() => setShowGalaxyLoadModal(true)}
+                style={{ justifyContent: 'center', fontSize: '0.85rem' }}
+              >
+                <i className="fas fa-folder-open" style={{ color: '#38bdf8' }}></i> Sesi Tersimpan ({galaxySlots.length})
+              </button>
+
+              <button 
+                className={styles.btnAction} 
+                onClick={handleShowGalaxyRules}
+                style={{ justifyContent: 'center', fontSize: '0.85rem' }}
+              >
+                <i className="fas fa-book-open" style={{ color: '#c084fc' }}></i> Aturan Main
+              </button>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       {/* SAVED SESSIONS MODAL */}
@@ -692,6 +794,67 @@ export default function GamesZoneLobbyPage() {
                 style={{ background: 'linear-gradient(135deg, #06b6d4 0%, #0284c7 100%)', color: '#ffffff' }}
               >
                 <i className="fas fa-chess-rook"></i> Buka Arena Benteng Matematika Baru
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SAVED SESSIONS MODAL FOR GALAKSI MATEMATIKA */}
+      {showGalaxyLoadModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalCard} style={{ maxWidth: 640, borderColor: 'rgba(56, 189, 248, 0.45)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ margin: 0, fontSize: '1.3rem', color: '#38bdf8' }}>
+                <i className="fas fa-rocket" style={{ color: '#38bdf8', marginRight: 10 }}></i>
+                SESI GALAKSI MATEMATIKA TERSIMPAN
+              </h2>
+              <button className={styles.btnAction} onClick={() => setShowGalaxyLoadModal(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: 15 }}>
+              Pilih sesi Galaksi Matematika yang ingin dilanjutkan:
+            </p>
+
+            <div style={{ maxHeight: 300, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {galaxySlots.length > 0 ? (
+                galaxySlots.map(slot => (
+                  <div 
+                    key={slot.id}
+                    style={{ background: '#0f172a', border: '1px solid rgba(56,189,248,0.3)', padding: '14px 18px', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#f1f5f9' }}>{slot.name}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: 4 }}>
+                        Disimpan: {slot.date} • {slot.session.selectedGradeId?.toUpperCase()} • {slot.session.solvedMissionIds?.length || 0} Misi Selesai
+                      </div>
+                    </div>
+                    <button 
+                      className={styles.btnAction}
+                      style={{ background: '#0ea5e9', color: '#ffffff' }}
+                      onClick={() => handleOpenGalaxySlot(slot)}
+                    >
+                      <i className="fas fa-play"></i> Lanjutkan
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div style={{ textAlign: 'center', padding: 30, color: '#64748b' }}>
+                  <i className="fas fa-inbox" style={{ fontSize: '2rem', marginBottom: 10, display: 'block' }}></i>
+                  Belum ada sesi Galaksi Matematika yang disimpan.
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: 20, textAlign: 'center' }}>
+              <Link
+                href="/games-zone/galaksi-matematika"
+                className={styles.btnPlayLarge}
+                style={{ background: 'linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 100%)', color: '#ffffff' }}
+              >
+                <i className="fas fa-rocket"></i> Buka Simulator Galaksi Matematika Baru
               </Link>
             </div>
           </div>
