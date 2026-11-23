@@ -13,8 +13,6 @@ import {
   computeProgramFinalScore,
   getCanonicalFieldStorage,
   getLayananUmumMapels,
-  PK_LAYANAN_UMUM_STS_MAPEL,
-  PK_LAYANAN_UMUM_SAS_MAPEL,
   getProgramSasStorageMapel,
   getProgramStsStorageMapel,
   getReadTahunAjaranCandidates,
@@ -39,7 +37,7 @@ function applyProgramScoreRow(
   dataNilai: any[],
   byInduk: Map<string, any>,
   byNama: Map<string, any>,
-  prop: 'stsProgram' | 'sasProgram' | 'stsLayananUmum' | 'sasLayananUmum'
+  prop: 'stsProgram' | 'sasProgram'
 ) {
   for (const entry of dataNilai) {
     const val = entry?.nilai !== undefined && entry?.nilai !== null ? String(entry.nilai).trim() : '';
@@ -204,7 +202,7 @@ export async function GET(request: Request) {
 
     const students = extractStudentsForClass(rawSiswa, kelas, baseTA);
 
-    // Prepare score maps per student (kategori utama + layanan umum + STS/SAS program & LU + catatan pengajar)
+    // Prepare score maps per student (kategori utama + layanan umum + STS/SAS program + catatan pengajar)
     const studentMaps = students.map((st) => {
       const scoresByMapel: Record<string, PKMapelScores> = {};
       for (const m of allExpectedMapels) {
@@ -216,9 +214,6 @@ export async function GET(request: Request) {
         stsProgram: '',
         sasProgram: '',
         nilaiAkhirProgram: null as number | null,
-        stsLayananUmum: '',
-        sasLayananUmum: '',
-        nilaiAkhirLayananUmum: null as number | null,
         catatan: '',
       };
     });
@@ -236,8 +231,6 @@ export async function GET(request: Request) {
     const programSasMapel = getProgramSasStorageMapel(kategoriKey);
     let hasExplicitProgramStsRow = false;
     let hasExplicitProgramSasRow = false;
-    let hasExplicitLuStsRow = false;
-    let hasExplicitLuSasRow = false;
 
     for (const row of pkRes.data || []) {
       // Ensure Ganjil doesn't accidentally ingest rows explicitly marked Genap
@@ -279,23 +272,6 @@ export async function GET(request: Request) {
         continue;
       }
 
-      // Load unified Layanan Umum STS / SAS rows if present
-      if (
-        (rowMapelUpper === PK_LAYANAN_UMUM_STS_MAPEL && rowTipeLower === 'sts') ||
-        (rowMapelUpper === PK_LAYANAN_UMUM_SAS_MAPEL && rowTipeLower === 'sas')
-      ) {
-        const isSts = rowTipeLower === 'sts';
-        if (isSts) hasExplicitLuStsRow = true;
-        else hasExplicitLuSasRow = true;
-        applyProgramScoreRow(
-          Array.isArray(row.data_nilai) ? row.data_nilai : [],
-          byInduk,
-          byNama,
-          isSts ? 'stsLayananUmum' : 'sasLayananUmum'
-        );
-        continue;
-      }
-
       const canonicalMapel = resolveMapelForKategori(kategoriKey, String(row.mata_pelajaran || ''));
       if (!canonicalMapel) continue;
 
@@ -332,7 +308,6 @@ export async function GET(request: Request) {
     }
 
     const categoryMapelNames = categoryDef.mapels.map((m) => m.name);
-    const layananUmumMapelNames = layananUmumMapels.map((m) => m.name);
 
     for (const st of studentMaps) {
       if (!hasExplicitProgramStsRow) {
@@ -340,12 +315,6 @@ export async function GET(request: Request) {
       }
       if (!hasExplicitProgramSasRow) {
         st.sasProgram = deriveLegacyProgramScore(st.scoresByMapel, categoryMapelNames, 'sas');
-      }
-      if (!hasExplicitLuStsRow) {
-        st.stsLayananUmum = deriveLegacyProgramScore(st.scoresByMapel, layananUmumMapelNames, 'sts');
-      }
-      if (!hasExplicitLuSasRow) {
-        st.sasLayananUmum = deriveLegacyProgramScore(st.scoresByMapel, layananUmumMapelNames, 'sas');
       }
 
       for (const m of allExpectedMapels) {
@@ -356,11 +325,6 @@ export async function GET(request: Request) {
         categoryMapelNames,
         st.scoresByMapel,
         st.sasProgram
-      );
-      st.nilaiAkhirLayananUmum = computeProgramFinalScore(
-        layananUmumMapelNames,
-        st.scoresByMapel,
-        st.sasLayananUmum
       );
     }
 
@@ -400,7 +364,9 @@ export async function POST(request: Request) {
     const dataNilai = Array.isArray(body.dataNilai) ? body.dataNilai : [];
 
     const isCatatanField = field === 'catatan';
-    const isProgramAssessmentField = ['sts_program', 'sas_program', 'sts_lu', 'sas_lu'].includes(field);
+    const isProgramStsField = field === 'sts_program';
+    const isProgramSasField = field === 'sas_program';
+    const isProgramAssessmentField = isProgramStsField || isProgramSasField;
     if (
       !kelas ||
       (!isCatatanField &&
@@ -489,21 +455,10 @@ export async function POST(request: Request) {
           ? kategoriKey
           : MAP_MINAT_BAKAT[kelas] || 'SAINS RISET'
       ) as PKCategoryKey;
-      const isLu = field === 'sts_lu' || field === 'sas_lu';
-      const isSts = field === 'sts_program' || field === 'sts_lu';
-      const targetTipe = isSts ? 'sts' : 'sas';
-      const targetProgramMapel = isLu
-        ? isSts
-          ? PK_LAYANAN_UMUM_STS_MAPEL
-          : PK_LAYANAN_UMUM_SAS_MAPEL
-        : isSts
+      const targetTipe = isProgramStsField ? 'sts' : 'sas';
+      const targetProgramMapel = isProgramStsField
         ? getProgramStsStorageMapel(resolvedKategori)
         : getProgramSasStorageMapel(resolvedKategori);
-      const targetMetadata = {
-        semester,
-        scope: isLu ? 'layanan_umum' : 'program',
-        kategori: resolvedKategori,
-      };
 
       const sanitizedProgramScores = dataNilai.map((item: any) => ({
         induk: String(item.induk || '').trim(),
@@ -537,7 +492,7 @@ export async function POST(request: Request) {
             sub_materi: '',
             guru,
             data_nilai: sanitizedProgramScores,
-            metadata: targetMetadata,
+            metadata: { semester, scope: 'program', kategori: resolvedKategori },
             updated_at: now,
           })
           .eq('id', targetProgramRow.id);
@@ -553,7 +508,7 @@ export async function POST(request: Request) {
           sub_materi: '',
           guru,
           data_nilai: sanitizedProgramScores,
-          metadata: targetMetadata,
+          metadata: { semester, scope: 'program', kategori: resolvedKategori },
           updated_at: now,
         });
 
