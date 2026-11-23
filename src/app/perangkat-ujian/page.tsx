@@ -229,6 +229,10 @@ function CetakSampulTab() {
 }
 
 export default function PerangkatUjianPage() {
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'konfigurasi-ruang' | 'nopes' | 'nobang' | 'jadwal-pengawas' | 'identitas' | 'sampul' | 'mapping-foto'>('konfigurasi-ruang');
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(false);
@@ -343,6 +347,14 @@ export default function PerangkatUjianPage() {
 
   // Load saved layout + konfigurasi ruang on mount
   useEffect(() => {
+    try {
+      const session = localStorage.getItem('sekretaris_pu_session');
+      if (session === 'unlocked') {
+        setIsUnlocked(true);
+      }
+    } catch {}
+    setAuthLoading(false);
+
     const storedUser = localStorage.getItem('keren_user_data');
     if (storedUser) {
       try {
@@ -909,15 +921,93 @@ export default function PerangkatUjianPage() {
     </div>
   );
 
+  const handleSekretarisLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordInput === 'wespokokeaturen') {
+      localStorage.setItem('sekretaris_pu_session', 'unlocked');
+      setIsUnlocked(true);
+      Swal.fire({
+        icon: 'success',
+        title: 'Login Berhasil',
+        text: 'Selamat datang, Sekretaris Ujian!',
+        timer: 1500,
+        showConfirmButton: false
+      });
+    } else {
+      Swal.fire('Akses Ditolak', 'Password salah!', 'error');
+    }
+  };
+
+  const handleSekretarisLogout = () => {
+    localStorage.removeItem('sekretaris_pu_session');
+    setIsUnlocked(false);
+    setPasswordInput('');
+    setShowPassword(false);
+  };
+
+  if (authLoading) return null;
+
+  if (!isUnlocked) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', background: '#f8fafc', padding: '16px' }}>
+        <form onSubmit={handleSekretarisLogin} style={{ background: 'white', padding: '40px', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', width: '100%', maxWidth: '420px', border: '1px solid #f1f5f9', fontFamily: 'sans-serif' }}>
+          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+            <div style={{ width: '64px', height: '64px', background: '#e0f2fe', borderRadius: '50%', display: 'inline-flex', justifyContent: 'center', alignItems: 'center', marginBottom: '16px', color: '#0284c7', fontSize: '24px' }}>
+              <i className="fas fa-file-signature"></i>
+            </div>
+            <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.5rem' }}>Login Sekretaris Ujian</h2>
+            <p style={{ margin: '8px 0 0 0', color: '#64748b', fontSize: '0.95rem' }}>Masukkan password khusus untuk mengakses menu perangkat ujian.</p>
+          </div>
+
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontWeight: 600, fontSize: '0.9rem' }}>Password</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={passwordInput}
+                onChange={e => setPasswordInput(e.target.value)}
+                style={{ width: '100%', padding: '14px 44px 14px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
+                placeholder="Masukkan password"
+                autoFocus
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(prev => !prev)}
+                title={showPassword ? 'Sembunyikan password' : 'Lihat password'}
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '6px', fontSize: '0.95rem' }}
+              >
+                <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" style={{ width: '100%', padding: '14px', borderRadius: '8px', background: '#0284c7', color: 'white', border: 'none', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', transition: 'background 0.2s', boxShadow: '0 4px 12px rgba(2, 132, 199, 0.2)' }}>
+            Masuk <i className="fas fa-arrow-right" style={{ marginLeft: '8px' }}></i>
+          </button>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <div style={{ marginBottom: '20px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e293b', marginBottom: '8px' }}>
-          Perangkat Ujian
-        </h1>
-        <p style={{ color: '#64748b' }}>
-          Konfigurasi Ruang, Daftar Hadir, Generate Nomor Peserta (Nopes), dan Nomor Bangku (Nobang) untuk Ujian.
-        </p>
+      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <h1 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e293b', marginBottom: '8px' }}>
+            Perangkat Ujian
+          </h1>
+          <p style={{ color: '#64748b', margin: 0 }}>
+            Konfigurasi Ruang, Daftar Hadir, Generate Nomor Peserta (Nopes), dan Nomor Bangku (Nobang) untuk Ujian.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleSekretarisLogout}
+          style={{ padding: '10px 16px', borderRadius: '8px', background: 'white', color: '#ef4444', border: '1px solid #fca5a5', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+        >
+          <i className="fas fa-sign-out-alt"></i> Keluar
+        </button>
       </div>
 
       {isAdmin && activeTab === 'nopes' && (
