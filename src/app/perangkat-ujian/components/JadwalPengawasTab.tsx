@@ -9,7 +9,74 @@ import InlineLoading from '@/components/InlineLoading';
 const CONFIG_KEY = 'jadwal_pengawas_ujian';
 const ROOM_CONFIG_KEY = 'konfigurasi_ruang_ujian';
 
-type ScheduleGroupKey = 'kelas78' | 'kelas9';
+type ScheduleGroupKey = 'kelas78' | 'kelas9' | 'kelas789';
+
+const SCHEDULE_GROUP_KEYS: ScheduleGroupKey[] = ['kelas78', 'kelas9', 'kelas789'];
+
+const SCHEDULE_GROUP_META: Record<
+  ScheduleGroupKey,
+  {
+    label: string;
+    longLabel: string;
+    buttonLabel: string;
+    iconClass: string;
+    defaultTitle: string;
+    defaultRoomCount: number;
+    roomListDocTitle: string;
+    roomListColTitle: string;
+    roomListExcelFilename: string;
+    excelSheetName: string;
+    matchesGrade: (grade: number | null) => boolean;
+    pairKey: ScheduleGroupKey | null;
+    copySourceKey: ScheduleGroupKey;
+  }
+> = {
+  kelas78: {
+    label: 'Kelas 7–8',
+    longLabel: 'Kelas 7 & 8',
+    buttonLabel: 'Jadwal Pengawas Kelas 7–8',
+    iconClass: 'fas fa-layer-group',
+    defaultTitle: 'JADWAL PENGAWAS UJIAN KELAS VII & VIII',
+    defaultRoomCount: 17,
+    roomListDocTitle: 'DAFTAR NAMA PENGAWAS UJIAN KELAS 7 & 8',
+    roomListColTitle: 'PENGAWAS 7 & 8',
+    roomListExcelFilename: 'List_Pengawas_Ruang_Kelas_7-8.xlsx',
+    excelSheetName: 'Jadwal Kls 7-8',
+    matchesGrade: g => g === 7 || g === 8,
+    pairKey: 'kelas9',
+    copySourceKey: 'kelas9'
+  },
+  kelas9: {
+    label: 'Kelas 9',
+    longLabel: 'Kelas 9',
+    buttonLabel: 'Jadwal Pengawas Kelas 9',
+    iconClass: 'fas fa-graduation-cap',
+    defaultTitle: 'JADWAL PENGAWAS UJIAN KELAS IX',
+    defaultRoomCount: 15,
+    roomListDocTitle: 'DAFTAR NAMA PENGAWAS UJIAN KELAS 9',
+    roomListColTitle: 'PENGAWAS 9',
+    roomListExcelFilename: 'List_Pengawas_Ruang_Kelas_9.xlsx',
+    excelSheetName: 'Jadwal Kls 9',
+    matchesGrade: g => g === 9,
+    pairKey: 'kelas78',
+    copySourceKey: 'kelas78'
+  },
+  kelas789: {
+    label: 'Kelas 7–8–9',
+    longLabel: 'Kelas 7, 8 & 9 (Gabungan)',
+    buttonLabel: 'Jadwal Pengawas Kelas 7–8–9',
+    iconClass: 'fas fa-school',
+    defaultTitle: 'JADWAL PENGAWAS UJIAN KELAS VII, VIII & IX',
+    defaultRoomCount: 27,
+    roomListDocTitle: 'DAFTAR NAMA PENGAWAS UJIAN KELAS 7, 8 & 9',
+    roomListColTitle: 'PENGAWAS 7, 8 & 9',
+    roomListExcelFilename: 'List_Pengawas_Ruang_Kelas_7-8-9.xlsx',
+    excelSheetName: 'Jadwal Kls 7-8-9',
+    matchesGrade: g => g === 7 || g === 8 || g === 9,
+    pairKey: null,
+    copySourceKey: 'kelas78'
+  }
+};
 
 interface GuruOption {
   id: number;
@@ -259,14 +326,15 @@ function createInitialDay(groupKey: ScheduleGroupKey, dateIso?: string): ExamDay
 
 function createInitialGroupState(groupKey: ScheduleGroupKey): GroupScheduleState {
   const defaultDateTtd = `Singosari, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`;
+  const meta = SCHEDULE_GROUP_META[groupKey];
   return {
     headerInfo: {
-      judul: groupKey === 'kelas78' ? 'JADWAL PENGAWAS UJIAN KELAS VII & VIII' : 'JADWAL PENGAWAS UJIAN KELAS IX',
+      judul: meta.defaultTitle,
       subJudul: 'MADRASAH TSANAWIYAH ALMAARIF 01 SINGOSARI',
       tanggalTtd: defaultDateTtd,
       kepalaMadrasah: 'Dwi Retno Palupi, M.Pd.'
     },
-    rooms: createDefaultRooms(groupKey === 'kelas78' ? 17 : 15),
+    rooms: createDefaultRooms(meta.defaultRoomCount),
     days: [createInitialDay(groupKey)],
     excludedKodes: [],
     teacherDayRules: {},
@@ -274,6 +342,26 @@ function createInitialGroupState(groupKey: ScheduleGroupKey): GroupScheduleState
     teacherFloorRules: {},
     seragamList: DEFAULT_SERAGAM_LIST.map((s, idx) => ({ id: `srg-${groupKey}-${idx}`, ...s })),
     catatanInfo: DEFAULT_CATATAN_INFO
+  };
+}
+
+function hydrateGroupState(groupKey: ScheduleGroupKey, raw: any): GroupScheduleState {
+  const init = createInitialGroupState(groupKey);
+  if (!raw || typeof raw !== 'object') return init;
+  return {
+    headerInfo: { ...init.headerInfo, ...(raw.headerInfo || {}) },
+    rooms: Array.isArray(raw.rooms) && raw.rooms.length > 0 ? raw.rooms : init.rooms,
+    days: Array.isArray(raw.days) && raw.days.length > 0 ? raw.days : init.days,
+    excludedKodes: Array.isArray(raw.excludedKodes) ? raw.excludedKodes : [],
+    teacherDayRules:
+      raw.teacherDayRules && typeof raw.teacherDayRules === 'object' ? raw.teacherDayRules : {},
+    roomFloors: raw.roomFloors && typeof raw.roomFloors === 'object' ? raw.roomFloors : {},
+    teacherFloorRules:
+      raw.teacherFloorRules && typeof raw.teacherFloorRules === 'object'
+        ? raw.teacherFloorRules
+        : {},
+    seragamList: Array.isArray(raw.seragamList) ? raw.seragamList : init.seragamList,
+    catatanInfo: typeof raw.catatanInfo === 'string' ? raw.catatanInfo : init.catatanInfo
   };
 }
 
@@ -434,30 +522,32 @@ function extractGradeNum(rombelOrKelas: string): number | null {
   return null;
 }
 
-function computeGroupStats(group: GroupScheduleState, otherGroup: GroupScheduleState) {
+function computeGroupStats(group: GroupScheduleState, otherGroup?: GroupScheduleState | null) {
   const counts: Record<string, number> = {};
   const clashes: Array<{ dayLabel: string; jamKe: string; kode: string; rooms: string[]; reason: string }> = [];
   const clashCellKeys = new Set<string>();
   let totalSlots = 0;
   let filledSlots = 0;
 
-  // Map jadwal pasangan berdasarkan (tanggal|waktu) untuk cek bentrok lintas jadwal
+  // Map jadwal pasangan berdasarkan (tanggal|waktu) untuk cek bentrok lintas jadwal (jika berpasangan)
   const otherBusyByDateTime = new Map<string, Map<string, string>>();
-  otherGroup.days.forEach(od => {
-    const tgl = (od.tanggal || od.labelHariTanggal || '').trim();
-    if (!tgl) return;
-    od.sessions.forEach(oses => {
-      const wKey = normWaktuKey(oses.waktu);
-      if (!wKey) return;
-      const dtKey = `${tgl}|${wKey}`;
-      if (!otherBusyByDateTime.has(dtKey)) otherBusyByDateTime.set(dtKey, new Map());
-      const map = otherBusyByDateTime.get(dtKey)!;
-      otherGroup.rooms.forEach(rm => {
-        const k = (oses.pengawas?.[rm] || '').trim();
-        if (k) map.set(k, rm);
+  if (otherGroup) {
+    otherGroup.days.forEach(od => {
+      const tgl = (od.tanggal || od.labelHariTanggal || '').trim();
+      if (!tgl) return;
+      od.sessions.forEach(oses => {
+        const wKey = normWaktuKey(oses.waktu);
+        if (!wKey) return;
+        const dtKey = `${tgl}|${wKey}`;
+        if (!otherBusyByDateTime.has(dtKey)) otherBusyByDateTime.set(dtKey, new Map());
+        const map = otherBusyByDateTime.get(dtKey)!;
+        otherGroup.rooms.forEach(rm => {
+          const k = (oses.pengawas?.[rm] || '').trim();
+          if (k) map.set(k, rm);
+        });
       });
     });
-  });
+  }
 
   group.days.forEach(day => {
     const tgl = (day.tanggal || day.labelHariTanggal || '').trim();
@@ -543,7 +633,8 @@ export default function JadwalPengawasTab() {
 
   const [groups, setGroups] = useState<Record<ScheduleGroupKey, GroupScheduleState>>({
     kelas78: createInitialGroupState('kelas78'),
-    kelas9: createInitialGroupState('kelas9')
+    kelas9: createInitialGroupState('kelas9'),
+    kelas789: createInitialGroupState('kelas789')
   });
 
   const [roomCountInput, setRoomCountInput] = useState<number>(17);
@@ -563,9 +654,13 @@ export default function JadwalPengawasTab() {
     currentKode: string;
   } | null>(null);
 
+  const activeMeta = SCHEDULE_GROUP_META[activeGroup];
   const currentGroup = groups[activeGroup];
-  const otherGroupKey: ScheduleGroupKey = activeGroup === 'kelas78' ? 'kelas9' : 'kelas78';
-  const otherGroup = groups[otherGroupKey];
+  const pairedGroupKey: ScheduleGroupKey | null = activeMeta.pairKey;
+  const pairedGroup = pairedGroupKey ? groups[pairedGroupKey] : null;
+  const copySourceKey: ScheduleGroupKey = activeMeta.copySourceKey;
+  const copySourceGroup = groups[copySourceKey];
+  const copySourceLabel = SCHEDULE_GROUP_META[copySourceKey].label;
 
   useEffect(() => {
     setRoomCountInput(groups[activeGroup].rooms.length);
@@ -627,97 +722,16 @@ export default function JadwalPengawasTab() {
           try {
             const parsed = JSON.parse(rawSaved);
             if (parsed.format === 'v2_dual_group' && parsed.groups) {
-              const init78 = createInitialGroupState('kelas78');
-              const init9 = createInitialGroupState('kelas9');
               setGroups({
-                kelas78: {
-                  headerInfo: { ...init78.headerInfo, ...(parsed.groups.kelas78?.headerInfo || {}) },
-                  rooms: Array.isArray(parsed.groups.kelas78?.rooms) && parsed.groups.kelas78.rooms.length > 0
-                    ? parsed.groups.kelas78.rooms
-                    : init78.rooms,
-                  days: Array.isArray(parsed.groups.kelas78?.days) && parsed.groups.kelas78.days.length > 0
-                    ? parsed.groups.kelas78.days
-                    : init78.days,
-                  excludedKodes: Array.isArray(parsed.groups.kelas78?.excludedKodes)
-                    ? parsed.groups.kelas78.excludedKodes
-                    : [],
-                  teacherDayRules:
-                    parsed.groups.kelas78?.teacherDayRules && typeof parsed.groups.kelas78.teacherDayRules === 'object'
-                      ? parsed.groups.kelas78.teacherDayRules
-                      : {},
-                  roomFloors:
-                    parsed.groups.kelas78?.roomFloors && typeof parsed.groups.kelas78.roomFloors === 'object'
-                      ? parsed.groups.kelas78.roomFloors
-                      : {},
-                  teacherFloorRules:
-                    parsed.groups.kelas78?.teacherFloorRules && typeof parsed.groups.kelas78.teacherFloorRules === 'object'
-                      ? parsed.groups.kelas78.teacherFloorRules
-                      : {},
-                  seragamList: Array.isArray(parsed.groups.kelas78?.seragamList)
-                    ? parsed.groups.kelas78.seragamList
-                    : init78.seragamList,
-                  catatanInfo:
-                    typeof parsed.groups.kelas78?.catatanInfo === 'string'
-                      ? parsed.groups.kelas78.catatanInfo
-                      : init78.catatanInfo
-                },
-                kelas9: {
-                  headerInfo: { ...init9.headerInfo, ...(parsed.groups.kelas9?.headerInfo || {}) },
-                  rooms: Array.isArray(parsed.groups.kelas9?.rooms) && parsed.groups.kelas9.rooms.length > 0
-                    ? parsed.groups.kelas9.rooms
-                    : init9.rooms,
-                  days: Array.isArray(parsed.groups.kelas9?.days) && parsed.groups.kelas9.days.length > 0
-                    ? parsed.groups.kelas9.days
-                    : init9.days,
-                  excludedKodes: Array.isArray(parsed.groups.kelas9?.excludedKodes)
-                    ? parsed.groups.kelas9.excludedKodes
-                    : [],
-                  teacherDayRules:
-                    parsed.groups.kelas9?.teacherDayRules && typeof parsed.groups.kelas9.teacherDayRules === 'object'
-                      ? parsed.groups.kelas9.teacherDayRules
-                      : {},
-                  roomFloors:
-                    parsed.groups.kelas9?.roomFloors && typeof parsed.groups.kelas9.roomFloors === 'object'
-                      ? parsed.groups.kelas9.roomFloors
-                      : {},
-                  teacherFloorRules:
-                    parsed.groups.kelas9?.teacherFloorRules && typeof parsed.groups.kelas9.teacherFloorRules === 'object'
-                      ? parsed.groups.kelas9.teacherFloorRules
-                      : {},
-                  seragamList: Array.isArray(parsed.groups.kelas9?.seragamList)
-                    ? parsed.groups.kelas9.seragamList
-                    : init9.seragamList,
-                  catatanInfo:
-                    typeof parsed.groups.kelas9?.catatanInfo === 'string'
-                      ? parsed.groups.kelas9.catatanInfo
-                      : init9.catatanInfo
-                }
+                kelas78: hydrateGroupState('kelas78', parsed.groups.kelas78),
+                kelas9: hydrateGroupState('kelas9', parsed.groups.kelas9),
+                kelas789: hydrateGroupState('kelas789', parsed.groups.kelas789)
               });
             } else if (Array.isArray(parsed.days)) {
               // Migrasi otomatis format v1 lama -> masuk ke kelas78
-              const init78 = createInitialGroupState('kelas78');
               setGroups(prev => ({
                 ...prev,
-                kelas78: {
-                  headerInfo: { ...init78.headerInfo, ...(parsed.headerInfo || {}) },
-                  rooms: Array.isArray(parsed.rooms) && parsed.rooms.length > 0 ? parsed.rooms : init78.rooms,
-                  days: parsed.days.length > 0 ? parsed.days : init78.days,
-                  excludedKodes: Array.isArray(parsed.excludedKodes) ? parsed.excludedKodes : [],
-                  teacherDayRules:
-                    parsed.teacherDayRules && typeof parsed.teacherDayRules === 'object'
-                      ? parsed.teacherDayRules
-                      : {},
-                  roomFloors:
-                    parsed.roomFloors && typeof parsed.roomFloors === 'object'
-                      ? parsed.roomFloors
-                      : {},
-                  teacherFloorRules:
-                    parsed.teacherFloorRules && typeof parsed.teacherFloorRules === 'object'
-                      ? parsed.teacherFloorRules
-                      : {},
-                  seragamList: Array.isArray(parsed.seragamList) ? parsed.seragamList : init78.seragamList,
-                  catatanInfo: typeof parsed.catatanInfo === 'string' ? parsed.catatanInfo : init78.catatanInfo
-                }
+                kelas78: hydrateGroupState('kelas78', parsed)
               }));
             }
           } catch (e) {
@@ -805,16 +819,23 @@ export default function JadwalPengawasTab() {
 
   const stats78 = useMemo(() => computeGroupStats(groups.kelas78, groups.kelas9), [groups]);
   const stats9 = useMemo(() => computeGroupStats(groups.kelas9, groups.kelas78), [groups]);
+  const stats789 = useMemo(() => computeGroupStats(groups.kelas789, null), [groups]);
+  const statsByGroup: Record<ScheduleGroupKey, ReturnType<typeof computeGroupStats>> = {
+    kelas78: stats78,
+    kelas9: stats9,
+    kelas789: stats789
+  };
 
-  const scheduleStats = activeGroup === 'kelas78' ? stats78 : stats9;
-  const otherStats = activeGroup === 'kelas78' ? stats9 : stats78;
+  const scheduleStats = statsByGroup[activeGroup];
+  const pairedStats = pairedGroupKey ? statsByGroup[pairedGroupKey] : null;
+  const activeGroupLabel = activeMeta.label;
 
   const legendTeachers = useMemo(() => {
     if (scheduleStats.usedKodes.length > 0) {
       return scheduleStats.usedKodes.map(kode => {
         const found = teacherByKode.get(kode);
         const curCount = scheduleStats.counts[kode] || 0;
-        const otherCount = otherStats.counts[kode] || 0;
+        const otherCount = pairedStats ? (pairedStats.counts[kode] || 0) : 0;
         return {
           kode,
           nama: found?.nama || `Guru Kode ${kode}`,
@@ -827,9 +848,9 @@ export default function JadwalPengawasTab() {
       kode: t.kode,
       nama: t.nama,
       count: 0,
-      totalCombined: otherStats.counts[t.kode] || 0
+      totalCombined: pairedStats ? (pairedStats.counts[t.kode] || 0) : 0
     }));
-  }, [scheduleStats, otherStats, teacherByKode, activePool]);
+  }, [scheduleStats, pairedStats, teacherByKode, activePool]);
 
   const legendColumns = useMemo(() => {
     const colCount = 3;
@@ -884,11 +905,10 @@ export default function JadwalPengawasTab() {
       const parsed = JSON.parse(rawValue);
       const assignments: any[] = Array.isArray(parsed.assignments) ? parsed.assignments : [];
 
-      // Filter ruang sesuai jenjang aktif (Kelas 7-8 atau Kelas 9)
+      // Filter ruang sesuai jenjang aktif (Kelas 7-8, Kelas 9, atau Gabungan Kelas 7-8-9)
       const matchingAssignments = assignments.filter(a => {
         const g = extractGradeNum(a.rombel || a.kelas || '');
-        if (activeGroup === 'kelas78') return g === 7 || g === 8;
-        return g === 9;
+        return activeMeta.matchesGrade(g);
       });
 
       const sourceList = matchingAssignments.length > 0 ? matchingAssignments : assignments;
@@ -909,7 +929,7 @@ export default function JadwalPengawasTab() {
         toast: true,
         position: 'top-end',
         icon: 'success',
-        title: `${formatted.length} ruang (${activeGroup === 'kelas78' ? 'Kelas 7–8' : 'Kelas 9'}) ditarik.`,
+        title: `${formatted.length} ruang (${activeGroupLabel}) ditarik.`,
         showConfirmButton: false,
         timer: 2000
       });
@@ -1017,13 +1037,13 @@ export default function JadwalPengawasTab() {
   };
 
   const handleCopyDayRulesFromOther = async () => {
-    const sourceRules = otherGroup.teacherDayRules || {};
-    const sourceValidIds = new Set(otherGroup.days.map(d => d.id));
+    const sourceRules = copySourceGroup.teacherDayRules || {};
+    const sourceValidIds = new Set(copySourceGroup.days.map(d => d.id));
     const entries = Object.entries(sourceRules).filter(([, r]) =>
       (r.dayIds || []).some(id => sourceValidIds.has(id))
     );
 
-    const sourceLabel = otherGroupKey === 'kelas78' ? 'Kelas 7–8' : 'Kelas 9';
+    const sourceLabel = copySourceLabel;
     if (entries.length === 0) {
       Swal.fire(
         'Belum Ada Aturan',
@@ -1047,9 +1067,9 @@ export default function JadwalPengawasTab() {
 
     // Petakan ID hari sumber ke ID hari tujuan berdasarkan tanggal -> label -> urutan hari
     const mapSourceDayIdToTarget = (srcDayId: string): string | null => {
-      const srcIdx = otherGroup.days.findIndex(d => d.id === srcDayId);
+      const srcIdx = copySourceGroup.days.findIndex(d => d.id === srcDayId);
       if (srcIdx < 0) return null;
-      const srcDay = otherGroup.days[srcIdx];
+      const srcDay = copySourceGroup.days[srcIdx];
 
       if (srcDay.tanggal) {
         const byIso = currentGroup.days.find(d => d.tanggal === srcDay.tanggal);
@@ -1189,9 +1209,9 @@ export default function JadwalPengawasTab() {
   };
 
   const handleCopyFloorRulesFromOther = async () => {
-    const sourceLabel = otherGroupKey === 'kelas78' ? 'Kelas 7–8' : 'Kelas 9';
-    const srcFloors = otherGroup.roomFloors || {};
-    const srcTeacherRules = otherGroup.teacherFloorRules || {};
+    const sourceLabel = copySourceLabel;
+    const srcFloors = copySourceGroup.roomFloors || {};
+    const srcTeacherRules = copySourceGroup.teacherFloorRules || {};
     const hasSrcFloors = Object.values(srcFloors).some(v => v && v !== '1');
     const srcTeacherCount = Object.values(srcTeacherRules).filter(v => Array.isArray(v) && v.length > 0).length;
 
@@ -1260,7 +1280,7 @@ export default function JadwalPengawasTab() {
       days: prev.days.map(d => {
         if (d.id !== dayId) return d;
         const idx = d.sessions.length;
-        const waktuList = activeGroup === 'kelas78' ? DEFAULT_WAKTU_PAGI : DEFAULT_WAKTU_SIANG;
+        const waktuList = activeGroup === 'kelas9' ? DEFAULT_WAKTU_SIANG : DEFAULT_WAKTU_PAGI;
         return {
           ...d,
           sessions: [
@@ -1306,10 +1326,10 @@ export default function JadwalPengawasTab() {
     }));
   };
 
-  // Salin susunan hari/jam/mapel dari jadwal pasangannya (tanpa menyalin pengawas) untuk mempercepat input
+  // Salin susunan hari/jam/mapel dari jadwal sumber (tanpa menyalin pengawas) untuk mempercepat input
   const handleCopyScheduleStructureFromOther = async () => {
-    const otherLabel = otherGroupKey === 'kelas78' ? 'Kelas 7–8' : 'Kelas 9';
-    const curLabel = activeGroup === 'kelas78' ? 'Kelas 7–8' : 'Kelas 9';
+    const otherLabel = copySourceLabel;
+    const curLabel = activeGroupLabel;
     const res = await Swal.fire({
       title: `Salin Susunan Hari & Mapel dari ${otherLabel}?`,
       text: `Hari, Jam Ke, Waktu, dan Mata Ujian pada jadwal ${curLabel} akan diisi mengikuti jadwal ${otherLabel} (kode pengawas tetap kosong untuk digenerate ulang).`,
@@ -1320,7 +1340,7 @@ export default function JadwalPengawasTab() {
     });
     if (!res.isConfirmed) return;
 
-    const clonedDays: ExamDay[] = otherGroup.days.map(d => ({
+    const clonedDays: ExamDay[] = copySourceGroup.days.map(d => ({
       id: uid('day'),
       tanggal: d.tanggal,
       labelHariTanggal: d.labelHariTanggal,
@@ -1385,27 +1405,29 @@ export default function JadwalPengawasTab() {
       return;
     }
 
-    // Petakan guru yang sedang bertugas di jadwal pasangan pada (tanggal + waktu) yang persis sama, dan beban hariannya
+    // Petakan guru yang sedang bertugas di jadwal pasangan pada (tanggal + waktu) yang persis sama, dan beban hariannya (jika berpasangan)
     const otherBusyAtDateTime = new Map<string, Set<string>>();
     const otherDayCount = new Map<string, Record<string, number>>();
-    otherGroup.days.forEach(od => {
-      const tgl = (od.tanggal || od.labelHariTanggal || '').trim();
-      if (!tgl) return;
-      if (!otherDayCount.has(tgl)) otherDayCount.set(tgl, {});
-      const dMap = otherDayCount.get(tgl)!;
-      od.sessions.forEach(oses => {
-        const wKey = normWaktuKey(oses.waktu);
-        const dtKey = wKey ? `${tgl}|${wKey}` : '';
-        if (dtKey && !otherBusyAtDateTime.has(dtKey)) otherBusyAtDateTime.set(dtKey, new Set());
-        otherGroup.rooms.forEach(rm => {
-          const k = (oses.pengawas?.[rm] || '').trim();
-          if (k) {
-            dMap[k] = (dMap[k] || 0) + 1;
-            if (dtKey) otherBusyAtDateTime.get(dtKey)!.add(k);
-          }
+    if (pairedGroup) {
+      pairedGroup.days.forEach(od => {
+        const tgl = (od.tanggal || od.labelHariTanggal || '').trim();
+        if (!tgl) return;
+        if (!otherDayCount.has(tgl)) otherDayCount.set(tgl, {});
+        const dMap = otherDayCount.get(tgl)!;
+        od.sessions.forEach(oses => {
+          const wKey = normWaktuKey(oses.waktu);
+          const dtKey = wKey ? `${tgl}|${wKey}` : '';
+          if (dtKey && !otherBusyAtDateTime.has(dtKey)) otherBusyAtDateTime.set(dtKey, new Set());
+          pairedGroup.rooms.forEach(rm => {
+            const k = (oses.pengawas?.[rm] || '').trim();
+            if (k) {
+              dMap[k] = (dMap[k] || 0) + 1;
+              if (dtKey) otherBusyAtDateTime.get(dtKey)!.add(k);
+            }
+          });
         });
       });
-    });
+    }
 
     const totalCount: Record<string, number> = {};
     const roomHistory: Record<string, Set<string>> = {};
@@ -1459,7 +1481,7 @@ export default function JadwalPengawasTab() {
             // Prioritas 4: beban hari ini (jadwal ini + jadwal pasangan)
             dayLoad: (dayCount[t.kode] || 0) + (otherSameDayMap[t.kode] || 0),
             // Prioritas 5: beban gabungan total (jadwal ini + jadwal pasangan)
-            combinedTotal: (totalCount[t.kode] || 0) + (otherStats.counts[t.kode] || 0),
+            combinedTotal: (totalCount[t.kode] || 0) + (pairedStats?.counts[t.kode] || 0),
             rand: Math.random()
           };
         });
@@ -1541,7 +1563,7 @@ export default function JadwalPengawasTab() {
       toast: true,
       position: 'top-end',
       icon: 'success',
-      title: `Pengawas ${activeGroup === 'kelas78' ? 'Kelas 7–8' : 'Kelas 9'} digenerate merata (${minV}–${maxV}x/guru).`,
+      title: `Pengawas ${activeGroupLabel} digenerate merata (${minV}–${maxV}x/guru).`,
       showConfirmButton: false,
       timer: 2800
     });
@@ -1578,7 +1600,7 @@ export default function JadwalPengawasTab() {
         toast: true,
         position: 'top-end',
         icon: 'success',
-        title: 'Kedua Jadwal Pengawas (Kelas 7–8 & Kelas 9) berhasil disimpan!',
+        title: 'Semua Jadwal Pengawas (Kelas 7–8, Kelas 9 & Kelas 7–8–9) berhasil disimpan!',
         showConfirmButton: false,
         timer: 2200
       });
@@ -1970,27 +1992,56 @@ export default function JadwalPengawasTab() {
 
   const handleExportExcel = () => {
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, buildSheetForGroup(groups.kelas78, stats78), 'Jadwal Kls 7-8');
-    XLSX.utils.book_append_sheet(wb, buildSheetForGroup(groups.kelas9, stats9), 'Jadwal Kls 9');
+    SCHEDULE_GROUP_KEYS.forEach(gKey => {
+      XLSX.utils.book_append_sheet(
+        wb,
+        buildSheetForGroup(groups[gKey], statsByGroup[gKey]),
+        SCHEDULE_GROUP_META[gKey].excelSheetName
+      );
+    });
 
-    // Sheet 3: Rekap Beban Gabungan
+    // Sheet 4: Rekap Beban Gabungan
     const allUsedKodes = Array.from(
-      new Set([...teachers.map(t => t.kode), ...stats78.usedKodes, ...stats9.usedKodes])
+      new Set([
+        ...teachers.map(t => t.kode),
+        ...stats78.usedKodes,
+        ...stats9.usedKodes,
+        ...stats789.usedKodes
+      ])
     ).sort((a, b) => Number(a) - Number(b));
 
     const rekapRows: (string | number)[][] = [
-      ['No', 'Kode Guru', 'Nama Guru', 'Jabatan', 'Mengawas Kls 7-8', 'Mengawas Kls 9', 'Total Mengawas']
+      [
+        'No',
+        'Kode Guru',
+        'Nama Guru',
+        'Jabatan',
+        'Mengawas Kls 7-8',
+        'Mengawas Kls 9',
+        'Mengawas Kls 7-8-9',
+        'Total Mengawas'
+      ]
     ];
     allUsedKodes.forEach((kode, idx) => {
       const info = teacherByKode.get(kode);
       const c78 = stats78.counts[kode] || 0;
       const c9 = stats9.counts[kode] || 0;
-      rekapRows.push([idx + 1, kode, info?.nama || `Guru Kode ${kode}`, info?.jabatan || 'Guru', c78, c9, c78 + c9]);
+      const c789 = stats789.counts[kode] || 0;
+      rekapRows.push([
+        idx + 1,
+        kode,
+        info?.nama || `Guru Kode ${kode}`,
+        info?.jabatan || 'Guru',
+        c78,
+        c9,
+        c789,
+        c78 + c9 + c789
+      ]);
     });
     const wsRekap = XLSX.utils.aoa_to_sheet(rekapRows);
     XLSX.utils.book_append_sheet(wb, wsRekap, 'Rekap Beban Gabungan');
 
-    XLSX.writeFile(wb, 'Jadwal_Pengawas_Ujian_78_dan_9.xlsx');
+    XLSX.writeFile(wb, 'Jadwal_Pengawas_Ujian_78_9_dan_789.xlsx');
   };
 
   const handleUpdatePengganti = (dayId: string, sessionIds: string[], room: string, value: string) => {
@@ -2017,8 +2068,8 @@ export default function JadwalPengawasTab() {
   };
 
   const handleCopyRoomListText = async (block: RoomListBlock) => {
-    const colHeader = activeGroup === 'kelas78' ? 'PENGAWAS 7 & 8' : 'PENGAWAS 9';
-    const titleGroup = activeGroup === 'kelas78' ? 'Kelas 7 & 8' : 'Kelas 9';
+    const colHeader = activeMeta.roomListColTitle;
+    const titleGroup = activeMeta.longLabel;
     const lines: string[] = [
       `DAFTAR PENGAWAS UJIAN (${titleGroup})`,
       `${block.labelHariTanggal} · ${block.jamLabel}${block.waktuLabel ? ` (${block.waktuLabel})` : ''}`,
@@ -2066,11 +2117,8 @@ export default function JadwalPengawasTab() {
         .replace(/>/g, '&gt;');
 
     const { headerInfo, rooms } = currentGroup;
-    const isK78 = activeGroup === 'kelas78';
-    const docTitle = isK78
-      ? 'DAFTAR NAMA PENGAWAS UJIAN KELAS 7 & 8'
-      : 'DAFTAR NAMA PENGAWAS UJIAN KELAS 9';
-    const colTitle = isK78 ? 'PENGAWAS 7 & 8' : 'PENGAWAS 9';
+    const docTitle = activeMeta.roomListDocTitle;
+    const colTitle = activeMeta.roomListColTitle;
     const originUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
     const sheetsHtml = filteredRoomListBlocks
@@ -2187,11 +2235,8 @@ export default function JadwalPengawasTab() {
     }
 
     const wb = XLSX.utils.book_new();
-    const isK78 = activeGroup === 'kelas78';
-    const docTitle = isK78
-      ? 'DAFTAR NAMA PENGAWAS UJIAN KELAS 7 & 8'
-      : 'DAFTAR NAMA PENGAWAS UJIAN KELAS 9';
-    const colTitle = isK78 ? 'PENGAWAS 7 & 8' : 'PENGAWAS 9';
+    const docTitle = activeMeta.roomListDocTitle;
+    const colTitle = activeMeta.roomListColTitle;
     const usedSheetNames = new Set<string>();
 
     filteredRoomListBlocks.forEach((block, idx) => {
@@ -2228,10 +2273,7 @@ export default function JadwalPengawasTab() {
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
     });
 
-    XLSX.writeFile(
-      wb,
-      isK78 ? 'List_Pengawas_Ruang_Kelas_7-8.xlsx' : 'List_Pengawas_Ruang_Kelas_9.xlsx'
-    );
+    XLSX.writeFile(wb, activeMeta.roomListExcelFilename);
   };
 
   if (loading) {
@@ -2257,8 +2299,6 @@ export default function JadwalPengawasTab() {
     return t.nama.toLowerCase().includes(q) || t.kode.toLowerCase().includes(q) || t.jabatan.toLowerCase().includes(q);
   });
 
-  const activeGroupLabel = activeGroup === 'kelas78' ? 'Kelas 7–8' : 'Kelas 9';
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <datalist id="pengawas-mapel-list">
@@ -2272,62 +2312,51 @@ export default function JadwalPengawasTab() {
         ))}
       </datalist>
 
-      {/* Switcher 2 Jadwal: Kelas 7-8 & Kelas 9 */}
+      {/* Switcher 3 Jadwal: Kelas 7-8, Kelas 9, & Kelas 7-8-9 (Gabungan) */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', borderBottom: '2px solid #e2e8f0', paddingBottom: '14px' }}>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveGroup('kelas78');
-              setShowTeacherPicker(false);
-            }}
-            style={{
-              padding: '10px 18px',
-              borderRadius: '10px',
-              border: activeGroup === 'kelas78' ? '2px solid #0284c7' : '1px solid #cbd5e1',
-              background: activeGroup === 'kelas78' ? '#e0f2fe' : 'white',
-              color: activeGroup === 'kelas78' ? '#0369a1' : '#475569',
-              fontWeight: 700,
-              fontSize: '0.92rem',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <i className="fas fa-layer-group"></i>
-            Jadwal Pengawas Kelas 7–8
-            <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '999px', background: activeGroup === 'kelas78' ? '#0284c7' : '#e2e8f0', color: activeGroup === 'kelas78' ? 'white' : '#475569' }}>
-              {stats78.filledSlots}/{stats78.totalSlots}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setActiveGroup('kelas9');
-              setShowTeacherPicker(false);
-            }}
-            style={{
-              padding: '10px 18px',
-              borderRadius: '10px',
-              border: activeGroup === 'kelas9' ? '2px solid #0284c7' : '1px solid #cbd5e1',
-              background: activeGroup === 'kelas9' ? '#e0f2fe' : 'white',
-              color: activeGroup === 'kelas9' ? '#0369a1' : '#475569',
-              fontWeight: 700,
-              fontSize: '0.92rem',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <i className="fas fa-graduation-cap"></i>
-            Jadwal Pengawas Kelas 9
-            <span style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '999px', background: activeGroup === 'kelas9' ? '#0284c7' : '#e2e8f0', color: activeGroup === 'kelas9' ? 'white' : '#475569' }}>
-              {stats9.filledSlots}/{stats9.totalSlots}
-            </span>
-          </button>
+          {SCHEDULE_GROUP_KEYS.map(gKey => {
+            const meta = SCHEDULE_GROUP_META[gKey];
+            const gStats = statsByGroup[gKey];
+            const isActive = activeGroup === gKey;
+            return (
+              <button
+                key={gKey}
+                type="button"
+                onClick={() => {
+                  setActiveGroup(gKey);
+                  setShowTeacherPicker(false);
+                }}
+                style={{
+                  padding: '10px 18px',
+                  borderRadius: '10px',
+                  border: isActive ? '2px solid #0284c7' : '1px solid #cbd5e1',
+                  background: isActive ? '#e0f2fe' : 'white',
+                  color: isActive ? '#0369a1' : '#475569',
+                  fontWeight: 700,
+                  fontSize: '0.92rem',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <i className={meta.iconClass}></i>
+                {meta.buttonLabel}
+                <span
+                  style={{
+                    fontSize: '0.75rem',
+                    padding: '2px 8px',
+                    borderRadius: '999px',
+                    background: isActive ? '#0284c7' : '#e2e8f0',
+                    color: isActive ? 'white' : '#475569'
+                  }}
+                >
+                  {gStats.filledSlots}/{gStats.totalSlots}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -2463,10 +2492,10 @@ export default function JadwalPengawasTab() {
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#115e59' }}>
                   <i className="fas fa-clipboard-list" style={{ marginRight: '8px' }}></i>
-                  List Nama Pengawas Ujian per Ruang — {activeGroup === 'kelas78' ? 'Kelas 7 & 8' : 'Kelas 9'}
+                  List Nama Pengawas Ujian per Ruang — {activeMeta.longLabel}
                 </h3>
                 <div style={{ fontSize: '0.8rem', color: '#0f766e', marginTop: '3px' }}>
-                  Format kolom <b>RUANG | {activeGroup === 'kelas78' ? 'PENGAWAS 7 & 8' : 'PENGAWAS 9'} | PENGGANTI</b> (terpisah antara Kelas 7–8 dan Kelas 9).
+                  Format kolom <b>RUANG | {activeMeta.roomListColTitle} | PENGGANTI</b> ({activeGroupLabel}).
                 </div>
               </div>
 
@@ -2592,7 +2621,7 @@ export default function JadwalPengawasTab() {
                           RUANG
                         </th>
                         <th style={{ border: '1.5px solid #0f172a', padding: '9px 12px', textAlign: 'center', width: '48%', fontWeight: 900, color: '#0f172a' }}>
-                          {activeGroup === 'kelas78' ? 'PENGAWAS 7 & 8' : 'PENGAWAS 9'}
+                          {activeMeta.roomListColTitle}
                         </th>
                         <th style={{ border: '1.5px solid #0f172a', padding: '9px 12px', textAlign: 'center', fontWeight: 900, color: '#0f172a' }}>
                           PENGGANTI
@@ -2909,7 +2938,7 @@ export default function JadwalPengawasTab() {
                   style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0369a1', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                 >
                   <i className="fas fa-download"></i>
-                  Tarik Data dari {otherGroupKey === 'kelas78' ? 'Kelas 7–8' : 'Kelas 9'}
+                  Tarik Data dari {copySourceLabel}
                 </button>
                 {activeRuleEntries.length > 0 && (
                   <button
@@ -3155,7 +3184,7 @@ export default function JadwalPengawasTab() {
                   style={{ padding: '5px 10px', borderRadius: '6px', border: '1px solid #bae6fd', background: '#f0f9ff', color: '#0369a1', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                 >
                   <i className="fas fa-download"></i>
-                  Tarik Setting Lantai dari {otherGroupKey === 'kelas78' ? 'Kelas 7–8' : 'Kelas 9'}
+                  Tarik Setting Lantai dari {copySourceLabel}
                 </button>
                 <button
                   type="button"
@@ -3428,7 +3457,7 @@ export default function JadwalPengawasTab() {
               onClick={handleCopyScheduleStructureFromOther}
               style={{ background: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1', padding: '7px 12px', borderRadius: '6px', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
             >
-              <i className="fas fa-copy"></i> Salin Hari &amp; Mapel dari {otherGroupKey === 'kelas78' ? 'Kelas 7–8' : 'Kelas 9'}
+              <i className="fas fa-copy"></i> Salin Hari &amp; Mapel dari {copySourceLabel}
             </button>
             <button
               type="button"
@@ -3949,7 +3978,7 @@ export default function JadwalPengawasTab() {
                 const busyRoom = busyKodesInEditingSession.get(t.kode);
                 const isSelected = editingCell.currentKode === t.kode;
                 const totalTugas = scheduleStats.counts[t.kode] || 0;
-                const combinedTugas = totalTugas + (otherStats.counts[t.kode] || 0);
+                const combinedTugas = totalTugas + (pairedStats?.counts[t.kode] || 0);
                 return (
                   <button
                     key={t.kode}
