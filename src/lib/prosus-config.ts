@@ -210,6 +210,9 @@ export function getProgramSasStorageMapel(kategori: PKCategoryKey): string {
   return `SAS_PK_${kategori}`;
 }
 
+export const PK_LAYANAN_UMUM_STS_MAPEL = 'STS_PK_LAYANAN_UMUM';
+export const PK_LAYANAN_UMUM_SAS_MAPEL = 'SAS_PK_LAYANAN_UMUM';
+
 export function computeMapelAverage(scores: Pick<PKMapelScores, PKScoreField>): number | null {
   const materiVals = (['m1', 'm2', 'm3'] as PKScoreField[])
     .map((f) => parsePKNumericScore(scores[f]))
@@ -254,6 +257,7 @@ export type PKDeskripsiTierKey = 'A' | 'B' | 'C' | 'D';
 
 export type PKDeskripsiProgramKey =
   | PKCategoryKey
+  | 'LAYANAN UMUM'
   | 'Bahasa Arab (Layanan Umum)'
   | 'Bahasa Inggris (Layanan Umum)';
 
@@ -274,8 +278,7 @@ export const PK_DESKRIPSI_PROGRAMS: { key: PKDeskripsiProgramKey; label: string;
   { key: 'MULTILINGUAL', label: 'Multilingual', group: 'Kelas Program Khusus' },
   { key: 'KETERAMPILAN KREATIF PRODUKTIF', label: 'Keterampilan Kreatif Produktif', group: 'Kelas Program Khusus' },
   { key: 'AGAMA TAHFIDZ', label: 'Agama & Tahfidz', group: 'Kelas Program Khusus' },
-  { key: 'Bahasa Arab (Layanan Umum)', label: 'Bahasa Arab (Layanan Umum)', group: 'Program Khusus Layanan Umum' },
-  { key: 'Bahasa Inggris (Layanan Umum)', label: 'Bahasa Inggris (Layanan Umum)', group: 'Program Khusus Layanan Umum' },
+  { key: 'LAYANAN UMUM', label: 'Layanan Umum (B. Arab & B. Inggris)', group: 'Program Khusus Layanan Umum' },
 ];
 
 export function createDefaultPKDeskripsiConfig(): PKDeskripsiConfig {
@@ -309,6 +312,12 @@ export function createDefaultPKDeskripsiConfig(): PKDeskripsiConfig {
       B: 'Baik dalam penguasaan materi keagamaan dan mampu menjaga kelancaran hafalan ayat sesuai target yang ditentukan.',
       C: 'Cukup baik dalam memahami materi agama dan hafalan Al-Qur\'an, perlu murajaah lebih rutin untuk menjaga kelancaran dan tajwid.',
       D: 'Memerlukan bimbingan intensif dan pendampingan rutin dalam pemahaman materi keagamaan serta murajaah hafalan.',
+    },
+    'LAYANAN UMUM': {
+      A: 'Sangat baik dalam penguasaan kosakata, pemahaman teks sederhana, serta terampil mempraktikkan percakapan Bahasa Arab dan Bahasa Inggris layanan umum.',
+      B: 'Baik dalam memahami kosakata dasar serta mampu menyusun dan mempraktikkan ungkapan sederhana Bahasa Arab dan Bahasa Inggris layanan umum.',
+      C: 'Cukup memahami kosakata dasar Bahasa Arab dan Bahasa Inggris layanan umum, perlu penguatan pelafalan dan latihan percakapan lebih rutin.',
+      D: 'Memerlukan bimbingan lebih lanjut dalam mengenal kosakata dasar serta melatih keberanian berbahasa Arab dan Bahasa Inggris layanan umum.',
     },
     'Bahasa Arab (Layanan Umum)': {
       A: 'Sangat baik dalam penguasaan mufrodat, pemahaman teks sederhana, serta terampil mempraktikkan percakapan Bahasa Arab.',
