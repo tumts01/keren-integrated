@@ -23,10 +23,11 @@ import {
   createDefaultPKDeskripsiConfig,
   getLayananUmumMapels,
   getProgramSasStorageMapel,
+  getProgramStsStorageMapel,
   resolvePKDeskripsi,
 } from '@/lib/prosus-config';
 
-type PKPersistField = PKScoreField | 'sas_program' | 'catatan';
+type PKPersistField = PKScoreField | 'sts_program' | 'sas_program' | 'catatan';
 
 interface PKStudentRow {
   induk: string;
@@ -34,6 +35,7 @@ interface PKStudentRow {
   jk: string;
   nisn?: string;
   scoresByMapel: Record<string, PKMapelScores>;
+  stsProgram: string;
   sasProgram: string;
   nilaiAkhirProgram: number | null;
   catatan: string;
@@ -85,6 +87,7 @@ export default function NilaiSiswaPage() {
   const [kelas, setKelas] = useState<string>('');
   const [kategori, setKategori] = useState<PKCategoryKey>('SAINS RISET');
   const [focusedMapel, setFocusedMapel] = useState<string>('ALL');
+  const programStsKey = getProgramStsStorageMapel(kategori);
   const programSasKey = getProgramSasStorageMapel(kategori);
 
   // Loaded Data States
@@ -229,6 +232,7 @@ export default function NilaiSiswaPage() {
       }
 
       const loadedKategori = (json.kategori || kategori) as PKCategoryKey;
+      const loadedProgramStsKey = getProgramStsStorageMapel(loadedKategori);
       const loadedProgramSasKey = getProgramSasStorageMapel(loadedKategori);
       const loadedMapels: PKMapelHeader[] = json.mapels || PK_CATEGORY_MAP[loadedKategori].mapels;
       const loadedLayananUmumMapels: PKMapelHeader[] =
@@ -236,6 +240,7 @@ export default function NilaiSiswaPage() {
         getLayananUmumMapels(loadedKategori).map((m) => ({ name: m.name, shortName: m.shortName }));
 
       const loadedStudents: PKStudentRow[] = (json.students || []).map((st: any) => {
+        const stsProgram = String(st.stsProgram ?? '');
         const sasProgram = String(st.sasProgram ?? '');
         const scoresByMapel = st.scoresByMapel || {};
         const nilaiAkhirProgram =
@@ -249,6 +254,7 @@ export default function NilaiSiswaPage() {
         return {
           ...st,
           scoresByMapel,
+          stsProgram,
           sasProgram,
           nilaiAkhirProgram,
           catatan: String(st.catatan ?? ''),
@@ -263,6 +269,7 @@ export default function NilaiSiswaPage() {
             snapshot[`${st.induk}::${m.name}::${f.key}`] = String(sc?.[f.key] ?? '');
           }
         }
+        snapshot[`${st.induk}::${loadedProgramStsKey}::sts_program`] = String(st.stsProgram ?? '');
         snapshot[`${st.induk}::${loadedProgramSasKey}::sas_program`] = String(st.sasProgram ?? '');
         snapshot[`${st.induk}::CATATAN_PENGAJAR::catatan`] = String(st.catatan ?? '');
       }
@@ -296,6 +303,7 @@ export default function NilaiSiswaPage() {
 
     const getRowFieldVal = (st: PKStudentRow): string => {
       if (field === 'catatan') return String(st.catatan ?? '').trim();
+      if (field === 'sts_program') return String(st.stsProgram ?? '').trim();
       if (field === 'sas_program') return String(st.sasProgram ?? '').trim();
       return String(st.scoresByMapel[mapelName]?.[field] ?? '').trim();
     };
@@ -500,39 +508,52 @@ export default function NilaiSiswaPage() {
     persistColumnField(mapelName, field, st.induk);
   };
 
-  const handleProgramSasChange = (rowIdx: number, rawValue: string) => {
+  const handleProgramScoreChange = (
+    rowIdx: number,
+    field: 'sts_program' | 'sas_program',
+    rawValue: string
+  ) => {
     const normalized = normalizeScoreInput(rawValue, false);
 
     const updated = [...studentsRef.current];
     const targetStudent = updated[rowIdx];
     if (!targetStudent) return;
 
+    const nextStsProgram = field === 'sts_program' ? normalized : targetStudent.stsProgram;
+    const nextSasProgram = field === 'sas_program' ? normalized : targetStudent.sasProgram;
+
     updated[rowIdx] = {
       ...targetStudent,
-      sasProgram: normalized,
-      nilaiAkhirProgram: computeProgramFinalScore(
-        mapels.map((m) => m.name),
-        targetStudent.scoresByMapel,
-        normalized
-      ),
+      stsProgram: nextStsProgram,
+      sasProgram: nextSasProgram,
+      nilaiAkhirProgram:
+        field === 'sas_program'
+          ? computeProgramFinalScore(
+              mapels.map((m) => m.name),
+              targetStudent.scoresByMapel,
+              nextSasProgram
+            )
+          : targetStudent.nilaiAkhirProgram,
     };
 
     studentsRef.current = updated;
     setStudents(updated);
 
-    syncDirtyCell(`${targetStudent.induk}::${programSasKey}::sas_program`, normalized);
+    const storageKey = field === 'sts_program' ? programStsKey : programSasKey;
+    syncDirtyCell(`${targetStudent.induk}::${storageKey}::${field}`, normalized);
   };
 
-  const handleProgramSasBlur = (rowIdx: number) => {
+  const handleProgramScoreBlur = (rowIdx: number, field: 'sts_program' | 'sas_program') => {
     const st = studentsRef.current[rowIdx];
     if (!st) return;
 
-    const curVal = String(st.sasProgram ?? '').trim();
+    const curVal = String((field === 'sts_program' ? st.stsProgram : st.sasProgram) ?? '').trim();
     if (curVal.endsWith('.')) {
-      handleProgramSasChange(rowIdx, curVal.slice(0, -1));
+      handleProgramScoreChange(rowIdx, field, curVal.slice(0, -1));
     }
 
-    persistColumnField(programSasKey, 'sas_program', st.induk);
+    const storageKey = field === 'sts_program' ? programStsKey : programSasKey;
+    persistColumnField(storageKey, field, st.induk);
   };
 
   // Paste 1D/2D values directly from Excel (columns separated by tab, rows by newline)
@@ -541,7 +562,7 @@ export default function NilaiSiswaPage() {
     tableMapels: PKMapelHeader[],
     startRowIdx: number,
     startFlatColIdx: number,
-    sharedProgramSas = false
+    sharedProgramAssessments = false
   ) => {
     const rawText = e.clipboardData.getData('text/plain') || e.clipboardData.getData('text');
     if (!rawText) return;
@@ -559,14 +580,15 @@ export default function NilaiSiswaPage() {
 
     e.preventDefault();
 
-    const fieldsPerMapel = sharedProgramSas ? PK_MAPEL_BASE_FIELDS : PK_SCORE_FIELDS;
-    const flatSlots: Array<{ mapelName: string; field: PKScoreField | 'sas_program' }> = [];
+    const fieldsPerMapel = sharedProgramAssessments ? PK_MAPEL_BASE_FIELDS : PK_SCORE_FIELDS;
+    const flatSlots: Array<{ mapelName: string; field: PKScoreField | 'sts_program' | 'sas_program' }> = [];
     for (const m of tableMapels) {
       for (const f of fieldsPerMapel) {
         flatSlots.push({ mapelName: m.name, field: f.key });
       }
     }
-    if (sharedProgramSas) {
+    if (sharedProgramAssessments) {
+      flatSlots.push({ mapelName: programStsKey, field: 'sts_program' });
       flatSlots.push({ mapelName: programSasKey, field: 'sas_program' });
     }
 
@@ -574,7 +596,10 @@ export default function NilaiSiswaPage() {
     if (currentRows.length === 0 || flatSlots.length === 0) return;
 
     const updated = [...currentRows];
-    const touchedColumns = new Map<string, { mapelName: string; field: PKScoreField | 'sas_program' }>();
+    const touchedColumns = new Map<
+      string,
+      { mapelName: string; field: PKScoreField | 'sts_program' | 'sas_program' }
+    >();
     const dirtyDiff: Record<string, boolean> = {};
     let appliedCells = 0;
 
@@ -587,6 +612,7 @@ export default function NilaiSiswaPage() {
       if (!targetStudent) return;
 
       let nextScoresByMapel = targetStudent.scoresByMapel;
+      let nextStsProgram = targetStudent.stsProgram;
       let nextSasProgram = targetStudent.sasProgram;
       let scoresModified = false;
       let rowModified = false;
@@ -598,7 +624,9 @@ export default function NilaiSiswaPage() {
         const normalized = normalizeScoreInput(rawCell, true);
         rowModified = true;
 
-        if (slot.field === 'sas_program') {
+        if (slot.field === 'sts_program') {
+          nextStsProgram = normalized;
+        } else if (slot.field === 'sas_program') {
           nextSasProgram = normalized;
         } else {
           if (!scoresModified) {
@@ -629,6 +657,7 @@ export default function NilaiSiswaPage() {
         updated[targetRowIdx] = {
           ...targetStudent,
           scoresByMapel: nextScoresByMapel,
+          stsProgram: nextStsProgram,
           sasProgram: nextSasProgram,
           nilaiAkhirProgram: computeProgramFinalScore(
             mapels.map((m) => m.name),
@@ -1082,13 +1111,14 @@ export default function NilaiSiswaPage() {
     tableIdPrefix: string,
     headerOffset = 0,
     includeCatatanCol = false,
-    sharedProgramSas = false
+    sharedProgramAssessments = false
   ) => {
-    const fieldsPerMapel = sharedProgramSas ? PK_MAPEL_BASE_FIELDS : PK_SCORE_FIELDS;
-    const colsPerMapel = sharedProgramSas ? PK_MAPEL_BASE_FIELDS.length : PK_SCORE_FIELDS.length + 1;
-    const hasSubHeaderRow = tableMapels.length > 0 || sharedProgramSas;
-    const totalCols = tableMapels.length * fieldsPerMapel.length + (sharedProgramSas ? 1 : 0);
-    const programSasFlatColIdx = tableMapels.length * fieldsPerMapel.length;
+    const fieldsPerMapel = sharedProgramAssessments ? PK_MAPEL_BASE_FIELDS : PK_SCORE_FIELDS;
+    const colsPerMapel = sharedProgramAssessments ? PK_MAPEL_BASE_FIELDS.length : PK_SCORE_FIELDS.length + 1;
+    const hasSubHeaderRow = tableMapels.length > 0 || sharedProgramAssessments;
+    const totalCols = tableMapels.length * fieldsPerMapel.length + (sharedProgramAssessments ? 2 : 0);
+    const programStsFlatColIdx = tableMapels.length * fieldsPerMapel.length;
+    const programSasFlatColIdx = programStsFlatColIdx + 1;
 
     return (
       <div className={styles.matrixWrapper}>
@@ -1112,13 +1142,13 @@ export default function NilaiSiswaPage() {
                   </th>
                 );
               })}
-              {sharedProgramSas && (
+              {sharedProgramAssessments && (
                 <th
-                  colSpan={2}
+                  colSpan={3}
                   className={`${styles.groupHeaderProgram} ${styles.groupEndCol}`}
-                  title={`SAS dan Nilai Akhir gabungan Program Khusus ${PK_CATEGORY_MAP[kategori].label}`}
+                  title={`STS, SAS, dan Nilai Akhir gabungan Program Khusus ${PK_CATEGORY_MAP[kategori].label}`}
                 >
-                  SAS &amp; NA ({PK_CATEGORY_MAP[kategori].label})
+                  STS, SAS &amp; NA ({PK_CATEGORY_MAP[kategori].label})
                 </th>
               )}
               {includeCatatanCol && (
@@ -1142,7 +1172,7 @@ export default function NilaiSiswaPage() {
                 {tableMapels.map((m) => (
                   <React.Fragment key={`${m.name}-sub`}>
                     {fieldsPerMapel.map((f, fIdx) => {
-                      const isGroupEnd = sharedProgramSas && fIdx === fieldsPerMapel.length - 1;
+                      const isGroupEnd = sharedProgramAssessments && fIdx === fieldsPerMapel.length - 1;
                       return (
                         <th
                           key={`${m.name}-${f.key}`}
@@ -1153,7 +1183,7 @@ export default function NilaiSiswaPage() {
                         </th>
                       );
                     })}
-                    {!sharedProgramSas && (
+                    {!sharedProgramAssessments && (
                       <th
                         className={`${styles.subHeaderAvg} ${styles.groupEndCol}`}
                         title="Rata-rata = 40% Rata-rata Materi (M1–M3) + 60% SAS"
@@ -1163,8 +1193,15 @@ export default function NilaiSiswaPage() {
                     )}
                   </React.Fragment>
                 ))}
-                {sharedProgramSas && (
+                {sharedProgramAssessments && (
                   <>
+                    <th
+                      className={styles.subHeaderCell}
+                      style={{ background: '#eef2ff', color: '#3730a3' }}
+                      title={`STS Program Khusus (${PK_CATEGORY_MAP[kategori].label})`}
+                    >
+                      STS
+                    </th>
                     <th
                       className={styles.subHeaderCell}
                       style={{ background: '#eef2ff', color: '#3730a3' }}
@@ -1186,9 +1223,6 @@ export default function NilaiSiswaPage() {
           </thead>
           <tbody>
             {students.map((st, rowIdx) => {
-              const programSasCellKey = `${st.induk}::${programSasKey}::sas_program`;
-              const isProgramSasDirty = Boolean(dirtyCells[programSasCellKey]);
-              const isProgramSasJustSaved = Boolean(justSavedCells[programSasCellKey]);
               const catatanKey = `${st.induk}::CATATAN_PENGAJAR::catatan`;
               const isCatatanDirty = Boolean(dirtyCells[catatanKey]);
               const isCatatanJustSaved = Boolean(justSavedCells[catatanKey]);
@@ -1215,7 +1249,7 @@ export default function NilaiSiswaPage() {
                           const cellKey = `${st.induk}::${m.name}::${f.key}`;
                           const isDirty = Boolean(dirtyCells[cellKey]);
                           const isJustSaved = Boolean(justSavedCells[cellKey]);
-                          const isGroupEnd = sharedProgramSas && fIdx === fieldsPerMapel.length - 1;
+                          const isGroupEnd = sharedProgramAssessments && fIdx === fieldsPerMapel.length - 1;
 
                           return (
                             <td
@@ -1237,14 +1271,14 @@ export default function NilaiSiswaPage() {
                                 onChange={(e) => handleCellChange(rowIdx, m.name, f.key, e.target.value)}
                                 onBlur={() => handleCellBlur(rowIdx, m.name, f.key)}
                                 onKeyDown={(e) => handleCellKeyDown(e, tableIdPrefix, rowIdx, flatColIdx, totalCols)}
-                                onPaste={(e) => handleCellPaste(e, tableMapels, rowIdx, flatColIdx, sharedProgramSas)}
+                                onPaste={(e) => handleCellPaste(e, tableMapels, rowIdx, flatColIdx, sharedProgramAssessments)}
                                 onFocus={(e) => e.currentTarget.select()}
                                 aria-label={`${st.nama} ${m.name} ${f.label}`}
                               />
                             </td>
                           );
                         })}
-                        {!sharedProgramSas && (
+                        {!sharedProgramAssessments && (
                           <td className={styles.avgCell}>
                             {mScores.rata !== null ? mScores.rata : '-'}
                           </td>
@@ -1253,29 +1287,53 @@ export default function NilaiSiswaPage() {
                     );
                   })}
 
-                  {sharedProgramSas && (
+                  {sharedProgramAssessments && (
                     <>
-                      <td className={styles.scoreCell} style={{ background: '#f5f7ff' }}>
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          data-cell-coord={`${tableIdPrefix}-${rowIdx}-${programSasFlatColIdx}`}
-                          className={`${styles.cellInput} ${
-                            isProgramSasDirty
-                              ? styles.cellInputDirty
-                              : isProgramSasJustSaved
-                              ? styles.cellInputJustSaved
-                              : ''
-                          }`}
-                          value={st.sasProgram ?? ''}
-                          onChange={(e) => handleProgramSasChange(rowIdx, e.target.value)}
-                          onBlur={() => handleProgramSasBlur(rowIdx)}
-                          onKeyDown={(e) => handleCellKeyDown(e, tableIdPrefix, rowIdx, programSasFlatColIdx, totalCols)}
-                          onPaste={(e) => handleCellPaste(e, tableMapels, rowIdx, programSasFlatColIdx, true)}
-                          onFocus={(e) => e.currentTarget.select()}
-                          aria-label={`${st.nama} SAS ${PK_CATEGORY_MAP[kategori].label}`}
-                        />
-                      </td>
+                      {(
+                        [
+                          {
+                            field: 'sts_program' as const,
+                            label: 'STS',
+                            storageKey: programStsKey,
+                            flatColIdx: programStsFlatColIdx,
+                            value: st.stsProgram ?? '',
+                          },
+                          {
+                            field: 'sas_program' as const,
+                            label: 'SAS',
+                            storageKey: programSasKey,
+                            flatColIdx: programSasFlatColIdx,
+                            value: st.sasProgram ?? '',
+                          },
+                        ] as const
+                      ).map((item) => {
+                        const pKey = `${st.induk}::${item.storageKey}::${item.field}`;
+                        const isPDirty = Boolean(dirtyCells[pKey]);
+                        const isPJustSaved = Boolean(justSavedCells[pKey]);
+                        return (
+                          <td key={pKey} className={styles.scoreCell} style={{ background: '#f5f7ff' }}>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              data-cell-coord={`${tableIdPrefix}-${rowIdx}-${item.flatColIdx}`}
+                              className={`${styles.cellInput} ${
+                                isPDirty
+                                  ? styles.cellInputDirty
+                                  : isPJustSaved
+                                  ? styles.cellInputJustSaved
+                                  : ''
+                              }`}
+                              value={item.value}
+                              onChange={(e) => handleProgramScoreChange(rowIdx, item.field, e.target.value)}
+                              onBlur={() => handleProgramScoreBlur(rowIdx, item.field)}
+                              onKeyDown={(e) => handleCellKeyDown(e, tableIdPrefix, rowIdx, item.flatColIdx, totalCols)}
+                              onPaste={(e) => handleCellPaste(e, tableMapels, rowIdx, item.flatColIdx, true)}
+                              onFocus={(e) => e.currentTarget.select()}
+                              aria-label={`${st.nama} ${item.label} ${PK_CATEGORY_MAP[kategori].label}`}
+                            />
+                          </td>
+                        );
+                      })}
                       <td className={`${styles.avgCell} ${styles.programAvgCell}`}>
                         {st.nilaiAkhirProgram !== null ? st.nilaiAkhirProgram : '-'}
                       </td>
@@ -1316,7 +1374,7 @@ export default function NilaiSiswaPage() {
     <div className={styles.container}>
       <h1 className={styles.title}>Nilai Siswa Program Khusus</h1>
       <p className={styles.subtitle}>
-        Input langsung dan kelola nilai Program Khusus berdasarkan 5 kategori terpadu (Materi 1–3 &amp; STS per mapel, 1 SAS &amp; 1 NA per program khusus) dengan auto-save.
+        Input langsung dan kelola nilai Program Khusus berdasarkan 5 kategori terpadu (Materi 1–3 per mapel; 1 STS, 1 SAS &amp; 1 NA per program khusus) dengan auto-save.
       </p>
 
       {/* Main Sub-Tabs */}
@@ -1509,7 +1567,7 @@ export default function NilaiSiswaPage() {
                     className={`${styles.mapelPill} ${focusedMapel === 'SAS_PROGRAM' ? styles.mapelPillActive : ''}`}
                     onClick={() => setFocusedMapel('SAS_PROGRAM')}
                   >
-                    🎯 SAS &amp; NA Program
+                    🎯 STS, SAS &amp; NA Program
                   </button>
                   <button
                     type="button"
@@ -1571,12 +1629,12 @@ export default function NilaiSiswaPage() {
                 </div>
               </div>
 
-              {/* Fokus SAS & NA Program Khusus saja */}
+              {/* Fokus STS, SAS & NA Program Khusus saja */}
               {focusedMapel === 'SAS_PROGRAM' && (
                 <div style={{ marginBottom: '12px' }}>
                   <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#312e81', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ background: '#e0e7ff', color: '#312e81', padding: '2px 8px', borderRadius: '6px', fontSize: '0.78rem' }}>🎯</span>
-                    SAS &amp; Nilai Akhir Program Khusus — Kelas {kelas} ({PK_CATEGORY_MAP[kategori].label})
+                    STS, SAS &amp; Nilai Akhir Program Khusus — Kelas {kelas} ({PK_CATEGORY_MAP[kategori].label})
                   </div>
                   {renderScoreMatrixTable([], 'sas-program-only', 0, false, true)}
                 </div>
@@ -1593,7 +1651,7 @@ export default function NilaiSiswaPage() {
                 </div>
               )}
 
-              {/* Tabel A: Program Khusus Minat & Bakat (+ 1 SAS & 1 NA Program Khusus + kolom Catatan Pengajar di akhir) */}
+              {/* Tabel A: Program Khusus Minat & Bakat (+ 1 STS, 1 SAS & 1 NA Program Khusus + kolom Catatan Pengajar di akhir) */}
               {visibleMapels.length > 0 && (
                 <div style={{ marginBottom: visibleLayananUmumMapels.length > 0 ? '24px' : 0 }}>
                   {layananUmumMapels.length > 0 && (
@@ -1601,7 +1659,7 @@ export default function NilaiSiswaPage() {
                       <span style={{ background: '#dbeafe', color: '#1d4ed8', padding: '2px 8px', borderRadius: '6px', fontSize: '0.78rem' }}>A</span>
                       Program Khusus Minat &amp; Bakat — {PK_CATEGORY_MAP[kategori].label}
                       <span style={{ fontSize: '0.78rem', fontWeight: 500, color: '#64748b' }}>
-                        (Materi 1–3 &amp; STS per mapel; SAS &amp; NA dijadikan 1 per program khusus)
+                        (Materi 1–3 per mapel; STS, SAS &amp; NA dijadikan 1 per program khusus)
                       </span>
                     </div>
                   )}

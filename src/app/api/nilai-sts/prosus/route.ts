@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { MAP_MINAT_BAKAT, getProgramStsStorageMapel } from '@/lib/prosus-config';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,14 +16,18 @@ export async function GET(req: Request) {
     }
 
     const mapels = prosusMapelStr.split(',').map(m => m.trim());
+    const kategoriKey = MAP_MINAT_BAKAT[kelas.trim().toUpperCase()];
+    const programStsMapel = kategoriKey ? getProgramStsStorageMapel(kategoriKey) : null;
+    const targetMapels = programStsMapel ? [...mapels, programStsMapel] : mapels;
 
-    // Fetch grades for all mapels for this class
+    // Fetch grades for all mapels (plus unified Program Khusus STS row) for this class
     const { data: pkData, error } = await supabase
       .from('nilai_pk')
       .select('*')
       .eq('tahun_ajaran', tahunAjaran)
       .eq('kelas', kelas)
-      .in('mata_pelajaran', mapels);
+      .in('mata_pelajaran', targetMapels)
+      .order('updated_at', { ascending: true });
 
     if (error) throw error;
 
@@ -38,10 +43,35 @@ export async function GET(req: Request) {
     });
 
     const studentMap: Record<string, ReturnType<typeof emptyScores>> = {};
+    let hasExplicitProgramSts = false;
+    const programStsByStudent: Record<string, string> = {};
 
     if (pkData && pkData.length > 0) {
       for (const row of pkData) {
         if (!row.data_nilai || !Array.isArray(row.data_nilai)) continue;
+
+        if (
+          programStsMapel &&
+          String(row.tipe || '').trim().toLowerCase() === 'sts' &&
+          String(row.mata_pelajaran || '').trim().toUpperCase() === programStsMapel.toUpperCase()
+        ) {
+          hasExplicitProgramSts = true;
+          for (const item of row.data_nilai) {
+            const identifier = (item.induk || item.nisn || '').toString().trim();
+            if (!identifier) continue;
+            if (!studentMap[identifier]) studentMap[identifier] = emptyScores();
+            const raw = String(item.nilai ?? item.score ?? '').trim();
+            if (!raw) {
+              programStsByStudent[identifier] = '';
+            } else {
+              const val = parseFloat(raw.replace(',', '.'));
+              if (!isNaN(val)) {
+                programStsByStudent[identifier] = String(Math.round(val));
+              }
+            }
+          }
+          continue;
+        }
 
         let scoreKey = '';
         if (row.tipe === 'sts') scoreKey = 'sts';
@@ -101,7 +131,9 @@ export async function GET(req: Request) {
       const tp6 = calcAvg(6);
       
       let sts = '';
-      if (scores.sts.length > 0) {
+      if (hasExplicitProgramSts) {
+        sts = programStsByStudent[identifier] ?? '';
+      } else if (scores.sts.length > 0) {
         sts = String(Math.round(scores.sts.reduce((a,b)=>a+b,0) / scores.sts.length));
       }
 

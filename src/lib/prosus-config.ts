@@ -8,7 +8,7 @@ export type PKCategoryKey =
   | 'AGAMA TAHFIDZ';
 
 export type PKScoreField = 'm1' | 'm2' | 'm3' | 'sts' | 'sas';
-export type PKMapelBaseField = 'm1' | 'm2' | 'm3' | 'sts';
+export type PKMapelBaseField = 'm1' | 'm2' | 'm3';
 
 export interface PKMapelDef {
   /** Canonical name saved to database for new writes */
@@ -159,7 +159,6 @@ export const PK_MAPEL_BASE_FIELDS: { key: PKMapelBaseField; label: string; short
   { key: 'm1', label: 'Materi 1', shortLabel: 'M1' },
   { key: 'm2', label: 'Materi 2', shortLabel: 'M2' },
   { key: 'm3', label: 'Materi 3', shortLabel: 'M3' },
-  { key: 'sts', label: 'STS', shortLabel: 'STS' },
 ];
 
 export const PK_SCORE_FIELDS: { key: PKScoreField; label: string; shortLabel: string }[] = [
@@ -201,6 +200,10 @@ function combineMateriAndSas(avgMateri: number | null, sasVal: number | null): n
     return Math.round(sasVal);
   }
   return null;
+}
+
+export function getProgramStsStorageMapel(kategori: PKCategoryKey): string {
+  return `STS_PK_${kategori}`;
 }
 
 export function getProgramSasStorageMapel(kategori: PKCategoryKey): string {

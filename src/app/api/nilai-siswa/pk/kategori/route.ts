@@ -14,6 +14,7 @@ import {
   getCanonicalFieldStorage,
   getLayananUmumMapels,
   getProgramSasStorageMapel,
+  getProgramStsStorageMapel,
   getReadTahunAjaranCandidates,
   resolveMapelForKategori,
   toStorageTahunAjaran,
@@ -30,6 +31,46 @@ function normalizeJK(raw: string): string {
   if (s === 'L' || s.startsWith('LAKI')) return 'L';
   if (s === 'P' || s.startsWith('PEREMPUAN')) return 'P';
   return s || '-';
+}
+
+function applyProgramScoreRow(
+  dataNilai: any[],
+  byInduk: Map<string, any>,
+  byNama: Map<string, any>,
+  prop: 'stsProgram' | 'sasProgram'
+) {
+  for (const entry of dataNilai) {
+    const val = entry?.nilai !== undefined && entry?.nilai !== null ? String(entry.nilai).trim() : '';
+    const entryInduk = String(entry?.induk || '').trim();
+    const entryNama = String(entry?.nama || '').trim().toLowerCase();
+    const target = (entryInduk && byInduk.get(entryInduk)) || (entryNama && byNama.get(entryNama));
+    if (target) {
+      target[prop] = val;
+    }
+  }
+}
+
+function deriveLegacyProgramScore(
+  scoresByMapel: Record<string, PKMapelScores>,
+  categoryMapelNames: string[],
+  field: 'sts' | 'sas'
+): string {
+  const entries = categoryMapelNames
+    .map((mName) => {
+      const raw = String(scoresByMapel[mName]?.[field] ?? '').trim();
+      if (!raw) return null;
+      const num = Number(raw.replace(',', '.'));
+      if (Number.isNaN(num) || num < 0) return null;
+      return { raw, num };
+    })
+    .filter((item): item is { raw: string; num: number } => item !== null);
+
+  if (entries.length === 1) return entries[0].raw;
+  if (entries.length > 1) {
+    const avg = entries.reduce((sum, item) => sum + item.num, 0) / entries.length;
+    return String(Math.round(avg));
+  }
+  return '';
 }
 
 function extractStudentsForClass(rawRows: any[], kelas: string, tahunAjaran: string) {
@@ -161,7 +202,7 @@ export async function GET(request: Request) {
 
     const students = extractStudentsForClass(rawSiswa, kelas, baseTA);
 
-    // Prepare score maps per student (kategori utama + layanan umum + SAS program + catatan pengajar)
+    // Prepare score maps per student (kategori utama + layanan umum + STS/SAS program + catatan pengajar)
     const studentMaps = students.map((st) => {
       const scoresByMapel: Record<string, PKMapelScores> = {};
       for (const m of allExpectedMapels) {
@@ -170,6 +211,7 @@ export async function GET(request: Request) {
       return {
         ...st,
         scoresByMapel,
+        stsProgram: '',
         sasProgram: '',
         nilaiAkhirProgram: null as number | null,
         catatan: '',
@@ -185,7 +227,9 @@ export async function GET(request: Request) {
 
     // Track highest priority per (mapel, field)
     const bestPriority = new Map<string, number>();
+    const programStsMapel = getProgramStsStorageMapel(kategoriKey);
     const programSasMapel = getProgramSasStorageMapel(kategoriKey);
+    let hasExplicitProgramStsRow = false;
     let hasExplicitProgramSasRow = false;
 
     for (const row of pkRes.data || []) {
@@ -193,8 +237,11 @@ export async function GET(request: Request) {
       const rowMetaSem = String(row.metadata?.semester || '').toLowerCase();
       if (semester === 'Ganjil' && rowMetaSem === 'genap') continue;
 
+      const rowMapelUpper = String(row.mata_pelajaran || '').trim().toUpperCase();
+      const rowTipeLower = String(row.tipe || '').trim().toLowerCase();
+
       // Load Catatan Pengajar row if present
-      if (String(row.tipe || '').trim().toLowerCase() === 'catatan_pengajar') {
+      if (rowTipeLower === 'catatan_pengajar') {
         const catatanEntries: any[] = Array.isArray(row.data_nilai) ? row.data_nilai : [];
         for (const entry of catatanEntries) {
           const val = String(entry?.catatan ?? entry?.nilai ?? '').trim();
@@ -208,22 +255,20 @@ export async function GET(request: Request) {
         continue;
       }
 
-      // Load unified Program Khusus SAS row if present
+      // Load unified Program Khusus STS / SAS rows if present
       if (
-        String(row.mata_pelajaran || '').trim().toUpperCase() === programSasMapel.toUpperCase() &&
-        String(row.tipe || '').trim().toLowerCase() === 'sas'
+        (rowMapelUpper === programStsMapel.toUpperCase() && rowTipeLower === 'sts') ||
+        (rowMapelUpper === programSasMapel.toUpperCase() && rowTipeLower === 'sas')
       ) {
-        hasExplicitProgramSasRow = true;
-        const sasEntries: any[] = Array.isArray(row.data_nilai) ? row.data_nilai : [];
-        for (const entry of sasEntries) {
-          const val = entry?.nilai !== undefined && entry?.nilai !== null ? String(entry.nilai).trim() : '';
-          const entryInduk = String(entry?.induk || '').trim();
-          const entryNama = String(entry?.nama || '').trim().toLowerCase();
-          const target = (entryInduk && byInduk.get(entryInduk)) || (entryNama && byNama.get(entryNama));
-          if (target) {
-            target.sasProgram = val;
-          }
-        }
+        const isSts = rowTipeLower === 'sts';
+        if (isSts) hasExplicitProgramStsRow = true;
+        else hasExplicitProgramSasRow = true;
+        applyProgramScoreRow(
+          Array.isArray(row.data_nilai) ? row.data_nilai : [],
+          byInduk,
+          byNama,
+          isSts ? 'stsProgram' : 'sasProgram'
+        );
         continue;
       }
 
@@ -265,24 +310,11 @@ export async function GET(request: Request) {
     const categoryMapelNames = categoryDef.mapels.map((m) => m.name);
 
     for (const st of studentMaps) {
+      if (!hasExplicitProgramStsRow) {
+        st.stsProgram = deriveLegacyProgramScore(st.scoresByMapel, categoryMapelNames, 'sts');
+      }
       if (!hasExplicitProgramSasRow) {
-        const legacySasEntries = categoryMapelNames
-          .map((mName) => {
-            const raw = String(st.scoresByMapel[mName]?.sas ?? '').trim();
-            if (!raw) return null;
-            const num = Number(raw.replace(',', '.'));
-            if (Number.isNaN(num) || num < 0) return null;
-            return { raw, num };
-          })
-          .filter((item): item is { raw: string; num: number } => item !== null);
-
-        if (legacySasEntries.length === 1) {
-          st.sasProgram = legacySasEntries[0].raw;
-        } else if (legacySasEntries.length > 1) {
-          const avgSas =
-            legacySasEntries.reduce((sum, item) => sum + item.num, 0) / legacySasEntries.length;
-          st.sasProgram = String(Math.round(avgSas));
-        }
+        st.sasProgram = deriveLegacyProgramScore(st.scoresByMapel, categoryMapelNames, 'sas');
       }
 
       for (const m of allExpectedMapels) {
@@ -332,11 +364,13 @@ export async function POST(request: Request) {
     const dataNilai = Array.isArray(body.dataNilai) ? body.dataNilai : [];
 
     const isCatatanField = field === 'catatan';
+    const isProgramStsField = field === 'sts_program';
     const isProgramSasField = field === 'sas_program';
+    const isProgramAssessmentField = isProgramStsField || isProgramSasField;
     if (
       !kelas ||
       (!isCatatanField &&
-        !isProgramSasField &&
+        !isProgramAssessmentField &&
         (!rawMapel || !['m1', 'm2', 'm3', 'sts', 'sas'].includes(field)))
     ) {
       return NextResponse.json(
@@ -415,62 +449,65 @@ export async function POST(request: Request) {
       });
     }
 
-    if (isProgramSasField) {
+    if (isProgramAssessmentField) {
       const resolvedKategori = (
         PK_CATEGORY_MAP[kategoriKey]
           ? kategoriKey
           : MAP_MINAT_BAKAT[kelas] || 'SAINS RISET'
       ) as PKCategoryKey;
-      const programSasMapel = getProgramSasStorageMapel(resolvedKategori);
+      const targetTipe = isProgramStsField ? 'sts' : 'sas';
+      const targetProgramMapel = isProgramStsField
+        ? getProgramStsStorageMapel(resolvedKategori)
+        : getProgramSasStorageMapel(resolvedKategori);
 
-      const sanitizedProgramSas = dataNilai.map((item: any) => ({
+      const sanitizedProgramScores = dataNilai.map((item: any) => ({
         induk: String(item.induk || '').trim(),
         nama: String(item.nama || '').trim(),
         jk: normalizeJK(item.jk || ''),
         nilai: item.nilai !== undefined && item.nilai !== null ? String(item.nilai).trim() : '',
       }));
 
-      const matchingProgramSasRows = (existingRows || []).filter((r: any) => {
+      const matchingProgramRows = (existingRows || []).filter((r: any) => {
         const rowMetaSem = String(r.metadata?.semester || '').toLowerCase();
         if (semester === 'Ganjil' && rowMetaSem === 'genap') return false;
         return (
-          String(r.mata_pelajaran || '').trim().toUpperCase() === programSasMapel.toUpperCase() &&
-          String(r.tipe || '').trim().toLowerCase() === 'sas'
+          String(r.mata_pelajaran || '').trim().toUpperCase() === targetProgramMapel.toUpperCase() &&
+          String(r.tipe || '').trim().toLowerCase() === targetTipe
         );
       });
 
-      const exactProgramSasRow = matchingProgramSasRows.find(
+      const exactProgramRow = matchingProgramRows.find(
         (r: any) => r.tahun_ajaran === storageTA
       );
-      const targetProgramSasRow = exactProgramSasRow || matchingProgramSasRows[0];
+      const targetProgramRow = exactProgramRow || matchingProgramRows[0];
 
-      if (targetProgramSasRow) {
+      if (targetProgramRow) {
         const { error: updateErr } = await supabase
           .from('nilai_pk')
           .update({
             tahun_ajaran: storageTA,
-            mata_pelajaran: programSasMapel,
-            tipe: 'sas',
+            mata_pelajaran: targetProgramMapel,
+            tipe: targetTipe,
             materi: '',
             sub_materi: '',
             guru,
-            data_nilai: sanitizedProgramSas,
+            data_nilai: sanitizedProgramScores,
             metadata: { semester, scope: 'program', kategori: resolvedKategori },
             updated_at: now,
           })
-          .eq('id', targetProgramSasRow.id);
+          .eq('id', targetProgramRow.id);
 
         if (updateErr) throw updateErr;
       } else {
         const { error: insertErr } = await supabase.from('nilai_pk').insert({
           tahun_ajaran: storageTA,
           kelas,
-          mata_pelajaran: programSasMapel,
-          tipe: 'sas',
+          mata_pelajaran: targetProgramMapel,
+          tipe: targetTipe,
           materi: '',
           sub_materi: '',
           guru,
-          data_nilai: sanitizedProgramSas,
+          data_nilai: sanitizedProgramScores,
           metadata: { semester, scope: 'program', kategori: resolvedKategori },
           updated_at: now,
         });
@@ -481,8 +518,8 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: true,
         savedAt: now,
-        mapel: programSasMapel,
-        field: 'sas_program',
+        mapel: targetProgramMapel,
+        field,
       });
     }
 
