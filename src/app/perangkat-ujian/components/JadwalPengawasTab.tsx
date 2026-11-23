@@ -24,6 +24,21 @@ interface ExamSession {
   waktu: string;
   mataUjian: string;
   pengawas: Record<string, string>; // roomName -> kodeGuru
+  pengganti?: Record<string, string>; // roomName -> namaPengganti (opsional)
+}
+
+interface RoomListBlock {
+  key: string;
+  dayId: string;
+  dayIndex: number;
+  tanggal: string;
+  labelHariTanggal: string;
+  sessionIds: string[];
+  jamLabel: string;
+  waktuLabel: string;
+  mapelLabel: string;
+  pengawasByRoom: Record<string, string>;
+  penggantiByRoom: Record<string, string>;
 }
 
 interface ExamDay {
@@ -116,6 +131,109 @@ function formatRoomShort(rawRoom: string): string {
   const m = s.match(/ruang\s*0*(\d+)/i);
   if (m) return `R.${parseInt(m[1], 10)}`;
   return s;
+}
+
+function formatRoomNumberOnly(room: string): string {
+  const s = String(room || '').trim();
+  const m = s.match(/^(?:r\.?|ruang)\s*0*(\d+)$/i) || s.match(/^0*(\d+)$/);
+  if (m) return String(parseInt(m[1], 10));
+  return s;
+}
+
+function buildRoomListBlocks(group: GroupScheduleState, splitAllSessions: boolean): RoomListBlock[] {
+  const blocks: RoomListBlock[] = [];
+  const rooms = group.rooms || [];
+
+  group.days.forEach((day, dIdx) => {
+    interface RawAcc {
+      dayId: string;
+      dayIndex: number;
+      tanggal: string;
+      labelHariTanggal: string;
+      sessions: ExamSession[];
+      pengawasByRoom: Record<string, string>;
+    }
+
+    const dayAccs: RawAcc[] = [];
+
+    day.sessions.forEach(ses => {
+      const curPengawas: Record<string, string> = {};
+      rooms.forEach(r => {
+        curPengawas[r] = (ses.pengawas?.[r] || '').trim();
+      });
+
+      const last = dayAccs[dayAccs.length - 1];
+      const sameAssignment =
+        !splitAllSessions &&
+        Boolean(last) &&
+        rooms.every(r => (last.pengawasByRoom[r] || '') === (curPengawas[r] || ''));
+
+      if (sameAssignment && last) {
+        last.sessions.push(ses);
+      } else {
+        dayAccs.push({
+          dayId: day.id,
+          dayIndex: dIdx,
+          tanggal: day.tanggal || '',
+          labelHariTanggal: day.labelHariTanggal || `Hari ${dIdx + 1}`,
+          sessions: [ses],
+          pengawasByRoom: curPengawas
+        });
+      }
+    });
+
+    dayAccs.forEach((acc, bIdx) => {
+      const jamItems = acc.sessions.map(s => String(s.jamKe || '').trim()).filter(Boolean);
+      const jamLabel =
+        jamItems.length > 1
+          ? `Jam ${jamItems[0]} – ${jamItems[jamItems.length - 1]}`
+          : jamItems.length === 1
+          ? `Jam ${jamItems[0]}`
+          : `Sesi ${bIdx + 1}`;
+
+      const waktuItems = Array.from(
+        new Set(acc.sessions.map(s => String(s.waktu || '').trim()).filter(Boolean))
+      );
+      const waktuLabel = waktuItems.join(' / ');
+
+      const mapelItems = Array.from(
+        new Set(
+          acc.sessions
+            .map(s => formatMapelShort(s.mataUjian || ''))
+            .map(s => s.trim())
+            .filter(Boolean)
+        )
+      );
+      const mapelLabel = mapelItems.join(', ');
+
+      const penggantiByRoom: Record<string, string> = {};
+      rooms.forEach(r => {
+        for (const s of acc.sessions) {
+          const val = String(s.pengganti?.[r] || '').trim();
+          if (val) {
+            penggantiByRoom[r] = val;
+            break;
+          }
+        }
+      });
+
+      blocks.push({
+        key: `${day.id}__blk_${bIdx}_${acc.sessions.map(s => s.id).join('_')}`,
+        dayId: acc.dayId,
+        dayIndex: acc.dayIndex,
+        tanggal: acc.tanggal,
+        labelHariTanggal: acc.labelHariTanggal,
+        sessionIds: acc.sessions.map(s => s.id),
+        jamLabel,
+        waktuLabel,
+        mapelLabel,
+        pengawasByRoom: acc.pengawasByRoom,
+        penggantiByRoom
+      });
+    });
+  });
+
+  return blocks;
 }
 
 function createDefaultRooms(count: number): string[] {
@@ -430,6 +548,10 @@ export default function JadwalPengawasTab() {
 
   const [roomCountInput, setRoomCountInput] = useState<number>(17);
   const [highlightedKode, setHighlightedKode] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'matrix' | 'room_list'>('matrix');
+  const [listSelectedDayId, setListSelectedDayId] = useState<string>('ALL');
+  const [listSplitAllSessions, setListSplitAllSessions] = useState<boolean>(false);
+  const [listShowKode, setListShowKode] = useState<boolean>(false);
 
   const [editingCell, setEditingCell] = useState<{
     dayId: string;
@@ -448,6 +570,16 @@ export default function JadwalPengawasTab() {
   useEffect(() => {
     setRoomCountInput(groups[activeGroup].rooms.length);
   }, [activeGroup, groups[activeGroup].rooms.length]);
+
+  useEffect(() => {
+    setListSelectedDayId('ALL');
+  }, [activeGroup]);
+
+  useEffect(() => {
+    if (listSelectedDayId !== 'ALL' && !currentGroup.days.some(d => d.id === listSelectedDayId)) {
+      setListSelectedDayId('ALL');
+    }
+  }, [currentGroup.days, listSelectedDayId]);
 
   useEffect(() => {
     const loadAll = async () => {
@@ -708,6 +840,24 @@ export default function JadwalPengawasTab() {
       legendTeachers.slice(perCol * 2)
     ];
   }, [legendTeachers]);
+
+  const roomListBlocks = useMemo(
+    () => buildRoomListBlocks(currentGroup, listSplitAllSessions),
+    [currentGroup, listSplitAllSessions]
+  );
+
+  const filteredRoomListBlocks = useMemo(() => {
+    if (listSelectedDayId === 'ALL') return roomListBlocks;
+    return roomListBlocks.filter(b => b.dayId === listSelectedDayId);
+  }, [roomListBlocks, listSelectedDayId]);
+
+  const resolveTeacherDisplayName = (kode: string): string => {
+    const clean = String(kode || '').trim();
+    if (!clean) return '';
+    const found = teacherByKode.get(clean);
+    const baseName = found?.nama || `Guru Kode ${clean}`;
+    return listShowKode ? `[${clean}] ${baseName}` : baseName;
+  };
 
   const handleApplyRoomCount = () => {
     const clamped = Math.max(1, Math.min(40, Number(roomCountInput) || 1));
@@ -1843,6 +1993,247 @@ export default function JadwalPengawasTab() {
     XLSX.writeFile(wb, 'Jadwal_Pengawas_Ujian_78_dan_9.xlsx');
   };
 
+  const handleUpdatePengganti = (dayId: string, sessionIds: string[], room: string, value: string) => {
+    const targetIds = new Set(sessionIds);
+    updateCurrentGroup(prev => ({
+      ...prev,
+      days: prev.days.map(d => {
+        if (d.id !== dayId) return d;
+        return {
+          ...d,
+          sessions: d.sessions.map(s => {
+            if (!targetIds.has(s.id)) return s;
+            const nextPengganti = { ...(s.pengganti || {}) };
+            if (!value) {
+              delete nextPengganti[room];
+            } else {
+              nextPengganti[room] = value;
+            }
+            return { ...s, pengganti: nextPengganti };
+          })
+        };
+      })
+    }));
+  };
+
+  const handleCopyRoomListText = async (block: RoomListBlock) => {
+    const colHeader = activeGroup === 'kelas78' ? 'PENGAWAS 7 & 8' : 'PENGAWAS 9';
+    const titleGroup = activeGroup === 'kelas78' ? 'Kelas 7 & 8' : 'Kelas 9';
+    const lines: string[] = [
+      `DAFTAR PENGAWAS UJIAN (${titleGroup})`,
+      `${block.labelHariTanggal} · ${block.jamLabel}${block.waktuLabel ? ` (${block.waktuLabel})` : ''}`,
+      block.mapelLabel ? `Mapel: ${block.mapelLabel}` : '',
+      `RUANG | ${colHeader} | PENGGANTI`,
+      ...currentGroup.rooms.map(r => {
+        const no = formatRoomNumberOnly(r);
+        const nama = resolveTeacherDisplayName(block.pengawasByRoom[r] || '') || '-';
+        const pg = block.penggantiByRoom[r] || '';
+        return `${no}. ${nama}${pg ? ` (Pengganti: ${pg})` : ''}`;
+      })
+    ].filter(Boolean);
+
+    try {
+      await navigator.clipboard.writeText(lines.join('\n'));
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: `List pengawas ${block.labelHariTanggal} (${block.jamLabel}) disalin.`,
+        showConfirmButton: false,
+        timer: 2000
+      });
+    } catch {
+      Swal.fire('Info', 'Browser tidak mengizinkan salin otomatis ke clipboard.', 'info');
+    }
+  };
+
+  const handlePrintRoomListPdf = () => {
+    if (filteredRoomListBlocks.length === 0) {
+      Swal.fire('Belum Ada Data', 'Tidak ada sesi jadwal pada pilihan hari ini.', 'info');
+      return;
+    }
+
+    const win = window.open('', '_blank', 'width=960,height=800');
+    if (!win) {
+      Swal.fire('Popup Diblokir', 'Izinkan pop-up browser untuk mencetak list nama pengawas.', 'warning');
+      return;
+    }
+
+    const esc = (s: string) =>
+      String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+    const { headerInfo, rooms } = currentGroup;
+    const isK78 = activeGroup === 'kelas78';
+    const docTitle = isK78
+      ? 'DAFTAR NAMA PENGAWAS UJIAN KELAS 7 & 8'
+      : 'DAFTAR NAMA PENGAWAS UJIAN KELAS 9';
+    const colTitle = isK78 ? 'PENGAWAS 7 & 8' : 'PENGAWAS 9';
+    const originUrl = typeof window !== 'undefined' ? window.location.origin : '';
+
+    const sheetsHtml = filteredRoomListBlocks
+      .map((block, bIdx) => {
+        const isLast = bIdx === filteredRoomListBlocks.length - 1;
+        const rowsHtml = rooms
+          .map(r => {
+            const roomNo = formatRoomNumberOnly(r);
+            const namaPengawas = resolveTeacherDisplayName(block.pengawasByRoom[r] || '');
+            const namaPengganti = block.penggantiByRoom[r] || '';
+            return `<tr>
+              <td class="room-cell">${esc(roomNo)}</td>
+              <td class="name-cell">${esc(namaPengawas)}</td>
+              <td class="sub-cell">${esc(namaPengganti)}</td>
+            </tr>`;
+          })
+          .join('');
+
+        return `
+          <div class="sheet ${isLast ? '' : 'page-break'}">
+            <div class="sheet-inner">
+              <div class="kop">
+                <img src="${originUrl}/logo.png" alt="Logo" class="logo-img" onerror="this.style.display='none'" />
+                <div class="kop-text">
+                  <h2>${esc(docTitle)}</h2>
+                  <h3>${esc(headerInfo.subJudul)}</h3>
+                </div>
+                <div class="kop-spacer"></div>
+              </div>
+
+              <div class="meta-strip">
+                <div><strong>Hari / Tanggal:</strong> ${esc(block.labelHariTanggal)}</div>
+                <div><strong>Jam:</strong> ${esc(block.jamLabel)}${block.waktuLabel ? ` (${esc(block.waktuLabel)})` : ''}</div>
+                <div><strong>Mata Ujian:</strong> ${esc(block.mapelLabel || '-')}</div>
+              </div>
+
+              <table class="list-tbl">
+                <thead>
+                  <tr>
+                    <th class="col-room">RUANG</th>
+                    <th class="col-pengawas">${esc(colTitle)}</th>
+                    <th class="col-pengganti">PENGGANTI</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rowsHtml}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <title>${esc(docTitle)}</title>
+  <style>
+    @page { size: A4 portrait; margin: 10mm 12mm; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; color: #000; background: #fff; }
+    .sheet { width: 186mm; height: 277mm; overflow: hidden; margin: 0 auto; }
+    .page-break { page-break-after: always; break-after: page; }
+    .sheet-inner { width: 100%; transform-origin: top left; }
+    .kop { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 8px; }
+    .logo-img { height: 40px; width: auto; object-fit: contain; }
+    .kop-spacer { width: 40px; }
+    .kop-text { flex: 1; text-align: center; }
+    .kop-text h2 { margin: 0; font-size: 12pt; font-weight: 800; }
+    .kop-text h3 { margin: 2px 0 0; font-size: 9.5pt; font-weight: 700; }
+    .meta-strip { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 14px; font-size: 9pt; margin-bottom: 8px; padding: 5px 8px; border: 1px solid #000; background: #f8fafc; }
+    table.list-tbl { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    table.list-tbl th, table.list-tbl td { border: 1.4px solid #000; padding: 6px 8px; vertical-align: middle; font-size: 10pt; }
+    table.list-tbl th { background: #fff; font-weight: 800; text-align: center; font-size: 10.5pt; padding: 8px 6px; letter-spacing: 0.2px; }
+    .col-room { width: 68px; }
+    .col-pengawas { width: 52%; }
+    .col-pengganti { width: auto; }
+    .room-cell { text-align: center; font-weight: 700; height: 29px; }
+    .name-cell { text-align: left; font-weight: 600; padding-left: 10px; }
+    .sub-cell { text-align: left; padding-left: 10px; }
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  ${sheetsHtml}
+  <script>
+    window.addEventListener('load', function() {
+      var sheets = document.querySelectorAll('.sheet');
+      sheets.forEach(function(sheet) {
+        var inner = sheet.querySelector('.sheet-inner');
+        if (!inner) return;
+        var maxH = sheet.clientHeight - 2;
+        var maxW = sheet.clientWidth - 2;
+        var scale = Math.min(1, maxH / inner.scrollHeight, maxW / inner.scrollWidth);
+        if (scale < 0.999) {
+          inner.style.zoom = String(scale);
+        }
+      });
+      setTimeout(function() { window.print(); }, 300);
+    });
+  </script>
+</body>
+</html>`);
+    win.document.close();
+  };
+
+  const handleExportRoomListExcel = () => {
+    if (filteredRoomListBlocks.length === 0) {
+      Swal.fire('Belum Ada Data', 'Tidak ada sesi jadwal pada pilihan hari ini.', 'info');
+      return;
+    }
+
+    const wb = XLSX.utils.book_new();
+    const isK78 = activeGroup === 'kelas78';
+    const docTitle = isK78
+      ? 'DAFTAR NAMA PENGAWAS UJIAN KELAS 7 & 8'
+      : 'DAFTAR NAMA PENGAWAS UJIAN KELAS 9';
+    const colTitle = isK78 ? 'PENGAWAS 7 & 8' : 'PENGAWAS 9';
+    const usedSheetNames = new Set<string>();
+
+    filteredRoomListBlocks.forEach((block, idx) => {
+      const aoa: (string | number)[][] = [
+        [docTitle],
+        [`${block.labelHariTanggal} | ${block.jamLabel}${block.waktuLabel ? ` (${block.waktuLabel})` : ''}${block.mapelLabel ? ` | Mapel: ${block.mapelLabel}` : ''}`],
+        [],
+        ['RUANG', colTitle, 'PENGGANTI'],
+        ...currentGroup.rooms.map(r => {
+          const roomNo = formatRoomNumberOnly(r);
+          const parsedNo = /^\d+$/.test(roomNo) ? Number(roomNo) : roomNo;
+          return [
+            parsedNo,
+            resolveTeacherDisplayName(block.pengawasByRoom[r] || ''),
+            block.penggantiByRoom[r] || ''
+          ];
+        })
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!merges'] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 2 } },
+        { s: { r: 1, c: 0 }, e: { r: 1, c: 2 } }
+      ];
+      ws['!cols'] = [{ wch: 10 }, { wch: 42 }, { wch: 36 }];
+
+      const dayShort = (block.labelHariTanggal.split(',')[0] || `H${block.dayIndex + 1}`).trim();
+      const jamShort = block.jamLabel.replace(/[:\\/?*\[\]]/g, '').trim();
+      let sheetName = `${idx + 1}. ${dayShort} ${jamShort}`.replace(/[:\\/?*\[\]]/g, '').slice(0, 31);
+      while (usedSheetNames.has(sheetName)) {
+        sheetName = `${sheetName.slice(0, 28)}_${idx + 1}`;
+      }
+      usedSheetNames.add(sheetName);
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    });
+
+    XLSX.writeFile(
+      wb,
+      isK78 ? 'List_Pengawas_Ruang_Kelas_7-8.xlsx' : 'List_Pengawas_Ruang_Kelas_9.xlsx'
+    );
+  };
+
   if (loading) {
     return <InlineLoading message="Memuat data guru dan konfigurasi jadwal pengawas..." />;
   }
@@ -1873,6 +2264,11 @@ export default function JadwalPengawasTab() {
       <datalist id="pengawas-mapel-list">
         {mapelOptions.map(m => (
           <option key={m} value={m} />
+        ))}
+      </datalist>
+      <datalist id="pengawas-pengganti-list">
+        {teachers.map(t => (
+          <option key={t.kode} value={t.nama} />
         ))}
       </datalist>
 
@@ -2035,8 +2431,221 @@ export default function JadwalPengawasTab() {
           >
             <i className="fas fa-file-excel"></i> Export Excel
           </button>
+          <button
+            type="button"
+            onClick={() => setViewMode(prev => (prev === 'matrix' ? 'room_list' : 'matrix'))}
+            style={{
+              background: viewMode === 'room_list' ? '#0f766e' : '#f0fdfa',
+              color: viewMode === 'room_list' ? 'white' : '#0f766e',
+              border: '1.5px solid #0d9488',
+              padding: '9px 14px',
+              borderRadius: '8px',
+              fontWeight: 700,
+              fontSize: '0.86rem',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '7px'
+            }}
+            title="Lihat / Cetak List Nama Pengawas per Ruang (Kelas 7–8 dan Kelas 9 terpisah)"
+          >
+            <i className={viewMode === 'room_list' ? 'fas fa-table' : 'fas fa-list-ol'}></i>
+            {viewMode === 'room_list' ? 'Kembali ke Matriks' : `List Pengawas Ruang (${activeGroupLabel})`}
+          </button>
         </div>
       </div>
+
+      {viewMode === 'room_list' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Panel Kontrol List Nama Pengawas per Ruang */}
+          <div style={{ background: '#f0fdfa', border: '1.5px solid #99f6e4', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#115e59' }}>
+                  <i className="fas fa-clipboard-list" style={{ marginRight: '8px' }}></i>
+                  List Nama Pengawas Ujian per Ruang — {activeGroup === 'kelas78' ? 'Kelas 7 & 8' : 'Kelas 9'}
+                </h3>
+                <div style={{ fontSize: '0.8rem', color: '#0f766e', marginTop: '3px' }}>
+                  Format kolom <b>RUANG | {activeGroup === 'kelas78' ? 'PENGAWAS 7 & 8' : 'PENGAWAS 9'} | PENGGANTI</b> (terpisah antara Kelas 7–8 dan Kelas 9).
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={handlePrintRoomListPdf}
+                  style={{ background: '#0f172a', color: 'white', border: 'none', padding: '8px 14px', borderRadius: '8px', fontWeight: 700, fontSize: '0.84rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '7px' }}
+                >
+                  <i className="fas fa-print"></i> Cetak List ({activeGroupLabel})
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportRoomListExcel}
+                  style={{ background: '#16a34a', color: 'white', border: 'none', padding: '8px 14px', borderRadius: '8px', fontWeight: 700, fontSize: '0.84rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '7px' }}
+                >
+                  <i className="fas fa-file-excel"></i> Export Excel List ({activeGroupLabel})
+                </button>
+              </div>
+            </div>
+
+            {/* Filter Hari & Opsi */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', borderTop: '1px solid #ccfbf1', paddingTop: '10px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#134e4a', marginRight: '4px' }}>Filter Hari:</span>
+                <button
+                  type="button"
+                  onClick={() => setListSelectedDayId('ALL')}
+                  style={{
+                    padding: '5px 11px',
+                    borderRadius: '999px',
+                    border: listSelectedDayId === 'ALL' ? '1.5px solid #0d9488' : '1px solid #cbd5e1',
+                    background: listSelectedDayId === 'ALL' ? '#0d9488' : 'white',
+                    color: listSelectedDayId === 'ALL' ? 'white' : '#334155',
+                    fontSize: '0.78rem',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Semua Hari ({currentGroup.days.length})
+                </button>
+                {currentGroup.days.map((d, idx) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => setListSelectedDayId(d.id)}
+                    style={{
+                      padding: '5px 11px',
+                      borderRadius: '999px',
+                      border: listSelectedDayId === d.id ? '1.5px solid #0d9488' : '1px solid #cbd5e1',
+                      background: listSelectedDayId === d.id ? '#0d9488' : 'white',
+                      color: listSelectedDayId === d.id ? 'white' : '#334155',
+                      fontSize: '0.78rem',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {d.labelHariTanggal || `Hari ${idx + 1}`}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center' }}>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, color: '#134e4a', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={listSplitAllSessions}
+                    onChange={e => setListSplitAllSessions(e.target.checked)}
+                    style={{ accentColor: '#0d9488', cursor: 'pointer' }}
+                  />
+                  Pisahkan tiap jam meski pengawasnya sama
+                </label>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 600, color: '#134e4a', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={listShowKode}
+                    onChange={e => setListShowKode(e.target.checked)}
+                    style={{ accentColor: '#0d9488', cursor: 'pointer' }}
+                  />
+                  Tampilkan Kode Guru
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Daftar Tabel per Hari / Blok Jam */}
+          {filteredRoomListBlocks.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 16px', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #cbd5e1', color: '#64748b' }}>
+              Belum ada hari atau sesi ujian untuk {activeGroupLabel}.
+            </div>
+          ) : (
+            filteredRoomListBlocks.map(block => (
+              <div key={block.key} style={{ border: '1px solid #cbd5e1', borderRadius: '10px', overflow: 'hidden', background: 'white', boxShadow: '0 2px 6px rgba(15,23,42,0.04)' }}>
+                <div style={{ background: '#f8fafc', borderBottom: '1px solid #cbd5e1', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 14px', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 800, fontSize: '0.92rem', color: '#0f172a' }}>
+                      <i className="far fa-calendar-alt" style={{ color: '#0284c7', marginRight: '6px' }}></i>
+                      {block.labelHariTanggal}
+                    </span>
+                    <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '2px 10px', borderRadius: '999px', fontSize: '0.78rem', fontWeight: 700 }}>
+                      {block.jamLabel}{block.waktuLabel ? ` · ${block.waktuLabel}` : ''}
+                    </span>
+                    {block.mapelLabel && (
+                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#475569' }}>
+                        Mapel: {block.mapelLabel}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyRoomListText(block)}
+                    style={{ padding: '5px 11px', borderRadius: '6px', border: '1px solid #cbd5e1', background: 'white', color: '#334155', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                  >
+                    <i className="far fa-copy"></i> Salin Teks
+                  </button>
+                </div>
+
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem' }}>
+                    <thead>
+                      <tr style={{ background: '#ffffff', borderBottom: '2px solid #0f172a' }}>
+                        <th style={{ border: '1.5px solid #0f172a', padding: '9px 8px', textAlign: 'center', width: '90px', fontWeight: 900, color: '#0f172a' }}>
+                          RUANG
+                        </th>
+                        <th style={{ border: '1.5px solid #0f172a', padding: '9px 12px', textAlign: 'center', width: '48%', fontWeight: 900, color: '#0f172a' }}>
+                          {activeGroup === 'kelas78' ? 'PENGAWAS 7 & 8' : 'PENGAWAS 9'}
+                        </th>
+                        <th style={{ border: '1.5px solid #0f172a', padding: '9px 12px', textAlign: 'center', fontWeight: 900, color: '#0f172a' }}>
+                          PENGGANTI
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentGroup.rooms.map((room, rIdx) => {
+                        const roomNo = formatRoomNumberOnly(room);
+                        const kode = block.pengawasByRoom[room] || '';
+                        const namaPengawas = resolveTeacherDisplayName(kode);
+                        const penggantiVal = block.penggantiByRoom[room] || '';
+                        return (
+                          <tr key={room} style={{ background: rIdx % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                            <td style={{ border: '1.2px solid #334155', padding: '7px 8px', textAlign: 'center', fontWeight: 700, color: '#0f172a' }}>
+                              {roomNo}
+                            </td>
+                            <td style={{ border: '1.2px solid #334155', padding: '7px 12px', fontWeight: 600, color: namaPengawas ? '#0f172a' : '#94a3b8' }}>
+                              {namaPengawas || '- Belum diisi -'}
+                            </td>
+                            <td style={{ border: '1.2px solid #334155', padding: '4px 8px' }}>
+                              <input
+                                type="text"
+                                list="pengawas-pengganti-list"
+                                value={penggantiVal}
+                                onChange={e => handleUpdatePengganti(block.dayId, block.sessionIds, room, e.target.value)}
+                                placeholder="Kosong (siap tulis tangan saat cetak)..."
+                                style={{
+                                  width: '100%',
+                                  padding: '5px 8px',
+                                  border: '1px solid transparent',
+                                  borderRadius: '4px',
+                                  background: 'transparent',
+                                  fontSize: '0.86rem',
+                                  color: '#0f172a',
+                                  boxSizing: 'border-box'
+                                }}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {viewMode === 'matrix' && (
+        <>
 
       {/* Pengaturan Kop & Ruang untuk Jadwal Aktif */}
       <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -3266,6 +3875,8 @@ export default function JadwalPengawasTab() {
           </div>
         </div>
       </div>
+        </>
+      )}
 
       {/* Modal Edit Manual Sel Pengawas */}
       {editingCell && (
