@@ -252,12 +252,18 @@ export function computeProgramFinalScore(
 
 export type PKDeskripsiTierKey = 'A' | 'B' | 'C' | 'D';
 
+export type PKTingkatKey = '7' | '8';
+
+export const PK_TINGKAT_KEYS: PKTingkatKey[] = ['7', '8'];
+
 export type PKDeskripsiProgramKey =
   | PKCategoryKey
   | 'Bahasa Arab (Layanan Umum)'
   | 'Bahasa Inggris (Layanan Umum)';
 
-export type PKDeskripsiConfig = Record<PKDeskripsiProgramKey, Record<PKDeskripsiTierKey, string>>;
+export type PKDeskripsiByProgram = Record<PKDeskripsiProgramKey, Record<PKDeskripsiTierKey, string>>;
+
+export type PKDeskripsiConfig = Record<PKTingkatKey, PKDeskripsiByProgram>;
 
 export const PK_DESKRIPSI_CONFIG_KEY = 'pk_deskripsi_capaian_config';
 
@@ -278,7 +284,12 @@ export const PK_DESKRIPSI_PROGRAMS: { key: PKDeskripsiProgramKey; label: string;
   { key: 'Bahasa Inggris (Layanan Umum)', label: 'Bahasa Inggris (Layanan Umum)', group: 'Program Khusus Layanan Umum' },
 ];
 
-export function createDefaultPKDeskripsiConfig(): PKDeskripsiConfig {
+export function getTingkatFromKelas(kelas: string | null | undefined): PKTingkatKey {
+  const s = String(kelas || '').trim().toUpperCase();
+  return s.startsWith('8') ? '8' : '7';
+}
+
+export function createDefaultPKDeskripsiByProgram(): PKDeskripsiByProgram {
   return {
     'SAINS RISET': {
       A: 'Sangat baik dalam menguasai konsep sains, matematika, analisis ilmiah, serta terampil melaksanakan kegiatan riset dengan teliti.',
@@ -325,6 +336,47 @@ export function createDefaultPKDeskripsiConfig(): PKDeskripsiConfig {
   };
 }
 
+export function createDefaultPKDeskripsiConfig(): PKDeskripsiConfig {
+  return {
+    '7': createDefaultPKDeskripsiByProgram(),
+    '8': createDefaultPKDeskripsiByProgram(),
+  };
+}
+
+export function normalizePKDeskripsiConfig(raw: any): PKDeskripsiConfig {
+  const defaults = createDefaultPKDeskripsiConfig();
+  if (!raw || typeof raw !== 'object') return defaults;
+
+  const mergeProgramMap = (src: any, base: PKDeskripsiByProgram): PKDeskripsiByProgram => {
+    const out: PKDeskripsiByProgram = { ...base };
+    if (src && typeof src === 'object') {
+      for (const prog of PK_DESKRIPSI_PROGRAMS) {
+        if (src[prog.key] && typeof src[prog.key] === 'object') {
+          out[prog.key] = { ...base[prog.key], ...src[prog.key] };
+        }
+      }
+    }
+    return out;
+  };
+
+  // Format baru: dipisah per tingkat ('7' dan '8')
+  if (
+    (raw['7'] && typeof raw['7'] === 'object') ||
+    (raw['8'] && typeof raw['8'] === 'object')
+  ) {
+    return {
+      '7': mergeProgramMap(raw['7'], defaults['7']),
+      '8': mergeProgramMap(raw['8'], defaults['8']),
+    };
+  }
+
+  // Migrasi otomatis format lama (flat per program) -> salin ke Kelas 7 & Kelas 8
+  return {
+    '7': mergeProgramMap(raw, defaults['7']),
+    '8': mergeProgramMap(raw, defaults['8']),
+  };
+}
+
 export function getScoreBracketKey(score: number): PKDeskripsiTierKey {
   if (score >= 90) return 'A';
   if (score >= 80) return 'B';
@@ -335,15 +387,17 @@ export function getScoreBracketKey(score: number): PKDeskripsiTierKey {
 export function resolvePKDeskripsi(
   config: PKDeskripsiConfig,
   programKey: PKDeskripsiProgramKey,
-  score: number | null | undefined
+  score: number | null | undefined,
+  kelasOrTingkat?: string
 ): string {
   if (score === null || score === undefined || Number.isNaN(score) || score <= 0) {
     return '-';
   }
+  const tingkat = getTingkatFromKelas(kelasOrTingkat);
   const tier = getScoreBracketKey(score);
-  const customText = config?.[programKey]?.[tier];
+  const customText = config?.[tingkat]?.[programKey]?.[tier];
   if (customText && customText.trim()) return customText.trim();
-  const def = createDefaultPKDeskripsiConfig();
+  const def = createDefaultPKDeskripsiByProgram();
   return def[programKey]?.[tier] || '-';
 }
 

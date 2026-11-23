@@ -15,6 +15,8 @@ import {
   PKMapelScores,
   PKDeskripsiConfig,
   PKDeskripsiProgramKey,
+  PKTingkatKey,
+  PK_TINGKAT_KEYS,
   PK_DESKRIPSI_CONFIG_KEY,
   PK_DESKRIPSI_PROGRAMS,
   PK_DESKRIPSI_TIERS,
@@ -24,6 +26,8 @@ import {
   getLayananUmumMapels,
   getProgramSasStorageMapel,
   getProgramStsStorageMapel,
+  getTingkatFromKelas,
+  normalizePKDeskripsiConfig,
   resolvePKDeskripsi,
 } from '@/lib/prosus-config';
 
@@ -127,7 +131,7 @@ export default function NilaiSiswaPage() {
   });
   const [previewStudent, setPreviewStudent] = useState<PKStudentRow | null>(null);
 
-  // Deskripsi Capaian Config States
+  // Deskripsi Capaian Config States (Dipisah Kelas 7 & Kelas 8)
   const [deskripsiConfig, setDeskripsiConfig] = useState<PKDeskripsiConfig>(() =>
     createDefaultPKDeskripsiConfig()
   );
@@ -135,6 +139,7 @@ export default function NilaiSiswaPage() {
   const [draftDeskripsi, setDraftDeskripsi] = useState<PKDeskripsiConfig>(() =>
     createDefaultPKDeskripsiConfig()
   );
+  const [activeDeskripsiTingkat, setActiveDeskripsiTingkat] = useState<PKTingkatKey>('7');
   const [activeDeskripsiProgram, setActiveDeskripsiProgram] =
     useState<PKDeskripsiProgramKey>('SAINS RISET');
   const [savingDeskripsi, setSavingDeskripsi] = useState<boolean>(false);
@@ -150,19 +155,6 @@ export default function NilaiSiswaPage() {
     }
 
     const loadDeskripsiConfig = async () => {
-      const defaults = createDefaultPKDeskripsiConfig();
-      const mergeConfig = (raw: any): PKDeskripsiConfig => {
-        const merged = { ...defaults };
-        if (raw && typeof raw === 'object') {
-          for (const prog of PK_DESKRIPSI_PROGRAMS) {
-            if (raw[prog.key] && typeof raw[prog.key] === 'object') {
-              merged[prog.key] = { ...defaults[prog.key], ...raw[prog.key] };
-            }
-          }
-        }
-        return merged;
-      };
-
       try {
         const { data, error } = await supabase
           .from('rapor_config')
@@ -171,7 +163,7 @@ export default function NilaiSiswaPage() {
           .maybeSingle();
 
         if (!error && data?.value) {
-          const parsed = mergeConfig(JSON.parse(data.value));
+          const parsed = normalizePKDeskripsiConfig(JSON.parse(data.value));
           setDeskripsiConfig(parsed);
           try {
             localStorage.setItem(PK_DESKRIPSI_CONFIG_KEY, JSON.stringify(parsed));
@@ -185,7 +177,7 @@ export default function NilaiSiswaPage() {
       try {
         const localRaw = localStorage.getItem(PK_DESKRIPSI_CONFIG_KEY);
         if (localRaw) {
-          setDeskripsiConfig(mergeConfig(JSON.parse(localRaw)));
+          setDeskripsiConfig(normalizePKDeskripsiConfig(JSON.parse(localRaw)));
         }
       } catch {}
     };
@@ -801,7 +793,8 @@ export default function NilaiSiswaPage() {
   };
 
   const openDeskripsiModal = () => {
-    setDraftDeskripsi(JSON.parse(JSON.stringify(deskripsiConfig)));
+    setDraftDeskripsi(normalizePKDeskripsiConfig(JSON.parse(JSON.stringify(deskripsiConfig))));
+    setActiveDeskripsiTingkat(getTingkatFromKelas(kelas));
     setActiveDeskripsiProgram(kategori);
     setShowDeskripsiModal(true);
   };
@@ -945,7 +938,7 @@ export default function NilaiSiswaPage() {
 
     const raporRowsHtml = raporItems
       .map((item, idx) => {
-        const deskripsiText = resolvePKDeskripsi(deskripsiConfig, item.programKey, item.rata);
+        const deskripsiText = resolvePKDeskripsi(deskripsiConfig, item.programKey, item.rata, kelas);
         return `
           <tr>
             <td style="border: 1px solid #000; padding: 7px 6px; text-align: center; vertical-align: middle;">${idx + 1}</td>
@@ -1949,10 +1942,10 @@ export default function NilaiSiswaPage() {
             >
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.08rem', fontWeight: 700, color: '#0f172a' }}>
-                  📝 Pengaturan Deskripsi Capaian Rapor PK
+                  📝 Pengaturan Deskripsi Capaian Rapor PK (Kelas 7 &amp; Kelas 8 Terpisah)
                 </h3>
                 <p style={{ margin: '2px 0 0', fontSize: '0.82rem', color: '#64748b' }}>
-                  Atur teks deskripsi capaian yang otomatis tampil pada kolom Rapor sesuai Kategori Program &amp; rentang nilai Rata-Rata siswa.
+                  Atur teks deskripsi capaian secara terpisah untuk <b>Kelas 7</b> dan <b>Kelas 8</b> sesuai Kategori Program &amp; rentang nilai Rata-Rata siswa.
                 </p>
               </div>
               <button
@@ -1975,10 +1968,97 @@ export default function NilaiSiswaPage() {
 
             {/* Body */}
             <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {/* Program Selector Pills */}
+              {/* 1. Tingkat Selector (Kelas 7 vs Kelas 8) */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '10px',
+                  padding: '10px 14px',
+                  borderRadius: '10px',
+                  background: '#f1f5f9',
+                  border: '1px solid #cbd5e1',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                    1. Pilih Tingkat:
+                  </span>
+                  {PK_TINGKAT_KEYS.map((tk) => {
+                    const isTkActive = activeDeskripsiTingkat === tk;
+                    return (
+                      <button
+                        key={tk}
+                        type="button"
+                        onClick={() => setActiveDeskripsiTingkat(tk)}
+                        style={{
+                          padding: '7px 16px',
+                          borderRadius: '8px',
+                          border: `2px solid ${isTkActive ? '#2563eb' : '#cbd5e1'}`,
+                          background: isTkActive ? '#2563eb' : '#ffffff',
+                          color: isTkActive ? '#ffffff' : '#334155',
+                          fontWeight: 700,
+                          fontSize: '0.86rem',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                        }}
+                      >
+                        <span>🎓 Kelas {tk}</span>
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            padding: '1px 7px',
+                            borderRadius: '999px',
+                            background: isTkActive ? 'rgba(255,255,255,0.22)' : '#e2e8f0',
+                            color: isTkActive ? '#ffffff' : '#475569',
+                          }}
+                        >
+                          {tk}A–{tk}I
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const sourceTk: PKTingkatKey = activeDeskripsiTingkat === '7' ? '8' : '7';
+                    setDraftDeskripsi((prev) => ({
+                      ...prev,
+                      [activeDeskripsiTingkat]: {
+                        ...prev[activeDeskripsiTingkat],
+                        [activeDeskripsiProgram]: {
+                          ...prev[sourceTk]?.[activeDeskripsiProgram],
+                        },
+                      },
+                    }));
+                  }}
+                  style={{
+                    padding: '6px 11px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#334155',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                  title={`Salin teks deskripsi program ini dari Kelas ${activeDeskripsiTingkat === '7' ? '8' : '7'}`}
+                >
+                  📋 Salin Program Ini dari Kelas {activeDeskripsiTingkat === '7' ? '8' : '7'}
+                </button>
+              </div>
+
+              {/* 2. Program Selector Pills */}
               <div>
                 <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#475569', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                  Pilih Program / Mapel Rapor:
+                  2. Pilih Program / Mapel Rapor (Kelas {activeDeskripsiTingkat}):
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                   {PK_DESKRIPSI_PROGRAMS.map((prog) => {
@@ -2010,10 +2090,10 @@ export default function NilaiSiswaPage() {
               {/* 4 Predicate Bracket Textareas */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '12px' }}>
                 {PK_DESKRIPSI_TIERS.map((tier) => {
-                  const val = draftDeskripsi[activeDeskripsiProgram]?.[tier.key] ?? '';
+                  const val = draftDeskripsi[activeDeskripsiTingkat]?.[activeDeskripsiProgram]?.[tier.key] ?? '';
                   return (
                     <div
-                      key={tier.key}
+                      key={`${activeDeskripsiTingkat}-${tier.key}`}
                       style={{
                         border: '1px solid #cbd5e1',
                         borderRadius: '8px',
@@ -2034,11 +2114,11 @@ export default function NilaiSiswaPage() {
                             fontWeight: 700,
                             padding: '2px 7px',
                             borderRadius: '999px',
-                            background: '#e2e8f0',
-                            color: '#334155',
+                            background: '#dbeafe',
+                            color: '#1e40af',
                           }}
                         >
-                          Kategori {tier.key}
+                          Kelas {activeDeskripsiTingkat} · Kategori {tier.key}
                         </span>
                       </div>
                       <textarea
@@ -2048,13 +2128,16 @@ export default function NilaiSiswaPage() {
                           const newVal = e.target.value;
                           setDraftDeskripsi((prev) => ({
                             ...prev,
-                            [activeDeskripsiProgram]: {
-                              ...prev[activeDeskripsiProgram],
-                              [tier.key]: newVal,
+                            [activeDeskripsiTingkat]: {
+                              ...prev[activeDeskripsiTingkat],
+                              [activeDeskripsiProgram]: {
+                                ...prev[activeDeskripsiTingkat]?.[activeDeskripsiProgram],
+                                [tier.key]: newVal,
+                              },
                             },
                           }));
                         }}
-                        placeholder={`Masukkan deskripsi capaian untuk nilai ${tier.rangeLabel}...`}
+                        placeholder={`Masukkan deskripsi capaian Kelas ${activeDeskripsiTingkat} untuk nilai ${tier.rangeLabel}...`}
                         style={{
                           width: '100%',
                           padding: '8px 10px',
@@ -2092,7 +2175,11 @@ export default function NilaiSiswaPage() {
                   const defaults = createDefaultPKDeskripsiConfig();
                   setDraftDeskripsi((prev) => ({
                     ...prev,
-                    [activeDeskripsiProgram]: defaults[activeDeskripsiProgram],
+                    [activeDeskripsiTingkat]: {
+                      ...prev[activeDeskripsiTingkat],
+                      [activeDeskripsiProgram]:
+                        defaults[activeDeskripsiTingkat][activeDeskripsiProgram],
+                    },
                   }));
                 }}
                 style={{
@@ -2106,7 +2193,7 @@ export default function NilaiSiswaPage() {
                   cursor: 'pointer',
                 }}
               >
-                ↺ Reset Bawaan Program Ini
+                ↺ Reset Bawaan Program Ini (Kelas {activeDeskripsiTingkat})
               </button>
 
               <div style={{ display: 'flex', gap: '8px' }}>
