@@ -99,7 +99,7 @@ export default function SpmbPortalDashboard() {
   };
 
   const copyRekeningBCA = () => {
-    navigator.clipboard.writeText('3680380359');
+    navigator.clipboard.writeText('3686518888');
     setCopiedRekening(true);
     setTimeout(() => setCopiedRekening(false), 2500);
   };
@@ -1044,9 +1044,9 @@ export default function SpmbPortalDashboard() {
                 </div>
                 <div style={{ fontSize: '12.5px', color: '#475569', lineHeight: 1.6 }}>
                   <div>Bank: <b>Bank BCA</b></div>
-                  <div>Atas Nama: <b>MTS Almaarif 01 singosari</b></div>
+                  <div>Atas Nama: <b>MTS Almaarif 01 Singosari</b></div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
-                    <span>No. Rekening: <b style={{ fontSize: '15px', color: '#0f172a', letterSpacing: '0.5px' }}>3680380359</b></span>
+                    <span>No. Rekening: <b style={{ fontSize: '15px', color: '#0f172a', letterSpacing: '0.5px' }}>3686518888</b></span>
                     <button
                       type="button"
                       onClick={copyRekeningBCA}

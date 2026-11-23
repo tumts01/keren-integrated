@@ -702,7 +702,7 @@ export default function ModalDaftarUlang({
                   background: 'white'
                 }}
               >
-                <option value="transfer">💳 Transfer Bank BCA (3680380359)</option>
+                <option value="transfer">💳 Transfer Bank BCA (3686518888)</option>
                 <option value="tunai">💵 Tunai / Langsung di Madrasah</option>
               </select>
             </div>
