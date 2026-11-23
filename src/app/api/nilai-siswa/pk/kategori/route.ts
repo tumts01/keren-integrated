@@ -10,8 +10,10 @@ import {
   PKMapelScores,
   createEmptyMapelScores,
   computeMapelAverage,
+  computeProgramFinalScore,
   getCanonicalFieldStorage,
   getLayananUmumMapels,
+  getProgramSasStorageMapel,
   getReadTahunAjaranCandidates,
   resolveMapelForKategori,
   toStorageTahunAjaran,
@@ -159,13 +161,19 @@ export async function GET(request: Request) {
 
     const students = extractStudentsForClass(rawSiswa, kelas, baseTA);
 
-    // Prepare score maps per student (kategori utama + layanan umum + catatan pengajar)
+    // Prepare score maps per student (kategori utama + layanan umum + SAS program + catatan pengajar)
     const studentMaps = students.map((st) => {
       const scoresByMapel: Record<string, PKMapelScores> = {};
       for (const m of allExpectedMapels) {
         scoresByMapel[m.name] = createEmptyMapelScores();
       }
-      return { ...st, scoresByMapel, catatan: '' };
+      return {
+        ...st,
+        scoresByMapel,
+        sasProgram: '',
+        nilaiAkhirProgram: null as number | null,
+        catatan: '',
+      };
     });
 
     const byInduk = new Map<string, (typeof studentMaps)[number]>();
@@ -177,6 +185,8 @@ export async function GET(request: Request) {
 
     // Track highest priority per (mapel, field)
     const bestPriority = new Map<string, number>();
+    const programSasMapel = getProgramSasStorageMapel(kategoriKey);
+    let hasExplicitProgramSasRow = false;
 
     for (const row of pkRes.data || []) {
       // Ensure Ganjil doesn't accidentally ingest rows explicitly marked Genap
@@ -193,6 +203,25 @@ export async function GET(request: Request) {
           const target = (entryInduk && byInduk.get(entryInduk)) || (entryNama && byNama.get(entryNama));
           if (target) {
             target.catatan = val;
+          }
+        }
+        continue;
+      }
+
+      // Load unified Program Khusus SAS row if present
+      if (
+        String(row.mata_pelajaran || '').trim().toUpperCase() === programSasMapel.toUpperCase() &&
+        String(row.tipe || '').trim().toLowerCase() === 'sas'
+      ) {
+        hasExplicitProgramSasRow = true;
+        const sasEntries: any[] = Array.isArray(row.data_nilai) ? row.data_nilai : [];
+        for (const entry of sasEntries) {
+          const val = entry?.nilai !== undefined && entry?.nilai !== null ? String(entry.nilai).trim() : '';
+          const entryInduk = String(entry?.induk || '').trim();
+          const entryNama = String(entry?.nama || '').trim().toLowerCase();
+          const target = (entryInduk && byInduk.get(entryInduk)) || (entryNama && byNama.get(entryNama));
+          if (target) {
+            target.sasProgram = val;
           }
         }
         continue;
@@ -233,10 +262,38 @@ export async function GET(request: Request) {
       }
     }
 
+    const categoryMapelNames = categoryDef.mapels.map((m) => m.name);
+
     for (const st of studentMaps) {
+      if (!hasExplicitProgramSasRow) {
+        const legacySasEntries = categoryMapelNames
+          .map((mName) => {
+            const raw = String(st.scoresByMapel[mName]?.sas ?? '').trim();
+            if (!raw) return null;
+            const num = Number(raw.replace(',', '.'));
+            if (Number.isNaN(num) || num < 0) return null;
+            return { raw, num };
+          })
+          .filter((item): item is { raw: string; num: number } => item !== null);
+
+        if (legacySasEntries.length === 1) {
+          st.sasProgram = legacySasEntries[0].raw;
+        } else if (legacySasEntries.length > 1) {
+          const avgSas =
+            legacySasEntries.reduce((sum, item) => sum + item.num, 0) / legacySasEntries.length;
+          st.sasProgram = String(Math.round(avgSas));
+        }
+      }
+
       for (const m of allExpectedMapels) {
         st.scoresByMapel[m.name].rata = computeMapelAverage(st.scoresByMapel[m.name]);
       }
+
+      st.nilaiAkhirProgram = computeProgramFinalScore(
+        categoryMapelNames,
+        st.scoresByMapel,
+        st.sasProgram
+      );
     }
 
     return NextResponse.json({
@@ -275,7 +332,13 @@ export async function POST(request: Request) {
     const dataNilai = Array.isArray(body.dataNilai) ? body.dataNilai : [];
 
     const isCatatanField = field === 'catatan';
-    if (!kelas || (!isCatatanField && (!rawMapel || !['m1', 'm2', 'm3', 'sts', 'sas'].includes(field)))) {
+    const isProgramSasField = field === 'sas_program';
+    if (
+      !kelas ||
+      (!isCatatanField &&
+        !isProgramSasField &&
+        (!rawMapel || !['m1', 'm2', 'm3', 'sts', 'sas'].includes(field)))
+    ) {
       return NextResponse.json(
         { error: 'Parameter kelas, mapel, dan field nilai wajib valid' },
         { status: 400 }
@@ -349,6 +412,77 @@ export async function POST(request: Request) {
         savedAt: now,
         mapel: 'CATATAN_PENGAJAR',
         field: 'catatan',
+      });
+    }
+
+    if (isProgramSasField) {
+      const resolvedKategori = (
+        PK_CATEGORY_MAP[kategoriKey]
+          ? kategoriKey
+          : MAP_MINAT_BAKAT[kelas] || 'SAINS RISET'
+      ) as PKCategoryKey;
+      const programSasMapel = getProgramSasStorageMapel(resolvedKategori);
+
+      const sanitizedProgramSas = dataNilai.map((item: any) => ({
+        induk: String(item.induk || '').trim(),
+        nama: String(item.nama || '').trim(),
+        jk: normalizeJK(item.jk || ''),
+        nilai: item.nilai !== undefined && item.nilai !== null ? String(item.nilai).trim() : '',
+      }));
+
+      const matchingProgramSasRows = (existingRows || []).filter((r: any) => {
+        const rowMetaSem = String(r.metadata?.semester || '').toLowerCase();
+        if (semester === 'Ganjil' && rowMetaSem === 'genap') return false;
+        return (
+          String(r.mata_pelajaran || '').trim().toUpperCase() === programSasMapel.toUpperCase() &&
+          String(r.tipe || '').trim().toLowerCase() === 'sas'
+        );
+      });
+
+      const exactProgramSasRow = matchingProgramSasRows.find(
+        (r: any) => r.tahun_ajaran === storageTA
+      );
+      const targetProgramSasRow = exactProgramSasRow || matchingProgramSasRows[0];
+
+      if (targetProgramSasRow) {
+        const { error: updateErr } = await supabase
+          .from('nilai_pk')
+          .update({
+            tahun_ajaran: storageTA,
+            mata_pelajaran: programSasMapel,
+            tipe: 'sas',
+            materi: '',
+            sub_materi: '',
+            guru,
+            data_nilai: sanitizedProgramSas,
+            metadata: { semester, scope: 'program', kategori: resolvedKategori },
+            updated_at: now,
+          })
+          .eq('id', targetProgramSasRow.id);
+
+        if (updateErr) throw updateErr;
+      } else {
+        const { error: insertErr } = await supabase.from('nilai_pk').insert({
+          tahun_ajaran: storageTA,
+          kelas,
+          mata_pelajaran: programSasMapel,
+          tipe: 'sas',
+          materi: '',
+          sub_materi: '',
+          guru,
+          data_nilai: sanitizedProgramSas,
+          metadata: { semester, scope: 'program', kategori: resolvedKategori },
+          updated_at: now,
+        });
+
+        if (insertErr) throw insertErr;
+      }
+
+      return NextResponse.json({
+        success: true,
+        savedAt: now,
+        mapel: programSasMapel,
+        field: 'sas_program',
       });
     }
 

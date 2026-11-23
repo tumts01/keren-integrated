@@ -8,6 +8,7 @@ export type PKCategoryKey =
   | 'AGAMA TAHFIDZ';
 
 export type PKScoreField = 'm1' | 'm2' | 'm3' | 'sts' | 'sas';
+export type PKMapelBaseField = 'm1' | 'm2' | 'm3' | 'sts';
 
 export interface PKMapelDef {
   /** Canonical name saved to database for new writes */
@@ -154,6 +155,13 @@ export const MAP_MINAT_BAKAT: Record<string, PKCategoryKey> = {
   '8I': 'AGAMA TAHFIDZ',
 };
 
+export const PK_MAPEL_BASE_FIELDS: { key: PKMapelBaseField; label: string; shortLabel: string }[] = [
+  { key: 'm1', label: 'Materi 1', shortLabel: 'M1' },
+  { key: 'm2', label: 'Materi 2', shortLabel: 'M2' },
+  { key: 'm3', label: 'Materi 3', shortLabel: 'M3' },
+  { key: 'sts', label: 'STS', shortLabel: 'STS' },
+];
+
 export const PK_SCORE_FIELDS: { key: PKScoreField; label: string; shortLabel: string }[] = [
   { key: 'm1', label: 'Materi 1', shortLabel: 'M1' },
   { key: 'm2', label: 'Materi 2', shortLabel: 'M2' },
@@ -175,24 +183,14 @@ export function createEmptyMapelScores(): PKMapelScores {
   return { m1: '', m2: '', m3: '', sts: '', sas: '', rata: null };
 }
 
-export function computeMapelAverage(scores: Pick<PKMapelScores, PKScoreField>): number | null {
-  const parseNum = (raw: string | undefined): number | null => {
-    const s = String(raw ?? '').trim();
-    if (!s) return null;
-    const n = Number(s.replace(',', '.'));
-    return !Number.isNaN(n) && n >= 0 ? n : null;
-  };
+function parsePKNumericScore(raw: string | undefined): number | null {
+  const s = String(raw ?? '').trim();
+  if (!s) return null;
+  const n = Number(s.replace(',', '.'));
+  return !Number.isNaN(n) && n >= 0 ? n : null;
+}
 
-  const materiVals = (['m1', 'm2', 'm3'] as PKScoreField[])
-    .map((f) => parseNum(scores[f]))
-    .filter((n): n is number => n !== null);
-
-  const sasVal = parseNum(scores.sas);
-  const avgMateri =
-    materiVals.length > 0
-      ? materiVals.reduce((sum, n) => sum + n, 0) / materiVals.length
-      : null;
-
+function combineMateriAndSas(avgMateri: number | null, sasVal: number | null): number | null {
   if (avgMateri !== null && sasVal !== null) {
     return Math.round(avgMateri * 0.4 + sasVal * 0.6);
   }
@@ -203,6 +201,50 @@ export function computeMapelAverage(scores: Pick<PKMapelScores, PKScoreField>): 
     return Math.round(sasVal);
   }
   return null;
+}
+
+export function getProgramSasStorageMapel(kategori: PKCategoryKey): string {
+  return `SAS_PK_${kategori}`;
+}
+
+export function computeMapelAverage(scores: Pick<PKMapelScores, PKScoreField>): number | null {
+  const materiVals = (['m1', 'm2', 'm3'] as PKScoreField[])
+    .map((f) => parsePKNumericScore(scores[f]))
+    .filter((n): n is number => n !== null);
+
+  const sasVal = parsePKNumericScore(scores.sas);
+  const avgMateri =
+    materiVals.length > 0
+      ? materiVals.reduce((sum, n) => sum + n, 0) / materiVals.length
+      : null;
+
+  return combineMateriAndSas(avgMateri, sasVal);
+}
+
+export function computeProgramFinalScore(
+  mapelNames: string[],
+  scoresByMapel: Record<string, PKMapelScores>,
+  sasProgram: string | undefined
+): number | null {
+  const perMapelMateriAvgs: number[] = [];
+  for (const mName of mapelNames) {
+    const sc = scoresByMapel?.[mName];
+    if (!sc) continue;
+    const vals = (['m1', 'm2', 'm3'] as const)
+      .map((f) => parsePKNumericScore(sc[f]))
+      .filter((n): n is number => n !== null);
+    if (vals.length > 0) {
+      perMapelMateriAvgs.push(vals.reduce((sum, n) => sum + n, 0) / vals.length);
+    }
+  }
+
+  const avgMateriProgram =
+    perMapelMateriAvgs.length > 0
+      ? perMapelMateriAvgs.reduce((sum, n) => sum + n, 0) / perMapelMateriAvgs.length
+      : null;
+  const sasVal = parsePKNumericScore(sasProgram);
+
+  return combineMateriAndSas(avgMateriProgram, sasVal);
 }
 
 export type PKDeskripsiTierKey = 'A' | 'B' | 'C' | 'D';
