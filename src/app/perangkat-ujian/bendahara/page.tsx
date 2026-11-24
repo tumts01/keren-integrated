@@ -10,16 +10,37 @@ export default function BendaharaPerangkatUjian() {
 
   const [apiTeachers, setApiTeachers] = useState<string[]>([]);
   const [manualTeachers, setManualTeachers] = useState<string[]>([]);
+  const [excludedTeachers, setExcludedTeachers] = useState<string[]>([]);
+  const [renamedTeachers, setRenamedTeachers] = useState<Record<string, string>>({});
   const [columns, setColumns] = useState<{ id: string, name: string, nominal: number, type?: 'plus' | 'minus', inputType?: 'multiplier' | 'direct' }[]>([]);
   const [dataMap, setDataMap] = useState<Record<string, Record<string, number>>>({});
   const [loadingData, setLoadingData] = useState(false);
+
+  const [draggedColId, setDraggedColId] = useState<string | null>(null);
+  const [dragOverColId, setDragOverColId] = useState<string | null>(null);
 
   const [namaUjian, setNamaUjian] = useState('SUMATIF AKHIR SEMESTER GENAP');
   const [tahunUjian, setTahunUjian] = useState('TAHUN 2025 / 2026');
   const [printMode, setPrintMode] = useState<string[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
-  const teachers = [...apiTeachers, ...manualTeachers];
+  const teacherRows = [
+    ...apiTeachers
+      .filter((origName) => !excludedTeachers.includes(origName))
+      .map((origName) => ({
+        source: 'api' as const,
+        origName,
+        manualIdx: -1,
+        displayName: renamedTeachers[origName] || origName,
+      })),
+    ...manualTeachers.map((name, manualIdx) => ({
+      source: 'manual' as const,
+      origName: name,
+      manualIdx,
+      displayName: name,
+    })),
+  ];
+  const teachers = teacherRows.map((r) => r.displayName);
 
   useEffect(() => {
     // Cek session di localStorage (sederhana)
@@ -40,7 +61,11 @@ export default function BendaharaPerangkatUjian() {
       const parsed = JSON.parse(savedConfig);
       if (parsed.namaUjian) setNamaUjian(parsed.namaUjian);
       if (parsed.tahunUjian) setTahunUjian(parsed.tahunUjian);
-      if (parsed.manualTeachers) setManualTeachers(parsed.manualTeachers);
+      if (Array.isArray(parsed.manualTeachers)) setManualTeachers(parsed.manualTeachers);
+      if (Array.isArray(parsed.excludedTeachers)) setExcludedTeachers(parsed.excludedTeachers);
+      if (parsed.renamedTeachers && typeof parsed.renamedTeachers === 'object') {
+        setRenamedTeachers(parsed.renamedTeachers);
+      }
     }
 
     // Fetch dari Supabase Database
@@ -52,9 +77,15 @@ export default function BendaharaPerangkatUjian() {
           if (res.data.columns && res.data.columns.length > 0) {
             setColumns(res.data.columns);
             setDataMap(res.data.data_map || {});
-            if (res.data.config?.namaUjian) setNamaUjian(res.data.config.namaUjian);
-            if (res.data.config?.tahunUjian) setTahunUjian(res.data.config.tahunUjian);
-            if (res.data.config?.manualTeachers) setManualTeachers(res.data.config.manualTeachers);
+          }
+          if (res.data.config && Object.keys(res.data.config).length > 0) {
+            if (res.data.config.namaUjian) setNamaUjian(res.data.config.namaUjian);
+            if (res.data.config.tahunUjian) setTahunUjian(res.data.config.tahunUjian);
+            if (Array.isArray(res.data.config.manualTeachers)) setManualTeachers(res.data.config.manualTeachers);
+            if (Array.isArray(res.data.config.excludedTeachers)) setExcludedTeachers(res.data.config.excludedTeachers);
+            if (res.data.config.renamedTeachers && typeof res.data.config.renamedTeachers === 'object') {
+              setRenamedTeachers(res.data.config.renamedTeachers);
+            }
           }
         }
       })
@@ -86,20 +117,27 @@ export default function BendaharaPerangkatUjian() {
   useEffect(() => {
     if (!isDataLoaded) return;
 
-    if (columns.length > 0) localStorage.setItem('bendahara_cols', JSON.stringify(columns));
-    if (Object.keys(dataMap).length > 0) localStorage.setItem('bendahara_data', JSON.stringify(dataMap));
-    localStorage.setItem('bendahara_config', JSON.stringify({ namaUjian, tahunUjian, manualTeachers }));
+    localStorage.setItem('bendahara_cols', JSON.stringify(columns));
+    localStorage.setItem('bendahara_data', JSON.stringify(dataMap));
+    localStorage.setItem(
+      'bendahara_config',
+      JSON.stringify({ namaUjian, tahunUjian, manualTeachers, excludedTeachers, renamedTeachers })
+    );
 
     const timer = setTimeout(() => {
       fetch('/api/bendahara', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ columns, dataMap, config: { namaUjian, tahunUjian, manualTeachers } })
+        body: JSON.stringify({
+          columns,
+          dataMap,
+          config: { namaUjian, tahunUjian, manualTeachers, excludedTeachers, renamedTeachers }
+        })
       }).catch(err => console.error('Failed to sync bendahara data:', err));
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [columns, dataMap, namaUjian, tahunUjian, manualTeachers, isDataLoaded]);
+  }, [columns, dataMap, namaUjian, tahunUjian, manualTeachers, excludedTeachers, renamedTeachers, isDataLoaded]);
 
   const [isPrintTandaTerima, setIsPrintTandaTerima] = useState(false);
 
@@ -207,6 +245,188 @@ export default function BendaharaPerangkatUjian() {
     if (name) {
       setManualTeachers(prev => [...prev, name.trim()]);
     }
+  };
+
+  const escapeHtmlAttr = (val: string) =>
+    String(val || '')
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+  const handleMoveColumn = (colIndex: number, direction: 'left' | 'right') => {
+    const targetIndex = direction === 'left' ? colIndex - 1 : colIndex + 1;
+    if (targetIndex < 0 || targetIndex >= columns.length) return;
+    setColumns(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(colIndex, 1);
+      next.splice(targetIndex, 0, moved);
+      return next;
+    });
+  };
+
+  const handleDropColumn = (targetColId: string) => {
+    if (!draggedColId || draggedColId === targetColId) {
+      setDraggedColId(null);
+      setDragOverColId(null);
+      return;
+    }
+    setColumns(prev => {
+      const fromIdx = prev.findIndex(c => c.id === draggedColId);
+      const toIdx = prev.findIndex(c => c.id === targetColId);
+      if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIdx, 1);
+      next.splice(toIdx, 0, moved);
+      return next;
+    });
+    setDraggedColId(null);
+    setDragOverColId(null);
+  };
+
+  const handleEditTeacherRow = async (rowIdx: number) => {
+    const row = teacherRows[rowIdx];
+    if (!row) return;
+    const oldName = row.displayName;
+    const rowScores = dataMap[oldName] || {};
+
+    const colInputsHtml = columns
+      .map(col => {
+        const val = rowScores[col.id] ?? '';
+        const suffix =
+          col.inputType === 'direct'
+            ? '(Rp)'
+            : `(${col.type === 'minus' ? '-' : '+'}${formatRupiah(col.nominal)})`;
+        return `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;">
+            <label style="font-size:0.85rem;font-weight:600;color:#334155;text-align:left;flex:1;">
+              ${escapeHtmlAttr(col.name)} <span style="font-weight:400;color:#64748b;font-size:0.76rem;">${escapeHtmlAttr(suffix)}</span>
+            </label>
+            <input
+              id="swal-edit-col-${escapeHtmlAttr(col.id)}"
+              type="number"
+              min="0"
+              value="${val === 0 ? '' : val}"
+              placeholder="0"
+              class="swal2-input"
+              style="width:120px;margin:0;height:36px;font-size:0.9rem;text-align:center;"
+            />
+          </div>
+        `;
+      })
+      .join('');
+
+    const { value: formResult } = await Swal.fire({
+      title: 'Edit Data Guru',
+      html: `
+        <div style="text-align:left;">
+          <label style="display:block;font-size:0.82rem;font-weight:700;color:#475569;margin-bottom:4px;">Nama Guru</label>
+          <input
+            id="swal-edit-teacher-name"
+            type="text"
+            class="swal2-input"
+            value="${escapeHtmlAttr(oldName)}"
+            style="width:100%;margin:0 0 10px 0;box-sizing:border-box;height:40px;font-size:0.95rem;"
+          />
+          ${columns.length > 0 ? `<div style="border-top:1px solid #e2e8f0;padding-top:8px;max-height:260px;overflow-y:auto;">${colInputsHtml}</div>` : ''}
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Simpan Perubahan',
+      cancelButtonText: 'Batal',
+      preConfirm: () => {
+        const nameInput = document.getElementById('swal-edit-teacher-name') as HTMLInputElement | null;
+        const trimmedName = (nameInput?.value || '').trim();
+        if (!trimmedName) {
+          Swal.showValidationMessage('Nama guru tidak boleh kosong!');
+          return false;
+        }
+        const duplicate = teacherRows.some(
+          (r, idx) => idx !== rowIdx && r.displayName.toLowerCase() === trimmedName.toLowerCase()
+        );
+        if (duplicate) {
+          Swal.showValidationMessage('Nama guru sudah ada di daftar!');
+          return false;
+        }
+
+        const updatedColValues: Record<string, number> = {};
+        columns.forEach(col => {
+          const el = document.getElementById(`swal-edit-col-${col.id}`) as HTMLInputElement | null;
+          updatedColValues[col.id] = parseInt(el?.value || '0', 10) || 0;
+        });
+
+        return { trimmedName, updatedColValues };
+      }
+    });
+
+    if (!formResult) return;
+    const { trimmedName, updatedColValues } = formResult;
+
+    if (trimmedName !== oldName) {
+      if (row.source === 'api') {
+        setRenamedTeachers(prev => {
+          const next = { ...prev };
+          if (trimmedName === row.origName) {
+            delete next[row.origName];
+          } else {
+            next[row.origName] = trimmedName;
+          }
+          return next;
+        });
+      } else {
+        setManualTeachers(prev =>
+          prev.map((n, idx) => (idx === row.manualIdx ? trimmedName : n))
+        );
+      }
+    }
+
+    setDataMap(prev => {
+      const next = { ...prev };
+      const mergedRow = { ...(next[oldName] || {}), ...updatedColValues };
+      if (trimmedName !== oldName) {
+        delete next[oldName];
+      }
+      next[trimmedName] = mergedRow;
+      return next;
+    });
+  };
+
+  const handleDeleteTeacherRow = (rowIdx: number) => {
+    const row = teacherRows[rowIdx];
+    if (!row) return;
+
+    Swal.fire({
+      title: 'Hapus Baris Guru?',
+      text: `Hapus "${row.displayName}" beserta nominal honornya dari tabel?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#cbd5e1',
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal'
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+
+      if (row.source === 'api') {
+        setExcludedTeachers(prev => (prev.includes(row.origName) ? prev : [...prev, row.origName]));
+        setRenamedTeachers(prev => {
+          if (!prev[row.origName]) return prev;
+          const next = { ...prev };
+          delete next[row.origName];
+          return next;
+        });
+      } else {
+        setManualTeachers(prev => prev.filter((_, idx) => idx !== row.manualIdx));
+      }
+
+      setDataMap(prev => {
+        if (!prev[row.displayName]) return prev;
+        const next = { ...prev };
+        delete next[row.displayName];
+        return next;
+      });
+    });
   };
 
   const handleDeleteColumn = (colId: string) => {
@@ -375,21 +595,118 @@ export default function BendaharaPerangkatUjian() {
               <tr>
                 <th style={{ padding: '16px', textAlign: 'center', color: '#475569', width: '60px', position: 'sticky', top: 0, left: 0, backgroundColor: '#f8fafc', zIndex: 30, borderBottom: '2px solid #e2e8f0' }}>No</th>
                 <th style={{ padding: '16px', textAlign: 'left', color: '#475569', minWidth: '200px', position: 'sticky', top: 0, left: '60px', backgroundColor: '#f8fafc', zIndex: 30, borderRight: '2px solid #e2e8f0', borderBottom: '2px solid #e2e8f0' }}>Nama Guru</th>
-                {columns.map(col => (
-                  <th key={col.id} style={{ padding: '16px', textAlign: 'center', color: '#475569', minWidth: '120px', position: 'sticky', top: 0, backgroundColor: '#f8fafc', zIndex: 20, borderBottom: '2px solid #e2e8f0' }}>
-                    <div style={{ fontSize: '0.95rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
-                      {col.name}
-                      <button onClick={() => handleDeleteColumn(col.id)} style={{ border: 'none', background: 'transparent', color: '#fca5a5', cursor: 'pointer', padding: 0 }} title="Hapus Kolom">
-                        <i className="fas fa-times"></i>
-                      </button>
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: col.type === 'minus' ? '#ef4444' : '#10b981', marginTop: '4px', fontWeight: 'normal' }}>
-                      {col.inputType === 'direct' ? '(Nominal Bebas)' : `(${col.type === 'minus' ? '-' : '+'}${formatRupiah(col.nominal)})`}
-                    </div>
-                  </th>
-                ))}
+                {columns.map((col, colIdx) => {
+                  const isDragged = draggedColId === col.id;
+                  const isDragOver = dragOverColId === col.id && draggedColId !== col.id;
+                  return (
+                    <th
+                      key={col.id}
+                      draggable
+                      onDragStart={(e) => {
+                        setDraggedColId(col.id);
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', col.id);
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        if (dragOverColId !== col.id) setDragOverColId(col.id);
+                      }}
+                      onDragLeave={() => {
+                        if (dragOverColId === col.id) setDragOverColId(null);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        handleDropColumn(col.id);
+                      }}
+                      onDragEnd={() => {
+                        setDraggedColId(null);
+                        setDragOverColId(null);
+                      }}
+                      style={{
+                        padding: '12px 10px',
+                        textAlign: 'center',
+                        color: '#475569',
+                        minWidth: '140px',
+                        position: 'sticky',
+                        top: 0,
+                        backgroundColor: isDragOver ? '#e0f2fe' : '#f8fafc',
+                        opacity: isDragged ? 0.55 : 1,
+                        zIndex: 20,
+                        borderBottom: '2px solid #e2e8f0',
+                        borderLeft: isDragOver ? '2px dashed #0284c7' : undefined,
+                        cursor: 'grab',
+                        userSelect: 'none',
+                      }}
+                      title="Seret header atau gunakan panah kiri/kanan untuk memindahkan urutan kolom"
+                    >
+                      <div style={{ fontSize: '0.92rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMoveColumn(colIdx, 'left');
+                          }}
+                          disabled={colIdx === 0}
+                          style={{
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '4px',
+                            background: colIdx === 0 ? '#f1f5f9' : 'white',
+                            color: colIdx === 0 ? '#cbd5e1' : '#475569',
+                            cursor: colIdx === 0 ? 'not-allowed' : 'pointer',
+                            padding: '1px 5px',
+                            fontSize: '0.7rem',
+                            lineHeight: 1.2,
+                          }}
+                          title="Geser Kolom ke Kiri"
+                        >
+                          ◀
+                        </button>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: 700 }}>
+                          <i className="fas fa-grip-vertical" style={{ color: '#94a3b8', fontSize: '0.75rem' }}></i>
+                          {col.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleMoveColumn(colIdx, 'right');
+                          }}
+                          disabled={colIdx === columns.length - 1}
+                          style={{
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '4px',
+                            background: colIdx === columns.length - 1 ? '#f1f5f9' : 'white',
+                            color: colIdx === columns.length - 1 ? '#cbd5e1' : '#475569',
+                            cursor: colIdx === columns.length - 1 ? 'not-allowed' : 'pointer',
+                            padding: '1px 5px',
+                            fontSize: '0.7rem',
+                            lineHeight: 1.2,
+                          }}
+                          title="Geser Kolom ke Kanan"
+                        >
+                          ▶
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteColumn(col.id);
+                          }}
+                          style={{ border: 'none', background: 'transparent', color: '#fca5a5', cursor: 'pointer', padding: '0 2px' }}
+                          title="Hapus Kolom"
+                        >
+                          <i className="fas fa-times"></i>
+                        </button>
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: col.type === 'minus' ? '#ef4444' : '#10b981', marginTop: '4px', fontWeight: 'normal' }}>
+                        {col.inputType === 'direct' ? '(Nominal Bebas)' : `(${col.type === 'minus' ? '-' : '+'}${formatRupiah(col.nominal)})`}
+                      </div>
+                    </th>
+                  );
+                })}
                 <th style={{ padding: '16px', textAlign: 'right', color: '#0f172a', minWidth: '150px', position: 'sticky', top: 0, backgroundColor: '#f8fafc', zIndex: 20, borderBottom: '2px solid #e2e8f0' }}>Total Honor</th>
-                <th style={{ padding: '16px', textAlign: 'center', color: '#475569', minWidth: '80px', position: 'sticky', top: 0, backgroundColor: '#f8fafc', zIndex: 20, borderBottom: '2px solid #e2e8f0' }}>Aksi</th>
+                <th style={{ padding: '16px', textAlign: 'center', color: '#475569', minWidth: '140px', position: 'sticky', top: 0, backgroundColor: '#f8fafc', zIndex: 20, borderBottom: '2px solid #e2e8f0' }}>Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -406,38 +723,64 @@ export default function BendaharaPerangkatUjian() {
                   </td>
                 </tr>
               ) : (
-                teachers.map((t, i) => (
-                  <tr key={t}>
-                    <td style={{ padding: '12px 16px', textAlign: 'center', color: '#64748b', position: 'sticky', left: 0, backgroundColor: 'white', zIndex: 5, borderBottom: '1px solid #f1f5f9' }}>{i + 1}</td>
-                    <td style={{ padding: '12px 16px', fontWeight: 500, color: '#334155', position: 'sticky', left: '60px', backgroundColor: 'white', zIndex: 5, borderRight: '2px solid #e2e8f0', borderBottom: '1px solid #f1f5f9' }}>{t}</td>
-                    {columns.map(col => (
-                      <td key={col.id} style={{ padding: '12px 16px', textAlign: 'center', borderBottom: '1px solid #f1f5f9' }}>
-                        <input
-                          type="number"
-                          min="0"
-                          value={dataMap[t]?.[col.id] || ''}
-                          onChange={(e) => handleInputChange(t, col.id, e.target.value)}
-                          style={{ 
-                            width: col.inputType === 'direct' ? '110px' : '70px', padding: '8px', textAlign: 'center', borderRadius: '6px', 
-                            border: col.type === 'minus' ? '1px solid #fca5a5' : '1px solid #cbd5e1', 
-                            color: col.type === 'minus' ? '#ef4444' : 'inherit',
-                            outline: 'none',
-                            backgroundColor: col.type === 'minus' ? '#fef2f2' : 'white'
-                          }}
-                          placeholder="0"
-                        />
+                teacherRows.map((row, i) => {
+                  const t = row.displayName;
+                  return (
+                    <tr key={row.source === 'api' ? `api-${row.origName}` : `manual-${row.manualIdx}`}>
+                      <td style={{ padding: '12px 16px', textAlign: 'center', color: '#64748b', position: 'sticky', left: 0, backgroundColor: 'white', zIndex: 5, borderBottom: '1px solid #f1f5f9' }}>{i + 1}</td>
+                      <td style={{ padding: '12px 16px', fontWeight: 500, color: '#334155', position: 'sticky', left: '60px', backgroundColor: 'white', zIndex: 5, borderRight: '2px solid #e2e8f0', borderBottom: '1px solid #f1f5f9' }}>{t}</td>
+                      {columns.map(col => (
+                        <td key={col.id} style={{ padding: '12px 16px', textAlign: 'center', borderBottom: '1px solid #f1f5f9' }}>
+                          <input
+                            type="number"
+                            min="0"
+                            value={dataMap[t]?.[col.id] || ''}
+                            onChange={(e) => handleInputChange(t, col.id, e.target.value)}
+                            style={{ 
+                              width: col.inputType === 'direct' ? '110px' : '70px', padding: '8px', textAlign: 'center', borderRadius: '6px', 
+                              border: col.type === 'minus' ? '1px solid #fca5a5' : '1px solid #cbd5e1', 
+                              color: col.type === 'minus' ? '#ef4444' : 'inherit',
+                              outline: 'none',
+                              backgroundColor: col.type === 'minus' ? '#fef2f2' : 'white'
+                            }}
+                            placeholder="0"
+                          />
+                        </td>
+                      ))}
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 'bold', color: '#0f172a', backgroundColor: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
+                        {formatRupiah(calculateTotalRow(t))}
                       </td>
-                    ))}
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 'bold', color: '#0f172a', backgroundColor: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
-                      {formatRupiah(calculateTotalRow(t))}
-                    </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center', borderBottom: '1px solid #f1f5f9' }}>
-                      <button onClick={() => setPrintMode([t])} style={{ padding: '6px 12px', borderRadius: '6px', background: '#e2e8f0', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#334155', fontWeight: 'bold' }} title="Cetak Slip">
-                        <i className="fas fa-print"></i>
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                      <td style={{ padding: '12px 16px', textAlign: 'center', borderBottom: '1px solid #f1f5f9' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={() => setPrintMode([t])}
+                            style={{ padding: '6px 10px', borderRadius: '6px', background: '#e2e8f0', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#334155', fontWeight: 'bold' }}
+                            title="Cetak Slip"
+                          >
+                            <i className="fas fa-print"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleEditTeacherRow(i)}
+                            style={{ padding: '6px 10px', borderRadius: '6px', background: '#e0f2fe', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#0284c7', fontWeight: 'bold' }}
+                            title="Edit Guru & Honor"
+                          >
+                            <i className="fas fa-edit"></i>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTeacherRow(i)}
+                            style={{ padding: '6px 10px', borderRadius: '6px', background: '#fee2e2', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: '#ef4444', fontWeight: 'bold' }}
+                            title="Hapus Baris Guru"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
               {!loadingData && teachers.length > 0 && (
                 <tr style={{ background: '#f1f5f9', borderTop: '2px solid #cbd5e1' }}>
@@ -564,10 +907,7 @@ export default function BendaharaPerangkatUjian() {
                 <th style={{ padding: '8px 4px', textAlign: 'left', minWidth: '150px' }}>Nama Guru</th>
                 {columns.map(col => (
                   <th key={col.id} style={{ padding: '8px 4px', textAlign: 'center' }}>
-                    {col.name}<br/>
-                    <span style={{ fontSize: '9px', fontWeight: 'normal' }}>
-                      {col.inputType === 'direct' ? '(Nominal Bebas)' : `(${col.type === 'minus' ? '-' : '+'}${formatRupiah(col.nominal)})`}
-                    </span>
+                    {col.name}
                   </th>
                 ))}
                 <th style={{ padding: '8px 4px', textAlign: 'right' }}>Total Honor</th>
