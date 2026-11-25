@@ -1,8 +1,0 @@
-{
-  "crons": [
-    {
-      "path": "/api/cron/wa-reminder",
-      "schedule": "50 23 * * 0-5"
-    }
-  ]
-}

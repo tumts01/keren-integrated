@@ -48,12 +48,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 1. Endpoint Cron (diamankan oleh CRON_SECRET di masing-masing route handler)
-  if (pathname.startsWith('/api/cron/')) {
-    return NextResponse.next();
-  }
-
-  // 2. Endpoint Publik Eksplisit
+  // 1. Endpoint Publik Eksplisit
   if (PUBLIC_EXACT_API.has(pathname)) {
     return NextResponse.next();
   }
