@@ -40,7 +40,8 @@ export async function GET(req: Request) {
     const whatsapp = userRow.metadata?.['Whatsapp'] || '';
     const foto = userRow.metadata?.['Foto'] || userRow.metadata?.['foto'] || '';
     const hasPin = Boolean(userRow.metadata?.['PIN_HASH'] || userRow.metadata?.['PIN']);
-    const needPinSetup = !hasPin && isSensitiveStaffRole(role);
+    // Seluruh Guru & Staf wajib membuat PIN 6 digit pribadi jika belum memiliki PIN
+    const needPinSetup = !hasPin;
 
     const response = NextResponse.json(
       {

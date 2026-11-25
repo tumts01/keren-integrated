@@ -16,6 +16,7 @@ interface UserData {
   rawFoto?: string;
   sudahGanti: boolean;
   hasPin?: boolean;
+  pinDisplay?: string;
   terakhirLogin: string;
   whatsapp?: string;
 }
@@ -64,6 +65,9 @@ export default function UserGuruPage() {
   const [newUsername, setNewUsername] = useState('');
   const [selectedRoleOption, setSelectedRoleOption] = useState('GTK');
   const [customRoleInput, setCustomRoleInput] = useState('');
+  const [newPinManual, setNewPinManual] = useState('');
+  const [revealedPins, setRevealedPins] = useState<Record<number, boolean>>({});
+  const [showAllPins, setShowAllPins] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -188,6 +192,7 @@ export default function UserGuruPage() {
   const handleOpenEdit = (user: UserData) => {
     setSelectedUser(user);
     setNewUsername(user.username);
+    setNewPinManual('');
     const currentRole = (user.role || 'GTK').trim();
     if (allRoleChoices.includes(currentRole)) {
       setSelectedRoleOption(currentRole);
@@ -202,9 +207,26 @@ export default function UserGuruPage() {
   const handleCloseModal = () => {
     setSelectedUser(null);
     setNewUsername('');
+    setNewPinManual('');
     setSelectedRoleOption('GTK');
     setCustomRoleInput('');
     setSaving(false);
+  };
+
+  const toggleRevealPin = (uid: number) => {
+    setRevealedPins(prev => ({ ...prev, [uid]: !prev[uid] }));
+  };
+
+  const handleCopyPin = (pinVal: string, nama: string) => {
+    navigator.clipboard.writeText(pinVal);
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: `PIN ${nama} disalin!`,
+      showConfirmButton: false,
+      timer: 1800,
+    });
   };
 
   // Copy to clipboard helper
@@ -280,9 +302,9 @@ export default function UserGuruPage() {
       const result = await res.json();
       if (result.success) {
         setUsers(prev =>
-          prev.map(u => (u.id === selectedUser.id ? { ...u, hasPin: false } : u))
+          prev.map(u => (u.id === selectedUser.id ? { ...u, hasPin: false, pinDisplay: '' } : u))
         );
-        setSelectedUser(prev => (prev ? { ...prev, hasPin: false } : null));
+        setSelectedUser(prev => (prev ? { ...prev, hasPin: false, pinDisplay: '' } : null));
         Swal.fire({
           icon: 'success',
           title: 'PIN Berhasil Direset',
@@ -325,8 +347,15 @@ export default function UserGuruPage() {
       return;
     }
 
+    const cleanManualPin = canManageRole ? newPinManual.trim() : '';
+    if (cleanManualPin && !/^\d{6}$/.test(cleanManualPin)) {
+      Swal.fire({ icon: 'warning', title: 'Format PIN', text: 'PIN baru harus terdiri dari tepat 6 digit angka.' });
+      return;
+    }
+
     const isUsernameUpdated = trimmed !== selectedUser.username;
     const isRoleUpdated = canManageRole && targetRole !== (selectedUser.role || 'GTK');
+    const isPinUpdated = Boolean(cleanManualPin);
 
     setSaving(true);
     try {
@@ -338,11 +367,13 @@ export default function UserGuruPage() {
           oldUsername: selectedUser.username,
           newUsername: trimmed,
           ...(canManageRole ? { newRole: targetRole } : {}),
+          ...(isPinUpdated ? { newPin: cleanManualPin } : {}),
         })
       });
 
       const result = await res.json();
       if (result.success) {
+        const finalPinDisplay = isPinUpdated ? cleanManualPin : selectedUser.pinDisplay;
         // Update local state
         setUsers(prev =>
           prev.map(u =>
@@ -352,12 +383,14 @@ export default function UserGuruPage() {
                   username: trimmed,
                   role: targetRole,
                   sudahGanti: isUsernameUpdated ? true : u.sudahGanti,
+                  hasPin: isPinUpdated ? true : u.hasPin,
+                  pinDisplay: finalPinDisplay,
                 }
               : u
           )
         );
 
-        const updatedUser = { ...selectedUser, username: trimmed, role: targetRole };
+        const updatedUser = { ...selectedUser, username: trimmed, role: targetRole, pinDisplay: finalPinDisplay };
         handleCloseModal();
 
         const escHtml = (val: string) =>
@@ -430,6 +463,7 @@ export default function UserGuruPage() {
       'Nama Guru / GTK': u.nama,
       'Role / Jabatan': u.role,
       'Username Login': u.username,
+      'PIN Login (6 Digit)': u.hasPin ? (u.pinDisplay || 'Sudah Aktif') : 'Belum Buat PIN',
       'Status Ganti Username': u.sudahGanti ? 'Sudah Ganti' : 'Default',
       'Terakhir Login': u.terakhirLogin || 'Belum Pernah',
       'No WhatsApp': u.whatsapp || '-'
@@ -625,6 +659,28 @@ export default function UserGuruPage() {
                   <th>Nama Guru & GTK</th>
                   <th>Role / Jabatan</th>
                   <th>Username Login</th>
+                  <th>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                      <span>PIN (6 Digit)</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowAllPins(prev => !prev)}
+                        title={showAllPins ? 'Sembunyikan semua PIN' : 'Tampilkan semua PIN'}
+                        style={{
+                          background: '#e2e8f0',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '2px 7px',
+                          fontSize: '0.72rem',
+                          color: '#334155',
+                          cursor: 'pointer',
+                          fontWeight: 700,
+                        }}
+                      >
+                        <i className={`fas ${showAllPins ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                      </button>
+                    </div>
+                  </th>
                   <th>Status Username</th>
                   <th>Terakhir Login</th>
                   <th style={{ textAlign: 'center', width: '130px' }}>Aksi</th>
@@ -674,30 +730,9 @@ export default function UserGuruPage() {
                       </td>
 
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                          <span className={styles.badgeRole} style={getRoleBadgeStyle(u.role)}>
-                            {u.role || 'GTK'}
-                          </span>
-                          {u.hasPin && (
-                            <span
-                              title="Dilindungi PIN 6 digit"
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                fontSize: '0.72rem',
-                                fontWeight: 700,
-                                padding: '2px 7px',
-                                borderRadius: '999px',
-                                background: '#dcfce7',
-                                color: '#15803d',
-                                border: '1px solid #bbf7d0',
-                              }}
-                            >
-                              <i className="fas fa-lock" style={{ fontSize: '0.65rem' }}></i> PIN
-                            </span>
-                          )}
-                        </div>
+                        <span className={styles.badgeRole} style={getRoleBadgeStyle(u.role)}>
+                          {u.role || 'GTK'}
+                        </span>
                       </td>
 
                       <td>
@@ -712,6 +747,47 @@ export default function UserGuruPage() {
                             <i className="fas fa-copy"></i>
                           </button>
                         </div>
+                      </td>
+
+                      <td>
+                        {!u.hasPin ? (
+                          <span className={styles.badgeWarning} title="Guru belum membuat PIN 6 digit">
+                            <i className="fas fa-exclamation-circle"></i> Belum Buat
+                          </span>
+                        ) : (
+                          <div className={styles.usernamePill} style={{ background: '#f0fdf4', borderColor: '#bbf7d0' }}>
+                            <span
+                              style={{
+                                fontFamily: 'monospace',
+                                fontWeight: 700,
+                                color: '#15803d',
+                                letterSpacing: showAllPins || revealedPins[u.id] ? '2px' : '3px',
+                              }}
+                            >
+                              {showAllPins || revealedPins[u.id]
+                                ? u.pinDisplay || 'Aktif'
+                                : '••••••'}
+                            </span>
+                            <button
+                              type="button"
+                              className={styles.btnCopy}
+                              title={showAllPins || revealedPins[u.id] ? 'Sembunyikan PIN' : 'Lihat PIN'}
+                              onClick={() => toggleRevealPin(u.id)}
+                            >
+                              <i className={`fas ${showAllPins || revealedPins[u.id] ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                            </button>
+                            {u.pinDisplay && /^\d{6}$/.test(u.pinDisplay) && (
+                              <button
+                                type="button"
+                                className={styles.btnCopy}
+                                title="Salin PIN ke clipboard"
+                                onClick={() => handleCopyPin(u.pinDisplay!, u.nama)}
+                              >
+                                <i className="fas fa-copy"></i>
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </td>
 
                       <td>
@@ -876,42 +952,46 @@ export default function UserGuruPage() {
                   )}
                 </div>
 
-                {/* Reset PIN Keamanan (Khusus Admin jika user sudah punya PIN) */}
-                {canManageRole && selectedUser.hasPin && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: '12px',
-                      padding: '10px 14px',
-                      borderRadius: '10px',
-                      background: '#fff1f2',
-                      border: '1px solid #fecdd3',
-                      marginBottom: '14px',
-                    }}
-                  >
-                    <div style={{ fontSize: '0.82rem', color: '#9f1239' }}>
-                      <strong><i className="fas fa-lock"></i> PIN 6 Digit Aktif</strong> — Reset jika pengguna lupa PIN.
+                {/* Pengaturan / Reset PIN Keamanan (Khusus Admin) */}
+                {canManageRole && (
+                  <div className={styles.formGroup} style={{ marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <label className={styles.formLabel} style={{ margin: 0 }}>
+                        Atur / Ubah PIN 6 Digit (Opsional)
+                      </label>
+                      {selectedUser.hasPin && (
+                        <button
+                          type="button"
+                          onClick={handleResetPin}
+                          disabled={saving}
+                          style={{
+                            background: '#fff1f2',
+                            color: '#e11d48',
+                            border: '1px solid #fecdd3',
+                            borderRadius: '6px',
+                            padding: '3px 10px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <i className="fas fa-undo"></i> Kosongkan / Reset PIN
+                        </button>
+                      )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleResetPin}
-                      disabled={saving}
-                      style={{
-                        background: '#e11d48',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '8px',
-                        padding: '6px 12px',
-                        fontSize: '0.78rem',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      Reset PIN
-                    </button>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={6}
+                      className={styles.formInput}
+                      placeholder={
+                        selectedUser.hasPin
+                          ? `PIN saat ini: ${selectedUser.pinDisplay || 'Aktif'} — ketik 6 angka baru jika ingin mengubah`
+                          : 'Belum ada PIN — ketik 6 angka jika ingin membuatkan, atau biarkan guru buat sendiri'
+                      }
+                      value={newPinManual}
+                      onChange={e => setNewPinManual(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    />
                   </div>
                 )}
 
@@ -919,7 +999,7 @@ export default function UserGuruPage() {
                 <div className={styles.infoNote}>
                   <i className="fas fa-info-circle" style={{ fontSize: '1.1rem', marginTop: '2px' }}></i>
                   <div>
-                    Perubahan Role (seperti Admin, Pimpinan, Bendahara, atau GTK) maupun Username akan langsung tersinkronisasi secara otomatis pada sesi pengguna.
+                    Perubahan Role, Username, maupun PIN akan langsung tersinkronisasi. Jika PIN direset/kosong, pop-up pembuatan PIN otomatis muncul saat guru membuka aplikasi.
                   </div>
                 </div>
               </div>
@@ -941,7 +1021,8 @@ export default function UserGuruPage() {
                     !newUsername.trim() ||
                     (canManageRole && !resolvedRoleValue) ||
                     (newUsername.trim() === selectedUser.username &&
-                      (!canManageRole || resolvedRoleValue === (selectedUser.role || 'GTK')))
+                      (!canManageRole || resolvedRoleValue === (selectedUser.role || 'GTK')) &&
+                      !newPinManual.trim())
                   }
                 >
                   {saving ? (

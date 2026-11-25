@@ -12,9 +12,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [usernameInput, setUsernameInput] = useState('');
   const [pinInput, setPinInput] = useState('');
   const [requirePinInput, setRequirePinInput] = useState(false);
+  const [showLoginPin, setShowLoginPin] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
+  const [showSetupPin, setShowSetupPin] = useState(false);
   const [pinSaving, setPinSaving] = useState(false);
   const [loginMode, setLoginMode] = useState<'select' | 'guru'>('select');
   const [mounted, setMounted] = useState(false);
@@ -360,7 +362,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             username: usernameInput.trim(),
-            ...(requirePinInput && pinInput.trim() ? { pin: pinInput.trim() } : {}),
+            ...(pinInput.trim() ? { pin: pinInput.trim() } : {}),
           })
         });
         const data = await res.json();
@@ -369,11 +371,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           localStorage.setItem('keren_user_data', JSON.stringify(data.user));
           setPinInput('');
           setRequirePinInput(false);
+          setShowLoginPin(false);
           setUser(data.user);
         } else if (data.requirePin) {
           setRequirePinInput(true);
           if (data.error) {
-            setPopup({ show: true, type: 'error', title: 'Verifikasi PIN', message: data.error });
+            setPopup({ show: true, type: 'error', title: 'PIN Salah', message: data.error });
           }
         } else {
           setPopup({ show: true, type: 'error', title: 'Login Gagal', message: data.error });
@@ -654,7 +657,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </div>
 
                 <form onSubmit={handleLogin} className={styles.form}>
-                  <div style={{ textAlign: 'left', marginBottom: '16px' }}>
+                  <div style={{ textAlign: 'left', marginBottom: '14px' }}>
                     <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '6px' }}>
                       Username
                     </label>
@@ -667,7 +670,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                           setUsernameInput(e.target.value);
                           if (requirePinInput) {
                             setRequirePinInput(false);
-                            setPinInput('');
                           }
                         }}
                         autoFocus
@@ -676,32 +678,57 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     </div>
                   </div>
 
-                  {requirePinInput && (
-                    <div style={{ textAlign: 'left', marginBottom: '16px' }}>
-                      <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '6px' }}>
-                        PIN Keamanan (6 Digit)
+                  <div style={{ textAlign: 'left', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#374151' }}>
+                        PIN 6 Digit Angka
                       </label>
-                      <div className={styles.inputGroup}>
-                        <input
-                          type="password"
-                          inputMode="numeric"
-                          pattern="\d{6}"
-                          maxLength={6}
-                          placeholder="Masukkan 6 digit PIN keamanan..."
-                          value={pinInput}
-                          onChange={(e) => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                          autoFocus
-                          required
-                        />
-                      </div>
-                      <small style={{ color: '#047857', fontSize: '0.76rem', display: 'block', marginTop: '5px' }}>
-                        Akun ini dilindungi PIN keamanan. Masukkan 6 digit PIN Anda untuk melanjutkan.
-                      </small>
+                      <button
+                        type="button"
+                        onClick={() => setShowLoginPin(prev => !prev)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#047857',
+                          fontSize: '0.76rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          padding: 0,
+                        }}
+                      >
+                        <i className={`fas ${showLoginPin ? 'fa-eye-slash' : 'fa-eye'}`}></i>{' '}
+                        {showLoginPin ? 'Sembunyikan' : 'Lihat PIN'}
+                      </button>
                     </div>
-                  )}
+                    <div className={styles.inputGroup}>
+                      <input
+                        type={showLoginPin ? 'text' : 'password'}
+                        inputMode="numeric"
+                        maxLength={6}
+                        placeholder="Masukkan 6 angka PIN..."
+                        value={pinInput}
+                        onChange={(e) => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        required={requirePinInput}
+                        style={
+                          requirePinInput
+                            ? { borderColor: '#10b981', boxShadow: '0 0 0 3px rgba(16, 185, 129, 0.15)' }
+                            : undefined
+                        }
+                      />
+                    </div>
+                    {requirePinInput ? (
+                      <small style={{ color: '#047857', fontSize: '0.76rem', fontWeight: 600, display: 'block', marginTop: '5px' }}>
+                        <i className="fas fa-lock"></i> Akun ini sudah memiliki PIN. Masukkan 6 digit PIN Anda lalu klik Masuk.
+                      </small>
+                    ) : (
+                      <small style={{ color: '#64748b', fontSize: '0.75rem', display: 'block', marginTop: '5px', lineHeight: 1.4 }}>
+                        Belum pernah membuat PIN? <strong>Kosongkan saja kolom PIN</strong> lalu klik <strong>Masuk</strong> untuk membuat PIN baru.
+                      </small>
+                    )}
+                  </div>
 
                   <button type="submit" className={styles.loginBtn} disabled={loading}>
-                    {loading ? <><i className="fas fa-spinner fa-spin"></i> Memproses...</> : <><i className="fas fa-sign-in-alt"></i> {requirePinInput ? 'Verifikasi PIN & Masuk' : 'Masuk'}</>}
+                    {loading ? <><i className="fas fa-spinner fa-spin"></i> Memproses...</> : <><i className="fas fa-sign-in-alt"></i> Masuk</>}
                   </button>
                 </form>
 
@@ -836,46 +863,66 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {user && user.needPinSetup === true && (
         <div className={styles.popupOverlay} style={{ zIndex: 5100, background: 'rgba(15, 23, 42, 0.85)' }}>
-          <div className={styles.popupCard} style={{ maxWidth: '440px' }}>
+          <div className={styles.popupCard} style={{ maxWidth: '450px' }}>
             <div className={styles.popupIcon} style={{ background: '#dcfce7', color: '#16a34a' }}>
               <i className="fas fa-lock"></i>
             </div>
-            <h3 className={styles.popupTitle}>Aktifkan PIN Keamanan (6 Digit)</h3>
-            <p className={styles.popupMessage} style={{ marginBottom: '18px' }}>
-              Halo <strong>{user.nama || user.username}</strong>, akun dengan hak akses <strong>{user.role}</strong> wajib dilindungi PIN 6 digit agar tidak dapat dimasuki pihak lain yang mengetahui username Anda.
+            <h3 className={styles.popupTitle}>Buat PIN Keamanan Anda (6 Digit)</h3>
+            <p className={styles.popupMessage} style={{ marginBottom: '16px', lineHeight: 1.5 }}>
+              Assalamu&apos;alaikum Bpk/Ibu <strong>{user.nama || user.username}</strong>,<br/>
+              Silakan buat <strong>PIN 6 digit angka</strong> pilihan Anda sendiri yang mudah diingat (misal tanggal lahir). PIN ini cukup dibuat satu kali untuk melindungi akun Anda.
             </p>
             <form onSubmit={handleSetupPin} style={{ width: '100%' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowSetupPin(prev => !prev)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#047857',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  <i className={`fas ${showSetupPin ? 'fa-eye-slash' : 'fa-eye'}`}></i>{' '}
+                  {showSetupPin ? 'Sembunyikan Angka' : 'Tampilkan Angka PIN'}
+                </button>
+              </div>
               <div className={styles.inputGroup} style={{ marginBottom: '12px' }}>
                 <input
-                  type="password"
+                  type={showSetupPin ? 'text' : 'password'}
                   inputMode="numeric"
                   maxLength={6}
-                  placeholder="Buat 6 Digit PIN Angka..."
+                  placeholder="Ketik 6 Digit PIN Angka..."
                   value={newPin}
                   onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  autoFocus
                   required
-                  style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid #cbd5e1', outline: 'none', letterSpacing: '4px', textAlign: 'center', fontSize: '1.05rem' }}
+                  style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1.5px solid #cbd5e1', outline: 'none', letterSpacing: '5px', textAlign: 'center', fontSize: '1.1rem', fontWeight: 700 }}
                 />
               </div>
               <div className={styles.inputGroup} style={{ marginBottom: '16px' }}>
                 <input
-                  type="password"
+                  type={showSetupPin ? 'text' : 'password'}
                   inputMode="numeric"
                   maxLength={6}
                   placeholder="Ulangi 6 Digit PIN..."
                   value={confirmPin}
                   onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   required
-                  style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid #cbd5e1', outline: 'none', letterSpacing: '4px', textAlign: 'center', fontSize: '1.05rem' }}
+                  style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1.5px solid #cbd5e1', outline: 'none', letterSpacing: '5px', textAlign: 'center', fontSize: '1.1rem', fontWeight: 700 }}
                 />
               </div>
               <button
                 type="submit"
                 className={styles.popupBtnConfirm}
-                style={{ background: '#16a34a', width: '100%', padding: '12px' }}
+                style={{ background: '#16a34a', width: '100%', padding: '12px', fontWeight: 700 }}
                 disabled={pinSaving}
               >
-                {pinSaving ? <i className="fas fa-spinner fa-spin"></i> : 'Simpan & Aktifkan PIN'}
+                {pinSaving ? <><i className="fas fa-spinner fa-spin"></i> Menyimpan...</> : 'Simpan & Aktifkan PIN'}
               </button>
             </form>
           </div>

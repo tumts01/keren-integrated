@@ -8,6 +8,7 @@ import {
   SESSION_MAX_AGE_SECONDS,
   signToken,
 } from '@/lib/auth-session';
+import { encryptPinForAdmin, hashSecret } from '@/lib/pin-crypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Sesi login tidak valid' }, { status: 401 });
     }
 
-    const { oldUsername, newUsername, newRole, resetPin, userId } = await request.json();
+    const { oldUsername, newUsername, newRole, newPin, resetPin, userId } = await request.json();
 
     const { data: rows, error } = await supabase.from('data_users').select('*');
     if (error) throw error;
@@ -119,12 +120,22 @@ export async function POST(request: Request) {
       finalRole = requestedRole;
     }
 
-    // Validasi reset PIN (hanya Admin)
+    // Validasi reset PIN atau set PIN manual oleh Admin
     const doResetPin = Boolean(resetPin === true);
-    if (doResetPin && !isStrictAdmin) {
+    const cleanNewPin = typeof newPin === 'string' ? newPin.trim() : '';
+    const doSetPin = Boolean(cleanNewPin);
+
+    if ((doResetPin || doSetPin) && !isStrictAdmin) {
       return NextResponse.json(
-        { success: false, error: 'Hanya akun Admin yang dapat mereset PIN pengguna.' },
+        { success: false, error: 'Hanya akun Admin yang dapat mengelola/mereset PIN pengguna lain.' },
         { status: 403 }
+      );
+    }
+
+    if (doSetPin && !/^\d{6}$/.test(cleanNewPin)) {
+      return NextResponse.json(
+        { success: false, error: 'PIN baru harus tepat 6 digit angka.' },
+        { status: 400 }
       );
     }
 
@@ -140,6 +151,11 @@ export async function POST(request: Request) {
 
     if (doResetPin) {
       delete updatedMetadata['PIN_HASH'];
+      delete updatedMetadata['PIN_ENC'];
+      delete updatedMetadata['PIN'];
+    } else if (doSetPin) {
+      updatedMetadata['PIN_HASH'] = hashSecret(cleanNewPin);
+      updatedMetadata['PIN_ENC'] = encryptPinForAdmin(cleanNewPin);
       delete updatedMetadata['PIN'];
     }
 
@@ -171,6 +187,15 @@ export async function POST(request: Request) {
         foto: userRow.metadata?.['Foto'] || userRow.metadata?.['foto'] || '',
         sudahGanti: sudahGantiFinal,
         hasPin: hasPinFinal,
+        ...(isStrictAdmin
+          ? {
+              pinDisplay: doResetPin
+                ? ''
+                : doSetPin
+                ? cleanNewPin
+                : undefined,
+            }
+          : {}),
       },
     });
 

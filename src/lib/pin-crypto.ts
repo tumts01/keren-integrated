@@ -1,4 +1,47 @@
-import { randomBytes, scryptSync, timingSafeEqual } from 'crypto';
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+  scryptSync,
+  timingSafeEqual,
+} from 'crypto';
+
+function getPinEncryptionKey(): Buffer {
+  const rawSecret =
+    process.env.SESSION_SECRET ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.FONNTE_TOKEN ||
+    process.env.GOOGLE_APPS_SCRIPT_UPLOAD_URL ||
+    'keren-integrated-dev-only-secret-key';
+  return createHash('sha256').update(`keren-pin-aes:${rawSecret}`).digest();
+}
+
+export function encryptPinForAdmin(plainPin: string): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', getPinEncryptionKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(plainPin.trim(), 'utf8'), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return `aes256gcm:${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
+}
+
+export function decryptPinForAdmin(encValue: unknown): string | null {
+  const raw = String(encValue ?? '').trim();
+  if (!raw.startsWith('aes256gcm:')) return null;
+  const parts = raw.split(':');
+  if (parts.length !== 4) return null;
+  try {
+    const iv = Buffer.from(parts[1], 'hex');
+    const authTag = Buffer.from(parts[2], 'hex');
+    const ciphertext = Buffer.from(parts[3], 'hex');
+    const decipher = createDecipheriv('aes-256-gcm', getPinEncryptionKey(), iv);
+    decipher.setAuthTag(authTag);
+    const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+    return decrypted.toString('utf8');
+  } catch {
+    return null;
+  }
+}
 
 export function hashSecret(plain: string): string {
   const salt = randomBytes(16).toString('hex');

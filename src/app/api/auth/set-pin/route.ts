@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { getGuruSessionFromRequest } from '@/lib/auth-session';
-import { hashSecret, verifySecret } from '@/lib/pin-crypto';
+import { encryptPinForAdmin, hashSecret, verifySecret } from '@/lib/pin-crypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +45,7 @@ export async function POST(req: Request) {
 
     const updatedMeta = { ...(userRow.metadata || {}) };
     updatedMeta['PIN_HASH'] = hashSecret(cleanPin);
+    updatedMeta['PIN_ENC'] = encryptPinForAdmin(cleanPin);
     delete updatedMeta['PIN']; // Hapus PIN plaintext lama jika ada
 
     const { error: updateErr } = await supabase

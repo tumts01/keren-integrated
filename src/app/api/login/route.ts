@@ -10,6 +10,7 @@ import {
 import {
   checkRateLimit,
   clearRateLimit,
+  encryptPinForAdmin,
   getClientIp,
   hashSecret,
   verifySecret,
@@ -107,9 +108,14 @@ export async function POST(request: Request) {
         ...(userRow.metadata || {}),
         'Terakhir Login': timestamp,
       };
-      if (pinNeedsMigration && typeof pin === 'string') {
-        updatedMetadata['PIN_HASH'] = hashSecret(pin.trim());
-        delete updatedMetadata['PIN'];
+      if (typeof pin === 'string' && /^\d{6}$/.test(pin.trim())) {
+        if (pinNeedsMigration) {
+          updatedMetadata['PIN_HASH'] = hashSecret(pin.trim());
+          delete updatedMetadata['PIN'];
+        }
+        if (!updatedMetadata['PIN_ENC']) {
+          updatedMetadata['PIN_ENC'] = encryptPinForAdmin(pin.trim());
+        }
       }
       await supabase.from('data_users').update({ metadata: updatedMetadata }).eq('id', userRow.id);
     } catch (logError) {
@@ -120,7 +126,8 @@ export async function POST(request: Request) {
     const resolvedUsername = userRow.username || userRow.metadata?.['Username'] || cleanUser;
     const role = userRow.role || userRow.metadata?.['Role'] || 'GTK';
     const rawFoto = userRow.metadata?.['Foto'] || userRow.metadata?.['foto'] || '';
-    const needPinSetup = !hasPin && isSensitiveStaffRole(role);
+    // Seluruh Guru & Staf yang belum punya PIN akan disambut pop-up pembuatan PIN 6 digit
+    const needPinSetup = !hasPin;
 
     const nowSec = Math.floor(Date.now() / 1000);
     const sessionToken = await signToken<GuruSessionPayload>({
