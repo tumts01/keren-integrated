@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Swal from 'sweetalert2';
 import styles from './NilaiSiswa.module.css';
-import { supabase } from '@/lib/supabase';
+import { getRaporConfigSingle, upsertRaporConfig } from '@/lib/rapor-config-client';
 import {
   PK_CATEGORY_MAP,
   PK_MAPEL_BASE_FIELDS,
@@ -156,11 +156,7 @@ export default function NilaiSiswaPage() {
 
     const loadDeskripsiConfig = async () => {
       try {
-        const { data, error } = await supabase
-          .from('rapor_config')
-          .select('value')
-          .eq('key', PK_DESKRIPSI_CONFIG_KEY)
-          .maybeSingle();
+        const { data, error } = await getRaporConfigSingle(PK_DESKRIPSI_CONFIG_KEY);
 
         if (!error && data?.value) {
           const parsed = normalizePKDeskripsiConfig(JSON.parse(data.value));
@@ -807,9 +803,7 @@ export default function NilaiSiswaPage() {
         localStorage.setItem(PK_DESKRIPSI_CONFIG_KEY, serialized);
       } catch {}
 
-      const { error } = await supabase
-        .from('rapor_config')
-        .upsert({ key: PK_DESKRIPSI_CONFIG_KEY, value: serialized }, { onConflict: 'key' });
+      const { error } = await upsertRaporConfig(PK_DESKRIPSI_CONFIG_KEY, serialized);
 
       if (error) throw error;
 

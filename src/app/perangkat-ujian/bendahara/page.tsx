@@ -43,12 +43,16 @@ export default function BendaharaPerangkatUjian() {
   const teachers = teacherRows.map((r) => r.displayName);
 
   useEffect(() => {
-    // Cek session di localStorage (sederhana)
-    const session = localStorage.getItem('bendahara_pu_session');
-    if (session === 'unlocked') {
-      setIsUnlocked(true);
-    }
-    setLoading(false);
+    // Verifikasi status unlock Bendahara Ujian dari cookie sesi server
+    fetch('/api/auth/perangkat-unlock?scope=bendahara', { cache: 'no-store' })
+      .then(res => res.json())
+      .then(data => {
+        if (data?.unlocked) {
+          setIsUnlocked(true);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
 
     // Load data dari localstorage (sebagai backup / initial load cepat)
     const savedCols = localStorage.getItem('bendahara_cols');
@@ -67,13 +71,15 @@ export default function BendaharaPerangkatUjian() {
         setRenamedTeachers(parsed.renamedTeachers);
       }
     }
+  }, []);
 
-    // Fetch dari Supabase Database
-    fetch('/api/bendahara')
+  useEffect(() => {
+    if (!isUnlocked) return;
+    // Fetch dari Supabase Database melalui API terproteksi setelah akses terbuka
+    fetch('/api/bendahara', { cache: 'no-store' })
       .then(res => res.json())
       .then(res => {
         if (res.success && res.data) {
-          // Jika DB ada isinya, timpa local storage
           if (res.data.columns && res.data.columns.length > 0) {
             setColumns(res.data.columns);
             setDataMap(res.data.data_map || {});
@@ -92,7 +98,7 @@ export default function BendaharaPerangkatUjian() {
       .finally(() => {
         setIsDataLoaded(true);
       });
-  }, []);
+  }, [isUnlocked]);
 
   useEffect(() => {
     // Fetch daftar guru
@@ -159,26 +165,38 @@ export default function BendaharaPerangkatUjian() {
     }
   }, [isPrintTandaTerima]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === 'kayarayahahaha') {
-      localStorage.setItem('bendahara_pu_session', 'unlocked');
-      setIsUnlocked(true);
-      Swal.fire({
-        icon: 'success',
-        title: 'Login Berhasil',
-        text: 'Selamat datang, Bendahara!',
-        timer: 1500,
-        showConfirmButton: false
+    try {
+      const res = await fetch('/api/auth/perangkat-unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope: 'bendahara', credential: username }),
       });
-    } else {
-      Swal.fire('Akses Ditolak', 'Username salah!', 'error');
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setIsUnlocked(true);
+        setUsername('');
+        Swal.fire({
+          icon: 'success',
+          title: 'Login Berhasil',
+          text: 'Selamat datang, Bendahara!',
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      } else {
+        Swal.fire('Akses Ditolak', data.error || 'Kredensial salah!', 'error');
+      }
+    } catch {
+      Swal.fire('Error', 'Gagal menghubungi server verifikasi.', 'error');
     }
   };
 
   const handleLogout = () => {
+    fetch('/api/auth/perangkat-unlock?scope=bendahara', { method: 'DELETE' }).catch(() => {});
     localStorage.removeItem('bendahara_pu_session');
     setIsUnlocked(false);
+    setIsDataLoaded(false);
     setUsername('');
   };
 

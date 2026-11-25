@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
-import { supabase } from '@/lib/supabase';
+import { getRaporConfigSingle, upsertRaporConfig } from '@/lib/rapor-config-client';
 import InlineLoading from '@/components/InlineLoading';
 
 const CONFIG_KEY = 'jadwal_pengawas_ujian';
@@ -683,7 +683,7 @@ export default function JadwalPengawasTab() {
         const [resGuru, resMapel, savedRes] = await Promise.all([
           fetch('/api/guru', { cache: 'no-store' }),
           fetch('/api/jadwal/mapel', { cache: 'no-store' }),
-          supabase.from('rapor_config').select('value').eq('key', CONFIG_KEY).maybeSingle()
+          getRaporConfigSingle(CONFIG_KEY)
         ]);
 
         const guruJson = await resGuru.json();
@@ -888,11 +888,7 @@ export default function JadwalPengawasTab() {
 
   const handlePullRoomsFromConfig = async () => {
     try {
-      const { data, error } = await supabase
-        .from('rapor_config')
-        .select('value')
-        .eq('key', ROOM_CONFIG_KEY)
-        .maybeSingle();
+      const { data, error } = await getRaporConfigSingle(ROOM_CONFIG_KEY);
 
       let rawValue: string | null = !error && data?.value ? data.value : null;
       if (!rawValue && typeof window !== 'undefined') {
@@ -1591,9 +1587,7 @@ export default function JadwalPengawasTab() {
       if (typeof window !== 'undefined') {
         localStorage.setItem(CONFIG_KEY, serialized);
       }
-      const { error } = await supabase
-        .from('rapor_config')
-        .upsert({ key: CONFIG_KEY, value: serialized }, { onConflict: 'key' });
+      const { error } = await upsertRaporConfig(CONFIG_KEY, serialized);
       if (error) throw error;
 
       Swal.fire({
@@ -1829,7 +1823,7 @@ export default function JadwalPengawasTab() {
                 <div>${esc(headerInfo.tanggalTtd)}</div>
                 <div>Kepala Madrasah,</div>
                 <div class="ttd-space">
-                  <img src="${originUrl}/ttd%20bu%20palupi.png" alt="TTD Kepala Madrasah" class="ttd-img" onerror="this.style.display='none'" />
+                  <img src="${originUrl}/api/assets/ttd-kamad" alt="TTD Kepala Madrasah" class="ttd-img" onerror="this.style.display='none'" />
                 </div>
                 <div class="ttd-name">${esc(headerInfo.kepalaMadrasah)}</div>
               </div>

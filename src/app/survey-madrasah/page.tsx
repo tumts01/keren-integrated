@@ -109,7 +109,7 @@ export default function SurveyMadrasahPage() {
   useEffect(() => {
     const fetchSiswa = async () => {
       try {
-        const res = await fetch('/api/siswa');
+        const res = await fetch('/api/siswa?mode=survey');
         const data = await res.json();
         if (data.success) {
           setSiswas(data.data || []);

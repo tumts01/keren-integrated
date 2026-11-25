@@ -2396,7 +2396,7 @@ export default function PersuratanPage() {
                 
                 {generateJenis === 'Surat Keterangan Aktif Siswa' && (
                   <img 
-                    src="/ttd bu palupi.png" 
+                    src="/api/assets/ttd-kamad" 
                     style={{ 
                       position: 'absolute', 
                       top: '15px', 

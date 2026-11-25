@@ -10,6 +10,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [usernameInput, setUsernameInput] = useState('');
+  const [pinInput, setPinInput] = useState('');
+  const [requirePinInput, setRequirePinInput] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [pinSaving, setPinSaving] = useState(false);
   const [loginMode, setLoginMode] = useState<'select' | 'guru'>('select');
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -23,45 +29,82 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setMounted(true);
+    let cancelled = false;
     const storedUser = localStorage.getItem('keren_user_data');
     const portalSession = localStorage.getItem('portal_session');
     const spmbSession = localStorage.getItem('spmb_session');
     const loginParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('login') : null;
 
-    if (storedUser) {
+    const verifyAndBootstrapSession = async () => {
       try {
-        const parsed = JSON.parse(storedUser);
-        setUser(parsed);
-        try { localStorage.setItem('keren_app_preference', 'guru'); } catch {}
+        // 1. Periksa cookie sesi HttpOnly di server (sumber kebenaran role yang tidak bisa dipalsukan di localStorage)
+        const res = await fetch('/api/auth/session', { cache: 'no-store' });
+        const sessionData = await res.json();
 
-        // Sinkronisasi data user & foto profil jika belum ada di session
-        if (!parsed.foto && (parsed.username || parsed.nama)) {
-          fetch(`/api/user/sync?username=${encodeURIComponent(parsed.username || '')}&nama=${encodeURIComponent(parsed.nama || '')}`)
-            .then(res => res.json())
-            .then(data => {
-              if (data.success && data.user) {
-                const merged = { ...parsed, ...data.user };
-                localStorage.setItem('keren_user_data', JSON.stringify(merged));
-                setUser(merged);
-              }
-            })
-            .catch(() => {});
+        if (!cancelled && sessionData?.authenticated && sessionData?.user) {
+          localStorage.setItem('keren_user_data', JSON.stringify(sessionData.user));
+          try { localStorage.setItem('keren_app_preference', 'guru'); } catch {}
+          setUser(sessionData.user);
+          setAuthChecked(true);
+          return;
         }
-      } catch (e) {
-        try { setUser(JSON.parse(storedUser)); } catch {}
+
+        // 2. Migrasi mulus bagi Guru yang sudah login sebelumnya di perangkat ini sebelum pembaruan cookie HttpOnly
+        if (storedUser) {
+          let parsed: any = null;
+          try { parsed = JSON.parse(storedUser); } catch {}
+          if (parsed?.username) {
+            const upgRes = await fetch('/api/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: parsed.username }),
+            });
+            const upgData = await upgRes.json();
+
+            if (!cancelled && upgData?.success && upgData?.user) {
+              localStorage.setItem('keren_user_data', JSON.stringify(upgData.user));
+              setUser(upgData.user);
+              setAuthChecked(true);
+              return;
+            }
+
+            if (!cancelled && upgData?.requirePin) {
+              localStorage.removeItem('keren_user_data');
+              setUser(null);
+              setUsernameInput(parsed.username);
+              setRequirePinInput(true);
+              setLoginMode('guru');
+              setAuthChecked(true);
+              return;
+            }
+          }
+          localStorage.removeItem('keren_user_data');
+        }
+
+        if (!cancelled) {
+          setUser(null);
+          if (spmbSession && pathname === '/') {
+            router.replace('/spmb/portal');
+            return;
+          }
+          if (portalSession && pathname === '/') {
+            router.replace('/portal/dashboard');
+            return;
+          }
+          setLoginMode(loginParam === 'guru' ? 'guru' : 'select');
+        }
+      } catch {
+        // Fallback offline sementara jika jaringan terputus
+        if (!cancelled && storedUser) {
+          try { setUser(JSON.parse(storedUser)); } catch {}
+        }
+      } finally {
+        if (!cancelled) setAuthChecked(true);
       }
-    } else if (spmbSession && pathname === '/') {
-      router.replace('/spmb/portal');
-      return;
-    } else if (portalSession && pathname === '/') {
-      // User is logged into student/wali murid portal!
-      router.replace('/portal/dashboard');
-      return;
-    } else if (loginParam === 'guru') {
-      setLoginMode('guru');
-    } else {
-      setLoginMode('select');
-    }
+    };
+
+    verifyAndBootstrapSession();
+    return () => { cancelled = true; };
   }, [pathname, router]);
 
   const checkAndPromptNamaIbu = async (currentUser: any) => {
@@ -315,13 +358,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         const res = await fetch('/api/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: usernameInput.trim() })
+          body: JSON.stringify({
+            username: usernameInput.trim(),
+            ...(requirePinInput && pinInput.trim() ? { pin: pinInput.trim() } : {}),
+          })
         });
         const data = await res.json();
         
         if (data.success) {
           localStorage.setItem('keren_user_data', JSON.stringify(data.user));
+          setPinInput('');
+          setRequirePinInput(false);
           setUser(data.user);
+        } else if (data.requirePin) {
+          setRequirePinInput(true);
+          if (data.error) {
+            setPopup({ show: true, type: 'error', title: 'Verifikasi PIN', message: data.error });
+          }
         } else {
           setPopup({ show: true, type: 'error', title: 'Login Gagal', message: data.error });
         }
@@ -330,6 +383,41 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       } finally {
         setLoading(false);
       }
+    }
+  };
+
+  const handleSetupPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(newPin.trim())) {
+      setPopup({ show: true, type: 'error', title: 'Format PIN', message: 'PIN keamanan harus tepat 6 digit angka.' });
+      return;
+    }
+    if (newPin.trim() !== confirmPin.trim()) {
+      setPopup({ show: true, type: 'error', title: 'PIN Tidak Sama', message: 'Konfirmasi PIN 6 digit tidak cocok.' });
+      return;
+    }
+    setPinSaving(true);
+    try {
+      const res = await fetch('/api/auth/set-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: newPin.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const updatedUser = { ...user, hasPin: true, needPinSetup: false };
+        localStorage.setItem('keren_user_data', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        setNewPin('');
+        setConfirmPin('');
+        setPopup({ show: true, type: 'success', title: 'PIN Aktif', message: 'PIN keamanan 6 digit akun Anda berhasil disimpan!' });
+      } else {
+        setPopup({ show: true, type: 'error', title: 'Gagal', message: data.error || 'Gagal menyimpan PIN.' });
+      }
+    } catch {
+      setPopup({ show: true, type: 'error', title: 'Koneksi Bermasalah', message: 'Gagal menghubungi server.' });
+    } finally {
+      setPinSaving(false);
     }
   };
 
@@ -366,10 +454,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (!mounted) return null;
 
   const isPrintPage = pathname?.includes('/cetak') || pathname?.includes('/cetak-realisasi') || pathname?.includes('/quick-count');
-  if (isPrintPage) {
-    return <>{children}</>;
-  }
- // Prevent hydration mismatch
 
   // Halaman Publik (tanpa login atau layout khusus)
   const isPublicPage = 
@@ -399,11 +483,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   if (isPublicPage && !user) {
+    if (isPrintPage) return <>{children}</>;
     return (
       <div style={{ minHeight: '100vh', background: '#f1f5f9', padding: '0' }}>
         {children}
       </div>
     );
+  }
+
+  // Tunggu verifikasi cookie sesi server selesai sebelum merender halaman internal terproteksi
+  if (!authChecked) {
+    return null;
+  }
+
+  // Rute cetak internal (/buku-induk/cetak, /bon/cetak, dll.) hanya boleh diakses setelah user terautentikasi
+  if (user && isPrintPage) {
+    return <>{children}</>;
   }
 
   if (!user) {
@@ -568,15 +663,45 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         type="text" 
                         placeholder="Masukkan username anda" 
                         value={usernameInput}
-                        onChange={(e) => setUsernameInput(e.target.value)}
+                        onChange={(e) => {
+                          setUsernameInput(e.target.value);
+                          if (requirePinInput) {
+                            setRequirePinInput(false);
+                            setPinInput('');
+                          }
+                        }}
                         autoFocus
                         required 
                       />
                     </div>
                   </div>
 
+                  {requirePinInput && (
+                    <div style={{ textAlign: 'left', marginBottom: '16px' }}>
+                      <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#374151', display: 'block', marginBottom: '6px' }}>
+                        PIN Keamanan (6 Digit)
+                      </label>
+                      <div className={styles.inputGroup}>
+                        <input
+                          type="password"
+                          inputMode="numeric"
+                          pattern="\d{6}"
+                          maxLength={6}
+                          placeholder="Masukkan 6 digit PIN keamanan..."
+                          value={pinInput}
+                          onChange={(e) => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          autoFocus
+                          required
+                        />
+                      </div>
+                      <small style={{ color: '#047857', fontSize: '0.76rem', display: 'block', marginTop: '5px' }}>
+                        Akun ini dilindungi PIN keamanan. Masukkan 6 digit PIN Anda untuk melanjutkan.
+                      </small>
+                    </div>
+                  )}
+
                   <button type="submit" className={styles.loginBtn} disabled={loading}>
-                    {loading ? <><i className="fas fa-spinner fa-spin"></i> Memproses...</> : <><i className="fas fa-sign-in-alt"></i> Masuk</>}
+                    {loading ? <><i className="fas fa-spinner fa-spin"></i> Memproses...</> : <><i className="fas fa-sign-in-alt"></i> {requirePinInput ? 'Verifikasi PIN & Masuk' : 'Masuk'}</>}
                   </button>
                 </form>
 
@@ -709,6 +834,54 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
+      {user && user.needPinSetup === true && (
+        <div className={styles.popupOverlay} style={{ zIndex: 5100, background: 'rgba(15, 23, 42, 0.85)' }}>
+          <div className={styles.popupCard} style={{ maxWidth: '440px' }}>
+            <div className={styles.popupIcon} style={{ background: '#dcfce7', color: '#16a34a' }}>
+              <i className="fas fa-lock"></i>
+            </div>
+            <h3 className={styles.popupTitle}>Aktifkan PIN Keamanan (6 Digit)</h3>
+            <p className={styles.popupMessage} style={{ marginBottom: '18px' }}>
+              Halo <strong>{user.nama || user.username}</strong>, akun dengan hak akses <strong>{user.role}</strong> wajib dilindungi PIN 6 digit agar tidak dapat dimasuki pihak lain yang mengetahui username Anda.
+            </p>
+            <form onSubmit={handleSetupPin} style={{ width: '100%' }}>
+              <div className={styles.inputGroup} style={{ marginBottom: '12px' }}>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="Buat 6 Digit PIN Angka..."
+                  value={newPin}
+                  onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  required
+                  style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid #cbd5e1', outline: 'none', letterSpacing: '4px', textAlign: 'center', fontSize: '1.05rem' }}
+                />
+              </div>
+              <div className={styles.inputGroup} style={{ marginBottom: '16px' }}>
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="Ulangi 6 Digit PIN..."
+                  value={confirmPin}
+                  onChange={(e) => setConfirmPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  required
+                  style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid #cbd5e1', outline: 'none', letterSpacing: '4px', textAlign: 'center', fontSize: '1.05rem' }}
+                />
+              </div>
+              <button
+                type="submit"
+                className={styles.popupBtnConfirm}
+                style={{ background: '#16a34a', width: '100%', padding: '12px' }}
+                disabled={pinSaving}
+              >
+                {pinSaving ? <i className="fas fa-spinner fa-spin"></i> : 'Simpan & Aktifkan PIN'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       <Sidebar />
       <div className="main-content">
         <Header user={user} onLogout={() => {
@@ -718,8 +891,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             title: 'Konfirmasi Keluar',
             message: 'Apakah Anda yakin ingin keluar dari sistem KEREN?',
             onConfirm: () => {
+              fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
               localStorage.removeItem('keren_user_data');
               setUser(null);
+              setRequirePinInput(false);
+              setPinInput('');
               setLoginMode('select');
               if (pathname === '/' && typeof window !== 'undefined' && window.location.search.includes('login=guru')) {
                 router.replace('/');

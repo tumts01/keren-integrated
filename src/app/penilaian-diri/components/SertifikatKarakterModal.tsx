@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from 'react';
 import Swal from 'sweetalert2';
-import { supabase } from '@/lib/supabase';
+import { getRaporConfigSingle, upsertRaporConfig } from '@/lib/rapor-config-client';
 
 export const SERTIFIKAT_CONFIG_KEY = 'sertifikat_karakter_template_v1';
 
@@ -224,11 +224,7 @@ export function mergeWithDefaultTemplate(raw: any): CertTemplateConfig {
 
 export async function loadCertTemplateConfig(): Promise<CertTemplateConfig> {
   try {
-    const { data, error } = await supabase
-      .from('rapor_config')
-      .select('value')
-      .eq('key', SERTIFIKAT_CONFIG_KEY)
-      .maybeSingle();
+    const { data, error } = await getRaporConfigSingle(SERTIFIKAT_CONFIG_KEY);
 
     if (!error && data?.value) {
       const parsed = mergeWithDefaultTemplate(JSON.parse(data.value));
@@ -264,9 +260,7 @@ export async function saveCertTemplateConfig(template: CertTemplateConfig): Prom
     // Ignore localStorage quota error if image is slightly large; Supabase holds it
   }
 
-  const { error } = await supabase
-    .from('rapor_config')
-    .upsert({ key: SERTIFIKAT_CONFIG_KEY, value: serialized }, { onConflict: 'key' });
+  const { error } = await upsertRaporConfig(SERTIFIKAT_CONFIG_KEY, serialized);
 
   if (error) throw error;
 }

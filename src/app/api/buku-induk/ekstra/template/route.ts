@@ -39,10 +39,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: false, error: `Tidak ada siswa aktif ditemukan di kelas ${kelas}` }, { status: 404 });
     }
 
-    // 2. Read Template
-    const templatePath = path.join(process.cwd(), 'public', 'LEGGER NILAI EKSTRAKURIKULER.xlsx');
+    // 2. Read Template from private server directory (bukan dari folder public/)
+    const templatePath = path.join(process.cwd(), 'src', 'templates', 'LEGGER NILAI EKSTRAKURIKULER.xlsx');
     if (!fs.existsSync(templatePath)) {
-      return NextResponse.json({ success: false, error: 'Template LEGGER NILAI EKSTRAKURIKULER.xlsx tidak ditemukan di folder public' }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Template LEGGER NILAI EKSTRAKURIKULER.xlsx tidak ditemukan di server' }, { status: 500 });
     }
 
     const templateBuf = fs.readFileSync(templatePath);
@@ -50,8 +50,14 @@ export async function GET(request: Request) {
     const sheetName = wb.SheetNames[0];
     const sheet = wb.Sheets[sheetName];
 
-    // Decode range to know how to extend it
+    // Decode range and bersihkan sisa baris contoh dari file template asli (baris 7 ke bawah)
     const range = xlsx.utils.decode_range(sheet['!ref'] || 'A1:G10');
+    for (let r = 6; r <= range.e.r; r++) {
+      for (let c = 0; c <= range.e.c; c++) {
+        const cellAddr = xlsx.utils.encode_cell({ r, c });
+        delete sheet[cellAddr];
+      }
+    }
 
     // 3. Set Metadata
     xlsx.utils.sheet_add_aoa(sheet, [
@@ -75,12 +81,9 @@ export async function GET(request: Request) {
 
     xlsx.utils.sheet_add_aoa(sheet, rowData, { origin: 'A7' });
 
-    // Update range if needed
-    const newEndRow = 6 + rowData.length;
-    if (newEndRow > range.e.r) {
-      range.e.r = newEndRow;
-      sheet['!ref'] = xlsx.utils.encode_range(range);
-    }
+    // Sesuaikan batas bawah range tepat sesuai jumlah siswa kelas yang diminta
+    range.e.r = Math.max(6, 6 + rowData.length - 1);
+    sheet['!ref'] = xlsx.utils.encode_range(range);
 
     // 5. Write to Buffer and send
     const outBuf = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });

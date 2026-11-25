@@ -500,7 +500,7 @@ export default function CetakIdentitasPage() {
                   <div className="sign-date">Malang, {todayStr}</div>
                   <div className="sign-title">Kepala Madrasah</div>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/ttd bu palupi.png" alt="TTD Kepala Madrasah" className="sign-img" />
+                  <img src="/api/assets/ttd-kamad" alt="TTD Kepala Madrasah" className="sign-img" />
                   <div className="sign-name">Dwi Retno Palupi, M.Pd.</div>
                   <div className="sign-nip">NIP: -</div>
                 </div>

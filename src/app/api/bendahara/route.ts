@@ -1,8 +1,23 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import {
+  getGuruSessionFromRequest,
+  isAdminOrPimpinanRole,
+  isPerangkatUnlocked,
+} from '@/lib/auth-session';
 
-export async function GET() {
+async function checkBendaharaAuthorized(req: Request): Promise<boolean> {
+  const session = await getGuruSessionFromRequest(req);
+  if (!session) return false;
+  if (isAdminOrPimpinanRole(session.role)) return true;
+  return isPerangkatUnlocked(req, 'bendahara', session.uid);
+}
+
+export async function GET(req: Request) {
   try {
+    if (!(await checkBendaharaAuthorized(req))) {
+      return NextResponse.json({ success: false, message: 'Akses Bendahara Ujian belum dibuka' }, { status: 403 });
+    }
     const { data, error } = await supabase
       .from('bendahara_data')
       .select('*')
@@ -22,6 +37,9 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    if (!(await checkBendaharaAuthorized(req))) {
+      return NextResponse.json({ success: false, message: 'Akses Bendahara Ujian belum dibuka' }, { status: 403 });
+    }
     const body = await req.json();
     const { columns, dataMap, config } = body;
 

@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import Swal from 'sweetalert2';
-import { supabase } from '@/lib/supabase';
+import { getRaporConfigSingle, upsertRaporConfig } from '@/lib/rapor-config-client';
 import InlineLoading from '@/components/InlineLoading';
 import {
   AssignedParticipant,
@@ -207,7 +207,7 @@ export default function KonfigurasiRuangTab() {
       try {
         const [activeList, cfgRes] = await Promise.all([
           fetchCompactStudents(false),
-          supabase.from('rapor_config').select('*').eq('key', CONFIG_KEY).maybeSingle()
+          getRaporConfigSingle(CONFIG_KEY)
         ]);
 
         if (activeList.length > 0) {
@@ -493,9 +493,7 @@ export default function KonfigurasiRuangTab() {
 
     try {
       setSavingConfig(true);
-      const { error } = await supabase
-        .from('rapor_config')
-        .upsert({ key: CONFIG_KEY, value: serialized }, { onConflict: 'key' });
+      const { error } = await upsertRaporConfig(CONFIG_KEY, serialized);
       if (error) throw error;
       if (showToast) {
         Swal.fire({

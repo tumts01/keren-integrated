@@ -1,10 +1,23 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import {
+  getGuruSessionFromRequest,
+  GuruSessionPayload,
+  isAdminOrPimpinanRole,
+  KEREN_SESSION_COOKIE,
+  SESSION_MAX_AGE_SECONDS,
+  signToken,
+} from '@/lib/auth-session';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
+    const session = await getGuruSessionFromRequest(request);
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'Sesi login tidak valid' }, { status: 401 });
+    }
+
     const { oldUsername, newUsername, userId } = await request.json();
 
     if (!newUsername || !newUsername.trim()) {
@@ -43,6 +56,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'User tidak ditemukan' }, { status: 404 });
     }
 
+    // Pastikan non-Admin hanya dapat mengubah username miliknya sendiri
+    const isSelf = String(session.uid) === String(userRow.id);
+    if (!isSelf && !isAdminOrPimpinanRole(session.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Anda tidak memiliki hak akses untuk mengubah username pengguna lain' },
+        { status: 403 }
+      );
+    }
+
     // Pastikan username baru tidak dipakai oleh user LAIN
     const isNewTaken = (rows || []).some((r: any) => {
       if (r.id === userRow.id) return false;
@@ -78,7 +100,7 @@ export async function POST(request: Request) {
 
     if (updateError) throw updateError;
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       message: `Username untuk ${userRow.nama || cleanNewUsername} berhasil diperbarui menjadi ${cleanNewUsername}`,
       user: {
@@ -91,6 +113,27 @@ export async function POST(request: Request) {
         sudahGanti: true
       }
     });
+
+    if (String(session.uid) === String(userRow.id)) {
+      const nowSec = Math.floor(Date.now() / 1000);
+      const refreshedToken = await signToken<GuruSessionPayload>({
+        uid: userRow.id,
+        username: cleanNewUsername,
+        nama: userRow.nama || userRow.metadata?.['Nama'] || session.nama,
+        role: userRow.role || userRow.metadata?.['Role'] || session.role,
+        iat: nowSec,
+        exp: nowSec + SESSION_MAX_AGE_SECONDS,
+      });
+      response.cookies.set(KEREN_SESSION_COOKIE, refreshedToken, {
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        maxAge: SESSION_MAX_AGE_SECONDS,
+      });
+    }
+
+    return response;
   } catch (error: any) {
     console.error('Update Username Error:', error);
     return NextResponse.json({ success: false, error: 'Terjadi kesalahan pada server saat update username: ' + error.message }, { status: 500 });

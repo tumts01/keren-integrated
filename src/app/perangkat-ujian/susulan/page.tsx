@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import Swal from 'sweetalert2';
 import * as XLSX from 'xlsx';
 import InlineLoading from '@/components/InlineLoading';
-import { supabase } from '@/lib/supabase';
+import { getRaporConfigMany, getRaporConfigSingle, upsertRaporConfig } from '@/lib/rapor-config-client';
 import PaginationBar from '../components/PaginationBar';
 
 interface Participant {
@@ -331,10 +331,10 @@ export default function SusulanPage() {
         let resolvedTitle = '';
         let resolvedTA = '';
         try {
-          const { data: cfgRows, error: cfgErr } = await supabase
-            .from('rapor_config')
-            .select('key, value')
-            .in('key', ['susulan_exam_info', 'konfigurasi_ruang_ujian']);
+          const { data: cfgRows, error: cfgErr } = await getRaporConfigMany([
+            'susulan_exam_info',
+            'konfigurasi_ruang_ujian',
+          ]);
 
           if (!cfgErr && cfgRows) {
             const susulanCfg = cfgRows.find((r: any) => r.key === 'susulan_exam_info');
@@ -719,9 +719,7 @@ export default function SusulanPage() {
     setActiveExamTA(payload.tahunAjaran);
     try {
       localStorage.setItem('susulan_exam_info', JSON.stringify(payload));
-      await supabase
-        .from('rapor_config')
-        .upsert({ key: 'susulan_exam_info', value: JSON.stringify(payload) }, { onConflict: 'key' });
+      await upsertRaporConfig('susulan_exam_info', JSON.stringify(payload));
     } catch (err) {
       console.error('Error saving susulan_exam_info:', err);
     }
@@ -781,11 +779,7 @@ export default function SusulanPage() {
   const handlePullFromRoomConfig = async () => {
     setPulling(true);
     try {
-      const { data, error } = await supabase
-        .from('rapor_config')
-        .select('value')
-        .eq('key', 'konfigurasi_ruang_ujian')
-        .maybeSingle();
+      const { data, error } = await getRaporConfigSingle('konfigurasi_ruang_ujian');
 
       let rawValue: string | null = !error && data?.value ? data.value : null;
       if (!rawValue) {

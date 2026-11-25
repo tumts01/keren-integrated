@@ -11,6 +11,41 @@ export async function GET(request: Request) {
     const mode = searchParams.get('mode');
     const isFresh = searchParams.get('fresh') === '1';
     const sbRows = await getAllCachedDataInduk();
+
+    // Mode ringkas khusus autocomplete publik Survey Madrasah (tanpa NIK/NISN/KK/No HP/Alamat)
+    if (mode === 'survey') {
+      const surveyData = sbRows
+        .filter((sbRow: any) => {
+          const st = String(sbRow.metadata?.['STATUS SISWA'] || '').toLowerCase().trim();
+          return st === 'aktif';
+        })
+        .map((sbRow: any, idx: number) => {
+          const meta = sbRow.metadata || {};
+          const rombel =
+            (meta['ROMBEL KELAS 9'] || '').trim() ||
+            (meta['ROMBEL KELAS 8'] || '').trim() ||
+            (meta['ROMBEL KELAS 7'] || '').trim() ||
+            (meta['ROMBEL'] || '').trim();
+          const tahunAjaran =
+            (meta['TA KELAS 9'] || '').trim() ||
+            (meta['TA KELAS 8'] || '').trim() ||
+            (meta['TA KELAS 7'] || '').trim() ||
+            (meta['TAHUN AJARAN'] || '').trim();
+          return {
+            id: idx,
+            nama: sbRow.nama || meta['NAMA'] || '',
+            rombel,
+            tahunAjaran,
+            isLatest: true,
+          };
+        })
+        .filter((s: any) => s.nama);
+
+      return NextResponse.json(
+        { success: true, data: surveyData },
+        { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' } }
+      );
+    }
     
     // Mock Google Sheet row interface
     const rows = sbRows.map((sbRow: any, index: number) => ({

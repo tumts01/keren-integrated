@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
-import { supabase } from '@/lib/supabase';
+import { getRaporConfigMany, getRaporConfigSingle, upsertRaporConfigMany } from '@/lib/rapor-config-client';
 import Swal from 'sweetalert2';
 import { jsPDF } from 'jspdf';
 import KonfigurasiRuangTab from './components/KonfigurasiRuangTab';
@@ -347,13 +347,13 @@ export default function PerangkatUjianPage() {
 
   // Load saved layout + konfigurasi ruang on mount
   useEffect(() => {
-    try {
-      const session = localStorage.getItem('sekretaris_pu_session');
-      if (session === 'unlocked') {
-        setIsUnlocked(true);
-      }
-    } catch {}
-    setAuthLoading(false);
+    fetch('/api/auth/perangkat-unlock?scope=sekretaris', { cache: 'no-store' })
+      .then(res => res.json())
+      .then(data => {
+        if (data?.unlocked) setIsUnlocked(true);
+      })
+      .catch(() => {})
+      .finally(() => setAuthLoading(false));
 
     const storedUser = localStorage.getItem('keren_user_data');
     if (storedUser) {
@@ -368,10 +368,11 @@ export default function PerangkatUjianPage() {
     const loadGlobalConfig = async () => {
       try {
         // Coba load dari Supabase (Global): layout + konfigurasi_ruang_ujian dalam 1 query
-        const { data, error } = await supabase
-          .from('rapor_config')
-          .select('*')
-          .in('key', ['nopes_layout', 'nobang_layout', 'konfigurasi_ruang_ujian']);
+        const { data, error } = await getRaporConfigMany([
+          'nopes_layout',
+          'nobang_layout',
+          'konfigurasi_ruang_ujian',
+        ]);
         
         let loadedNopes = false;
         let loadedNobang = false;
@@ -427,10 +428,11 @@ export default function PerangkatUjianPage() {
   const saveLayoutGlobal = async () => {
     try {
       Swal.fire({ title: 'Menyimpan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-      const { error: e1 } = await supabase.from('rapor_config').upsert({ key: 'nopes_layout', value: JSON.stringify(layout) }, { onConflict: 'key' });
-      if (e1) throw e1;
-      const { error: e2 } = await supabase.from('rapor_config').upsert({ key: 'nobang_layout', value: JSON.stringify(layoutNobang) }, { onConflict: 'key' });
-      if (e2) throw e2;
+      const { error } = await upsertRaporConfigMany([
+        { key: 'nopes_layout', value: JSON.stringify(layout) },
+        { key: 'nobang_layout', value: JSON.stringify(layoutNobang) },
+      ]);
+      if (error) throw error;
       Swal.fire('Berhasil', 'Posisi layout telah disimpan secara global untuk semua pengguna.', 'success');
     } catch (error: any) {
       Swal.fire('Error', error.message, 'error');
@@ -446,11 +448,7 @@ export default function PerangkatUjianPage() {
   const syncFromKonfigurasiRuang = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('rapor_config')
-        .select('value')
-        .eq('key', 'konfigurasi_ruang_ujian')
-        .maybeSingle();
+      const { data, error } = await getRaporConfigSingle('konfigurasi_ruang_ujian');
 
       let rawValue: string | null = !error && data?.value ? data.value : null;
       if (!rawValue) {
@@ -921,24 +919,35 @@ export default function PerangkatUjianPage() {
     </div>
   );
 
-  const handleSekretarisLogin = (e: React.FormEvent) => {
+  const handleSekretarisLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (passwordInput === 'wespokokeaturen') {
-      localStorage.setItem('sekretaris_pu_session', 'unlocked');
-      setIsUnlocked(true);
-      Swal.fire({
-        icon: 'success',
-        title: 'Login Berhasil',
-        text: 'Selamat datang, Sekretaris Ujian!',
-        timer: 1500,
-        showConfirmButton: false
+    try {
+      const res = await fetch('/api/auth/perangkat-unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scope: 'sekretaris', credential: passwordInput }),
       });
-    } else {
-      Swal.fire('Akses Ditolak', 'Password salah!', 'error');
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setIsUnlocked(true);
+        setPasswordInput('');
+        Swal.fire({
+          icon: 'success',
+          title: 'Login Berhasil',
+          text: 'Selamat datang, Sekretaris Ujian!',
+          timer: 1500,
+          showConfirmButton: false,
+        });
+      } else {
+        Swal.fire('Akses Ditolak', data.error || 'Password salah!', 'error');
+      }
+    } catch {
+      Swal.fire('Error', 'Gagal menghubungi server verifikasi.', 'error');
     }
   };
 
   const handleSekretarisLogout = () => {
+    fetch('/api/auth/perangkat-unlock?scope=sekretaris', { method: 'DELETE' }).catch(() => {});
     localStorage.removeItem('sekretaris_pu_session');
     setIsUnlocked(false);
     setPasswordInput('');

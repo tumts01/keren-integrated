@@ -6,6 +6,7 @@ import Swal from 'sweetalert2';
 export default function PortalLogin() {
   const router = useRouter();
   const [nisn, setNisn] = useState('');
+  const [tanggalLahir, setTanggalLahir] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -21,13 +22,14 @@ export default function PortalLogin() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nisn) return Swal.fire('Error', 'NISN harus diisi', 'error');
+    if (!tanggalLahir) return Swal.fire('Error', 'Tanggal Lahir siswa harus diisi', 'error');
 
     setLoading(true);
     try {
       const res = await fetch('/api/portal/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nisn })
+        body: JSON.stringify({ nisn, tanggalLahir })
       });
       const data = await res.json();
       
@@ -76,7 +78,7 @@ export default function PortalLogin() {
           <p style={{ color: '#64748b', fontSize: '15px', margin: '0 0 32px 0' }}>MTs Almaarif 01 Singosari</p>
 
         <form onSubmit={handleLogin} style={{ textAlign: 'left' }}>
-          <div style={{ marginBottom: '20px' }}>
+          <div style={{ marginBottom: '16px' }}>
             <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
               Nomor Induk Siswa Nasional (NISN)
             </label>
@@ -85,10 +87,27 @@ export default function PortalLogin() {
               placeholder="Masukkan 10 digit NISN..."
               value={nisn}
               onChange={e => setNisn(e.target.value)}
+              required
               style={{ 
                 width: '100%', padding: '14px', borderRadius: '12px', 
                 border: '1px solid #cbd5e1', fontSize: '16px', boxSizing: 'border-box',
                 background: '#f8fafc'
+              }}
+            />
+          </div>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
+              Tanggal Lahir Siswa
+            </label>
+            <input 
+              type="date" 
+              value={tanggalLahir}
+              onChange={e => setTanggalLahir(e.target.value)}
+              required
+              style={{ 
+                width: '100%', padding: '14px', borderRadius: '12px', 
+                border: '1px solid #cbd5e1', fontSize: '16px', boxSizing: 'border-box',
+                background: '#f8fafc', color: '#1e293b'
               }}
             />
           </div>
