@@ -31,6 +31,7 @@ export async function GET() {
       const sudahGanti = row.metadata?.['Sudah Ganti Username'] === 'TRUE';
       const terakhirLogin = row.metadata?.['Terakhir Login'] || '';
       const whatsapp = row.metadata?.['Whatsapp'] || row.metadata?.['No WA'] || '';
+      const hasPin = Boolean(row.metadata?.['PIN_HASH'] || row.metadata?.['PIN']);
 
       return {
         id: row.id,
@@ -40,6 +41,7 @@ export async function GET() {
         foto,
         rawFoto,
         sudahGanti,
+        hasPin,
         terakhirLogin,
         whatsapp
       };

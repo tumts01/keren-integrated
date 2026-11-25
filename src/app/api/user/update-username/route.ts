@@ -18,20 +18,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Sesi login tidak valid' }, { status: 401 });
     }
 
-    const { oldUsername, newUsername, userId } = await request.json();
-
-    if (!newUsername || !newUsername.trim()) {
-      return NextResponse.json({ success: false, error: 'Username baru harus diisi' }, { status: 400 });
-    }
-    
-    const cleanNewUsername = newUsername.trim();
-    if (cleanNewUsername.length < 3) {
-      return NextResponse.json({ success: false, error: 'Username baru minimal 3 karakter' }, { status: 400 });
-    }
-
-    if (/\s/.test(cleanNewUsername)) {
-      return NextResponse.json({ success: false, error: 'Username tidak boleh mengandung spasi' }, { status: 400 });
-    }
+    const { oldUsername, newUsername, newRole, resetPin, userId } = await request.json();
 
     const { data: rows, error } = await supabase.from('data_users').select('*');
     if (error) throw error;
@@ -39,7 +26,7 @@ export async function POST(request: Request) {
     // Cari user target berdasarkan userId atau oldUsername
     let userRow: any = null;
     if (userId) {
-      userRow = (rows || []).find((r: any) => r.id === userId);
+      userRow = (rows || []).find((r: any) => String(r.id) === String(userId));
     }
     if (!userRow && oldUsername) {
       userRow = (rows || []).find((r: any) => {
@@ -56,71 +43,144 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'User tidak ditemukan' }, { status: 404 });
     }
 
-    // Pastikan non-Admin hanya dapat mengubah username miliknya sendiri
     const isSelf = String(session.uid) === String(userRow.id);
+    const isStrictAdmin = (session.role || '').trim().toLowerCase() === 'admin';
+
     if (!isSelf && !isAdminOrPimpinanRole(session.role)) {
       return NextResponse.json(
-        { success: false, error: 'Anda tidak memiliki hak akses untuk mengubah username pengguna lain' },
+        { success: false, error: 'Anda tidak memiliki hak akses untuk mengubah akun pengguna lain' },
         { status: 403 }
       );
     }
 
-    // Pastikan username baru tidak dipakai oleh user LAIN
-    const isNewTaken = (rows || []).some((r: any) => {
-      if (r.id === userRow.id) return false;
-      const dbCol = r.username;
-      const dbMeta = r.metadata?.['Username'];
-      return (
-        (dbCol && dbCol.toString().toLowerCase().trim() === cleanNewUsername.toLowerCase()) ||
-        (dbMeta && dbMeta.toString().toLowerCase().trim() === cleanNewUsername.toLowerCase())
-      );
-    });
-    
-    if (isNewTaken) {
-      return NextResponse.json({
-        success: false,
-        error: `Username '${cleanNewUsername}' sudah dipakai oleh user/guru lain. Silakan pilih username yang berbeda.`
-      }, { status: 400 });
+    const currentUsername = String(userRow.username || userRow.metadata?.['Username'] || '').trim();
+    const currentRole = String(userRow.role || userRow.metadata?.['Role'] || 'GTK').trim();
+
+    const cleanNewUsername =
+      typeof newUsername === 'string' && newUsername.trim() ? newUsername.trim() : currentUsername;
+    const usernameChanged = cleanNewUsername.toLowerCase() !== currentUsername.toLowerCase() || cleanNewUsername !== currentUsername;
+
+    if (usernameChanged) {
+      if (cleanNewUsername.length < 3) {
+        return NextResponse.json({ success: false, error: 'Username baru minimal 3 karakter' }, { status: 400 });
+      }
+      if (/\s/.test(cleanNewUsername)) {
+        return NextResponse.json({ success: false, error: 'Username tidak boleh mengandung spasi' }, { status: 400 });
+      }
+
+      const isNewTaken = (rows || []).some((r: any) => {
+        if (r.id === userRow.id) return false;
+        const dbCol = r.username;
+        const dbMeta = r.metadata?.['Username'];
+        return (
+          (dbCol && dbCol.toString().toLowerCase().trim() === cleanNewUsername.toLowerCase()) ||
+          (dbMeta && dbMeta.toString().toLowerCase().trim() === cleanNewUsername.toLowerCase())
+        );
+      });
+
+      if (isNewTaken) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Username '${cleanNewUsername}' sudah dipakai oleh user/guru lain. Silakan pilih username yang berbeda.`,
+          },
+          { status: 400 }
+        );
+      }
     }
 
-    // Update kolom username dan metadata
-    const updatedMetadata = {
+    // Validasi perubahan Role (hanya diizinkan untuk akun ber-role Admin)
+    let finalRole = currentRole;
+    const requestedRole = typeof newRole === 'string' ? newRole.trim() : '';
+    const roleChanged = Boolean(requestedRole && requestedRole !== currentRole);
+
+    if (roleChanged) {
+      if (!isStrictAdmin) {
+        return NextResponse.json(
+          { success: false, error: 'Hanya akun Admin yang dapat mengubah jenis Role pengguna.' },
+          { status: 403 }
+        );
+      }
+      if (requestedRole.length > 50) {
+        return NextResponse.json(
+          { success: false, error: 'Nama Role maksimal 50 karakter.' },
+          { status: 400 }
+        );
+      }
+      if (isSelf && requestedRole.toLowerCase() !== 'admin') {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Demi keamanan, Anda tidak dapat menurunkan role Admin milik akun Anda sendiri.',
+          },
+          { status: 400 }
+        );
+      }
+      finalRole = requestedRole;
+    }
+
+    // Validasi reset PIN (hanya Admin)
+    const doResetPin = Boolean(resetPin === true);
+    if (doResetPin && !isStrictAdmin) {
+      return NextResponse.json(
+        { success: false, error: 'Hanya akun Admin yang dapat mereset PIN pengguna.' },
+        { status: 403 }
+      );
+    }
+
+    const updatedMetadata: Record<string, any> = {
       ...(userRow.metadata || {}),
-      'Username': cleanNewUsername,
-      'Sudah Ganti Username': 'TRUE'
+      Username: cleanNewUsername,
+      Role: finalRole,
     };
-    
+
+    if (usernameChanged) {
+      updatedMetadata['Sudah Ganti Username'] = 'TRUE';
+    }
+
+    if (doResetPin) {
+      delete updatedMetadata['PIN_HASH'];
+      delete updatedMetadata['PIN'];
+    }
+
+    const updatePayload: Record<string, any> = {
+      username: cleanNewUsername,
+      role: finalRole,
+      metadata: updatedMetadata,
+    };
+
     const { error: updateError } = await supabase
       .from('data_users')
-      .update({
-        username: cleanNewUsername,
-        metadata: updatedMetadata
-      })
+      .update(updatePayload)
       .eq('id', userRow.id);
 
     if (updateError) throw updateError;
 
+    const sudahGantiFinal = updatedMetadata['Sudah Ganti Username'] === 'TRUE';
+    const hasPinFinal = Boolean(updatedMetadata['PIN_HASH'] || updatedMetadata['PIN']);
+
     const response = NextResponse.json({
       success: true,
-      message: `Username untuk ${userRow.nama || cleanNewUsername} berhasil diperbarui menjadi ${cleanNewUsername}`,
+      message: `Data akun ${userRow.nama || cleanNewUsername} berhasil diperbarui.`,
       user: {
         id: userRow.id,
         nama: userRow.nama || userRow.metadata?.['Nama'] || '',
         username: cleanNewUsername,
-        role: userRow.role || userRow.metadata?.['Role'] || '',
+        role: finalRole,
         whatsapp: userRow.metadata?.['Whatsapp'] || '',
         foto: userRow.metadata?.['Foto'] || userRow.metadata?.['foto'] || '',
-        sudahGanti: true
-      }
+        sudahGanti: sudahGantiFinal,
+        hasPin: hasPinFinal,
+      },
     });
 
-    if (String(session.uid) === String(userRow.id)) {
+    if (isSelf) {
       const nowSec = Math.floor(Date.now() / 1000);
       const refreshedToken = await signToken<GuruSessionPayload>({
         uid: userRow.id,
         username: cleanNewUsername,
         nama: userRow.nama || userRow.metadata?.['Nama'] || session.nama,
-        role: userRow.role || userRow.metadata?.['Role'] || session.role,
+        role: finalRole,
         iat: nowSec,
         exp: nowSec + SESSION_MAX_AGE_SECONDS,
       });
@@ -135,7 +195,10 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error: any) {
-    console.error('Update Username Error:', error);
-    return NextResponse.json({ success: false, error: 'Terjadi kesalahan pada server saat update username: ' + error.message }, { status: 500 });
+    console.error('Update User/Role Error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Terjadi kesalahan pada server saat memperbarui akun: ' + error.message },
+      { status: 500 }
+    );
   }
 }

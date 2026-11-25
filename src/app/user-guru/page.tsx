@@ -15,14 +15,43 @@ interface UserData {
   foto?: string;
   rawFoto?: string;
   sudahGanti: boolean;
+  hasPin?: boolean;
   terakhirLogin: string;
   whatsapp?: string;
+}
+
+const STANDARD_ROLES = [
+  'GTK',
+  'Admin',
+  'Pimpinan',
+  'Bendahara',
+  'Sekretaris',
+  'Bimbingan Konseling',
+];
+
+function getRoleBadgeStyle(role: string): React.CSSProperties {
+  const r = (role || '').trim().toLowerCase();
+  if (r === 'admin') {
+    return { background: '#ede9fe', color: '#6d28d9', border: '1px solid #ddd6fe', fontWeight: 700 };
+  }
+  if (r === 'pimpinan') {
+    return { background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', fontWeight: 700 };
+  }
+  if (r === 'bendahara') {
+    return { background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontWeight: 700 };
+  }
+  if (r === 'sekretaris') {
+    return { background: '#fce7f3', color: '#be185d', border: '1px solid #fbcfe8', fontWeight: 700 };
+  }
+  return {};
 }
 
 export default function UserGuruPage() {
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [canManageRole, setCanManageRole] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<number | string | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   // Filters
@@ -33,23 +62,38 @@ export default function UserGuruPage() {
   // Edit Modal State
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [newUsername, setNewUsername] = useState('');
+  const [selectedRoleOption, setSelectedRoleOption] = useState('GTK');
+  const [customRoleInput, setCustomRoleInput] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // Check user auth & role
-    const userStr = localStorage.getItem('keren_user_data');
-    if (userStr) {
-      try {
-        const u = JSON.parse(userStr);
-        const role = (u.role || '').toLowerCase();
-        if (role === 'admin' || role === 'pimpinan') {
-          setIsAdmin(true);
+    // Verifikasi hak akses dari sesi server yang sah
+    fetch('/api/auth/session', { cache: 'no-store' })
+      .then(res => res.json())
+      .then(data => {
+        if (data?.authenticated && data?.user) {
+          const role = (data.user.role || '').trim().toLowerCase();
+          setCurrentUserId(data.user.id);
+          if (role === 'admin' || role === 'pimpinan') {
+            setIsAdmin(true);
+          }
+          if (role === 'admin') {
+            setCanManageRole(true);
+          }
+          return;
         }
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    setCheckingAuth(false);
+        // Fallback jika sementara membaca localStorage
+        const userStr = localStorage.getItem('keren_user_data');
+        if (userStr) {
+          const u = JSON.parse(userStr);
+          const role = (u.role || '').trim().toLowerCase();
+          setCurrentUserId(u.id ?? null);
+          if (role === 'admin' || role === 'pimpinan') setIsAdmin(true);
+          if (role === 'admin') setCanManageRole(true);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setCheckingAuth(false));
   }, []);
 
   const fetchUsers = async () => {
@@ -132,16 +176,34 @@ export default function UserGuruPage() {
     return { total, sudah, belum, aktif, persenSudah, persenBelum };
   }, [users]);
 
+  const allRoleChoices = useMemo(() => {
+    const set = new Set<string>(STANDARD_ROLES);
+    availableRoles.forEach(r => {
+      if (r) set.add(r);
+    });
+    return Array.from(set);
+  }, [availableRoles]);
+
   // Open modal handler
   const handleOpenEdit = (user: UserData) => {
     setSelectedUser(user);
     setNewUsername(user.username);
+    const currentRole = (user.role || 'GTK').trim();
+    if (allRoleChoices.includes(currentRole)) {
+      setSelectedRoleOption(currentRole);
+      setCustomRoleInput('');
+    } else {
+      setSelectedRoleOption('__CUSTOM__');
+      setCustomRoleInput(currentRole);
+    }
   };
 
   // Close modal
   const handleCloseModal = () => {
     setSelectedUser(null);
     setNewUsername('');
+    setSelectedRoleOption('GTK');
+    setCustomRoleInput('');
     setSaving(false);
   };
 
@@ -187,7 +249,58 @@ export default function UserGuruPage() {
     return Array.from(new Set(list)).slice(0, 4);
   }, [selectedUser]);
 
-  // Submit update username
+  const resolvedRoleValue =
+    selectedRoleOption === '__CUSTOM__' ? customRoleInput.trim() : selectedRoleOption.trim();
+
+  const handleResetPin = async () => {
+    if (!selectedUser || !canManageRole) return;
+    const confirmRes = await Swal.fire({
+      icon: 'warning',
+      title: 'Reset PIN Keamanan?',
+      text: `PIN 6 digit milik ${selectedUser.nama} akan dihapus. Saat login berikutnya, beliau akan diminta membuat PIN 6 digit baru.`,
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Reset PIN',
+      confirmButtonColor: '#dc2626',
+      cancelButtonText: 'Batal',
+    });
+    if (!confirmRes.isConfirmed) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch('/api/user/update-username', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: selectedUser.id,
+          oldUsername: selectedUser.username,
+          newUsername: selectedUser.username,
+          resetPin: true,
+        }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setUsers(prev =>
+          prev.map(u => (u.id === selectedUser.id ? { ...u, hasPin: false } : u))
+        );
+        setSelectedUser(prev => (prev ? { ...prev, hasPin: false } : null));
+        Swal.fire({
+          icon: 'success',
+          title: 'PIN Berhasil Direset',
+          text: `PIN keamanan ${selectedUser.nama} telah direset.`,
+          timer: 1800,
+          showConfirmButton: false,
+        });
+      } else {
+        Swal.fire('Gagal', result.error || 'Gagal mereset PIN.', 'error');
+      }
+    } catch {
+      Swal.fire('Error', 'Gagal menghubungi server.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Submit update username & role
   const handleSubmitUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) return;
@@ -206,6 +319,15 @@ export default function UserGuruPage() {
       return;
     }
 
+    const targetRole = canManageRole ? resolvedRoleValue : selectedUser.role;
+    if (!targetRole) {
+      Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Jenis Role tidak boleh kosong.' });
+      return;
+    }
+
+    const isUsernameUpdated = trimmed !== selectedUser.username;
+    const isRoleUpdated = canManageRole && targetRole !== (selectedUser.role || 'GTK');
+
     setSaving(true);
     try {
       const res = await fetch('/api/user/update-username', {
@@ -214,7 +336,8 @@ export default function UserGuruPage() {
         body: JSON.stringify({
           userId: selectedUser.id,
           oldUsername: selectedUser.username,
-          newUsername: trimmed
+          newUsername: trimmed,
+          ...(canManageRole ? { newRole: targetRole } : {}),
         })
       });
 
@@ -224,23 +347,36 @@ export default function UserGuruPage() {
         setUsers(prev =>
           prev.map(u =>
             u.id === selectedUser.id
-              ? { ...u, username: trimmed, sudahGanti: true }
+              ? {
+                  ...u,
+                  username: trimmed,
+                  role: targetRole,
+                  sudahGanti: isUsernameUpdated ? true : u.sudahGanti,
+                }
               : u
           )
         );
 
-        const updatedUser = { ...selectedUser, username: trimmed };
+        const updatedUser = { ...selectedUser, username: trimmed, role: targetRole };
         handleCloseModal();
+
+        const escHtml = (val: string) =>
+          String(val || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
 
         // Show success modal with WhatsApp share option
         Swal.fire({
           icon: 'success',
-          title: 'Username Berhasil Diubah!',
+          title: isRoleUpdated && !isUsernameUpdated ? 'Role Berhasil Diperbarui!' : 'Akun Berhasil Diperbarui!',
           html: `
             <div style="text-align: left; background: #f8fafc; padding: 14px; border-radius: 10px; margin-top: 10px; font-size: 0.92rem;">
-              <p style="margin: 0 0 6px 0;"><strong>Nama Guru:</strong> ${updatedUser.nama}</p>
-              <p style="margin: 0 0 6px 0;"><strong>Username Baru:</strong> <code style="background: #e2e8f0; padding: 2px 8px; border-radius: 4px; font-weight: bold; color: #047857; font-size: 1.05rem;">${trimmed}</code></p>
-              <p style="margin: 0; color: #64748b; font-size: 0.85rem;">Guru dapat langsung login ke aplikasi KEREN menggunakan username ini.</p>
+              <p style="margin: 0 0 6px 0;"><strong>Nama Guru:</strong> ${escHtml(updatedUser.nama)}</p>
+              <p style="margin: 0 0 6px 0;"><strong>Role / Hak Akses:</strong> <span style="background: #ede9fe; color: #6d28d9; padding: 2px 8px; border-radius: 6px; font-weight: 700;">${escHtml(targetRole)}</span></p>
+              <p style="margin: 0 0 6px 0;"><strong>Username:</strong> <code style="background: #e2e8f0; padding: 2px 8px; border-radius: 4px; font-weight: bold; color: #047857; font-size: 1.02rem;">${escHtml(trimmed)}</code></p>
+              <p style="margin: 0; color: #64748b; font-size: 0.84rem;">Perubahan role langsung berlaku otomatis pada sesi pengguna tersebut.</p>
             </div>
           `,
           showCancelButton: true,
@@ -255,7 +391,7 @@ export default function UserGuruPage() {
               phone = '62' + phone.slice(1);
             }
             const pesan = encodeURIComponent(
-              `Assalamu'alaikum Wr. Wb.\nBapak/Ibu *${updatedUser.nama}*,\n\nBerikut informasi username login akun KEREN Anda yang telah diperbarui:\n\n👤 *Username:* ${trimmed}\n🌐 *Link Aplikasi:* https://keren.mtsalmaarif01.sch.id\n\nSilakan dicoba login. Terima kasih.`
+              `Assalamu'alaikum Wr. Wb.\nBapak/Ibu *${updatedUser.nama}*,\n\nBerikut informasi akun KEREN Anda yang telah diperbarui:\n\n👤 *Username:* ${trimmed}\n🔑 *Role Akses:* ${targetRole}\n🌐 *Link Aplikasi:* https://keren.mtsalmaarif01.sch.id\n\nTerima kasih.`
             );
             const waLink = phone
               ? `https://wa.me/${phone}?text=${pesan}`
@@ -538,9 +674,30 @@ export default function UserGuruPage() {
                       </td>
 
                       <td>
-                        <span className={styles.badgeRole}>
-                          {u.role || 'GTK'}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span className={styles.badgeRole} style={getRoleBadgeStyle(u.role)}>
+                            {u.role || 'GTK'}
+                          </span>
+                          {u.hasPin && (
+                            <span
+                              title="Dilindungi PIN 6 digit"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                padding: '2px 7px',
+                                borderRadius: '999px',
+                                background: '#dcfce7',
+                                color: '#15803d',
+                                border: '1px solid #bbf7d0',
+                              }}
+                            >
+                              <i className="fas fa-lock" style={{ fontSize: '0.65rem' }}></i> PIN
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       <td>
@@ -607,7 +764,7 @@ export default function UserGuruPage() {
             <div className={styles.modalHeader}>
               <h3>
                 <i className="fas fa-user-edit" style={{ color: '#047857' }}></i>
-                Ubah Username Guru
+                {canManageRole ? 'Kelola Username & Role Akun' : 'Ubah Username Guru'}
               </h3>
               <button
                 type="button"
@@ -634,6 +791,55 @@ export default function UserGuruPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Pilihan Jenis Role (Khusus Admin) */}
+                {canManageRole && (
+                  <div className={styles.formGroup} style={{ marginBottom: '16px' }}>
+                    <label className={styles.formLabel}>
+                      Jenis Role / Hak Akses <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <select
+                      className={styles.formInput}
+                      value={selectedRoleOption}
+                      disabled={String(currentUserId) === String(selectedUser.id) && (selectedUser.role || '').toLowerCase() === 'admin'}
+                      onChange={e => setSelectedRoleOption(e.target.value)}
+                      style={{ cursor: 'pointer', background: '#fff' }}
+                    >
+                      {allRoleChoices.map(roleOpt => (
+                        <option key={roleOpt} value={roleOpt}>
+                          {roleOpt === 'GTK'
+                            ? 'GTK (Guru & Staf Standar)'
+                            : roleOpt === 'Admin'
+                            ? 'Admin (Akses Penuh Sistem)'
+                            : roleOpt === 'Pimpinan'
+                            ? 'Pimpinan (Kepala / Wakil Kepala Madrasah)'
+                            : roleOpt}
+                        </option>
+                      ))}
+                      <option value="__CUSTOM__">+ Ketik Role / Jabatan Lainnya...</option>
+                    </select>
+
+                    {selectedRoleOption === '__CUSTOM__' && (
+                      <input
+                        type="text"
+                        className={styles.formInput}
+                        placeholder="Ketik nama Role / Jabatan (misal: Ka. Perpustakaan)"
+                        value={customRoleInput}
+                        onChange={e => setCustomRoleInput(e.target.value)}
+                        maxLength={50}
+                        required
+                        style={{ marginTop: '8px' }}
+                      />
+                    )}
+
+                    {String(currentUserId) === String(selectedUser.id) &&
+                      (selectedUser.role || '').toLowerCase() === 'admin' && (
+                        <small style={{ display: 'block', marginTop: '6px', color: '#64748b', fontSize: '0.78rem' }}>
+                          *Role Admin pada akun Anda sendiri dikunci agar tidak sengaja tertutup akses.
+                        </small>
+                      )}
+                  </div>
+                )}
 
                 {/* Input Username Baru */}
                 <div className={styles.formGroup}>
@@ -670,11 +876,50 @@ export default function UserGuruPage() {
                   )}
                 </div>
 
+                {/* Reset PIN Keamanan (Khusus Admin jika user sudah punya PIN) */}
+                {canManageRole && selectedUser.hasPin && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      background: '#fff1f2',
+                      border: '1px solid #fecdd3',
+                      marginBottom: '14px',
+                    }}
+                  >
+                    <div style={{ fontSize: '0.82rem', color: '#9f1239' }}>
+                      <strong><i className="fas fa-lock"></i> PIN 6 Digit Aktif</strong> — Reset jika pengguna lupa PIN.
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleResetPin}
+                      disabled={saving}
+                      style={{
+                        background: '#e11d48',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '8px',
+                        padding: '6px 12px',
+                        fontSize: '0.78rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Reset PIN
+                    </button>
+                  </div>
+                )}
+
                 {/* Info Note */}
                 <div className={styles.infoNote}>
                   <i className="fas fa-info-circle" style={{ fontSize: '1.1rem', marginTop: '2px' }}></i>
                   <div>
-                    Setelah disimpan, username lama tidak berlaku lagi. Guru bersangkutan dapat langsung login ke aplikasi KEREN menggunakan username baru ini.
+                    Perubahan Role (seperti Admin, Pimpinan, Bendahara, atau GTK) maupun Username akan langsung tersinkronisasi secara otomatis pada sesi pengguna.
                   </div>
                 </div>
               </div>
@@ -691,7 +936,13 @@ export default function UserGuruPage() {
                 <button
                   type="submit"
                   className={styles.btnPrimary}
-                  disabled={saving || !newUsername.trim() || newUsername.trim() === selectedUser.username}
+                  disabled={
+                    saving ||
+                    !newUsername.trim() ||
+                    (canManageRole && !resolvedRoleValue) ||
+                    (newUsername.trim() === selectedUser.username &&
+                      (!canManageRole || resolvedRoleValue === (selectedUser.role || 'GTK')))
+                  }
                 >
                   {saving ? (
                     <>

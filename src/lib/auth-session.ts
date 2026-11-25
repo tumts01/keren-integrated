@@ -1,6 +1,6 @@
 export const KEREN_SESSION_COOKIE = 'keren_session';
 export const PORTAL_SESSION_COOKIE = 'keren_portal_session';
-export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60; // 30 hari
+export const SESSION_MAX_AGE_SECONDS = 180 * 24 * 60 * 60; // 180 hari (1 semester penuh)
 
 export interface GuruSessionPayload {
   uid: number | string;
