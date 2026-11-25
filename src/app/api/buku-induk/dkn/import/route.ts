@@ -4,6 +4,7 @@ import { getAllCachedDataInduk } from '@/lib/data-induk';
 import * as xlsx from 'xlsx';
 import { revalidateTag } from 'next/cache';
 import { DKN_MAPELS, normalizeName } from '@/lib/dkn';
+import { MAX_UPLOAD_EXCEL_BYTES, isValidExcelMagicBytes } from '@/lib/upload-security';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,9 +16,15 @@ export async function POST(request: Request) {
     if (!file) {
       return NextResponse.json({ success: false, error: 'File Excel tidak ditemukan' }, { status: 400 });
     }
+    if (file.size <= 0 || file.size > MAX_UPLOAD_EXCEL_BYTES) {
+      return NextResponse.json({ success: false, error: 'Ukuran file Excel melebihi batas maksimal 10 MB' }, { status: 413 });
+    }
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    if (!isValidExcelMagicBytes(buffer)) {
+      return NextResponse.json({ success: false, error: 'Format biner file Excel (.xlsx/.xls) tidak valid' }, { status: 400 });
+    }
     const wb = xlsx.read(buffer, { type: 'buffer' });
     const sheetName = wb.SheetNames[0];
     const ws = wb.Sheets[sheetName];

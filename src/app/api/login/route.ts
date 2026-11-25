@@ -3,19 +3,31 @@ import { supabase } from '@/lib/supabase';
 
 export async function POST(request: Request) {
   try {
-    const { username } = await request.json();
+    const { username, pin } = await request.json();
 
-    if (!username) {
+    if (!username || typeof username !== 'string') {
       return NextResponse.json({ success: false, error: 'Username harus diisi' }, { status: 400 });
     }
 
-    // Filter langsung di database — cari berdasarkan kolom username atau metadata->>Username
     const cleanUser = username.trim();
-    const { data: rows, error } = await supabase
-      .from('data_users')
-      .select('*')
-      .or(`username.ilike.${cleanUser},metadata->>Username.ilike.${cleanUser}`);
-    if (error) throw error;
+    if (!cleanUser || cleanUser.length > 64) {
+      return NextResponse.json({ success: false, error: 'Format username tidak valid' }, { status: 400 });
+    }
+
+    // Gunakan query terpisah terparameterisasi (tanpa interpolasi string .or) untuk mencegah PostgREST filter injection
+    const escapedPattern = cleanUser.replace(/[\\%_]/g, '\\$&');
+    const [{ data: rowsByCol, error: errCol }, { data: rowsByMeta, error: errMeta }] = await Promise.all([
+      supabase.from('data_users').select('*').ilike('username', escapedPattern),
+      supabase.from('data_users').select('*').ilike('metadata->>Username', escapedPattern)
+    ]);
+    if (errCol) throw errCol;
+    if (errMeta) throw errMeta;
+
+    const mergedMap = new Map<any, any>();
+    for (const r of [...(rowsByCol || []), ...(rowsByMeta || [])]) {
+      if (r && !mergedMap.has(r.id)) mergedMap.set(r.id, r);
+    }
+    const rows = Array.from(mergedMap.values());
 
     const userRow = (rows || []).find((r: any) => {
       const colUsername = r.username;
@@ -38,8 +50,11 @@ export async function POST(request: Request) {
       }
 
       const rawFoto = userRow.metadata?.['Foto'] || userRow.metadata?.['foto'] || '';
+      const storedPin = String(userRow.metadata?.['PIN'] || '').trim();
+      const hasPin = Boolean(storedPin);
+      const pinVerified = hasPin ? (typeof pin === 'string' && pin.trim() === storedPin) : true;
 
-      // Login Success
+      // Login Success (jangan pernah kembalikan PIN plaintext ke klien)
       return NextResponse.json({
         success: true,
         user: {
@@ -48,7 +63,8 @@ export async function POST(request: Request) {
           username: userRow.username || userRow.metadata?.['Username'] || cleanUser,
           role: userRow.role || userRow.metadata?.['Role'] || '',
           whatsapp: userRow.metadata?.['Whatsapp'] || '',
-          pin: userRow.metadata?.['PIN'] || '',
+          hasPin,
+          pinVerified,
           foto: rawFoto
         }
       });

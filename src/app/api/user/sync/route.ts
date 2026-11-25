@@ -15,13 +15,14 @@ export async function GET(request: Request) {
 
     // Cari di data_users (aman dari karakter koma/gelar nama)
     let rows: any[] = [];
-    if (username) {
-      const cleanUser = username.replace(/[^a-zA-Z0-9_.-]/g, '');
-      const { data } = await supabase
-        .from('data_users')
-        .select('*')
-        .or(`username.ilike.${cleanUser},metadata->>Username.ilike.${cleanUser}`);
-      if (data && data.length > 0) rows = data;
+    if (username && username.length <= 64) {
+      const escapedPattern = username.replace(/[\\%_]/g, '\\$&');
+      const [{ data: byCol }, { data: byMeta }] = await Promise.all([
+        supabase.from('data_users').select('*').ilike('username', escapedPattern),
+        supabase.from('data_users').select('*').ilike('metadata->>Username', escapedPattern)
+      ]);
+      const merged = [...(byCol || []), ...(byMeta || [])];
+      if (merged.length > 0) rows = merged;
     }
 
     if (rows.length === 0 && nama) {
@@ -60,7 +61,6 @@ export async function GET(request: Request) {
           username: userRow.username || userRow.metadata?.['Username'] || username,
           role: userRow.role || userRow.metadata?.['Role'] || '',
           whatsapp: userRow.metadata?.['Whatsapp'] || '',
-          pin: userRow.metadata?.['PIN'] || '',
           foto
         }
       }, {

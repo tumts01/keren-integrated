@@ -42,3 +42,11 @@ next-env.d.ts
 
 google-credentials.json
 
+# Cegah dokumen kerja / data sensitif lokal ikut terunggah ke repositori
+public/*.xlsx
+public/*.xls
+public/*.docx
+bon_response.json
+result*.json
+
+

@@ -73,6 +73,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       if (data.success && data.needUpdate) {
         const Swal = (await import('sweetalert2')).default;
+        const escHtml = (s: unknown) =>
+          String(s ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
 
         await Swal.fire({
           title: '',
@@ -85,7 +92,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 Pemutakhiran Data GTK
               </h3>
               <p style="margin: 0 0 16px; color: #64748b; font-size: 0.9rem; line-height: 1.5;">
-                Assalamu'alaikum Bpk/Ibu <b>${data.nama || currentUser.nama}</b>.<br/>
+                Assalamu'alaikum Bpk/Ibu <b>${escHtml(data.nama || currentUser.nama)}</b>.<br/>
                 Mohon masukkan <b>Nama Lengkap Ibu Kandung</b> Anda untuk kelengkapan dan sinkronisasi data EMIS &amp; Simpatika Kemenag.
               </p>
               <div style="text-align: left; margin-bottom: 6px;">

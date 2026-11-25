@@ -41,6 +41,9 @@ export const uploadFileToDrive = async (
   if (!gasUrl) {
     throw new Error('GOOGLE_APPS_SCRIPT_UPLOAD_URL belum dikonfigurasi di .env.local');
   }
+  if (!/^[a-zA-Z0-9_-]+$/.test(folderId)) {
+    throw new Error('Format Google Drive Folder ID tidak valid');
+  }
 
   // Convert buffer to base64
   const base64Data = fileBuffer.toString('base64');
@@ -105,6 +108,9 @@ export const uploadFileToDrive = async (
  * @returns Array of folders with id, name, and webViewLink
  */
 export const getFoldersInDrive = async (parentId: string) => {
+  if (!/^[a-zA-Z0-9_-]+$/.test(parentId)) {
+    throw new Error('Format Google Drive Parent Folder ID tidak valid');
+  }
   const drive = getDriveAuth();
   
   try {

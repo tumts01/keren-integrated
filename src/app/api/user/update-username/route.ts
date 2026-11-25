@@ -87,7 +87,6 @@ export async function POST(request: Request) {
         username: cleanNewUsername,
         role: userRow.role || userRow.metadata?.['Role'] || '',
         whatsapp: userRow.metadata?.['Whatsapp'] || '',
-        pin: userRow.metadata?.['PIN'] || '',
         foto: userRow.metadata?.['Foto'] || userRow.metadata?.['foto'] || '',
         sudahGanti: true
       }

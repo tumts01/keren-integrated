@@ -1,5 +1,15 @@
 import { NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { supabase } from '@/lib/supabase';
+
+function isAuthorizedCron(authHeader: string | null): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || !authHeader) return false;
+  const expected = Buffer.from(`Bearer ${secret}`, 'utf8');
+  const provided = Buffer.from(authHeader, 'utf8');
+  if (expected.length !== provided.length) return false;
+  return timingSafeEqual(expected, provided);
+}
 
 function getCurrentDateString() {
   const date = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
@@ -15,8 +25,11 @@ function formatPhone(rawHp: string) {
 export async function GET(request: Request) {
   try {
     const authHeader = request.headers.get('authorization');
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!isAuthorizedCron(authHeader)) {
+      return NextResponse.json(
+        { error: 'Unauthorized: CRON_SECRET belum dikonfigurasi atau token tidak valid' },
+        { status: 401 }
+      );
     }
 
     const dateWIB = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));

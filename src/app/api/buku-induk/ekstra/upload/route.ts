@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { MAX_UPLOAD_EXCEL_BYTES, isValidExcelMagicBytes } from '@/lib/upload-security';
 import * as xlsx from 'xlsx';
 
 export const dynamic = 'force-dynamic';
@@ -18,7 +19,15 @@ export async function POST(request: Request) {
 
     for (const file of files) {
       try {
+        if (file.size <= 0 || file.size > MAX_UPLOAD_EXCEL_BYTES) {
+          errors.push(`File ${file.name}: Ukuran melebihi batas maksimal 10 MB.`);
+          continue;
+        }
         const buffer = Buffer.from(await file.arrayBuffer());
+        if (!isValidExcelMagicBytes(buffer)) {
+          errors.push(`File ${file.name}: Bukan berkas Excel (.xlsx/.xls) yang valid.`);
+          continue;
+        }
         const wb = xlsx.read(buffer, { type: 'buffer' });
         const sheetName = wb.SheetNames[0];
         const sheet = wb.Sheets[sheetName];

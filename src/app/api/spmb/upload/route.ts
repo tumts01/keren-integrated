@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
 import { uploadFileToDrive } from '@/lib/google-drive';
+import {
+  MAX_UPLOAD_DOC_BYTES,
+  isValidImageMagicBytes,
+  isValidPdfMagicBytes
+} from '@/lib/upload-security';
 
 export async function POST(req: Request) {
   try {
@@ -9,6 +14,13 @@ export async function POST(req: Request) {
 
     if (!file) {
       return NextResponse.json({ success: false, error: 'File tidak ditemukan' }, { status: 400 });
+    }
+
+    if (file.size <= 0 || file.size > MAX_UPLOAD_DOC_BYTES) {
+      return NextResponse.json({
+        success: false,
+        error: 'Ukuran berkas terlalu besar! Maksimal ukuran foto/dokumen adalah 10 MB.'
+      }, { status: 413 });
     }
 
     // Tolak secara tegas jika file berupa VIDEO
@@ -42,6 +54,15 @@ export async function POST(req: Request) {
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+
+    // Validasi isi biner (magic bytes) agar berkas berbahaya tidak bisa menyamar memakai ekstensi JPG/PNG/PDF
+    const validBinary = (isImage && isValidImageMagicBytes(buffer)) || (isPdf && isValidPdfMagicBytes(buffer));
+    if (!validBinary) {
+      return NextResponse.json({
+        success: false,
+        error: 'Isi berkas tidak sesuai dengan format foto/PDF yang valid.'
+      }, { status: 400 });
+    }
     
     // Upload using our centralized Google Drive / GAS bridge
     const driveRes = await uploadFileToDrive(buffer, file.name, file.type, folderId);

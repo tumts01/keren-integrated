@@ -455,14 +455,14 @@ export default function PresensiGatePage() {
       const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: formValues.user })
+        body: JSON.stringify({ username: formValues.user, pin: formValues.pin })
       });
       const data = await res.json();
       if (data.success && data.user) {
         const role = (data.user.role || '').toLowerCase();
         if (role === 'admin' || role === 'pimpinan') {
-          if (data.user.pin && formValues.pin && String(data.user.pin).trim() !== String(formValues.pin).trim()) {
-            Swal.fire('PIN Salah', 'PIN admin yang Anda masukkan tidak sesuai.', 'error');
+          if (data.user.hasPin && !data.user.pinVerified) {
+            Swal.fire('PIN Salah', 'PIN admin wajib diisi dan harus sesuai.', 'error');
             return;
           }
           setIsAdmin(true);

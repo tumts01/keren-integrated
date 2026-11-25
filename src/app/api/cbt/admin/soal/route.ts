@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { uploadFileToDrive } from '@/lib/google-drive';
 import { formatMathSymbols } from '@/lib/cbt-format';
+import {
+  MAX_UPLOAD_DOC_BYTES,
+  MAX_UPLOAD_EXCEL_BYTES,
+  isValidExcelMagicBytes,
+  isValidImageMagicBytes
+} from '@/lib/upload-security';
 import * as xlsx from 'xlsx';
 
 export const dynamic = 'force-dynamic';
@@ -56,9 +62,15 @@ export async function POST(req: Request) {
     if (type === 'excel') {
       const fileExcel = formData.get('fileExcel') as File;
       if (!fileExcel) return NextResponse.json({ success: false, error: 'File Excel tidak ditemukan' }, { status: 400 });
+      if (fileExcel.size <= 0 || fileExcel.size > MAX_UPLOAD_EXCEL_BYTES) {
+        return NextResponse.json({ success: false, error: 'Ukuran file Excel melebihi batas maksimal 10 MB' }, { status: 413 });
+      }
 
       const arrayBuffer = await fileExcel.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
+      if (!isValidExcelMagicBytes(buffer)) {
+        return NextResponse.json({ success: false, error: 'Format biner file Excel (.xlsx/.xls) tidak valid' }, { status: 400 });
+      }
       const workbook = xlsx.read(buffer, { type: 'buffer' });
       const sheetName = workbook.SheetNames[0];
       const dataExcel = xlsx.utils.sheet_to_json<any>(workbook.Sheets[sheetName]);
@@ -112,8 +124,14 @@ export async function POST(req: Request) {
       let gambarUrl = null;
 
       if (gambar) {
+        if (gambar.size <= 0 || gambar.size > MAX_UPLOAD_DOC_BYTES) {
+          return NextResponse.json({ success: false, error: 'Ukuran gambar soal maksimal 10 MB' }, { status: 413 });
+        }
         const folderId = process.env.GOOGLE_DRIVE_CBT_FOLDER_ID || '1XMpQqdTzx0i_WaD79AHdgzhRUUmgQX6z'; // Use existing folder if CBT specific doesn't exist
         const buffer = Buffer.from(await gambar.arrayBuffer());
+        if (!isValidImageMagicBytes(buffer)) {
+          return NextResponse.json({ success: false, error: 'Berkas gambar soal tidak valid' }, { status: 400 });
+        }
         const res = await uploadFileToDrive(buffer, `Soal_${lomba}_${nomor}_${gambar.name}`, gambar.type, folderId);
         gambarUrl = res.webViewLink || null;
       }
@@ -177,9 +195,15 @@ export async function PATCH(req: Request) {
     if (!id || !gambar) {
       return NextResponse.json({ success: false, error: 'ID soal dan gambar wajib disertakan' }, { status: 400 });
     }
+    if (gambar.size <= 0 || gambar.size > MAX_UPLOAD_DOC_BYTES) {
+      return NextResponse.json({ success: false, error: 'Ukuran gambar soal maksimal 10 MB' }, { status: 413 });
+    }
 
     const folderId = process.env.GOOGLE_DRIVE_CBT_FOLDER_ID || '1XMpQqdTzx0i_WaD79AHdgzhRUUmgQX6z';
     const buffer = Buffer.from(await gambar.arrayBuffer());
+    if (!isValidImageMagicBytes(buffer)) {
+      return NextResponse.json({ success: false, error: 'Berkas gambar soal tidak valid' }, { status: 400 });
+    }
     const res = await uploadFileToDrive(buffer, `Soal_Img_${id}_${gambar.name}`, gambar.type, folderId);
     const gambarUrl = res.webViewLink || null;
 

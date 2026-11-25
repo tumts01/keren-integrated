@@ -129,12 +129,20 @@ function PrintPresensiModal({
       });
       tableHtml += `</tr></thead><tbody>`;
 
+      const escHtml = (val: unknown) =>
+        String(val ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+
       siswaList.forEach((s, i) => {
         const jk = s.jenisKelamin?.toLowerCase().startsWith('l') ? 'L' : 'P';
         tableHtml += `
           <tr>
             <td style="text-align: center; font-size: 8pt;">${i + 1}</td>
-            <td style="text-align: left; padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; font-size: 8pt;">${s.nama}</td>
+            <td style="text-align: left; padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; font-size: 8pt;">${escHtml(s.nama)}</td>
             <td style="text-align: center; font-size: 8pt;">${jk}</td>
         `;
         dates.forEach(date => {
@@ -151,13 +159,13 @@ function PrintPresensiModal({
       printHtml += `
         <div class="page">
           <div class="header">
-            <h3>PRESENSI KELAS ${rombel}</h3>
+            <h3>PRESENSI KELAS ${escHtml(rombel)}</h3>
             <h3>MTS ALMAARIF 01 SINGOSARI</h3>
-            <h3>TAHUN AJARAN ${tahunAjaran}</h3>
+            <h3>TAHUN AJARAN ${escHtml(tahunAjaran)}</h3>
           </div>
           <div class="sub-header">
-            <div>SEMESTER: ${semester}</div>
-            <div>${tglMulaiStr} s.d. ${tglSelesaiStr}</div>
+            <div>SEMESTER: ${escHtml(semester)}</div>
+            <div>${escHtml(tglMulaiStr)} s.d. ${escHtml(tglSelesaiStr)}</div>
           </div>
           ${tableHtml}
         </div>
