@@ -1,28 +1,35 @@
 -- =============================================================================
--- PENGUNCIAN ROW LEVEL SECURITY (RLS) PENUH UNTUK SUPABASE (keren-integrated)
+-- PENGUNCIAN ROW LEVEL SECURITY (RLS) PENUH & PEMBERSIHAN POLICY PUBLIK LAMA
 -- =============================================================================
--- PENTING SEBELUM MENJALANKAN SKRIP INI DI SUPABASE SQL EDITOR:
--- Pastikan variabel environment `SUPABASE_SERVICE_ROLE_KEY` (dari Supabase Dashboard
--- -> Project Settings -> API -> service_role secret) SUDAH ditambahkan ke:
---   1. File `.env.local` (untuk pengembangan lokal)
---   2. Vercel Dashboard -> Settings -> Environment Variables (untuk produksi)
---
--- Karena seluruh akses database di aplikasi kini berjalan murni di sisi server
--- menggunakan `SUPABASE_SERVICE_ROLE_KEY` (yang otomatis melewati RLS secara resmi),
--- mengaktifkan RLS tanpa policy publik akan 100% MENUTUP akses langsung menggunakan
--- `NEXT_PUBLIC_SUPABASE_ANON_KEY` dari internet tanpa mengganggu fungsi aplikasi!
+-- Skrip ini melakukan 2 hal pada seluruh tabel di skema `public`:
+--   1. Mengaktifkan Row Level Security (ENABLE ROW LEVEL SECURITY)
+--   2. Menghapus Policy publik/anon lama ("Enable read/all access for all users")
+--      yang masih menempel dari pembuatan tabel awal, sehingga akses langsung via
+--      `NEXT_PUBLIC_SUPABASE_ANON_KEY` tertutup 100% di seluruh tabel, sementara
+--      server Next.js (`SUPABASE_SERVICE_ROLE_KEY`) tetap berjalan normal.
 -- =============================================================================
 
 DO $$
 DECLARE
   r RECORD;
+  p RECORD;
 BEGIN
+  -- 1. Aktifkan RLS pada seluruh tabel di skema public
   FOR r IN
     SELECT tablename
     FROM pg_tables
     WHERE schemaname = 'public'
   LOOP
     EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY;', r.tablename);
-    RAISE NOTICE 'RLS berhasil diaktifkan pada tabel: public.%', r.tablename;
+  END LOOP;
+
+  -- 2. Hapus seluruh policy lama pada skema public yang membuka celah akses anon/publik
+  FOR p IN
+    SELECT tablename, policyname
+    FROM pg_policies
+    WHERE schemaname = 'public'
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I;', p.policyname, p.tablename);
+    RAISE NOTICE 'Policy lama dihapus: % pada public.%', p.policyname, p.tablename;
   END LOOP;
 END $$;
