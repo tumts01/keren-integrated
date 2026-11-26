@@ -1201,11 +1201,6 @@ export default function PresensiPage() {
         });
       }
 
-      if (matched.length === 0) {
-        Swal.fire('Info', `Tidak ditemukan data jurnal untuk <b>${targetGuru}</b> pada periode ${targetFrom} s.d. ${targetTo}.`, 'info');
-        return;
-      }
-
       matched.sort((a: any, b: any) => {
         if (a.tanggal !== b.tanggal) return a.tanggal.localeCompare(b.tanggal);
         const jamA = parseInt((a.jamKe || '').split(',')[0], 10) || 0;
@@ -1261,6 +1256,10 @@ export default function PresensiPage() {
         [],
         ['No', 'Hari', 'Tanggal', 'Jam Ke', 'Durasi (Jam)', 'Kelas', 'Mata Pelajaran', 'Materi Pembahasan']
       ];
+
+      if (matched.length === 0) {
+        aoa.push(['-', '-', '-', '-', 0, '-', '-', 'Tidak ada data jurnal mengajar pada periode ini']);
+      }
 
       matched.forEach((r: any, idx: number) => {
         let hari = '-';
@@ -1609,46 +1608,83 @@ export default function PresensiPage() {
     }
   };
 
-  const handleExportExcel = (filtered: any[]) => {
-    // Hitung jam per entri: "9,10" = 2 jam, "1,2,3" = 3 jam
+  const buildAllGuruJamRows = (entries: any[]) => {
     const countJam = (jamKe: string) => {
       if (!jamKe) return 1;
       return jamKe.split(',').map(s => s.trim()).filter(Boolean).length;
     };
 
-    // Group by namaGuru (normalized), akumulasi total jam
-    const grouped: Record<string, number> = {};
-    for (const r of filtered) {
-      const mapelStr = (r.mapel || '').toLowerCase();
-      if (mapelStr.includes('program khusus') || mapelStr.includes('proksus')) continue;
+    const norm = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const cleanGuruList = guruList.map(g => (g || '').trim().replace(/\s+/g, ' ')).filter(Boolean);
 
-      const nama = (r.namaGuru || '').trim().replace(/\s+/g, ' ');
-      if (!nama) continue;
-      grouped[nama] = (grouped[nama] || 0) + countJam(r.jamKe || '');
+    // Tentukan daftar guru dasar yang harus selalu tampil (meskipun 0 jam / pertemuan)
+    const grouped: Record<string, number> = {};
+    if (isAdmin && !filterGuruRekap) {
+      for (const g of cleanGuruList) {
+        if (grouped[g] === undefined) grouped[g] = 0;
+      }
+    } else {
+      const singleTarget = (filterGuruRekap || currentUsername || '').trim().replace(/\s+/g, ' ');
+      if (singleTarget) grouped[singleTarget] = 0;
     }
 
-    const norm = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
-    const getGuruIndex = (name: string) => {
-      const target = norm(name);
-      const idx = guruList.findIndex(g => {
+    const resolveCanonicalName = (rawName: string) => {
+      const clean = (rawName || '').trim().replace(/\s+/g, ' ');
+      if (!clean) return '';
+      const target = norm(clean);
+
+      // 1. Cocok persis dengan nama di daftar guru aktif
+      const exactMatch = cleanGuruList.find(g => norm(g) === target);
+      if (exactMatch) return exactMatch;
+
+      // 2. Cocok parsial jika unik (1 kandidat) agar tidak muncul baris ganda
+      const partialMatches = cleanGuruList.filter(g => {
         const gn = norm(g);
-        return gn === target || gn.includes(target) || target.includes(gn);
+        return gn.includes(target) || target.includes(gn);
       });
-      return idx !== -1 ? idx : 9999;
+      if (partialMatches.length === 1) return partialMatches[0];
+
+      // 3. Cek apakah sudah ada di grouped (case-insensitive)
+      const existingKey = Object.keys(grouped).find(k => norm(k) === target);
+      if (existingKey) return existingKey;
+
+      return clean;
     };
 
-    const rows = Object.entries(grouped)
+    for (const r of entries) {
+      const canonical = resolveCanonicalName(r.namaGuru || '');
+      if (!canonical) continue;
+      grouped[canonical] = (grouped[canonical] || 0) + countJam(r.jamKe || '');
+    }
+
+    const getGuruIndex = (name: string) => {
+      const target = norm(name);
+      const exactIdx = cleanGuruList.findIndex(g => norm(g) === target);
+      if (exactIdx !== -1) return exactIdx;
+      const partialIdx = cleanGuruList.findIndex(g => {
+        const gn = norm(g);
+        return gn.includes(target) || target.includes(gn);
+      });
+      return partialIdx !== -1 ? partialIdx : 9999;
+    };
+
+    return Object.entries(grouped)
       .sort(([a], [b]) => {
         const idxA = getGuruIndex(a);
         const idxB = getGuruIndex(b);
         if (idxA !== idxB) return idxA - idxB;
         return a.localeCompare(b, 'id');
       })
-      .map(([nama, jumlah], i) => ([
-        i + 1,
-        nama,
-        jumlah
-      ]));
+      .map(([nama, jumlah], i) => [i + 1, nama, jumlah]);
+  };
+
+  const handleExportExcel = (filtered: any[]) => {
+    const dataReguler = filtered.filter(r => {
+      const mapelStr = (r.mapel || '').toLowerCase();
+      return !mapelStr.includes('program khusus') && !mapelStr.includes('proksus');
+    });
+
+    const rows = buildAllGuruJamRows(dataReguler);
 
     const filterText = (filterFrom || filterTo) ? `${filterFrom ? filterFrom : 'Awal'} s.d. ${filterTo ? filterTo : 'Akhir'}` : 'Semua Tanggal';
     const cetakText = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -1672,47 +1708,17 @@ export default function PresensiPage() {
   };
 
   const handleExportProksus = (filtered: any[]) => {
-    const dataProksus = filtered.filter(r => (r.mapel || '').toLowerCase().includes('program khusus') || (r.mapel || '').toLowerCase().includes('proksus'));
-    if (dataProksus.length === 0) {
-      Swal.fire('Info', 'Tidak ada data jurnal Program Khusus pada filter saat ini', 'info');
+    const dataProksus = filtered.filter(
+      r =>
+        (r.mapel || '').toLowerCase().includes('program khusus') ||
+        (r.mapel || '').toLowerCase().includes('proksus')
+    );
+
+    const rows = buildAllGuruJamRows(dataProksus);
+    if (rows.length === 0) {
+      Swal.fire('Info', 'Daftar guru belum tersedia untuk diexport.', 'info');
       return;
     }
-    
-    // Grouping per guru
-    const countJam = (jamKe: string) => {
-      if (!jamKe) return 1;
-      return jamKe.split(',').map(s => s.trim()).filter(Boolean).length;
-    };
-
-    const grouped: Record<string, number> = {};
-    for (const r of dataProksus) {
-      const nama = (r.namaGuru || '').trim().replace(/\s+/g, ' ');
-      if (!nama) continue;
-      grouped[nama] = (grouped[nama] || 0) + countJam(r.jamKe || '');
-    }
-
-    const norm = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
-    const getGuruIndex = (name: string) => {
-      const target = norm(name);
-      const idx = guruList.findIndex(g => {
-        const gn = norm(g);
-        return gn === target || gn.includes(target) || target.includes(gn);
-      });
-      return idx !== -1 ? idx : 9999;
-    };
-
-    const rows = Object.entries(grouped)
-      .sort(([a], [b]) => {
-        const idxA = getGuruIndex(a);
-        const idxB = getGuruIndex(b);
-        if (idxA !== idxB) return idxA - idxB;
-        return a.localeCompare(b, 'id');
-      })
-      .map(([nama, jam], i) => ([
-        i + 1,
-        nama,
-        jam
-      ]));
 
     const filterText = (filterFrom || filterTo) ? `${filterFrom ? filterFrom : 'Awal'} s.d. ${filterTo ? filterTo : 'Akhir'}` : 'Semua Tanggal';
     const cetakText = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -4207,6 +4213,35 @@ export default function PresensiPage() {
               filtered.sort((a, b) => { if (a.tanggal > b.tanggal) return -1; if (a.tanggal < b.tanggal) return 1; const jamA = parseInt(a.jamKe.split(',')[0]) || 0; const jamB = parseInt(b.jamKe.split(',')[0]) || 0; return jamA - jamB; });
               return (
                 <div>
+                  {/* Export buttons tetap tampil meski filtered kosong agar guru bernilai 0 tetap bisa diexport */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10, gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => handleExportProksus(filtered)}
+                      style={{ background: '#ecfdf5', border: '1px solid #10b981', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: '#059669', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+                    >
+                      <i className="fas fa-file-excel"></i> Export Proksus
+                    </button>
+                    <button
+                      onClick={handleExportRincianJurnalModal}
+                      style={{ background: '#0284c7', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+                      title="Export rincian jurnal mengajar per kelas (pada jam sekian diajar oleh siapa dan materinya apa)"
+                    >
+                      <i className="fas fa-file-export"></i> Export Rincian Jurnal (Kelas)
+                    </button>
+                    <button
+                      onClick={() => handleExportRincianGuruModal()}
+                      style={{ background: '#7c3aed', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+                      title="Export rincian jurnal mengajar guru tertentu pada rentang tanggal tertentu"
+                    >
+                      <i className="fas fa-user-check"></i> Export Rincian Guru
+                    </button>
+                    <button
+                      onClick={() => handleExportExcel(filtered)}
+                      style={{ background: '#16a34a', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+                    >
+                      <i className="fas fa-file-excel"></i> Export Excel ({filtered.length} data)
+                    </button>
+                  </div>
                   {filtered.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '32px 0', color: '#94a3b8' }}>
                       <i className="fas fa-search" style={{ fontSize: '2rem', display: 'block', marginBottom: 8 }}></i>
@@ -4215,35 +4250,6 @@ export default function PresensiPage() {
                     </div>
                   ) : (
                     <div>
-                      {/* Export button */}
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10, gap: '8px' }}>
-                        <button
-                          onClick={() => handleExportProksus(filtered)}
-                          style={{ background: '#ecfdf5', border: '1px solid #10b981', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: '#059669', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
-                        >
-                          <i className="fas fa-file-excel"></i> Export Proksus
-                        </button>
-                        <button
-                          onClick={handleExportRincianJurnalModal}
-                          style={{ background: '#0284c7', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
-                          title="Export rincian jurnal mengajar per kelas (pada jam sekian diajar oleh siapa dan materinya apa)"
-                        >
-                          <i className="fas fa-file-export"></i> Export Rincian Jurnal (Kelas)
-                        </button>
-                        <button
-                          onClick={() => handleExportRincianGuruModal()}
-                          style={{ background: '#7c3aed', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
-                          title="Export rincian jurnal mengajar guru tertentu pada rentang tanggal tertentu"
-                        >
-                          <i className="fas fa-user-check"></i> Export Rincian Guru
-                        </button>
-                        <button
-                          onClick={() => handleExportExcel(filtered)}
-                          style={{ background: '#16a34a', border: 'none', padding: '7px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.82rem', color: 'white', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
-                        >
-                          <i className="fas fa-file-excel"></i> Export Excel ({filtered.length} data)
-                        </button>
-                      </div>
                     <div style={{ overflowX: 'auto' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                         <thead>
