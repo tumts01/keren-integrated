@@ -645,7 +645,7 @@ function CetakJurnalContent() {
         @media print {
           @page {
             size: A4 landscape;
-            margin: 6mm 6mm;
+            margin: 7mm 7mm;
           }
           html, body {
             background: #ffffff !important;
@@ -661,15 +661,17 @@ function CetakJurnalContent() {
             padding: 0 !important;
             margin: 0 !important;
             background: #ffffff !important;
+            display: block !important;
           }
           .class-sheet {
             box-shadow: none !important;
             border: none !important;
             padding: 0 !important;
-            margin: 0 !important;
+            margin: 0 auto !important;
             width: 100% !important;
             max-width: 100% !important;
             box-sizing: border-box !important;
+            zoom: 0.88 !important;
             page-break-after: always !important;
             break-after: page !important;
           }
@@ -677,8 +679,17 @@ function CetakJurnalContent() {
             page-break-after: auto !important;
             break-after: auto !important;
           }
+          .jurnal-table-wrap {
+            overflow: visible !important;
+          }
           table {
             page-break-inside: auto;
+            width: 100% !important;
+            table-layout: fixed !important;
+          }
+          th, td {
+            word-break: break-word !important;
+            overflow-wrap: anywhere !important;
           }
           tr {
             page-break-inside: avoid;
@@ -1006,19 +1017,19 @@ function CetakJurnalContent() {
               </div>
 
               {/* Main Jurnal Table Per Guru */}
-              <div style={{ width: '100%', overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '7.5pt', fontFamily: 'Arial, sans-serif', border: '1.5px solid #000000', color: '#000000' }}>
+              <div className="jurnal-table-wrap" style={{ width: '100%', overflowX: 'auto' }}>
+                <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: '7pt', fontFamily: 'Arial, sans-serif', border: '1.5px solid #000000', color: '#000000' }}>
                   <thead>
                     <tr style={{ background: '#ede9fe', textAlign: 'center', fontWeight: 800, color: '#000000' }}>
-                      <th style={{ width: '24px', border: '1px solid #000000', padding: '5px 2px' }}>NO</th>
-                      <th style={{ width: '75px', border: '1px solid #000000', padding: '5px 4px' }}>Hari</th>
-                      <th style={{ width: '75px', border: '1px solid #000000', padding: '5px 4px' }}>Tanggal</th>
-                      <th style={{ width: '62px', border: '1px solid #000000', padding: '5px 3px' }}>Jam Ke</th>
-                      <th style={{ width: '48px', border: '1px solid #000000', padding: '5px 3px' }}>Durasi</th>
-                      <th style={{ width: '52px', border: '1px solid #000000', padding: '5px 3px' }}>Kelas</th>
-                      <th style={{ width: '150px', border: '1px solid #000000', padding: '5px 4px', textAlign: 'left' }}>Mata Pelajaran</th>
-                      <th style={{ border: '1px solid #000000', padding: '5px 6px', textAlign: 'left' }}>Materi Pembahasan / KBM</th>
-                      <th style={{ width: '55px', border: '1px solid #000000', padding: '5px 2px' }}>Paraf</th>
+                      <th style={{ width: '3%', border: '1px solid #000000', padding: '4px 2px' }}>NO</th>
+                      <th style={{ width: '7%', border: '1px solid #000000', padding: '4px 3px' }}>Hari</th>
+                      <th style={{ width: '8%', border: '1px solid #000000', padding: '4px 3px' }}>Tanggal</th>
+                      <th style={{ width: '7%', border: '1px solid #000000', padding: '4px 2px' }}>Jam Ke</th>
+                      <th style={{ width: '5%', border: '1px solid #000000', padding: '4px 2px' }}>Durasi</th>
+                      <th style={{ width: '5%', border: '1px solid #000000', padding: '4px 2px' }}>Kelas</th>
+                      <th style={{ width: '18%', border: '1px solid #000000', padding: '4px 4px', textAlign: 'left' }}>Mata Pelajaran</th>
+                      <th style={{ width: '41%', border: '1px solid #000000', padding: '4px 5px', textAlign: 'left' }}>Materi Pembahasan / KBM</th>
+                      <th style={{ width: '6%', border: '1px solid #000000', padding: '4px 2px' }}>Paraf</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1034,22 +1045,22 @@ function CetakJurnalContent() {
                         const durasi = countJam(r.jamKe);
                         return (
                           <tr key={r.id || i} style={{ background: i % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                            <td style={{ border: '1px solid #000000', padding: '3.5px 2px', textAlign: 'center' }}>{i + 1}</td>
-                            <td style={{ border: '1px solid #000000', padding: '3.5px 4px', textAlign: 'center', whiteSpace: 'nowrap' }}>{hari}</td>
-                            <td style={{ border: '1px solid #000000', padding: '3.5px 4px', textAlign: 'center', whiteSpace: 'nowrap' }}>{tanggalFormat}</td>
-                            <td style={{ border: '1px solid #000000', padding: '3.5px 3px', textAlign: 'center', fontWeight: 700 }}>{r.jamKe ? `Jam ${r.jamKe}` : '-'}</td>
-                            <td style={{ border: '1px solid #000000', padding: '3.5px 3px', textAlign: 'center', fontWeight: 700 }}>{durasi} Jam</td>
-                            <td style={{ border: '1px solid #000000', padding: '3.5px 3px', textAlign: 'center', fontWeight: 700 }}>{r.kelas || '-'}</td>
-                            <td style={{ border: '1px solid #000000', padding: '3.5px 4px', fontWeight: 600 }}>
+                            <td style={{ border: '1px solid #000000', padding: '3px 2px', textAlign: 'center' }}>{i + 1}</td>
+                            <td style={{ border: '1px solid #000000', padding: '3px 3px', textAlign: 'center' }}>{hari}</td>
+                            <td style={{ border: '1px solid #000000', padding: '3px 3px', textAlign: 'center' }}>{tanggalFormat}</td>
+                            <td style={{ border: '1px solid #000000', padding: '3px 2px', textAlign: 'center', fontWeight: 700 }}>{r.jamKe ? `Jam ${r.jamKe}` : '-'}</td>
+                            <td style={{ border: '1px solid #000000', padding: '3px 2px', textAlign: 'center', fontWeight: 700 }}>{durasi} Jam</td>
+                            <td style={{ border: '1px solid #000000', padding: '3px 2px', textAlign: 'center', fontWeight: 700 }}>{r.kelas || '-'}</td>
+                            <td style={{ border: '1px solid #000000', padding: '3px 4px', fontWeight: 600, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                               <div>{r.mapel}</div>
                               {r.isGuruPengganti && (
-                                <div style={{ fontSize: '6.5pt', color: '#b45309', fontWeight: 700, marginTop: '1px' }}>
+                                <div style={{ fontSize: '6.2pt', color: '#b45309', fontWeight: 700, marginTop: '1px' }}>
                                   [Inval: {r.guruDigantikan || 'Guru Lain'}]
                                 </div>
                               )}
                             </td>
-                            <td style={{ border: '1px solid #000000', padding: '3.5px 6px', lineHeight: 1.25 }}>{r.materi}</td>
-                            <td style={{ border: '1px solid #000000', padding: '3.5px 2px', textAlign: 'center' }}></td>
+                            <td style={{ border: '1px solid #000000', padding: '3px 5px', lineHeight: 1.25, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{r.materi}</td>
+                            <td style={{ border: '1px solid #000000', padding: '3px 2px', textAlign: 'center' }}></td>
                           </tr>
                         );
                       })
@@ -1149,18 +1160,18 @@ function CetakJurnalContent() {
               </div>
 
               {/* Main Jurnal Table */}
-              <div style={{ width: '100%', overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '7.5pt', fontFamily: 'Arial, sans-serif', border: '1.5px solid #000000', color: '#000000' }}>
+              <div className="jurnal-table-wrap" style={{ width: '100%', overflowX: 'auto' }}>
+                <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: '7pt', fontFamily: 'Arial, sans-serif', border: '1.5px solid #000000', color: '#000000' }}>
                   <thead>
                     <tr style={{ background: '#dbeafe', textAlign: 'center', fontWeight: 800, color: '#000000' }}>
-                      <th style={{ width: '24px', border: '1px solid #000000', padding: '5px 2px' }}>NO</th>
-                      <th style={{ width: '75px', border: '1px solid #000000', padding: '5px 4px' }}>Hari</th>
-                      <th style={{ width: '75px', border: '1px solid #000000', padding: '5px 4px' }}>Tanggal</th>
-                      <th style={{ width: '60px', border: '1px solid #000000', padding: '5px 3px' }}>Jam Ke</th>
-                      <th style={{ width: '135px', border: '1px solid #000000', padding: '5px 4px', textAlign: 'left' }}>Mata Pelajaran</th>
-                      <th style={{ width: '170px', border: '1px solid #000000', padding: '5px 4px', textAlign: 'left' }}>Guru Pengajar</th>
-                      <th style={{ border: '1px solid #000000', padding: '5px 6px', textAlign: 'left' }}>Materi Pembahasan / KBM</th>
-                      <th style={{ width: '55px', border: '1px solid #000000', padding: '5px 2px' }}>Paraf</th>
+                      <th style={{ width: '3%', border: '1px solid #000000', padding: '4px 2px' }}>NO</th>
+                      <th style={{ width: '7%', border: '1px solid #000000', padding: '4px 3px' }}>Hari</th>
+                      <th style={{ width: '8%', border: '1px solid #000000', padding: '4px 3px' }}>Tanggal</th>
+                      <th style={{ width: '7%', border: '1px solid #000000', padding: '4px 2px' }}>Jam Ke</th>
+                      <th style={{ width: '17%', border: '1px solid #000000', padding: '4px 4px', textAlign: 'left' }}>Mata Pelajaran</th>
+                      <th style={{ width: '19%', border: '1px solid #000000', padding: '4px 4px', textAlign: 'left' }}>Guru Pengajar</th>
+                      <th style={{ width: '33%', border: '1px solid #000000', padding: '4px 5px', textAlign: 'left' }}>Materi Pembahasan / KBM</th>
+                      <th style={{ width: '6%', border: '1px solid #000000', padding: '4px 2px' }}>Paraf</th>
                     </tr>
                   </thead>
 
@@ -1176,23 +1187,23 @@ function CetakJurnalContent() {
                         const { hari, tanggalFormat } = formatTanggalIndo(r.tanggal);
                         return (
                           <tr key={r.id || i} style={{ background: i % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                            <td style={{ border: '1px solid #000000', padding: '3.5px 2px', textAlign: 'center' }}>{i + 1}</td>
-                            <td style={{ border: '1px solid #000000', padding: '3.5px 4px', textAlign: 'center', whiteSpace: 'nowrap' }}>{hari}</td>
-                            <td style={{ border: '1px solid #000000', padding: '3.5px 4px', textAlign: 'center', whiteSpace: 'nowrap' }}>{tanggalFormat}</td>
-                            <td style={{ border: '1px solid #000000', padding: '3.5px 3px', textAlign: 'center', fontWeight: 700 }}>
+                            <td style={{ border: '1px solid #000000', padding: '3px 2px', textAlign: 'center' }}>{i + 1}</td>
+                            <td style={{ border: '1px solid #000000', padding: '3px 3px', textAlign: 'center' }}>{hari}</td>
+                            <td style={{ border: '1px solid #000000', padding: '3px 3px', textAlign: 'center' }}>{tanggalFormat}</td>
+                            <td style={{ border: '1px solid #000000', padding: '3px 2px', textAlign: 'center', fontWeight: 700 }}>
                               {r.jamKe ? `Jam ${r.jamKe}` : '-'}
                             </td>
-                            <td style={{ border: '1px solid #000000', padding: '3.5px 4px', fontWeight: 600 }}>{r.mapel}</td>
-                            <td style={{ border: '1px solid #000000', padding: '3.5px 4px' }}>
+                            <td style={{ border: '1px solid #000000', padding: '3px 4px', fontWeight: 600, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{r.mapel}</td>
+                            <td style={{ border: '1px solid #000000', padding: '3px 4px', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                               <div>{r.namaGuru}</div>
                               {r.isGuruPengganti && (
-                                <div style={{ fontSize: '6.5pt', color: '#b45309', fontWeight: 700, marginTop: '1px' }}>
+                                <div style={{ fontSize: '6.2pt', color: '#b45309', fontWeight: 700, marginTop: '1px' }}>
                                   [Inval: {r.guruDigantikan || 'Guru Lain'}]
                                 </div>
                               )}
                             </td>
-                            <td style={{ border: '1px solid #000000', padding: '3.5px 6px', lineHeight: 1.25 }}>{r.materi}</td>
-                            <td style={{ border: '1px solid #000000', padding: '3.5px 2px', textAlign: 'center' }}></td>
+                            <td style={{ border: '1px solid #000000', padding: '3px 5px', lineHeight: 1.25, wordBreak: 'break-word', overflowWrap: 'anywhere' }}>{r.materi}</td>
+                            <td style={{ border: '1px solid #000000', padding: '3px 2px', textAlign: 'center' }}></td>
                           </tr>
                         );
                       })
